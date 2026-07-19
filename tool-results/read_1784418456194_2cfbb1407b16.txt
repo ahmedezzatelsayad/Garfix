@@ -1,0 +1,950 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useRef, useCallback } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { useAuth, authedFetch } from "@/context/AuthContext";
+     6→import {
+     7→  Bot, User, Send, X, Maximize2, Minimize2, ShieldAlert,
+     8→  Loader2, CheckCircle2, XCircle, ListOrdered, Wallet, BarChart3, Plus,
+     9→} from "lucide-react";
+    10→import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+    11→
+    12→interface ChatMessage {
+    13→  role: "user" | "assistant" | "system";
+    14→  content: string;
+    15→  /** Optional tool/agent metadata attached to an assistant message */
+    16→  meta?: {
+    17→    intent?: string;
+    18→    preview?: string;
+    19→    confirmToken?: string;
+    20→    status?: "pending_confirm" | "executed" | "cancelled" | "error";
+    21→    /** P0.1 fix (Remaining Work Handoff): warnings surfaced from the
+    22→     *  create_invoice tool so the user sees oversell/orphan items
+    23→     *  immediately in the chat, not just in BulkInputView. */
+    24→    reviewQueueWarnings?: string[];
+    25→  };
+    26→}
+    27→
+    28→interface ConfirmationState {
+    29→  intent: string;
+    30→  params: Record<string, unknown>;
+    31→  confirmToken: string;
+    32→  description: string;
+    33→  warning?: string;
+    34→  affectedRecords?: Array<{ type: string; id?: string | number; name?: string }>;
+    35→  /** Index in messages where the assistant preview placeholder lives */
+    36→  messageIndex: number;
+    37→}
+    38→
+    39→interface QuickAction {
+    40→  id: string;
+    41→  label: string;
+    42→  icon: React.ReactNode;
+    43→  userMessage: string;
+    44→  intent: string;
+    45→  params: (companySlug: string | undefined) => Record<string, unknown>;
+    46→  color: string;
+    47→}
+    48→
+    49→const QUICK_ACTIONS: QuickAction[] = [
+    50→  {
+    51→    id: "new-invoice",
+    52→    label: "فاتورة جديدة",
+    53→    icon: <Plus size={13} />,
+    54→    userMessage: "أنشئ فاتورة جديدة",
+    55→    intent: "create_invoice",
+    56→    color: "#7c3aed",
+    57→    params: (companySlug) => ({
+    58→      companySlug,
+    59→      clientName: "عميل افتراضي",
+    60→      clientPhone: "",
+    61→      items: [{ name: "منتج تجريبي", qty: 1, price: 100 }],
+    62→      taxRate: 15,
+    63→    }),
+    64→  },
+    65→  {
+    66→    id: "list-clients",
+    67→    label: "قائمة العملاء",
+    68→    icon: <ListOrdered size={13} />,
+    69→    userMessage: "اعرض قائمة العملاء",
+    70→    intent: "list_clients",
+    71→    color: "#10b981",
+    72→    params: (companySlug) => ({ companySlug, limit: 10 }),
+    73→  },
+    74→  {
+    75→    id: "client-balance",
+    76→    label: "كشف رصيد",
+    77→    icon: <Wallet size={13} />,
+    78→    userMessage: "اعرض رصيد عميل",
+    79→    intent: "get_client_balance",
+    80→    color: "#f59e0b",
+    81→    params: (companySlug) => ({ companySlug, clientId: 1 }),
+    82→  },
+    83→  {
+    84→    id: "quick-report",
+    85→    label: "تقرير سريع",
+    86→    icon: <BarChart3 size={13} />,
+    87→    userMessage: "اعرض ملخص الأعمال",
+    88→    intent: "list_invoices",
+    89→    color: "#3b82f6",
+    90→    params: (companySlug) => ({ companySlug, limit: 5 }),
+    91→  },
+    92→];
+    93→
+    94→const SUGGESTIONS = [
+    95→  "ما هو إجمالي إيراداتي هذا الشهر؟",
+    96→  "اقترح طرقاً لزيادة المبيعات",
+    97→  "كيف أنشئ فاتورة جديدة؟",
+    98→  "ما هي حالة الفواتير المتأخرة؟",
+    99→];
+   100→
+   101→export function AICopilotBubble() {
+   102→  const { user } = useAuth();
+   103→  const { activeCompany } = useBrand();
+   104→  const [open, setOpen] = useState(false);
+   105→  const [fullscreen, setFullscreen] = useState(false);
+   106→  const [messages, setMessages] = useState<ChatMessage[]>([]);
+   107→  const [input, setInput] = useState("");
+   108→  const [loading, setLoading] = useState(false);
+   109→  const [showReviewQueue, setShowReviewQueue] = useState(false);
+   110→  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+   111→  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
+   112→  const [executing, setExecuting] = useState(false);
+   113→  const scrollRef = useRef<HTMLDivElement>(null);
+   114→  const initRef = useRef(false);
+   115→
+   116→  // Load history on open
+   117→  const loadHistory = useCallback(async () => {
+   118→    try {
+   119→      const res = await authedFetch("/api/ai/chat");
+   120→      if (res.ok) {
+   121→        const data = await res.json();
+   122→        const msgs: ChatMessage[] = (data.messages || []).map((m: { role: string; content: string }) => ({
+   123→          role: m.role as "user" | "assistant",
+   124→          content: m.content,
+   125→        }));
+   126→        if (msgs.length > 0) {
+   127→          setMessages(msgs);
+   128→          if (data.messages[0]?.conversationId) setConversationId(data.messages[0].conversationId);
+   129→        }
+   130→      }
+   131→    } catch (err) {
+   132→      console.error("[ai] history load failed:", err);
+   133→    }
+   134→  }, []);
+   135→
+   136→  useEffect(() => {
+   137→    if (open && !initRef.current && user) {
+   138→      initRef.current = true;
+   139→      loadHistory();
+   140→    }
+   141→  }, [open, user, loadHistory]);
+   142→
+   143→  useEffect(() => {
+   144→    if (scrollRef.current) {
+   145→      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+   146→    }
+   147→  }, [messages, loading, confirmation]);
+   148→
+   149→  /** Regular chat send (no AI tool execution). */
+   150→  const send = async (text?: string) => {
+   151→    const content = (text ?? input).trim();
+   152→    if (!content || loading) return;
+   153→    const newMessages: ChatMessage[] = [...messages, { role: "user", content }];
+   154→    setMessages(newMessages);
+   155→    setInput("");
+   156→    setLoading(true);
+   157→    try {
+   158→      const res = await authedFetch("/api/ai/chat", {
+   159→        method: "POST",
+   160→        headers: { "Content-Type": "application/json" },
+   161→        body: JSON.stringify({
+   162→          messages: newMessages.slice(-10),
+   163→          companySlug: activeCompany?.slug,
+   164→          conversationId,
+   165→        }),
+   166→      });
+   167→      if (!res.ok) throw new Error("AI request failed");
+   168→      const data = await res.json();
+   169→      setMessages([...newMessages, { role: "assistant", content: data.reply }]);
+   170→      if (data.conversationId) setConversationId(data.conversationId);
+   171→    } catch (err) {
+   172→      setMessages([...newMessages, { role: "assistant", content: "عذراً، حدث خطأ. حاول مرة أخرى." }]);
+   173→    } finally {
+   174→      setLoading(false);
+   175→    }
+   176→  };
+   177→
+   178→  /**
+   179→   * Trigger an AI agent tool via /api/ai/tools.
+   180→   * Step 1: preview (confirm=false) — server returns confirmToken + preview.
+   181→   * Step 2: user clicks "تنفيذ" → execute (confirm=true + token).
+   182→   */
+   183→  const triggerAgentAction = async (action: QuickAction) => {
+   184→    if (loading || executing) return;
+   185→    if (!activeCompany?.slug) {
+   186→      toastWarn("يجب اختيار شركة نشطة أولاً");
+   187→      return;
+   188→    }
+   189→    const userMsg: ChatMessage = { role: "user", content: action.userMessage };
+   190→    const placeholder: ChatMessage = {
+   191→      role: "assistant",
+   192→      content: "🔍 جارٍ تحليل الإجراء وإنشاء معاينة...",
+   193→      meta: { intent: action.intent, status: "pending_confirm" },
+   194→    };
+   195→    const baseMessages = [...messages, userMsg, placeholder];
+   196→    setMessages(baseMessages);
+   197→    setLoading(true);
+   198→
+   199→    try {
+   200→      const params = action.params(activeCompany.slug);
+   201→      const res = await authedFetch("/api/ai/tools", {
+   202→        method: "POST",
+   203→        headers: { "Content-Type": "application/json" },
+   204→        body: JSON.stringify({ intent: action.intent, params, confirm: false }),
+   205→      });
+   206→      const data = await res.json();
+   207→      if (!res.ok) {
+   208→        throw new Error(data.error || "فشل الاتصال بـ AI tools");
+   209→      }
+   210→      if (data.needsConfirmation && data.confirmToken) {
+   211→        const preview = data.preview || {};
+   212→        const updatedContent = `🤖 إجراء الوكيل: ${action.label}\n\n${preview.description || "سيتم تنفيذ الإجراء"}${preview.warning ? `\n\n⚠️ ${preview.warning}` : ""}`;
+   213→        const updatedMessages = baseMessages.slice();
+   214→        updatedMessages[updatedMessages.length - 1] = {
+   215→          role: "assistant",
+   216→          content: updatedContent,
+   217→          meta: {
+   218→            intent: action.intent,
+   219→            status: "pending_confirm",
+   220→            confirmToken: data.confirmToken,
+   221→            preview: preview.description,
+   222→          },
+   223→        };
+   224→        setMessages(updatedMessages);
+   225→        setConfirmation({
+   226→          intent: action.intent,
+   227→          params,
+   228→          confirmToken: data.confirmToken,
+   229→          description: preview.description || "سيتم تنفيذ الإجراء",
+   230→          warning: preview.warning,
+   231→          affectedRecords: preview.affectedRecords,
+   232→          messageIndex: updatedMessages.length - 1,
+   233→        });
+   234→      } else {
+   235→        // Direct result (no confirmation needed)
+   236→        const summary = data.summary || "تم التنفيذ";
+   237→        // P0.1: capture any review-queue / oversell warnings returned by the
+   238→        // backend so we can render them as a banner under the message.
+   239→        const directWarnings: string[] = Array.isArray(data.reviewQueueWarnings) ? data.reviewQueueWarnings : [];
+   240→        const updatedMessages = baseMessages.slice();
+   241→        updatedMessages[updatedMessages.length - 1] = {
+   242→          role: "assistant",
+   243→          content: `✅ ${summary}`,
+   244→          meta: { intent: action.intent, status: "executed", reviewQueueWarnings: directWarnings.length > 0 ? directWarnings : undefined },
+   245→        };
+   246→        setMessages(updatedMessages);
+   247→        if (directWarnings.length > 0) {
+   248→          toastWarn(`⚠️ ${directWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
+   249→        }
+   250→      }
+   251→    } catch (err) {
+   252→      const errMsg = err instanceof Error ? err.message : "خطأ غير معروف";
+   253→      const updatedMessages = baseMessages.slice();
+   254→      updatedMessages[updatedMessages.length - 1] = {
+   255→        role: "assistant",
+   256→        content: `❌ فشل الإجراء: ${errMsg}`,
+   257→        meta: { intent: action.intent, status: "error" },
+   258→      };
+   259→      setMessages(updatedMessages);
+   260→    } finally {
+   261→      setLoading(false);
+   262→    }
+   263→  };
+   264→
+   265→  /** Step 2: actually execute the confirmed action. */
+   266→  const executeConfirmed = async () => {
+   267→    if (!confirmation || executing) return;
+   268→    setExecuting(true);
+   269→    try {
+   270→      const res = await authedFetch("/api/ai/tools", {
+   271→        method: "POST",
+   272→        headers: { "Content-Type": "application/json" },
+   273→        body: JSON.stringify({
+   274→          intent: confirmation.intent,
+   275→          params: confirmation.params,
+   276→          confirm: true,
+   277→          confirmToken: confirmation.confirmToken,
+   278→        }),
+   279→      });
+   280→      const data = await res.json();
+   281→      const summary = data.ok
+   282→        ? `✅ ${data.summary || "تم التنفيذ بنجاح"}`
+   283→        : `❌ ${data.summary || data.error || "فشل التنفيذ"}`;
+   284→      // P0.1: capture review-queue warnings from the confirmed execution too.
+   285→      const execWarnings: string[] = Array.isArray(data.reviewQueueWarnings) ? data.reviewQueueWarnings : [];
+   286→      setMessages((prev) => {
+   287→        const next = prev.slice();
+   288→        const idx = confirmation.messageIndex;
+   289→        if (next[idx]) {
+   290→          next[idx] = {
+   291→            ...next[idx],
+   292→            content: `${next[idx].content}\n\n— نتيجة التنفيذ —\n${summary}`,
+   293→            meta: {
+   294→              intent: confirmation.intent,
+   295→              status: data.ok ? "executed" : "error",
+   296→              reviewQueueWarnings: execWarnings.length > 0 ? execWarnings : undefined,
+   297→            },
+   298→          };
+   299→        }
+   300→        return next;
+   301→      });
+   302→      if (execWarnings.length > 0) {
+   303→        toastWarn(`⚠️ ${execWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
+   304→      }
+   305→      setConfirmation(null);
+   306→    } catch (err) {
+   307→      const errMsg = err instanceof Error ? err.message : "خطأ في التنفيذ";
+   308→      setMessages((prev) => {
+   309→        const next = prev.slice();
+   310→        const idx = confirmation.messageIndex;
+   311→        if (next[idx]) {
+   312→          next[idx] = {
+   313→            ...next[idx],
+   314→            content: `${next[idx].content}\n\n❌ خطأ في التنفيذ: ${errMsg}`,
+   315→            meta: { intent: confirmation.intent, status: "error" },
+   316→          };
+   317→        }
+   318→        return next;
+   319→      });
+   320→    } finally {
+   321→      setExecuting(false);
+   322→    }
+   323→  };
+   324→
+   325→  /** Cancel the confirmation dialog. */
+   326→  const cancelConfirmation = () => {
+   327→    if (!confirmation) return;
+   328→    setMessages((prev) => {
+   329→      const next = prev.slice();
+   330→      const idx = confirmation.messageIndex;
+   331→      if (next[idx]) {
+   332→        next[idx] = {
+   333→          ...next[idx],
+   334→          content: `${next[idx].content}\n\n— تم الإلغاء من قبل المستخدم —`,
+   335→          meta: { intent: confirmation.intent, status: "cancelled" },
+   336→        };
+   337→      }
+   338→      return next;
+   339→    });
+   340→    setConfirmation(null);
+   341→  };
+   342→
+   343→  if (!user) return null;
+   344→
+   345→  // ─── Layout dimensions ────────────────────────────────────────────────────
+   346→  // Part 2.6 fix: responsive AI Copilot panel.
+   347→  // - Desktop (md+): 380px floating panel, bottom-left, 540px tall.
+   348→  // - Mobile (<md): near-fullscreen panel with safe-area insets so the input
+   349→  //   box sits above the on-screen keyboard. Width: calc(100vw - 16px),
+   350→  //   height: calc(100vh - 16px), positioned with 8px margin from edges.
+   351→  //   The close (X) button is always visible on mobile.
+   352→  // - Fullscreen mode: unchanged (covers entire viewport on all sizes).
+   353→  const panelStyle: React.CSSProperties = fullscreen
+   354→    ? {
+   355→        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+   356→        width: "100vw", height: "100vh", maxWidth: "100vw", maxHeight: "100vh",
+   357→        borderRadius: 0, border: "none",
+   358→      }
+   359→    : {
+   360→        // Desktop: 380px floating panel
+   361→        position: "fixed", bottom: "92px", left: "24px",
+   362→        width: "380px", maxWidth: "calc(100vw - 48px)",
+   363→        height: "540px", maxHeight: "calc(100vh - 130px)",
+   364→        // Mobile override via media query (injected as a className below)
+   365→      };
+   366→
+   367→  return (
+   368→    <>
+   369→      {/* Inject keyframes (no-op if already present) */}
+   370→      <style>{`
+   371→        @keyframes garfix-agent-pulse {
+   372→          0%, 100% { box-shadow: 0 12px 32px rgba(124,58,237,0.5), 0 0 0 0 rgba(124,58,237,0.4); }
+   373→          50%      { box-shadow: 0 16px 40px rgba(124,58,237,0.6), 0 0 0 12px rgba(124,58,237,0); }
+   374→        }
+   375→        @keyframes garfix-fade-up {
+   376→          from { opacity: 0; transform: translateY(8px); }
+   377→          to   { opacity: 1; transform: translateY(0); }
+   378→        }
+   379→        @keyframes garfix-glow {
+   380→          0%, 100% { opacity: 0.4; }
+   381→          50%      { opacity: 1; }
+   382→        }
+   383→        @keyframes garfix-blink {
+   384→          0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+   385→          40%           { opacity: 1; transform: translateY(-3px); }
+   386→        }
+   387→        /* Part 2.6 fix: responsive AI Copilot panel.
+   388→           On mobile (<768px / md breakpoint), override the inline desktop
+   389→           styles to make the panel near-fullscreen with safe-area insets.
+   390→           The input box sits above the on-screen keyboard via
+   391→           padding-bottom: env(keyboard-inset-height, 0px) fallback + safe-area-inset-bottom. */
+   392→        @media (max-width: 767px) {
+   393→          .garfix-ai-panel:not([data-fullscreen="true"]) {
+   394→            position: fixed !important;
+   395→            top: 8px !important;
+   396→            left: 8px !important;
+   397→            right: 8px !important;
+   398→            bottom: 8px !important;
+   399→            width: auto !important;
+   400→            max-width: none !important;
+   401→            height: auto !important;
+   402→            max-height: none !important;
+   403→            border-radius: 16px !important;
+   404→            /* Safe-area insets for notched devices + on-screen keyboard */
+   405→            padding-bottom: env(safe-area-inset-bottom, 0px);
+   406→          }
+   407→        }
+   408→      `}</style>
+   409→
+   410→      {/* Floating bubble — Garfix AI logo mark, 60px, purple gradient */}
+   411→      <button
+   412→        onClick={() => setOpen(!open)}
+   413→        aria-label="مساعد Garfix AI"
+   414→        title="مساعد Garfix AI"
+   415→        style={{
+   416→          position: "fixed", bottom: "24px", left: "24px",
+   417→          width: "60px", height: "60px", borderRadius: "50%",
+   418→          background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 60%, #c4b5fd 100%)",
+   419→          color: "#fff", border: "2px solid rgba(255,255,255,0.15)",
+   420→          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+   421→          boxShadow: "0 12px 32px rgba(124, 58, 237, 0.5)",
+   422→          zIndex: 150, transition: "transform .25s, box-shadow .25s",
+   423→          animation: "garfix-agent-pulse 3s infinite",
+   424→        }}
+   425→        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
+   426→        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+   427→      >
+   428→        {open ? <X size={26} /> : <img src="/logo.svg" alt="" style={{ width: 30, height: 30, borderRadius: 6 }} />}
+   429→        {/* Small "online" indicator dot */}
+   430→        <span
+   431→          style={{
+   432→            position: "absolute", top: "4px", right: "4px",
+   433→            width: "12px", height: "12px", borderRadius: "50%",
+   434→            background: "#22c55e", border: "2px solid #fff",
+   435→          }}
+   436→        />
+   437→      </button>
+   438→
+   439→      {/* Chat panel */}
+   440→      {open && (
+   441→        <div
+   442→          dir="rtl"
+   443→          className="garfix-ai-panel"
+   444→          style={{
+   445→            ...panelStyle,
+   446→            background: fullscreen ? "rgba(15, 10, 30, 0.96)" : "var(--card)",
+   447→            border: fullscreen ? "none" : "1px solid var(--border)",
+   448→            borderRadius: fullscreen ? 0 : "16px",
+   449→            boxShadow: fullscreen
+   450→              ? "0 0 0 9999px rgba(0,0,0,0.7)"
+   451→              : "0 24px 64px rgba(0,0,0,0.2)",
+   452→            zIndex: 200, display: "flex", flexDirection: "column",
+   453→            overflow: "hidden", fontFamily: "var(--font-cairo), sans-serif",
+   454→            animation: "garfix-fade-up .25s ease-out",
+   455→          }}
+   456→        >
+   457→          {/* Header */}
+   458→          <div
+   459→            style={{
+   460→              padding: "14px 18px",
+   461→              background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)",
+   462→              color: "#fff", display: "flex", alignItems: "center", gap: "10px",
+   463→              flexShrink: 0,
+   464→            }}
+   465→          >
+   466→            {/* Fullscreen toggle — top-left (RTL → visually right) */}
+   467→            <button
+   468→              onClick={() => setFullscreen(!fullscreen)}
+   469→              aria-label={fullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
+   470→              title={fullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
+   471→              style={{
+   472→                width: "34px", height: "34px", borderRadius: "8px",
+   473→                background: "rgba(255,255,255,0.18)", border: "none", color: "#fff",
+   474→                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+   475→                transition: "background .15s",
+   476→              }}
+   477→              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+   478→              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
+   479→            >
+   480→              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+   481→            </button>
+   482→
+   483→            {/* Bot avatar */}
+   484→            <div
+   485→              style={{
+   486→                width: "36px", height: "36px", borderRadius: "10px",
+   487→                background: "rgba(255,255,255,0.18)",
+   488→                display: "flex", alignItems: "center", justifyContent: "center",
+   489→                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)",
+   490→              }}
+   491→            >
+   492→              <img src="/logo.svg" alt="" style={{ width: 20, height: 20, borderRadius: 4 }} />
+   493→            </div>
+   494→
+   495→            {/* Title + Agent badge */}
+   496→            <div style={{ flex: 1, minWidth: 0 }}>
+   497→              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+   498→                <span style={{ fontSize: "14px", fontWeight: 800 }}>مساعد Garfix AI</span>
+   499→                <span
+   500→                  style={{
+   501→                    fontSize: "9px", fontWeight: 800, letterSpacing: "0.5px",
+   502→                    padding: "2px 7px", borderRadius: "999px",
+   503→                    background: "rgba(255,255,255,0.25)", color: "#fff",
+   504→                    border: "1px solid rgba(255,255,255,0.35)",
+   505→                    textTransform: "uppercase",
+   506→                  }}
+   507→                >
+   508→                  Agent
+   509→                </span>
+   510→              </div>
+   511→              <div style={{ fontSize: "10px", opacity: 0.85, display: "flex", alignItems: "center", gap: "5px" }}>
+   512→                <span
+   513→                  style={{
+   514→                    width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e",
+   515→                    display: "inline-block", boxShadow: "0 0 6px #22c55e",
+   516→                  }}
+   517→                />
+   518→                وكيل ذكي جاهز لتنفيذ الأوامر
+   519→              </div>
+   520→            </div>
+   521→
+   522→            {/* Close (panel mode only) */}
+   523→            {!fullscreen && (
+   524→              <button
+   525→                onClick={() => setOpen(false)}
+   526→                aria-label="إغلاق"
+   527→                style={{
+   528→                  width: "34px", height: "34px", borderRadius: "8px",
+   529→                  background: "rgba(255,255,255,0.18)", border: "none", color: "#fff",
+   530→                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+   531→                }}
+   532→              >
+   533→                <X size={16} />
+   534→              </button>
+   535→            )}
+   536→          </div>
+   537→
+   538→          {/* Messages */}
+   539→          <div
+   540→            ref={scrollRef}
+   541→            className="garfix-scroll"
+   542→            style={{
+   543→              flex: 1, overflowY: "auto",
+   544→              padding: fullscreen ? "24px" : "14px",
+   545→              display: "flex", flexDirection: "column", gap: "10px",
+   546→              background: fullscreen ? "transparent" : "transparent",
+   547→            }}
+   548→          >
+   549→            {messages.length === 0 && (
+   550→              <div
+   551→                style={{
+   552→                  textAlign: "center",
+   553→                  color: fullscreen ? "rgba(255,255,255,0.7)" : "var(--muted-foreground)",
+   554→                  fontSize: "12px",
+   555→                  padding: "24px 8px",
+   556→                }}
+   557→              >
+   558→                <div
+   559→                  style={{
+   560→                    width: "64px", height: "64px", borderRadius: "50%",
+   561→                    background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+   562→                    display: "flex", alignItems: "center", justifyContent: "center",
+   563→                    margin: "0 auto 14px", color: "#fff",
+   564→                    boxShadow: "0 8px 24px rgba(124,58,237,0.4)",
+   565→                  }}
+   566→                >
+   567→                  <img src="/logo.svg" alt="" style={{ width: 32, height: 32, borderRadius: 6 }} />
+   568→                </div>
+   569→                <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "4px" }}>
+   570→                  مرحباً {user.displayName}!
+   571→                </div>
+   572→                <div style={{ opacity: 0.8, marginBottom: "18px" }}>
+   573→                  أنا Garfix AI، وكيلك الذكي. أستطيع تنفيذ أوامر حقيقية على نظامك.
+   574→                </div>
+   575→                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "14px" }}>
+   576→                  {SUGGESTIONS.map((s, i) => (
+   577→                    <button
+   578→                      key={i}
+   579→                      onClick={() => send(s)}
+   580→                      style={{
+   581→                        padding: "9px 12px", borderRadius: "8px",
+   582→                        background: fullscreen ? "rgba(255,255,255,0.08)" : "var(--muted)",
+   583→                        border: `1px solid ${fullscreen ? "rgba(255,255,255,0.15)" : "var(--border)"}`,
+   584→                        color: fullscreen ? "#fff" : "var(--foreground)",
+   585→                        fontFamily: "inherit", fontSize: "12px",
+   586→                        cursor: "pointer", textAlign: "right", transition: "all .15s",
+   587→                      }}
+   588→                    >
+   589→                      {s}
+   590→                    </button>
+   591→                  ))}
+   592→                </div>
+   593→              </div>
+   594→            )}
+   595→            {messages.map((m, i) => {
+   596→              const isUser = m.role === "user";
+   597→              const isAgent = !isUser && m.meta?.intent;
+   598→              const statusIcon =
+   599→                m.meta?.status === "executed" ? <CheckCircle2 size={12} color="#22c55e" /> :
+   600→                m.meta?.status === "error" ? <XCircle size={12} color="#ef4444" /> :
+   601→                m.meta?.status === "cancelled" ? <XCircle size={12} color="#9ca3af" /> :
+   602→                m.meta?.status === "pending_confirm" ? <ShieldAlert size={12} color="#f59e0b" /> : null;
+   603→
+   604→              return (
+   605→                <div
+   606→                  key={i}
+   607→                  style={{
+   608→                    display: "flex", gap: "8px",
+   609→                    alignSelf: isUser ? "flex-start" : "flex-end",
+   610→                    flexDirection: isUser ? "row" : "row-reverse",
+   611→                    maxWidth: fullscreen ? "80%" : "100%",
+   612→                  }}
+   613→                >
+   614→                  <div
+   615→                    style={{
+   616→                      width: "30px", height: "30px", borderRadius: "50%",
+   617→                      background: isUser
+   618→                        ? "var(--accent)"
+   619→                        : "linear-gradient(135deg, #7c3aed, #a78bfa)",
+   620→                      color: isUser ? "var(--accent-foreground)" : "#fff",
+   621→                      display: "flex", alignItems: "center", justifyContent: "center",
+   622→                      flexShrink: 0, boxShadow: isUser ? "none" : "0 4px 12px rgba(124,58,237,0.3)",
+   623→                    }}
+   624→                  >
+   625→                    {isUser ? <User size={14} /> : <Bot size={14} />}
+   626→                  </div>
+   627→                  <div
+   628→                    style={{
+   629→                      background: isUser
+   630→                        ? (fullscreen ? "rgba(255,255,255,0.08)" : "var(--muted)")
+   631→                        : (isAgent
+   632→                            ? "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(167,139,250,0.08))"
+   633→                            : (fullscreen ? "rgba(124,58,237,0.25)" : "var(--primary)")),
+   634→                      color: isUser
+   635→                        ? (fullscreen ? "#fff" : "var(--foreground)")
+   636→                        : (isAgent
+   637→                            ? (fullscreen ? "#fff" : "var(--foreground)")
+   638→                            : (fullscreen ? "#fff" : "var(--primary-foreground)")),
+   639→                      padding: "10px 14px", borderRadius: "12px",
+   640→                      fontSize: "13px", lineHeight: 1.65,
+   641→                      maxWidth: "320px", whiteSpace: "pre-wrap",
+   642→                      border: isAgent ? "1px solid rgba(124,58,237,0.25)" : "none",
+   643→                    }}
+   644→                  >
+   645→                    {isAgent && (
+   646→                      <div
+   647→                        style={{
+   648→                          display: "flex", alignItems: "center", gap: "5px",
+   649→                          fontSize: "10px", fontWeight: 800, color: "#7c3aed",
+   650→                          marginBottom: "5px", letterSpacing: "0.3px",
+   651→                        }}
+   652→                      >
+   653→                        <Bot size={11} /> AGENT ACTION {statusIcon}
+   654→                      </div>
+   655→                    )}
+   656→                    {m.content}
+   657→                    {/* P0.1 fix (Remaining Work Handoff): persistent warning banner
+   658→                        for review-queue / oversell items, mirroring the BulkInputView
+   659→                        banner pattern from GATE 5.1. Renders only when the assistant
+   660→                        message has reviewQueueWarnings in its meta.
+   661→                        Task 14: uses red destructive styling (matches shadcn Alert
+   662→                        variant="destructive") and exact wording "⚠️ N صنف يحتاج مراجعة"
+   663→                        so the same warning is shown to the user, not swallowed. */}
+   664→                    {m.meta?.reviewQueueWarnings && m.meta.reviewQueueWarnings.length > 0 && (
+   665→                      <div
+   666→                        role="alert"
+   667→                        style={{
+   668→                          marginTop: "10px",
+   669→                          padding: "8px 10px",
+   670→                          borderRadius: "8px",
+   671→                          border: "1px solid #ef4444",
+   672→                          background: "rgba(239, 68, 68, 0.12)",
+   673→                          fontSize: "11px",
+   674→                          color: "#ef4444",
+   675→                          lineHeight: 1.5,
+   676→                        }}
+   677→                      >
+   678→                        <div style={{ display: "flex", alignItems: "center", gap: "5px", fontWeight: 800, marginBottom: "4px" }}>
+   679→                          <ShieldAlert size={12} />
+   680→                          ⚠️ {m.meta.reviewQueueWarnings.length} صنف يحتاج مراجعة
+   681→                        </div>
+   682→                        <ul style={{ margin: 0, paddingInlineStart: "16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+   683→                          {m.meta.reviewQueueWarnings.slice(0, 3).map((w, idx) => (
+   684→                            <li key={idx} style={{ color: "var(--foreground)", fontSize: "10px" }}>{w}</li>
+   685→                          ))}
+   686→                          {m.meta.reviewQueueWarnings.length > 3 && (
+   687→                            <li style={{ color: "var(--muted-foreground)", fontSize: "10px" }}>
+   688→                              + {m.meta.reviewQueueWarnings.length - 3} تحذيرات أخرى…
+   689→                            </li>
+   690→                          )}
+   691→                        </ul>
+   692→                        <button
+   693→                          type="button"
+   694→                          onClick={() => setShowReviewQueue(true)}
+   695→                          style={{ display: "inline-block", marginTop: "6px", color: "#ef4444", fontWeight: 700, textDecoration: "underline", fontSize: "10px", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+   696→                        >
+   697→                          فتح صفحة المراجعة ←
+   698→                        </button>
+   699→                      </div>
+   700→                    )}
+   701→                  </div>
+   702→                </div>
+   703→              );
+   704→            })}
+   705→            {loading && (
+   706→              <div style={{ display: "flex", gap: "8px", alignSelf: "flex-end", flexDirection: "row-reverse" }}>
+   707→                <div
+   708→                  style={{
+   709→                    width: "30px", height: "30px", borderRadius: "50%",
+   710→                    background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+   711→                    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+   712→                  }}
+   713→                >
+   714→                  <Bot size={14} />
+   715→                </div>
+   716→                <div
+   717→                  style={{
+   718→                    background: fullscreen ? "rgba(124,58,237,0.25)" : "var(--primary)",
+   719→                    color: "#fff",
+   720→                    padding: "10px 14px", borderRadius: "12px", fontSize: "13px",
+   721→                    display: "flex", alignItems: "center", gap: "4px",
+   722→                  }}
+   723→                >
+   724→                  <span style={{ display: "inline-block", animation: "garfix-glow 1s infinite" }}>…</span>
+   725→                </div>
+   726→              </div>
+   727→            )}
+   728→          </div>
+   729→
+   730→          {/* Confirmation modal — inline within chat */}
+   731→          {confirmation && (
+   732→            <div
+   733→              dir="rtl"
+   734→              style={{
+   735→                padding: "12px",
+   736→                borderTop: "1px solid var(--border)",
+   737→                background: fullscreen ? "rgba(124,58,237,0.08)" : "var(--muted)",
+   738→                flexShrink: 0,
+   739→              }}
+   740→            >
+   741→              <div
+   742→                style={{
+   743→                  background: "var(--card)", borderRadius: "12px",
+   744→                  border: "1px solid rgba(245,158,11,0.4)",
+   745→                  padding: "14px", display: "flex", flexDirection: "column", gap: "10px",
+   746→                  boxShadow: "0 8px 24px rgba(245,158,11,0.15)",
+   747→                }}
+   748→              >
+   749→                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+   750→                  <div
+   751→                    style={{
+   752→                      width: "32px", height: "32px", borderRadius: "8px",
+   753→                      background: "rgba(245,158,11,0.15)", color: "#f59e0b",
+   754→                      display: "flex", alignItems: "center", justifyContent: "center",
+   755→                    }}
+   756→                  >
+   757→                    <ShieldAlert size={18} />
+   758→                  </div>
+   759→                  <div style={{ flex: 1 }}>
+   760→                    <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--foreground)" }}>
+   761→                      تأكيد تنفيذ الإجراء
+   762→                    </div>
+   763→                    <div style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
+   764→                      Intent: <code style={{ fontFamily: "monospace" }}>{confirmation.intent}</code>
+   765→                    </div>
+   766→                  </div>
+   767→                </div>
+   768→
+   769→                <div
+   770→                  style={{
+   771→                    fontSize: "12px", lineHeight: 1.6, color: "var(--foreground)",
+   772→                    padding: "10px 12px", borderRadius: "8px",
+   773→                    background: "var(--muted)", border: "1px solid var(--border)",
+   774→                  }}
+   775→                >
+   776→                  {confirmation.description}
+   777→                </div>
+   778→
+   779→                {confirmation.warning && (
+   780→                  <div
+   781→                    style={{
+   782→                      fontSize: "11px", color: "#b45309",
+   783→                      padding: "8px 10px", borderRadius: "8px",
+   784→                      background: "rgba(245,158,11,0.1)",
+   785→                      border: "1px solid rgba(245,158,11,0.3)",
+   786→                      display: "flex", gap: "6px", alignItems: "flex-start",
+   787→                    }}
+   788→                  >
+   789→                    <ShieldAlert size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
+   790→                    <span>{confirmation.warning}</span>
+   791→                  </div>
+   792→                )}
+   793→
+   794→                {confirmation.affectedRecords && confirmation.affectedRecords.length > 0 && (
+   795→                  <div style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
+   796→                    <strong>السجلات المتأثرة:</strong>
+   797→                    <ul style={{ margin: "4px 0 0 0", paddingInlineStart: "18px" }}>
+   798→                      {confirmation.affectedRecords.map((r, i) => (
+   799→                        <li key={i}>
+   800→                          {r.type}
+   801→                          {r.name ? ` — ${r.name}` : ""}
+   802→                          {r.id ? ` (#${r.id})` : ""}
+   803→                        </li>
+   804→                      ))}
+   805→                    </ul>
+   806→                  </div>
+   807→                )}
+   808→
+   809→                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-start" }}>
+   810→                  <button
+   811→                    onClick={executeConfirmed}
+   812→                    disabled={executing}
+   813→                    style={{
+   814→                      display: "inline-flex", alignItems: "center", gap: "6px",
+   815→                      padding: "9px 18px", borderRadius: "9px",
+   816→                      background: executing ? "#dc2626" : "#ef4444", color: "#fff",
+   817→                      border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 800,
+   818→                      cursor: executing ? "not-allowed" : "pointer",
+   819→                      opacity: executing ? 0.7 : 1,
+   820→                      boxShadow: "0 4px 12px rgba(239,68,68,0.3)",
+   821→                    }}
+   822→                  >
+   823→                    {executing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+   824→                    تنفيذ
+   825→                  </button>
+   826→                  <button
+   827→                    onClick={cancelConfirmation}
+   828→                    disabled={executing}
+   829→                    style={{
+   830→                      display: "inline-flex", alignItems: "center", gap: "6px",
+   831→                      padding: "9px 18px", borderRadius: "9px",
+   832→                      background: "var(--muted)", color: "var(--foreground)",
+   833→                      border: "1px solid var(--border)",
+   834→                      fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
+   835→                      cursor: executing ? "not-allowed" : "pointer",
+   836→                      opacity: executing ? 0.6 : 1,
+   837→                    }}
+   838→                  >
+   839→                    <X size={13} /> إلغاء
+   840→                  </button>
+   841→                </div>
+   842→              </div>
+   843→            </div>
+   844→          )}
+   845→
+   846→          {/* Quick actions row (above input) */}
+   847→          {!confirmation && (
+   848→            <div
+   849→              style={{
+   850→                padding: "8px 10px 4px", display: "flex", gap: "6px",
+   851→                flexWrap: "wrap", flexShrink: 0,
+   852→                borderTop: "1px solid var(--border)",
+   853→                background: fullscreen ? "rgba(0,0,0,0.2)" : "transparent",
+   854→              }}
+   855→            >
+   856→              {QUICK_ACTIONS.map((a) => (
+   857→                <button
+   858→                  key={a.id}
+   859→                  onClick={() => triggerAgentAction(a)}
+   860→                  disabled={loading || executing || !activeCompany?.slug}
+   861→                  title={a.userMessage}
+   862→                  style={{
+   863→                    display: "inline-flex", alignItems: "center", gap: "5px",
+   864→                    padding: "6px 10px", borderRadius: "8px",
+   865→                    background: "var(--card)",
+   866→                    border: `1px solid ${a.color}40`,
+   867→                    color: a.color, fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
+   868→                    cursor: loading || executing ? "not-allowed" : "pointer",
+   869→                    opacity: loading || executing || !activeCompany?.slug ? 0.5 : 1,
+   870→                    transition: "all .15s",
+   871→                  }}
+   872→                  onMouseEnter={(e) => {
+   873→                    if (!loading && !executing) {
+   874→                      e.currentTarget.style.background = a.color;
+   875→                      e.currentTarget.style.color = "#fff";
+   876→                    }
+   877→                  }}
+   878→                  onMouseLeave={(e) => {
+   879→                    e.currentTarget.style.background = "var(--card)";
+   880→                    e.currentTarget.style.color = a.color;
+   881→                  }}
+   882→                >
+   883→                  {a.icon} {a.label}
+   884→                </button>
+   885→              ))}
+   886→            </div>
+   887→          )}
+   888→
+   889→          {/* Input */}
+   890→          <div
+   891→            style={{
+   892→              padding: "10px 12px",
+   893→              display: "flex", gap: "8px",
+   894→              flexShrink: 0,
+   895→              background: fullscreen ? "rgba(0,0,0,0.2)" : "transparent",
+   896→            }}
+   897→          >
+   898→            <input
+   899→              value={input}
+   900→              onChange={(e) => setInput(e.target.value)}
+   901→              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+   902→              placeholder={activeCompany?.slug ? "اكتب رسالتك أو استخدم أحد الإجراءات أعلاه…" : "اختر شركة نشطة أولاً…"}
+   903→              disabled={loading || executing || !!confirmation}
+   904→              style={{
+   905→                flex: 1, padding: "10px 14px", borderRadius: "10px",
+   906→                background: fullscreen ? "rgba(255,255,255,0.08)" : "var(--background)",
+   907→                border: `1px solid ${fullscreen ? "rgba(255,255,255,0.15)" : "var(--border)"}`,
+   908→                color: fullscreen ? "#fff" : "var(--foreground)",
+   909→                fontFamily: "inherit", fontSize: "13px", outline: "none",
+   910→              }}
+   911→            />
+   912→            <button
+   913→              onClick={() => send()}
+   914→              disabled={loading || executing || !input.trim() || !!confirmation}
+   915→              style={{
+   916→                width: "40px", height: "40px", borderRadius: "10px",
+   917→                background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+   918→                color: "#fff", border: "none",
+   919→                cursor: loading || executing || !input.trim() || !!confirmation ? "not-allowed" : "pointer",
+   920→                display: "flex", alignItems: "center", justifyContent: "center",
+   921→                opacity: loading || executing || !input.trim() || !!confirmation ? 0.5 : 1,
+   922→                boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
+   923→              }}
+   924→            >
+   925→              <Send size={16} />
+   926→            </button>
+   927→          </div>
+   928→        </div>
+   929→      )}
+   930→
+   931→      {showReviewQueue && activeCompany && (
+   932→        <ReviewQueueModal
+   933→          companySlug={activeCompany.slug}
+   934→          onClose={() => setShowReviewQueue(false)}
+   935→        />
+   936→      )}
+   937→    </>
+   938→  );
+   939→}
+   940→
+   941→/** Lightweight inline warn toast (avoids extra import). */
+   942→function toastWarn(msg: string) {
+   943→  if (typeof window !== "undefined") {
+   944→    // Defer to sonner if available; otherwise console.
+   945→    import("sonner").then((s) => s.toast.warning(msg)).catch(() => console.warn(msg));
+   946→  }
+   947→}
+   948→
+   949→export default AICopilotBubble;
+   950→
