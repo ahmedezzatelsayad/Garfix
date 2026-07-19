@@ -1,0 +1,581 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect } from "react";
+     4→import { useBrand, type CompanyInfo } from "@/context/BrandContext";
+     5→import { authedFetch } from "@/context/AuthContext";
+     6→import { toast } from "sonner";
+     7→import { Save, Building2, FileText, Palette, Type, LayoutTemplate, Stamp, CreditCard, ImageIcon } from "lucide-react";
+     8→import { GULF_COUNTRIES, getCountryConfig, isVatApplicable } from "@/lib/gulfConfig";
+     9→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+    10→import { Button } from "@/components/ui/button";
+    11→import { Label } from "@/components/ui/label";
+    12→import { Switch } from "@/components/ui/switch";
+    13→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+    14→import { Checkbox } from "@/components/ui/checkbox";
+    15→
+    16→// ─── Template preview card descriptions ────────────────────────────────────────
+    17→const TEMPLATES = [
+    18→  { id: "classic", label: "كلاسيكي", desc: "تصميم تقليدي بإطار أنيق", icon: "📄" },
+    19→  { id: "modern", label: "عصري", desc: "تصميم حديث ونظيف", icon: "✨" },
+    20→  { id: "minimal", label: "بسيط", desc: "تصميم بسيط بدون زخارف", icon: "◻️" },
+    21→  { id: "arabic-rtl", label: "عربي RTL", desc: "تصميم مُحسّن للعربية", icon: "🔤" },
+    22→] as const;
+    23→
+    24→const FONTS = [
+    25→  { id: "Noto Sans SC", label: "Noto Sans SC" },
+    26→  { id: "Cairo", label: "Cairo" },
+    27→  { id: "Tajawal", label: "Tajawal" },
+    28→  { id: "IBM Plex Sans Arabic", label: "IBM Plex Sans Arabic" },
+    29→  { id: "Almarai", label: "Almarai" },
+    30→] as const;
+    31→
+    32→const INVOICE_TYPE_OPTIONS = [
+    33→  { id: "sales", label: "فاتورة مبيعات" },
+    34→  { id: "purchase", label: "فاتورة مشتريات" },
+    35→  { id: "quote", label: "عرض سعر" },
+    36→] as const;
+    37→
+    38→interface TemplateSettingsForm {
+    39→  templateId: string;
+    40→  primaryColor: string;
+    41→  fontFamily: string;
+    42→  fontSize: number;
+    43→  showLogo: boolean;
+    44→  logoPosition: string;
+    45→  showPaymentInfo: boolean;
+    46→  showStamp: boolean;
+    47→  invoiceTypes: string[];
+    48→}
+    49→
+    50→const defaultTemplateSettings: TemplateSettingsForm = {
+    51→  templateId: "modern",
+    52→  primaryColor: "#7C3AED",
+    53→  fontFamily: "Noto Sans SC",
+    54→  fontSize: 12,
+    55→  showLogo: true,
+    56→  logoPosition: "right",
+    57→  showPaymentInfo: true,
+    58→  showStamp: false,
+    59→  invoiceTypes: ["sales", "purchase", "quote"],
+    60→};
+    61→
+    62→interface SettingsViewProps {
+    63→  activeCompany: CompanyInfo | null;
+    64→  onUpdated: () => void;
+    65→}
+    66→
+    67→export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
+    68→  const [form, setForm] = useState({
+    69→    name: "", nameAr: "", emoji: "", color: "#7c3aed",
+    70→    phone: "", email: "", address: "", vatNumber: "",
+    71→    commercialRegistration: "",
+    72→    currency: "KWD", country: "KW", defaultTaxRate: "0",
+    73→    openrouterModel: "anthropic/claude-3.5-haiku",
+    74→    weekendDays: "[5,6]", ramadanHours: false,
+    75→  });
+    76→  const [saving, setSaving] = useState(false);
+    77→
+    78→  // ─── PDF Template Settings state ──────────────────────────────────────
+    79→  const [templateForm, setTemplateForm] = useState<TemplateSettingsForm>(defaultTemplateSettings);
+    80→  const [savingTemplate, setSavingTemplate] = useState(false);
+    81→  const [templateLoaded, setTemplateLoaded] = useState(false);
+    82→
+    83→  // Sync form when activeCompany changes (render-time adjustment, no cascading render).
+    84→  const [prevCompany, setPrevCompany] = useState(activeCompany);
+    85→  if (activeCompany !== prevCompany) {
+    86→    setPrevCompany(activeCompany);
+    87→    if (activeCompany) {
+    88→      const countryConfig = getCountryConfig(activeCompany.country);
+    89→      setForm({
+    90→        name: activeCompany.name || "",
+    91→        nameAr: activeCompany.nameAr || "",
+    92→        emoji: activeCompany.emoji || "🏢",
+    93→        color: activeCompany.color || "#7c3aed",
+    94→        phone: activeCompany.phone || "",
+    95→        email: activeCompany.email || "",
+    96→        address: activeCompany.address || "",
+    97→        vatNumber: activeCompany.vatNumber || "",
+    98→        commercialRegistration: "",
+    99→        currency: activeCompany.currency || countryConfig?.currency || "KWD",
+   100→        country: activeCompany.country || "KW",
+   101→        defaultTaxRate: activeCompany.defaultTaxRate || countryConfig?.defaultTaxRate || "0",
+   102→        openrouterModel: "anthropic/claude-3.5-haiku",
+   103→        weekendDays: "[5,6]", ramadanHours: false,
+   104→      });
+   105→      setTemplateLoaded(false);
+   106→    }
+   107→  }
+   108→
+   109→  // ─── Fetch template settings when company changes ─────────────────────
+   110→  useEffect(() => {
+   111→    if (!activeCompany) return;
+   112→    let cancelled = false;
+   113→    authedFetch(`/api/invoice-templates?companySlug=${activeCompany.slug}`)
+   114→      .then((res) => res.json())
+   115→      .then((data) => {
+   116→        if (cancelled) return;
+   117→        if (data.templateSettings) {
+   118→          const s = data.templateSettings;
+   119→          setTemplateForm({
+   120→            templateId: s.templateId || "modern",
+   121→            primaryColor: s.primaryColor || "#7C3AED",
+   122→            fontFamily: s.fontFamily || "Noto Sans SC",
+   123→            fontSize: s.fontSize || 12,
+   124→            showLogo: s.showLogo ?? true,
+   125→            logoPosition: s.logoPosition || "right",
+   126→            showPaymentInfo: s.showPaymentInfo ?? true,
+   127→            showStamp: s.showStamp ?? false,
+   128→            invoiceTypes: s.invoiceTypes ? s.invoiceTypes.split(",").filter(Boolean) : ["sales", "purchase", "quote"],
+   129→          });
+   130→        } else {
+   131→          setTemplateForm(defaultTemplateSettings);
+   132→        }
+   133→        setTemplateLoaded(true);
+   134→      })
+   135→      .catch(() => {
+   136→        if (!cancelled) {
+   137→          setTemplateForm(defaultTemplateSettings);
+   138→          setTemplateLoaded(true);
+   139→        }
+   140→      });
+   141→    return () => { cancelled = true; };
+   142→  }, [activeCompany]);
+   143→
+   144→  if (!activeCompany) {
+   145→    return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>اختر شركة أولاً</div>;
+   146→  }
+   147→
+   148→  const save = async () => {
+   149→    setSaving(true);
+   150→    try {
+   151→      const res = await authedFetch(`/api/companies/${activeCompany.slug}`, {
+   152→        method: "PATCH",
+   153→        headers: { "Content-Type": "application/json" },
+   154→        body: JSON.stringify(form),
+   155→      });
+   156→      if (!res.ok) {
+   157→        const e = await res.json().catch(() => ({}));
+   158→        throw new Error(e.error || "Failed");
+   159→      }
+   160→      toast.success("تم حفظ الإعدادات");
+   161→      onUpdated();
+   162→    } catch (err) {
+   163→      toast.error(err instanceof Error ? err.message : "خطأ");
+   164→    } finally {
+   165→      setSaving(false);
+   166→    }
+   167→  };
+   168→
+   169→  // ─── Save template settings ──────────────────────────────────────────
+   170→  const saveTemplateSettings = async () => {
+   171→    setSavingTemplate(true);
+   172→    try {
+   173→      const res = await authedFetch("/api/invoice-templates", {
+   174→        method: "PATCH",
+   175→        headers: { "Content-Type": "application/json" },
+   176→        body: JSON.stringify({
+   177→          companySlug: activeCompany.slug,
+   178→          ...templateForm,
+   179→        }),
+   180→      });
+   181→      if (!res.ok) {
+   182→        const e = await res.json().catch(() => ({}));
+   183→        throw new Error(e.error || "فشل الحفظ");
+   184→      }
+   185→      toast.success("تم حفظ إعدادات القالب");
+   186→    } catch (err) {
+   187→      toast.error(err instanceof Error ? err.message : "خطأ");
+   188→    } finally {
+   189→      setSavingTemplate(false);
+   190→    }
+   191→  };
+   192→
+   193→  // ─── Toggle invoice type in the multi-select ─────────────────────────
+   194→  const toggleInvoiceType = (typeId: string) => {
+   195→    setTemplateForm((prev) => {
+   196→      const exists = prev.invoiceTypes.includes(typeId);
+   197→      const next = exists
+   198→        ? prev.invoiceTypes.filter((t) => t !== typeId)
+   199→        : [...prev.invoiceTypes, typeId];
+   200→      return { ...prev, invoiceTypes: next };
+   201→    });
+   202→  };
+   203→
+   204→  const inputStyle: React.CSSProperties = {
+   205→    width: "100%", padding: "8px 12px", borderRadius: "8px",
+   206→    background: "var(--background)", border: "1px solid var(--border)",
+   207→    color: "var(--foreground)", fontFamily: "inherit", fontSize: "13px", outline: "none",
+   208→  };
+   209→  const labelStyle: React.CSSProperties = { display: "block", fontSize: "11px", fontWeight: 600, color: "var(--muted-foreground)", marginBottom: "4px" };
+   210→
+   211→  return (
+   212→    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+   213→      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+   214→        <div>
+   215→          <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+   216→            <Building2 size={20} /> إعدادات الشركة
+   217→          </h1>
+   218→          <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>{activeCompany.nameAr || activeCompany.name}</p>
+   219→        </div>
+   220→        <button
+   221→          onClick={save}
+   222→          disabled={saving}
+   223→          style={{
+   224→            display: "inline-flex", alignItems: "center", gap: "6px",
+   225→            padding: "10px 18px", borderRadius: "10px",
+   226→            background: "var(--primary)", color: "var(--primary-foreground)",
+   227→            border: "none", fontFamily: "inherit", fontSize: "13px", fontWeight: 700,
+   228→            cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1,
+   229→          }}
+   230→        >
+   231→          <Save size={14} /> {saving ? "جارٍ الحفظ…" : "حفظ"}
+   232→        </button>
+   233→      </div>
+   234→
+   235→      {/* Branding */}
+   236→      <Section title="الهوية">
+   237→        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+   238→          <div><label style={labelStyle}>الاسم (إنجليزي)</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} dir="ltr" /></div>
+   239→          <div><label style={labelStyle}>الاسم (عربي)</label><input value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} style={inputStyle} /></div>
+   240→          <div><label style={labelStyle}>الإيموجي</label><input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} style={{ ...inputStyle, textAlign: "center", fontSize: "18px" }} /></div>
+   241→          <div><label style={labelStyle}>اللون</label><input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} style={{ width: "100%", height: "36px", padding: "2px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--background)", cursor: "pointer" }} /></div>
+   242→        </div>
+   243→      </Section>
+   244→
+   245→      {/* Contact */}
+   246→      <Section title="معلومات الاتصال">
+   247→        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+   248→          <div><label style={labelStyle}>الهاتف</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} dir="ltr" /></div>
+   249→          <div><label style={labelStyle}>البريد</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inputStyle} dir="ltr" /></div>
+   250→          <div><label style={labelStyle}>العنوان</label><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={inputStyle} /></div>
+   251→          <div>
+   252→            <label style={labelStyle}>السجل التجاري</label>
+   253→            <input value={form.commercialRegistration} onChange={(e) => setForm({ ...form, commercialRegistration: e.target.value })} style={inputStyle} dir="ltr" placeholder="CR رقم السجل التجاري" />
+   254→          </div>
+   255→          <div>
+   256→            <label style={labelStyle}>
+   257→              الرقم الضريبي {isVatApplicable(form.country) ? "" : "(غير مطبق في الكويت)"}
+   258→            </label>
+   259→            <input
+   260→              value={form.vatNumber}
+   261→              onChange={(e) => setForm({ ...form, vatNumber: e.target.value })}
+   262→              style={{ ...inputStyle, opacity: isVatApplicable(form.country) ? 1 : 0.5 }}
+   263→              dir="ltr"
+   264→              disabled={!isVatApplicable(form.country)}
+   265→              placeholder={isVatApplicable(form.country) ? "VAT رقم" : "غير مطلوب"}
+   266→            />
+   267→          </div>
+   268→        </div>
+   269→      </Section>
+   270→
+   271→      {/* Financial — Gulf-aware */}
+   272→      <Section title="الإعدادات المالية والضريبية">
+   273→        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+   274→          <div>
+   275→            <label style={labelStyle}>الدولة</label>
+   276→            <select
+   277→              value={form.country}
+   278→              onChange={(e) => {
+   279→                const code = e.target.value;
+   280→                const config = getCountryConfig(code);
+   281→                setForm({
+   282→                  ...form,
+   283→                  country: code,
+   284→                  currency: config?.currency || form.currency,
+   285→                  defaultTaxRate: config?.defaultTaxRate || "0",
+   286→                });
+   287→              }}
+   288→              style={inputStyle}
+   289→            >
+   290→              {GULF_COUNTRIES.map((c) => (
+   291→                <option key={c.code} value={c.code}>{c.nameAr} ({c.code})</option>
+   292→              ))}
+   293→            </select>
+   294→          </div>
+   295→          <div>
+   296→            <label style={labelStyle}>العملة</label>
+   297→            <input value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} style={inputStyle} dir="ltr" />
+   298→          </div>
+   299→          <div>
+   300→            <label style={labelStyle}>
+   301→              نسبة الضريبة الافتراضية (%)
+   302→              {!isVatApplicable(form.country) && (
+   303→                <span style={{ color: "var(--muted-foreground)", fontSize: "10px", marginRight: "6px" }}>
+   304→                  (غير مطبق)
+   305→                </span>
+   306→              )}
+   307→            </label>
+   308→            <input
+   309→              type="number"
+   310→              value={form.defaultTaxRate}
+   311→              onChange={(e) => setForm({ ...form, defaultTaxRate: e.target.value })}
+   312→              style={{ ...inputStyle, opacity: isVatApplicable(form.country) ? 1 : 0.5 }}
+   313→              dir="ltr"
+   314→              disabled={!isVatApplicable(form.country)}
+   315→            />
+   316→          </div>
+   317→        </div>
+   318→        {!isVatApplicable(form.country) && (
+   319→          <div style={{ marginTop: "10px", padding: "10px 14px", borderRadius: "8px", background: "var(--accent)", fontSize: "12px", color: "var(--accent-foreground)" }}>
+   320→            ℹ️ {getCountryConfig(form.country)?.nameAr} لا تطبق ضريبة القيمة المضافة حالياً. تم تعطيل حقل الضريبة.
+   321→          </div>
+   322→        )}
+   323→      </Section>
+   324→
+   325→      {/* Working Hours — Gulf-aware */}
+   326→      <Section title="إعدادات أيام العمل">
+   327→        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+   328→          <div>
+   329→            <label style={labelStyle}>عطلة نهاية الأسبوع</label>
+   330→            <select
+   331→              value={form.weekendDays}
+   332→              onChange={(e) => setForm({ ...form, weekendDays: e.target.value })}
+   333→              style={inputStyle}
+   334→            >
+   335→              <option value="[5,6]">الجمعة + السبت (الخليج)</option>
+   336→              <option value="[0,6]">الأحد + السبت</option>
+   337→              <option value="[5]">الجمعة فقط</option>
+   338→              <option value="[6]">السبت فقط</option>
+   339→            </select>
+   340→          </div>
+   341→          <div>
+   342→            <label style={labelStyle}>ساعات عمل رمضان</label>
+   343→            <select
+   344→              value={form.ramadanHours ? "true" : "false"}
+   345→              onChange={(e) => setForm({ ...form, ramadanHours: e.target.value === "true" })}
+   346→              style={inputStyle}
+   347→            >
+   348→              <option value="false">لا (ساعات عادية)</option>
+   349→              <option value="true">نعم (ساعات مخفضة قانونياً)</option>
+   350→            </select>
+   351→          </div>
+   352→        </div>
+   353→      </Section>
+   354→
+   355→      {/* AI */}
+   356→      <Section title="إعدادات الذكاء الاصطناعي">
+   357→        <div><label style={labelStyle}>نموذج OpenRouter</label><input value={form.openrouterModel} onChange={(e) => setForm({ ...form, openrouterModel: e.target.value })} style={inputStyle} dir="ltr" /></div>
+   358→      </Section>
+   359→
+   360→      {/* ═══════════════════════════════════════════════════════════════════
+   361→          PDF Template Settings Section
+   362→          ═══════════════════════════════════════════════════════════════════ */}
+   363→      <Card className="overflow-hidden">
+   364→        <CardHeader className="pb-2">
+   365→          <CardTitle className="flex items-center gap-2 text-base">
+   366→            <FileText size={18} className="text-primary" />
+   367→            إعدادات قوالب PDF
+   368→          </CardTitle>
+   369→          <CardDescription>
+   370→            خصّص مظهر الفواتير وعروض الأسعار المطبوعة كـ PDF
+   371→          </CardDescription>
+   372→        </CardHeader>
+   373→        <CardContent className="space-y-6">
+   374→          {!templateLoaded ? (
+   375→            <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+   376→              جارٍ التحميل...
+   377→            </div>
+   378→          ) : (
+   379→            <>
+   380→              {/* ── Template selector ─────────────────────────────────── */}
+   381→              <div className="space-y-2">
+   382→                <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+   383→                  <LayoutTemplate size={14} /> اختر القالب
+   384→                </Label>
+   385→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   386→                  {TEMPLATES.map((t) => (
+   387→                    <button
+   388→                      key={t.id}
+   389→                      type="button"
+   390→                      onClick={() => setTemplateForm((p) => ({ ...p, templateId: t.id }))}
+   391→                      className={`relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-4 transition-all cursor-pointer text-center ${
+   392→                        templateForm.templateId === t.id
+   393→                          ? "border-primary bg-primary/5 shadow-sm"
+   394→                          : "border-border hover:border-primary/40 hover:bg-muted/50"
+   395→                      }`}
+   396→                    >
+   397→                      <span className="text-2xl">{t.icon}</span>
+   398→                      <span className="text-sm font-bold">{t.label}</span>
+   399→                      <span className="text-[10px] text-muted-foreground leading-tight">{t.desc}</span>
+   400→                      {templateForm.templateId === t.id && (
+   401→                        <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-primary" />
+   402→                      )}
+   403→                    </button>
+   404→                  ))}
+   405→                </div>
+   406→              </div>
+   407→
+   408→              {/* ── Color + Font row ──────────────────────────────────── */}
+   409→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   410→                {/* Primary color */}
+   411→                <div className="space-y-1.5">
+   412→                  <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+   413→                    <Palette size={14} /> اللون الرئيسي
+   414→                  </Label>
+   415→                  <div className="flex items-center gap-2">
+   416→                    <input
+   417→                      type="color"
+   418→                      value={templateForm.primaryColor}
+   419→                      onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
+   420→                      className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-background p-0.5"
+   421→                    />
+   422→                    <input
+   423→                      type="text"
+   424→                      value={templateForm.primaryColor}
+   425→                      onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
+   426→                      className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm font-mono"
+   427→                      dir="ltr"
+   428→                      maxLength={7}
+   429→                    />
+   430→                  </div>
+   431→                </div>
+   432→
+   433→                {/* Font family */}
+   434→                <div className="space-y-1.5">
+   435→                  <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+   436→                    <Type size={14} /> نوع الخط
+   437→                  </Label>
+   438→                  <Select
+   439→                    value={templateForm.fontFamily}
+   440→                    onValueChange={(v) => setTemplateForm((p) => ({ ...p, fontFamily: v }))}
+   441→                  >
+   442→                    <SelectTrigger className="w-full">
+   443→                      <SelectValue />
+   444→                    </SelectTrigger>
+   445→                    <SelectContent>
+   446→                      {FONTS.map((f) => (
+   447→                        <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
+   448→                      ))}
+   449→                    </SelectContent>
+   450→                  </Select>
+   451→                </div>
+   452→
+   453→                {/* Font size */}
+   454→                <div className="space-y-1.5">
+   455→                  <Label className="text-xs font-semibold text-muted-foreground">
+   456→                    حجم الخط ({templateForm.fontSize}px)
+   457→                  </Label>
+   458→                  <input
+   459→                    type="range"
+   460→                    min={8}
+   461→                    max={24}
+   462→                    step={1}
+   463→                    value={templateForm.fontSize}
+   464→                    onChange={(e) => setTemplateForm((p) => ({ ...p, fontSize: Number(e.target.value) }))}
+   465→                    className="w-full accent-primary"
+   466→                  />
+   467→                </div>
+   468→              </div>
+   469→
+   470→              {/* ── Toggle switches ───────────────────────────────────── */}
+   471→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   472→                {/* Show Logo */}
+   473→                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+   474→                  <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer">
+   475→                    <ImageIcon size={14} /> إظهار الشعار
+   476→                  </Label>
+   477→                  <Switch
+   478→                    checked={templateForm.showLogo}
+   479→                    onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showLogo: v }))}
+   480→                  />
+   481→                </div>
+   482→
+   483→                {/* Show Payment Info */}
+   484→                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+   485→                  <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer">
+   486→                    <CreditCard size={14} /> معلومات الدفع
+   487→                  </Label>
+   488→                  <Switch
+   489→                    checked={templateForm.showPaymentInfo}
+   490→                    onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showPaymentInfo: v }))}
+   491→                  />
+   492→                </div>
+   493→
+   494→                {/* Show Stamp */}
+   495→                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+   496→                  <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer">
+   497→                    <Stamp size={14} /> إظهار الختم
+   498→                  </Label>
+   499→                  <Switch
+   500→                    checked={templateForm.showStamp}
+   501→                    onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showStamp: v }))}
+   502→                  />
+   503→                </div>
+   504→              </div>
+   505→
+   506→              {/* ── Logo position ─────────────────────────────────────── */}
+   507→              <div className="space-y-1.5">
+   508→                <Label className="text-xs font-semibold text-muted-foreground">موضع الشعار</Label>
+   509→                <div className="flex gap-2">
+   510→                  {(["right", "center", "left"] as const).map((pos) => {
+   511→                    const labels: Record<string, string> = { right: "يمين", center: "وسط", left: "يسار" };
+   512→                    return (
+   513→                      <button
+   514→                        key={pos}
+   515→                        type="button"
+   516→                        onClick={() => setTemplateForm((p) => ({ ...p, logoPosition: pos }))}
+   517→                        className={`flex-1 rounded-lg border-2 py-2 text-sm font-medium transition-all cursor-pointer ${
+   518→                          templateForm.logoPosition === pos
+   519→                            ? "border-primary bg-primary/5 text-primary"
+   520→                            : "border-border hover:border-primary/40"
+   521→                        }`}
+   522→                      >
+   523→                        {labels[pos]}
+   524→                      </button>
+   525→                    );
+   526→                  })}
+   527→                </div>
+   528→              </div>
+   529→
+   530→              {/* ── Invoice types multi-select ─────────────────────────── */}
+   531→              <div className="space-y-2">
+   532→                <Label className="text-xs font-semibold text-muted-foreground">أنواع الفواتير المطبّق عليها القالب</Label>
+   533→                <div className="flex flex-wrap gap-3">
+   534→                  {INVOICE_TYPE_OPTIONS.map((opt) => (
+   535→                    <label
+   536→                      key={opt.id}
+   537→                      className="flex items-center gap-2 cursor-pointer rounded-lg border border-border px-3 py-2 transition-all hover:bg-muted/50 has-[button[data-state=checked]]:border-primary has-[button[data-state=checked]]:bg-primary/5"
+   538→                    >
+   539→                      <Checkbox
+   540→                        checked={templateForm.invoiceTypes.includes(opt.id)}
+   541→                        onCheckedChange={() => toggleInvoiceType(opt.id)}
+   542→                      />
+   543→                      <span className="text-sm">{opt.label}</span>
+   544→                    </label>
+   545→                  ))}
+   546→                </div>
+   547→                {templateForm.invoiceTypes.length === 0 && (
+   548→                  <p className="text-xs text-destructive">يجب اختيار نوع فاتورة واحد على الأقل</p>
+   549→                )}
+   550→              </div>
+   551→
+   552→              {/* ── Save button ───────────────────────────────────────── */}
+   553→              <div className="flex justify-end pt-2">
+   554→                <Button
+   555→                  onClick={saveTemplateSettings}
+   556→                  disabled={savingTemplate || templateForm.invoiceTypes.length === 0}
+   557→                  className="gap-2"
+   558→                >
+   559→                  <Save size={14} />
+   560→                  {savingTemplate ? "جارٍ الحفظ…" : "حفظ إعدادات القالب"}
+   561→                </Button>
+   562→              </div>
+   563→            </>
+   564→          )}
+   565→        </CardContent>
+   566→      </Card>
+   567→    </div>
+   568→  );
+   569→}
+   570→
+   571→function Section({ title, children }: { title: string; children: React.ReactNode }) {
+   572→  return (
+   573→    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", padding: "20px" }}>
+   574→      <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "14px" }}>{title}</h3>
+   575→      {children}
+   576→    </div>
+   577→  );
+   578→}
+   579→
+   580→export default SettingsView;
+   581→

@@ -1,0 +1,10 @@
+import { encryptSecret, decryptSecret, hashToken, safeCompare } from "../src/lib/cryptoVault";
+const plaintext = "sk-or-v1-abcdef0123456789-very-secret-api-key";
+const encrypted = encryptSecret(plaintext);
+console.log("Encrypted:", encrypted.slice(0, 50) + "...");
+console.log("Decrypted matches:", decryptSecret(encrypted) === plaintext ? "✓" : "✗");
+console.log("Legacy plaintext returns as-is:", decryptSecret("plain-key-not-encrypted") === "plain-key-not-encrypted" ? "✓" : "✗");
+const t1 = hashToken("my-verify-token");
+const t2 = hashToken("my-verify-token");
+console.log("Hash same:", t1 === t2 ? "✓" : "✗");
+console.log("Safe compare:", safeCompare(t1, t2) ? "✓" : "✗");

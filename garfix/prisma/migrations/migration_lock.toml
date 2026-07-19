@@ -1,0 +1,4 @@
+# Prisma migration lock file — do not edit manually.
+# Ensures the migration history stays consistent across environments.
+
+provider = "sqlite"
