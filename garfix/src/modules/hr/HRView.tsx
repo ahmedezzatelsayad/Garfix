@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Plus, Trash2, UserCog } from "lucide-react";
+import { Plus, Trash2, UserCog, Pencil } from "lucide-react";
 import { GratuityCalculator } from "./GratuityCalculator";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,8 @@ const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-b
 const tdStyle = "px-3 py-2.5 text-[13px]";
 const thCheck = "w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground font-bold";
 const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
+const editBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-primary cursor-pointer flex items-center justify-center hover:bg-primary/10 hover:border-primary/40 transition-colors";
+const actionsCell = "flex items-center gap-1.5";
 
 export function HRView() {
   const { activeCompany } = useBrand();
@@ -47,6 +49,7 @@ export function HRView() {
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -93,8 +96,22 @@ export function HRView() {
   const switchTab = (t: Tab) => {
     setTab(t);
     setShowForm(false);
+    setEditingItem(null);
     setSelectedIds(new Set());
     setCurrentPage(1);
+  };
+
+  // ─── Item: HR edit (PATCH) ──────────────────────────────────────────
+  // Opens the HRForm in edit mode with the row's data pre-filled.
+  // The form switches its submit from POST → PATCH /api/hr/{type}/{id}.
+  const handleEdit = (item: Record<string, unknown>) => {
+    setEditingItem(item);
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingItem(null);
   };
 
   const itemsForTab = (): Array<{ id: number }> => {
@@ -175,7 +192,7 @@ export function HRView() {
   ];
 
   const tableProps = {
-    selectedIds, toggleRow, handleDelete,
+    selectedIds, toggleRow, handleDelete, handleEdit,
     pageItems, employees,
     selectAllChecked: selectedIds.size === pageItems.length && pageItems.length > 0,
     toggleSelectAll,
@@ -211,7 +228,14 @@ export function HRView() {
       ) : tab === "gratuity" ? (
         <GratuityCalculator employees={employees} />
       ) : showForm ? (
-        <HRForm tab={tab} company={activeCompany} employees={employees} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAll(); }} />
+        <HRForm
+          tab={tab}
+          company={activeCompany}
+          employees={employees}
+          editItem={editingItem}
+          onClose={closeForm}
+          onSaved={() => { closeForm(); loadAll(); }}
+        />
       ) : (
         <>
           {selectedIds.size > 0 && (
@@ -260,13 +284,14 @@ interface TableShared {
   selectedIds: Set<number>;
   toggleRow: (id: number) => void;
   handleDelete: (id: number) => void;
+  handleEdit: (item: Record<string, unknown>) => void;
   pageItems: Array<{ id: number }>;
   employees: Employee[];
   selectAllChecked: boolean;
   toggleSelectAll: () => void;
 }
 
-function EmployeesTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+function EmployeesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   return (
     <table className="w-full border-collapse min-w-[640px]">
       <thead><tr className="border-b border-border bg-muted">
@@ -286,7 +311,12 @@ function EmployeesTable({ selectedIds, toggleRow, handleDelete, pageItems, emplo
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.baseSalary.toLocaleString("ar-EG")} {e.currency}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.phone || "—"}</td>
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: e.isActive ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: e.isActive ? "#10b981" : "#ef4444", fontSize: "11px", fontWeight: 700 }}>{e.isActive ? "نشط" : "موقوف"}</span></td>
-              <td className={tdStyle}><button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+              <td className={tdStyle}>
+                <div className={actionsCell}>
+                  <button onClick={() => handleEdit(e as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -295,7 +325,7 @@ function EmployeesTable({ selectedIds, toggleRow, handleDelete, pageItems, emplo
   );
 }
 
-function AttendanceTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+function AttendanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   const STATUS: Record<string, { label: string; color: string }> = {
     present: { label: "حاضر", color: "#10b981" }, absent: { label: "غائب", color: "#ef4444" },
     late: { label: "متأخر", color: "#f59e0b" }, half: { label: "نص يوم", color: "#3b82f6" },
@@ -320,7 +350,12 @@ function AttendanceTable({ selectedIds, toggleRow, handleDelete, pageItems, empl
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkIn || "—"}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkOut || "—"}</td>
-              <td className={tdStyle}><button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+              <td className={tdStyle}>
+                <div className={actionsCell}>
+                  <button onClick={() => handleEdit(a as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -329,7 +364,7 @@ function AttendanceTable({ selectedIds, toggleRow, handleDelete, pageItems, empl
   );
 }
 
-function SalariesTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+function SalariesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   return (
     <table className="w-full border-collapse min-w-[800px]">
       <thead><tr className="border-b border-border bg-muted">
@@ -352,7 +387,12 @@ function SalariesTable({ selectedIds, toggleRow, handleDelete, pageItems, employ
               <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>+{s.bonus.toLocaleString("ar-EG")}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{s.netSalary.toLocaleString("ar-EG")}</td>
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: s.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: s.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{s.isPaid ? "مدفوع" : "معلّق"}</span></td>
-              <td className={tdStyle}><button onClick={() => handleDelete(s.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+              <td className={tdStyle}>
+                <div className={actionsCell}>
+                  <button onClick={() => handleEdit(s as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(s.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -361,7 +401,7 @@ function SalariesTable({ selectedIds, toggleRow, handleDelete, pageItems, employ
   );
 }
 
-function CommissionsTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+function CommissionsTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   return (
     <table className="w-full border-collapse min-w-[720px]">
       <thead><tr className="border-b border-border bg-muted">
@@ -381,7 +421,12 @@ function CommissionsTable({ selectedIds, toggleRow, handleDelete, pageItems, emp
               <td className={tdStyle}>{c.description || "—"}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end font-bold text-[#10b981]")}>{c.amount.toLocaleString("ar-EG")}</td>
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: c.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: c.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{c.isPaid ? "مدفوع" : "معلّق"}</span></td>
-              <td className={tdStyle}><button onClick={() => handleDelete(c.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+              <td className={tdStyle}>
+                <div className={actionsCell}>
+                  <button onClick={() => handleEdit(c as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(c.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -390,7 +435,7 @@ function CommissionsTable({ selectedIds, toggleRow, handleDelete, pageItems, emp
   );
 }
 
-function LeavesTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+function LeavesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   const STATUS: Record<string, { label: string; color: string }> = {
     pending: { label: "معلّق", color: "#f59e0b" }, approved: { label: "موافق", color: "#10b981" },
     rejected: { label: "مرفوض", color: "#ef4444" },
@@ -415,7 +460,12 @@ function LeavesTable({ selectedIds, toggleRow, handleDelete, pageItems, employee
               <td className={tdStyle}>{l.endDate}</td>
               <td className={tdStyle}>{l.days}</td>
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
-              <td className={tdStyle}><button onClick={() => handleDelete(l.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+              <td className={tdStyle}>
+                <div className={actionsCell}>
+                  <button onClick={() => handleEdit(l as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(l.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -424,7 +474,7 @@ function LeavesTable({ selectedIds, toggleRow, handleDelete, pageItems, employee
   );
 }
 
-function PerformanceTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+function PerformanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   return (
     <table className="w-full border-collapse min-w-[640px]">
       <thead><tr className="border-b border-border bg-muted">
@@ -443,7 +493,12 @@ function PerformanceTable({ selectedIds, toggleRow, handleDelete, pageItems, emp
               <td className={tdStyle}>{p.kpiScore ?? "—"}</td>
               <td className={cn(tdStyle, "font-bold")}>{p.overallScore ?? "—"}</td>
               <td className={tdStyle}>{p.rating || "—"}</td>
-              <td className={tdStyle}><button onClick={() => handleDelete(p.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+              <td className={tdStyle}>
+                <div className={actionsCell}>
+                  <button onClick={() => handleEdit(p as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(p.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+                </div>
+              </td>
             </tr>
           );
         })}
@@ -470,39 +525,43 @@ function Empty({ label }: { label: string }) {
 
 // ─── HR Form (single form adapted per tab) ──────────────────────────────────
 
-function HRForm({ tab, company, employees, onClose, onSaved }: {
+function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   tab: Tab; company: { slug: string }; employees: Employee[];
+  editItem?: Record<string, unknown> | null;
   onClose: () => void; onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const isEditing = !!editItem && !!editItem.id;
+  const editId = isEditing ? Number(editItem!.id) : null;
   // Employee fields
-  const [empName_, setEmpName] = useState("");
-  const [position, setPosition] = useState("");
-  const [department, setDepartment] = useState("");
-  const [baseSalary, setBaseSalary] = useState(0);
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [empName_, setEmpName] = useState<string>((editItem?.name as string) || "");
+  const [position, setPosition] = useState<string>((editItem?.position as string) || "");
+  const [department, setDepartment] = useState<string>((editItem?.department as string) || "");
+  const [baseSalary, setBaseSalary] = useState<number>(Number(editItem?.baseSalary ?? 0));
+  const [phone, setPhone] = useState<string>((editItem?.phone as string) || "");
+  const [email, setEmail] = useState<string>((editItem?.email as string) || "");
   // Other tab fields
-  const [employeeId, setEmployeeId] = useState<number | null>(null);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [status, setStatus] = useState("present");
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [allowances, setAllowances] = useState(0);
-  const [deductions, setDeductions] = useState(0);
-  const [bonus, setBonus] = useState(0);
-  const [commissionType, setCommissionType] = useState("sales");
-  const [commissionAmount, setCommissionAmount] = useState(0);
-  const [description, setDescription] = useState("");
-  const [leaveType, setLeaveType] = useState("annual");
-  const [startDate, setStartDate] = useState(date);
-  const [endDate, setEndDate] = useState(date);
-  const [days, setDays] = useState(1);
-  const [period, setPeriod] = useState(`${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
-  const [kpiScore, setKpiScore] = useState(80);
-  const [overallScore, setOverallScore] = useState(80);
-  const [rating, setRating] = useState("جيد");
+  const [employeeId, setEmployeeId] = useState<number | null>(Number(editItem?.employeeId ?? null) || null);
+  const [date, setDate] = useState<string>((editItem?.date as string) || new Date().toISOString().slice(0, 10));
+  const [status, setStatus] = useState<string>((editItem?.status as string) || "present");
+  const [checkIn, setCheckIn] = useState<string>((editItem?.checkIn as string) || "");
+  const [checkOut, setCheckOut] = useState<string>((editItem?.checkOut as string) || "");
+  const [month, setMonth] = useState<string>((editItem?.month as string) || new Date().toISOString().slice(0, 7));
+  const [allowances, setAllowances] = useState<number>(Number(editItem?.allowances ?? 0));
+  const [deductions, setDeductions] = useState<number>(Number(editItem?.deductions ?? 0));
+  const [bonus, setBonus] = useState<number>(Number(editItem?.bonus ?? 0));
+  const [isPaid, setIsPaid] = useState<boolean>(Boolean(editItem?.isPaid ?? false));
+  const [commissionType, setCommissionType] = useState<string>((editItem?.type as string) || "sales");
+  const [commissionAmount, setCommissionAmount] = useState<number>(Number(editItem?.amount ?? 0));
+  const [description, setDescription] = useState<string>((editItem?.description as string) || "");
+  const [leaveType, setLeaveType] = useState<string>((editItem?.type as string) || "annual");
+  const [startDate, setStartDate] = useState<string>((editItem?.startDate as string) || date);
+  const [endDate, setEndDate] = useState<string>((editItem?.endDate as string) || date);
+  const [days, setDays] = useState<number>(Number(editItem?.days ?? 1));
+  const [period, setPeriod] = useState<string>((editItem?.period as string) || `${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
+  const [kpiScore, setKpiScore] = useState<number>(Number(editItem?.kpiScore ?? 80));
+  const [overallScore, setOverallScore] = useState<number>(Number(editItem?.overallScore ?? 80));
+  const [rating, setRating] = useState<string>((editItem?.rating as string) || "جيد");
 
   const submit = async () => {
     setSaving(true);
@@ -517,10 +576,10 @@ function HRForm({ tab, company, employees, onClose, onSaved }: {
         payload = { ...payload, employeeId, date, status, checkIn, checkOut };
       } else if (tab === "salaries") {
         endpoint = "/api/hr/salaries";
-        payload = { ...payload, employeeId, month, baseSalary, allowances, deductions, bonus };
+        payload = { ...payload, employeeId, month, baseSalary, allowances, deductions, bonus, isPaid };
       } else if (tab === "commissions") {
         endpoint = "/api/hr/commissions";
-        payload = { ...payload, employeeId, date, type: commissionType, description, amount: commissionAmount };
+        payload = { ...payload, employeeId, date, type: commissionType, description, amount: commissionAmount, isPaid };
       } else if (tab === "leaves") {
         endpoint = "/api/hr/leaves";
         payload = { ...payload, employeeId, type: leaveType, startDate, endDate, days };
@@ -533,24 +592,39 @@ function HRForm({ tab, company, employees, onClose, onSaved }: {
         setSaving(false);
         return;
       }
-      const res = await authedFetch(endpoint, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // ─── Edit mode: PATCH /api/hr/{type}/{id} ─────────────────────
+      // In edit mode we drop companySlug (the backend resolves it from the
+      // record itself) and let only the editable fields go through.
+      const url = isEditing ? `${endpoint}/${editId}` : endpoint;
+      const method = isEditing ? "PATCH" : "POST";
+      const finalPayload = isEditing ? { ...payload, companySlug: undefined } : payload;
+      // Remove undefined keys
+      Object.keys(finalPayload).forEach((k) => finalPayload[k] === undefined && delete finalPayload[k]);
+      const res = await authedFetch(url, {
+        method, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(finalPayload),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error || "Failed");
       }
-      toast.success("تم الحفظ بنجاح");
+      toast.success(isEditing ? "تم التحديث بنجاح" : "تم الحفظ بنجاح");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
     finally { setSaving(false); }
   };
 
+  const formTitle = isEditing
+    ? `تعديل ${tab === "employees" ? "موظف" : tab === "attendance" ? "سجل حضور" : tab === "salaries" ? "راتب" : tab === "commissions" ? "عمولة" : tab === "leaves" ? "إجازة" : "تقييم أداء"}`
+    : `إضافة ${tab === "employees" ? "موظف" : tab === "attendance" ? "سجل حضور" : tab === "salaries" ? "راتب" : tab === "commissions" ? "عمولة" : tab === "leaves" ? "إجازة" : "تقييم أداء"}`;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
-        <h3 className="text-[15px] font-bold">إضافة {tab === "employees" ? "موظف" : tab === "attendance" ? "سجل حضور" : tab === "salaries" ? "راتب" : tab === "commissions" ? "عمولة" : tab === "leaves" ? "إجازة" : "تقييم أداء"}</h3>
+        <h3 className="text-[15px] font-bold flex items-center gap-2">
+          {isEditing && <Pencil size={14} className="text-primary" />}
+          {formTitle}
+        </h3>
         {tab === "employees" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div><label className={labelStyle}>الاسم *</label><input value={empName_} onChange={(e) => setEmpName(e.target.value)} className={inputStyle} /></div>
@@ -586,6 +660,12 @@ function HRForm({ tab, company, employees, onClose, onSaved }: {
               <div><label className={labelStyle}>بدلات</label><input type="number" value={allowances} onChange={(e) => setAllowances(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
               <div><label className={labelStyle}>خصومات</label><input type="number" value={deductions} onChange={(e) => setDeductions(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
               <div><label className={labelStyle}>مكافأة</label><input type="number" value={bonus} onChange={(e) => setBonus(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+              <div><label className={labelStyle}>مدفوع</label>
+                <select value={isPaid ? "1" : "0"} onChange={(e) => setIsPaid(e.target.value === "1")} className={inputStyle}>
+                  <option value="0">معلّق</option>
+                  <option value="1">مدفوع</option>
+                </select>
+              </div>
             </>)}
             {tab === "commissions" && (<>
               <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
@@ -597,6 +677,12 @@ function HRForm({ tab, company, employees, onClose, onSaved }: {
               </div>
               <div><label className={labelStyle}>المبلغ</label><input type="number" value={commissionAmount} onChange={(e) => setCommissionAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
               <div><label className={labelStyle}>الوصف</label><input value={description} onChange={(e) => setDescription(e.target.value)} className={inputStyle} /></div>
+              <div><label className={labelStyle}>مدفوع</label>
+                <select value={isPaid ? "1" : "0"} onChange={(e) => setIsPaid(e.target.value === "1")} className={inputStyle}>
+                  <option value="0">معلّق</option>
+                  <option value="1">مدفوع</option>
+                </select>
+              </div>
             </>)}
             {tab === "leaves" && (<>
               <div><label className={labelStyle}>النوع</label>
@@ -627,7 +713,7 @@ function HRForm({ tab, company, employees, onClose, onSaved }: {
       </div>
       <div className="flex gap-2.5 justify-end">
         <button onClick={onClose} className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : "حفظ"}</button>
+        <button onClick={submit} disabled={saving} className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : (isEditing ? "تحديث" : "حفظ")}</button>
       </div>
     </div>
   );

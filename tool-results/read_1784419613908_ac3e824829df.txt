@@ -1,0 +1,637 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { authedFetch } from "@/context/AuthContext";
+     6→import { toast } from "sonner";
+     7→import { Plus, Trash2, UserCog } from "lucide-react";
+     8→import { GratuityCalculator } from "./GratuityCalculator";
+     9→import { cn } from "@/lib/utils";
+    10→
+    11→interface Employee { id: number; name: string; nameEn?: string; phone?: string; email?: string; position?: string; department?: string; baseSalary: number; currency: string; joinDate?: string; isActive: boolean; }
+    12→interface Attendance { id: number; employeeId: number; date: string; status: string; checkIn?: string; checkOut?: string; }
+    13→interface Salary { id: number; employeeId: number; month: string; baseSalary: number; allowances: number; deductions: number; bonus: number; netSalary: number; isPaid: boolean; }
+    14→interface Commission { id: number; employeeId: number; date: string; type: string; description?: string; amount: number; isPaid: boolean; }
+    15→interface Leave { id: number; employeeId: number; type: string; startDate: string; endDate: string; days: number; status: string; }
+    16→interface Performance { id: number; employeeId: number; period: string; kpiScore?: number; overallScore?: number; rating?: string; }
+    17→
+    18→type Tab = "employees" | "attendance" | "salaries" | "commissions" | "leaves" | "performance" | "gratuity";
+    19→
+    20→const PAGE_SIZE = 20;
+    21→
+    22→const DELETE_PATH: Record<Tab, string> = {
+    23→  employees: "/api/hr/employees",
+    24→  attendance: "/api/hr/attendance",
+    25→  salaries: "/api/hr/salaries",
+    26→  commissions: "/api/hr/commissions",
+    27→  leaves: "/api/hr/leaves",
+    28→  performance: "/api/hr/performance",
+    29→  gratuity: "",
+    30→};
+    31→
+    32→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
+    33→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    34→const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold";
+    35→const tdStyle = "px-3 py-2.5 text-[13px]";
+    36→const thCheck = "w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground font-bold";
+    37→const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
+    38→
+    39→export function HRView() {
+    40→  const { activeCompany } = useBrand();
+    41→  const [tab, setTab] = useState<Tab>("employees");
+    42→  const [employees, setEmployees] = useState<Employee[]>([]);
+    43→  const [attendance, setAttendance] = useState<Attendance[]>([]);
+    44→  const [salaries, setSalaries] = useState<Salary[]>([]);
+    45→  const [commissions, setCommissions] = useState<Commission[]>([]);
+    46→  const [leaves, setLeaves] = useState<Leave[]>([]);
+    47→  const [performances, setPerformances] = useState<Performance[]>([]);
+    48→  const [loading, setLoading] = useState(true);
+    49→  const [showForm, setShowForm] = useState(false);
+    50→  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    51→  const [currentPage, setCurrentPage] = useState(1);
+    52→  const [bulkDeleting, setBulkDeleting] = useState(false);
+    53→
+    54→  const loadAll = useCallback(async () => {
+    55→    if (!activeCompany) { setLoading(false); return; }
+    56→    setLoading(true);
+    57→    const slug = `companySlug=${encodeURIComponent(activeCompany.slug)}`;
+    58→    try {
+    59→      const responses = await Promise.all([
+    60→        authedFetch(`/api/hr/employees?${slug}`),
+    61→        authedFetch(`/api/hr/attendance?${slug}`),
+    62→        authedFetch(`/api/hr/salaries?${slug}`),
+    63→        authedFetch(`/api/hr/commissions?${slug}`),
+    64→        authedFetch(`/api/hr/leaves?${slug}`),
+    65→        authedFetch(`/api/hr/performance?${slug}`),
+    66→      ]);
+    67→      // Check each response; surface first error to user but still parse the rest.
+    68→      const bodies: Array<Record<string, unknown>> = [];
+    69→      for (const r of responses) {
+    70→        if (!r.ok) {
+    71→          const e = await r.json().catch(() => ({}));
+    72→          throw new Error((e as Record<string, unknown>)?.error as string || `فشل تحميل البيانات (${r.status})`);
+    73→        }
+    74→        bodies.push(await r.json());
+    75→      }
+    76→      const [empD, attD, salD, comD, leaD, perfD] = bodies;
+    77→      setEmployees((empD as { employees?: Employee[] }).employees || []);
+    78→      setAttendance((attD as { attendance?: Attendance[] }).attendance || []);
+    79→      setSalaries((salD as { salaries?: Salary[] }).salaries || []);
+    80→      setCommissions((comD as { commissions?: Commission[] }).commissions || []);
+    81→      setLeaves((leaD as { leaves?: Leave[] }).leaves || []);
+    82→      setPerformances((perfD as { performance?: Performance[] }).performance || []);
+    83→    } catch (err) {
+    84→      toast.error(err instanceof Error ? err.message : "تعذّر تحميل بيانات الموارد البشرية");
+    85→    } finally { setLoading(false); }
+    86→  }, [activeCompany]);
+    87→
+    88→  // setState runs inside async .then() callback in loadAll (after await authedFetch) — not synchronous in effect body; no cascading render.
+    89→  // eslint-disable-next-line react-hooks/set-state-in-effect
+    90→  useEffect(() => { loadAll(); }, [loadAll]);
+    91→
+    92→  // Reset pagination/selection when tab changes
+    93→  const switchTab = (t: Tab) => {
+    94→    setTab(t);
+    95→    setShowForm(false);
+    96→    setSelectedIds(new Set());
+    97→    setCurrentPage(1);
+    98→  };
+    99→
+   100→  const itemsForTab = (): Array<{ id: number }> => {
+   101→    switch (tab) {
+   102→      case "employees": return employees;
+   103→      case "attendance": return attendance;
+   104→      case "salaries": return salaries;
+   105→      case "commissions": return commissions;
+   106→      case "leaves": return leaves;
+   107→      case "performance": return performances;
+   108→      default: return [];
+   109→    }
+   110→  };
+   111→
+   112→  const allItems = itemsForTab();
+   113→  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+   114→  const pageItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+   115→  const safePage = Math.min(currentPage, totalPages);
+   116→
+   117→  const toggleSelectAll = () => {
+   118→    if (selectedIds.size === pageItems.length && pageItems.length > 0) setSelectedIds(new Set());
+   119→    else setSelectedIds(new Set(pageItems.map((i) => i.id)));
+   120→  };
+   121→  const toggleRow = (id: number) => {
+   122→    setSelectedIds((prev) => {
+   123→      const next = new Set(prev);
+   124→      if (next.has(id)) next.delete(id);
+   125→      else next.add(id);
+   126→      return next;
+   127→    });
+   128→  };
+   129→  const handleBulkDelete = async () => {
+   130→    if (selectedIds.size === 0 || tab === "gratuity") return;
+   131→    if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
+   132→    setBulkDeleting(true);
+   133→    let okCount = 0, failCount = 0;
+   134→    const endpoint = DELETE_PATH[tab];
+   135→    for (const id of selectedIds) {
+   136→      try {
+   137→        const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
+   138→        if (res.ok) okCount++; else failCount++;
+   139→      } catch { failCount++; }
+   140→    }
+   141→    setBulkDeleting(false);
+   142→    setSelectedIds(new Set());
+   143→    if (okCount > 0) toast.success(`تم حذف ${okCount} عنصر`);
+   144→    if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
+   145→    loadAll();
+   146→  };
+   147→
+   148→  const handleDelete = async (id: number) => {
+   149→    if (tab === "gratuity") return;
+   150→    if (!confirm("حذف هذا العنصر؟")) return;
+   151→    try {
+   152→      const res = await authedFetch(`${DELETE_PATH[tab]}/${id}`, { method: "DELETE" });
+   153→      if (!res.ok) {
+   154→        const e = await res.json().catch(() => ({}));
+   155→        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر الحذف");
+   156→        return;
+   157→      }
+   158→      toast.success("تم الحذف");
+   159→      loadAll();
+   160→    } catch (err) {
+   161→      toast.error(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم");
+   162→    }
+   163→  };
+   164→
+   165→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+   166→
+   167→  const tabs: Array<{ key: Tab; label: string; count: number }> = [
+   168→    { key: "employees", label: "الموظفون", count: employees.length },
+   169→    { key: "attendance", label: "الحضور", count: attendance.length },
+   170→    { key: "salaries", label: "الرواتب", count: salaries.length },
+   171→    { key: "commissions", label: "العمولات", count: commissions.length },
+   172→    { key: "leaves", label: "الإجازات", count: leaves.length },
+   173→    { key: "performance", label: "الأداء", count: performances.length },
+   174→    { key: "gratuity", label: "مكافأة نهاية الخدمة", count: 0 },
+   175→  ];
+   176→
+   177→  const tableProps = {
+   178→    selectedIds, toggleRow, handleDelete,
+   179→    pageItems, employees,
+   180→    selectAllChecked: selectedIds.size === pageItems.length && pageItems.length > 0,
+   181→    toggleSelectAll,
+   182→  };
+   183→
+   184→  return (
+   185→    <div className="flex flex-col gap-4">
+   186→      <div className="flex flex-wrap justify-between items-center gap-3">
+   187→        <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><UserCog size={20} /> الموارد البشرية</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+   188→        {tab !== "gratuity" && (
+   189→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"><Plus size={16} /> إضافة</button>
+   190→        )}
+   191→      </div>
+   192→
+   193→      {/* Tabs */}
+   194→      <div className="flex flex-wrap gap-1.5 overflow-x-auto garfix-scroll">
+   195→        {tabs.map((t) => (
+   196→          <button
+   197→            key={t.key}
+   198→            onClick={() => switchTab(t.key)}
+   199→            className={cn(
+   200→              "px-4 py-2 rounded-md border border-border font-bold text-xs cursor-pointer whitespace-nowrap max-md:min-h-[44px]",
+   201→              tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+   202→            )}
+   203→          >
+   204→            {t.label} ({t.count})
+   205→          </button>
+   206→        ))}
+   207→      </div>
+   208→
+   209→      {loading ? (
+   210→        <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+   211→      ) : tab === "gratuity" ? (
+   212→        <GratuityCalculator employees={employees} />
+   213→      ) : showForm ? (
+   214→        <HRForm tab={tab} company={activeCompany} employees={employees} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAll(); }} />
+   215→      ) : (
+   216→        <>
+   217→          {selectedIds.size > 0 && (
+   218→            <div className="py-2.5 px-4 bg-destructive text-white rounded-md flex flex-wrap justify-between items-center gap-2">
+   219→              <span className="font-bold text-[13px]">{selectedIds.size} عنصر محدد</span>
+   220→              <div className="flex gap-2">
+   221→                <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed max-md:min-h-[44px]">إلغاء التحديد</button>
+   222→                <button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
+   223→              </div>
+   224→            </div>
+   225→          )}
+   226→
+   227→          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   228→            {allItems.length === 0 ? (
+   229→              <Empty label={tab === "employees" ? "موظفين" : tab === "attendance" ? "سجلات حضور" : tab === "salaries" ? "رواتب" : tab === "commissions" ? "عمولات" : tab === "leaves" ? "إجازات" : "تقييمات أداء"} />
+   230→            ) : (
+   231→              <>
+   232→                {/* Tables: overflow-x-auto on mobile (card conversion deferred — 6 distinct tables with 7+ cols each). */}
+   233→                <div className="overflow-x-auto garfix-scroll">
+   234→                  {tab === "employees" && <EmployeesTable {...tableProps} />}
+   235→                  {tab === "attendance" && <AttendanceTable {...tableProps} />}
+   236→                  {tab === "salaries" && <SalariesTable {...tableProps} />}
+   237→                  {tab === "commissions" && <CommissionsTable {...tableProps} />}
+   238→                  {tab === "leaves" && <LeavesTable {...tableProps} />}
+   239→                  {tab === "performance" && <PerformanceTable {...tableProps} />}
+   240→                </div>
+   241→                <div className="flex flex-wrap justify-between items-center px-4 py-3 border-t border-border gap-2">
+   242→                  <span className="text-xs text-muted-foreground">صفحة {safePage} من {totalPages} ({allItems.length} عنصر)</span>
+   243→                  <div className="flex items-center gap-1.5">
+   244→                    <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === 1 ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>السابق</button>
+   245→                    <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === totalPages ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>التالي</button>
+   246→                  </div>
+   247→                </div>
+   248→              </>
+   249→            )}
+   250→          </div>
+   251→        </>
+   252→      )}
+   253→    </div>
+   254→  );
+   255→}
+   256→
+   257→const empName = (employees: Employee[], id: number) => employees.find((e) => e.id === id)?.name || `#${id}`;
+   258→
+   259→interface TableShared {
+   260→  selectedIds: Set<number>;
+   261→  toggleRow: (id: number) => void;
+   262→  handleDelete: (id: number) => void;
+   263→  pageItems: Array<{ id: number }>;
+   264→  employees: Employee[];
+   265→  selectAllChecked: boolean;
+   266→  toggleSelectAll: () => void;
+   267→}
+   268→
+   269→function EmployeesTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+   270→  return (
+   271→    <table className="w-full border-collapse min-w-[640px]">
+   272→      <thead><tr className="border-b border-border bg-muted">
+   273→        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   274→        <th className={thStyle}>الاسم</th><th className={thStyle}>المسمى</th><th className={thStyle}>القسم</th>
+   275→        <th className={thStyle}>الراتب</th><th className={thStyle}>الهاتف</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   276→      </tr></thead>
+   277→      <tbody>
+   278→        {(pageItems as Employee[]).map((e) => {
+   279→          const checked = selectedIds.has(e.id);
+   280→          return (
+   281→            <tr key={e.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   282→              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(e.id)} ariaLabel={`تحديد ${e.name}`} /></td>
+   283→              <td className={cn(tdStyle, "font-bold")}>{e.name}</td>
+   284→              <td className={tdStyle}>{e.position || "—"}</td>
+   285→              <td className={tdStyle}>{e.department || "—"}</td>
+   286→              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.baseSalary.toLocaleString("ar-EG")} {e.currency}</td>
+   287→              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.phone || "—"}</td>
+   288→              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: e.isActive ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: e.isActive ? "#10b981" : "#ef4444", fontSize: "11px", fontWeight: 700 }}>{e.isActive ? "نشط" : "موقوف"}</span></td>
+   289→              <td className={tdStyle}><button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   290→            </tr>
+   291→          );
+   292→        })}
+   293→      </tbody>
+   294→    </table>
+   295→  );
+   296→}
+   297→
+   298→function AttendanceTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+   299→  const STATUS: Record<string, { label: string; color: string }> = {
+   300→    present: { label: "حاضر", color: "#10b981" }, absent: { label: "غائب", color: "#ef4444" },
+   301→    late: { label: "متأخر", color: "#f59e0b" }, half: { label: "نص يوم", color: "#3b82f6" },
+   302→    remote: { label: "عن بُعد", color: "#7c3aed" },
+   303→  };
+   304→  return (
+   305→    <table className="w-full border-collapse min-w-[640px]">
+   306→      <thead><tr className="border-b border-border bg-muted">
+   307→        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   308→        <th className={thStyle}>الموظف</th><th className={thStyle}>التاريخ</th><th className={thStyle}>الحالة</th>
+   309→        <th className={thStyle}>حضور</th><th className={thStyle}>انصراف</th><th className={thStyle}>إجراء</th>
+   310→      </tr></thead>
+   311→      <tbody>
+   312→        {(pageItems as Attendance[]).map((a) => {
+   313→          const st = STATUS[a.status] || { label: a.status, color: "#999" };
+   314→          const checked = selectedIds.has(a.id);
+   315→          return (
+   316→            <tr key={a.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   317→              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(a.id)} ariaLabel="تحديد" /></td>
+   318→              <td className={cn(tdStyle, "font-bold")}>{empName(employees, a.employeeId)}</td>
+   319→              <td className={tdStyle}>{a.date}</td>
+   320→              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
+   321→              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkIn || "—"}</td>
+   322→              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkOut || "—"}</td>
+   323→              <td className={tdStyle}><button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   324→            </tr>
+   325→          );
+   326→        })}
+   327→      </tbody>
+   328→    </table>
+   329→  );
+   330→}
+   331→
+   332→function SalariesTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+   333→  return (
+   334→    <table className="w-full border-collapse min-w-[800px]">
+   335→      <thead><tr className="border-b border-border bg-muted">
+   336→        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   337→        <th className={thStyle}>الموظف</th><th className={thStyle}>الشهر</th><th className={thStyle}>الأساسي</th>
+   338→        <th className={thStyle}>بدلات</th><th className={thStyle}>خصومات</th><th className={thStyle}>مكافأة</th>
+   339→        <th className={thStyle}>الصافي</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
+   340→      </tr></thead>
+   341→      <tbody>
+   342→        {(pageItems as Salary[]).map((s) => {
+   343→          const checked = selectedIds.has(s.id);
+   344→          return (
+   345→            <tr key={s.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   346→              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(s.id)} ariaLabel="تحديد" /></td>
+   347→              <td className={cn(tdStyle, "font-bold")}>{empName(employees, s.employeeId)}</td>
+   348→              <td className={tdStyle}>{s.month}</td>
+   349→              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{s.baseSalary.toLocaleString("ar-EG")}</td>
+   350→              <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>+{s.allowances.toLocaleString("ar-EG")}</td>
+   351→              <td className={cn(tdStyle, "[direction:ltr] text-end text-[#ef4444]")}>-{s.deductions.toLocaleString("ar-EG")}</td>
+   352→              <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>+{s.bonus.toLocaleString("ar-EG")}</td>
+   353→              <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{s.netSalary.toLocaleString("ar-EG")}</td>
+   354→              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: s.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: s.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{s.isPaid ? "مدفوع" : "معلّق"}</span></td>
+   355→              <td className={tdStyle}><button onClick={() => handleDelete(s.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   356→            </tr>
+   357→          );
+   358→        })}
+   359→      </tbody>
+   360→    </table>
+   361→  );
+   362→}
+   363→
+   364→function CommissionsTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+   365→  return (
+   366→    <table className="w-full border-collapse min-w-[720px]">
+   367→      <thead><tr className="border-b border-border bg-muted">
+   368→        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   369→        <th className={thStyle}>الموظف</th><th className={thStyle}>التاريخ</th><th className={thStyle}>النوع</th>
+   370→        <th className={thStyle}>الوصف</th><th className={thStyle}>المبلغ</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
+   371→      </tr></thead>
+   372→      <tbody>
+   373→        {(pageItems as Commission[]).map((c) => {
+   374→          const checked = selectedIds.has(c.id);
+   375→          return (
+   376→            <tr key={c.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   377→              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(c.id)} ariaLabel="تحديد" /></td>
+   378→              <td className={cn(tdStyle, "font-bold")}>{empName(employees, c.employeeId)}</td>
+   379→              <td className={tdStyle}>{c.date}</td>
+   380→              <td className={tdStyle}>{c.type}</td>
+   381→              <td className={tdStyle}>{c.description || "—"}</td>
+   382→              <td className={cn(tdStyle, "[direction:ltr] text-end font-bold text-[#10b981]")}>{c.amount.toLocaleString("ar-EG")}</td>
+   383→              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: c.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: c.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{c.isPaid ? "مدفوع" : "معلّق"}</span></td>
+   384→              <td className={tdStyle}><button onClick={() => handleDelete(c.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   385→            </tr>
+   386→          );
+   387→        })}
+   388→      </tbody>
+   389→    </table>
+   390→  );
+   391→}
+   392→
+   393→function LeavesTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+   394→  const STATUS: Record<string, { label: string; color: string }> = {
+   395→    pending: { label: "معلّق", color: "#f59e0b" }, approved: { label: "موافق", color: "#10b981" },
+   396→    rejected: { label: "مرفوض", color: "#ef4444" },
+   397→  };
+   398→  return (
+   399→    <table className="w-full border-collapse min-w-[720px]">
+   400→      <thead><tr className="border-b border-border bg-muted">
+   401→        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   402→        <th className={thStyle}>الموظف</th><th className={thStyle}>النوع</th><th className={thStyle}>من</th>
+   403→        <th className={thStyle}>إلى</th><th className={thStyle}>أيام</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
+   404→      </tr></thead>
+   405→      <tbody>
+   406→        {(pageItems as Leave[]).map((l) => {
+   407→          const st = STATUS[l.status] || { label: l.status, color: "#999" };
+   408→          const checked = selectedIds.has(l.id);
+   409→          return (
+   410→            <tr key={l.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   411→              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(l.id)} ariaLabel="تحديد" /></td>
+   412→              <td className={cn(tdStyle, "font-bold")}>{empName(employees, l.employeeId)}</td>
+   413→              <td className={tdStyle}>{l.type}</td>
+   414→              <td className={tdStyle}>{l.startDate}</td>
+   415→              <td className={tdStyle}>{l.endDate}</td>
+   416→              <td className={tdStyle}>{l.days}</td>
+   417→              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
+   418→              <td className={tdStyle}><button onClick={() => handleDelete(l.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   419→            </tr>
+   420→          );
+   421→        })}
+   422→      </tbody>
+   423→    </table>
+   424→  );
+   425→}
+   426→
+   427→function PerformanceTable({ selectedIds, toggleRow, handleDelete, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
+   428→  return (
+   429→    <table className="w-full border-collapse min-w-[640px]">
+   430→      <thead><tr className="border-b border-border bg-muted">
+   431→        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   432→        <th className={thStyle}>الموظف</th><th className={thStyle}>الفترة</th><th className={thStyle}>KPI</th>
+   433→        <th className={thStyle}>الإجمالي</th><th className={thStyle}>التقييم</th><th className={thStyle}>إجراء</th>
+   434→      </tr></thead>
+   435→      <tbody>
+   436→        {(pageItems as Performance[]).map((p) => {
+   437→          const checked = selectedIds.has(p.id);
+   438→          return (
+   439→            <tr key={p.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   440→              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(p.id)} ariaLabel="تحديد" /></td>
+   441→              <td className={cn(tdStyle, "font-bold")}>{empName(employees, p.employeeId)}</td>
+   442→              <td className={tdStyle}>{p.period}</td>
+   443→              <td className={tdStyle}>{p.kpiScore ?? "—"}</td>
+   444→              <td className={cn(tdStyle, "font-bold")}>{p.overallScore ?? "—"}</td>
+   445→              <td className={tdStyle}>{p.rating || "—"}</td>
+   446→              <td className={tdStyle}><button onClick={() => handleDelete(p.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   447→            </tr>
+   448→          );
+   449→        })}
+   450→      </tbody>
+   451→    </table>
+   452→  );
+   453→}
+   454→
+   455→function Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: () => void; ariaLabel: string }) {
+   456→  return (
+   457→    <input
+   458→      type="checkbox"
+   459→      checked={checked}
+   460→      onChange={onChange}
+   461→      className="cursor-pointer w-4 h-4"
+   462→      aria-label={ariaLabel}
+   463→    />
+   464→  );
+   465→}
+   466→
+   467→function Empty({ label }: { label: string }) {
+   468→  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
+   469→}
+   470→
+   471→// ─── HR Form (single form adapted per tab) ──────────────────────────────────
+   472→
+   473→function HRForm({ tab, company, employees, onClose, onSaved }: {
+   474→  tab: Tab; company: { slug: string }; employees: Employee[];
+   475→  onClose: () => void; onSaved: () => void;
+   476→}) {
+   477→  const [saving, setSaving] = useState(false);
+   478→  // Employee fields
+   479→  const [empName_, setEmpName] = useState("");
+   480→  const [position, setPosition] = useState("");
+   481→  const [department, setDepartment] = useState("");
+   482→  const [baseSalary, setBaseSalary] = useState(0);
+   483→  const [phone, setPhone] = useState("");
+   484→  const [email, setEmail] = useState("");
+   485→  // Other tab fields
+   486→  const [employeeId, setEmployeeId] = useState<number | null>(null);
+   487→  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+   488→  const [status, setStatus] = useState("present");
+   489→  const [checkIn, setCheckIn] = useState("");
+   490→  const [checkOut, setCheckOut] = useState("");
+   491→  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+   492→  const [allowances, setAllowances] = useState(0);
+   493→  const [deductions, setDeductions] = useState(0);
+   494→  const [bonus, setBonus] = useState(0);
+   495→  const [commissionType, setCommissionType] = useState("sales");
+   496→  const [commissionAmount, setCommissionAmount] = useState(0);
+   497→  const [description, setDescription] = useState("");
+   498→  const [leaveType, setLeaveType] = useState("annual");
+   499→  const [startDate, setStartDate] = useState(date);
+   500→  const [endDate, setEndDate] = useState(date);
+   501→  const [days, setDays] = useState(1);
+   502→  const [period, setPeriod] = useState(`${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
+   503→  const [kpiScore, setKpiScore] = useState(80);
+   504→  const [overallScore, setOverallScore] = useState(80);
+   505→  const [rating, setRating] = useState("جيد");
+   506→
+   507→  const submit = async () => {
+   508→    setSaving(true);
+   509→    try {
+   510→      let endpoint = "";
+   511→      let payload: Record<string, unknown> = { companySlug: company.slug };
+   512→      if (tab === "employees") {
+   513→        endpoint = "/api/hr/employees";
+   514→        payload = { ...payload, name: empName_, position, department, baseSalary, phone, email, currency: "KWD" };
+   515→      } else if (tab === "attendance") {
+   516→        endpoint = "/api/hr/attendance";
+   517→        payload = { ...payload, employeeId, date, status, checkIn, checkOut };
+   518→      } else if (tab === "salaries") {
+   519→        endpoint = "/api/hr/salaries";
+   520→        payload = { ...payload, employeeId, month, baseSalary, allowances, deductions, bonus };
+   521→      } else if (tab === "commissions") {
+   522→        endpoint = "/api/hr/commissions";
+   523→        payload = { ...payload, employeeId, date, type: commissionType, description, amount: commissionAmount };
+   524→      } else if (tab === "leaves") {
+   525→        endpoint = "/api/hr/leaves";
+   526→        payload = { ...payload, employeeId, type: leaveType, startDate, endDate, days };
+   527→      } else if (tab === "performance") {
+   528→        endpoint = "/api/hr/performance";
+   529→        payload = { ...payload, employeeId, period, kpiScore, overallScore, rating };
+   530→      }
+   531→      if ((tab !== "employees") && !employeeId) {
+   532→        toast.error("اختر موظفاً");
+   533→        setSaving(false);
+   534→        return;
+   535→      }
+   536→      const res = await authedFetch(endpoint, {
+   537→        method: "POST", headers: { "Content-Type": "application/json" },
+   538→        body: JSON.stringify(payload),
+   539→      });
+   540→      if (!res.ok) {
+   541→        const e = await res.json().catch(() => ({}));
+   542→        throw new Error(e.error || "Failed");
+   543→      }
+   544→      toast.success("تم الحفظ بنجاح");
+   545→      onSaved();
+   546→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   547→    finally { setSaving(false); }
+   548→  };
+   549→
+   550→  return (
+   551→    <div className="flex flex-col gap-4">
+   552→      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   553→        <h3 className="text-[15px] font-bold">إضافة {tab === "employees" ? "موظف" : tab === "attendance" ? "سجل حضور" : tab === "salaries" ? "راتب" : tab === "commissions" ? "عمولة" : tab === "leaves" ? "إجازة" : "تقييم أداء"}</h3>
+   554→        {tab === "employees" ? (
+   555→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   556→            <div><label className={labelStyle}>الاسم *</label><input value={empName_} onChange={(e) => setEmpName(e.target.value)} className={inputStyle} /></div>
+   557→            <div><label className={labelStyle}>المسمى</label><input value={position} onChange={(e) => setPosition(e.target.value)} className={inputStyle} /></div>
+   558→            <div><label className={labelStyle}>القسم</label><input value={department} onChange={(e) => setDepartment(e.target.value)} className={inputStyle} /></div>
+   559→            <div><label className={labelStyle}>الراتب الأساسي</label><input type="number" value={baseSalary} onChange={(e) => setBaseSalary(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   560→            <div><label className={labelStyle}>الهاتف</label><input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   561→            <div><label className={labelStyle}>البريد</label><input value={email} onChange={(e) => setEmail(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   562→          </div>
+   563→        ) : (
+   564→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   565→            <div><label className={labelStyle}>الموظف *</label>
+   566→              <select value={employeeId ?? ""} onChange={(e) => setEmployeeId(Number(e.target.value))} className={inputStyle}>
+   567→                <option value="">— اختر —</option>
+   568→                {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+   569→              </select>
+   570→            </div>
+   571→            {tab === "attendance" && (<>
+   572→              <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   573→              <div><label className={labelStyle}>الحالة</label>
+   574→                <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputStyle}>
+   575→                  <option value="present">حاضر</option><option value="absent">غائب</option>
+   576→                  <option value="late">متأخر</option><option value="half">نص يوم</option>
+   577→                  <option value="remote">عن بُعد</option>
+   578→                </select>
+   579→              </div>
+   580→              <div><label className={labelStyle}>حضور</label><input type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   581→              <div><label className={labelStyle}>انصراف</label><input type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   582→            </>)}
+   583→            {tab === "salaries" && (<>
+   584→              <div><label className={labelStyle}>الشهر</label><input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   585→              <div><label className={labelStyle}>الأساسي</label><input type="number" value={baseSalary} onChange={(e) => setBaseSalary(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   586→              <div><label className={labelStyle}>بدلات</label><input type="number" value={allowances} onChange={(e) => setAllowances(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   587→              <div><label className={labelStyle}>خصومات</label><input type="number" value={deductions} onChange={(e) => setDeductions(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   588→              <div><label className={labelStyle}>مكافأة</label><input type="number" value={bonus} onChange={(e) => setBonus(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   589→            </>)}
+   590→            {tab === "commissions" && (<>
+   591→              <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   592→              <div><label className={labelStyle}>النوع</label>
+   593→                <select value={commissionType} onChange={(e) => setCommissionType(e.target.value)} className={inputStyle}>
+   594→                  <option value="sales">مبيعات</option><option value="referral">إحالة</option>
+   595→                  <option value="target">هدف</option><option value="other">أخرى</option>
+   596→                </select>
+   597→              </div>
+   598→              <div><label className={labelStyle}>المبلغ</label><input type="number" value={commissionAmount} onChange={(e) => setCommissionAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   599→              <div><label className={labelStyle}>الوصف</label><input value={description} onChange={(e) => setDescription(e.target.value)} className={inputStyle} /></div>
+   600→            </>)}
+   601→            {tab === "leaves" && (<>
+   602→              <div><label className={labelStyle}>النوع</label>
+   603→                <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={inputStyle}>
+   604→                  <option value="annual">سنوي</option><option value="sick">مرضي</option>
+   605→                  <option value="unpaid">بدون أجر</option><option value="maternity">أمومة</option>
+   606→                  <option value="other">أخرى</option>
+   607→                </select>
+   608→              </div>
+   609→              <div><label className={labelStyle}>من</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   610→              <div><label className={labelStyle}>إلى</label><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   611→              <div><label className={labelStyle}>عدد الأيام</label><input type="number" value={days} onChange={(e) => setDays(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   612→            </>)}
+   613→            {tab === "performance" && (<>
+   614→              <div><label className={labelStyle}>الفترة</label><input value={period} onChange={(e) => setPeriod(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   615→              <div><label className={labelStyle}>نتيجة KPI</label><input type="number" min="0" max="100" value={kpiScore} onChange={(e) => setKpiScore(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   616→              <div><label className={labelStyle}>الدرجة الإجمالية</label><input type="number" min="0" max="100" value={overallScore} onChange={(e) => setOverallScore(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   617→              <div><label className={labelStyle}>التقييم</label>
+   618→                <select value={rating} onChange={(e) => setRating(e.target.value)} className={inputStyle}>
+   619→                  <option value="ممتاز">ممتاز</option><option value="جيد جداً">جيد جداً</option>
+   620→                  <option value="جيد">جيد</option><option value="مقبول">مقبول</option>
+   621→                  <option value="ضعيف">ضعيف</option>
+   622→                </select>
+   623→              </div>
+   624→            </>)}
+   625→          </div>
+   626→        )}
+   627→      </div>
+   628→      <div className="flex gap-2.5 justify-end">
+   629→        <button onClick={onClose} className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]">إلغاء</button>
+   630→        <button onClick={submit} disabled={saving} className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : "حفظ"}</button>
+   631→      </div>
+   632→    </div>
+   633→  );
+   634→}
+   635→
+   636→export default HRView;
+   637→
