@@ -5,16 +5,14 @@
  * pods), each instance has its own in-memory cache. Without pub/sub, a
  * settings update on instance A doesn't invalidate the cache on instance B.
  *
- * In sandbox (single instance): uses local EventEmitter — works but no
- * cross-process sync (which is fine because there's only one process).
- *
- * In production with Redis: swap LocalPubSub for RedisPubSub — subscribe
- * to a Redis channel, publish invalidation events, every instance receives
- * them and clears its local cache.
+ * Driver selection:
+ *   - VALKEY_URL / REDIS_URL set  → RedisPubSub (Valkey pub/sub, cross-process).
+ *   - Not set (sandbox/dev)        → LocalPubSub (EventEmitter, single-instance).
  */
 
 import { EventEmitter } from "node:events";
 import { logger } from "./logger";
+import { getValkeyClient, getValkeySubscriber, VALKEY_CONFIGURED } from "./valkey";
 
 export interface PubSubMessage {
   channel: string;
@@ -27,6 +25,8 @@ interface PubSubDriver {
   publish(channel: string, payload: unknown): Promise<void>;
   subscribe(channel: string, handler: MessageHandler): () => void;
 }
+
+// ─── Local driver (dev/sandbox) ───────────────────────────────────────────
 
 class LocalPubSub implements PubSubDriver {
   private emitter = new EventEmitter();
@@ -45,26 +45,108 @@ class LocalPubSub implements PubSubDriver {
   }
 }
 
-// Factory — picks the right driver based on env
-let driver: PubSubSub | null = null;
+// ─── Valkey driver (production) ───────────────────────────────────────────
 
-class PubSubSub {
-  private impl: PubSubDriver;
+class ValkeyPubSub implements PubSubDriver {
+  private publisherPromise: Promise<import("ioredis").default | null>;
+  private subscriberPromise: Promise<import("ioredis").default | null>;
+  private localEmitter = new EventEmitter();
+  private initialized = false;
+
   constructor() {
-    // In production with REDIS_URL set, would use RedisPubSub
-    this.impl = new LocalPubSub();
-    logger.info("[pubsub] initialized local driver");
+    this.localEmitter.setMaxListeners(200);
+    this.publisherPromise = getValkeyClient();
+    this.subscriberPromise = getValkeySubscriber();
+
+    // Fire-and-forget init
+    this.init().catch((err) => {
+      logger.error("[pubsub] Valkey init failed — falling back to local", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
   }
-  publish(channel: string, payload: unknown) { return this.impl.publish(channel, payload); }
-  subscribe(channel: string, handler: MessageHandler) { return this.impl.subscribe(channel, handler); }
+
+  private async init(): Promise<void> {
+    if (this.initialized) return;
+
+    const sub = await this.subscriberPromise;
+    if (!sub) {
+      logger.warn("[pubsub] subscriber connection failed — local-only mode");
+      return;
+    }
+
+    // Subscribe to all known channels
+    const allChannels = Object.values(CHANNELS);
+    const pattern = "garfix:*";
+
+    sub.subscribe(pattern).catch((err) => {
+      logger.error("[pubsub] failed to subscribe to pattern", { err: err.message });
+    });
+
+    sub.on("message", (channel: string, message: string) => {
+      try {
+        const msg = JSON.parse(message) as PubSubMessage;
+        if (msg.channel === channel) {
+          this.localEmitter.emit(channel, msg.payload);
+        }
+      } catch {
+        // ignore malformed
+      }
+    });
+
+    this.initialized = true;
+    logger.info("[pubsub] Valkey driver active", {
+      channels: allChannels,
+      pattern,
+    });
+  }
+
+  async publish(channel: string, payload: unknown): Promise<void> {
+    // Always emit locally so the publishing instance gets it too
+    this.localEmitter.emit(channel, payload);
+
+    const client = await this.publisherPromise;
+    if (!client) {
+      logger.debug("[pubsub] no Valkey publisher — local-only emit");
+      return;
+    }
+
+    try {
+      // Use psubscribe-compatible channel naming
+      const valkeyChannel = `garfix:${channel}`;
+      const msg: PubSubMessage = { channel, payload };
+      await client.publish(valkeyChannel, JSON.stringify(msg));
+    } catch (err) {
+      logger.debug("[pubsub] Valkey publish failed (local emit succeeded)", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  subscribe(channel: string, handler: MessageHandler): () => void {
+    this.localEmitter.on(channel, handler);
+    return () => this.localEmitter.off(channel, handler);
+  }
 }
 
-function getDriver(): PubSubSub {
-  if (!driver) driver = new PubSubSub();
+// ─── Factory ──────────────────────────────────────────────────────────────
+
+let driver: PubSubDriver | null = null;
+
+function getDriver(): PubSubDriver {
+  if (!driver) {
+    if (VALKEY_CONFIGURED) {
+      driver = new ValkeyPubSub();
+      logger.info("[pubsub] initialized Valkey driver (cross-instance)");
+    } else {
+      driver = new LocalPubSub();
+      logger.info("[pubsub] initialized local driver (single-instance)");
+    }
+  }
   return driver;
 }
 
-// ─── Public API ─────────────────────────────────────────────────────────────
+// ─── Channels ─────────────────────────────────────────────────────────────
 
 export const CHANNELS = {
   CACHE_INVALIDATE: "cache:invalidate",
@@ -75,10 +157,17 @@ export const CHANNELS = {
   ANNOUNCEMENT_PUBLISHED: "announcement:published",
 } as const;
 
+// ─── Public API ───────────────────────────────────────────────────────────
+
 export async function publish(channel: string, payload: unknown): Promise<void> {
   await getDriver().publish(channel, payload);
 }
 
 export function subscribe(channel: string, handler: MessageHandler): () => void {
   return getDriver().subscribe(channel, handler);
+}
+
+/** Pre-initialize the driver (call on server boot to warm up connections). */
+export async function initPubSub(): Promise<void> {
+  getDriver(); // trigger lazy init
 }

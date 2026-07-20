@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { isFounderEmail } from "@/lib/founder";
 import { computeEffectivePermissions } from "@/lib/permissions";
+import { getValkeyClient } from "@/lib/valkey";
 
 // SEC-002 FIX: No fallback secrets — throw if missing in production
 function resolveSecret(envVar: string, name: string): string {
@@ -122,37 +123,20 @@ export function verifyRefreshToken(token: string): { uid: string; tv: number } |
   }
 }
 
-// ── Token blacklist (Redis-backed, M3 FIX) ────────────────────────────────
-// When an admin force-logs out a user, their JTI is added to Redis with
+// ── Token blacklist (Valkey-backed, M3 FIX) ───────────────────────────────
+// When an admin force-logs out a user, their JTI is added to Valkey with
 // TTL = remaining token lifetime. verifyToken checks this before accepting.
-
-let blacklistRedis: import("ioredis").default | null = null;
-let blacklistRedisAttempted = false;
-
-async function getBlacklistRedis(): Promise<import("ioredis").default | null> {
-  if (!process.env.REDIS_URL) return null;
-  if (blacklistRedis) return blacklistRedis;
-  if (blacklistRedisAttempted) return null;
-  blacklistRedisAttempted = true;
-  try {
-    const Redis = (await import("ioredis")).default;
-    blacklistRedis = new Redis(process.env.REDIS_URL, { lazyConnect: true });
-    await blacklistRedis.connect();
-    return blacklistRedis;
-  } catch {
-    return null;
-  }
-}
+// Uses the centralized valkey.ts connection manager.
 
 /**
  * Check if a token's JTI is blacklisted.
  * Returns true if blacklisted (token should be rejected).
  */
 export async function isTokenBlacklisted(jti: string): Promise<boolean> {
-  const redis = await getBlacklistRedis();
-  if (!redis) return false; // No Redis = no blacklist = accept
+  const client = await getValkeyClient();
+  if (!client) return false; // No Valkey = no blacklist = accept
   try {
-    return (await redis.exists(`token:blacklist:${jti}`)) > 0;
+    return (await client.exists(`token:blacklist:${jti}`)) > 0;
   } catch {
     return false; // Fail-open
   }
@@ -162,17 +146,17 @@ export async function isTokenBlacklisted(jti: string): Promise<boolean> {
  * Blacklist a token by its JTI for the remaining TTL.
  */
 export async function blacklistToken(jti: string, remainingTtlSeconds: number): Promise<void> {
-  const redis = await getBlacklistRedis();
-  if (!redis || remainingTtlSeconds <= 0) return;
+  const client = await getValkeyClient();
+  if (!client || remainingTtlSeconds <= 0) return;
   try {
-    await redis.set(`token:blacklist:${jti}`, "1", "EX", remainingTtlSeconds);
+    await client.set(`token:blacklist:${jti}`, "1", "EX", remainingTtlSeconds);
   } catch {
     // Fail silently — blacklist is best-effort
   }
 }
 
 /**
- * Async token verification that also checks the Redis blacklist.
+ * Async token verification that also checks the Valkey blacklist.
  * Use this for sensitive operations where revocation must be enforced.
  */
 export async function verifyTokenWithBlacklist(token: string): Promise<AuthPayload | null> {

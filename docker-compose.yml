@@ -1,0 +1,95 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarfiX v12 — Docker Compose (Production)
+# Valkey replaces Redis — 100% API-compatible, BSD-3 licensed, faster.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Valkey (Redis-compatible) ──────────────────────────────────────────
+  # Drop-in replacement for Redis. Supports RESP protocol — ioredis and
+  # BullMQ connect without any code changes.
+  valkey:
+    image: valkey/valkey:8.1
+    container_name: garfix-valkey
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    command: >
+      valkey-server
+      --maxmemory ${VALKEY_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --save 60 1000
+      --save 300 100
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: garfix-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-garfix}
+      POSTGRES_PASSWORD: ${DB_PASS:-garfix_strong_pass_change_me}
+      POSTGRES_DB: ${DB_NAME:-garfix}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-garfix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── GarfiX App ─────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: garfix-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:-garfix_strong_pass_change_me}@postgres:5432/${DB_NAME:-garfix}?schema=public
+
+      # Valkey (preferred) or Redis (backward-compat)
+      VALKEY_URL: valkey://valkey:6379
+      # REDIS_URL: valkey://valkey:6379  # uncomment if existing code expects REDIS_URL
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+
+      # Other
+      BACKUP_DIR: /app/storage/backups
+    volumes:
+      - app-storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+volumes:
+  valkey-data:
+    driver: local
+  postgres-data:
+    driver: local
+  app-storage:
+    driver: local
