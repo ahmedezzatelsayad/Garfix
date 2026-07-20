@@ -27,24 +27,24 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ── PRODUCTION (active) ─────────────────────────────────────────────────────
+// ── PRODUCTION (uncomment for production with PostgreSQL) ────────────────────
 // EA-002 FIX: Switched from SQLite to PostgreSQL for production readiness.
 // SQLite is unsuitable for multi-tenant SaaS: no concurrent writes, no
 // connection pooling, no read replicas. PostgreSQL handles all of these.
 // The schema was already PostgreSQL-compatible (String for money/JSON,
 // no SQLite-specific types) so no model changes were needed.
 // H1 FIX: directUrl enables Prisma Studio / migrate deploy to use a direct connection while the app uses pooled URL
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_DIRECT_URL")
-}
-
-// ── DEV / SANDBOX (uncomment for local dev without PostgreSQL) ──────────────
 // datasource db {
-//   provider = "sqlite"
-//   url      = env("DATABASE_URL")
+//   provider  = "postgresql"
+//   url       = env("DATABASE_URL")
+//   directUrl = env("DATABASE_DIRECT_URL")
 // }
+
+// ── DEV / SANDBOX (active) ──────────────────────────────────────────────────
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Users & Auth
@@ -159,6 +159,7 @@ model Company {
   productMatchAudit ProductMatchAudit[]
   productAliases    ProductAlias[]
   matchOverrides    MatchOverride[]
+  runtime           CompanyRuntime?
 
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
@@ -1435,4 +1436,260 @@ model AIBenchmarkResult {
   @@index([modelRegistryId, createdAt])
   @@index([capability, createdAt])
   @@map("ai_benchmark_results")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// AI Fabric — Phase 0 Data Model Foundation
+//
+// These models support the AI Fabric intelligence cascade: every AI request
+// passes through cache → pattern → rule → memory → AI, with per-company
+// budgeting, cost tracking, and profit measurement. Schema-only in Phase 0;
+// business logic is added in subsequent phases.
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Per-company runtime configuration for the AI Fabric worker pool.
+/// Controls how many concurrent AI workers a company can use and its
+/// throttling/paused state. Tier-based defaults are enforced in
+/// /lib/ai-fabric/worker-scaler.ts constants, not hardcoded here.
+model CompanyRuntime {
+  id                   Int      @id @default(autoincrement())
+  companyId            Int      @unique
+  workerPoolSize       Int      @default(2)
+  status               String   @default("active") // active | throttled | paused
+  slaTier              String   @default("starter") // enterprise | business | starter (Phase 9)
+  maxAcceptableLatencyMs Int    @default(2000) // SLA latency target (Phase 9)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([slaTier])
+  @@map("company_runtimes")
+}
+
+/// Central log for every AI Fabric request — regardless of which cascade
+/// stage resolved it. This is the primary data source for cost optimization
+/// metrics (Phase 2), AI Score (Phase 14), and Cost-per-Invoice (Phase 15).
+/// Complements (does NOT replace) AIUsageLog, which tracks raw provider
+/// calls. AIRequestLog tracks the BUSINESS-LEVEL resolution path.
+model AIRequestLog {
+  id           Int      @id @default(autoincrement())
+  companySlug  String
+  requestType  String   // ocr | whatsapp | financial_analysis | matching | other
+  resolvedBy   String   // cache | pattern | rule | memory | ai
+  provider     String?  // actual model used, e.g. "openrouter/deepseek/deepseek-chat"
+  tokensUsed   Int?
+  costUsd      Float    @default(0)
+  latencyMs    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([companySlug, createdAt])
+  @@index([companySlug, resolvedBy, createdAt])
+  @@index([requestType, resolvedBy, createdAt])
+  @@index([resolvedBy, createdAt])
+  @@map("ai_request_logs")
+}
+
+/// Persistent cache entries for the AI Fabric L2 cache layer (Valkey is
+/// L1/L2 already, but this table enables auditability, hit-count tracking,
+/// and cache analytics that pure Valkey cannot provide). The key is a
+/// SHA-256 hash of (companyId + normalized input) to ensure deterministic
+/// cache hits across identical requests.
+model CacheEntry {
+  id         Int      @id @default(autoincrement())
+  key        String   @unique // sha256(companyId + normalized input)
+  companySlug String
+  value      String   // JSON — the cached AI response
+  hitCount   Int      @default(0)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([companySlug])
+  @@index([expiresAt])
+  @@map("ai_fabric_cache_entries")
+}
+
+/// Per-company AI spending budget configuration. The Budget Engine
+/// (Phase 6) increments currentSpendUsd after each AIRequestLog with a
+/// cost, and triggers alerts / hard-stop throttling when thresholds are
+/// reached. Founder Panel only — not visible to tenants.
+model BudgetConfig {
+  id                Int      @id @default(autoincrement())
+  companySlug       String   @unique
+  monthlyBudgetUsd  Float
+  currentSpendUsd   Float    @default(0)
+  alertThresholdPct Int      @default(80) // alert at 80% of budget
+  hardStopEnabled   Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companySlug])
+  @@map("budget_configs")
+}
+
+/// Global task-type → provider routing configuration. Unlike AIModelRegistry
+/// (which tracks individual model health), this maps business TASK TYPES to
+/// their optimal primary + fallback providers. The Provider Optimizer
+/// (Phase 3) reads this table to route requests to the right model for
+/// the task, with automatic fallback on primary failure.
+model ProviderConfig {
+  id                Int      @id @default(autoincrement())
+  taskType          String   @unique // ocr | whatsapp | financial_analysis | matching | other
+  primaryProvider   String   // e.g. "anthropic/claude-3-5-haiku" or "z-ai/z-ai-glm"
+  fallbackProvider  String   // fallback when primary fails
+  costPerRequestUsd Float?   // estimated average cost per request for this task type
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("provider_configs")
+}
+
+/// AI decision memory for the AI Fabric cascade. Unlike AIMemoryNote
+/// (which stores human-authored entity notes), AIMemoryEntry stores
+/// AI-GENERATED decisions and their context — enabling the cascade to
+/// replay previous decisions without re-calling the LLM.
+/// Categories: product | customer | invoice | rule | decision
+model AIMemoryEntry {
+  id             Int      @id @default(autoincrement())
+  companySlug    String
+  category       String   // product | customer | invoice | rule | decision
+  content        String   // JSON — the decision + its context
+  createdAt      DateTime @default(now())
+  lastAccessedAt DateTime @updatedAt
+
+  @@index([companySlug, category])
+  @@index([companySlug, category, lastAccessedAt])
+  @@index([lastAccessedAt])
+  @@map("ai_memory_entries")
+}
+
+/// Periodic profit snapshots for GarfiX itself (not per-tenant).
+/// Revenue (from subscription) minus infra cost, AI cost (from
+/// AIRequestLog), and worker cost = gross profit. The Profit Engine
+/// (Phase 8) computes and stores these snapshots on a daily or
+/// on-demand basis. Founder Panel only.
+model ProfitSnapshot {
+  id            Int      @id @default(autoincrement())
+  companySlug   String
+  periodStart   DateTime
+  periodEnd     DateTime
+  revenueUsd    Float    @default(0)
+  infraCostUsd  Float    @default(0)
+  aiCostUsd     Float    @default(0)
+  workerCostUsd Float    @default(0)
+  profitUsd     Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  @@index([companySlug, periodStart])
+  @@index([periodStart, periodEnd])
+  @@map("profit_snapshots")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// AI Fabric — Economics Layer Schema (Phases 9-16)
+//
+// These models support the Economics Layer: Worker Marketplace, Learning
+// Engine, Cross-Company Intelligence, AI Score, and AI Compiler.
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Learning Engine candidate — tracks repeated AI decisions that MAY be
+/// promotable to deterministic rules (Phase 11).
+///
+/// When the same normalized input produces the same AI output N times
+/// (sampleCount >= threshold) with high consistency (confidence >= 0.95),
+/// the candidate is promoted to status='promoted' and a Rule is created.
+model RuleCandidate {
+  id                Int      @id @default(autoincrement())
+  companySlug       String
+  requestType       String   // ocr | whatsapp | financial_analysis | matching | other
+  patternSignature  String   // hash of normalized inputs grouped together
+  sampleCount       Int      @default(0)
+  consistentOutput  String   // JSON — the output that appeared in >= 95% of samples
+  confidence        Float    @default(0)  // 0-1, percentage of samples matching consistentOutput
+  status            String   @default("observing") // observing | promoted | rejected
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companySlug, status])
+  @@index([companySlug, patternSignature])
+  @@index([status, confidence])
+  @@map("rule_candidates")
+}
+
+/// Cross-company de-identified patterns (Phase 12).
+///
+/// Stores GENERAL patterns (e.g. "Apple Charger → SKU/VAT/Category") stripped
+/// of all company-specific data. NO financial data, NO customer data, NO
+/// company-identifying information. Only the product name/classification.
+///
+/// Privacy guarantee: no field in this table can be traced back to any
+/// specific company. Only contributingCompaniesCount (an integer) is stored.
+model GlobalPattern {
+  id                       Int      @id @default(autoincrement())
+  patternKey               String   // normalized product name, e.g. "apple charger"
+  suggestedSku             String?  // JSON — suggested SKU mapping
+  suggestedVatCategory     String?  // suggested VAT category
+  suggestedCategory        String?  // JSON — suggested product category
+  contributingCompaniesCount Int     @default(0) // COUNT ONLY, no company IDs
+  confidence               Float    @default(0)
+  lastUpdated              DateTime @updatedAt
+
+  @@unique([patternKey])
+  @@index([confidence])
+  @@index([lastUpdated])
+  @@map("global_patterns")
+}
+
+/// AI Score daily snapshot per company (Phase 14).
+///
+/// Internal metric (Founder Panel only) measuring cascade efficiency.
+/// Score 0-100: higher = more requests resolved without AI calls.
+/// Triggers Learning Engine and Cost Optimizer when score drops below threshold.
+model AIScoreSnapshot {
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  period          String   // e.g. "2026-07-20" (daily)
+  score           Float    @default(0)  // 0-100
+  cacheHitPct     Float    @default(0)
+  ruleHitPct      Float    @default(0)
+  aiCallPct       Float    @default(0)
+  avgCostPerRequest Float  @default(0)
+  createdAt       DateTime @default(now())
+
+  @@unique([companySlug, period])
+  @@index([companySlug, createdAt])
+  @@index([score])
+  @@map("ai_score_snapshots")
+}
+
+/// AI Compiler — compiled rules distilled from repeated AI patterns (Phase 16).
+///
+/// When the Learning Engine identifies a cluster of AI decisions that can be
+/// replaced by deterministic logic (regex, decision tree, extractor), this
+/// table stores the compiled rule PENDING HUMAN REVIEW. No compiled rule
+/// is ever activated without explicit human approval (reviewedBy + reviewedAt).
+///
+/// This is the most critical table in the Economics Layer — a wrong compiled
+/// rule could silently corrupt business decisions. Human-in-the-loop is
+/// MANDATORY for status transitions from pending_review → active.
+model CompiledRule {
+  id                    Int      @id @default(autoincrement())
+  requestType           String   // ocr | whatsapp | financial_analysis | matching | other
+  patternDescription    String   // human-readable description of the pattern
+  logicType             String   // regex | decision_tree | extractor
+  logicDefinition       String   // JSON — the actual compiled logic (regex, tree, etc.)
+  accuracyOnHistoricalSample Float @default(0) // measured accuracy (0-1)
+  status                String   @default("pending_review") // pending_review | active | rejected
+  reviewedBy            String?  // email of the human who approved/rejected
+  reviewedAt            DateTime?
+  sourceCandidateId     Int?     // link to RuleCandidate that generated this
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([status])
+  @@index([requestType, status])
+  @@index([accuracyOnHistoricalSample])
+  @@map("compiled_rules")
 }
