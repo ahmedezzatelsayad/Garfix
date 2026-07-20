@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -31,6 +31,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;
+
+  // Authorization: enforce employee_management permission for reading employee data
+  if (!hasPermission(user, "employee_management")) {
+    return NextResponse.json({ error: "ليس لديك صلاحية: employee_management" }, { status: 403 });
+  }
+
   const sp = req.nextUrl.searchParams;
   const companySlug = sp.get("companySlug") || undefined;
   if (companySlug && !assertCompanyAccess(user, companySlug)) {

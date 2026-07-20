@@ -54,6 +54,11 @@ server.log
 # Skills directory
 /skills/
 
+# Test artifacts
+test-results*.json
+*.test.js
+coverage/
+
 # GarfiX-specific local artifacts (GATE 0 fix)
 /db/*.db
 /db/*.db-journal

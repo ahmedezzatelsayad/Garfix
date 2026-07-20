@@ -67,6 +67,7 @@ model User {
   orderDeliveries   OrderDelivery[]
   auditLogs         AuditLog[]
 
+  @@index([role])
   @@map("app_users")
 }
 
@@ -159,6 +160,9 @@ model Company {
 
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
+  @@index([subscriptionStatus])
+  @@index([plan])
+  @@index([deletedAt])
   @@map("companies")
 }
 
@@ -200,6 +204,7 @@ model Client {
 
   @@index([companySlug])
   @@index([companySlug, createdAt, id])
+  @@index([companySlug, deletedAt])
   @@map("clients")
 }
 
@@ -254,6 +259,10 @@ model Invoice {
   @@index([companySlug, status])
   @@index([clientId])
   @@index([companySlug, createdAt, id])
+  @@index([journalEntryId])
+  @@index([companySlug, eInvoiceStatus])
+  @@index([companySlug, deletedAt])
+  @@index([companySlug, dueDate, status])
   @@map("invoices")
 }
 
@@ -300,6 +309,8 @@ model Warehouse {
   items       InventoryItem[]
   stockMovements StockMovement[]
   @@index([companySlug])
+  @@index([companySlug, isActive])
+  @@unique([companySlug, code])
   @@map("warehouses")
 }
 
@@ -321,6 +332,7 @@ model InventoryItem {
   @@unique([warehouseId, productId])
   @@index([companySlug])
   @@index([productId])
+  @@index([warehouseId])
   @@map("inventory_items")
 }
 
@@ -343,6 +355,7 @@ model StockMovement {
   @@index([companySlug, createdAt])
   @@index([companySlug, productId])
   @@index([sourceType, sourceId])
+  @@index([warehouseId])
   @@map("stock_movements")
 }
 
@@ -410,6 +423,7 @@ model Employee {
 
   @@index([companySlug])
   @@index([civilId])
+  @@index([companySlug, isActive])
   @@map("hr_employees")
 }
 
@@ -428,6 +442,7 @@ model Attendance {
 
   @@index([companySlug])
   @@index([employeeId, date])
+  @@index([companySlug, date])
   @@map("hr_attendance")
 }
 
@@ -450,6 +465,8 @@ model Salary {
 
   @@index([companySlug])
   @@index([employeeId, month])
+  @@index([companySlug, isPaid])
+  @@index([companySlug, month])
   @@map("hr_salaries")
 }
 
@@ -467,6 +484,9 @@ model Commission {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([companySlug])
+  @@index([employeeId])
+  @@index([companySlug, isPaid])
+  @@index([companySlug, date])
   @@map("hr_commissions")
 }
 
@@ -486,6 +506,8 @@ model LeaveRequest {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([companySlug])
+  @@index([employeeId])
+  @@index([companySlug, status])
   @@map("hr_leave_requests")
 }
 
@@ -507,6 +529,8 @@ model Performance {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([companySlug])
+  @@index([employeeId])
+  @@index([companySlug, period])
   @@map("hr_performance")
 }
 
@@ -536,6 +560,9 @@ model Account {
   @@index([companySlug])
   @@index([code])
   @@unique([companySlug, code])
+  @@index([parentId])
+  @@index([companySlug, type])
+  @@index([companySlug, isActive])
   @@map("accounts")
 }
 
@@ -560,6 +587,8 @@ model JournalEntry {
   @@index([companySlug])
   @@index([companySlug, date])
   @@index([companySlug, deletedAt])
+  @@index([companySlug, status])
+  @@index([companySlug, sourceType, sourceId])
   @@map("journal_entries")
 }
 
@@ -641,6 +670,7 @@ model OrderDelivery {
   @@index([companySlug])
   @@index([companySlug, status])
   @@index([companySlug, preferredTime])
+  @@index([driverId])
   @@map("order_deliveries")
 }
 
@@ -687,6 +717,9 @@ model PaymentTransaction {
   @@index([provider, providerPaymentId])
   @@index([companySlug])
   @@index([companySlug, deletedAt])
+  @@index([companySlug, status])
+  @@index([companySlug, createdAt])
+  @@index([provider])
   @@map("payment_transactions")
 }
 
@@ -720,6 +753,7 @@ model Permission {
 
   rolePermissions RolePermission[]
 
+  @@index([category])
   @@map("permissions")
 }
 
@@ -737,6 +771,7 @@ model RolePermission {
   @@index([role])
   @@index([companySlug])
   @@unique([role, permissionKey, companySlug])
+  @@index([permissionKey])
   @@map("role_permissions")
 }
 
@@ -760,6 +795,9 @@ model AuditLog {
   @@index([companySlug])
   @@index([createdAt])
   @@index([action])
+  @@index([userUid])
+  @@index([companySlug, entity])
+  @@index([companySlug, createdAt])
   @@map("audit_logs")
 }
 
@@ -780,6 +818,8 @@ model AdminAuditLog {
 
   @@index([createdAt])
   @@index([adminEmail])
+  @@index([action])
+  @@index([targetType])
   @@map("admin_audit_logs")
 }
 
@@ -795,6 +835,7 @@ model Announcement {
   createdBy  String
   createdAt  DateTime @default(now())
 
+  @@index([isActive, startsAt])
   @@map("announcements")
 }
 
@@ -812,6 +853,10 @@ model SupportTicket {
   replies TicketReply[]
 
   @@index([status])
+  @@index([tenantId])
+  @@index([userEmail])
+  @@index([createdAt])
+  @@index([status, createdAt])
   @@map("support_tickets")
 }
 
@@ -845,6 +890,7 @@ model PlatformSetting {
 
   history PlatformSettingHistory[]
 
+  @@index([category])
   @@map("platform_settings")
 }
 
@@ -859,6 +905,8 @@ model PlatformSettingHistory {
 
   setting PlatformSetting @relation(fields: [settingKey], references: [key], onDelete: Cascade)
 
+  @@index([settingKey])
+  @@index([changedAt])
   @@map("platform_settings_history")
 }
 
@@ -878,6 +926,7 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([isActive])
   @@map("modules")
 }
 
@@ -1080,6 +1129,7 @@ model AutomationRule {
 
   @@index([companySlug])
   @@index([trigger])
+  @@index([companySlug, isActive])
   @@map("automation_rules")
 }
 
@@ -1131,6 +1181,7 @@ model FeatureFlag {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([isActive])
   @@map("feature_flags")
 }
 

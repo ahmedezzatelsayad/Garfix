@@ -21,6 +21,7 @@ node_modules/
 /build
 
 # Database files — NEVER commit SQLite databases
+db/
 *.db
 *.db-shm
 *.db-wal

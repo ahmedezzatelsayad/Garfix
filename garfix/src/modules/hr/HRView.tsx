@@ -1,33 +1,27 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Plus, Trash2, UserCog, Pencil } from "lucide-react";
 import { GratuityCalculator } from "./GratuityCalculator";
 import { cn } from "@/lib/utils";
+import type {
+  Tab,
+  Employee,
+  Attendance,
+  Salary,
+  Commission,
+  LeaveRequest,
+  Performance,
+  HREditItem,
+  TableShared,
+} from "./types";
+import { PAGE_SIZE, DELETE_PATH, TAB_META } from "./types";
+import { useHRData } from "./useHRData";
 
-interface Employee { id: number; name: string; nameEn?: string; phone?: string; email?: string; position?: string; department?: string; baseSalary: number; currency: string; joinDate?: string; isActive: boolean; }
-interface Attendance { id: number; employeeId: number; date: string; status: string; checkIn?: string; checkOut?: string; }
-interface Salary { id: number; employeeId: number; month: string; baseSalary: number; allowances: number; deductions: number; bonus: number; netSalary: number; isPaid: boolean; }
-interface Commission { id: number; employeeId: number; date: string; type: string; description?: string; amount: number; isPaid: boolean; }
-interface Leave { id: number; employeeId: number; type: string; startDate: string; endDate: string; days: number; status: string; }
-interface Performance { id: number; employeeId: number; period: string; kpiScore?: number; overallScore?: number; rating?: string; }
-
-type Tab = "employees" | "attendance" | "salaries" | "commissions" | "leaves" | "performance" | "gratuity";
-
-const PAGE_SIZE = 20;
-
-const DELETE_PATH: Record<Tab, string> = {
-  employees: "/api/hr/employees",
-  attendance: "/api/hr/attendance",
-  salaries: "/api/hr/salaries",
-  commissions: "/api/hr/commissions",
-  leaves: "/api/hr/leaves",
-  performance: "/api/hr/performance",
-  gratuity: "",
-};
+// ─── Style constants ────────────────────────────────────────────────────────
 
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
@@ -38,73 +32,44 @@ const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border tex
 const editBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-primary cursor-pointer flex items-center justify-center hover:bg-primary/10 hover:border-primary/40 transition-colors";
 const actionsCell = "flex items-center gap-1.5";
 
+// ─── Main component ─────────────────────────────────────────────────────────
+
 export function HRView() {
   const { activeCompany } = useBrand();
-  const [tab, setTab] = useState<Tab>("employees");
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
-  const [salaries, setSalaries] = useState<Salary[]>([]);
-  const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [leaves, setLeaves] = useState<Leave[]>([]);
-  const [performances, setPerformances] = useState<Performance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    activeTab: tab,
+    setActiveTab,
+    employees,
+    attendance,
+    salaries,
+    commissions,
+    leaves,
+    performances,
+    loading,
+    loadAll,
+    handleDelete,
+    handleBulkDelete,
+  } = useHRData();
+
   const [showForm, setShowForm] = useState(false);
-  const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
+  const [editingItem, setEditingItem] = useState<HREditItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  const loadAll = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    const slug = `companySlug=${encodeURIComponent(activeCompany.slug)}`;
-    try {
-      const responses = await Promise.all([
-        authedFetch(`/api/hr/employees?${slug}`),
-        authedFetch(`/api/hr/attendance?${slug}`),
-        authedFetch(`/api/hr/salaries?${slug}`),
-        authedFetch(`/api/hr/commissions?${slug}`),
-        authedFetch(`/api/hr/leaves?${slug}`),
-        authedFetch(`/api/hr/performance?${slug}`),
-      ]);
-      // Check each response; surface first error to user but still parse the rest.
-      const bodies: Array<Record<string, unknown>> = [];
-      for (const r of responses) {
-        if (!r.ok) {
-          const e = await r.json().catch(() => ({}));
-          throw new Error((e as Record<string, unknown>)?.error as string || `فشل تحميل البيانات (${r.status})`);
-        }
-        bodies.push(await r.json());
-      }
-      const [empD, attD, salD, comD, leaD, perfD] = bodies;
-      setEmployees((empD as { employees?: Employee[] }).employees || []);
-      setAttendance((attD as { attendance?: Attendance[] }).attendance || []);
-      setSalaries((salD as { salaries?: Salary[] }).salaries || []);
-      setCommissions((comD as { commissions?: Commission[] }).commissions || []);
-      setLeaves((leaD as { leaves?: Leave[] }).leaves || []);
-      setPerformances((perfD as { performance?: Performance[] }).performance || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل بيانات الموارد البشرية");
-    } finally { setLoading(false); }
-  }, [activeCompany]);
+  // ─── Tab switch ───────────────────────────────────────────────────────
 
-  // setState runs inside async .then() callback in loadAll (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadAll(); }, [loadAll]);
-
-  // Reset pagination/selection when tab changes
   const switchTab = (t: Tab) => {
-    setTab(t);
+    setActiveTab(t);
     setShowForm(false);
     setEditingItem(null);
     setSelectedIds(new Set());
     setCurrentPage(1);
   };
 
-  // ─── Item: HR edit (PATCH) ──────────────────────────────────────────
-  // Opens the HRForm in edit mode with the row's data pre-filled.
-  // The form switches its submit from POST → PATCH /api/hr/{type}/{id}.
-  const handleEdit = (item: Record<string, unknown>) => {
+  // ─── Edit ─────────────────────────────────────────────────────────────
+
+  const handleEdit = (item: HREditItem) => {
     setEditingItem(item);
     setShowForm(true);
   };
@@ -113,6 +78,8 @@ export function HRView() {
     setShowForm(false);
     setEditingItem(null);
   };
+
+  // ─── Items for current tab ────────────────────────────────────────────
 
   const itemsForTab = (): Array<{ id: number }> => {
     switch (tab) {
@@ -131,6 +98,8 @@ export function HRView() {
   const pageItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
+  // ─── Selection ────────────────────────────────────────────────────────
+
   const toggleSelectAll = () => {
     if (selectedIds.size === pageItems.length && pageItems.length > 0) setSelectedIds(new Set());
     else setSelectedIds(new Set(pageItems.map((i) => i.id)));
@@ -143,55 +112,32 @@ export function HRView() {
       return next;
     });
   };
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0 || tab === "gratuity") return;
-    if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
+
+  // ─── Bulk delete ──────────────────────────────────────────────────────
+
+  const onBulkDelete = async () => {
     setBulkDeleting(true);
-    let okCount = 0, failCount = 0;
-    const endpoint = DELETE_PATH[tab];
-    for (const id of selectedIds) {
-      try {
-        const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
-        if (res.ok) okCount++; else failCount++;
-      } catch { failCount++; }
-    }
+    await handleBulkDelete(selectedIds);
     setBulkDeleting(false);
     setSelectedIds(new Set());
-    if (okCount > 0) toast.success(`تم حذف ${okCount} عنصر`);
-    if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
-    loadAll();
   };
 
-  const handleDelete = async (id: number) => {
-    if (tab === "gratuity") return;
-    if (!confirm("حذف هذا العنصر؟")) return;
-    try {
-      const res = await authedFetch(`${DELETE_PATH[tab]}/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر الحذف");
-        return;
-      }
-      toast.success("تم الحذف");
-      loadAll();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم");
-    }
-  };
+  // ─── Guard ────────────────────────────────────────────────────────────
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
-  const tabs: Array<{ key: Tab; label: string; count: number }> = [
-    { key: "employees", label: "الموظفون", count: employees.length },
-    { key: "attendance", label: "الحضور", count: attendance.length },
-    { key: "salaries", label: "الرواتب", count: salaries.length },
-    { key: "commissions", label: "العمولات", count: commissions.length },
-    { key: "leaves", label: "الإجازات", count: leaves.length },
-    { key: "performance", label: "الأداء", count: performances.length },
-    { key: "gratuity", label: "مكافأة نهاية الخدمة", count: 0 },
-  ];
+  const tabs: Array<{ key: Tab; label: string; count: number }> = TAB_META.map((m) => ({
+    ...m,
+    count: m.key === "employees" ? employees.length
+      : m.key === "attendance" ? attendance.length
+      : m.key === "salaries" ? salaries.length
+      : m.key === "commissions" ? commissions.length
+      : m.key === "leaves" ? leaves.length
+      : m.key === "performance" ? performances.length
+      : 0,
+  }));
 
-  const tableProps = {
+  const tableProps: TableShared = {
     selectedIds, toggleRow, handleDelete, handleEdit,
     pageItems, employees,
     selectAllChecked: selectedIds.size === pageItems.length && pageItems.length > 0,
@@ -243,7 +189,7 @@ export function HRView() {
               <span className="font-bold text-[13px]">{selectedIds.size} عنصر محدد</span>
               <div className="flex gap-2">
                 <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed max-md:min-h-[44px]">إلغاء التحديد</button>
-                <button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
+                <button onClick={onBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
               </div>
             </div>
           )}
@@ -278,18 +224,31 @@ export function HRView() {
   );
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 const empName = (employees: Employee[], id: number) => employees.find((e) => e.id === id)?.name || `#${id}`;
 
-interface TableShared {
-  selectedIds: Set<number>;
-  toggleRow: (id: number) => void;
-  handleDelete: (id: number) => void;
-  handleEdit: (item: Record<string, unknown>) => void;
-  pageItems: Array<{ id: number }>;
-  employees: Employee[];
-  selectAllChecked: boolean;
-  toggleSelectAll: () => void;
+// ─── Checkbox ───────────────────────────────────────────────────────────────
+
+function Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: () => void; ariaLabel: string }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      className="cursor-pointer w-4 h-4"
+      aria-label={ariaLabel}
+    />
+  );
 }
+
+function Empty({ label }: { label: string }) {
+  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
+}
+
+// ─── Table components ───────────────────────────────────────────────────────
+// Each table now wraps its items in HREditItem via the typed _tag, eliminating
+// the unsafe `as unknown as Record<string, unknown>` casts.
 
 function EmployeesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
   return (
@@ -313,7 +272,7 @@ function EmployeesTable({ selectedIds, toggleRow, handleDelete, handleEdit, page
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: e.isActive ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: e.isActive ? "#10b981" : "#ef4444", fontSize: "11px", fontWeight: 700 }}>{e.isActive ? "نشط" : "موقوف"}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
-                  <button onClick={() => handleEdit(e as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleEdit({ _tag: "employees", data: e })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
                   <button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
                 </div>
               </td>
@@ -352,7 +311,7 @@ function AttendanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pag
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkOut || "—"}</td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
-                  <button onClick={() => handleEdit(a as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleEdit({ _tag: "attendance", data: a })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
                   <button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
                 </div>
               </td>
@@ -389,7 +348,7 @@ function SalariesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageI
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: s.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: s.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{s.isPaid ? "مدفوع" : "معلّق"}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
-                  <button onClick={() => handleEdit(s as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleEdit({ _tag: "salaries", data: s })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
                   <button onClick={() => handleDelete(s.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
                 </div>
               </td>
@@ -423,7 +382,7 @@ function CommissionsTable({ selectedIds, toggleRow, handleDelete, handleEdit, pa
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: c.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: c.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{c.isPaid ? "مدفوع" : "معلّق"}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
-                  <button onClick={() => handleEdit(c as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleEdit({ _tag: "commissions", data: c })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
                   <button onClick={() => handleDelete(c.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
                 </div>
               </td>
@@ -448,7 +407,7 @@ function LeavesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageIte
         <th className={thStyle}>إلى</th><th className={thStyle}>أيام</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
       </tr></thead>
       <tbody>
-        {(pageItems as Leave[]).map((l) => {
+        {(pageItems as LeaveRequest[]).map((l) => {
           const st = STATUS[l.status] || { label: l.status, color: "#999" };
           const checked = selectedIds.has(l.id);
           return (
@@ -462,7 +421,7 @@ function LeavesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageIte
               <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
-                  <button onClick={() => handleEdit(l as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleEdit({ _tag: "leaves", data: l })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
                   <button onClick={() => handleDelete(l.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
                 </div>
               </td>
@@ -495,7 +454,7 @@ function PerformanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pa
               <td className={tdStyle}>{p.rating || "—"}</td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
-                  <button onClick={() => handleEdit(p as unknown as Record<string, unknown>)} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
+                  <button onClick={() => handleEdit({ _tag: "performance", data: p })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
                   <button onClick={() => handleDelete(p.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
                 </div>
               </td>
@@ -507,61 +466,62 @@ function PerformanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pa
   );
 }
 
-function Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: () => void; ariaLabel: string }) {
-  return (
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      className="cursor-pointer w-4 h-4"
-      aria-label={ariaLabel}
-    />
-  );
-}
-
-function Empty({ label }: { label: string }) {
-  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
-}
-
 // ─── HR Form (single form adapted per tab) ──────────────────────────────────
+//
+// The form now accepts `HREditItem | null` instead of `Record<string, unknown>`.
+// By discriminating on `editItem._tag`, each field initializer can safely access
+// the proper typed data without any `as string` casts.
 
 function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   tab: Tab; company: { slug: string }; employees: Employee[];
-  editItem?: Record<string, unknown> | null;
+  editItem?: HREditItem | null;
   onClose: () => void; onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
-  const isEditing = !!editItem && !!editItem.id;
-  const editId = isEditing ? Number(editItem!.id) : null;
-  // Employee fields
-  const [empName_, setEmpName] = useState<string>((editItem?.name as string) || "");
-  const [position, setPosition] = useState<string>((editItem?.position as string) || "");
-  const [department, setDepartment] = useState<string>((editItem?.department as string) || "");
-  const [baseSalary, setBaseSalary] = useState<number>(Number(editItem?.baseSalary ?? 0));
-  const [phone, setPhone] = useState<string>((editItem?.phone as string) || "");
-  const [email, setEmail] = useState<string>((editItem?.email as string) || "");
-  // Other tab fields
-  const [employeeId, setEmployeeId] = useState<number | null>(Number(editItem?.employeeId ?? null) || null);
-  const [date, setDate] = useState<string>((editItem?.date as string) || new Date().toISOString().slice(0, 10));
-  const [status, setStatus] = useState<string>((editItem?.status as string) || "present");
-  const [checkIn, setCheckIn] = useState<string>((editItem?.checkIn as string) || "");
-  const [checkOut, setCheckOut] = useState<string>((editItem?.checkOut as string) || "");
-  const [month, setMonth] = useState<string>((editItem?.month as string) || new Date().toISOString().slice(0, 7));
-  const [allowances, setAllowances] = useState<number>(Number(editItem?.allowances ?? 0));
-  const [deductions, setDeductions] = useState<number>(Number(editItem?.deductions ?? 0));
-  const [bonus, setBonus] = useState<number>(Number(editItem?.bonus ?? 0));
-  const [isPaid, setIsPaid] = useState<boolean>(Boolean(editItem?.isPaid ?? false));
-  const [commissionType, setCommissionType] = useState<string>((editItem?.type as string) || "sales");
-  const [commissionAmount, setCommissionAmount] = useState<number>(Number(editItem?.amount ?? 0));
-  const [description, setDescription] = useState<string>((editItem?.description as string) || "");
-  const [leaveType, setLeaveType] = useState<string>((editItem?.type as string) || "annual");
-  const [startDate, setStartDate] = useState<string>((editItem?.startDate as string) || date);
-  const [endDate, setEndDate] = useState<string>((editItem?.endDate as string) || date);
-  const [days, setDays] = useState<number>(Number(editItem?.days ?? 1));
-  const [period, setPeriod] = useState<string>((editItem?.period as string) || `${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
-  const [kpiScore, setKpiScore] = useState<number>(Number(editItem?.kpiScore ?? 80));
-  const [overallScore, setOverallScore] = useState<number>(Number(editItem?.overallScore ?? 80));
-  const [rating, setRating] = useState<string>((editItem?.rating as string) || "جيد");
+  const isEditing = !!editItem;
+  const editId = isEditing ? editItem!.data.id : null;
+
+  // ─── Extract typed data from editItem using discriminated union ──────
+
+  const editEmployee = editItem?._tag === "employees" ? editItem.data : null;
+  const editAttendance = editItem?._tag === "attendance" ? editItem.data : null;
+  const editSalary = editItem?._tag === "salaries" ? editItem.data : null;
+  const editCommission = editItem?._tag === "commissions" ? editItem.data : null;
+  const editLeave = editItem?._tag === "leaves" ? editItem.data : null;
+  const editPerformance = editItem?._tag === "performance" ? editItem.data : null;
+
+  // Employee fields — no `as string` needed
+  const [empName_, setEmpName] = useState<string>(editEmployee?.name || "");
+  const [position, setPosition] = useState<string>(editEmployee?.position || "");
+  const [department, setDepartment] = useState<string>(editEmployee?.department || "");
+  const [baseSalary, setBaseSalary] = useState<number>(editEmployee?.baseSalary ?? editSalary?.baseSalary ?? 0);
+  const [phone, setPhone] = useState<string>(editEmployee?.phone || "");
+  const [email, setEmail] = useState<string>(editEmployee?.email || "");
+
+  // Other tab fields — each extracted from its typed variant, no casts
+  const [employeeId, setEmployeeId] = useState<number | null>(
+    editAttendance?.employeeId ?? editSalary?.employeeId ?? editCommission?.employeeId ?? editLeave?.employeeId ?? editPerformance?.employeeId ?? null
+  );
+  const [date, setDate] = useState<string>(editAttendance?.date || editCommission?.date || new Date().toISOString().slice(0, 10));
+  const [status, setStatus] = useState<string>(editAttendance?.status || "present");
+  const [checkIn, setCheckIn] = useState<string>(editAttendance?.checkIn || "");
+  const [checkOut, setCheckOut] = useState<string>(editAttendance?.checkOut || "");
+  const [month, setMonth] = useState<string>(editSalary?.month || new Date().toISOString().slice(0, 7));
+  const [allowances, setAllowances] = useState<number>(editSalary?.allowances ?? 0);
+  const [deductions, setDeductions] = useState<number>(editSalary?.deductions ?? 0);
+  const [bonus, setBonus] = useState<number>(editSalary?.bonus ?? 0);
+  const [isPaid, setIsPaid] = useState<boolean>(editSalary?.isPaid ?? editCommission?.isPaid ?? false);
+  const [commissionType, setCommissionType] = useState<string>(editCommission?.type || "sales");
+  const [commissionAmount, setCommissionAmount] = useState<number>(editCommission?.amount ?? 0);
+  const [description, setDescription] = useState<string>(editCommission?.description || "");
+  const [leaveType, setLeaveType] = useState<string>(editLeave?.type || "annual");
+  const [startDate, setStartDate] = useState<string>(editLeave?.startDate || date);
+  const [endDate, setEndDate] = useState<string>(editLeave?.endDate || date);
+  const [days, setDays] = useState<number>(editLeave?.days ?? 1);
+  const [period, setPeriod] = useState<string>(editPerformance?.period || `${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
+  const [kpiScore, setKpiScore] = useState<number>(editPerformance?.kpiScore ?? 80);
+  const [overallScore, setOverallScore] = useState<number>(editPerformance?.overallScore ?? 80);
+  const [rating, setRating] = useState<string>(editPerformance?.rating || "جيد");
 
   const submit = async () => {
     setSaving(true);
@@ -592,13 +552,9 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
         setSaving(false);
         return;
       }
-      // ─── Edit mode: PATCH /api/hr/{type}/{id} ─────────────────────
-      // In edit mode we drop companySlug (the backend resolves it from the
-      // record itself) and let only the editable fields go through.
       const url = isEditing ? `${endpoint}/${editId}` : endpoint;
       const method = isEditing ? "PATCH" : "POST";
       const finalPayload = isEditing ? { ...payload, companySlug: undefined } : payload;
-      // Remove undefined keys
       Object.keys(finalPayload).forEach((k) => finalPayload[k] === undefined && delete finalPayload[k]);
       const res = await authedFetch(url, {
         method, headers: { "Content-Type": "application/json" },
