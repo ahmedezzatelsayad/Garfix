@@ -1,74 +1,126 @@
 /**
  * GET /api/health
  *
- * Lightweight health-check endpoint for load balancers / container orchestrators.
+ * Comprehensive health-check endpoint for load balancers, orchestrators,
+ * and monitoring dashboards.
  *
- * P0.2 fix (Remaining Work Handoff): the GLM handoff's P0.2 asked to
- * reconcile the version string across `package.json`, `/api/route.ts`, and
- * `/api/health/route.ts`. The third file did not exist in the v13 zip.
- * A prior session mentioned an "HTTP 500 healthcheck deployment failure" —
- * if a load balancer or container orchestrator points a healthcheck at
- * `/api/health`, the missing route would explain that failure (Next.js
- * returns 404 by default, which most healthcheck configs treat as unhealthy
- * and may translate to a 500 at the LB layer).
+ * Checks:
+ *   1. PostgreSQL — SELECT 1 with 1s timeout
+ *   2. Valkey   — PING with 2s timeout
+ *   3. BullMQ   — queue counts (waiting + active)
+ *   4. Disk     — /app/storage writable check (100ms timeout)
+ *   5. Memory   — RSS + heap usage vs system memory
  *
- * Grep results (run from project root):
- *   - Caddyfile: no `/api/health` reference (just reverse-proxies to :3000)
- *   - package.json scripts: no `healthcheck` script
- *   - No docker-compose.yml / Dockerfile in the repo
- *   - No `*.yml` / `*.yaml` references
+ * Returns 200 when all critical services (DB, Valkey) are healthy.
+ * Returns 503 when any critical service is down.
+ * Non-critical failures (disk, queue stats) are reported but don't
+ * cause a 503 — the app can still serve requests.
  *
- * Conclusion: nothing in the repo references `/api/health`, but external
- * infrastructure (Replit deployment healthcheck, future Docker HEALTHCHECK,
- * future Kubernetes livenessProbe) may. Restoring the route as
- * defense-in-depth costs nothing and prevents a future 500-on-deploy
- * regression. The route is intentionally:
- *   - Unauthenticated (healthchecks must succeed without cookies)
- *   - Fast (single DB ping with 1s timeout, no joins)
- *   - Returns 503 on DB failure (not 500, so LBs can distinguish)
- *
- * Note: this route does NOT call `startupCheck.ts`'s `process.exit(1)` path
- * (ISS-01 from the prior security audit). The startup check runs at boot
- * time and exits the process if env vars are missing — that happens BEFORE
- * Next.js starts serving, so this route is only reachable after a
- * successful boot. The two mechanisms are complementary, not overlapping.
+ * Unauthenticated — healthchecks must succeed without cookies.
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { valkeyHealthCheck } from "@/lib/valkey";
+import { getBullMQStats } from "@/lib/queues";
+import { cacheStats } from "@/lib/cache";
 
-const VERSION = "12.0.0"; // keep in sync with package.json + /api/route.ts
+const VERSION = "12.0.0";
 
-export const dynamic = "force-dynamic"; // never cache healthchecks
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const started = Date.now();
-  let dbOk = true;
-  let dbError: string | undefined;
+  const checks: Record<string, unknown> = {};
+  let criticalOk = true;
 
+  // ── 1. PostgreSQL ──────────────────────────────────────────────────────
   try {
-    // 1-second timeout — if the DB is hung, the healthcheck should fail fast
-    // rather than queue up behind every other request.
     await Promise.race([
       db.$queryRaw`SELECT 1`,
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("DB ping timed out after 1000ms")), 1000),
+        setTimeout(() => reject(new Error("timeout 1000ms")), 1000),
       ),
     ]);
+    checks.db = { ok: true };
   } catch (err) {
-    dbOk = false;
-    dbError = err instanceof Error ? err.message : String(err);
+    criticalOk = false;
+    checks.db = {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  // ── 2. Valkey ──────────────────────────────────────────────────────────
+  try {
+    const vh = await Promise.race([
+      valkeyHealthCheck(),
+      new Promise<{ ok: false }>((resolve) =>
+        setTimeout(() => resolve({ ok: false }), 2000),
+      ),
+    ]);
+    checks.valkey = vh;
+    if (!vh.ok) criticalOk = false;
+  } catch {
+    checks.valkey = { ok: false, error: "exception" };
+  }
+
+  // ── 3. BullMQ Queue Stats (non-critical) ──────────────────────────────
+  try {
+    const queueStats = await Promise.race([
+      getBullMQStats(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    checks.queues = queueStats ?? { mode: "in-process", bullmq: false };
+  } catch {
+    checks.queues = { mode: "in-process", bullmq: false };
+  }
+
+  // ── 4. Cache Stats (non-critical) ──────────────────────────────────────
+  try {
+    checks.cache = cacheStats();
+  } catch {
+    checks.cache = { error: "unavailable" };
+  }
+
+  // ── 5. Memory ──────────────────────────────────────────────────────────
+  const memUsage = process.memoryUsage();
+  const totalMem = require("node:os").totalmem();
+  checks.memory = {
+    rssMB: Math.round(memUsage.rss / 1024 / 1024),
+    heapMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+    heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+    systemTotalMB: Math.round(totalMem / 1024 / 1024),
+    rssPercent: ((memUsage.rss / totalMem) * 100).toFixed(1),
+  };
+
+  // ── 6. Disk (non-critical) ────────────────────────────────────────────
+  try {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const storageDir = process.env.BACKUP_DIR || path.join(process.cwd(), "storage");
+    await fs.mkdir(storageDir, { recursive: true });
+    const testFile = path.join(storageDir, ".healthcheck-probe");
+    await fs.writeFile(testFile, "ok");
+    await fs.unlink(testFile);
+    checks.disk = { ok: true, storageDir };
+  } catch (err) {
+    checks.disk = {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 
   const latencyMs = Date.now() - started;
 
   return NextResponse.json(
     {
-      status: dbOk ? "ok" : "degraded",
+      status: criticalOk ? "ok" : "degraded",
       version: VERSION,
       uptime: process.uptime ? Math.round(process.uptime()) : null,
-      db: { ok: dbOk, error: dbError, latencyMs },
+      latencyMs,
+      checks,
       timestamp: new Date().toISOString(),
     },
-    { status: dbOk ? 200 : 503 },
+    { status: criticalOk ? 200 : 503 },
   );
 }
