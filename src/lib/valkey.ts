@@ -21,9 +21,23 @@ import { logger } from "./logger";
 
 type RedisClient = import("ioredis").default;
 
+/**
+ * Normalize a Valkey URL to a format ioredis understands.
+ * ioredis only supports redis:// and rediss:// protocols.
+ * Valkey URLs use valkey:// — we transparently rewrite to redis://.
+ */
+function normalizeUrl(raw: string): string {
+  // valkey://host:port → redis://host:port
+  // valkeys://host:port → rediss://host:port
+  if (raw.startsWith("valkeys://")) return "rediss://" + raw.slice(10);
+  if (raw.startsWith("valkey://")) return "redis://" + raw.slice(9);
+  return raw;
+}
+
 /** Resolve the Valkey/Redis connection URL from environment. */
 export function getValkeyUrl(): string | undefined {
-  return process.env.VALKEY_URL || process.env.REDIS_URL || undefined;
+  const raw = process.env.VALKEY_URL || process.env.REDIS_URL || undefined;
+  return raw ? normalizeUrl(raw) : undefined;
 }
 
 /** Whether Valkey/Redis is configured at all. */
