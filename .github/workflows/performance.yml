@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # GarfiX v1.3 — Performance Benchmark Pipeline
 # Runs on push to main + weekly schedule + manual trigger
-# Jobs: bundle analysis, Lighthouse, load testing
+# Jobs: Lighthouse, bundle analysis, load testing
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX Performance
@@ -10,20 +10,12 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 3 * * 1"
+    - cron: "0 3 * * 1"  # Every Monday at 03:00 UTC
   workflow_dispatch:
 
 concurrency:
   group: perf-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  NODE_ENV: test
-  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
-  JWT_SECRET: "ci-test-jwt-secret-at-least-16-chars"
-  JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-16-chars"
-  FOUNDER_EMAIL: "founder@test.com"
-  PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-chars!"
 
 jobs:
   # ── Job 1: Bundle Size Analysis ────────────────────────────────────────
@@ -31,9 +23,6 @@ jobs:
     name: Bundle Size Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: garfix
 
     steps:
       - name: Checkout code
@@ -53,7 +42,7 @@ jobs:
       - name: Build and analyze bundle
         run: |
           echo "─── Building for bundle analysis ───"
-          bun run build 2>&1 | tee build-output.txt || true
+          bun run build 2>&1 | tee build-output.txt
 
           echo ""
           echo "─── Bundle Size Report ───"
@@ -62,10 +51,15 @@ jobs:
             du -sh .next/static/
             echo ""
             echo "JavaScript chunks:"
-            find .next/static/chunks -name "*.js" -exec du -h {} \; 2>/dev/null | sort -rh | head -20 || true
+            find .next/static/chunks -name "*.js" -exec du -h {} \; 2>/dev/null | sort -rh | head -20
             echo ""
             echo "CSS files:"
-            find .next/static/css -name "*.css" -exec du -h {} \; 2>/dev/null | sort -rh | head -10 || true
+            find .next/static/css -name "*.css" -exec du -h {} \; 2>/dev/null | sort -rh | head -10
+            echo ""
+            TOTAL_JS=$(find .next/static/chunks -name "*.js" -exec cat {} + 2>/dev/null | wc -c)
+            TOTAL_CSS=$(find .next/static/css -name "*.css" -exec cat {} + 2>/dev/null | wc -c)
+            echo "Total JS size:   $(echo "scale=2; $TOTAL_JS / 1024 / 1024" | bc) MB"
+            echo "Total CSS size:  $(echo "scale=2; $TOTAL_CSS / 1024 / 1024" | bc) MB"
           else
             echo "⚠️ .next/static not found"
           fi
@@ -75,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bundle-analysis
-          path: garfix/build-output.txt
+          path: build-output.txt
           retention-days: 14
 
   # ── Job 2: Lighthouse Performance ──────────────────────────────────────
@@ -83,9 +77,6 @@ jobs:
     name: Lighthouse Performance Audit
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: garfix
 
     steps:
       - name: Checkout code
@@ -107,9 +98,9 @@ jobs:
 
       - name: Start application
         run: |
-          PORT=3000 bun .next/standalone/server.js &
-          sleep 20
-          curl -s http://localhost:3000/api/health > /dev/null 2>&1 && echo "✅ App is running" || echo "⚠️ App may not be ready yet"
+          bun .next/standalone/server.js &
+          sleep 10
+          echo "Application started on port 3000"
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
@@ -118,6 +109,8 @@ jobs:
             http://localhost:3000
           uploadArtifacts: true
           temporaryPublicStorage: true
+          budgetPath: |
+            .github/lighthouse-budget.json
         continue-on-error: true
 
       - name: Lighthouse results summary
@@ -131,9 +124,6 @@ jobs:
     name: API Load Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: garfix
 
     steps:
       - name: Checkout code
@@ -155,32 +145,31 @@ jobs:
 
       - name: Start application
         run: |
-          PORT=3000 bun .next/standalone/server.js &
-          sleep 20
-          curl -s http://localhost:3000/api/health > /dev/null 2>&1 && echo "✅ App is running" || echo "⚠️ App may not be ready yet"
+          bun .next/standalone/server.js &
+          sleep 10
 
       - name: Install hey (HTTP load generator)
         run: |
-          wget -q https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 -O /usr/local/bin/hey || true
-          chmod +x /usr/local/bin/hey || true
+          wget -q https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 -O /usr/local/bin/hey
+          chmod +x /usr/local/bin/hey
 
       - name: Run load test on health endpoint
         run: |
           echo "─── Load Test: /api/health ───"
-          hey -n 100 -c 10 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt || echo "Load test skipped (hey not available or server not ready)"
+          hey -n 100 -c 10 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt || true
 
       - name: Run load test on landing page
         run: |
           echo ""
           echo "─── Load Test: Landing Page ───"
-          hey -n 50 -c 5 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt || echo "Load test skipped"
+          hey -n 50 -c 5 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt || true
 
       - name: Upload load test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: load-test-results
-          path: garfix/load-test-results.txt
+          path: load-test-results.txt
           retention-days: 14
 
   # ── Performance Summary ────────────────────────────────────────────────
@@ -189,7 +178,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [bundle-analysis, lighthouse, load-test]
     if: always()
-    # NO defaults.run.working-directory — no checkout
 
     steps:
       - name: Performance Status

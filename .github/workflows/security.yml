@@ -10,7 +10,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * 1"  # Every Monday at 06:00 UTC
   workflow_dispatch:
 
 concurrency:
@@ -23,9 +23,6 @@ jobs:
     name: Dependency Vulnerability Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: garfix
 
     steps:
       - name: Checkout code
@@ -47,8 +44,10 @@ jobs:
       - name: Check for known vulnerabilities
         run: |
           echo "─── Checking for critical vulnerabilities ───"
+          # Check if audit found any critical/high issues
           if grep -qiE "(critical|high|vulnerability)" audit-results.txt; then
             echo "⚠️ Potential vulnerabilities found — review audit-results.txt"
+            echo "VULNERABILITIES_FOUND=true" >> $GITHUB_ENV
           else
             echo "✅ No critical vulnerabilities detected"
           fi
@@ -58,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dependency-audit-results
-          path: garfix/audit-results.txt
+          path: audit-results.txt
           retention-days: 30
 
   # ── Job 2: CodeQL Analysis ─────────────────────────────────────────────
@@ -85,7 +84,6 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
-          source-root: garfix
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
@@ -105,12 +103,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Full history for thorough scan
 
       - name: TruffleHog Secret Scan
         uses: trufflesecurity/trufflehog@main
         with:
-          extra_args: --only-verified --path=garfix
+          extra_args: --only-verified
         continue-on-error: true
 
       - name: Gitleaks Scan
@@ -124,9 +122,6 @@ jobs:
     name: License Compliance Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: garfix
 
     steps:
       - name: Checkout code
@@ -143,9 +138,11 @@ jobs:
       - name: Check licenses
         run: |
           echo "─── License Compliance Check ───"
+          # List all dependency licenses
           bun pm ls 2>/dev/null | head -50 || true
           echo ""
           echo "Checking for problematic licenses (GPL, AGPL, SSPL)..."
+          # Scan for problematic licenses in node_modules
           PROBLEMATIC=0
           if [ -d "node_modules" ]; then
             for pkg in node_modules/*/; do
@@ -168,7 +165,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [dependency-audit, codeql, secret-scan, license-check]
     if: always()
-    # NO defaults.run.working-directory — no checkout
 
     steps:
       - name: Security Scan Status

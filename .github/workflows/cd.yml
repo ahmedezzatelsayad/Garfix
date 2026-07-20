@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # GarfiX v1.3 — Continuous Deployment Pipeline
 # Triggers on release publish or manual dispatch
-# Jobs: build-image → deploy-staging → deploy-production → summary
+# Jobs: build → docker → deploy-staging → deploy-production
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX CD
@@ -50,6 +50,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Build application
+        run: bun run build
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -75,7 +89,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./garfix
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -112,11 +126,13 @@ jobs:
           echo "Version: ${{ github.event.inputs.version || github.ref_name }}"
           echo ""
           echo "✅ Staging deployment initiated"
-          echo "⚠️ Configure SSH/k8s deployment target in this step"
+          echo "⚠️ Configure your deployment target (SSH, k8s, etc.) in this step"
 
       - name: Run smoke tests
         run: |
           echo "─── Running Smoke Tests ───"
+          # Add your smoke test commands here
+          # Example: curl -f https://staging.garfix.io/api/health || exit 1
           echo "✅ Smoke tests passed"
 
   # ── Job 3: Deploy to Production ────────────────────────────────────────
@@ -144,11 +160,13 @@ jobs:
           echo "Version: ${{ github.event.inputs.version || github.ref_name }}"
           echo ""
           echo "✅ Production deployment initiated"
-          echo "⚠️ Configure SSH/k8s deployment target in this step"
+          echo "⚠️ Configure your deployment target (SSH, k8s, etc.) in this step"
 
       - name: Run production health check
         run: |
           echo "─── Production Health Check ───"
+          # Add your production health check here
+          # Example: curl -f https://garfix.io/api/health || exit 1
           echo "✅ Production health check passed"
 
   # ── Job 4: Deployment Summary ──────────────────────────────────────────
