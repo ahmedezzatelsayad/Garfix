@@ -27,6 +27,27 @@ import { decryptSecret, hashToken, safeCompare, tryDecryptSecret } from "@/lib/c
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
+// M4 FIX: Cache decrypted app secrets (TTL: 5 min) to avoid decrypting on every request
+const secretCache = new Map<string, { secret: string; expiresAt: number }>();
+const SECRET_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedSecret(companySlug: string, encrypted: string): string | null {
+  const cached = secretCache.get(companySlug);
+  if (cached && cached.expiresAt > Date.now()) return cached.secret;
+
+  let secret: string | null = null;
+  try {
+    secret = decryptSecret(encrypted);
+  } catch {
+    secret = tryDecryptSecret(encrypted);
+  }
+
+  if (secret) {
+    secretCache.set(companySlug, { secret, expiresAt: Date.now() + SECRET_CACHE_TTL });
+  }
+  return secret;
+}
+
 // ─── GET: Webhook verification ────────────────────────────────────────────────
 
 const verifyQuerySchema = z.object({
@@ -242,29 +263,22 @@ export async function POST(req: NextRequest) {
     }
 
     // We have both signature and app secret — verify
-    {
-      let appSecret: string | null = null;
-      try {
-        appSecret = decryptSecret(company.whatsappAppSecretEnc);
-      } catch {
-        // Decryption failed — try safe variant
-        appSecret = tryDecryptSecret(company.whatsappAppSecretEnc);
-      }
+    // M4 FIX: Use cached secret instead of decrypting on every request
+    const appSecret = getCachedSecret(company.slug, company.whatsappAppSecretEnc);
 
-      if (appSecret) {
-        const isValid = verifySignature(rawBody, signature, appSecret);
-        if (!isValid) {
-          logger.warn("[whatsapp-webhook] POST: signature verification failed", {
-            companySlug: company.slug,
-          });
-          return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-        }
-      } else {
-        logger.warn("[whatsapp-webhook] POST: could not decrypt app secret — rejecting for security", {
+    if (appSecret) {
+      const isValid = verifySignature(rawBody, signature, appSecret);
+      if (!isValid) {
+        logger.warn("[whatsapp-webhook] POST: signature verification failed", {
           companySlug: company.slug,
         });
-        return NextResponse.json({ error: "Webhook app secret decryption failed" }, { status: 403 });
+        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
       }
+    } else {
+      logger.warn("[whatsapp-webhook] POST: could not decrypt app secret — rejecting for security", {
+        companySlug: company.slug,
+      });
+      return NextResponse.json({ error: "Webhook app secret decryption failed" }, { status: 403 });
     }
 
     // Extract and log messages

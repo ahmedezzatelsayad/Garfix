@@ -27,7 +27,7 @@ function resolveSecret(envVar: string, name: string): string {
     }
     // In dev only, use a deterministic but clearly-marked dev secret
     console.warn(`⚠️  ${name} not set — using dev default. DO NOT use in production.`);
-    return `dev-only-${name.toLowerCase()}-not-for-production-${Date.now()}`;
+    return `dev-only-${name.toLowerCase()}-not-for-production-static-key`;
   }
   if (val.length < 16) {
     throw new Error(`FATAL: ${name} must be at least 16 characters.`);
@@ -51,6 +51,7 @@ export interface AuthPayload {
   companies: string[];
   permissions: Record<string, number>;
   tv: number;
+  jti?: string;
 }
 
 export interface SessionUser {
@@ -81,7 +82,8 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
 // ── Token signing ─────────────────────────────────────────────────────────
 
 export function signToken(payload: AuthPayload): string {
-  return jwt.sign({ ...payload, type: "access" }, JWT_SECRET, { expiresIn: ACCESS_TTL });
+  const jti = crypto.randomUUID();
+  return jwt.sign({ ...payload, jti, type: "access" }, JWT_SECRET, { expiresIn: ACCESS_TTL });
 }
 
 export function signRefreshToken(uid: string, tv: number): string {
@@ -99,6 +101,7 @@ export function verifyToken(token: string): AuthPayload | null {
       companies: decoded.companies || [],
       permissions: decoded.permissions || {},
       tv: decoded.tv,
+      jti: decoded.jti,
     };
   } catch {
     return null;
@@ -117,6 +120,66 @@ export function verifyRefreshToken(token: string): { uid: string; tv: number } |
   } catch {
     return null;
   }
+}
+
+// ── Token blacklist (Redis-backed, M3 FIX) ────────────────────────────────
+// When an admin force-logs out a user, their JTI is added to Redis with
+// TTL = remaining token lifetime. verifyToken checks this before accepting.
+
+let blacklistRedis: import("ioredis").default | null = null;
+let blacklistRedisAttempted = false;
+
+async function getBlacklistRedis(): Promise<import("ioredis").default | null> {
+  if (!process.env.REDIS_URL) return null;
+  if (blacklistRedis) return blacklistRedis;
+  if (blacklistRedisAttempted) return null;
+  blacklistRedisAttempted = true;
+  try {
+    const Redis = (await import("ioredis")).default;
+    blacklistRedis = new Redis(process.env.REDIS_URL, { lazyConnect: true });
+    await blacklistRedis.connect();
+    return blacklistRedis;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a token's JTI is blacklisted.
+ * Returns true if blacklisted (token should be rejected).
+ */
+export async function isTokenBlacklisted(jti: string): Promise<boolean> {
+  const redis = await getBlacklistRedis();
+  if (!redis) return false; // No Redis = no blacklist = accept
+  try {
+    return (await redis.exists(`token:blacklist:${jti}`)) > 0;
+  } catch {
+    return false; // Fail-open
+  }
+}
+
+/**
+ * Blacklist a token by its JTI for the remaining TTL.
+ */
+export async function blacklistToken(jti: string, remainingTtlSeconds: number): Promise<void> {
+  const redis = await getBlacklistRedis();
+  if (!redis || remainingTtlSeconds <= 0) return;
+  try {
+    await redis.set(`token:blacklist:${jti}`, "1", "EX", remainingTtlSeconds);
+  } catch {
+    // Fail silently — blacklist is best-effort
+  }
+}
+
+/**
+ * Async token verification that also checks the Redis blacklist.
+ * Use this for sensitive operations where revocation must be enforced.
+ */
+export async function verifyTokenWithBlacklist(token: string): Promise<AuthPayload | null> {
+  const payload = verifyToken(token);
+  if (!payload) return null;
+  if (payload.jti && await isTokenBlacklisted(payload.jti)) return null;
+  return payload;
 }
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────

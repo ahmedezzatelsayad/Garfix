@@ -25,6 +25,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, type AuthPayload } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
@@ -35,17 +37,59 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { syncInventoryOnSale } from "@/lib/inventorySync";
 import { logAiUsage } from "@/lib/ai/costTracker";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
-// In-memory confirmation tokens (TTL: 5 min)
-const confirmTokens = new Map<string, { intent: string; params: unknown; userUid: string; expiresAt: number }>();
+// ── File-based confirmation tokens (C4 FIX: persist across restarts) ────────
+const CONFIRM_TOKENS_PATH = join(process.cwd(), "data", "confirm-tokens.json");
+const CONFIRM_TOKEN_TTL = 5 * 60 * 1000; // 5 min
 
-// Clean expired tokens every 5 min
+interface ConfirmTokenEntry {
+  intent: string;
+  params: unknown;
+  userUid: string;
+  expiresAt: number;
+}
+
+function loadConfirmTokens(): Map<string, ConfirmTokenEntry> {
+  try {
+    if (existsSync(CONFIRM_TOKENS_PATH)) {
+      const raw = readFileSync(CONFIRM_TOKENS_PATH, "utf-8");
+      const obj = JSON.parse(raw) as Record<string, ConfirmTokenEntry>;
+      const map = new Map<string, ConfirmTokenEntry>();
+      const now = Date.now();
+      for (const [key, val] of Object.entries(obj)) {
+        if (val.expiresAt > now) map.set(key, val); // skip expired
+      }
+      return map;
+    }
+  } catch { /* ignore */ }
+  return new Map();
+}
+
+function saveConfirmTokens(map: Map<string, ConfirmTokenEntry>): void {
+  try {
+    const dir = join(process.cwd(), "data");
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const obj: Record<string, ConfirmTokenEntry> = {};
+    const now = Date.now();
+    for (const [key, val] of map) {
+      if (val.expiresAt > now) obj[key] = val; // skip expired
+    }
+    writeFileSync(CONFIRM_TOKENS_PATH, JSON.stringify(obj));
+  } catch { /* ignore — best effort */ }
+}
+
+const confirmTokens = loadConfirmTokens();
+
+// Clean expired tokens and persist every 5 min
 if (typeof setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now();
+    let changed = false;
     for (const [key, val] of confirmTokens) {
-      if (val.expiresAt < now) confirmTokens.delete(key);
+      if (val.expiresAt < now) { confirmTokens.delete(key); changed = true; }
     }
+    if (changed) saveConfirmTokens(confirmTokens);
   }, 300_000).unref?.();
 }
 
@@ -83,6 +127,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
   const user = result.user;
 
+  // H3 FIX: Rate limit AI tool execution (3/min per user)
+  const aiRateLimitErr = await rateLimitResponse(req, "ai:tools", LIMITS.AI_BULK, user.uid);
+  if (aiRateLimitErr) return aiRateLimitErr;
+
   const body = await parseJsonBody(req);
   const parsed = IntentSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
@@ -106,6 +154,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       userUid: user.uid,
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
+    saveConfirmTokens(confirmTokens);
 
     return NextResponse.json({
       ok: true,
@@ -122,6 +171,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("Invalid or expired confirmation token", 400);
   }
   confirmTokens.delete(confirmToken);
+  saveConfirmTokens(confirmTokens);
 
   // P0.2 FIX (AI Effectiveness prompt): capture execution latency around
   // executeIntent() only — not the whole handler (auth + token lookup are

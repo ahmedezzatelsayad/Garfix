@@ -33,9 +33,11 @@ generator client {
 // connection pooling, no read replicas. PostgreSQL handles all of these.
 // The schema was already PostgreSQL-compatible (String for money/JSON,
 // no SQLite-specific types) so no model changes were needed.
+// H1 FIX: directUrl enables Prisma Studio / migrate deploy to use a direct connection while the app uses pooled URL
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
 }
 
 // ── DEV / SANDBOX (uncomment for local dev without PostgreSQL) ──────────────
@@ -263,6 +265,9 @@ model Invoice {
   @@index([companySlug, eInvoiceStatus])
   @@index([companySlug, deletedAt])
   @@index([companySlug, dueDate, status])
+  // H4 FIX: additional indexes for frequently queried fields
+  @@index([invoiceNumber])
+  @@index([status])
   @@map("invoices")
 }
 
@@ -356,6 +361,9 @@ model StockMovement {
   @@index([companySlug, productId])
   @@index([sourceType, sourceId])
   @@index([warehouseId])
+  // H4 FIX: additional indexes for frequently queried fields
+  @@index([companySlug])
+  @@index([productId])
   @@map("stock_movements")
 }
 

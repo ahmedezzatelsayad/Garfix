@@ -112,8 +112,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // hundreds of AI calls per minute, each costing real money on the upstream
   // provider. We now enforce the limit per-user (not per-IP) so an office
   // NAT doesn't get all users blocked together.
-  const limited = await rateLimitResponse(req, "ai-chat", LIMITS.AI_CHAT, user.uid);
-  if (limited) return limited;
+  // H3 FIX: using "ai:chat" key prefix for consistency with rate limit audit.
+  const aiRateLimitErr = await rateLimitResponse(req, "ai:chat", LIMITS.AI_CHAT, user.uid);
+  if (aiRateLimitErr) return aiRateLimitErr;
   const body = await parseJsonBody(req);
   const parsed = ChatSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

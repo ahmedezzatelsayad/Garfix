@@ -69,3 +69,8 @@ coverage/
 /tool-results/
 /examples/
 /worklog.md
+
+# Backup files (H5 FIX: never commit encrypted backups to repo)
+storage/backups/
+*.db.enc
+data/
