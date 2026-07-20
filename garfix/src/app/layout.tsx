@@ -1,3 +1,7 @@
+// M1 TODO: Convert inline styles to Tailwind classes across the codebase.
+// This is a large visual refactor that could break UI — deferred until a
+// dedicated refactor sprint. Key files: chart.tsx, sidebar.tsx, and various
+// page components use `style={{}}` attributes that should be Tailwind utilities.
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Cairo, Tajawal } from "next/font/google";

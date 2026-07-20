@@ -23,8 +23,8 @@ const RegisterSchema = z.object({
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   // Rate limit: 3 registrations per hour per IP
-  const limited = await rateLimitResponse(req, "register", LIMITS.REGISTER);
-  if (limited) return limited;
+  const rateLimitErr = await rateLimitResponse(req, "auth:register", LIMITS.REGISTER);
+  if (rateLimitErr) return rateLimitErr;
 
   const body = await parseJsonBody(req);
   const parsed = RegisterSchema.safeParse(body);

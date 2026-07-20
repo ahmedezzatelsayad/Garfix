@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+// NOTE: This script is designed for PostgreSQL (not SQLite). Set DATABASE_URL env var.
+
 /**
  * scale-load-test.ts — Fresh load test for GarfiX dev server.
  *
@@ -22,17 +24,17 @@ const BASE = "http://localhost:3000";
 const RESULTS_DIR = "/home/z/my-project/bench-results";
 const COMPANY_SLUG = "loadtest";
 const FOUNDER_EMAIL = "founder@garfix.app";
-const FOUNDER_PASSWORD = "Loadtest123";
+const FOUNDER_PASSWORD = process.env.LOADTEST_PASSWORD || "CHANGE_ME_IN_ENV";
 const REQUEST_TIMEOUT_MS = 60_000;
-const DB_PATH = "/home/z/my-project/db/custom.db";
+// C5 FIX: DB_PATH removed — PostgreSQL is used, not SQLite. Set DATABASE_URL env var.
 
 const CONCURRENCY_LEVELS = [1, 5, 10, 25, 50];
-const REQUESTS_PER_LEVEL = 5; // per endpoint per concurrency level (keeps total bounded)
+const REQUESTS_PER_LEVEL = 20; // H6 FIX: was 5, too small for meaningful statistics
 const AI_CONCURRENCY_LEVELS = [1, 3, 5];
 const AI_REQUESTS_PER_LEVEL = 1;
 const BATCH_SIZES = [100, 500, 1000];
-const BATCH_CONCURRENCY = 1; // sequential — SQLite serializes writes anyway
-const HTTP_REQUEST_TIMEOUT_MS = 15_000; // non-AI: fail fast on SQLite lock contention
+const BATCH_CONCURRENCY = 1; // sequential by default; increase for PostgreSQL
+const HTTP_REQUEST_TIMEOUT_MS = 15_000; // non-AI: fail fast on connection contention
 const AI_REQUEST_TIMEOUT_MS = 60_000; // AI: matches codebase timeout
 
 mkdirSync(RESULTS_DIR, { recursive: true });
@@ -397,8 +399,8 @@ async function runConcurrencyTest(
 async function runBatchTest(size: number): Promise<BatchResult> {
   console.log(`\n  ▶ BATCH create ${size} invoices (c=${BATCH_CONCURRENCY}) ...`);
 
-  // Measure DB size before
-  const dbSizeBefore = fileSizeOnDisk(DB_PATH);
+  // C5 FIX: Cannot measure PostgreSQL DB size from file path like SQLite
+  const dbSizeBefore = 0;
 
   // Measure list latency before (single sample, fresh)
   const listBefore = await timedFetch(
@@ -452,7 +454,7 @@ async function runBatchTest(size: number): Promise<BatchResult> {
   await Promise.all(workers);
   const wallMs = performance.now() - t0;
 
-  // Wait a brief moment for SQLite to flush
+  // Wait a brief moment for DB to flush (C5 FIX: updated for PostgreSQL)
   await new Promise((r) => setTimeout(r, 500));
 
   // Measure list latency after (5 samples)
@@ -467,7 +469,8 @@ async function runBatchTest(size: number): Promise<BatchResult> {
     listSamplesAfter.push(r.latencyMs);
   }
 
-  const dbSizeAfter = fileSizeOnDisk(DB_PATH);
+  // C5 FIX: Cannot measure PostgreSQL DB size from file path like SQLite
+  const dbSizeAfter = 0;
 
   const result: BatchResult = {
     size,
@@ -522,7 +525,7 @@ function writeOutputs(
       timestamp: new Date().toISOString(),
       base: BASE,
       serverPid,
-      dbPath: DB_PATH,
+      dbPath: "PostgreSQL (C5 FIX: no single file path)",
       requestTimeoutMs: REQUEST_TIMEOUT_MS,
       requestsPerLevel: REQUESTS_PER_LEVEL,
       aiRequestsPerLevel: AI_REQUESTS_PER_LEVEL,
@@ -609,7 +612,7 @@ function writeOutputs(
   md.push(`- **Timestamp**: ${jsonPayload.meta.timestamp}`);
   md.push(`- **Target**: ${BASE} (Next.js dev server)`);
   md.push(`- **Server PID**: ${serverPid ?? "not found"}`);
-  md.push(`- **DB**: ${DB_PATH}`);
+  md.push(`- **DB**: PostgreSQL (C5 FIX: no single file path)`);
   md.push(`- **Test company**: \`${COMPANY_SLUG}\` (created + cleaned up)`);
   md.push(`- **Auth**: JWT cookie \`inv_token\` issued via \`/api/auth/login\``);
   md.push(
@@ -682,7 +685,7 @@ function writeOutputs(
   md.push("- **Dashboard stats**: tested with `?fresh=1` to bypass the 30s in-memory cache and measure the real aggregate query cost. Without `?fresh=1`, repeated calls hit cache and return in <5ms — not representative of cold-query performance.");
   md.push("- **AI endpoint** (`/api/ai/smart-parse`): tested at concurrency 1/3/5 only to avoid hammering the free z-ai-web-dev-sdk. Failures (429/timeout) recorded as errors, NOT retried.");
   md.push("- **Dev mode**: Next.js runs in dev mode (no prod build). Hot-module recompilation, no HTTP caching, source maps enabled. Production numbers will be substantially better.");
-  md.push("- **SQLite**: single-file DB at `db/custom.db`. No WAL mode, single connection. Production-targeted Postgres will behave differently.");
+  md.push("- **PostgreSQL**: production database. Use DATABASE_URL env var to configure connection. C5 FIX: migrated from SQLite.");
   md.push("");
   md.push("## 4. Artifacts");
   md.push("- `scale-load-test.json` — full raw data");
@@ -694,6 +697,12 @@ function writeOutputs(
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 async function main() {
+  // M2 FIX: Require LOADTEST_PASSWORD env var before running
+  if (FOUNDER_PASSWORD === "CHANGE_ME_IN_ENV") {
+    console.error("ERROR: Set LOADTEST_PASSWORD env var before running load tests.");
+    process.exit(1);
+  }
+
   console.log("╔══════════════════════════════════════════════════════════════╗");
   console.log("║  GarfiX Scale Load Test — Task 3-load-test                  ║");
   console.log("╚══════════════════════════════════════════════════════════════╝");

@@ -116,6 +116,7 @@ interface SettingsResponse {
 /** Response shape for the invoice template list endpoint. */
 interface InvoiceTemplateListResponse {
   templates: InvoiceTemplateRow[];
+  templateSettings?: Record<string, unknown>;
 }
 
 /** Response shape for a single invoice template endpoint. */

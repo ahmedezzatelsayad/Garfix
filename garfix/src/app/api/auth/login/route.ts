@@ -24,8 +24,8 @@ const LoginSchema = z.object({
 export const POST = withErrorHandler(async (req: NextRequest) => {
   // Rate limit: 5 attempts per 15 min per IP
   const ip = getClientIp(req);
-  const limited = await rateLimitResponse(req, "login", LIMITS.LOGIN);
-  if (limited) return limited;
+  const rateLimitErr = await rateLimitResponse(req, "auth:login", LIMITS.LOGIN);
+  if (rateLimitErr) return rateLimitErr;
 
   const body = await parseJsonBody(req);
   const parsed = LoginSchema.safeParse(body);
