@@ -1,0 +1,202 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarfiX v1.3 — Performance Benchmark Pipeline
+# Runs on push to main + weekly schedule + manual trigger
+# Jobs: bundle analysis, Lighthouse, load testing
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: GarfiX Performance
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: garfix
+
+jobs:
+  # ── Job 1: Bundle Size Analysis ────────────────────────────────────────
+  bundle-analysis:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Build and analyze bundle
+        run: |
+          echo "─── Building for bundle analysis ───"
+          bun run build 2>&1 | tee build-output.txt
+
+          echo ""
+          echo "─── Bundle Size Report ───"
+          if [ -d ".next/static" ]; then
+            echo "Static assets:"
+            du -sh .next/static/
+            echo ""
+            echo "JavaScript chunks:"
+            find .next/static/chunks -name "*.js" -exec du -h {} \; 2>/dev/null | sort -rh | head -20
+            echo ""
+            echo "CSS files:"
+            find .next/static/css -name "*.css" -exec du -h {} \; 2>/dev/null | sort -rh | head -10
+            echo ""
+            TOTAL_JS=$(find .next/static/chunks -name "*.js" -exec cat {} + 2>/dev/null | wc -c)
+            TOTAL_CSS=$(find .next/static/css -name "*.css" -exec cat {} + 2>/dev/null | wc -c)
+            echo "Total JS size:   $(echo "scale=2; $TOTAL_JS / 1024 / 1024" | bc) MB"
+            echo "Total CSS size:  $(echo "scale=2; $TOTAL_CSS / 1024 / 1024" | bc) MB"
+          else
+            echo "⚠️ .next/static not found"
+          fi
+
+      - name: Upload build analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: garfix/build-output.txt
+          retention-days: 14
+
+  # ── Job 2: Lighthouse Performance ──────────────────────────────────────
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: garfix
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: garfix
+        run: bun run db:generate
+
+      - name: Build application
+        working-directory: garfix
+        run: bun run build
+
+      - name: Start application
+        working-directory: garfix
+        run: |
+          bun .next/standalone/server.js &
+          sleep 10
+          echo "Application started on port 3000"
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            http://localhost:3000
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: .github/lighthouserc.json
+        continue-on-error: true
+
+      - name: Lighthouse results summary
+        if: always()
+        run: |
+          echo "✅ Lighthouse audit completed"
+          echo "Check the uploaded artifacts for detailed results"
+
+  # ── Job 3: Load Test ──────────────────────────────────────────────────
+  load-test:
+    name: API Load Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: garfix
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: garfix
+        run: bun run db:generate
+
+      - name: Build application
+        working-directory: garfix
+        run: bun run build
+
+      - name: Start application
+        working-directory: garfix
+        run: |
+          bun .next/standalone/server.js &
+          sleep 10
+
+      - name: Install hey (HTTP load generator)
+        run: |
+          wget -q https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 -O /usr/local/bin/hey
+          chmod +x /usr/local/bin/hey
+
+      - name: Run load test on health endpoint
+        run: |
+          echo "─── Load Test: /api/health ───"
+          hey -n 100 -c 10 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt || true
+
+      - name: Run load test on landing page
+        run: |
+          echo ""
+          echo "─── Load Test: Landing Page ───"
+          hey -n 50 -c 5 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt || true
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: load-test-results.txt
+          retention-days: 14
+
+  # ── Performance Summary ────────────────────────────────────────────────
+  perf-summary:
+    name: Performance Summary
+    runs-on: ubuntu-latest
+    needs: [bundle-analysis, lighthouse, load-test]
+    if: always()
+
+    steps:
+      - name: Performance Status
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║     GarfiX v1.3 Performance Test Summary        ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Bundle Analysis:   ${{ needs.bundle-analysis.result }}"
+          echo "Lighthouse Audit:  ${{ needs.lighthouse.result }}"
+          echo "Load Test:         ${{ needs.load-test.result }}"
