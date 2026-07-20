@@ -62,6 +62,10 @@ export interface GatewayResult<T = unknown> {
   latencyMs: number;
   /** If data came from cache, the cache entry's hitCount after increment. */
   cacheHitCount?: number;
+  /** True if the request was blocked by the budget gate. */
+  budgetBlocked?: boolean;
+  /** Human-readable reason for budget block. */
+  budgetReason?: string;
 }
 
 // ─── Cache key generation ───────────────────────────────────────────────────

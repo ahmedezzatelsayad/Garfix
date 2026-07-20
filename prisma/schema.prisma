@@ -68,6 +68,8 @@ model User {
   emailVerifications EmailVerification[]
   orderDeliveries   OrderDelivery[]
   auditLogs         AuditLog[]
+  mfaSecrets        MFASecret[]
+  sessions          SessionRegistry[]
 
   @@index([role])
   @@map("app_users")
@@ -1692,4 +1694,84 @@ model CompiledRule {
   @@index([requestType, status])
   @@index([accuracyOnHistoricalSample])
   @@map("compiled_rules")
+}
+
+model MFASecret {
+  id             String   @id @default(cuid())
+  userUid        String
+  secret         String   /// encrypted TOTP secret (stored via cryptoVault)
+  recoveryCodes  String   /// JSON array of hashed recovery codes, encrypted
+  enabled        Boolean  @default(true)
+  verifiedAt     DateTime?
+  lastUsedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+
+  @@index([userUid])
+}
+
+model SessionRegistry {
+  id         String   @id @default(cuid())
+  userUid    String
+  jti        String   @unique
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  user       User     @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+
+  @@index([userUid])
+  @@index([expiresAt])
+}
+
+model TamperEvidenceChain {
+  id            String   @id @default(cuid())
+  companySlug   String?
+  entryId       String   @unique  /// references AuditLog.id or AdminAuditLog.id
+  contentHash   String   /// SHA-256 of the entry content at write time
+  prevHash      String   /// hash of the previous entry in the chain (null for first)
+  chainOrder    Int      @default(0)
+  verifiedAt    DateTime?
+  isValid       Boolean? /// null = not yet verified, true = chain intact, false = tampered
+  createdAt     DateTime @default(now())
+
+  @@index([companySlug])
+  @@index([chainOrder])
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  companySlug String
+  url         String
+  events      String   /// JSON array of subscribed event types
+  secret      String   /// HMAC signing secret (encrypted via cryptoVault)
+  isActive    Boolean  @default(true)
+  lastPingAt  DateTime?
+  failCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deliveries  WebhookDelivery[]
+
+  @@index([companySlug])
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  endpointId  String
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  eventType   String
+  payload     String   /// JSON payload
+  statusCode  Int?
+  response    String?
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  status      String   @default("pending") /// pending / success / failed / retried
+  nextRetryAt DateTime?
+  createdAt   DateTime @default(now())
+  deliveredAt DateTime?
+
+  @@index([endpointId])
+  @@index([status])
+  @@index([nextRetryAt])
 }
