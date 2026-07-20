@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# GarfiX v1.3 — Multi-stage Production Dockerfile
+# GarfiX v12 — Multi-stage Production Dockerfile
 # Optimized for: minimal image size, security, fast builds
+# Runtime deps: PostgreSQL 17 + Valkey 8 (Redis-compatible, BullMQ)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────
@@ -30,6 +31,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Create storage directory for backups
+RUN mkdir -p /app/storage/backups && chown nextjs:nodejs /app/storage
+
 # Copy standalone build output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -46,5 +50,9 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Healthcheck: /api/health (existing endpoint)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 CMD ["bun", "server.js"]
