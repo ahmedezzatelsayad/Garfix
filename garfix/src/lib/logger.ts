@@ -35,6 +35,48 @@ const LEVEL_PRIORITY: Record<Level, number> = {
 
 const MIN_LEVEL: Level = (process.env.LOG_LEVEL as Level) || (process.env.NODE_ENV === "production" ? "info" : "debug");
 
+const REDACT_KEYS = new Set([
+  "password",
+  "passwordHash",
+  "token",
+  "accessToken",
+  "refreshToken",
+  "secret",
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "apiKey",
+  "openrouterApiKey",
+]);
+
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
+
+function redactMeta(meta: LogMeta): LogMeta {
+  const result: LogMeta = {};
+  for (const key of Object.keys(meta)) {
+    if (REDACT_KEYS.has(key.toLowerCase())) {
+      result[key] = "[REDACTED]";
+      continue;
+    }
+    const value = meta[key];
+    if (typeof value === "string") {
+      result[key] = value.replace(EMAIL_RE, (match, domain) => {
+        const local = match.substring(0, match.indexOf("@"));
+        return local[0] + "***@" + domain;
+      });
+    } else if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      result[key] = redactMeta(value as LogMeta);
+    } else if (Array.isArray(value)) {
+      result[key] = value.map((item) =>
+        item !== null && typeof item === "object" ? redactMeta(item as LogMeta) : item,
+      );
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 function shouldLog(level: Level): boolean {
   return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[MIN_LEVEL];
 }
@@ -42,11 +84,12 @@ function shouldLog(level: Level): boolean {
 function format(level: Level, msg: string, meta?: LogMeta): string {
   const ts = new Date().toISOString();
   const base = { ts, level, msg };
+  const redactedMeta = meta ? redactMeta(meta) : undefined;
   if (process.env.NODE_ENV === "production") {
-    return JSON.stringify(meta ? { ...base, ...meta } : base);
+    return JSON.stringify(redactedMeta ? { ...base, data: redactedMeta } : base);
   }
-  const metaStr = meta && Object.keys(meta).length > 0
-    ? " " + JSON.stringify(meta)
+  const metaStr = redactedMeta && Object.keys(redactedMeta).length > 0
+    ? " " + JSON.stringify(redactedMeta)
     : "";
   return `[${ts}] ${level.toUpperCase().padEnd(5)} ${msg}${metaStr}`;
 }

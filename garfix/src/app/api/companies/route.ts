@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
+import { requirePermission } from "@/lib/middleware";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { DEFAULT_PLANS } from "@/lib/plans";
@@ -93,11 +94,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  const result = await resolveAuth(req);
-  if (!result.ok || !result.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = result.user;
+  // Authorization: enforce settings_access permission for creating companies
+  const permResult = await requirePermission(req, "settings_access");
+  if ("error" in permResult) return permResult.error;
+  const user = permResult.user;
   const founder = isFounderEmail(user.email);
 
   const body = await parseJsonBody(req);

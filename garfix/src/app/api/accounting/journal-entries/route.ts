@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -30,6 +30,12 @@ const CreateSchema = z.object({
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Authorization: enforce finance_access permission for reading journal entries
+  if (!hasPermission(result.user, "finance_access")) {
+    return NextResponse.json({ error: "ليس لديك صلاحية: finance_access" }, { status: 403 });
+  }
+
   const sp = req.nextUrl.searchParams;
   const companySlug = sp.get("companySlug") || undefined;
   if (companySlug && !assertCompanyAccess(result.user, companySlug)) {

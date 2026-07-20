@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
+import { requirePermissionForCompany, requirePermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -118,8 +119,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  if (data.companySlug && !assertCompanyAccess(user, data.companySlug)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Authorization: AI can access financial data, so require view_invoices permission
+  if (data.companySlug) {
+    const access = await requirePermissionForCompany(req, "view_invoices", data.companySlug);
+    if ("error" in access) return access.error;
+  } else {
+    const permResult = await requirePermission(req, "view_invoices");
+    if ("error" in permResult) return permResult.error;
   }
 
   const conversationId = data.conversationId || randomUUID();

@@ -124,14 +124,14 @@ describe("withErrorHandler", () => {
     expect(body).toEqual({ ok: true });
   });
 
-  it("catches a thrown Error and returns a 500 with the message", async () => {
+  it("catches a thrown Error and returns a 500 with a generic message (never leaks internals)", async () => {
     const handler = withErrorHandler(async () => {
       throw new Error("boom");
     });
     const res = await handler();
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("boom");
+    expect(body.error).toBe("Internal server error");
   });
 
   it("catches a thrown non-Error value and returns 500 with generic message", async () => {

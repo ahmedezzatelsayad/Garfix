@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -27,6 +27,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const user = result.user;
+
+  // Authorization: enforce view_customers permission for reading client data
+  if (!hasPermission(user, "view_customers")) {
+    return NextResponse.json({ error: "ليس لديك صلاحية: view_customers" }, { status: 403 });
+  }
+
   const sp = req.nextUrl.searchParams;
   const companySlug = sp.get("companySlug") || undefined;
   const search = sp.get("search") || undefined;

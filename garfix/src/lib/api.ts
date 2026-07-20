@@ -3,6 +3,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth, type AuthPayload } from "@/lib/auth";
+import { isFounderEmail } from "@/lib/founder";
 import { logger } from "@/lib/logger";
 import { z, ZodError } from "zod";
 
@@ -15,18 +16,40 @@ export async function requireAuth(req: NextRequest): Promise<{ user: AuthPayload
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json(
-      { error: result.error || "Unauthorized" },
+      { error: result.error || "غير مصرّح" },
       { status: result.status || 401 },
     );
   }
   return { user: result.user };
 }
 
-/** Require founder — return 403 if not. */
-export function requireFounder(user: AuthPayload): NextResponse | null {
-  // Founder is determined by email — checked via env FOUNDER_EMAIL
-  // We can't import isFounderEmail here without circular dep; just check role + a founder flag
-  // The auth flow sets role=admin for the founder; founder-specific endpoints check email match
+/**
+ * Require founder — returns null if user IS the founder (proceed),
+ * or a 403 NextResponse if NOT the founder.
+ *
+ * Checks both that the user's email matches FOUNDER_EMAIL (via isFounderEmail)
+ * and that the founder's email is verified (emailVerified), matching the
+ * defense-in-depth check in middleware.ts.
+ */
+export async function requireFounder(user: AuthPayload): Promise<NextResponse | null> {
+  if (!isFounderEmail(user.email)) {
+    return NextResponse.json(
+      { error: "هذه العملية متاحة للمؤسس فقط" },
+      { status: 403 },
+    );
+  }
+  // SEC: Founder must have verified email — defense-in-depth
+  const { db } = await import("@/lib/db");
+  const dbUser = await db.user.findUnique({
+    where: { uid: user.uid },
+    select: { emailVerified: true },
+  });
+  if (!dbUser?.emailVerified) {
+    return NextResponse.json(
+      { error: "حساب المؤسس يجب أن يكون موثّق البريد الإلكتروني" },
+      { status: 403 },
+    );
+  }
   return null;
 }
 
@@ -73,12 +96,11 @@ export function withErrorHandler<T extends unknown[]>(
     try {
       return await fn(...args);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Internal server error";
-      // Note: `req` is not in scope here on purpose — the wrapper is generic
-      // over the handler signature (some handlers receive no req). We log the
-      // message only.
-      logger.error("[api] unhandled error", { err: message });
-      return NextResponse.json({ error: message }, { status: 500 });
+      // Log the real error server-side for debugging
+      const internalMessage = err instanceof Error ? err.message : String(err);
+      logger.error("[api] unhandled error", { err: internalMessage });
+      // Return a generic message to the client — never leak internal details
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
   };
 }

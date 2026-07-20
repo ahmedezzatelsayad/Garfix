@@ -273,9 +273,9 @@ export function withAuth<T = unknown>(
     try {
       return await handler(req, { user, body });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "خطأ داخلي في الخادم";
-      logger.error("[withAuth] unhandled", { err: message, route: req.url });
-      return NextResponse.json({ error: message }, { status: 500 });
+      const detail = err instanceof Error ? err.message : String(err);
+      logger.error("[withAuth] unhandled", { err: detail, route: req.url });
+      return NextResponse.json({ error: "خطأ داخلي في الخادم" }, { status: 500 });
     }
   };
 }

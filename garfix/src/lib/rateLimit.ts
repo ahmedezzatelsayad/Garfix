@@ -34,6 +34,14 @@ import { logger } from "./logger";
 const REDIS_URL = process.env.REDIS_URL;
 const USE_REDIS = Boolean(REDIS_URL);
 
+// Trusted proxy IPs (comma-separated via TRUSTED_PROXIES env var).
+// When set, getClientIp() will parse x-forwarded-for using these IPs
+// to determine the real client IP. When NOT set, x-forwarded-for is
+// ignored entirely (unverifiable) and only x-real-ip is used.
+const TRUSTED_PROXIES: ReadonlySet<string> = new Set(
+  (process.env.TRUSTED_PROXIES || "").split(",").map((ip) => ip.trim()).filter(Boolean),
+);
+
 // Lazy Redis singleton — only created when REDIS_URL is set.
 let redisClient: import("ioredis").default | null = null;
 let redisInitAttempted = false;
@@ -116,6 +124,8 @@ export const LIMITS = {
   PASSWORD_RESET: { windowMs: 60 * 60 * 1000, maxAttempts: 3 },
   AI_CHAT: { windowMs: 60 * 1000, maxAttempts: 10 },
   AI_BULK: { windowMs: 60 * 1000, maxAttempts: 3 },
+  API_READ: { windowMs: 60 * 1000, maxAttempts: 60 },
+  API_WRITE: { windowMs: 60 * 1000, maxAttempts: 30 },
 } as const;
 
 export interface RateLimitResult {
@@ -228,15 +238,45 @@ function checkRateLimitMemory(
 // HTTP helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Extract client IP from request (handles proxies). */
+/**
+ * Extract client IP from request — spoofing-resistant.
+ *
+ * Strategy:
+ *   1. If TRUSTED_PROXIES is NOT configured, x-forwarded-for is ignored
+ *      entirely (it cannot be verified) and we use x-real-ip only.
+ *   2. If TRUSTED_PROXIES IS configured and the direct connection IP
+ *      (x-real-ip) matches a trusted proxy, we walk x-forwarded-for from
+ *      RIGHT to LEFT, skipping any trusted proxy IPs. The rightmost
+ *      untrusted entry is the real client IP.
+ *   3. Falls back to x-real-ip or "unknown".
+ */
 export function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
+  const realIp = req.headers.get("x-real-ip")?.trim();
+
+  // No trusted proxies configured → x-forwarded-for is unverifiable.
+  if (TRUSTED_PROXIES.size === 0) {
+    return realIp || "unknown";
   }
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
-  return "unknown";
+
+  // Direct connection IP must be a trusted proxy to trust x-forwarded-for.
+  if (!realIp || !TRUSTED_PROXIES.has(realIp)) {
+    return realIp || "unknown";
+  }
+
+  // realIp IS a trusted proxy → parse x-forwarded-for from right to left.
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (!forwarded) return realIp;
+
+  const ips = forwarded.split(",").map((ip) => ip.trim()).filter(Boolean);
+  // Walk from rightmost (set by the closest trusted proxy) to left.
+  for (let i = ips.length - 1; i >= 0; i--) {
+    if (!TRUSTED_PROXIES.has(ips[i])) {
+      return ips[i]; // rightmost untrusted entry = real client
+    }
+  }
+
+  // All entries are trusted proxies — fall back to realIp.
+  return realIp;
 }
 
 /** Rate limit middleware — returns null if OK, or a 429 NextResponse if blocked. ASYNC. */
