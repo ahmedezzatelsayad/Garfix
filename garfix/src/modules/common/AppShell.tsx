@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { AICopilotBubble } from "@/modules/ai/AICopilotBubble";
 import { CommandPaletteProvider } from "@/components/garfix/CommandPaletteProvider";
 import { ErrorBoundary } from "@/components/garfix/ErrorBoundary";
+import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 
 // Lazy-load heavy views
 const DashboardView = lazy(() => import("@/modules/dashboard/DashboardView").then((m) => ({ default: m.DashboardView })));
@@ -159,6 +160,7 @@ export default function AppShell() {
             </Suspense>
             </ErrorBoundary>
           </main>
+          <ProfessionalFooter variant="app" version={process.env.NEXT_PUBLIC_APP_VERSION || '12'} />
         </div>
 
         <AICopilotBubble />

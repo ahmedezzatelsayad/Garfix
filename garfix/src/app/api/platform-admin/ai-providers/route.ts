@@ -42,7 +42,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 const UpdateSchema = z.object({
-  provider: z.enum(["z-ai", "openrouter", "anthropic", "openai", "gemini", "custom"]),
+  provider: z.enum(["z-ai", "openrouter", "anthropic", "openai", "gemini", "deepseek", "custom"]),
   apiKey: z.string().optional(),
   model: z.string().optional(),
   isEnabled: z.boolean().optional(),

@@ -52,7 +52,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       role: founder ? "admin" : "employee",
       companies: JSON.stringify([]),
       permissions: JSON.stringify({}),
-      emailVerified: true,
+      emailVerified: false,
       tokenVersion: 0,
     },
   });

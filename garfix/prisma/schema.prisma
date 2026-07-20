@@ -27,15 +27,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ── DEV / SANDBOX (active) ───────────────────────────────────────────────────
+// ── PRODUCTION (active) ─────────────────────────────────────────────────────
+// EA-002 FIX: Switched from SQLite to PostgreSQL for production readiness.
+// SQLite is unsuitable for multi-tenant SaaS: no concurrent writes, no
+// connection pooling, no read replicas. PostgreSQL handles all of these.
+// The schema was already PostgreSQL-compatible (String for money/JSON,
+// no SQLite-specific types) so no model changes were needed.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ── PRODUCTION (uncomment to activate PostgreSQL) ────────────────────────────
+// ── DEV / SANDBOX (uncomment for local dev without PostgreSQL) ──────────────
 // datasource db {
-//   provider = "postgresql"
+//   provider = "sqlite"
 //   url      = env("DATABASE_URL")
 // }
 
@@ -90,7 +95,7 @@ model Company {
   id                          Int      @id @default(autoincrement())
   name                        String
   slug                        String   @unique
-  logoBase64                  String?
+  logoBase64                  String?  // EA-013 DEPRECATED: Use storage.ts instead. This column will be removed in a future migration.
   nameAr                      String?
   emoji                       String?
   color                       String?

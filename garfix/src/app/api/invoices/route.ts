@@ -49,6 +49,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const status = sp.get("status") || undefined;
   const search = sp.get("search") || undefined;
   const limit = Math.min(parseInt(sp.get("limit") || "100"), 500);
+  const cursor = sp.get("cursor") || undefined; // RI-016 FIX: cursor-based pagination (id as int)
 
   if (companySlug && !assertCompanyAccess(user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -67,14 +68,27 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     ];
   }
 
+  // RI-016 FIX: Cursor-based pagination instead of offset-only
+  // Invoice.id is Int (autoincrement), so cursor must be a number
+  const cursorId = cursor ? parseInt(cursor, 10) : undefined;
+  const cursorObj = cursorId && !isNaN(cursorId) ? { id: cursorId } : undefined;
+  const take = limit + 1; // Fetch one extra to check if there's a next page
+
   const invoices = await db.invoice.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: limit,
+    take,
+    cursor: cursorObj,
+    skip: cursor ? 1 : 0,
   });
 
+  // Check if there's a next page
+  const hasNextPage = invoices.length > limit;
+  const items = hasNextPage ? invoices.slice(0, limit) : invoices;
+  const nextCursor = hasNextPage ? String(items[items.length - 1]?.id) : null;
+
   return NextResponse.json({
-    invoices: invoices.map((inv) => ({
+    invoices: items.map((inv) => ({
       ...inv,
       lineItems: parseJsonField(inv.lineItems, []),
       subtotal: num(inv.subtotal, 3),
@@ -85,6 +99,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       paid: num(inv.paid, 3),
       discount: num(inv.discount, 3),
     })),
+    nextCursor,
   });
 });
 

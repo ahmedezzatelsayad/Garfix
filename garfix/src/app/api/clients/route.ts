@@ -56,7 +56,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     take: 500,
   });
 
-  return NextResponse.json({ clients });
+  // RI-016 FIX: Add cursor info for pagination support
+  const nextCursor = clients.length >= 500 ? clients[clients.length - 1]?.id : null;
+  return NextResponse.json({ clients, nextCursor });
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {

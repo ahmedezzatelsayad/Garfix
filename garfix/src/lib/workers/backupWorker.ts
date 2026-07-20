@@ -85,7 +85,7 @@ async function handleVerifyBackup(data: VerifyBackupJobData): Promise<void> {
     throw new Error(`backupWorker.verify-backup: backup "${data.backupName}" not found`);
   }
 
-  const BACKUP_DIR = process.env.BACKUP_DIR || "/home/z/my-project/storage/backups";
+  const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), "storage", "backups");
   const backupPath = path.join(BACKUP_DIR, target.name);
   // Path-traversal guard — backupName is from a trusted caller, but be safe.
   const resolvedBase = path.resolve(BACKUP_DIR);

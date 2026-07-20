@@ -16,7 +16,8 @@ import { logger } from "./logger";
 import { enqueue, QUEUE_NAMES } from "./queues";
 import { encryptSecret, decryptSecret } from "./cryptoVault";
 
-const BACKUP_DIR = process.env.BACKUP_DIR || "/home/z/my-project/storage/backups";
+// EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), "storage", "backups");
 const MAX_BACKUPS = parseInt(process.env.BACKUP_KEEP_MAX || "30", 10);
 
 export interface BackupResult {

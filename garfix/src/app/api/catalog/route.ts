@@ -39,6 +39,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (search) where.OR = [{ name: { contains: search } }, { code: { contains: search } }];
 
   const products = await db.productCatalog.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+
+  // RI-016 FIX: Add cursor info for pagination support
+  const nextCursor = products.length >= 500 ? products[products.length - 1]?.id : null;
+
   return NextResponse.json({
     products: products.map((p) => ({
       ...p,
@@ -47,6 +51,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       sellingPrice: p.sellingPrice ? num(p.sellingPrice, 3) : null,
       wholesalePrice: p.wholesalePrice ? num(p.wholesalePrice, 3) : null,
     })),
+    nextCursor,
   });
 });
 

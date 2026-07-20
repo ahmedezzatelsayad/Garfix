@@ -52,7 +52,7 @@ export const GET = withErrorHandler<[NextRequest, RouteParams]>(
     return new NextResponse(new Uint8Array(buffer) as BodyInit, {
       headers: {
         "Content-Type": mime,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "private, max-age=3600",
         "Content-Length": buffer.length.toString(),
       },
     });

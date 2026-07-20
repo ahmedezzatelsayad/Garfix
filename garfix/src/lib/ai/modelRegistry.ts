@@ -56,7 +56,7 @@ export interface RegistryEntry {
 
 let cachedRegistry: RegistryEntry[] | null = null;
 let cacheExpiry = 0;
-const CACHE_TTL_MS = 30_000; // 30s — short because health scores change during benchmarks
+const CACHE_TTL_MS = 300_000; // RI-019 FIX: 5 min cache — avoids DB query per AI request
 
 export function invalidateRegistryCache(): void {
   cachedRegistry = null;
