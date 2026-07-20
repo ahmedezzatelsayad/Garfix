@@ -316,6 +316,22 @@
   .garfix-mobile-only { display: flex !important; }
   /* Sidebar: hide by default, show on toggle (already handled in Sidebar.tsx) */
   /* Tables turn into cards via DataTable component */
+  /* Fix canvas blurriness on mobile — prevent subpixel rendering */
+  canvas {
+    image-rendering: auto !important;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Prevent blur from CSS transforms on mobile */
+  * {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  /* Ensure text is crisp on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 }
 @media (min-width: 769px) {
   .garfix-mobile-only { display: none !important; }
@@ -329,5 +345,24 @@
   [role="button"],
   [role="link"] {
     min-height: 44px;
+  }
+}
+
+/* ── Landing Page Mobile Polish ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Prevent horizontal overflow on landing page */
+  .min-h-dvh {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  /* Better text sizing on small screens */
+  h1 { word-break: break-word; hyphens: auto; }
+  /* Ensure grid items don't overflow on small screens */
+  [class*="grid-cols"] {
+    min-width: 0;
+  }
+  /* Fix blurring from animations on mobile */
+  [style*="animation"] {
+    will-change: auto;
   }
 }

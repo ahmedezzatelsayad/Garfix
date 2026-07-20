@@ -29,7 +29,8 @@ export type EInvoiceAuthority =
   | "uae_fta" // UAE Federal Tax Authority
   | "bahrain_nbr" // Bahrain National Bureau for Revenue
   | "oman_tax" // Oman Tax Authority
-  | "kuwait_future"; // Kuwait (not yet mandatory, placeholder)
+  | "kuwait_future" // Kuwait (not yet mandatory, placeholder)
+  | "eta_egypt"; // Egyptian Tax Authority
 
 export const GULF_COUNTRIES: CountryConfig[] = [
   {
@@ -179,6 +180,81 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     weekendDays: [6, 0], // Saturday + Sunday
     // Note: economic crisis — rate may vary; 11% is the statutory standard VAT rate.
     defaultTaxRate: "11",
+  },
+  // ────────────────────────────────────────────────────────────────────────────
+  // Expanded MENA (Egypt + Levant + North Africa + Yemen + Sudan) — L2
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    code: "EG",
+    nameAr: "جمهورية مصر العربية",
+    nameEn: "Egypt",
+    currency: "EGP",
+    currencyAr: "جنيه مصري",
+    vatRate: 14,
+    vatApplicable: true,
+    eInvoiceAuthority: "eta_egypt", // Egyptian Tax Authority (e-invoicing mandatory since 2022)
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "14",
+  },
+  {
+    code: "PS",
+    nameAr: "دولة فلسطين",
+    nameEn: "Palestine",
+    currency: "ILS",
+    currencyAr: "شيكل إسرائيلي",
+    vatRate: 16,
+    vatApplicable: true,
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "16",
+  },
+  {
+    code: "SY",
+    nameAr: "الجمهورية العربية السورية",
+    nameEn: "Syria",
+    currency: "SYP",
+    currencyAr: "ليرة سورية",
+    vatRate: 0,
+    vatApplicable: false, // Syria does not currently implement VAT
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "0",
+  },
+  {
+    code: "YE",
+    nameAr: "الجمهورية اليمنية",
+    nameEn: "Yemen",
+    currency: "YER",
+    currencyAr: "ريال يمني",
+    vatRate: 5,
+    vatApplicable: true,
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "5",
+  },
+  {
+    code: "SD",
+    nameAr: "جمهورية السودان",
+    nameEn: "Sudan",
+    currency: "SDG",
+    currencyAr: "جنيه سوداني",
+    vatRate: 17,
+    vatApplicable: true,
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "17",
+  },
+  {
+    code: "LY",
+    nameAr: "دولة ليبيا",
+    nameEn: "Libya",
+    currency: "LYD",
+    currencyAr: "دينار ليبي",
+    vatRate: 0,
+    vatApplicable: false, // Libya has not yet implemented VAT
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "0",
   },
 ];
 

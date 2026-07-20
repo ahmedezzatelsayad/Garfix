@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Sparkles, Shield, Zap, Globe, ChevronLeft } from "lucide-react";
 import { DEFAULT_PLANS } from "@/lib/plans";
 import { cn } from "@/lib/utils";
+import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -33,30 +34,52 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
     const ctx = c.getContext("2d");
     if (!ctx) return;
     let raf: number;
-    const resize = () => { c.width = c.offsetWidth; c.height = c.offsetHeight; };
+
+    // Use devicePixelRatio for crisp rendering on mobile/retina
+    const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+
+    const resize = () => {
+      const w = c.offsetWidth;
+      const h = c.offsetHeight;
+      c.width = w * dpr;
+      c.height = h * dpr;
+      ctx.scale(dpr, dpr);
+      // Store logical dimensions for drawing
+      c.dataset.logicalW = String(w);
+      c.dataset.logicalH = String(h);
+    };
     resize();
     window.addEventListener("resize", resize);
-    const pts = Array.from({ length: 50 }, () => ({
-      x: Math.random() * 2000,
-      y: Math.random() * 1200,
+
+    // Reduce particles on mobile for performance
+    const isMobile = window.innerWidth < 768;
+    const particleCount = isMobile ? 20 : 50;
+    const connectionDist = isMobile ? 80 : 140;
+
+    const pts = Array.from({ length: particleCount }, () => ({
+      x: Math.random() * (parseInt(c.dataset.logicalW || "2000")),
+      y: Math.random() * (parseInt(c.dataset.logicalH || "1200")),
       vx: (Math.random() - 0.5) * 0.1,
       vy: (Math.random() - 0.5) * 0.1,
-      r: Math.random() * 1.2 + 0.3,
+      r: Math.random() * (isMobile ? 0.8 : 1.2) + 0.3,
       o: Math.random() * 0.25 + 0.05,
     }));
+
     const draw = () => {
-      ctx.clearRect(0, 0, c.width, c.height);
+      const w = parseInt(c.dataset.logicalW || String(c.offsetWidth)) ;
+      const h = parseInt(c.dataset.logicalH || String(c.offsetHeight));
+      ctx.clearRect(0, 0, w, h);
       for (let i = 0; i < pts.length; i++) {
         for (let j = i + 1; j < pts.length; j++) {
           const dx = pts[i].x - pts[j].x;
           const dy = pts[i].y - pts[j].y;
           const d = Math.hypot(dx, dy);
-          if (d < 140) {
+          if (d < connectionDist) {
             ctx.beginPath();
             ctx.moveTo(pts[i].x, pts[i].y);
             ctx.lineTo(pts[j].x, pts[j].y);
-            ctx.strokeStyle = `rgba(167,139,250,${0.04 * (1 - d / 140)})`;
-            ctx.lineWidth = 0.6;
+            ctx.strokeStyle = `rgba(167,139,250,${0.04 * (1 - d / connectionDist)})`;
+            ctx.lineWidth = isMobile ? 0.4 : 0.6;
             ctx.stroke();
           }
         }
@@ -67,8 +90,8 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
         ctx.fillStyle = `rgba(167,139,250,${p.o})`;
         ctx.fill();
         p.x += p.vx; p.y += p.vy;
-        if (p.x < 0 || p.x > c.width) p.vx *= -1;
-        if (p.y < 0 || p.y > c.height) p.vy *= -1;
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
       });
       raf = requestAnimationFrame(draw);
     };
@@ -131,16 +154,21 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
   return (
     <div
       dir="rtl"
-      className="min-h-dvh bg-[linear-gradient(180deg,#0f0a1e_0%,#1a0f3a_30%,#0f0a1e_100%)] text-white overflow-x-hidden"
+      className="min-h-dvh bg-[linear-gradient(180deg,#0f0a1e_0%,#1a1035_35%,#12082e_70%,#0f0a1e_100%)] text-white overflow-x-hidden"
     >
       <canvas
         ref={cvsRef}
         className="absolute top-0 start-0 w-full h-dvh pointer-events-none opacity-70 z-0"
+        style={{ willChange: "transform", imageRendering: "auto" }}
       />
       <style>{`
         @keyframes garfix-fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes garfix-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         @keyframes garfix-glow { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+        /* Landing Page Color Consistency */
+        .landing-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(124,58,237,0.12); backdrop-filter: blur(8px); transition: all .2s; }
+        .landing-card:hover { background: rgba(124,58,237,0.08); border-color: rgba(124,58,237,0.25); transform: translateY(-2px); }
+        .landing-section-title { background: linear-gradient(120deg, #c4b5fd, #8b5cf6, #c4b5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
       `}</style>
 
       {/* ── Nav ──────────────────────────────────────────────────────── */}
@@ -214,7 +242,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       {/* ── Features ─────────────────────────────────────────────────── */}
       <section className="py-[60px] px-[5%] relative z-[5]">
         <div className="text-center mb-[50px]">
-          <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3">
+          <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3 landing-section-title">
             كل ما تحتاجه لإدارة أعمالك في مكان واحد
           </h2>
           <p className="text-white/60 text-base max-w-[640px] mx-auto">
@@ -225,7 +253,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
           {features.map((f, i) => (
             <div
               key={i}
-              className="p-6 rounded-2xl bg-white/[0.04] border border-white/[0.08] transition-all cursor-default hover:bg-[rgba(124,58,237,0.1)] hover:border-[rgba(124,58,237,0.3)] hover:-translate-y-1 [animation:garfix-fade-up_.6s_ease-out_both]"
+              className="p-6 rounded-2xl landing-card cursor-default [animation:garfix-fade-up_.6s_ease-out_both]"
               style={{ animationDelay: `${i * 0.05}s` }}
             >
               <div className="text-[32px] mb-3">{f.icon}</div>
@@ -239,7 +267,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       {/* ── Testimonials (آراء العملاء) ───────────────────────────────── */}
       <section className="py-20 px-[5%] relative z-[5]">
         <div className="text-center mb-10">
-          <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3">
+          <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3 landing-section-title">
             يثقون بنا
           </h2>
           <p className="text-white/60 text-base">
@@ -248,7 +276,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-[1100px] mx-auto">
           {testimonials.map((t: any, i: number) => (
-            <div key={i} className="p-6 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+            <div key={i} className="p-6 rounded-2xl landing-card">
               <div className="text-sm mb-3">{Array(t.rating).fill("⭐").join("")}</div>
               <p className="text-[13px] text-white/80 leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
               <div className="text-[13px] font-bold">{t.name}</div>
@@ -262,13 +290,13 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       {/* ── FAQ ───────────────────────────────────────────────────────── */}
       <section className="py-20 px-[5%] relative z-[5]">
         <div className="text-center mb-10">
-          <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3">
+          <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3 landing-section-title">
             أسئلة شائعة
           </h2>
         </div>
         <div className="max-w-[760px] mx-auto flex flex-col gap-3">
           {faqItems.map((faq: any, i: number) => (
-            <details key={i} className="p-4 px-5 rounded-lg bg-white/[0.04] border border-white/[0.08] cursor-pointer">
+            <details key={i} className="p-4 px-5 rounded-lg landing-card cursor-pointer">
               <summary className="text-[15px] font-bold text-white outline-none">{faq.q}</summary>
               <p className="text-[13px] text-white/70 leading-relaxed mt-2.5">{faq.a}</p>
             </details>
@@ -279,7 +307,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       {/* ── Pricing ──────────────────────────────────────────────────── */}
       <section className="py-20 px-[5%] relative z-[5]">
         <div className="text-center mb-10">
-          <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3">
+          <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3 landing-section-title">
             باقات تناسب نموّ أعمالك
           </h2>
           <p className="text-white/60 text-base">
@@ -343,7 +371,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       {/* ── CTA ──────────────────────────────────────────────────────── */}
       <section className="py-20 px-[5%] relative z-[5]">
         <div className="max-w-[900px] mx-auto p-10 md:p-[60px] md:px-10 rounded-3xl bg-[linear-gradient(135deg,rgba(124,58,237,0.2),rgba(167,139,250,0.05))] border border-[rgba(124,58,237,0.3)] text-center">
-          <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-4">
+          <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-4 landing-section-title">
             جاهز لتحويل أعمالك؟
           </h2>
           <p className="text-white/70 text-base mb-8 max-w-[540px] mx-auto">
@@ -360,23 +388,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <footer className="py-8 px-[5%] border-t border-white/[0.08] relative z-[5] flex flex-wrap justify-between items-center gap-4 safe-bottom">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-sm bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-base font-black text-white">
-            G
-          </div>
-          <div className="text-sm font-bold">GARFIX EOS v{process.env.NEXT_PUBLIC_APP_VERSION || '12'}</div>
-        </div>
-        <div className="text-white/40 text-xs flex flex-wrap items-center gap-x-2">
-          © 2026 GARFIX. جميع الحقوق محفوظة.
-          <span className="mx-2">•</span>
-          <a href="#" className="text-white/40 no-underline hover:text-white/70">سياسة الخصوصية</a>
-          <span className="mx-2">•</span>
-          <a href="#" className="text-white/40 no-underline hover:text-white/70">الشروط والأحكام</a>
-          <span className="mx-2">•</span>
-          <a href="#" className="text-white/40 no-underline hover:text-white/70">تواصل معنا</a>
-        </div>
-      </footer>
+      <ProfessionalFooter variant="landing" version={process.env.NEXT_PUBLIC_APP_VERSION || '12'} />
     </div>
   );
 }

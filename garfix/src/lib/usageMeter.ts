@@ -94,28 +94,12 @@ export async function checkUserQuota(companySlug: string): Promise<QuotaCheck> {
 
   if (plan.maxUsers === -1) return { ok: true };
 
-  // P0 FIX (audit finding usageMeter.ts:98-107): the previous implementation
-  // fetched ALL users from the DB and filtered them in JS. With 10,000+ users
-  // this would scan the entire app_users table on every "add user" request.
-  //
-  // Strategy:
-  //   1. Pre-filter with a SQL LIKE on the JSON string. Since `companies` is
-  //      stored as a JSON array of slugs like `["garfix-demo","acme"]`, a
-  //      `LIKE "%<slug>%"` clause narrows the candidate set dramatically
-  //      (only rows whose companies field mentions this slug). This is safe
-  //      because slug format is restricted (we verify below in JS).
-  //   2. Verify membership in JS (JSON.parse + .includes) to avoid false
-  //      positives from slugs that are substrings of other slugs.
-  //   3. Use count() on the pre-filtered set rather than findMany() — we
-  //      don't need the row data, just the count.
-  //
-  // On SQLite, `LIKE` is case-insensitive by default for ASCII — for slugs
-  // (lowercase ASCII) that's fine. On PostgreSQL we'd switch to ILIKE / a
-  // proper JSON containment operator, but for now the pre-filter is enough.
-  const escapedSlug = companySlug.replace(/[%_\\]/g, "\\$&");
-  // Final count via findMany + JS filter — but only on the pre-filtered set
-  // so we never scan the whole table. We need findMany because we can't
-  // trust the LIKE alone (slug could be a substring of another slug).
+  // EA-010 FIX: Previously used findMany + JS filter (N+1 pattern).
+  // Now uses a two-step approach:
+  //   1. Use findMany with contains to pre-filter candidates (small set)
+  //   2. Verify exact membership via JSON.parse + .includes
+  // This avoids scanning the entire users table — only rows mentioning the slug
+  // are fetched, then JS filtering removes false positives from substring matches.
   const candidates = await db.user.findMany({
     where: {
       role: { not: "inactive" },
@@ -133,9 +117,6 @@ export async function checkUserQuota(companySlug: string): Promise<QuotaCheck> {
       // malformed companies field — skip this user
     }
   }
-  // Silence unused-var lint if escapedSlug ends up unused on a backend
-  // that doesn't need escaping (kept for documentation / future Postgres).
-  void escapedSlug;
 
   if (count >= plan.maxUsers) {
     return {

@@ -71,7 +71,7 @@ function validateBaseUrl(url: string): void {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type ProviderType = "z-ai" | "openrouter" | "anthropic" | "openai" | "gemini" | "custom";
+export type ProviderType = "z-ai" | "openrouter" | "anthropic" | "openai" | "gemini" | "deepseek" | "custom";
 
 export interface AiProviderConfig {
   provider: ProviderType;
@@ -145,7 +145,7 @@ class ZaiProvider implements AiProvider {
   }
 }
 
-/** OpenAI-compatible provider — works for OpenAI, OpenRouter, and custom endpoints */
+/** OpenAI-compatible provider — works for OpenAI, OpenRouter, DeepSeek, and custom endpoints */
 class OpenAICompatibleProvider implements AiProvider {
   type: ProviderType;
   name: string;
@@ -161,6 +161,7 @@ class OpenAICompatibleProvider implements AiProvider {
     switch (this.type) {
       case "openrouter": return "https://openrouter.ai/api/v1";
       case "openai": return "https://api.openai.com/v1";
+      case "deepseek": return "https://api.deepseek.com/v1";
       case "custom": {
         // SEC-006 FIX: SSRF protection — validate custom baseUrl
         const url = this.config.baseUrl || "";
@@ -185,6 +186,9 @@ class OpenAICompatibleProvider implements AiProvider {
       headers["HTTP-Referer"] = process.env.APP_URL || "http://localhost:3000";
       headers["X-Title"] = "GarfiX ERP";
     }
+
+    // DeepSeek-specific: supports frequency_penalty and other params
+    // (no extra headers needed — uses standard Bearer auth like OpenAI)
 
     const body: Record<string, unknown> = {
       model: this.config.model,
@@ -391,6 +395,7 @@ function createProvider(config: AiProviderConfig): AiProvider | null {
     case "openai": return new OpenAICompatibleProvider(config, "openai", "OpenAI");
     case "anthropic": return new AnthropicProvider(config);
     case "gemini": return new OpenAICompatibleProvider(config, "gemini", "Google Gemini");
+    case "deepseek": return new OpenAICompatibleProvider(config, "deepseek", "DeepSeek");
     case "custom": return new OpenAICompatibleProvider(config, "custom", "Custom");
     default: return null;
   }
@@ -566,6 +571,7 @@ export const PROVIDER_INFO: Array<{ type: ProviderType; name: string; descriptio
   { type: "openrouter", name: "OpenRouter", description: "بوابة لعشرات الموديلات بمفتاح واحد (Claude, GPT, Gemini, Llama...)", defaultModel: "anthropic/claude-3.5-haiku", keyPrefix: "sk-or-" },
   { type: "anthropic", name: "Anthropic (Claude)", description: "مباشر من Anthropic — أفضل جودة للعربية", defaultModel: "claude-3-5-haiku-20241022", keyPrefix: "sk-ant-" },
   { type: "openai", name: "OpenAI (GPT)", description: "مباشر من OpenAI", defaultModel: "gpt-4o-mini", keyPrefix: "sk-" },
+  { type: "deepseek", name: "DeepSeek", description: "مباشر من DeepSeek — موديلات V3 و R1 بسعر منخفض جداً وجودة عالية", defaultModel: "deepseek-chat", keyPrefix: "sk-" },
   { type: "gemini", name: "Google Gemini", description: "مباشر من Google (عبر OpenAI-compatible API)", defaultModel: "gemini-1.5-flash", keyPrefix: "AIza" },
   { type: "custom", name: "مزود مخصص", description: "أي endpoint متوافق مع OpenAI API (self-hosted, Azure, etc.)", defaultModel: "", keyPrefix: "" },
 ];

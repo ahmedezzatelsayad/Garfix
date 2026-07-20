@@ -13,7 +13,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { logger } from "./logger";
 
-const STORAGE_DIR = process.env.STORAGE_DIR || "/home/z/my-project/storage";
+// EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path
+const STORAGE_DIR = process.env.STORAGE_DIR || path.join(process.cwd(), "storage");
 
 /** MIME type allowlist — only these types may be saved to storage. */
 const ALLOWED_MIME_TYPES = new Set([

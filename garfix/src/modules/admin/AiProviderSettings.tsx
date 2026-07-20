@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 interface ProviderInfo {
-  type: "z-ai" | "openrouter" | "anthropic" | "openai" | "gemini" | "custom";
+  type: "z-ai" | "openrouter" | "anthropic" | "openai" | "gemini" | "deepseek" | "custom";
   name: string;
   description: string;
   defaultModel: string;

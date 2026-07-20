@@ -223,8 +223,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ignored" }, { status: 200 });
     }
 
-    // Verify signature if app secret is configured
-    if (company.whatsappAppSecretEnc && signature) {
+    // SEC-002 FIX: Signature verification is now MANDATORY.
+    // If a company has WhatsApp enabled but no app secret configured,
+    // or if the request has no signature header, we REJECT the request
+    // instead of silently accepting it. This prevents spoofed messages.
+    if (!signature) {
+      logger.warn("[whatsapp-webhook] POST: no x-hub-signature-256 header — rejecting unauthenticated request", {
+        companySlug: company.slug,
+      });
+      return NextResponse.json({ error: "Missing signature header" }, { status: 403 });
+    }
+
+    if (!company.whatsappAppSecretEnc) {
+      logger.warn("[whatsapp-webhook] POST: company has WhatsApp enabled but no app secret configured — rejecting for security", {
+        companySlug: company.slug,
+      });
+      return NextResponse.json({ error: "Webhook app secret not configured" }, { status: 403 });
+    }
+
+    // We have both signature and app secret — verify
+    {
       let appSecret: string | null = null;
       try {
         appSecret = decryptSecret(company.whatsappAppSecretEnc);
@@ -242,18 +260,11 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
         }
       } else {
-        logger.warn("[whatsapp-webhook] POST: could not decrypt app secret, skipping signature verification", {
+        logger.warn("[whatsapp-webhook] POST: could not decrypt app secret — rejecting for security", {
           companySlug: company.slug,
         });
+        return NextResponse.json({ error: "Webhook app secret decryption failed" }, { status: 403 });
       }
-    } else if (!signature) {
-      logger.debug("[whatsapp-webhook] POST: no x-hub-signature-256 header present", {
-        companySlug: company.slug,
-      });
-    } else if (!company.whatsappAppSecretEnc) {
-      logger.debug("[whatsapp-webhook] POST: no app secret configured for company, skipping signature verification", {
-        companySlug: company.slug,
-      });
     }
 
     // Extract and log messages

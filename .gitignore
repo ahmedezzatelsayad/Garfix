@@ -1,2 +1,80 @@
-skills/
+# SEC-007 FIX: Comprehensive .gitignore — prevents accidental upload of secrets/data
+
+# dependencies
 node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# Database files — NEVER commit SQLite databases
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.db.enc
+
+# Environment files — secrets live here
+.env*
+!.env.example
+!.env.production.example
+
+# Storage — uploaded files, logos, documents
+storage/
+upload/
+download/
+
+# Backups — encrypted database backups
+backups/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.pem
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Agent / AI config
+.claude
+.z-ai-config
+agent-ctx/
+
+# Tool results
+tool-results/
+
+# Misc
+/coverage
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+local-*
+prompt
+examples/
+worklog.md
+
+# Skills directory
+skills/
