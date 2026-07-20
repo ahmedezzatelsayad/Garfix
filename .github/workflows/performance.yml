@@ -17,6 +17,14 @@ concurrency:
   group: perf-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_ENV: test
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
+  JWT_SECRET: "ci-test-jwt-secret-at-least-16-chars"
+  JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-16-chars"
+  FOUNDER_EMAIL: "founder@test.com"
+  PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-chars!"
+
 jobs:
   # ── Job 1: Bundle Size Analysis ────────────────────────────────────────
   bundle-analysis:
@@ -100,8 +108,8 @@ jobs:
       - name: Start application
         run: |
           PORT=3000 bun .next/standalone/server.js &
-          sleep 15
-          echo "Application started on port 3000"
+          sleep 20
+          curl -s http://localhost:3000/api/health > /dev/null 2>&1 && echo "✅ App is running" || echo "⚠️ App may not be ready yet"
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
@@ -148,7 +156,8 @@ jobs:
       - name: Start application
         run: |
           PORT=3000 bun .next/standalone/server.js &
-          sleep 15
+          sleep 20
+          curl -s http://localhost:3000/api/health > /dev/null 2>&1 && echo "✅ App is running" || echo "⚠️ App may not be ready yet"
 
       - name: Install hey (HTTP load generator)
         run: |
