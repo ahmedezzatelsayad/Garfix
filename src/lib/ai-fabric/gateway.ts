@@ -23,6 +23,7 @@
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { fabricHash, type GatewayRequest, type GatewayResult, type CascadeStage, type AIRequestType } from "./types";
+import { checkBudgetGate, getBudgetStatus } from "./budget-engine";
 
 // ─── Stage handlers (injected for testability) ─────────────────────────────
 
@@ -127,7 +128,23 @@ async function patternStage(
     }
   }
 
-  // Future: add pattern rules for whatsapp, financial_analysis, matching
+  // Cross-Company Pattern Intelligence lookup (Phase 12)
+  try {
+    const { lookupGlobalPattern } = await import("./cross-company-intelligence");
+    const globalHit = await lookupGlobalPattern(req.normalizedInput);
+    if (globalHit) {
+      logger.info("[gateway] cascade hit: GLOBAL PATTERN", {
+        company: req.companySlug,
+        type: req.requestType,
+        confidence: globalHit.confidence,
+      });
+      return { hit: true, data: globalHit };
+    }
+  } catch (err) {
+    logger.warn("[gateway] cross-company pattern lookup error (non-fatal)", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return { hit: false, data: null };
 }
@@ -143,12 +160,36 @@ async function patternStage(
  * - If invoice total < threshold → use default classification
  */
 async function ruleStage(
-  _req: GatewayRequest,
+  req: GatewayRequest,
 ): Promise<{ hit: boolean; data: unknown }> {
-  // Phase 1: No hardcoded rules. Rules are populated by:
-  //   - Manual admin entry (future)
-  //   - Learning Engine auto-promotion (Phase 11)
-  //   - Cross-company pattern intelligence (Phase 12)
+  try {
+    // Query promoted rules that match this company + requestType
+    const rules = await db.ruleCandidate.findMany({
+      where: {
+        companySlug: req.companySlug,
+        status: "promoted",
+        requestType: req.requestType,
+      },
+    });
+
+    const inputHash = fabricHash(req.normalizedInput);
+
+    for (const rule of rules) {
+      try {
+        // patternSignature stores the inputHash; match against it
+        if (rule.patternSignature === inputHash && rule.consistentOutput) {
+          const parsed = JSON.parse(rule.consistentOutput);
+          return { hit: true, data: parsed };
+        }
+      } catch {
+        // Skip malformed rules
+      }
+    }
+  } catch (err) {
+    logger.warn("[gateway] rule stage error (non-fatal)", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
   return { hit: false, data: null };
 }
 
@@ -365,6 +406,41 @@ export async function executeCascade<T = unknown>(
       logger.info("[gateway] cascade hit: MEMORY", {
         company: req.companySlug,
         type: req.requestType,
+      });
+    }
+  }
+
+  // Pre-AI Budget Gate: check if the company can afford an AI call
+  if (!data) {
+    try {
+      const budgetAllowed = await checkBudgetGate(req.companySlug);
+      if (!budgetAllowed) {
+        const budgetStatus = await getBudgetStatus(req.companySlug);
+        logger.warn("[gateway] budget gate BLOCKED AI call", {
+          company: req.companySlug,
+          currentSpend: budgetStatus?.currentSpendUsd,
+          budget: budgetStatus?.monthlyBudgetUsd,
+        });
+        // Log as blocked
+        const latencyMs = Date.now() - t0;
+        logRequest({
+          companySlug: req.companySlug,
+          requestType: req.requestType,
+          resolvedBy: "cache", // Budget-blocked requests count as non-AI
+          latencyMs,
+        }).catch(() => {});
+        return {
+          data: null,
+          resolvedBy: "cache",
+          latencyMs,
+          budgetBlocked: true,
+          budgetReason: budgetStatus?.hardStopActive ? "hard_stop" : "budget_exceeded",
+        };
+      }
+    } catch (err) {
+      // Budget check failure is non-fatal — allow the AI call
+      logger.warn("[gateway] budget gate check failed (non-fatal)", {
+        err: err instanceof Error ? err.message : String(err),
       });
     }
   }

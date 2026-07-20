@@ -55,3 +55,9 @@ export { getCostPerInvoice, getCostPerInvoiceTrend, linkInvoiceCost } from "./co
 
 // Phase 16: AI Compiler
 export { clusterAIRequests, assessClusterForCompilation, getCompilationCandidates } from "./ai-compiler";
+
+// Maintenance: Cron Runner
+export { runAllCronJobs, runSingleJob } from "./cron-runner";
+
+// Economy Engine
+export { getEconomyStatus, shouldUseEconomyMode } from "./ai-economy-engine";
