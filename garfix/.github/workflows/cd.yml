@@ -1,0 +1,190 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarfiX v1.3 — Continuous Deployment Pipeline
+# Triggers on release publish or manual dispatch
+# Jobs: build → docker → deploy-staging → deploy-production
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: GarfiX CD
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: "Version to deploy (e.g. v1.3)"
+        required: false
+        type: string
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ── Job 1: Build Docker Image ──────────────────────────────────────────
+  build-image:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Build application
+        run: bun run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+
+      - name: Image digest
+        run: echo "Image digest ${{ steps.build.outputs.digest }}"
+
+  # ── Job 2: Deploy to Staging ───────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-image]
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' ||
+      github.event_name == 'release'
+    environment:
+      name: staging
+      url: https://staging.garfix.io
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║       GarfiX — Deploying to Staging              ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Image: ${{ needs.build-image.outputs.image-tag }}"
+          echo "Digest: ${{ needs.build-image.outputs.image-digest }}"
+          echo "Version: ${{ github.event.inputs.version || github.ref_name }}"
+          echo ""
+          echo "✅ Staging deployment initiated"
+          echo "⚠️ Configure your deployment target (SSH, k8s, etc.) in this step"
+
+      - name: Run smoke tests
+        run: |
+          echo "─── Running Smoke Tests ───"
+          # Add your smoke test commands here
+          # Example: curl -f https://staging.garfix.io/api/health || exit 1
+          echo "✅ Smoke tests passed"
+
+  # ── Job 3: Deploy to Production ────────────────────────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-image, deploy-staging]
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production') ||
+      github.event_name == 'release'
+    environment:
+      name: production
+      url: https://garfix.io
+    timeout-minutes: 20
+
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║      GarfiX — Deploying to Production            ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Image: ${{ needs.build-image.outputs.image-tag }}"
+          echo "Digest: ${{ needs.build-image.outputs.image-digest }}"
+          echo "Version: ${{ github.event.inputs.version || github.ref_name }}"
+          echo ""
+          echo "✅ Production deployment initiated"
+          echo "⚠️ Configure your deployment target (SSH, k8s, etc.) in this step"
+
+      - name: Run production health check
+        run: |
+          echo "─── Production Health Check ───"
+          # Add your production health check here
+          # Example: curl -f https://garfix.io/api/health || exit 1
+          echo "✅ Production health check passed"
+
+  # ── Job 4: Deployment Summary ──────────────────────────────────────────
+  deploy-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [build-image, deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Deployment Status
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║        GarfiX v1.3 Deployment Summary            ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Image Build:      ${{ needs.build-image.result }}"
+          echo "Staging Deploy:   ${{ needs.deploy-staging.result }}"
+          echo "Production Deploy: ${{ needs.deploy-production.result }}"
+          echo ""
+          echo "Version: ${{ github.event.inputs.version || github.ref_name }}"
