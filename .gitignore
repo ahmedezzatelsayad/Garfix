@@ -1,7 +1,7 @@
-# SEC-007 FIX: Comprehensive .gitignore — prevents accidental upload of secrets/data
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules/
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,62 +20,57 @@ node_modules/
 # production
 /build
 
-# Database files — NEVER commit SQLite databases
-db/
-*.db
-*.db-shm
-*.db-wal
-*.db-journal
-*.db.enc
+# misc
+.DS_Store
+*.pem
 
-# Environment files — secrets live here
-.env*
-!.env.example
-!.env.production.example
-
-# Storage — uploaded files, logos, documents
-storage/
-upload/
-download/
-
-# Backups — encrypted database backups
-backups/
-
-# Logs
-*.log
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# OS files
-.DS_Store
-Thumbs.db
-*.pem
+# env files (can opt-in for committing if needed)
+.env*
 
-# IDE / Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Agent / AI config
-.claude
-.z-ai-config
-agent-ctx/
-
-# Tool results
-tool-results/
-
-# Misc
-/coverage
+# vercel
 .vercel
+
+
+# typescript
 *.tsbuildinfo
 next-env.d.ts
 local-*
+.claude
+.z-ai-config
+*.log
+dev.log
+dev.out.log
+test
 prompt
-examples/
-worklog.md
+
+server.log
 
 # Skills directory
-skills/
+/skills/
+
+# Test artifacts
+test-results*.json
+*.test.js
+coverage/
+
+# GarfiX-specific local artifacts (GATE 0 fix)
+/db/*.db
+/db/*.db-journal
+/db/*.db-wal
+/db/*.db-shm
+/upload/
+/download/
+/tool-results/
+/examples/
+/worklog.md
+
+# Backup files (H5 FIX: never commit encrypted backups to repo)
+storage/backups/
+*.db.enc
+data/

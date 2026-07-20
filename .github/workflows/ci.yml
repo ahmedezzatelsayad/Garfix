@@ -1,8 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # GarfiX v1.3 — Continuous Integration Pipeline
 # Runs on every push & PR to main/develop
-# Jobs: lint → typecheck → unit-tests → integration-tests → ai-tests → build → summary
-# Working directory: garfix/ (monorepo subdirectory)
+# Jobs: install → lint → type-check → unit-test → integration-test → build
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX CI
@@ -20,7 +19,6 @@ concurrency:
 env:
   NODE_ENV: test
   DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
-  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
   JWT_SECRET: "ci-test-jwt-secret-at-least-16-chars"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-16-chars"
   FOUNDER_EMAIL: "founder@test.com"
@@ -32,9 +30,6 @@ jobs:
     name: Lint & Code Quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: garfix
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,8 +42,8 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: garfix/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('garfix/bun.lock') }}
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-modules-${{ runner.os }}-
 
@@ -56,14 +51,14 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run ESLint
-        run: bun run lint 2>&1 | tee lint-results.txt || true
+        run: bun run lint --format=compact 2>&1 | tee lint-results.txt
 
       - name: Upload lint results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lint-results
-          path: garfix/lint-results.txt
+          path: lint-results.txt
           retention-days: 7
 
   # ── Job 2: TypeScript Type Check ────────────────────────────────────────
@@ -71,9 +66,6 @@ jobs:
     name: TypeScript Type Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: garfix
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,8 +78,8 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: garfix/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('garfix/bun.lock') }}
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-modules-${{ runner.os }}-
 
@@ -98,14 +90,14 @@ jobs:
         run: bun run db:generate
 
       - name: TypeScript type check
-        run: bunx tsc --noEmit 2>&1 | tee typecheck-results.txt || true
+        run: bunx tsc --noEmit 2>&1 | tee typecheck-results.txt
 
       - name: Upload type check results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: typecheck-results
-          path: garfix/typecheck-results.txt
+          path: typecheck-results.txt
           retention-days: 7
 
   # ── Job 3: Unit Tests ──────────────────────────────────────────────────
@@ -114,9 +106,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [lint, typecheck]
-    defaults:
-      run:
-        working-directory: garfix
 
     services:
       postgres:
@@ -145,8 +134,8 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: garfix/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('garfix/bun.lock') }}
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-modules-${{ runner.os }}-
 
@@ -156,18 +145,26 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Push database schema
-        run: bunx prisma db push --accept-data-loss 2>&1
+      - name: Run Prisma migrations
+        run: bun run db:deploy
 
       - name: Run unit tests
-        run: bun test 2>&1 | tee test-results.txt || true
+        run: bun test --coverage 2>&1 | tee test-results.txt
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-results
-          path: garfix/test-results.txt
+          path: test-results.txt
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
           retention-days: 14
 
   # ── Job 4: Integration / API Tests ─────────────────────────────────────
@@ -176,9 +173,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [lint, typecheck]
-    defaults:
-      run:
-        working-directory: garfix
 
     services:
       postgres:
@@ -207,8 +201,8 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: garfix/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('garfix/bun.lock') }}
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-modules-${{ runner.os }}-
 
@@ -218,8 +212,8 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Push database schema
-        run: bunx prisma db push --accept-data-loss 2>&1
+      - name: Run Prisma migrations
+        run: bun run db:deploy
 
       - name: Seed test database
         run: bun run seed 2>&1 || echo "Seed completed with warnings"
@@ -227,19 +221,19 @@ jobs:
       - name: Run integration tests (API endpoints)
         run: |
           echo "Testing API routes..."
-          bun test src/lib/__tests__/invoices-crud.test.ts 2>&1 | tee -a integration-results.txt || true
-          bun test src/lib/__tests__/api-helpers.test.ts 2>&1 | tee -a integration-results.txt || true
-          bun test src/lib/__tests__/inventorySync.test.ts 2>&1 | tee -a integration-results.txt || true
-          bun test src/lib/__tests__/oversell-behavior.test.ts 2>&1 | tee -a integration-results.txt || true
-          bun test src/lib/__tests__/collision-recovery-audit.test.ts 2>&1 | tee -a integration-results.txt || true
-          bun test src/lib/__tests__/collision-recovery-audit-purchase.test.ts 2>&1 | tee -a integration-results.txt || true
+          bun test src/lib/__tests__/invoices-crud.test.ts 2>&1 | tee -a integration-results.txt
+          bun test src/lib/__tests__/api-helpers.test.ts 2>&1 | tee -a integration-results.txt
+          bun test src/lib/__tests__/inventorySync.test.ts 2>&1 | tee -a integration-results.txt
+          bun test src/lib/__tests__/oversell-behavior.test.ts 2>&1 | tee -a integration-results.txt
+          bun test src/lib/__tests__/collision-recovery-audit.test.ts 2>&1 | tee -a integration-results.txt
+          bun test src/lib/__tests__/collision-recovery-audit-purchase.test.ts 2>&1 | tee -a integration-results.txt
 
       - name: Upload integration test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-results
-          path: garfix/integration-results.txt
+          path: integration-results.txt
           retention-days: 14
 
   # ── Job 5: Product Matcher & AI Tests ──────────────────────────────────
@@ -248,9 +242,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [lint, typecheck]
-    defaults:
-      run:
-        working-directory: garfix
 
     services:
       postgres:
@@ -279,8 +270,8 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: garfix/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('garfix/bun.lock') }}
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-modules-${{ runner.os }}-
 
@@ -290,22 +281,22 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Push database schema
-        run: bunx prisma db push --accept-data-loss 2>&1
+      - name: Run Prisma migrations
+        run: bun run db:deploy
 
       - name: Run product matcher tests
         run: |
-          bun test src/lib/__tests__/productMatcher.test.ts 2>&1 | tee -a ai-test-results.txt || true
-          bun test src/lib/__tests__/productMatcher-b7e.test.ts 2>&1 | tee -a ai-test-results.txt || true
-          bun test src/lib/__tests__/verifyExtraction.test.ts 2>&1 | tee -a ai-test-results.txt || true
-          bun test src/lib/__tests__/task1-100-cases.test.ts 2>&1 | tee -a ai-test-results.txt || true
+          bun test src/lib/__tests__/productMatcher.test.ts 2>&1 | tee -a ai-test-results.txt
+          bun test src/lib/__tests__/productMatcher-b7e.test.ts 2>&1 | tee -a ai-test-results.txt
+          bun test src/lib/__tests__/verifyExtraction.test.ts 2>&1 | tee -a ai-test-results.txt
+          bun test src/lib/__tests__/task1-100-cases.test.ts 2>&1 | tee -a ai-test-results.txt
 
       - name: Upload AI test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ai-test-results
-          path: garfix/ai-test-results.txt
+          path: ai-test-results.txt
           retention-days: 14
 
   # ── Job 6: Build Verification ──────────────────────────────────────────
@@ -314,9 +305,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [unit-tests, integration-tests, ai-tests]
-    defaults:
-      run:
-        working-directory: garfix
 
     steps:
       - name: Checkout code
@@ -330,8 +318,8 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: garfix/node_modules
-          key: bun-modules-${{ runner.os }}-${{ hashFiles('garfix/bun.lock') }}
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-modules-${{ runner.os }}-
 
@@ -365,7 +353,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: garfix-build-${{ github.sha }}
-          path: garfix/.next/standalone/
+          path: .next/standalone/
           retention-days: 3
 
       - name: Upload build results
@@ -373,7 +361,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-results
-          path: garfix/build-results.txt
+          path: build-results.txt
           retention-days: 7
 
   # ── Job 7: CI Summary ──────────────────────────────────────────────────
@@ -382,7 +370,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, typecheck, unit-tests, integration-tests, ai-tests, build]
     if: always()
-    # NO defaults.run.working-directory here — no checkout needed
 
     steps:
       - name: Pipeline Status
@@ -405,6 +392,7 @@ jobs:
           echo "Build:            ${{ needs.build.result }}"
           echo ""
 
+          # Check if any job failed
           if echo "${{ needs.lint.result }}${{ needs.typecheck.result }}${{ needs.unit-tests.result }}${{ needs.integration-tests.result }}${{ needs.ai-tests.result }}${{ needs.build.result }}" | grep -q "failure"; then
             echo "❌ CI Pipeline FAILED — some jobs did not pass"
             exit 1
