@@ -197,8 +197,8 @@ export async function callWithProviderRouting(
       return {
         content: result.content,
         provider,
-        tokensIn: result.tokensIn,
-        tokensOut: result.tokensOut,
+        tokensIn: result.usage?.prompt_tokens,
+        tokensOut: result.usage?.completion_tokens,
         routingDecision: routing,
       };
     }
@@ -210,8 +210,8 @@ export async function callWithProviderRouting(
     return {
       content: result.content,
       provider: `legacy:${result.model || "unknown"}`,
-      tokensIn: result.tokensIn,
-      tokensOut: result.tokensOut,
+      tokensIn: result.usage?.prompt_tokens,
+      tokensOut: result.usage?.completion_tokens,
       routingDecision: routing,
     };
   } catch (err) {
@@ -233,8 +233,8 @@ export async function callWithProviderRouting(
       return {
         content: result.content,
         provider: `fallback:${result.model || "unknown"}`,
-        tokensIn: result.tokensIn,
-        tokensOut: result.tokensOut,
+        tokensIn: result.usage?.prompt_tokens,
+        tokensOut: result.usage?.completion_tokens,
         routingDecision: routing,
       };
     } catch (fallbackErr) {
