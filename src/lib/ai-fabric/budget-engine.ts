@@ -16,6 +16,7 @@
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { getValkeyClient } from "@/lib/valkey";
 import type { BudgetStatus } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -31,9 +32,15 @@ const DAYS_PER_MONTH = 30;
 /**
  * Track which companies have already had their alert threshold notification
  * sent this month. Prevents duplicate alerts on every spend record.
- * Key: companySlug, Value: month string "YYYY-MM"
+ *
+ * Valkey-backed: key = "ai-fabric:budget-alert:{companySlug}", value = "YYYY-MM",
+ * TTL = 32 days (auto-expires after month boundary).
+ * Falls back to in-memory Map when Valkey is unavailable.
  */
 const alertedThisMonth = new Map<string, string>();
+
+const ALERT_KEY_PREFIX = "ai-fabric:budget-alert:";
+const ALERT_TTL_SECONDS = 32 * 24 * 3600; // 32 days — auto-expires after month boundary
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -72,7 +79,21 @@ export async function recordSpend(
     const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
     const lastAlertMonth = alertedThisMonth.get(companySlug);
 
-    if (pct >= threshold && lastAlertMonth !== currentMonth) {
+    // Check Valkey first for multi-instance consistency
+    let alreadyAlerted = lastAlertMonth === currentMonth;
+    if (!alreadyAlerted) {
+      try {
+        const valkey = await getValkeyClient();
+        if (valkey) {
+          const valkeyMonth = await valkey.get(`${ALERT_KEY_PREFIX}${companySlug}`);
+          alreadyAlerted = valkeyMonth === currentMonth;
+        }
+      } catch {
+ // Valkey check failed — proceed with in-memory check only
+      }
+    }
+
+    if (pct >= threshold && !alreadyAlerted) {
       // Send internal notification for founder panel visibility
       await db.notification.create({
         data: {
@@ -84,6 +105,15 @@ export async function recordSpend(
         },
       });
       alertedThisMonth.set(companySlug, currentMonth);
+      // Persist to Valkey with TTL for cross-instance consistency
+      try {
+        const valkey = await getValkeyClient();
+        if (valkey) {
+          await valkey.set(`${ALERT_KEY_PREFIX}${companySlug}`, currentMonth, "EX", ALERT_TTL_SECONDS);
+        }
+      } catch {
+ // Valkey write failed — in-memory fallback is already set
+      }
       logger.warn("[budget-engine] alert triggered", {
         companySlug,
         pct: Math.round(pct),
