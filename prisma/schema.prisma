@@ -2,49 +2,43 @@
 // Multi-tenant SaaS ERP/Invoicing platform
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// P1-A — DATABASE PROVIDER (dev vs production) — code-ready for the switch
+// UNIFIED POSTGRESQL CONFIGURATION (All Environments)
 // ─────────────────────────────────────────────────────────────────────────────
-// The active datasource below is SQLite, because THIS SANDBOX has no PostgreSQL
-// service. The schema is fully PostgreSQL-compatible: money is stored as String,
-// JSON as String, and no SQLite-specific types are used — so switching to
-// PostgreSQL requires NO model changes, only the datasource provider + URL.
+// This project uses PostgreSQL in ALL environments:
+//   - Development: Docker Compose or Neon serverless
+//   - CI/CD: GitHub Actions with postgres:16-alpine service
+//   - Production: Managed PostgreSQL (Neon, RDS, or Supabase)
 //
-// ── PRODUCTION SWITCH (literal one-line edit) ────────────────────────────────
-//   1. Comment out the `sqlite` datasource block (DEV / SANDBOX) below.
-//   2. Uncomment the `postgresql` datasource block (PRODUCTION) below.
-//   3. Set DATABASE_URL to the postgres connection string, e.g.:
-//        DATABASE_URL="postgresql://garfix:STRONG_PASS@postgres:5432/garfix?schema=public"
-//      (the `postgres` service is already defined in docker-compose.yml)
-//   4. Run: prisma generate && prisma migrate deploy
+// SQLite has been REMOVED as it's unsuitable for multi-tenant SaaS:
+//   - No concurrent writes under load
+//   - No connection pooling
+//   - No read replicas
+//   - WAL mode is a workaround, not a solution
 //
-// Prisma does not support a dynamic provider via env(), so the switch is a
-// literal one-line edit here. This comment block is the explicit dev-vs-prod
-// config reference — the file is no longer silently/statically SQLite.
-// (Resolves P1-A from TODO v13.1: code-ready, pending env switch.)
+// Migration from SQLite to PostgreSQL required NO model changes because
+// the schema was already PostgreSQL-compatible (String for money/JSON).
 // ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// ── PRODUCTION (uncomment for production with PostgreSQL) ────────────────────
-// EA-002 FIX: Switched from SQLite to PostgreSQL for production readiness.
-// SQLite is unsuitable for multi-tenant SaaS: no concurrent writes, no
-// connection pooling, no read replicas. PostgreSQL handles all of these.
-// The schema was already PostgreSQL-compatible (String for money/JSON,
-// no SQLite-specific types) so no model changes were needed.
-// H1 FIX: directUrl enables Prisma Studio / migrate deploy to use a direct connection while the app uses pooled URL
-// datasource db {
-//   provider  = "postgresql"
-//   url       = env("DATABASE_URL")
-//   directUrl = env("DATABASE_DIRECT_URL")
-// }
-
-// ── DEV / SANDBOX (active) ──────────────────────────────────────────────────
+// ── UNIFIED POSTGRESQL (all environments) ────────────────────────────────
+// EA-002 FIX: Switched from SQLite to PostgreSQL universally.
+// All environments now use PostgreSQL for consistency and reliability.
+// H1 FIX: directUrl enables Prisma Studio / migrate deploy to use a direct
+// connection while the app uses pooled URL.
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
 }
+
+// ── SQLite removed — kept for reference only ────────────────────────────────
+// datasource db {
+//   provider = "sqlite"
+//   url      = env("DATABASE_URL")
+// }
 
 // ────────────────────────────────────────────────────────────────────────────
 // Users & Auth

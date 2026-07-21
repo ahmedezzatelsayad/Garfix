@@ -1,7 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# GarfiX EOS v12.0 — Continuous Integration Pipeline
+# GarfiX EOS v12.1 — Continuous Integration Pipeline
+# ─────────────────────────────────────────────────────────────────────────────
+# ARCHITECTURAL CHANGE (v12.1):
+# This pipeline now uses PostgreSQL in ALL environments (unified provider).
+# Build no longer requires database (side-effects removed from imports).
+# Tests require PostgreSQL service.
+#
 # Runs on every push & PR to main/develop
-# Jobs: install → lint → type-check(prod) → unit-test → integration-test → build
+# Jobs: lint → typecheck → build → unit-tests → integration-tests → summary → deploy
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX CI v12
@@ -18,7 +24,10 @@ concurrency:
 
 env:
   NODE_ENV: test
-  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
+  # PostgreSQL (Unified for all environments)
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
+  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  # Auth secrets (test values)
   JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
   FOUNDER_EMAIL: "founder@test.com"
@@ -123,6 +132,8 @@ jobs:
           retention-days: 7
 
   # ── Job 3: Build Verification (Critical Gate) ───────────────────────────
+  # NOTE: Build no longer requires database service!
+  # All Prisma queries moved to API routes / runtime bootstrap.
   build:
     name: 🏗️ Build Verification (Critical)
     runs-on: ubuntu-latest
@@ -168,7 +179,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify build output
+      - name: Verify build output + architecture compliance
         run: |
           echo "═══ Build Verification ═══"
           echo ""
@@ -192,6 +203,31 @@ jobs:
           # List API routes count
           ROUTE_COUNT=$(find .next/standalone/server/app -name "route.js" 2>/dev/null | wc -l)
           echo "📦 API Routes compiled: $ROUTE_COUNT"
+          
+          # ═══ ARCHITECTURE COMPLIANCE CHECK ═══
+          echo ""
+          echo "═══ Architecture Compliance ═══"
+          
+          # Check that no worker files have module-level side effects
+          SIDE_EFFECTS_FOUND=0
+          for WORKER_FILE in src/lib/workers/*.ts; do
+            if grep -q "^register.*Worker()\|^recoverPendingJobs()" "$WORKER_FILE" 2>/dev/null; then
+              echo "❌ Side effect found in $WORKER_FILE"
+              SIDE_EFFECTS_FOUND=$((SIDE_EFFECTS_FOUND + 1))
+            fi
+          done
+          
+          # Check that startupCheck.ts does NOT import workers
+          if grep -q 'import.*workers/' src/lib/startupCheck.ts 2>/dev/null; then
+            echo "❌ startupCheck.ts still imports workers (should use bootstrap.ts)"
+            SIDE_EFFECTS_FOUND=$((SIDE_EFFECTS_FOUND + 1))
+          fi
+          
+          if [ $SIDE_EFFECTS_FOUND -eq 0 ]; then
+            echo "✅ No module-level side effects detected"
+          else
+            echo "⚠️ $SIDE_EFFECTS_FOUND potential side effect(s) found"
+          fi
           
           echo ""
           echo "═══════════════════════"

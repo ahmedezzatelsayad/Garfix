@@ -115,7 +115,7 @@ async function handleSendTemplate(data: WhatsAppTemplateJobData): Promise<void> 
   }
 }
 
-// ─── Module-level registration ─────────────────────────────────────────────
+// ─── Registration Function (explicit call only) ─────────────────────────────
 
 let registered = false;
 export function registerWhatsAppWorker(): void {
@@ -125,5 +125,5 @@ export function registerWhatsAppWorker(): void {
   logger.info("[whatsapp-worker] registered for queue", { queue: QUEUE_NAMES.WHATSAPP });
 }
 
-// Side-effect: register immediately on module load.
-registerWhatsAppWorker();
+// ❌ REMOVED: Module-level side effect (was causing build failures)
+// registerWhatsAppWorker();

@@ -187,32 +187,26 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
 }
 
 /**
- * Module-level side effect: register the worker on import. This file is
- * imported (for its side effect) from `startupCheck.ts` so the worker is
- * registered the first time the startup-check module is loaded — which
- * happens both on the first `/api/startup-check` request and on the first
- * request that imports startupCheck transitively.
+ * AI Product Match Worker — Registration Function
  *
- * We also fire off `recoverPendingJobs()` here (fire-and-forget) so any
- * jobs left unfinished from a previous server lifetime get re-enqueued
- * as soon as the worker is registered.
+ * This worker handles AI-powered product matching for ambiguous invoice line items.
+ * It MUST be explicitly registered via bootstrapRuntime() — NOT at import time.
  *
- * The `registered` guard prevents double-registration on hot reloads.
+ * Anti-pattern PREVENTED: Previous version had module-level side effect:
+ *   registerAIProductMatchWorker() was called at bottom of file, causing:
+ *   - Worker registration during `next build`
+ *   - Prisma connection attempts during build
+ *   - Build failures in CI/CD where no database exists
+ *
+ * CORRECT USAGE: Only call this from src/runtime/bootstrap.ts
  */
 let registered = false;
 export function registerAIProductMatchWorker(): void {
   if (registered) return;
   registerWorker(QUEUE_NAMES.AI, handleAIProductMatchJob);
   registered = true;
-  // Fire off recovery — don't await (this is a module-level side effect,
-  // can't be async). Recovery runs in the background; any errors are logged
-  // inside recoverPendingJobs itself.
-  recoverPendingJobs().catch((err) => {
-    logger.error("[ai-worker] recoverPendingJobs failed on registration", {
-      err: err instanceof Error ? err.message : String(err),
-    });
-  });
+  logger.info("[ai-product-match-worker] registered for queue", { queue: QUEUE_NAMES.AI });
 }
 
-// Side-effect: register immediately on module load.
-registerAIProductMatchWorker();
+// ❌ REMOVED: Module-level side effect (was causing build failures)
+// registerAIProductMatchWorker();

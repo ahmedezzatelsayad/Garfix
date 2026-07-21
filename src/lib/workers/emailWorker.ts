@@ -137,7 +137,7 @@ async function handleSendTicketReply(data: Record<string, unknown>): Promise<voi
   await sendEmail({ to, subject, body });
 }
 
-// ─── Module-level registration ─────────────────────────────────────────────
+// ─── Registration Function (explicit call only) ─────────────────────────────
 
 let registered = false;
 export function registerEmailWorker(): void {
@@ -147,5 +147,5 @@ export function registerEmailWorker(): void {
   logger.info("[email-worker] registered for queue", { queue: QUEUE_NAMES.EMAIL });
 }
 
-// Side-effect: register immediately on module load.
-registerEmailWorker();
+// ❌ REMOVED: Module-level side effect (was causing build failures)
+// registerEmailWorker();

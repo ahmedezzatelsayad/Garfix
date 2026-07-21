@@ -127,7 +127,7 @@ async function handleVerifyBackup(data: VerifyBackupJobData): Promise<void> {
   });
 }
 
-// ─── Module-level registration ─────────────────────────────────────────────
+// ─── Registration Function (explicit call only) ─────────────────────────────
 
 let registered = false;
 export function registerBackupWorker(): void {
@@ -137,8 +137,8 @@ export function registerBackupWorker(): void {
   logger.info("[backup-worker] registered for queue", { queue: QUEUE_NAMES.BACKUP });
 }
 
-// Side-effect: register immediately on module load.
-registerBackupWorker();
+// ❌ REMOVED: Module-level side effect (was causing build failures)
+// registerBackupWorker();
 
 // Reference `db` so the import isn't tree-shaken (used by future integrity
 // checks that query the backup file via a second Prisma client).
