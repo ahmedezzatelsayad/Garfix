@@ -254,6 +254,10 @@ jobs:
     timeout-minutes: 15
     needs: [build]
 
+    env:
+      # Required by Prisma schema (directUrl field)
+      DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -318,6 +322,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [build]
+
+    env:
+      # Required by Prisma schema (directUrl field)
+      DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
 
     services:
       postgres:

@@ -31,6 +31,8 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  // H1 FIX: directUrl for Prisma Studio / migrate deploy
+  // REQUIRED: Set DATABASE_DIRECT_URL in all environments (see .env.example)
   directUrl = env("DATABASE_DIRECT_URL")
 }
 
