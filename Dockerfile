@@ -22,12 +22,14 @@ RUN bun run db:generate
 RUN bun run build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────
-FROM oven/bun:1-slim AS runner
+FROM oven/bun:1-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Alpine doesn't include addgroup/adduser by default — install shadow
+RUN apk add --no-cache shadow
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -52,7 +54,9 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Healthcheck: /api/health (existing endpoint)
+# Alpine uses wget from busybox; add curl as an alternative if needed
+RUN apk add --no-cache curl
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:3000/api/health || exit 1
 
 CMD ["bun", "server.js"]

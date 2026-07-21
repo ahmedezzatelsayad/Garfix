@@ -31,7 +31,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -85,7 +85,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -132,7 +132,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -150,8 +150,10 @@ jobs:
 
       - name: Install hey (HTTP load generator)
         run: |
-          wget -q https://hey-release.s3.us-east-2.amazonaws.com/hey_linux_amd64 -O /usr/local/bin/hey
+          HEY_VERSION="v0.1.5"
+          wget -q "https://github.com/rakyll/hey/releases/download/${HEY_VERSION}/hey_linux_amd64" -O /usr/local/bin/hey
           chmod +x /usr/local/bin/hey
+          hey --version
 
       - name: Run load test on health endpoint
         run: |

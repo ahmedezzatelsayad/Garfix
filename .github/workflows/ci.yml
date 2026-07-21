@@ -47,7 +47,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -88,7 +88,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -107,17 +107,22 @@ jobs:
       - name: TypeScript type check (production code only)
         run: |
           echo "Checking production code for type errors..."
-          # Create tsconfig that excludes test files for strict checking
-          cat > tsconfig.prod.json << 'EOF'
-          {
-            "extends": "./tsconfig.json",
-            "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"]
-          }
-          EOF
-          
+          # tsconfig.prod.json already exists in repo; create if missing
+          if [ ! -f tsconfig.prod.json ]; then
+            cat > tsconfig.prod.json << 'EOF'
+            {
+              "extends": "./tsconfig.json",
+              "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"]
+            }
+            EOF
+          fi
+
+          # Disable pipefail so PIPESTATUS captures tsc exit code even on failure
+          set +eo pipefail
           bunx tsc --noEmit -p tsconfig.prod.json 2>&1 | tee typecheck-results.txt
           EXIT_CODE=${PIPESTATUS[0]}
-          
+          set -eo pipefail
+
           if [ $EXIT_CODE -ne 0 ]; then
             echo "❌ Type errors found in production code!"
             exit 1
@@ -149,7 +154,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -169,8 +174,11 @@ jobs:
         id: build_step
         run: |
           echo "Starting Next.js production build..."
+          # Disable pipefail so PIPESTATUS captures build exit code even on failure
+          set +eo pipefail
           bun run build 2>&1 | tee build-results.txt
           EXIT_CODE=${PIPESTATUS[0]}
+          set -eo pipefail
 
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ Build successful"
@@ -281,7 +289,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -368,7 +376,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.2.4"
 
       - name: Cache node_modules
         uses: actions/cache@v4
