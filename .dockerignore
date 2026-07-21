@@ -30,7 +30,7 @@ docs
 
 # Tests
 src/lib/__tests__
-src/lib/founder-validation
+src/lib/founder-validation/__tests__
 e2e
 playwright.config.ts
 **/*.test.ts
