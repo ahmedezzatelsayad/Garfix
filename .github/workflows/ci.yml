@@ -321,8 +321,8 @@ jobs:
         run: |
           echo "Running core unit tests..."
           bun test src/lib/__tests__/secretsManager.test.ts 2>&1 | tee test-results.txt || true
-          bun test src/lib/__tests__/rateLimiter.test.ts 2>&1 | tee -a test-results.txt || true
-          bun test src/lib/__tests__/cryptoVault.test.ts 2>&1 | tee -a test-results.txt || true
+          bun test src/lib/__tests__/rateLimit-advanced.test.ts 2>&1 | tee -a test-results.txt || true
+          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || true
           echo ""
           echo "Unit tests completed"
         continue-on-error: true
