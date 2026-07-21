@@ -24,7 +24,10 @@
  *   - getConnection(), getWorkerId()
  *
  * Existing workers (email, whatsapp, AI, backup, scheduler) need ZERO changes.
+ *
+ * RUNTIME: Node.js only — uses process.pid, BullMQ (Node-only)
  */
+'use node';
 
 import { db } from "./db";
 import { logger } from "./logger";

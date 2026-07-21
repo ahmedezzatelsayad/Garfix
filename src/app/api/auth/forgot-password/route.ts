@@ -9,7 +9,11 @@
  * so attackers can't probe which emails are registered.
  *
  * Body: { email: string }
+ *
+ * RUNTIME: Node.js only — uses node:crypto
  */
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "node:crypto";
 import { db } from "@/lib/db";

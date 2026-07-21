@@ -7,7 +7,10 @@
  * In v11 with SQLite, the equivalent is a file copy of the .db file. We use
  * SQLite's Online Backup API via Prisma's underlying better-sqlite3 driver
  * to take a consistent snapshot without locking writers for long.
+ *
+ * RUNTIME: Node.js only — uses node:fs/promises, node:path, process.cwd()
  */
+'use node';
 
 import fs from "node:fs/promises";
 import path from "node:path";

@@ -21,7 +21,10 @@
  *     Operators MUST see this — a 3-day-stale backup is a stop-ship signal.
  *   - Verify-backup fails integrity check → throws → retry → dead-letter so
  *     the founder panel surfaces the corrupt backup.
+ *
+ * RUNTIME: Node.js only — uses node:fs/promises, node:path, process.cwd()
  */
+'use node';
 
 import { logger } from "../logger";
 import { registerWorker, QUEUE_NAMES } from "../queues";

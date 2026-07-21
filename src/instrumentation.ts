@@ -31,7 +31,12 @@
  * ❌ No setInterval/setTimeout at module level (causes memory leaks in build)
  * ✅ All initialization deferred to register() or after explicit call
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * RUNTIME: Node.js only — uses process.on(), process.exit(), setTimeout()
+ * Directive: 'use node' tells Turbopack to skip Edge Runtime analysis
+ * ═══════════════════════════════════════════════════════════════════════════
  */
+'use node';
 
 import { logger } from "@/lib/logger";
 import { runStartupChecks } from "@/lib/startupCheck";

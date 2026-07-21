@@ -13,7 +13,10 @@
  *   - decryptSecret() returns the input unchanged if it doesn't match the
  *     expected format — so legacy plaintext values keep working until they
  *     are re-saved (which always re-encrypts).
+ *
+ * RUNTIME: Node.js only — uses node:crypto (not available in Edge Runtime)
  */
+'use node';
 
 import crypto from "node:crypto";
 import { logger } from "./logger";

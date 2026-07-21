@@ -5,7 +5,11 @@
  * Increments tokenVersion to invalidate all existing sessions.
  *
  * Body: { email, code, newPassword }
+ *
+ * RUNTIME: Node.js only — imports cryptoVault.ts (node:crypto)
  */
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
