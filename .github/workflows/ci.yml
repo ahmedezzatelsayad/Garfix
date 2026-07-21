@@ -39,7 +39,6 @@ jobs:
     name: 🔍 Lint & Code Quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true  # Non-blocking: warnings shouldn't block CI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -65,7 +64,8 @@ jobs:
           echo "Running ESLint on production code..."
           bunx eslint src/app src/lib src/modules --format=compact 2>&1 | tee lint-results.txt || true
           echo ""
-          echo "Lint completed. Review results for warnings."
+          echo "Lint completed."
+        continue-on-error: true  # ESLint warnings shouldn't block — errors are caught by tsc
 
       - name: Upload lint results
         if: always()
@@ -80,7 +80,6 @@ jobs:
     name: 📝 TypeScript Type Check (Prod)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true  # Non-blocking: type issues shouldn't block initial CI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -328,12 +327,17 @@ jobs:
       - name: Run unit tests (core modules)
         run: |
           echo "Running core unit tests..."
-          bun test src/lib/__tests__/secretsManager.test.ts 2>&1 | tee test-results.txt || true
-          bun test src/lib/__tests__/rateLimit-advanced.test.ts 2>&1 | tee -a test-results.txt || true
-          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || true
+          PASS=true
+          bun test src/lib/__tests__/secretsManager.test.ts 2>&1 | tee test-results.txt || PASS=false
+          bun test src/lib/__tests__/rateLimit-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
+          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
           echo ""
-          echo "Unit tests completed"
-        continue-on-error: true
+          if [ "$PASS" = "false" ]; then
+            echo "⚠️ Some unit tests failed — review test-results.txt"
+            exit 1
+          else
+            echo "✅ All unit tests passed"
+          fi
 
       - name: Upload test results
         if: always()
@@ -414,16 +418,21 @@ jobs:
 
       - name: Seed test database
         run: bun run seed 2>&1 || echo "Seed completed with warnings"
-        continue-on-error: true
+        continue-on-error: true  # Seed data is optional — tests can work without it
 
       - name: Run integration tests (API endpoints)
         run: |
           echo "Testing API routes..."
-          bun test src/lib/__tests__/api-helpers.test.ts 2>&1 | tee integration-results.txt || true
-          bun test src/lib/__tests__/inventorySync.test.ts 2>&1 | tee -a integration-results.txt || true
+          PASS=true
+          bun test src/lib/__tests__/api-helpers.test.ts 2>&1 | tee integration-results.txt || PASS=false
+          bun test src/lib/__tests__/inventorySync.test.ts 2>&1 | tee -a integration-results.txt || PASS=false
           echo ""
-          echo "Integration tests completed"
-        continue-on-error: true
+          if [ "$PASS" = "false" ]; then
+            echo "⚠️ Some integration tests failed — review integration-results.txt"
+            exit 1
+          else
+            echo "✅ All integration tests passed"
+          fi
 
       - name: Upload integration test results
         if: always()
