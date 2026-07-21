@@ -99,8 +99,15 @@ jobs:
       - name: Start application
         run: |
           bun .next/standalone/server.js &
-          sleep 10
-          echo "Application started on port 3000"
+          # Wait for the app to be ready (max 30 seconds)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Application is ready on port 3000"
+              break
+            fi
+            echo "Waiting for app... attempt $i/30"
+            sleep 2
+          done
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
@@ -146,7 +153,15 @@ jobs:
       - name: Start application
         run: |
           bun .next/standalone/server.js &
-          sleep 10
+          # Wait for the app to be ready (max 30 seconds)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Application is ready on port 3000"
+              break
+            fi
+            echo "Waiting for app... attempt $i/30"
+            sleep 2
+          done
 
       - name: Run load test on health endpoint
         run: |

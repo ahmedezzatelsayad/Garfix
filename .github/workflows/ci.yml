@@ -107,21 +107,19 @@ jobs:
       - name: TypeScript type check (production code only)
         run: |
           echo "Checking production code for type errors..."
-          # tsconfig.prod.json already exists in repo; create if missing
+
+          # Ensure tsconfig.prod.json exists
           if [ ! -f tsconfig.prod.json ]; then
-            cat > tsconfig.prod.json << 'EOF'
-            {
-              "extends": "./tsconfig.json",
-              "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"]
-            }
-            EOF
+            echo '{"extends": "./tsconfig.json", "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"]}' > tsconfig.prod.json
           fi
 
-          # Disable pipefail so PIPESTATUS captures tsc exit code even on failure
-          set +eo pipefail
+          # Disable errexit and pipefail so PIPESTATUS captures tsc exit code
+          set +e
+          set +o pipefail
           bunx tsc --noEmit -p tsconfig.prod.json 2>&1 | tee typecheck-results.txt
           EXIT_CODE=${PIPESTATUS[0]}
-          set -eo pipefail
+          set -e
+          set -o pipefail
 
           if [ $EXIT_CODE -ne 0 ]; then
             echo "❌ Type errors found in production code!"
@@ -174,11 +172,13 @@ jobs:
         id: build_step
         run: |
           echo "Starting Next.js production build..."
-          # Disable pipefail so PIPESTATUS captures build exit code even on failure
-          set +eo pipefail
+          # Disable errexit and pipefail so PIPESTATUS captures build exit code
+          set +e
+          set +o pipefail
           bun run build 2>&1 | tee build-results.txt
           EXIT_CODE=${PIPESTATUS[0]}
-          set -eo pipefail
+          set -e
+          set -o pipefail
 
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ Build successful"
