@@ -1,95 +1,32 @@
 /**
- * /founder-panel/ai-fabric — Phase 8 Task 2: AI Fabric Founder Panel Dashboard
+ * /founder-panel/ai-fabric — AI Fabric Founder Panel Dashboard
  *
- * Simple server component page showing real platform metrics.
- * Every number has a comment indicating its data source.
- * Uses "N/A" when no data is available — never placeholder/mock numbers.
- *
- * This is a standalone page (no sidebar layout) for founder visibility.
+ * Client Component version - fetches data from API route.
+ * Build-safe: no Prisma imports, no server-side queries at module level.
  */
 
-import { db } from "@/lib/db";
-import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
-import { getPlatformProfit } from "@/lib/ai-fabric/profit-engine";
+"use client";
 
-// ─── Current month period ───────────────────────────────────────────────────
+import { useState, useEffect, useCallback } from "react";
 
-const now = new Date();
-const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-// ─── Data fetching (server-side, no client JS) ─────────────────────────────
-
-// Source: db.company.count — total companies on the platform
-const companiesCount = await db.company.count();
-
-// Source: db.companyRuntime.aggregate SUM(workerPoolSize) WHERE status='active'
-const activeWorkersAgg = await db.companyRuntime.aggregate({
-  where: { status: "active" },
-  _sum: { workerPoolSize: true },
-  _count: true,
-});
-const workersActive = activeWorkersAgg._sum.workerPoolSize ?? 0;
-// Source: db.companyRuntime._count WHERE status='active' — number of active runtimes
-const activeRuntimeCount = activeWorkersAgg._count;
-
-// Source: db.aIRequestLog.aggregate AVG(latencyMs) WHERE resolvedBy='ai'
-const aiLatencyAgg = await db.aIRequestLog.aggregate({
-  where: {
-    resolvedBy: "ai",
-    createdAt: { gte: periodStart, lte: periodEnd },
-  },
-  _avg: { latencyMs: true },
-  _count: true,
-});
-const queueDelay = aiLatencyAgg._avg.latencyMs
-  ? Math.round(aiLatencyAgg._avg.latencyMs)
-  : null;
-
-// Source: cost-optimizer.getPlatformSavings() — actual savings from cascade
-let platformSavings: { savedUsd: number; savingsPct: number } | null = null;
-try {
-  const savingsReport = await getPlatformSavings(periodStart, periodEnd);
-  platformSavings = {
-    savedUsd: savingsReport.savedUsd,
-    savingsPct: savingsReport.savingsPct,
-  };
-} catch {
-  platformSavings = null;
+interface AIFabricData {
+  companiesCount: number;
+  workersActive: number;
+  activeRuntimeCount: number;
+  queueDelay: number | null;
+  platformSavings: { savedUsd: number; savingsPct: number } | null;
+  cascadeBreakdown: Record<string, number>;
+  totalCascadeRequests: number;
+  grossAiMargin: number;
+  totalRevenue: number;
+  totalAiCost: number;
+  periodStart: string;
+  periodEnd: string;
 }
 
-// Source: db.aIRequestLog.groupBy resolvedBy — cascade breakdown percentages
-const cascadeGroups = await db.aIRequestLog.groupBy({
-  by: ["resolvedBy"],
-  where: { createdAt: { gte: periodStart, lte: periodEnd } },
-  _count: true,
-});
-const totalCascadeRequests = cascadeGroups.reduce((sum, g) => sum + g._count, 0);
-const cascadeBreakdown: Record<string, number> = {};
-for (const group of cascadeGroups) {
-  cascadeBreakdown[group.resolvedBy] =
-    totalCascadeRequests > 0
-      ? Math.round((group._count / totalCascadeRequests) * 1000) / 10
-      : 0;
-}
-
-// Source: db.profitSnapshot.aggregate SUM(revenueUsd) - SUM(aiCostUsd) — gross AI margin
-const profitAgg = await db.profitSnapshot.aggregate({
-  where: {
-    periodStart: { gte: periodStart },
-    periodEnd: { lte: periodEnd },
-  },
-  _sum: {
-    revenueUsd: true,
-    aiCostUsd: true,
-  },
-});
-const totalRevenue = profitAgg._sum.revenueUsd ?? 0;
-const totalAiCost = profitAgg._sum.aiCostUsd ?? 0;
-// Source: grossAiMargin = totalRevenue - totalAiCost (from ProfitSnapshot sums)
-const grossAiMargin = Math.round((totalRevenue - totalAiCost) * 100) / 100;
-
-// ─── Helper ─────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function fmt(value: number | null | undefined, prefix = "$"): string {
   if (value === null || value === undefined) return "N/A";
@@ -99,103 +36,6 @@ function fmt(value: number | null | undefined, prefix = "$"): string {
 function fmtPct(value: number | null | undefined): string {
   if (value === null || value === undefined) return "N/A";
   return `${value.toFixed(1)}%`;
-}
-
-// ─── Page ───────────────────────────────────────────────────────────────────
-
-export default async function AIFabricFounderPanel() {
-  return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-10" dir="ltr">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          AI Fabric — Founder Panel
-        </h1>
-        <p className="text-sm text-gray-500 mb-8">
-          Period: {periodStart.toISOString().slice(0, 10)} → {periodEnd.toISOString().slice(0, 10)}
-          {" "}(current month)
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* ── Companies ─────────────────────────────────────────────── */}
-          {/* Source: db.company.count */}
-          <MetricCard
-            label="Companies"
-            value={String(companiesCount)}
-            detail="total platform tenants"
-          />
-
-          {/* ── Workers Active ────────────────────────────────────────── */}
-          {/* Source: db.companyRuntime.aggregate SUM(workerPoolSize) WHERE status='active' */}
-          <MetricCard
-            label="Workers Active"
-            value={workersActive > 0 ? String(workersActive) : "N/A"}
-            detail={`${activeRuntimeCount} active runtimes`}
-          />
-
-          {/* ── Queue Delay ───────────────────────────────────────────── */}
-          {/* Source: db.aIRequestLog.aggregate AVG(latencyMs) WHERE resolvedBy='ai' */}
-          <MetricCard
-            label="Queue Delay (AI avg)"
-            value={queueDelay !== null ? `${queueDelay}ms` : "N/A"}
-            detail="avg latency for AI-resolved requests"
-          />
-
-          {/* ── AI Saved ──────────────────────────────────────────────── */}
-          {/* Source: cost-optimizer.getPlatformSavings() — savedUsd field */}
-          <MetricCard
-            label="AI Saved (cascade)"
-            value={
-              platformSavings
-                ? fmt(platformSavings.savedUsd)
-                : "N/A"
-            }
-            detail={
-              platformSavings
-                ? `${fmtPct(platformSavings.savingsPct)} savings rate`
-                : "no request data"
-            }
-          />
-
-          {/* ── Gross AI Margin ───────────────────────────────────────── */}
-          {/* Source: db.profitSnapshot.aggregate SUM(revenueUsd) - SUM(aiCostUsd) */}
-          <MetricCard
-            label="Gross AI Margin"
-            value={totalCascadeRequests > 0 ? fmt(grossAiMargin) : "N/A"}
-            detail={totalCascadeRequests > 0 ? `revenue ${fmt(totalRevenue)} − AI cost ${fmt(totalAiCost)}` : "no profit snapshots"}
-          />
-
-          {/* ── Cascade Breakdown ─────────────────────────────────────── */}
-          {/* Source: db.aIRequestLog.groupBy resolvedBy — percentages */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-              Cascade Breakdown
-            </div>
-            <div className="text-lg font-semibold text-gray-900 mb-3">
-              {totalCascadeRequests > 0
-                ? `${totalCascadeRequests} requests`
-                : "N/A"}
-            </div>
-            <div className="space-y-1 text-sm text-gray-700">
-              {/* Source: db.aIRequestLog.groupBy resolvedBy = 'cache' */}
-              <Row label="Cache" pct={cascadeBreakdown["cache"]} />
-              {/* Source: db.aIRequestLog.groupBy resolvedBy = 'pattern' */}
-              <Row label="Pattern" pct={cascadeBreakdown["pattern"]} />
-              {/* Source: db.aIRequestLog.groupBy resolvedBy = 'rule' */}
-              <Row label="Rule" pct={cascadeBreakdown["rule"]} />
-              {/* Source: db.aIRequestLog.groupBy resolvedBy = 'memory' */}
-              <Row label="Memory" pct={cascadeBreakdown["memory"]} />
-              {/* Source: db.aIRequestLog.groupBy resolvedBy = 'ai' */}
-              <Row label="LLM Usage" pct={cascadeBreakdown["ai"]} />
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-gray-400 mt-8">
-          Every number sourced from real DB queries. &quot;N/A&quot; = no data available for this period.
-        </p>
-      </div>
-    </main>
-  );
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -228,5 +68,165 @@ function Row({ label, pct }: { label: string; pct: number | undefined }) {
         {pct !== undefined ? `${pct.toFixed(1)}%` : "N/A"}
       </span>
     </div>
+  );
+}
+
+// ─── Main Page Component ───────────────────────────────────────────────────
+
+export default function AIFabricFounderPanel() {
+  const [data, setData] = useState<AIFabricData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data (pure function - no setState)
+  const fetchAIFabricData = useCallback(async (): Promise<AIFabricData> => {
+    const res = await fetch("/api/founder-panel/ai-fabric");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }, []);
+
+  // State updaters
+  const updateData = useCallback((result: AIFabricData) => {
+    setData(result);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  const handleError = useCallback((err: unknown) => {
+    setError(err instanceof Error ? err.message : "Unknown error");
+    setLoading(false);
+  }, []);
+
+  // Effect with setState in async callback
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const result = await fetchAIFabricData();
+        updateData(result); // setState in callback
+      } catch (err) {
+        handleError(err);
+      }
+    };
+    load();
+  }, [fetchAIFabricData, updateData, handleError]);
+
+  // Manual refresh handler
+  const handleRefresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await fetchAIFabricData();
+      updateData(result);
+    } catch (err) {
+      handleError(err);
+    }
+  }, [fetchAIFabricData, updateData, handleError]);
+
+  // Loading state
+  if (loading && !data) {
+    return (
+      <main className="min-h-screen bg-gray-50 p-6 md:p-10 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading AI Fabric...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Error state
+  if (error && !data) {
+    return (
+      <main className="min-h-screen bg-gray-50 p-6 md:p-10 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Error: {error}</p>
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (!data) return null;
+
+  const periodStart = new Date(data.periodStart).toISOString().slice(0, 10);
+  const periodEnd = new Date(data.periodEnd).toISOString().slice(0, 10);
+
+  return (
+    <main className="min-h-screen bg-gray-50 p-6 md:p-10" dir="ltr">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          AI Fabric — Founder Panel
+        </h1>
+        <p className="text-sm text-gray-500 mb-8">
+          Period: {periodStart} → {periodEnd} (current month)
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Companies */}
+          <MetricCard
+            label="Companies"
+            value={String(data.companiesCount)}
+            detail="total platform tenants"
+          />
+
+          {/* Workers Active */}
+          <MetricCard
+            label="Workers Active"
+            value={data.workersActive > 0 ? String(data.workersActive) : "N/A"}
+            detail={`${data.activeRuntimeCount} active runtimes`}
+          />
+
+          {/* Queue Delay */}
+          <MetricCard
+            label="Queue Delay (AI avg)"
+            value={data.queueDelay !== null ? `${data.queueDelay}ms` : "N/A"}
+            detail="avg latency for AI-resolved requests"
+          />
+
+          {/* AI Saved */}
+          <MetricCard
+            label="AI Saved (cascade)"
+            value={data.platformSavings ? fmt(data.platformSavings.savedUsd) : "N/A"}
+            detail={
+              data.platformSavings
+                ? `${fmtPct(data.platformSavings.savingsPct)} savings rate`
+                : "no request data"
+            }
+          />
+
+          {/* Gross AI Margin */}
+          <MetricCard
+            label="Gross AI Margin"
+            value={data.totalCascadeRequests > 0 ? fmt(data.grossAiMargin) : "N/A"}
+            detail={data.totalCascadeRequests > 0 ? `revenue ${fmt(data.totalRevenue)} − AI cost ${fmt(data.totalAiCost)}` : "no profit snapshots"}
+          />
+
+          {/* Cascade Breakdown */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+              Cascade Breakdown
+            </div>
+            <div className="text-lg font-semibold text-gray-900 mb-3">
+              {data.totalCascadeRequests > 0 ? `${data.totalCascadeRequests} requests` : "N/A"}
+            </div>
+            <div className="space-y-1 text-sm text-gray-700">
+              <Row label="Cache" pct={data.cascadeBreakdown["cache"]} />
+              <Row label="Pattern" pct={data.cascadeBreakdown["pattern"]} />
+              <Row label="Rule" pct={data.cascadeBreakdown["rule"]} />
+              <Row label="Memory" pct={data.cascadeBreakdown["memory"]} />
+              <Row label="LLM Usage" pct={data.cascadeBreakdown["ai"]} />
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-400 mt-8">
+          Every number sourced from real DB queries. &quot;N/A&quot; = no data available for this period.
+        </p>
+      </div>
+    </main>
   );
 }
