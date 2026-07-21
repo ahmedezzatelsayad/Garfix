@@ -19,6 +19,25 @@ RUN bun install --frozen-lockfile
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
+# Build-time environment variables (needed for `next build` to succeed)
+# These are CI-only test values — production secrets come from the runtime env.
+ARG NODE_ENV=test
+ARG DATABASE_URL=postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test
+ARG DATABASE_DIRECT_URL=postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test
+ARG JWT_SECRET=ci-build-jwt-secret-at-least-32-characters-long!!
+ARG JWT_REFRESH_SECRET=ci-build-refresh-secret-at-least-32-chars!!
+ARG FOUNDER_EMAIL=founder@test.com
+ARG PAYMENTS_ENC_KEY=ci-build-encryption-key-at-least-32-characters!
+
+# Export as ENV so Next.js build can access them
+ENV NODE_ENV=${NODE_ENV}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV DATABASE_DIRECT_URL=${DATABASE_DIRECT_URL}
+ENV JWT_SECRET=${JWT_SECRET}
+ENV JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+ENV FOUNDER_EMAIL=${FOUNDER_EMAIL}
+ENV PAYMENTS_ENC_KEY=${PAYMENTS_ENC_KEY}
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
