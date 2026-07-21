@@ -31,6 +31,15 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Build-time environment variables (not secrets — just needed for `next build`)
+  # These are CI-only values; production secrets come from the deployment environment.
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
+  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  JWT_SECRET: "ci-build-jwt-secret-at-least-32-characters-long!!"
+  JWT_REFRESH_SECRET: "ci-build-refresh-secret-at-least-32-chars!!"
+  FOUNDER_EMAIL: "founder@test.com"
+  PAYMENTS_ENC_KEY: "ci-build-encryption-key-at-least-32-characters!"
+  NODE_ENV: "test"
 
 jobs:
   # ── Job 1: Build Docker Image ──────────────────────────────────────────
@@ -96,7 +105,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NODE_ENV=production
+            NODE_ENV=test
+            DATABASE_URL=${{ env.DATABASE_URL }}
+            DATABASE_DIRECT_URL=${{ env.DATABASE_DIRECT_URL }}
+            JWT_SECRET=${{ env.JWT_SECRET }}
+            JWT_REFRESH_SECRET=${{ env.JWT_REFRESH_SECRET }}
+            FOUNDER_EMAIL=${{ env.FOUNDER_EMAIL }}
+            PAYMENTS_ENC_KEY=${{ env.PAYMENTS_ENC_KEY }}
 
       - name: Image digest
         run: echo "Image digest ${{ steps.build.outputs.digest }}"
