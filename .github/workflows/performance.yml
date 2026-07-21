@@ -137,9 +137,15 @@ jobs:
       - name: Build application
         run: bun run build
 
+      - name: Setup Node.js (for standalone server)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Start application
         run: |
-          bun .next/standalone/server.js &
+          # Use Node.js to run standalone server (Bun 1.3.x has native module issues with Next.js standalone)
+          node .next/standalone/server.js &
           # Wait for the app to be ready (max 60 seconds)
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
@@ -196,9 +202,15 @@ jobs:
       - name: Build application
         run: bun run build
 
+      - name: Setup Node.js (for standalone server)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Start application
         run: |
-          bun .next/standalone/server.js &
+          # Use Node.js to run standalone server (Bun 1.3.x has native module issues with Next.js standalone)
+          node .next/standalone/server.js &
           # Wait for the app to be ready (max 60 seconds)
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then

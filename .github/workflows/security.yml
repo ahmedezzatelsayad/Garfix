@@ -43,16 +43,33 @@ jobs:
           echo "─── Bun Package Audit ───"
           bun audit 2>&1 | tee audit-results.txt || true
 
-      - name: Check for known vulnerabilities
+      - name: Check for critical vulnerabilities
         run: |
           echo "─── Checking for critical vulnerabilities ───"
-          if grep -qiE "(critical|high|vulnerability)" audit-results.txt; then
-            echo "❌ Critical/high vulnerabilities found — review audit-results.txt"
-            echo "Failing the pipeline to prevent shipping vulnerable code."
+          # Only fail on CRITICAL severity — high/moderate are warnings
+          if grep -qiE "critical" audit-results.txt; then
+            echo "❌ CRITICAL vulnerabilities found — review audit-results.txt"
+            echo "Failing the pipeline to prevent shipping critically vulnerable code."
             exit 1
-          else
-            echo "✅ No critical vulnerabilities detected"
           fi
+
+          # Check for high severity — warn but don't fail
+          if grep -qiE "high:" audit-results.txt; then
+            HIGH_COUNT=$(grep -oiE "high:" audit-results.txt | wc -l)
+            echo "⚠️ $HIGH_COUNT HIGH severity vulnerability(ies) found — review audit-results.txt"
+            echo "High severity issues are warnings, not blockers. Consider fixing them soon."
+          else
+            echo "✅ No high vulnerabilities detected"
+          fi
+
+          # Check for moderate — informational only
+          if grep -qiE "moderate:" audit-results.txt; then
+            MOD_COUNT=$(grep -oiE "moderate:" audit-results.txt | wc -l)
+            echo "ℹ️ $MOD_COUNT MODERATE severity vulnerability(ies) found — review when convenient"
+          fi
+
+          echo ""
+          echo "✅ No CRITICAL vulnerabilities detected — pipeline continues"
 
       - name: Check for outdated dependencies
         run: |

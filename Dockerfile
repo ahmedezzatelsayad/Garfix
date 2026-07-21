@@ -44,13 +44,14 @@ RUN bun run db:generate
 RUN bun run build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────
-FROM oven/bun:1.3.14-alpine AS runner
+# Use Node.js for runtime — Next.js standalone server.js requires Node.js APIs
+# (Bun 1.3.x has native module compatibility issues with Next.js standalone)
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install required packages BEFORE creating user
 # Alpine doesn't include addgroup/adduser by default — install shadow + curl
 RUN apk add --no-cache shadow curl
 RUN addgroup --system --gid 1001 nodejs
@@ -80,4 +81,4 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
-CMD ["bun", "server.js"]
+CMD ["node", "server.js"]
