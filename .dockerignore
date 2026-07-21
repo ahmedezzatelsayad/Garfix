@@ -1,20 +1,50 @@
-node_modules
-.next
+# Git
 .git
 .gitignore
-*.md
-.env*
-.eslint*
-.prettierrc*
-coverage
-test
-scripts
-docs
+
+# CI/CD
 .github
-upload
-download
-tool-results
-worklog.md
-skills
-examples
-db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Tests
+src/lib/__tests__
+src/lib/founder-validation
+e2e
+playwright.config.ts
+
+# Scripts (not needed in Docker)
+scripts
+
+# AI agent context
+agent-ctx
+
+# Logs
+*.log
+dev.log
+server.log
+
+# Next.js
+.next
+node_modules
+
+# Docker
+docker-compose*.yml
+Dockerfile
+
+# Misc
+Caddyfile
+Caddyfile.dev

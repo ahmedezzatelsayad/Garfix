@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────
-FROM oven/bun:1 AS deps
+FROM oven/bun:1.2.4 AS deps
 WORKDIR /app
 
 # Copy package files AND prisma schema (needed by postinstall → prisma generate)
@@ -16,7 +16,7 @@ COPY prisma ./prisma
 RUN bun install --frozen-lockfile
 
 # ── Stage 2: Build ──────────────────────────────────────────────────────
-FROM oven/bun:1 AS builder
+FROM oven/bun:1.2.4 AS builder
 WORKDIR /app
 
 # Build-time environment variables (needed for `next build` to succeed)
@@ -29,14 +29,13 @@ ARG JWT_REFRESH_SECRET=ci-build-refresh-secret-at-least-32-chars!!
 ARG FOUNDER_EMAIL=founder@test.com
 ARG PAYMENTS_ENC_KEY=ci-build-encryption-key-at-least-32-characters!
 
-# Export as ENV so Next.js build can access them
+# NOTE: ARG values are NOT persisted in the final image (unlike ENV).
+# Only export as ENV what is truly needed at build time.
+# Secrets (JWT_SECRET, etc.) should ONLY be injected at runtime via environment variables.
 ENV NODE_ENV=${NODE_ENV}
 ENV DATABASE_URL=${DATABASE_URL}
 ENV DATABASE_DIRECT_URL=${DATABASE_DIRECT_URL}
-ENV JWT_SECRET=${JWT_SECRET}
-ENV JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 ENV FOUNDER_EMAIL=${FOUNDER_EMAIL}
-ENV PAYMENTS_ENC_KEY=${PAYMENTS_ENC_KEY}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
