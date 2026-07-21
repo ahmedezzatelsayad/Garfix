@@ -9,7 +9,8 @@ FROM oven/bun:1 AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production=false
+# Bun's --production flag is a boolean switch (no =value). Omit it to install devDeps.
+RUN bun install --frozen-lockfile
 
 # ── Stage 2: Build ──────────────────────────────────────────────────────
 FROM oven/bun:1 AS builder
