@@ -166,12 +166,12 @@ function generateTOTP(secret: string, userCode: string): boolean {
       hmac.update(counterBuf);
       const digest = hmac.digest();
 
-      const offset = digest[digest.length - 1] & 0x0f;
+      const byteOffset = digest[digest.length - 1] & 0x0f;
       const binary =
-        ((digest[offset] & 0x7f) << 24) |
-        ((digest[offset + 1] & 0xff) << 16) |
-        ((digest[offset + 2] & 0xff) << 8) |
-        (digest[offset + 3] & 0xff);
+        ((digest[byteOffset] & 0x7f) << 24) |
+        ((digest[byteOffset + 1] & 0xff) << 16) |
+        ((digest[byteOffset + 2] & 0xff) << 8) |
+        (digest[byteOffset + 3] & 0xff);
 
       const otp = (binary % Math.pow(10, TOTP_DIGITS)).toString().padStart(TOTP_DIGITS, "0");
       if (safeCompare(otp, userCode)) return true;

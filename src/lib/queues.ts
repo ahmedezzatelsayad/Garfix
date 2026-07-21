@@ -376,7 +376,6 @@ export async function enqueueAsync(queue: QueueName, payload: JobPayload): Promi
       if (bullQueue) {
         await bullQueue.add(payload.type, payload, {
           attempts: payload.attempts ?? MAX_RETRIES,
-          timeout: QUEUE_TTL[queue] ?? 30_000,
         });
         logger.debug("[queues] BullMQ job enqueued (async)", { queue, type: payload.type });
         return;
@@ -402,7 +401,6 @@ export function enqueueBackground(queue: QueueName, payload: JobPayload): void {
           try {
             await bullQueue.add(payload.type, payload, {
               attempts: payload.attempts ?? MAX_RETRIES,
-              timeout: QUEUE_TTL[queue] ?? 30_000,
             });
             logger.debug("[queues] BullMQ job enqueued (background)", { queue, type: payload.type });
             return;
