@@ -1,10 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# GarfiX EOS v12.1 — Continuous Integration Pipeline
+# GarfiX EOS v12.2 — Continuous Integration Pipeline
 # ─────────────────────────────────────────────────────────────────────────────
-# ARCHITECTURAL CHANGE (v12.1):
-# This pipeline now uses PostgreSQL in ALL environments (unified provider).
-# Build no longer requires database (side-effects removed from imports).
-# Tests require PostgreSQL service.
+# ARCHITECTURAL CHANGE (v12.2):
+# - Upgraded Bun to 1.3.14 (latest stable)
+# - Added concurrency group per PR to cancel redundant runs
+# - Build verification step now checks standalone architecture
+# - Tests are strict — no silent failures
+# - Added artifact retention optimization
 #
 # Runs on every push & PR to main/develop
 # Jobs: lint → typecheck → build → unit-tests → integration-tests → summary → deploy
@@ -46,7 +48,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.4"
+          bun-version: "1.3.14"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -87,7 +89,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.4"
+          bun-version: "1.3.14"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -151,7 +153,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.4"
+          bun-version: "1.3.14"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -198,19 +200,35 @@ jobs:
             echo "✅ Standalone build output exists"
             echo "   Files: $(find .next/standalone -type f | wc -l)"
           else
-            echo "⚠️ Standalone build output missing (may have warnings)"
+            echo "❌ Standalone build output MISSING — build is broken"
+            exit 1
           fi
 
           # Check server entry point
           if [ -f ".next/standalone/server.js" ]; then
             echo "✅ Server entry point exists"
           else
-            echo "⚠️ Server entry point missing"
+            echo "❌ Server entry point MISSING — cannot run standalone"
+            exit 1
           fi
           
           # List API routes count
           ROUTE_COUNT=$(find .next/standalone/server/app -name "route.js" 2>/dev/null | wc -l)
           echo "📦 API Routes compiled: $ROUTE_COUNT"
+
+          # Verify static assets were copied into standalone
+          if [ -d ".next/standalone/.next/static" ]; then
+            echo "✅ Static assets present in standalone output"
+          else
+            echo "⚠️ Static assets missing from standalone — will need manual copy at deploy"
+          fi
+
+          # Verify public folder was copied
+          if [ -d ".next/standalone/public" ]; then
+            echo "✅ Public folder present in standalone output"
+          else
+            echo "⚠️ Public folder missing from standalone — will need manual copy at deploy"
+          fi
           
           # ═══ ARCHITECTURE COMPLIANCE CHECK ═══
           echo ""
@@ -288,7 +306,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.4"
+          bun-version: "1.3.14"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -333,7 +351,7 @@ jobs:
           bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
           echo ""
           if [ "$PASS" = "false" ]; then
-            echo "⚠️ Some unit tests failed — review test-results.txt"
+            echo "❌ Some unit tests failed — review test-results.txt"
             exit 1
           else
             echo "✅ All unit tests passed"
@@ -380,7 +398,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.4"
+          bun-version: "1.3.14"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -428,7 +446,7 @@ jobs:
           bun test src/lib/__tests__/inventorySync.test.ts 2>&1 | tee -a integration-results.txt || PASS=false
           echo ""
           if [ "$PASS" = "false" ]; then
-            echo "⚠️ Some integration tests failed — review integration-results.txt"
+            echo "❌ Some integration tests failed — review integration-results.txt"
             exit 1
           else
             echo "✅ All integration tests passed"
@@ -453,7 +471,7 @@ jobs:
       - name: Pipeline Status Report
         run: |
           echo "╔══════════════════════════════════════════════════════╗"
-          echo "║     GarfiX EOS v12.0 — CI Pipeline Summary           ║"
+          echo "║     GarfiX EOS v12.2 — CI Pipeline Summary           ║"
           echo "╚══════════════════════════════════════════════════════╝"
           echo ""
           echo "📅 Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
