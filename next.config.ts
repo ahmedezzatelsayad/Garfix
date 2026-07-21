@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   },
   // SEC-007 FIX: Enable React Strict Mode
   reactStrictMode: true,
+  // VERCEL FIX: Externalize Prisma for proper bundling
+  serverExternalPackages: ["@prisma/client"],
   // SEC-009 FIX: Security headers
   // SEC-003 FIX: CSP policy — nonce-based in production, relaxed in development
   async headers() {
