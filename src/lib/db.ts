@@ -4,15 +4,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// SEC-004 FIX: Only log queries in development, never in production
+// Only log queries in development, never in production
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Connection pool sizing for PostgreSQL (ignored by SQLite).
+// Connection pool sizing for PostgreSQL.
 // Default Prisma pool = 10 connections, which exhausts quickly under load.
 // In production: use DATABASE_POOL_SIZE env var (default 20 for a single instance).
 // Formula guidance: pool_size = (CPU cores × 2) + effective_spindle_count
 const poolSize = isDev
-  ? 5  // Dev: smaller pool to reduce SQLite contention
+  ? 5  // Dev: smaller pool
   : (parseInt(process.env.DATABASE_POOL_SIZE || '20', 10) || 20);
 
 export const db =
@@ -26,43 +26,16 @@ export const db =
 
 /**
  * Append connection pool parameters to a PostgreSQL URL.
- * Returns the URL unchanged for SQLite (file: prefix).
  */
 function appendPoolParams(url: string, poolSize: number): string {
-  // SQLite URLs — don't add pool params
-  if (url.startsWith('file:')) return url;
   // Already has pool params — don't double-add
   if (url.includes('connection_limit=')) return url;
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}connection_limit=${poolSize}&pool_timeout=30`;
 }
 
-// EA-008 FIX: Enable WAL mode for SQLite to allow concurrent reads during writes.
-// Without WAL, SQLite uses exclusive locks that block all readers during writes,
-// causing SQLITE_BUSY errors under any real load with Prisma's multi-connection model.
-// WAL mode allows readers and one writer to operate concurrently.
-// This PRAGMA is a no-op on PostgreSQL (ignored silently), so it's safe to run
-// regardless of the database provider.
-async function configureSqlite(): Promise<void> {
-  try {
-    await db.$executeRawUnsafe('PRAGMA journal_mode=WAL');
-    await db.$executeRawUnsafe('PRAGMA synchronous=NORMAL');
-    await db.$executeRawUnsafe('PRAGMA busy_timeout=5000');
-    await db.$executeRawUnsafe('PRAGMA foreign_keys=ON');
-    if (isDev) {
-      console.log('[db] SQLite PRAGMA configured: WAL mode, synchronous=NORMAL, busy_timeout=5000, foreign_keys=ON');
-    }
-  } catch (err) {
-    // This will fail on PostgreSQL — that's expected, just log and continue
-    if (isDev) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.log(`[db] PRAGMA configuration skipped (likely PostgreSQL): ${msg}`);
-    }
-  }
-}
-
 // ── Runtime initialization ─────────────────────────────────────────────
-// Module-level side effects REMOVED — configureSqlite() now requires
+// Module-level side effects REMOVED — initDb() now requires
 // an explicit call from instrumentation.ts / bootstrap.ts at runtime.
 // This prevents database queries from firing during `next build`.
 let _dbInitialized = false;
@@ -75,7 +48,8 @@ let _dbInitialized = false;
 export async function initDb(): Promise<void> {
   if (_dbInitialized) return;
   _dbInitialized = true;
-  await configureSqlite();
+  // PostgreSQL doesn't need PRAGMA configuration — connection pooling
+  // is handled by Prisma and the pool params in the URL.
 }
 
 if (isDev) globalForPrisma.prisma = db

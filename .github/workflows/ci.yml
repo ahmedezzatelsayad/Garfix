@@ -183,9 +183,9 @@ jobs:
             echo "✅ Build successful"
             echo "build_status=success" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ Build had issues (check warnings above)"
-            echo "build_status=warning" >> $GITHUB_OUTPUT
-            # Don't exit - let CI continue to show results
+            echo "❌ Build failed (exit code $EXIT_CODE)"
+            echo "build_status=failed" >> $GITHUB_OUTPUT
+            exit 1
           fi
 
       - name: Verify build output + architecture compliance
@@ -473,18 +473,13 @@ jobs:
           echo "═════════════════════════════════════════"
           echo ""
 
-          # CI always passes now - jobs are informational
-          # Build warnings/errors are reported but don't block
-          echo "✅ CI Pipeline COMPLETED"
-          echo ""
-          echo "📊 Job Results (informational):"
-          printf "%-20s %s\n" "🔍 Lint:" "${{ needs.lint.result }}"
-          printf "%-20s %s\n" "📝 TypeCheck:" "${{ needs.typecheck.result }}"
-          printf "%-20s %s\n" "🏗️ Build:" "${{ needs.build.result }}"
-          printf "%-20s %s\n" "🧪 UnitTests:" "${{ needs.unit-tests.result }}"
-          printf "%-20s %s\n" "🔗 Integration:" "${{ needs.integration-tests.result }}"
-          echo ""
-          echo "🚀 Ready for deployment!"
+          # Fail the pipeline if any critical job failed
+          if echo "${{ needs.typecheck.result }}${{ needs.build.result }}${{ needs.unit-tests.result }}${{ needs.integration-tests.result }}" | grep -q "failure"; then
+            echo "❌ CI Pipeline FAILED — critical job(s) failed"
+            exit 1
+          fi
+
+          echo "✅ CI Pipeline PASSED"
 
       - name: Create Status Badge
         if: success()

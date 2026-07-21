@@ -44,10 +44,10 @@ jobs:
       - name: Check for known vulnerabilities
         run: |
           echo "─── Checking for critical vulnerabilities ───"
-          # Check if audit found any critical/high issues
           if grep -qiE "(critical|high|vulnerability)" audit-results.txt; then
-            echo "⚠️ Potential vulnerabilities found — review audit-results.txt"
-            echo "VULNERABILITIES_FOUND=true" >> $GITHUB_ENV
+            echo "❌ Critical/high vulnerabilities found — review audit-results.txt"
+            echo "Failing the pipeline to prevent shipping vulnerable code."
+            exit 1
           else
             echo "✅ No critical vulnerabilities detected"
           fi
