@@ -2,7 +2,11 @@
  * /api/backups
  * GET  — list existing backups
  * POST — trigger a new backup (founder only)
+ *
+ * RUNTIME: Node.js only — imports backup.ts which uses node:fs/promises
  */
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";

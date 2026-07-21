@@ -18,7 +18,10 @@
  *   that company's decrypted whatsappAppSecretEnc.
  *   For now, messages are logged (AI processing can be added later).
  *   We return 200 immediately (Meta requires fast response).
+ *
+ * RUNTIME: Node.js only — uses node:crypto, cryptoVault.ts
  */
+export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";

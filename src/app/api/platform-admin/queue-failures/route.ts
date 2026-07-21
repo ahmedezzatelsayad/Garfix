@@ -13,7 +13,11 @@
  * Query params:
  *   ?queue=<QueueName>  — filter to a single queue (optional)
  *   ?clear=1            — clear the log after returning (acknowledge)
+ *
+ * RUNTIME: Node.js only — imports queues.ts (BullMQ)
  */
+export const runtime = 'nodejs';
+
 import { NextResponse, type NextRequest } from "next/server";
 import { requireFounder } from "@/lib/middleware";
 import { getDeadLetters, clearDeadLetters, type QueueName } from "@/lib/queues";

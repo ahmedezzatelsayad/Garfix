@@ -13,11 +13,17 @@
  *
  * Returns 200 when all critical services (DB, Valkey) are healthy.
  * Returns 503 when any critical service is down.
+ *
+ * RUNTIME: Node.js only — uses process.memoryUsage(), os module
  * Non-critical failures (disk, queue stats) are reported but don't
  * cause a 503 — the app can still serve requests.
  *
  * Unauthenticated — healthchecks must succeed without cookies.
+ *
+ * RUNTIME: Node.js only — uses node:os, queues.ts (BullMQ)
  */
+export const runtime = 'nodejs';
+
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { valkeyHealthCheck } from "@/lib/valkey";

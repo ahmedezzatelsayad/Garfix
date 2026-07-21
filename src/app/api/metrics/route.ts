@@ -5,7 +5,11 @@
  * Returns operational metrics for all Valkey-backed subsystems.
  *
  * Unauthenticated — metrics endpoints must not require auth for scraping.
+ *
+ * RUNTIME: Node.js only — imports queues.ts (BullMQ)
  */
+export const runtime = 'nodejs';
+
 import { NextResponse } from "next/server";
 import { cacheStats } from "@/lib/cache";
 import { getBullMQStats } from "@/lib/queues";
