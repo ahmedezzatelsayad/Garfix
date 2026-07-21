@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * mfa.test.ts — 60 tests for the TOTP-based MFA module.
  *

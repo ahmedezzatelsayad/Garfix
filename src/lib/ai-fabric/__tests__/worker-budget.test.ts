@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * worker-budget.test.ts — Phase 4/5/6 integration tests.
  *

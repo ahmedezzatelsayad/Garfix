@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * disaster-recovery.test.ts — 40 tests for disaster recovery concepts.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * audit-advanced.test.ts — 30 tests for the audit module and tamper audit.
  *

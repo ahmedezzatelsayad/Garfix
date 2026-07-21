@@ -23,6 +23,7 @@ import { db } from "@/lib/db";
 import { valkeyHealthCheck } from "@/lib/valkey";
 import { getBullMQStats } from "@/lib/queues";
 import { cacheStats } from "@/lib/cache";
+import { totalmem } from "node:os";
 
 const VERSION = "12.0.0";
 
@@ -84,13 +85,13 @@ export async function GET() {
 
   // ── 5. Memory ──────────────────────────────────────────────────────────
   const memUsage = process.memoryUsage();
-  const totalMem = require("node:os").totalmem();
+  const totalMemory = totalmem();
   checks.memory = {
     rssMB: Math.round(memUsage.rss / 1024 / 1024),
     heapMB: Math.round(memUsage.heapUsed / 1024 / 1024),
     heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
-    systemTotalMB: Math.round(totalMem / 1024 / 1024),
-    rssPercent: ((memUsage.rss / totalMem) * 100).toFixed(1),
+    systemTotalMB: Math.round(totalMemory / 1024 / 1024),
+    rssPercent: ((memUsage.rss / totalMemory) * 100).toFixed(1),
   };
 
   // ── 6. Disk (non-critical) ────────────────────────────────────────────

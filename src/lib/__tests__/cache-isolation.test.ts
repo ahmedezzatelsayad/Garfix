@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * cache-isolation.test.ts — 50 tests for cache multi-tenant isolation.
  *

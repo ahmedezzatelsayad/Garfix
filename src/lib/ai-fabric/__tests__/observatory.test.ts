@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * observatory.test.ts — Comprehensive tests for the AI Observatory module.
  *

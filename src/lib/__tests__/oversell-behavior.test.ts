@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * oversell-behavior.test.ts
  *

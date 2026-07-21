@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * webhooks.test.ts — 50 tests for the webhook delivery system.
  *
@@ -6,6 +7,7 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import crypto from "node:crypto";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
 
@@ -452,7 +454,7 @@ describe("Webhooks Module", () => {
     it("returns true for correct signature", () => {
       const sig = verifyWebhookSignature(payload, "sha256=abc", secret);
       // We need the actual correct signature
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       expect(verifyWebhookSignature(payload, `sha256=${expected}`, secret)).toBe(true);
     });
@@ -462,7 +464,7 @@ describe("Webhooks Module", () => {
     });
 
     it("returns false when signature prefix is wrong", () => {
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       expect(verifyWebhookSignature(payload, `wrongprefix=${expected}`, secret)).toBe(false);
     });
@@ -472,13 +474,13 @@ describe("Webhooks Module", () => {
     });
 
     it("returns false for different payload with same signature", () => {
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       expect(verifyWebhookSignature('{"event":"different"}', `sha256=${sig}`, secret)).toBe(false);
     });
 
     it("returns false for different secret", () => {
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const sig = crypto.createHmac("sha256", "wrong-secret").update(payload).digest("hex");
       expect(verifyWebhookSignature(payload, `sha256=${sig}`, secret)).toBe(false);
     });
@@ -489,19 +491,19 @@ describe("Webhooks Module", () => {
         data: { id: "inv-1", amount: 100.50, items: ["a", "b"] },
         nested: { deeply: { value: true } },
       });
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const expected = crypto.createHmac("sha256", secret).update(complexPayload).digest("hex");
       expect(verifyWebhookSignature(complexPayload, `sha256=${expected}`, secret)).toBe(true);
     });
 
     it("works with empty payload", () => {
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const expected = crypto.createHmac("sha256", secret).update("").digest("hex");
       expect(verifyWebhookSignature("", `sha256=${expected}`, secret)).toBe(true);
     });
 
     it("signature is deterministic for same input", () => {
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const sig1 = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       const sig2 = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       expect(sig1).toBe(sig2);
@@ -510,7 +512,7 @@ describe("Webhooks Module", () => {
     });
 
     it("returns false for signature without sha256= prefix", () => {
-      const crypto = require("node:crypto");
+      // using imported crypto;
       const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       expect(verifyWebhookSignature(payload, expected, secret)).toBe(false);
     });

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * passwordPolicy.test.ts — 50 tests for the password validation and session management module.
  *

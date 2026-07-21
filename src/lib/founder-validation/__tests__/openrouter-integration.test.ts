@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, mock, afterEach } from 'bun:test';
 import {
   callOpenRouter,

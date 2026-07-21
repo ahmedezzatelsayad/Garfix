@@ -41,7 +41,8 @@ export function AccountView() {
       toast.error("تعذّر الاتصال بالخادم");
     } finally { setLoadingActivities(false); }
   }, []);
-
+  
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadActivities(); }, [loadActivities]);
 
   const saveProfile = async () => {

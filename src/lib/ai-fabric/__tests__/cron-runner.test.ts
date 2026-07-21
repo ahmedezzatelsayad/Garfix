@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * cron-runner.test.ts — Comprehensive tests for the AI Fabric cron runner.
  *

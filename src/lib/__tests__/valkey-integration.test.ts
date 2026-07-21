@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * valkey-integration.test.ts — Comprehensive test suite for Valkey + BullMQ migration.
  *

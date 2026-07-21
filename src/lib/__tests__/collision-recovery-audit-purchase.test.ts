@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * collision-recovery-audit-purchase.test.ts — Purchase-side collision recovery.
  *

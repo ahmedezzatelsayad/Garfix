@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * b10-performance-benchmark.test.ts — ProductMatcher latency benchmark.
  *

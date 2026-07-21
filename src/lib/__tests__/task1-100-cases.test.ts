@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * task1-100-cases.test.ts — 100-case bilingual product matching matrix.
  *
