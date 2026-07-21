@@ -74,20 +74,29 @@ jobs:
 
             # ── Budget Enforcement ──
             echo ""
-            echo "─── Budget Check ───"
+            echo "─── Budget Check ──"
             JS_LIMIT=512000
             CSS_LIMIT=102400
+            BUDGET_FAILED=0
 
             if [ "$TOTAL_JS" -gt "$JS_LIMIT" ]; then
               echo "❌ JS bundle exceeds 500 KB budget: ${JS_MB} MB"
+              BUDGET_FAILED=1
             else
               echo "✅ JS bundle within 500 KB budget: ${JS_MB} MB"
             fi
 
             if [ "$TOTAL_CSS" -gt "$CSS_LIMIT" ]; then
               echo "❌ CSS bundle exceeds 100 KB budget: ${CSS_MB} MB"
+              BUDGET_FAILED=1
             else
               echo "✅ CSS bundle within 100 KB budget: ${CSS_MB} MB"
+            fi
+
+            if [ "$BUDGET_FAILED" -eq 1 ]; then
+              echo ""
+              echo "❌ Bundle budget EXCEEDED — reduce bundle size before merging"
+              exit 1
             fi
           else
             echo "⚠️ .next/static not found"
@@ -288,23 +297,45 @@ jobs:
         run: |
           echo "─── Load Test: /api/health ───"
           # ab (Apache Bench) is pre-installed on ubuntu-latest
-          ab -n 500 -c 20 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt || true
+          set +e
+          ab -n 500 -c 20 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt
+          AB_EXIT=$?
+          set -e
+          if [ $AB_EXIT -ne 0 ]; then
+            echo "⚠️ Load test command failed (exit $AB_EXIT) — app may not be responding"
+          fi
 
       - name: Run load test on landing page
         run: |
           echo ""
-          echo "─── Load Test: Landing Page ───"
-          ab -n 100 -c 10 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt || true
+          echo "─── Load Test: Landing Page ──"
+          set +e
+          ab -n 100 -c 10 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt
+          AB_EXIT=$?
+          set -e
+          if [ $AB_EXIT -ne 0 ]; then
+            echo "⚠️ Landing page load test command failed (exit $AB_EXIT)"
+          fi
 
       - name: Verify load test results
         run: |
-          echo "─── Load Test Validation ───"
+          echo "─── Load Test Validation ──"
           FAILED_REQUESTS=$(grep -oP 'Failed requests:\s+\K\d+' load-test-results.txt | head -1 || echo "0")
-          if [ -n "$FAILED_REQUESTS" ] && [ "$FAILED_REQUESTS" -gt 50 ]; then
-            echo "⚠️ High number of failed requests: $FAILED_REQUESTS"
-            echo "This may indicate performance issues under load"
+          if [ -z "$FAILED_REQUESTS" ]; then
+            FAILED_REQUESTS=0
+          fi
+          if [ "$FAILED_REQUESTS" -gt 50 ]; then
+            echo "❌ High number of failed requests: $FAILED_REQUESTS (threshold: 50)"
+            echo "This indicates performance issues under load"
+            exit 1
           else
-            echo "✅ Load test completed with acceptable failure rate"
+            echo "✅ Load test completed with acceptable failure rate ($FAILED_REQUESTS failed)"
+          fi
+
+          # Also check for 0% success rate (app completely down)
+          if ! grep -q "Complete requests:" load-test-results.txt; then
+            echo "❌ No completed requests found — application may be completely down"
+            exit 1
           fi
 
       - name: Upload load test results

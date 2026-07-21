@@ -64,10 +64,20 @@ jobs:
       - name: Run ESLint (production code only)
         run: |
           echo "Running ESLint on production code..."
-          bunx eslint src/app src/lib src/modules --format=compact 2>&1 | tee lint-results.txt || true
-          echo ""
-          echo "Lint completed."
-        continue-on-error: true  # ESLint warnings shouldn't block — errors are caught by tsc
+          # Capture exit code properly without pipefail clobbering it
+          set +e
+          set +o pipefail
+          bunx eslint src/app src/lib src/modules --format=compact 2>&1 | tee lint-results.txt
+          ESLINT_EXIT=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+
+          if [ $ESLINT_EXIT -ne 0 ]; then
+            echo "❌ ESLint found errors — check lint-results.txt"
+            exit 1
+          else
+            echo "✅ ESLint passed — no errors"
+          fi
 
       - name: Upload lint results
         if: always()
@@ -337,10 +347,12 @@ jobs:
       - name: Run Prisma migrations
         run: |
           echo "Running Prisma migrations..."
-          bun run db:deploy 2>&1 | tee migrate-output.txt || {
-            echo "⚠️ Migration failed (may already exist)"
-            echo "Continuing with existing schema..."
-          }
+          if ! bun run db:deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ Prisma migration FAILED — database schema is not ready for tests"
+            echo "Review migrate-output.txt for details"
+            exit 1
+          fi
+          echo "✅ Migrations applied successfully"
 
       - name: Run unit tests (core modules)
         run: |
@@ -429,10 +441,12 @@ jobs:
       - name: Run Prisma migrations
         run: |
           echo "Running Prisma migrations..."
-          bun run db:deploy 2>&1 | tee migrate-output.txt || {
-            echo "⚠️ Migration failed (may already exist)"
-            echo "Continuing with existing schema..."
-          }
+          if ! bun run db:deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ Prisma migration FAILED — database schema is not ready for tests"
+            echo "Review migrate-output.txt for details"
+            exit 1
+          fi
+          echo "✅ Migrations applied successfully"
 
       - name: Seed test database
         run: bun run seed 2>&1 || echo "Seed completed with warnings"
@@ -514,8 +528,33 @@ jobs:
     needs: [lint, typecheck, build, unit-tests, integration-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: staging
-    
+    permissions:
+      contents: read
+      packages: read
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: garfix-build-${{ github.sha }}
+          path: .next/standalone
+
+      - name: Verify build artifact
+        run: |
+          if [ ! -f ".next/standalone/server.js" ]; then
+            echo "❌ Build artifact missing server.js — cannot deploy"
+            exit 1
+          fi
+          echo "✅ Build artifact verified"
+
       - name: Deploy notification
         run: |
           echo "🚀 Deployment triggered for staging"
@@ -525,3 +564,5 @@ jobs:
           echo "  - Docker: docker build && docker push && kubectl apply"
           echo "  - Vercel: vercel deploy --prod"
           echo "  - AWS: aws s3 sync && cloudfront invalidate"
+          echo ""
+          echo "✅ Staging deployment initiated from verified build artifact"
