@@ -151,7 +151,7 @@ jobs:
       - name: Install k6 (HTTP load generator)
         run: |
           K6_VERSION="v2.1.0"
-          wget -q "https://github.com/grafana/k6/releases/download/${K6_VERSION}/k6-${K6_VERSION#v}-linux-amd64.tar.gz" -O /tmp/k6.tar.gz
+          curl -sL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/k6-${K6_VERSION#v}-linux-amd64.tar.gz" -o /tmp/k6.tar.gz
           tar -xzf /tmp/k6.tar.gz -C /tmp
           mv /tmp/k6-${K6_VERSION#v}-linux-amd64/k6 /usr/local/bin/k6
           chmod +x /usr/local/bin/k6
