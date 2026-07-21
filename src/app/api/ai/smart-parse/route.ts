@@ -193,50 +193,139 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   try {
     const systemPrompt = await buildSystemPrompt(companySlug);
-    let { content, usage, provider, model, processingMs: aiMs } = await callAI(systemPrompt, rawText.trim());
-
-    // Parse + validate
     let orders: ParsedOrder[] = [];
     let retried = false;
+    let content = "";
+    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+    let provider = "";
+    let model = "";
+    let aiMs = 0;
+    let usedAICall = false;
+    let cascadeMeta: {
+      resolvedBy: string;
+      latencyMs: number;
+      cacheHitCount?: number;
+      budgetBlocked: boolean;
+    } | null = null;
+
+    // Hash-friendly prefix for cascade cache key
+    const normalizedInput = rawText.trim().slice(0, 500);
+
+    // ── Stage 1: AI Fabric Cascade (cache → pattern → rule → memory → budget gate → AI) ──
     try {
-      const obj = JSON.parse(stripFences(content));
-      const raw = Array.isArray(obj) ? obj : (obj.orders ?? obj.items ?? []);
-      orders = (raw as unknown[]).map(normalizeOrder).filter(Boolean) as ParsedOrder[];
-    } catch (firstErr) {
-      // Self-repair: ask the AI to fix its own JSON
-      logger.warn("[smart-parse] first parse failed — retrying", { err: firstErr instanceof Error ? firstErr.message : String(firstErr) });
-      retried = true;
-      const repairPrompt = `الرد السابق لم يكن JSON صالح. أعد الإخراج كـ JSON صحيح فقط، بدون أي شرح أو markdown. الرد السابق كان:\n\n${content}`;
-      const retry = await callAI(systemPrompt, `${rawText.trim()}\n\n---\n${repairPrompt}`);
-      content = retry.content;
-      usage = retry.usage;
-      provider = retry.provider;
-      model = retry.model;
-      // Aggregate latency across the original + repair call (honest total).
-      aiMs = aiMs + retry.processingMs;
+      const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+      const cascadeResult = await executeCascade<ParsedOrder[]>(
+        {
+          companySlug: companySlug || "__global",
+          requestType: "ocr",
+          normalizedInput,
+          rawInput: rawText,
+          context: { text: rawText },
+        },
+        {
+          aiFn: async (gwReq) => {
+            const inputText = (gwReq.rawInput || rawText).toString().trim();
+            const result = await callAI(systemPrompt, inputText);
+            const obj = JSON.parse(stripFences(result.content));
+            const parsed = Array.isArray(obj) ? obj : (obj.orders ?? obj.items ?? []);
+            const normalized = (parsed as unknown[]).map(normalizeOrder).filter(Boolean) as ParsedOrder[];
+            if (normalized.length === 0) throw new Error("No valid orders parsed from AI response");
+            return {
+              data: normalized,
+              provider: result.provider,
+              tokensUsed: result.usage.total_tokens,
+              costUsd: (result.usage.total_tokens / 1000) * 0.0003,
+            };
+          },
+        },
+      );
+
+      cascadeMeta = {
+        resolvedBy: cascadeResult.resolvedBy,
+        latencyMs: cascadeResult.latencyMs,
+        cacheHitCount: cascadeResult.cacheHitCount,
+        budgetBlocked: cascadeResult.budgetBlocked || false,
+      };
+
+      // If budget gate blocked the AI call, return 429
+      if (cascadeResult.budgetBlocked) {
+        return NextResponse.json(
+          { error: `تم تجاوز ميزانية الذكاء الاصطناعي: ${cascadeResult.budgetReason || "budget_exceeded"}` },
+          { status: 429 },
+        );
+      }
+
+      // If any cascade stage resolved, use its data
+      if (cascadeResult.data && Array.isArray(cascadeResult.data) && cascadeResult.data.length > 0) {
+        orders = cascadeResult.data;
+        if (cascadeResult.resolvedBy === "ai") {
+          usedAICall = true;
+          provider = cascadeResult.provider || "";
+          aiMs = cascadeResult.latencyMs;
+          usage.total_tokens = cascadeResult.tokensUsed || 0;
+        }
+      }
+    } catch (cascadeErr) {
+      // Cascade failed (AI parse error, import error, etc.) — fall back to direct AI call
+      logger.warn("[smart-parse] cascade error — falling back to direct AI", {
+        err: cascadeErr instanceof Error ? cascadeErr.message : String(cascadeErr),
+      });
+    }
+
+    // ── Stage 2: Fallback — direct AI call with JSON-retry (original path) ──
+    if (orders.length === 0) {
+      usedAICall = true;
+      const direct = await callAI(systemPrompt, rawText.trim());
+      content = direct.content;
+      usage = direct.usage;
+      provider = direct.provider;
+      model = direct.model;
+      aiMs = direct.processingMs;
+
       try {
         const obj = JSON.parse(stripFences(content));
         const raw = Array.isArray(obj) ? obj : (obj.orders ?? obj.items ?? []);
         orders = (raw as unknown[]).map(normalizeOrder).filter(Boolean) as ParsedOrder[];
-      } catch (secondErr) {
-        logger.error("[smart-parse] retry also failed", { err: secondErr instanceof Error ? secondErr.message : String(secondErr) });
-        // P0 FIX: log the failed smart-parse call (both attempts consumed tokens).
-        void logAiUsage({
-          companySlug: companySlug || null,
-          userUid: user.uid,
-          provider,
-          model,
-          endpoint: "smart-parse",
-          tokensIn: usage.prompt_tokens || 0,
-          tokensOut: usage.completion_tokens || 0,
-          processingMs: aiMs,
-          success: false,
-          errorMessage: `JSON parse failed after retry: ${secondErr instanceof Error ? secondErr.message : String(secondErr)}`,
-        });
-        return NextResponse.json(
-          { error: "رد الذكاء الاصطناعي غير صالح (JSON)", raw: content },
-          { status: 502 },
-        );
+      } catch (firstErr) {
+        // Self-repair: ask the AI to fix its own JSON
+        logger.warn("[smart-parse] first parse failed — retrying", { err: firstErr instanceof Error ? firstErr.message : String(firstErr) });
+        retried = true;
+        const repairPrompt = `الرد السابق لم يكن JSON صالح. أعد الإخراج كـ JSON صحيح فقط، بدون أي شرح أو markdown. الرد السابق كان:\n\n${content}`;
+        const retry = await callAI(systemPrompt, `${rawText.trim()}\n\n---\n${repairPrompt}`);
+        content = retry.content;
+        usage = retry.usage;
+        provider = retry.provider;
+        model = retry.model;
+        // Aggregate latency across the original + repair call (honest total).
+        aiMs = aiMs + retry.processingMs;
+        try {
+          const obj = JSON.parse(stripFences(content));
+          const raw = Array.isArray(obj) ? obj : (obj.orders ?? obj.items ?? []);
+          orders = (raw as unknown[]).map(normalizeOrder).filter(Boolean) as ParsedOrder[];
+        } catch (secondErr) {
+          logger.error("[smart-parse] retry also failed", { err: secondErr instanceof Error ? secondErr.message : String(secondErr) });
+          // P0 FIX: log the failed smart-parse call (both attempts consumed tokens).
+          void logAiUsage({
+            companySlug: companySlug || null,
+            userUid: user.uid,
+            provider,
+            model,
+            endpoint: "smart-parse",
+            tokensIn: usage.prompt_tokens || 0,
+            tokensOut: usage.completion_tokens || 0,
+            processingMs: aiMs,
+            success: false,
+            errorMessage: `JSON parse failed after retry: ${secondErr instanceof Error ? secondErr.message : String(secondErr)}`,
+          });
+          return NextResponse.json(
+            { error: "رد الذكاء الاصطناعي غير صالح (JSON)", raw: content },
+            { status: 502 },
+          );
+        }
       }
     }
 
@@ -244,21 +333,22 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const itemsCount = orders.reduce((s, o) => s + o.items.length, 0);
 
     // P0 FIX (AI Effectiveness prompt): log every smart-parse AI call to
-    // ai_usage_logs. If a retry happened, aiMs is the sum of both calls and
-    // tokens reflect the FINAL (retry) response — this is an honest
-    // limitation noted in the prompt (don't fabricate the first call's tokens
-    // if the provider doesn't break them out per attempt).
-    void logAiUsage({
-      companySlug: companySlug || null,
-      userUid: user.uid,
-      provider,
-      model,
-      endpoint: "smart-parse",
-      tokensIn: usage.prompt_tokens || 0,
-      tokensOut: usage.completion_tokens || 0,
-      processingMs: aiMs,
-      success: true,
-    });
+    // ai_usage_logs. Only log when AI was actually invoked (cascade-ai or
+    // fallback path). Cascade-resolved-by-cache/pattern/rule/memory requests
+    // are already logged to AIRequestLog by the gateway — no duplicate here.
+    if (usedAICall) {
+      void logAiUsage({
+        companySlug: companySlug || null,
+        userUid: user.uid,
+        provider,
+        model: model || "cascade/ai",
+        endpoint: "smart-parse",
+        tokensIn: usage.prompt_tokens || 0,
+        tokensOut: usage.completion_tokens || 0,
+        processingMs: aiMs,
+        success: true,
+      });
+    }
 
     // Auto-add discovered products to the catalog
     if (autoAddProducts && companySlug && orders.length > 0) {
@@ -293,8 +383,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       data: {
         companySlug: companySlug || null,
         endpoint: "smart-parse",
-        model,
-        provider,
+        model: model || (cascadeMeta ? `cascade/${cascadeMeta.resolvedBy}` : "unknown"),
+        provider: provider || (cascadeMeta && cascadeMeta.resolvedBy !== "ai" ? "ai-fabric" : "unknown"),
         ordersCount: orders.length,
         itemsCount,
         processingMs,
@@ -312,7 +402,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       action: "ai_smart_parse",
       entity: "ai",
       companySlug: companySlug || null,
-      details: { ordersCount: orders.length, itemsCount, processingMs, aiMs, retried },
+      details: { ordersCount: orders.length, itemsCount, processingMs, aiMs, retried, cascadeMeta },
     });
 
     return NextResponse.json({
@@ -323,10 +413,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0,
         totalTokens: usage.total_tokens || 0,
-        model,
+        model: model || (cascadeMeta ? `cascade/${cascadeMeta.resolvedBy}` : "unknown"),
         retried,
         ordersCount: orders.length,
         itemsCount,
+        ...(cascadeMeta ? { cascadeMeta } : {}),
       },
     });
   } catch (err) {

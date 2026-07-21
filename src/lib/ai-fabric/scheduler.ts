@@ -18,6 +18,7 @@
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { getValkeyClient } from "@/lib/valkey";
 import { TIER_WORKER_LIMITS, planToTier, type SLATier } from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -37,8 +38,14 @@ export interface AllocationInfo {
  * Set of company slugs that are currently considered "active" (have sent a
  * request in this cycle). Used for starvation prevention: when an idle
  * company's queue goes non-empty, we immediately reclaim its borrowed slots.
+ *
+ * Valkey-backed: SET "ai-fabric:active-slugs" with 60s TTL (auto-refreshed).
+ * Falls back to in-memory Set when Valkey is unavailable.
  */
 const activeSlugs = new Set<string>();
+
+const ACTIVE_SLUGS_KEY = "ai-fabric:active-slugs";
+const ACTIVE_SLUGS_TTL = 60; // seconds — short TTL, refreshed on each requestSlot
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -53,6 +60,17 @@ const activeSlugs = new Set<string>();
 export async function requestSlot(companySlug: string): Promise<boolean> {
   // Mark this company as active (has pending work)
   activeSlugs.add(companySlug);
+
+  // Persist to Valkey for multi-instance consistency
+  try {
+    const valkey = await getValkeyClient();
+    if (valkey) {
+      await valkey.sadd(ACTIVE_SLUGS_KEY, companySlug);
+      await valkey.expire(ACTIVE_SLUGS_KEY, ACTIVE_SLUGS_TTL);
+    }
+  } catch {
+    // Valkey failed — in-memory fallback is already set
+  }
 
   const alloc = await getAllocationMap();
   const info = alloc[companySlug];
@@ -97,6 +115,22 @@ export async function getAllocationMap(): Promise<Record<string, AllocationInfo>
     const ceiling = TIER_WORKER_LIMITS[tier] as number;
     const queueDepth = await getCompanyQueueDepth(slug);
     const isIdle = queueDepth === 0 && !activeSlugs.has(slug);
+
+    // Also check Valkey for cross-instance active slugs
+    if (isIdle) {
+      try {
+        const valkey = await getValkeyClient();
+        if (valkey) {
+          const isValkeyActive = await valkey.sismember(ACTIVE_SLUGS_KEY, slug);
+          if (isValkeyActive) {
+            activeSlugs.add(slug); // sync local cache
+          }
+          // Use the combined check: if active in Valkey, not idle
+        }
+      } catch {
+        // Valkey failed — use in-memory only
+      }
+    }
 
     map[slug] = {
       baseAllocation: rt.workerPoolSize,

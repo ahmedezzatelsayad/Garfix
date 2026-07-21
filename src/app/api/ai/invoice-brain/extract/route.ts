@@ -74,6 +74,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   let usedAI = false;
   let usedPattern = false;
   let aiError: string | null = null;
+  let totalTokensUsed = 0;
   const fingerprints = new Set<string>();
 
   for (const chunk of chunks) {
@@ -115,6 +116,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // consume zero AI tokens by design (that's the whole point of the
       // pattern-learning loop).
       if (result.aiOutcome) {
+        totalTokensUsed += (result.aiOutcome.raw.usage?.prompt_tokens || 0) + (result.aiOutcome.raw.usage?.completion_tokens || 0);
         void logAiUsage({
           companySlug,
           userUid: user.uid,
@@ -133,8 +135,37 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const mapped = mapBrainToOrder(result.data, ctx);
     if (mapped.ok) {
       orders.push({ order: mapped.order, source: result.source, fingerprint: result.fingerprint });
+      // AI Fabric: store successful AI extraction in AI memory for future cascade hits
+      if (result.source === "ai") {
+        try {
+          const { storeAIMemory, fabricHash } = await import("@/lib/ai-fabric/gateway");
+          await storeAIMemory({
+            companySlug,
+            category: "invoice",
+            inputHash: fabricHash(chunk),
+            result: result.data,
+          });
+        } catch (memErr) {
+          logger.warn("[invoice-brain] failed to store AI memory", {
+            err: memErr instanceof Error ? memErr.message : String(memErr),
+          });
+        }
+      }
     } else {
       skipped.push({ reason: mapped.reason, preview: chunk.slice(0, 60) });
+    }
+  }
+
+  // AI Fabric: record AI spend to budget engine for cost tracking
+  if (usedAI && totalTokensUsed > 0) {
+    try {
+      const { recordSpend } = await import("@/lib/ai-fabric/budget-engine");
+      const estimatedCost = (totalTokensUsed / 1000) * 0.0003;
+      await recordSpend(companySlug, estimatedCost);
+    } catch (spendErr) {
+      logger.warn("[invoice-brain] failed to record AI spend to budget engine", {
+        err: spendErr instanceof Error ? spendErr.message : String(spendErr),
+      });
     }
   }
 
