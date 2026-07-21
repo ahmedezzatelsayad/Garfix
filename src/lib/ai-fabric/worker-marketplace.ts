@@ -29,6 +29,7 @@ export const SLA_LATENCY_DEFAULTS: Record<SLATier, number> = {
   enterprise: 200,
   business: 800,
   starter: 2000,
+  trial: 5000,
 };
 
 // Tier priority weights — higher = more important
