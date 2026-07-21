@@ -148,34 +148,17 @@ jobs:
           bun .next/standalone/server.js &
           sleep 10
 
-      - name: Install k6 (HTTP load generator)
-        run: |
-          K6_VERSION="v2.1.0"
-          K6_DEB="k6-${K6_VERSION#v}-linux-amd64.deb"
-          curl -fsSL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/${K6_DEB}" -o /tmp/k6.deb
-          file /tmp/k6.deb
-          sudo dpkg -i /tmp/k6.deb
-          k6 version
-
-      - name: Create k6 test script
-        run: |
-          cat > /tmp/load-test.js << 'K6EOF'
-          import http from 'k6/http';
-          export default function () {
-            http.get(__ENV.ENDPOINT);
-          }
-          K6EOF
-
       - name: Run load test on health endpoint
         run: |
           echo "─── Load Test: /api/health ───"
-          k6 run --vus 10 --iterations 100 --no-thresholds --no-summary -e ENDPOINT=http://localhost:3000/api/health /tmp/load-test.js 2>&1 | tee load-test-results.txt || true
+          # ab (Apache Bench) is pre-installed on ubuntu-latest
+          ab -n 100 -c 10 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt || true
 
       - name: Run load test on landing page
         run: |
           echo ""
           echo "─── Load Test: Landing Page ───"
-          k6 run --vus 5 --iterations 50 --no-thresholds --no-summary -e ENDPOINT=http://localhost:3000/ /tmp/load-test.js 2>&1 | tee -a load-test-results.txt || true
+          ab -n 50 -c 5 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt || true
 
       - name: Upload load test results
         if: always()
