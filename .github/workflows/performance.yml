@@ -17,6 +17,15 @@ concurrency:
   group: perf-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_ENV: test
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
+  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
+  JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
+  FOUNDER_EMAIL: "founder@test.com"
+  PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-characters!"
+
 jobs:
   # ── Job 1: Bundle Size Analysis ────────────────────────────────────────
   bundle-analysis:
