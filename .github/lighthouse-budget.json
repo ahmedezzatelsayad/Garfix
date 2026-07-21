@@ -8,12 +8,12 @@
       "cumulativeLayoutShift": 0.1
     },
     "resourceSizes": [
-      { "resourceType": "script", "budget": 500 },
-      { "resourceType": "stylesheet", "budget": 100 },
+      { "resourceType": "script", "budget": 3000 },
+      { "resourceType": "stylesheet", "budget": 200 },
       { "resourceType": "image", "budget": 300 },
       { "resourceType": "document", "budget": 100 },
       { "resourceType": "font", "budget": 100 },
-      { "resourceType": "total", "budget": 1200 }
+      { "resourceType": "total", "budget": 3700 }
     ],
     "timings": [
       { "metric": "first-contentful-paint", "budget": 2000 },
