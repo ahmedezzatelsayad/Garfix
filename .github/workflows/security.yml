@@ -40,8 +40,13 @@ jobs:
 
       - name: Run Bun audit
         run: |
-          echo "─── Bun Package Audit ───"
-          bun audit 2>&1 | tee audit-results.txt || true
+          echo "─── Bun Package Audit ──"
+          # bun audit exits non-zero if vulnerabilities found — capture exit code
+          set +e
+          bun audit 2>&1 | tee audit-results.txt
+          AUDIT_EXIT=$?
+          set -e
+          echo "Audit exit code: $AUDIT_EXIT"
 
       - name: Check for critical vulnerabilities
         run: |
@@ -73,9 +78,11 @@ jobs:
 
       - name: Check for outdated dependencies
         run: |
-          echo "─── Outdated Dependencies Check ───"
-          # List outdated packages for visibility
+          echo "─── Outdated Dependencies Check ──"
+          # bun outdated exits non-zero if outdated packages found — informational only
+          set +e
           bun outdated 2>&1 | tee outdated-results.txt || true
+          set -e
           echo ""
           echo "Review outdated-results.txt for potential updates"
 
@@ -126,15 +133,7 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
-          upload: true
-
-      - name: Upload CodeQL SARIF results
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true
-        with:
-          sarif_file: ../results/javascript-typescript.sarif
-          category: codeql-${{ matrix.language }}
+          upload: true  # Already uploads SARIF to GitHub Security tab
 
   # ── Job 3: Secret Scanning ─────────────────────────────────────────────
   secret-scan:
@@ -149,7 +148,7 @@ jobs:
           fetch-depth: 0  # Full history for thorough scan
 
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@v3.95.9
+        uses: trufflesecurity/trufflehog@main
         with:
           extra_args: --only-verified
         continue-on-error: true  # Don't block on scan failures — review SARIF instead
@@ -188,11 +187,11 @@ jobs:
 
       - name: Check licenses
         run: |
-          echo "─── License Compliance Check ───"
+          echo "─── License Compliance Check ──"
           # List all dependency licenses
-          bun pm ls 2>/dev/null | head -50 || true
-          echo ""
-          echo "Checking for problematic licenses (GPL, AGPL, SSPL)..."
+          bun pm ls 2>/dev/null | head -50 > license-report.txt || true
+          echo "" >> license-report.txt
+          echo "Checking for problematic licenses (GPL, AGPL, SSPL)..." >> license-report.txt
           # Scan for problematic licenses in node_modules
           PROBLEMATIC=0
           if [ -d "node_modules" ]; then
@@ -201,6 +200,7 @@ jobs:
                 LICENSE=$(cat "$pkg/LICENSE" "$pkg/license" 2>/dev/null | head -5)
                 if echo "$LICENSE" | grep -qiE "(affero general public|gnu general public|server side public|SSPL)"; then
                   echo "❌ Copyleft license found: $(basename $pkg)"
+                  echo "Copyleft license found: $(basename $pkg)" >> license-report.txt
                   PROBLEMATIC=1
                 fi
               fi
@@ -208,8 +208,10 @@ jobs:
           fi
           if [ "$PROBLEMATIC" -eq 0 ]; then
             echo "✅ No problematic copyleft licenses found"
+            echo "No problematic copyleft licenses found" >> license-report.txt
           else
             echo "❌ Copyleft licenses found — review before distribution"
+            echo "Copyleft licenses found — review before distribution" >> license-report.txt
             exit 1
           fi
 
