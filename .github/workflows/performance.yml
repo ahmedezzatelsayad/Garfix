@@ -152,7 +152,8 @@ jobs:
         run: |
           K6_VERSION="v2.1.0"
           K6_DEB="k6-${K6_VERSION#v}-linux-amd64.deb"
-          curl -sL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/${K6_DEB}" -o /tmp/k6.deb
+          curl -fsSL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/${K6_DEB}" -o /tmp/k6.deb
+          file /tmp/k6.deb
           sudo dpkg -i /tmp/k6.deb
           k6 version
 
