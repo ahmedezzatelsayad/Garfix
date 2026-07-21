@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────
-FROM oven/bun:1.2.4 AS deps
+FROM oven/bun:1.3.14 AS deps
 WORKDIR /app
 
 # Copy package files AND prisma schema (needed by postinstall → prisma generate)
@@ -16,7 +16,7 @@ COPY prisma ./prisma
 RUN bun install --frozen-lockfile
 
 # ── Stage 2: Build ──────────────────────────────────────────────────────
-FROM oven/bun:1.2.4 AS builder
+FROM oven/bun:1.3.14 AS builder
 WORKDIR /app
 
 # Build-time environment variables (needed for `next build` to succeed)
@@ -44,7 +44,7 @@ RUN bun run db:generate
 RUN bun run build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────
-FROM oven/bun:1-alpine AS runner
+FROM oven/bun:1.3.14-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

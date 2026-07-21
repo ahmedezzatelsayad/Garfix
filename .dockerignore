@@ -1,19 +1,27 @@
-# Git
+# ─────────────────────────────────────────────────────────────────────────────
+# GarFiX — Docker Ignore
+# Minimize Docker context size for faster builds
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Version Control
 .git
 .gitignore
+.gitattributes
 
-# CI/CD
+# CI/CD & GitHub
 .github
 
-# IDE
+# IDE & Editor
 .vscode
 .idea
 *.swp
 *.swo
+*.sublime-*
 
-# OS
+# OS Files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Documentation
 docs
@@ -25,6 +33,9 @@ src/lib/__tests__
 src/lib/founder-validation
 e2e
 playwright.config.ts
+**/*.test.ts
+**/*.spec.ts
+**/__tests__/**
 
 # Scripts (not needed in Docker)
 scripts
@@ -36,15 +47,25 @@ agent-ctx
 *.log
 dev.log
 server.log
+npm-debug.log*
 
-# Next.js
+# Next.js build cache (rebuilt in Docker)
 .next
 node_modules
 
-# Docker
+# Docker files (prevent recursive builds)
 docker-compose*.yml
 Dockerfile
+.dockerignore
 
-# Misc
+# Config files not needed in production
 Caddyfile
 Caddyfile.dev
+.env
+.env.*
+!.env.example
+
+# Tool artifacts
+coverage
+.nyc_output
+tsconfig.prod.json
