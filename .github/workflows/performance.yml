@@ -72,15 +72,33 @@ jobs:
             du -sh .next/static/
             echo ""
             echo "JavaScript chunks:"
-            find .next/static/chunks -name "*.js" -exec du -h {} \; 2>/dev/null | sort -rh | head -20
+            find .next/static/chunks -name "*.js" -exec du -h {} \; 2>/dev/null | sort -rh | head -20 || true
             echo ""
             echo "CSS files:"
-            find .next/static/css -name "*.css" -exec du -h {} \; 2>/dev/null | sort -rh | head -10
+            if [ -d ".next/static/css" ]; then
+              find .next/static/css -name "*.css" -exec du -h {} \; 2>/dev/null | sort -rh | head -10 || true
+            else
+              echo "  (No separate CSS directory — CSS may be inlined by Turbopack)"
+            fi
             echo ""
-            TOTAL_JS=$(find .next/static/chunks -name "*.js" -exec cat {} + 2>/dev/null | wc -c)
-            TOTAL_CSS=$(find .next/static/css -name "*.css" -exec cat {} + 2>/dev/null | wc -c)
-            JS_MB=$(echo "scale=2; $TOTAL_JS / 1024 / 1024" | bc)
-            CSS_MB=$(echo "scale=2; $TOTAL_CSS / 1024 / 1024" | bc)
+
+            # Calculate JS size (chunks directory always exists with Turbopack)
+            TOTAL_JS=$(find .next/static/chunks -name "*.js" -exec cat {} + 2>/dev/null | wc -c || echo 0)
+            # Calculate CSS size — directory may not exist with Turbopack (CSS inlined)
+            if [ -d ".next/static/css" ]; then
+              TOTAL_CSS=$(find .next/static/css -name "*.css" -exec cat {} + 2>/dev/null | wc -c || echo 0)
+            else
+              TOTAL_CSS=0
+            fi
+
+            # Ensure values are numbers (fallback to 0 if empty)
+            TOTAL_JS=$(echo "$TOTAL_JS" | tr -d '[:space:]')
+            TOTAL_CSS=$(echo "$TOTAL_CSS" | tr -d '[:space:]')
+            [ -z "$TOTAL_JS" ] && TOTAL_JS=0
+            [ -z "$TOTAL_CSS" ] && TOTAL_CSS=0
+
+            JS_MB=$(echo "scale=2; $TOTAL_JS / 1024 / 1024" | bc 2>/dev/null || echo "0")
+            CSS_MB=$(echo "scale=2; $TOTAL_CSS / 1024 / 1024" | bc 2>/dev/null || echo "0")
             echo "Total JS size:   ${JS_MB} MB"
             echo "Total CSS size:  ${CSS_MB} MB"
 
