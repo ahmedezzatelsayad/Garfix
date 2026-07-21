@@ -106,7 +106,7 @@ jobs:
           fetch-depth: 0  # Full history for thorough scan
 
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@v3.88
+        uses: trufflesecurity/trufflehog@v3.95.9
         with:
           extra_args: --only-verified
 
