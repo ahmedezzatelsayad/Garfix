@@ -61,9 +61,21 @@ async function configureSqlite(): Promise<void> {
   }
 }
 
-// Configure SQLite on first connection
-configureSqlite().catch((err) => {
-  console.error('[db] Failed to configure SQLite PRAGMA:', err);
-});
+// ── Runtime initialization ─────────────────────────────────────────────
+// Module-level side effects REMOVED — configureSqlite() now requires
+// an explicit call from instrumentation.ts / bootstrap.ts at runtime.
+// This prevents database queries from firing during `next build`.
+let _dbInitialized = false;
+
+/**
+ * Initialize database connection settings.
+ * Must be called once at application startup (e.g., from instrumentation.ts).
+ * Safe to call multiple times — subsequent calls are no-ops.
+ */
+export async function initDb(): Promise<void> {
+  if (_dbInitialized) return;
+  _dbInitialized = true;
+  await configureSqlite();
+}
 
 if (isDev) globalForPrisma.prisma = db

@@ -41,6 +41,7 @@
 import { logger } from "@/lib/logger";
 import { runStartupChecks } from "@/lib/startupCheck";
 import { bootstrapRuntime } from "@/runtime/bootstrap";
+import { initDb } from "@/lib/db";
 
 /**
  * register — Called by Next.js on server startup.
@@ -54,7 +55,11 @@ export async function register(): Promise<void> {
   logger.info("[instrumentation] Server starting up...");
 
   try {
-    // ── Step 1: Environment Validation ────────────────────────────────────
+    // ── Step 1: Database Initialization ──────────────────────────────────
+    logger.info("[instrumentation] Initializing database connection...");
+    await initDb();
+
+    // ── Step 2: Environment Validation ──────────────────────────────────
     logger.info("[instrumentation] Running environment checks...");
     const startupResult = runStartupChecks();
 
@@ -76,7 +81,7 @@ export async function register(): Promise<void> {
       });
     }
 
-    // ── Step 2: Bootstrap Queue Workers ───────────────────────────────────
+    // ── Step 3: Bootstrap Queue Workers ───────────────────────────────────
     logger.info("[instrumentation] Bootstrapping runtime services...");
     const bootstrapResult = await bootstrapRuntime();
 
@@ -93,7 +98,7 @@ export async function register(): Promise<void> {
       });
     }
 
-    // ── Step 3: Process-Level Error Handlers ─────────────────────────────
+    // ── Step 4: Process-Level Error Handlers ─────────────────────────────
 
     // Handle uncaught exceptions
     process.on("uncaughtException", (error: Error) => {
@@ -114,7 +119,7 @@ export async function register(): Promise<void> {
       });
     });
 
-    // ── Step 4: Graceful Shutdown Hooks ──────────────────────────────────
+    // ── Step 5: Graceful Shutdown Hooks ──────────────────────────────────
 
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`[instrumentation] Received ${signal}, initiating graceful shutdown...`);
