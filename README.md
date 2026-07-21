@@ -40,7 +40,7 @@ Garfix/
 │   ├── lib/
 │   │   ├── ai-fabric/       # 16-phase AI cascade engine
 │   │   ├── invoice-brain/   # Pattern-first extraction
-│   │   ├── founder-validation/ # 1855+ test suite
+│   │   ├── founder-validation/ # 1628+ test suite (11 sections)
 │   │   ├── workers/         # BullMQ background jobs
 │   │   ├── ai/              # Router, cost tracker, registry
 │   │   ├── integrations/    # Myfatoorah, WhatsApp, Meta Ads
@@ -77,9 +77,35 @@ Routes → Middleware (auth + rate limit) → Modules → lib/ai-fabric (cascade
 
 ## Test Stats
 
-- **1855+** ملف اختبار
+- **1628+** ملف اختبار
 - **1500+** حالة اختبار
+- Founder Validation Suite مع 11 قسم
 - 6 ملفات E2E (Playwright)
+
+## Founder Validation Suite
+
+مجموعة اختبار ضغط CTO-level تضمن جاهزية النظام للإنتاج — 11 قسم تغطي كل جانب:
+
+| # | القسم | الوصف |
+|---|-------|-------|
+| 1 | **Seeder Validation** | اختبار مولّد البيانات (10 → 25,000 شركة) |
+| 2 | **Edge Cases** | 20 اختبار حافة: قيم فارغة، حد أقصى، أحرف عربية |
+| 3 | **Cost Validation** | حسابات التكلفة: لكل فاتورة، provider، tenant، نموذج |
+| 4 | **Metrics** | نسب error rate, cache hit, p50/p95/p99 latency |
+| 5 | **Telemetry** | تسجيل الأحداث وتصفية حسب tenant/model/provider |
+| 6 | **Scale Tests** | تحميل متدرج: 100 → 500 → 1000 → 5000 → 10000 طلب |
+| 7 | **Report Validation** | فحص اكتمال التقرير ودقته |
+| 8 | **Validation Logic** | سلامة البيانات: معرفات، علاقات، حدود |
+| 9 | **Learning Validation** | اختبار محرك التعلم (pattern + memory) |
+| 10 | **Failure Injection** | حقن أعطال: Valkey, Postgres, BullMQ, OpenRouter, Network, Disk |
+| 11 | **Deep Tests** | 180+ اختبار عميق: Arabic encoding, cross-tenant, concurrent safety |
+
+```bash
+# تشغيل المجموعة الكاملة
+bun run scripts/founder-validation-suite.ts
+# أو عبر API
+POST /api/founder-validation
+```
 
 ## License
 
