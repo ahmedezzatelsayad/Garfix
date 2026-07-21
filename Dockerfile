@@ -8,7 +8,10 @@
 FROM oven/bun:1 AS deps
 WORKDIR /app
 
+# Copy package files AND prisma schema (needed by postinstall → prisma generate)
 COPY package.json bun.lock ./
+COPY prisma ./prisma
+
 # Bun's --production flag is a boolean switch (no =value). Omit it to install devDeps.
 RUN bun install --frozen-lockfile
 
