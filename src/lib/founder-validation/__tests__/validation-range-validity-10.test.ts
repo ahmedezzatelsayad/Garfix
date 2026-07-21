@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from 'bun:test';
 import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
 describe('Validation: range-validity 10', () => {

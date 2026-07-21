@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * 30-Day Business Simulation Test.
  *

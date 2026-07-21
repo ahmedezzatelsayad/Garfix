@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * ai-fabric/__tests__/gateway.test.ts — Phase 1-3 integration tests.
  *

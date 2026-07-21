@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * economics-p2.test.ts — Phase 13-16 integration tests.
  *

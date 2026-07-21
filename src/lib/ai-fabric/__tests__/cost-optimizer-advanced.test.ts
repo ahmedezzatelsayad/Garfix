@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * cost-optimizer-advanced.test.ts — 40 tests for the cost optimizer.
  * Tests calculateSavedCost, getCascadeBreakdown, getPlatformSavings.

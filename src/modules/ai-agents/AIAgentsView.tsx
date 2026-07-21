@@ -89,10 +89,12 @@ export function AIAgentsView() {
   }, []);
 
   // Reset chat when switching agent
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setTurns([]);
     setInput("");
   }, [selectedAgent]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Auto-scroll on new turn
   useEffect(() => {

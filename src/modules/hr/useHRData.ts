@@ -214,6 +214,7 @@ export function useHRData(): UseHRDataReturn {
 
   // ─── Initial load (lazy: only the active tab + employees) ────────────
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     // Always load employees first (needed by all tabs), then the active tab.
     // After the first load, subsequent tab switches will use loadTab.
@@ -231,6 +232,7 @@ export function useHRData(): UseHRDataReturn {
       }
     }
   }, [activeCompany, loadAll, loadTab, activeTab]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── Lazy-load on tab switch ─────────────────────────────────────────
 

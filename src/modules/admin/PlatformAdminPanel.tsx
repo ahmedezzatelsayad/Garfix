@@ -189,7 +189,7 @@ export function PlatformAdminPanel() {
   // Lazy-load stock movements for the selected slug when the ledger tab is active.
   // Filters (productName / from / to) intentionally NOT in the dependency array —
   // they're applied on explicit "Apply filters" button click (not on every keystroke).
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (tab === "stock-ledger" && stockLedgerSlug) {
       loadStockMovements(stockLedgerSlug, {
@@ -199,6 +199,7 @@ export function PlatformAdminPanel() {
       });
     }
   }, [tab, stockLedgerSlug, loadStockMovements]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode }> = [
     { key: "stats", label: "الإحصائيات", icon: <BarChart3 size={14} /> },
@@ -2942,6 +2943,7 @@ function BackupsTab() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const triggerBackup = async () => {

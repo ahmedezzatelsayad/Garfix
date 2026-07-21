@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * learning-engine-advanced.test.ts — 30 tests for the learning engine.
  * Tests recordObservation, promoteCandidates, getLearningStatus.

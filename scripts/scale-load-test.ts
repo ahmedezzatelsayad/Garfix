@@ -16,7 +16,7 @@
  *   - scale-load-test.md    (human-readable summary)
  */
 import { monitorEventLoopDelay } from "node:perf_hooks";
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -173,8 +173,6 @@ function fileSizeBytes(path: string): number {
 // Better: use statSync for actual file size on disk
 function fileSizeOnDisk(path: string): number {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { statSync } = require("node:fs");
     return statSync(path).size;
   } catch {
     return 0;

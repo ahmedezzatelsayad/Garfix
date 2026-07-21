@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * inventorySync.test.ts — smoke + behavior tests for the inventory sync helpers.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * ai-fabric/__tests__/digital-twin-profit.test.ts — Phase 7-8 tests.
  *

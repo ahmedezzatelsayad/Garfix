@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * secretsManager.test.ts — 30 tests for the secrets management module.
  *

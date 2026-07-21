@@ -38,7 +38,7 @@
  * ============================================================================
  */
 
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { cpus, totalmem, freemem, hostname } from 'node:os';
 import { performance, PerformanceObserver, constants as perfConstants } from 'node:perf_hooks';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
@@ -1761,8 +1761,7 @@ function main() {
   const prevPath = `${OUT}/twin-results-prev.json`;
   let prev: any = null;
   try {
-    const fs = require('node:fs');
-    if (fs.existsSync(prevPath)) prev = JSON.parse(fs.readFileSync(prevPath, 'utf8'));
+    if (existsSync(prevPath)) prev = JSON.parse(readFileSync(prevPath, 'utf8'));
   } catch {}
   buildRegressionReport(baselineResults, prev, `${OUT}/regression-report.md`);
   // Save current as prev for next run

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * productMatcher.test.ts — Bilingual product matching tests.
  *

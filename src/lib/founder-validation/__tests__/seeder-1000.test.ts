@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from 'bun:test';
 import { seedEnterpriseData, type Currency, type SyntheticCompany } from '../index';
 

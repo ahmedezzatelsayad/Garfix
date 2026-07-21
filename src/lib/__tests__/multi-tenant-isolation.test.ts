@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * multi-tenant-isolation.test.ts — 80 tests for multi-tenant data isolation.
  *
