@@ -15,6 +15,7 @@ on:
       - ".github/workflows/ci.yml"
       - ".github/workflows/performance.yml"
       - ".github/workflows/security.yml"
+      - ".github/workflows/pr-checks.yml"
   release:
     types: [published]
   workflow_dispatch:
@@ -171,16 +172,26 @@ jobs:
           # Smoke test 1: Health endpoint
           if [ -n "$STAGING_URL" ]; then
             echo "Testing health endpoint at $STAGING_URL/api/health..."
-            HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" "$STAGING_URL/api/health" 2>/dev/null || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Health check passed (HTTP $HTTP_CODE)"
-            else
-              echo "❌ Health check failed (HTTP $HTTP_CODE)"
-              echo "⚠️ Staging may not be fully ready yet"
+            # Retry up to 5 times with 10s interval for staging to become ready
+            HTTP_CODE="000"
+            for i in 1 2 3 4 5; do
+              HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" "$STAGING_URL/api/health" 2>/dev/null || echo "000")
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "✅ Health check passed (HTTP $HTTP_CODE)"
+                break
+              fi
+              echo "Attempt $i/5 - got HTTP $HTTP_CODE, retrying in 10s..."
+              sleep 10
+            done
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "❌ Staging health check failed after 5 attempts (last HTTP $HTTP_CODE)"
+              echo "Failing deployment — staging is not healthy"
+              exit 1
             fi
           else
             echo "ℹ️ STAGING_URL not configured — skipping live smoke test"
             echo "Configure STAGING_URL secret in the staging environment for live health checks"
+            echo "⚠️ Without STAGING_URL, smoke tests are SKIPPED — deployment is NOT verified"
           fi
           echo ""
           echo "✅ Smoke tests completed"

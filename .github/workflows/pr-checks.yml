@@ -50,8 +50,21 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run ESLint
-        run: bunx eslint src/app src/lib src/modules --format=compact 2>&1 | tee lint-results.txt || true
-        continue-on-error: true
+        run: |
+          # Capture exit code properly without pipefail clobbering it
+          set +e
+          set +o pipefail
+          bunx eslint src/app src/lib src/modules --format=compact 2>&1 | tee lint-results.txt
+          ESLINT_EXIT=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+
+          if [ $ESLINT_EXIT -ne 0 ]; then
+            echo "❌ ESLint found errors — check lint-results.txt"
+            exit 1
+          else
+            echo "✅ ESLint passed — no errors"
+          fi
 
   # ── Quick TypeCheck ──────────────────────────────────────────────────
   quick-typecheck:
