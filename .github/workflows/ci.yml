@@ -521,48 +521,4 @@ jobs:
         if: failure()
         run: echo "## ❌ CI Failed" >> $GITHUB_STEP_SUMMARY
 
-  # ── Job 7: Deploy to Staging (on main only) ────────────────────────────
-  deploy-staging:
-    name: 🚀 Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, build, unit-tests, integration-tests]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: staging
-    permissions:
-      contents: read
-      packages: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.14"
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: garfix-build-${{ github.sha }}
-          path: .next/standalone
-
-      - name: Verify build artifact
-        run: |
-          if [ ! -f ".next/standalone/server.js" ]; then
-            echo "❌ Build artifact missing server.js — cannot deploy"
-            exit 1
-          fi
-          echo "✅ Build artifact verified"
-
-      - name: Deploy notification
-        run: |
-          echo "🚀 Deployment triggered for staging"
-          echo "Commit: ${{ github.sha }}"
-          echo ""
-          echo "Note: Configure actual deployment steps based on your infrastructure:"
-          echo "  - Docker: docker build && docker push && kubectl apply"
-          echo "  - Vercel: vercel deploy --prod"
-          echo "  - AWS: aws s3 sync && cloudfront invalidate"
-          echo ""
-          echo "✅ Staging deployment initiated from verified build artifact"
+  # NOTE: Deployment is handled by cd.yml — no deploy job here to avoid race conditions
