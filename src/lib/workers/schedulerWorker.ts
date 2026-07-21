@@ -208,6 +208,8 @@ async function runTick(payload: SchedulerTickJobData): Promise<void> {
 
 // ─── Module-level registration + boot ──────────────────────────────────────
 
+// ─── Registration Function (explicit call only) ─────────────────────────────
+
 let registered = false;
 export function registerSchedulerWorker(): void {
   if (registered) return;
@@ -233,8 +235,8 @@ export function registerSchedulerWorker(): void {
   logger.info("[scheduler-worker] initial tick enqueued");
 }
 
-// Side-effect: register immediately on module load.
-registerSchedulerWorker();
+// ❌ REMOVED: Module-level side effect (was causing build failures)
+// registerSchedulerWorker();
 
 // Reference listBackups so the import isn't tree-shaken (used in runTick).
 void listBackups;
