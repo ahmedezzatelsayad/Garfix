@@ -65,9 +65,10 @@ jobs:
         run: |
           echo "Running ESLint on production code..."
           # Capture exit code properly without pipefail clobbering it
+          # NOTE: ESLint 9 removed --format=compact from core; use default stylish format
           set +e
           set +o pipefail
-          bunx eslint src/app src/lib src/modules --format=compact 2>&1 | tee lint-results.txt
+          bunx eslint src/app src/lib src/modules 2>&1 | tee lint-results.txt
           ESLINT_EXIT=${PIPESTATUS[0]}
           set -e
           set -o pipefail
