@@ -1,0 +1,602 @@
+   600→| creative / branding / design (formal) | R3 (Centered Card Frame) | SN-2 Soft Purple | Product overview, brand doc, design report |
+   601→| cultural / newsletter / internal | R6 (Editorial Warm) | ED-1 Editorial Warm | Light/casual style, short titles only (≤20 chars) |
+   602→| trend/research report (cultural/creative/brand) | R7 (Swiss Tech) | ST-1 Swiss Tech | Minimalist slate bg, Klein blue accent, open-frame tables |
+   603→| education report | R1 (Pure Paragraph Left) | WM-1 Warm Teal | For education reports, NOT lesson plans |
+   604→| ESG / environmental | R1 (Pure Paragraph Left) | FG-1 Forest Mint | — |
+   605→| medical / healthcare | R1 (Pure Paragraph Left) | MC-1 Medical Blue | — |
+   606→| government / state-owned | R1 (Pure Paragraph Left) | GV-1 Official Red | — |
+   607→| resume | — | — | No standalone cover |
+   608→| contract | — | — | No standalone cover (title page is first page) |
+   609→| official document | — | — | No standalone cover |
+   610→| exam paper | — | — | No standalone cover |
+   611→
+   612→---
+   613→
+   614→### Cover Title Length Guidelines
+   615→
+   616→When the user does NOT specify an exact title, the model should craft a title within the recommended range. If the user provides a title that exceeds the comfortable range, apply long-title routing in `selectCoverRecipe()` (see above).
+   617→
+   618→| Recipe | Comfortable (1–2 lines) | Maximum (3 lines) | Long Title Tolerance |
+   619→|--------|------------------------|--------------------|----------------------|
+   620→| R1     | 8–20 chars             | ≤50 chars          | ⭐⭐⭐⭐⭐ Best (left-aligned, full-page bg) |
+   621→| R2     | 8–18 chars             | ≤45 chars          | ⭐⭐⭐⭐ Good (full-page bg, but centered) |
+   622→| R3     | 8–15 chars             | ≤40 chars          | ⭐⭐ Poor (narrowest width) |
+   623→| R4     | 8–18 chars             | ≤45 chars          | ⭐⭐ Poor (fixed-height color block) |
+   624→| R5     | 8–16 chars             | ≤42 chars          | ⭐⭐⭐ OK (academic only, mixed-width calc) |
+   625→| R6     | 8–15 chars             | ≤20 chars (1 line) | ⭐ Single line only (editorial, no multi-line) |
+   626→| R7     | 8–24 chars             | ≤42 chars (3 lines) | ⭐⭐⭐⭐ Good (left-aligned, light bg, dynamic spacing) |
+   627→
+   628→**Title crafting rules (when model generates the title):**
+   629→1. Prefer concise titles within the "comfortable" range
+   630→2. If topic requires detail, split into title + subtitle (e.g., title="数字化转型战略研究" subtitle="——以某某企业为例")
+   631→3. Never exceed the "maximum" range unless user explicitly provides the full title
+   632→
+   633→---
+   634→
+   635→### ⚠️ Cover Page Break Rules
+   636→
+   637→Cover should be an independent section — **no PageBreak at the end needed**. The next section automatically starts a new page.
+   638→
+   639→```js
+   640→// ✅ Correct — cover is a separate section, no trailing PageBreak
+   641→sections: [
+   642→  { properties: { /* Cover section, margin all 0 */ }, children: buildCover(...) },
+   643→  { properties: { /* Body section */ }, children: buildContent(...) },
+   644→]
+   645→```
+   646→
+   647→### ⚠️ Cover Content Overflow Prevention (Mandatory)
+   648→
+   649→1. Cover section page margin is 0; total content height ≤ 15638 twips (1200 twips safety margin for cross-engine compatibility — MS Office renders large fonts taller than calculated).
+   650→2. Color block Table `height` must use `rule: "exact"` (never `"atLeast"`).
+   651→3. Each recipe code includes height budget annotations — verify during generation.
+   652→4. **`verticalAlign` must always be `"top"`**. Never use `"center"` or `"bottom"` in exact-height rows — content will be clipped or overflow. Use `spacing.before` on the first paragraph for vertical positioning.
+   653→5. **Title font size MUST be dynamically calculated via `calcTitleLayout()`** (see below). Never hardcode font sizes above 40pt for cover titles. Every recipe MUST call `calcTitleLayout()` before building title paragraphs.
+   654→6. **Never use `margins.top`/`margins.bottom` for vertical positioning inside exact-height cells**: Cell margins reduce available height unpredictably across MS Office and WPS. Use `spacing.before` on the first paragraph instead. Only `margins.left`/`margins.right` are safe.
+   655→7. **Dynamic spacing is mandatory**: Use `calcCoverSpacing()` to compute `spacing.before` values dynamically based on content element count and title line count. Never use fixed large spacing values (e.g., `before: 4500`) that assume a specific title length.
+   656→8. **Cover must be a single-page section**: The cover section must produce exactly ONE page. If content overflows to a second page, it means the height budget is violated. Common overflow causes and fixes:
+   657→   - Title font too large → use `calcTitleLayout()` to auto-reduce
+   658→   - Too many meta lines → reduce font size or remove less important lines
+   659→   - Fixed `spacing.before` values too large → use `calcCoverSpacing()` for dynamic values
+   660→   - Subtitle + English label + meta lines combined exceed budget → calculate total and reduce spacing
+   661→9. **Cover wrapper table MUST use explicit `allNoBorders`**: The outer 16838 wrapper table and ALL nested tables inside the cover MUST set borders to NONE explicitly. Never rely on docx-js default borders (`single/auto/sz=4`). Default borders add ~8 twips per edge, which causes MS Office to calculate a total height slightly exceeding 16838 → content overflows to a blank page 2. WPS is more lenient but MS Office is strict. **This is the #1 cause of "blank page 2 in MS Office but not in WPS".**
+   662→
+   663→```js
+   664→// ✅ MANDATORY: Define and use allNoBorders for every cover table
+   665→const NB = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+   666→const noBorders = { top: NB, bottom: NB, left: NB, right: NB };
+   667→const allNoBorders = { top: NB, bottom: NB, left: NB, right: NB,
+   668→                       insideHorizontal: NB, insideVertical: NB };
+   669→
+   670→new Table({
+   671→  borders: allNoBorders,  // ← MANDATORY on every cover table
+   672→  // ...
+   673→});
+   674→```
+   675→
+   676→10. **Decorative lines MUST use paragraph borders, NEVER text characters**: Horizontal decorative lines (accent strips, dividers, frame edges) must be implemented with `paragraph border.top` or `border.bottom` — never with text characters like `───`, `━━━`, `═══`, or `——————`. Character-drawn lines render at inconsistent widths across MS Office and WPS (font metrics differ), causing lines to appear truncated or misaligned. Paragraph borders render pixel-perfect in both engines and their width is controlled precisely via `indent.left` / `indent.right`.
+   677→
+   678→```js
+   679→// ✅ Correct — paragraph border (R2 style thick accent rule)
+   680→new Paragraph({
+   681→  indent: { left: 1000, right: 1000 },
+   682→  border: { top: { style: BorderStyle.SINGLE, size: 18, color: P.accent, space: 20 } },
+   683→  children: [],
+   684→})
+   685→
+   686→// ❌ FORBIDDEN — text character line (renders inconsistently)
+   687→new Paragraph({
+   688→  children: [new TextRun({ text: "───────────────", color: P.accent })]
+   689→})
+   690→```
+   691→9. **Post-generation overflow check (mandatory)**: After building cover children, estimate total height:
+   692→   ```js
+   693→   function estimateCoverHeight(elements) {
+   694→     let total = 0;
+   695→     for (const el of elements) {
+   696→       if (el instanceof Table) {
+   697→         // Sum row heights (exact rows) or estimate 400 twips per row
+   698→         const rows = el.root?.[0]?.rows || [];
+   699→         for (const row of rows) {
+   700→           total += row.height?.value || 400;
+   701→         }
+   702→       } else if (el instanceof Paragraph) {
+   703→         const fontSize = el.root?.[0]?.size || 24; // half-pts
+   704→         // ★ Use pt * 11.5 (= half-pt * 10 * 1.15) for accurate single-spacing estimate
+   705→         const lineHeight = Math.max(fontSize * 11.5, 276); // min 276 (default 12pt)
+   706→         const spacingBefore = el.spacing?.before || 0;
+   707→         const spacingAfter = el.spacing?.after || 0;
+   708→         total += lineHeight + spacingBefore + spacingAfter;
+   709→       }
+   710→     }
+   711→     return total;
+   712→   }
+   713→   // ★ Target: estimateCoverHeight(coverChildren) < 15638 (16838 - 1200 safety)
+   714→   ```
+   715→
+   716→---
+   717→
+   718→### ⚠️ Cover Title Layout — calcTitleLayout() (Mandatory for ALL Recipes)
+   719→
+   720→**Every cover recipe MUST use `calcTitleLayout()` to determine title font size and line breaks.** Hardcoding font sizes or passing the full title as a single TextRun is FORBIDDEN.
+   721→
+   722→**Every paragraph with font size > body text MUST set explicit line spacing** to prevent top clipping:
+   723→```js
+   724→// ★ MANDATORY: prevent inherited small line spacing from clipping large fonts
+   725→spacing: { line: Math.ceil(titlePt * 23), lineRule: "atLeast", after: 100 }
+   726→// Example: 36pt → line: 828; 44pt → line: 1012
+   727→```
+   728→Without this, the paragraph inherits body text line spacing (e.g., 560tw), which is shorter than the font height → top of characters gets clipped.
+   729→
+   730→```js
+   731→/**
+   732→ * Calculate safe font size and smart line breaks for cover titles.
+   733→ * MUST be called by every recipe before building title paragraphs.
+   734→ *
+   735→ * @param {string}  title          Full title string
+   736→ * @param {number}  maxWidthTwips  Available width for title text (twips, after subtracting margins/padding)
+   737→ * @param {number}  preferredPt    Desired max font size in pt (default 40)
+   738→ * @param {number}  minPt          Minimum allowed font size in pt (default 24)
+   739→ * @returns {{ titlePt: number, titleLines: string[] }}
+   740→ */
+   741→function calcTitleLayout(title, maxWidthTwips, preferredPt = 40, minPt = 24) {
+   742→  // Each CJK character width ≈ pt × 20 twips
+   743→  const charWidth = (pt) => pt * 20;
+   744→  const charsPerLine = (pt) => Math.floor(maxWidthTwips / charWidth(pt));
+   745→
+   746→  // Try from preferredPt downward until title fits in ≤ 3 lines
+   747→  let titlePt = preferredPt;
+   748→  let lines;
+   749→  while (titlePt >= minPt) {
+   750→    const cpl = charsPerLine(titlePt);
+   751→    if (cpl < 2) { titlePt -= 2; continue; }
+   752→    lines = splitTitleLines(title, cpl);
+   753→    if (lines.length <= 3) break;
+   754→    titlePt -= 2;
+   755→  }
+   756→
+   757→  // If still > 3 lines at minPt, force 3 lines
+   758→  if (!lines || lines.length > 3) {
+   759→    const cpl = charsPerLine(minPt);
+   760→    lines = splitTitleLines(title, cpl);
+   761→    titlePt = minPt;
+   762→  }
+   763→
+   764→  return { titlePt, titleLines: lines };
+   765→}
+   766→
+   767→/**
+   768→ * Smart Chinese title line-breaking — breaks at semantic boundaries, never mid-word.
+   769→ *
+   770→ * Rules:
+   771→ * 1. Prefer breaking after particles, punctuation, connectors, underscores, spaces
+   772→ * 2. Never split a compound word (e.g., "管理规范" must not become "管理规" + "范")
+   773→ * 3. No single-character orphan on the last line — merge into previous line
+   774→ * 4. If no good break point found within 60-130% of charsPerLine, break at charsPerLine
+   775→ *
+   776→ * @param {string} title        Full title string
+   777→ * @param {number} charsPerLine Max characters per line at current font size
+   778→ * @returns {string[]}          Array of line strings
+   779→ */
+   780→function splitTitleLines(title, charsPerLine) {
+   781→  if (title.length <= charsPerLine) return [title];
+   782→
+   783→  // Characters that are safe break points (break AFTER these)
+   784→  const breakAfter = new Set([
+   785→    ...'，。、；：！？',              // CJK punctuation
+   786→    ...'的与和及之在于为',            // CJK particles/prepositions
+   787→    ...'-_—–·/',                     // connectors
+   788→    ...' \t',                         // whitespace
+   789→  ]);
+   790→
+   791→  const lines = [];
+   792→  let remaining = title;
+   793→
+   794→  while (remaining.length > charsPerLine) {
+   795→    let breakAt = -1;
+   796→
+   797→    // Search backward from charsPerLine to 60% for a break point
+   798→    for (let i = charsPerLine; i >= Math.floor(charsPerLine * 0.6); i--) {
+   799→      if (i < remaining.length && breakAfter.has(remaining[i - 1])) {
+   800→        breakAt = i;
+   801→        break;
+   802→      }
+   803→    }
+   804→
+   805→    // If not found, search forward up to 130%
+   806→    if (breakAt === -1) {
+   807→      const limit = Math.min(remaining.length, Math.ceil(charsPerLine * 1.3));
+   808→      for (let i = charsPerLine + 1; i < limit; i++) {
+   809→        if (breakAfter.has(remaining[i - 1])) {
+   810→          breakAt = i;
+   811→          break;
+   812→        }
+   813→      }
+   814→    }
+   815→
+   816→    // Last resort: break at charsPerLine, but avoid splitting compound CJK words
+   817→    if (breakAt === -1) {
+   818→      breakAt = charsPerLine;
+   819→      // If both chars at the break boundary are CJK (likely a compound word),
+   820→      // step back 1 char to keep the word together
+   821→      const prevChar = remaining[breakAt - 1];
+   822→      const nextChar = remaining[breakAt];
+   823→      if (prevChar && nextChar &&
+   824→          !breakAfter.has(prevChar) && !breakAfter.has(nextChar) &&
+   825→          /[\u4e00-\u9fff]/.test(prevChar) && /[\u4e00-\u9fff]/.test(nextChar)) {
+   826→        breakAt = breakAt - 1;
+   827→      }
+   828→    }
+   829→
+   830→    lines.push(remaining.slice(0, breakAt).trim());
+   831→    remaining = remaining.slice(breakAt).trim();
+   832→  }
+   833→  if (remaining) lines.push(remaining);
+   834→
+   835→  // Prevent single-character orphan on last line — merge into previous
+   836→  if (lines.length > 1 && lines[lines.length - 1].length <= 2) {
+   837→    const last = lines.pop();
+   838→    lines[lines.length - 1] += last;
+   839→  }
+   840→
+   841→  return lines;
+   842→}
+   843→
+   844→/**
+   845→ * Calculate dynamic spacing values for cover elements to fit within page height.
+   846→ *
+   847→ * @param {object} params
+   848→ * @param {number} params.titleLineCount   Number of title lines
+   849→ * @param {number} params.titlePt          Title font size in pt
+   850→ * @param {boolean} params.hasSubtitle     Whether subtitle exists
+   851→ * @param {boolean} params.hasEnglishLabel Whether English label exists
+   852→ * @param {number} params.metaLineCount    Number of meta info lines
+   853→ * @param {number} params.fixedHeight      Sum of fixed-height elements (color strips, accent bars, footer) in twips
+   854→ * @param {number} params.pageHeight       Total page height in twips (default 16838)
+   855→ * @returns {{ topSpacing, midSpacing, bottomSpacing }}  Spacing values in twips
+   856→ */
+   857→function calcCoverSpacing(params) {
+   858→  const {
+   859→    titleLineCount = 1, titlePt = 36, hasSubtitle = false,
+   860→    hasEnglishLabel = false, metaLineCount = 0,
+   861→    fixedHeight = 800, pageHeight = 16838,
+   862→    marginTop = 0, marginBottom = 0,   // ★ NEW: pass actual section margins
+   863→  } = params;
+   864→
+   865→  // ★ Safety margin: 1200 twips (cross-engine: MS Office renders large fonts
+   866→  // taller than calculated; extra 400tw buffer prevents footer clipping)
+   867→  const SAFETY = 1200;
+   868→  // ★ Subtract page margins from available height (cover section may have margins)
+   869→  const usableHeight = pageHeight - marginTop - marginBottom - SAFETY;
+   870→
+   871→  // ★ Accurate height estimation per element:
+   872→  const titleHeight = titleLineCount * (titlePt * 23 + 200);
+   873→  const subtitleHeight = hasSubtitle ? (12 * 23 + 600) : 0;
+   874→  const englishLabelHeight = hasEnglishLabel ? (9 * 23 + 600) : 0;
+   875→  const metaHeight = metaLineCount * (10 * 23 + 100);
+   876→
+   877→  // ★ Account for implicit paragraph heights:
+   878→  const implicitParaHeight = 3 * 300;
+   879→
+   880→  const contentHeight = titleHeight + subtitleHeight + englishLabelHeight +
+   881→                        metaHeight + fixedHeight + implicitParaHeight;
+   882→
+   883→  const remainingSpace = usableHeight - contentHeight;
+   884→  const safeRemaining = Math.max(remainingSpace, 400);
+   885→
+   886→  // ★ Footer protection: bottomSpacing must be ≥ FOOTER_MIN to prevent
+   887→  // footer + accent line from being clipped at the cell bottom edge
+   888→  const FOOTER_MIN = 800;
+   889→  const rawTop = Math.floor(safeRemaining * 0.45);
+   890→  const rawBottom = Math.floor(safeRemaining * 0.45);
+   891→  const bottomSpacing = Math.max(rawBottom, FOOTER_MIN);
+   892→  const topSpacing = Math.max(rawTop - Math.max(0, FOOTER_MIN - rawBottom), 400);
+   893→  const midSpacing = Math.max(safeRemaining - topSpacing - bottomSpacing, 0);
+   894→
+   895→  return { topSpacing, midSpacing, bottomSpacing };
+   896→}
+   897→```
+   898→
+   899→**Usage in every recipe:**
+   900→```js
+   901→// Step 1: Calculate title layout
+   902→const availableWidth = 11906 - leftPadding - rightPadding; // subtract margins
+   903→const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth);
+   904→const titleSize = titlePt * 2; // convert to half-points for docx-js
+   905→
+   906→// Step 2: Calculate spacing (pass actual section margins!)
+   907→const spacing = calcCoverSpacing({
+   908→  titleLineCount: titleLines.length,
+   909→  titlePt,
+   910→  hasSubtitle: !!config.subtitle,
+   911→  hasEnglishLabel: !!config.englishLabel,
+   912→  metaLineCount: (config.metaLines || []).length,
+   913→  fixedHeight: 800, // sum of accent strips, footer table, etc.
+   914→  marginTop: 0,     // ★ pass the cover section's actual top margin (twips)
+   915→  marginBottom: 0,  // ★ pass the cover section's actual bottom margin (twips)
+   916→});
+   917→
+   918→// Step 3: Use in paragraphs
+   919→children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+   920→// ... title paragraphs using titleLines and titleSize ...
+   921→children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+   922→```
+   923→
+   924→---
+   925→
+   926→### ⚠️ CRITICAL — Cover Section Non-Negotiables (ALL Recipes)
+   927→
+   928→These 3 properties are MANDATORY for every cover implementation (R1–R7). Omitting ANY of them causes cover layout failure:
+   929→
+   930→1. **Cover section margin = 0**: The cover MUST be in its own section with `page.margin: { top: 0, bottom: 0, left: 0, right: 0 }`. Non-zero margins shrink the wrapper away from page edges → white gaps around the cover ("cover not filling the page"). This is the #1 cause of broken cover layouts.
+   931→
+   932→2. **Wrapper row exact height**: The outer wrapper table row MUST set `height: { value: 16838, rule: "exact" }`. Without this, content overflow pushes to page 2, or insufficient content leaves bottom whitespace.
+   933→
+   934→3. **Wrapper table borders = allNoBorders**: MUST explicitly set `borders: allNoBorders`. Default docx-js borders add ~8 twips per edge. MS Office includes border thickness in exact-height calculation → total exceeds 16838 → blank page 2 (WPS is lenient, MS Office is strict).
+   935→
+   936→**Cover section template (copy this for every Recipe):**
+   937→```js
+   938→sections: [
+   939→  {
+   940→    // ⚠️ Cover section — margin MUST be 0, separate from body
+   941→    properties: {
+   942→      page: {
+   943→        size: { width: 11906, height: 16838 },
+   944→        margin: { top: 0, bottom: 0, left: 0, right: 0 },
+   945→      },
+   946→    },
+   947→    children: buildCoverRX(config), // ← replace with actual recipe function
+   948→  },
+   949→  {
+   950→    // Body section — normal margins
+   951→    properties: {
+   952→      type: SectionType.NEXT_PAGE,
+   953→      page: {
+   954→        size: { width: 11906, height: 16838 },
+   955→        margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 },
+   956→      },
+   957→    },
+   958→    children: [...bodyContent],
+   959→  },
+   960→]
+   961→```
+   962→
+   963→---
+   964→
+   965→### Recipe R1: Pure Paragraph Cover (Left-Aligned)
+   966→
+   967→**Visual:** Full-page dark background + left-aligned text + decoration via paragraph borders only
+   968→**Use case:** Annual report, business report, tech proposal (most versatile premium recipe)
+   969→**Nested tables: ZERO** — all decoration uses paragraph borders (bottom line, left accent bar, top separator)
+   970→
+   971→Visual hierarchy (top to bottom):
+   972→1. Dynamic top whitespace (via `calcCoverSpacing`)
+   973→2. English label with accent bottom border (paragraph `border.bottom`)
+   974→3. Main title (1-3 lines, dynamic font size via `calcTitleLayout`)
+   975→4. Subtitle (light grey, smaller)
+   976→5. Meta info lines with left accent border (paragraph `border.left`)
+   977→6. Dynamic bottom whitespace
+   978→7. Footer line with top accent separator (paragraph `border.top`)
+   979→
+   980→```js
+   981→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+   982→// Section: { properties: { page: { size: { width: 11906, height: 16838 },
+   983→//   margin: { top: 0, bottom: 0, left: 0, right: 0 } } }, children: buildCoverR1(config) }
+   984→
+   985→function buildCoverR1(config) {
+   986→  // config: { title, subtitle, englishLabel, metaLines, footerLeft, footerRight, palette }
+   987→  // palette: { bg, titleColor, subtitleColor, metaColor, accent, footerColor }
+   988→  const P = config.palette;
+   989→  const padL = 1200, padR = 800;
+   990→
+   991→  // ⚠️ MANDATORY: Use calcTitleLayout() for dynamic font size + line breaking
+   992→  const availableWidth = 11906 - padL - padR - 300; // -300 for border space
+   993→  const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth, 40, 24);
+   994→  const titleSize = titlePt * 2;
+   995→
+   996→  // ⚠️ MANDATORY: Use calcCoverSpacing() for dynamic spacing
+   997→  const spacing = calcCoverSpacing({
+   998→    titleLineCount: titleLines.length, titlePt,
+   999→    hasSubtitle: !!config.subtitle, hasEnglishLabel: !!config.englishLabel,
+  1000→    metaLineCount: (config.metaLines || []).length,
+  1001→    fixedHeight: 400, // footer line only (no nested tables)
+  1002→  });
+  1003→
+  1004→  const accentLeft = { style: BorderStyle.SINGLE, size: 8, color: P.accent, space: 12 };
+  1005→  const children = [];
+  1006→
+  1007→  // 1. Top whitespace (dynamic)
+  1008→  children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+  1009→
+  1010→  // 2. English label with accent bottom border
+  1011→  if (config.englishLabel) {
+  1012→    children.push(new Paragraph({
+  1013→      indent: { left: padL, right: padR }, spacing: { after: 500 },
+  1014→      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: P.accent, space: 8 } },
+  1015→      children: [new TextRun({ text: config.englishLabel.split("").join("  "),
+  1016→        size: 18, color: P.accent, font: { ascii: "Calibri", eastAsia: "SimHei" }, characterSpacing: 40 })],
+  1017→    }));
+  1018→  }
+  1019→
+  1020→  // 3. Main title (dynamic font size + smart line breaks)
+  1021→  for (let i = 0; i < titleLines.length; i++) {
+  1022→    children.push(new Paragraph({
+  1023→      indent: { left: padL },
+  1024→      spacing: { after: i < titleLines.length - 1 ? 100 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+  1025→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+  1026→        color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+  1027→    }));
+  1028→  }
+  1029→
+  1030→  // 4. Subtitle
+  1031→  if (config.subtitle) {
+  1032→    children.push(new Paragraph({
+  1033→      indent: { left: padL }, spacing: { after: 800 },
+  1034→      children: [new TextRun({ text: config.subtitle, size: 24, color: P.subtitleColor,
+  1035→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+  1036→    }));
+  1037→  }
+  1038→
+  1039→  // 5. Meta info lines with left accent border
+  1040→  for (const line of (config.metaLines || [])) {
+  1041→    children.push(new Paragraph({
+  1042→      indent: { left: padL + 200 }, spacing: { after: 80 },
+  1043→      border: { left: accentLeft },
+  1044→      children: [new TextRun({ text: line, size: 24, color: P.metaColor,
+  1045→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+  1046→    }));
+  1047→  }
+  1048→
+  1049→  // 6. Bottom whitespace (dynamic)
+  1050→  children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+  1051→
+  1052→  // 7. Footer with top accent separator
+  1053→  children.push(new Paragraph({
+  1054→    indent: { left: padL, right: padR },
+  1055→    border: { top: { style: BorderStyle.SINGLE, size: 2, color: P.accent, space: 8 } },
+  1056→    spacing: { before: 200 },
+  1057→    children: [
+  1058→      new TextRun({ text: config.footerLeft || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } }),
+  1059→      new TextRun({ text: "                                        " }),
+  1060→      new TextRun({ text: config.footerRight || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } }),
+  1061→    ],
+  1062→  }));
+  1063→
+  1064→  // Single 16838 wrapper — the ONLY table
+  1065→  return [new Table({
+  1066→    width: { size: 100, type: WidthType.PERCENTAGE },
+  1067→    layout: TableLayoutType.FIXED,
+  1068→    borders: allNoBorders,
+  1069→    rows: [new TableRow({
+  1070→      height: { value: 16838, rule: "exact" },
+  1071→      children: [new TableCell({
+  1072→        shading: { type: ShadingType.CLEAR, fill: P.bg }, borders: noBorders,
+  1073→        children,
+  1074→      })],
+  1075→    })],
+  1076→  })];
+  1077→  // Total height: 16838 (single wrapper, zero nested tables) ✅
+  1078→}
+  1079→```
+  1080→
+  1081→---
+  1082→
+  1083→### Recipe R2: Double-Rule Frame (Centered)
+  1084→
+  1085→**Visual:** Full-page dark background + top/bottom thick accent horizontal rules + centered content
+  1086→**Use case:** Whitepaper, finance report, consulting deliverable, high-end formal reports
+  1087→**Nested tables: ZERO** — top/bottom rules are paragraph borders
+  1088→
+  1089→Visual hierarchy (top to bottom):
+  1090→1. Top thick accent rule (paragraph `border.top`)
+  1091→2. Generous whitespace
+  1092→3. English label (centered, spaced)
+  1093→4. Main title (centered, 1-3 lines, dynamic font size)
+  1094→5. Subtitle (centered)
+  1095→6. Generous whitespace
+  1096→7. Meta info lines (centered, **18pt** / size: 36)
+  1097→8. Generous whitespace
+  1098→9. Footer + bottom thick accent rule (paragraph `border.bottom`)
+  1099→
+  1100→```js
+  1101→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+  1102→function buildCoverR2(config) {
+  1103→  const P = config.palette;
+  1104→  const padL = 1400, padR = 1400;
+  1105→
+  1106→  // ⚠️ MANDATORY: Use calcTitleLayout() for dynamic font size + line breaking
+  1107→  const { titlePt, titleLines } = calcTitleLayout(config.title, 11906 - padL - padR, 40, 24);
+  1108→  const titleSize = titlePt * 2;
+  1109→  const thickBorder = { style: BorderStyle.SINGLE, size: 18, color: P.accent, space: 20 };
+  1110→
+  1111→  const children = [];
+  1112→
+  1113→  // 1. Top rule
+  1114→  children.push(new Paragraph({
+  1115→    indent: { left: padL - 400, right: padR - 400 }, spacing: { before: 1200, after: 200 },
+  1116→    border: { top: thickBorder }, children: [],
+  1117→  }));
+  1118→
+  1119→  // 2. Whitespace
+  1120→  children.push(new Paragraph({ spacing: { before: 1800 } }));
+  1121→
+  1122→  // 3. English label
+  1123→  if (config.englishLabel) {
+  1124→    children.push(new Paragraph({
+  1125→      alignment: AlignmentType.CENTER, spacing: { after: 500 },
+  1126→      children: [new TextRun({ text: config.englishLabel.split("").join("  "),
+  1127→        size: 18, color: P.accent, font: { ascii: "Calibri" }, characterSpacing: 40 })],
+  1128→    }));
+  1129→  }
+  1130→
+  1131→  // 4. Main title (centered, dynamic)
+  1132→  for (let i = 0; i < titleLines.length; i++) {
+  1133→    children.push(new Paragraph({
+  1134→      alignment: AlignmentType.CENTER,
+  1135→      spacing: { after: i < titleLines.length - 1 ? 80 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+  1136→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+  1137→        color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+  1138→    }));
+  1139→  }
+  1140→
+  1141→  // 5. Subtitle
+  1142→  if (config.subtitle) {
+  1143→    children.push(new Paragraph({
+  1144→      alignment: AlignmentType.CENTER, spacing: { after: 400 },
+  1145→      children: [new TextRun({ text: config.subtitle, size: 24, color: P.subtitleColor,
+  1146→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+  1147→    }));
+  1148→  }
+  1149→
+  1150→  // 6. Whitespace
+  1151→  children.push(new Paragraph({ spacing: { before: 1200 } }));
+  1152→
+  1153→  // 7. Meta lines — 18pt (size: 36) for readability
+  1154→  for (const line of (config.metaLines || [])) {
+  1155→    children.push(new Paragraph({
+  1156→      alignment: AlignmentType.CENTER,
+  1157→      spacing: { after: 100, line: Math.ceil(18 * 23), lineRule: "atLeast" },
+  1158→      children: [new TextRun({ text: line, size: 36, color: P.metaColor,
+  1159→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+  1160→    }));
+  1161→  }
+  1162→
+  1163→  // 8. Whitespace
+  1164→  children.push(new Paragraph({ spacing: { before: 2000 } }));
+  1165→
+  1166→  // 9. Footer + bottom rule
+  1167→  children.push(new Paragraph({
+  1168→    alignment: AlignmentType.CENTER,
+  1169→    indent: { left: padL - 400, right: padR - 400 }, spacing: { before: 200 },
+  1170→    border: { bottom: thickBorder },
+  1171→    children: [new TextRun({ text: config.footerRight || "", size: 18, color: P.footerColor, font: { ascii: "Arial" } })],
+  1172→  }));
+  1173→
+  1174→  // Single 16838 wrapper — the ONLY table
+  1175→  return [new Table({
+  1176→    width: { size: 100, type: WidthType.PERCENTAGE },
+  1177→    layout: TableLayoutType.FIXED,
+  1178→    borders: allNoBorders,
+  1179→    rows: [new TableRow({
+  1180→      height: { value: 16838, rule: "exact" },
+  1181→      children: [new TableCell({
+  1182→        shading: { type: ShadingType.CLEAR, fill: P.bg }, borders: noBorders,
+  1183→        children,
+  1184→      })],
+  1185→    })],
+  1186→  })];
+  1187→  // Total height: 16838 (single wrapper, zero nested tables) ✅
+  1188→}
+  1189→```
+  1190→
+  1191→---
+  1192→
+  1193→### Recipe R3: Centered Card Frame (Paragraph Borders)
+  1194→
+  1195→**Visual:** Full-page dark background + centered "card" effect via paragraph indent + 4-side paragraph borders
+  1196→**Use case:** Research report, product overview, event summary, creative/design documents
+  1197→**Nested tables: ZERO** — card borders are paragraph borders with large left/right indents
+  1198→
+  1199→Visual hierarchy (top to bottom):
+
+[showing lines 600-1199 of 1798; use offset=1200 with limit to continue reading]
