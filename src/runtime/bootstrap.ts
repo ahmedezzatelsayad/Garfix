@@ -188,6 +188,9 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
     const success = errors.length === 0;
 
     if (success) {
+      // FIX: Track bootstrap state for health checks
+      _bootstrapped = true;
+      _bootstrapTimestamp = new Date();
       logger.info(`[bootstrap] ✓ Runtime initialization successful`, {
         workersRegistered: workersRegistered.length,
         jobsRecovered,
@@ -227,19 +230,22 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
   }
 }
 
+// ── Bootstrap state tracking ────────────────────────────────────────────────
+let _bootstrapped = false;
+let _bootstrapTimestamp: Date | null = null;
+
 /**
  * checkBootstrapStatus — Verify runtime has been bootstrapped.
  *
  * Useful for health checks and diagnostics endpoints.
+ * FIX: Previously always returned bootstrapped:true regardless of actual state.
  */
 export function checkBootstrapStatus(): {
   bootstrapped: boolean;
   timestamp: Date | null;
 } {
-  // In a more complex implementation, this could track state
-  // For now, returns a simple status
   return {
-    bootstrapped: true, // If this module was loaded, bootstrap was likely called
-    timestamp: new Date(),
+    bootstrapped: _bootstrapped,
+    timestamp: _bootstrapTimestamp,
   };
 }

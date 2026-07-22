@@ -59,13 +59,21 @@ function validateBaseUrl(url: string): void {
   if (blockedHosts.includes(parsed.hostname)) {
     throw new Error("Internal addresses are not allowed for custom AI endpoint");
   }
-  // Block private IP ranges
+  // Block private IP ranges (RFC 1918) — proper CIDR checks
+  // FIX: Previously blocked ALL 172.x.x.x and 192.x.x.x, which incorrectly
+  // blocked public IPs like 172.5.1.2 (only 172.16-31 is private per RFC 1918)
   const ipMatch = parsed.hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
   if (ipMatch) {
-    const [, a] = ipMatch;
-    if (a === "10" || a === "172" || a === "192" || a === "127") {
-      throw new Error("Private/internal IP addresses are not allowed for custom AI endpoint");
-    }
+    const [, a, b] = ipMatch;
+    const first = parseInt(a), second = parseInt(b);
+    // 10.0.0.0/8 — all 10.x.x.x is private
+    if (first === 10) throw new Error("Private/internal IP addresses are not allowed for custom AI endpoint");
+    // 172.16.0.0/12 — only 172.16-31.x.x is private (172.0-15 and 172.32-255 are PUBLIC)
+    if (first === 172 && second >= 16 && second <= 31) throw new Error("Private/internal IP addresses are not allowed for custom AI endpoint");
+    // 192.168.0.0/16 — only 192.168.x.x is private (192.0-167 and 192.169-255 are PUBLIC)
+    if (first === 192 && second === 168) throw new Error("Private/internal IP addresses are not allowed for custom AI endpoint");
+    // 127.0.0.0/8 — loopback
+    if (first === 127) throw new Error("Loopback addresses are not allowed for custom AI endpoint");
   }
 }
 
@@ -162,6 +170,7 @@ class OpenAICompatibleProvider implements AiProvider {
       case "openrouter": return "https://openrouter.ai/api/v1";
       case "openai": return "https://api.openai.com/v1";
       case "deepseek": return "https://api.deepseek.com/v1";
+      case "gemini": return "https://generativelanguage.googleapis.com/v1beta/openai";
       case "custom": {
         // SEC-006 FIX: SSRF protection — validate custom baseUrl
         const url = this.config.baseUrl || "";

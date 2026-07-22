@@ -30,6 +30,27 @@ function base32Encode(buffer: Buffer): string {
   return result;
 }
 
+/**
+ * Base32 decode — required because TOTP secrets are Base32-encoded (RFC 6238),
+ * but the old code mistakenly used base64 decode, producing wrong HMAC keys.
+ * Authenticator apps (Google Authenticator, Authy) expect Base32 secrets.
+ */
+function base32Decode(str: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = str.replace(/=+$/, "");
+  let bits = "";
+  for (const ch of clean) {
+    const idx = alphabet.indexOf(ch.toUpperCase());
+    if (idx === -1) continue; // skip invalid chars
+    bits += idx.toString(2).padStart(5, "0");
+  }
+  const bytes: number[] = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.substring(i, i + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
 function generateTOTPSecret(): string {
   const secret = crypto.randomBytes(20);
   return base32Encode(secret);
@@ -52,7 +73,7 @@ function generateRecoveryCodes(count: number): string[] {
 
 /** Generate a new TOTP secret for a user. Returns the secret (plaintext) and recovery codes. */
 export async function setupMFA(userUid: string): Promise<{ secret: string; uri: string; recoveryCodes: string[] }> {
-  const secret = generateTOTPSecret();
+  const secret = verifyTOTPCodeSecret();
   const uri = buildTOTPUri(secret, userUid);
   const recoveryCodes = generateRecoveryCodes(RECOVERY_CODE_COUNT);
 
@@ -87,7 +108,7 @@ export async function verifyAndEnableMFA(userUid: string, code: string): Promise
   if (!record) return false;
 
   const secret = decryptSecret(record.secret);
-  if (generateTOTP(secret, code)) {
+  if (verifyTOTPCode(secret, code)) {
     await db.mFASecret.update({
       where: { id: `mfa-${userUid}` },
       data: { enabled: true, verifiedAt: new Date() },
@@ -103,7 +124,7 @@ export async function validateMFA(userUid: string, code: string): Promise<boolea
   if (!record || !record.enabled) return false;
 
   const secret = decryptSecret(record.secret);
-  const valid = generateTOTP(secret, code);
+  const valid = verifyTOTPCode(secret, code);
 
   if (valid) {
     await db.mFASecret.update({
@@ -149,17 +170,18 @@ export function isMFARequired(role: string, isFounder: boolean): boolean {
   return role === "admin" || isFounder;
 }
 
-/** Internal TOTP generation — matches RFC 6238. */
-function generateTOTP(secret: string, userCode: string): boolean {
+/** Internal TOTP verification — matches RFC 6238. */
+function verifyTOTPCode(secret: string, userCode: string): boolean {
   try {
-    // Accept current and previous time slot (30s window each)
+    // Accept current and previous/next time slot (30s window each)
     const now = Math.floor(Date.now() / 1000 / TOTP_PERIOD);
     for (const offset of [0, -1, 1]) {
       const counter = now + offset;
       const counterBuf = Buffer.alloc(8);
       counterBuf.writeBigUInt64BE(BigInt(counter));
 
-      const key = Buffer.from(secret.replace(/=+$/, ""), "base64") || Buffer.alloc(0);
+      // FIX: Use base32Decode (not base64) — TOTP secrets are Base32 per RFC 6238
+      const key = base32Decode(secret);
       if (key.length === 0) continue;
 
       const hmac = crypto.createHmac(TOTP_ALGORITHM, key);

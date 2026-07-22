@@ -53,8 +53,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
   }
 
-  // Success — clear the rate limit for this IP
-  await clearRateLimit("login", ip);
+  // Success — clear the rate limit for this IP (must match the key prefix used in rateLimitResponse)
+  await clearRateLimit("auth:login", ip);
 
   const founder = isFounderEmail(user.email);
   const role = founder ? "admin" : user.role;

@@ -42,7 +42,7 @@ services:
       - "${DB_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: ${DB_USER:-garfix}
-      POSTGRES_PASSWORD: ${DB_PASS:-garfix_strong_pass_change_me}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS must be explicitly set}
       POSTGRES_DB: ${DB_NAME:-garfix}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -66,7 +66,7 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
 
       # Database
-      DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:-garfix_strong_pass_change_me}@postgres:5432/${DB_NAME:-garfix}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}?schema=public
 
       # Valkey (preferred) or Redis (backward-compat)
       VALKEY_URL: valkey://valkey:6379
@@ -75,6 +75,13 @@ services:
       # JWT
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+
+      # Direct URL (required by Prisma schema directUrl field)
+      DATABASE_DIRECT_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}
+
+      # Founder & encryption (required by startupCheck.ts — FATAL if missing)
+      FOUNDER_EMAIL: ${FOUNDER_EMAIL:?FOUNDER_EMAIL must be set}
+      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY must be set (32+ chars)}
 
       # Other
       BACKUP_DIR: /app/storage/backups
