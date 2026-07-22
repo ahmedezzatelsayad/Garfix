@@ -2,13 +2,13 @@
 
 > Enterprise-grade multi-tenant ERP with 16-phase AI cost optimization cascade.
 
-**الإصدار:** 12.0.0 | **المؤلف:** ahmedezzatelsayad | **الترخيص:** MIT
+**الإصدار:** 12.1.0 | **المؤلف:** ahmedezzatelsayad | **الترخيص:** MIT
 
 ## Tech Stack
 
 | التقنية | الإصدار | الدور |
 |---------|---------|-------|
-| Next.js | 15 | App Router + Server Actions |
+| Next.js | 16 | App Router + Server Actions |
 | Bun | — | Runtime + Package Manager |
 | TypeScript | — | 99% coverage |
 | Prisma | — | ORM (SQLite dev / PostgreSQL prod) |
@@ -57,9 +57,11 @@ Garfix/
 - **Multi-tenant isolation** — عزل كامل بين الشركات مع slug-based routing
 - **AI Fabric 16-phase cascade** — Cache → Pattern → Rule → Memory → Budget Gate → AI
 - **Invoice Brain** — Pattern learning: صفر تكلفة AI على الأشكال المتكررة
-- **IDOR protection** — 54 من 56 handlers محمية
-- **Security pipeline** — CodeQL + TruffleHog + Gitleaks
+- **IDOR protection** — 54 من 56 handlers محمية + transaction-safe journal entries
+- **Security pipeline** — CodeQL + TruffleHog + Gitleaks + audit remediation
 - **Enterprise seeder** — 10 إلى 25,000 شركة ببيانات واقعية
+- **MENA Expansion** — 20+ دولة + صفحات footer عربية كاملة
+- **Valkey + BullMQ** — استبدال Redis بـ Valkey + معالجة مهام خلفية
 - **Arabic-first** — واجهة عربية مع RTL كامل
 
 ## Architecture
@@ -77,8 +79,8 @@ Routes → Middleware (auth + rate limit) → Modules → lib/ai-fabric (cascade
 
 ## Test Stats
 
-- **1628+** ملف اختبار
-- **1500+** حالة اختبار
+- **1855+** ملف اختبار
+- **1800+** حالة اختبار
 - Founder Validation Suite مع 11 قسم
 - 6 ملفات E2E (Playwright)
 
