@@ -18,6 +18,7 @@ import { db } from "@/lib/db";
 import { isFounderEmail } from "@/lib/founder";
 import { computeEffectivePermissions } from "@/lib/permissions";
 import { getValkeyClient } from "@/lib/valkey";
+import { CSRF_COOKIE, generateCsrfToken, CSRF_COOKIE_OPTS } from "@/lib/cookies";
 
 // SEC-002 FIX: No fallback secrets — throw if missing in production
 function resolveSecret(envVar: string, name: string): string {
@@ -195,11 +196,15 @@ export async function issueSession(response: NextResponse, user: SessionUser): P
   };
   response.cookies.set(ACCESS_COOKIE, signToken(payload), COOKIE_OPTS);
   response.cookies.set(REFRESH_COOKIE, signRefreshToken(user.uid, user.tokenVersion), REFRESH_COOKIE_OPTS);
+  // SEC-010: Issue CSRF cookie on login so the client can immediately make mutating requests.
+  response.cookies.set(CSRF_COOKIE, generateCsrfToken(), CSRF_COOKIE_OPTS);
 }
 
 export async function clearSession(response: NextResponse): Promise<void> {
   response.cookies.set(ACCESS_COOKIE, "", { ...COOKIE_OPTS, maxAge: 0 });
   response.cookies.set(REFRESH_COOKIE, "", { ...REFRESH_COOKIE_OPTS, maxAge: 0 });
+  // SEC-010: Clear CSRF cookie on logout
+  response.cookies.set(CSRF_COOKIE, "", { ...CSRF_COOKIE_OPTS, maxAge: 0 });
 }
 
 export function getAccessToken(req: NextRequest): string | undefined {
