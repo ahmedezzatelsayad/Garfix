@@ -1,0 +1,1528 @@
+     1→-- CreateTable
+     2→CREATE TABLE "app_users" (
+     3→    "id" TEXT NOT NULL PRIMARY KEY,
+     4→    "uid" TEXT NOT NULL,
+     5→    "email" TEXT NOT NULL,
+     6→    "passwordHash" TEXT NOT NULL,
+     7→    "displayName" TEXT NOT NULL,
+     8→    "role" TEXT NOT NULL DEFAULT 'employee',
+     9→    "companies" TEXT NOT NULL DEFAULT '[]',
+    10→    "permissions" TEXT NOT NULL DEFAULT '{}',
+    11→    "tokenVersion" INTEGER NOT NULL DEFAULT 0,
+    12→    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    13→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    14→    "updatedAt" DATETIME NOT NULL
+    15→);
+    16→
+    17→-- CreateTable
+    18→CREATE TABLE "email_verifications" (
+    19→    "id" TEXT NOT NULL PRIMARY KEY,
+    20→    "userId" TEXT NOT NULL,
+    21→    "token" TEXT,
+    22→    "codeHash" TEXT,
+    23→    "purpose" TEXT NOT NULL DEFAULT 'email_verify',
+    24→    "attempts" INTEGER NOT NULL DEFAULT 0,
+    25→    "expiresAt" DATETIME NOT NULL,
+    26→    "usedAt" DATETIME,
+    27→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    28→    CONSTRAINT "email_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
+    29→);
+    30→
+    31→-- CreateTable
+    32→CREATE TABLE "companies" (
+    33→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    34→    "name" TEXT NOT NULL,
+    35→    "slug" TEXT NOT NULL,
+    36→    "logoBase64" TEXT,
+    37→    "nameAr" TEXT,
+    38→    "emoji" TEXT,
+    39→    "color" TEXT,
+    40→    "phone" TEXT,
+    41→    "email" TEXT,
+    42→    "address" TEXT,
+    43→    "vatNumber" TEXT,
+    44→    "commercialRegistration" TEXT,
+    45→    "currency" TEXT NOT NULL DEFAULT 'KWD',
+    46→    "country" TEXT,
+    47→    "timezone" TEXT,
+    48→    "defaultTaxRate" TEXT NOT NULL DEFAULT '0',
+    49→    "weekendDays" TEXT NOT NULL DEFAULT '[5,6]',
+    50→    "ramadanHours" BOOLEAN NOT NULL DEFAULT false,
+    51→    "openrouterApiKey" TEXT,
+    52→    "openrouterModel" TEXT NOT NULL DEFAULT 'anthropic/claude-3.5-haiku',
+    53→    "plan" TEXT NOT NULL DEFAULT 'trial',
+    54→    "subscriptionStatus" TEXT NOT NULL DEFAULT 'active',
+    55→    "trialEndsAt" DATETIME,
+    56→    "stripeCustomerId" TEXT,
+    57→    "stripeSubscriptionId" TEXT,
+    58→    "whatsappEnabled" BOOLEAN NOT NULL DEFAULT false,
+    59→    "whatsappBusinessNumber" TEXT,
+    60→    "whatsappPhoneNumberId" TEXT,
+    61→    "whatsappAccessTokenEnc" TEXT,
+    62→    "whatsappAppSecretEnc" TEXT,
+    63→    "whatsappVerifyTokenHash" TEXT,
+    64→    "whatsappGreeting" TEXT,
+    65→    "whatsappCredentialsUpdatedAt" DATETIME,
+    66→    "deletedAt" DATETIME,
+    67→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    68→    "updatedAt" DATETIME NOT NULL
+    69→);
+    70→
+    71→-- CreateTable
+    72→CREATE TABLE "setup_wizard_progress" (
+    73→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    74→    "companySlug" TEXT NOT NULL,
+    75→    "currentStep" INTEGER NOT NULL DEFAULT 1,
+    76→    "completed" BOOLEAN NOT NULL DEFAULT false,
+    77→    "data" TEXT NOT NULL DEFAULT '{}',
+    78→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    79→    "updatedAt" DATETIME NOT NULL,
+    80→    CONSTRAINT "setup_wizard_progress_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+    81→);
+    82→
+    83→-- CreateTable
+    84→CREATE TABLE "clients" (
+    85→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    86→    "name" TEXT NOT NULL,
+    87→    "email" TEXT,
+    88→    "phone" TEXT,
+    89→    "company" TEXT,
+    90→    "address" TEXT,
+    91→    "notes" TEXT,
+    92→    "companySlug" TEXT NOT NULL,
+    93→    "deletedAt" DATETIME,
+    94→    "deletedBy" TEXT,
+    95→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    96→    "updatedAt" DATETIME NOT NULL,
+    97→    CONSTRAINT "clients_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+    98→);
+    99→
+   100→-- CreateTable
+   101→CREATE TABLE "invoices" (
+   102→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   103→    "invoiceNumber" TEXT NOT NULL,
+   104→    "companySlug" TEXT NOT NULL,
+   105→    "clientId" INTEGER,
+   106→    "clientName" TEXT NOT NULL,
+   107→    "clientEmail" TEXT,
+   108→    "clientPhone" TEXT,
+   109→    "clientAddress" TEXT,
+   110→    "issueDate" TEXT NOT NULL,
+   111→    "dueDate" TEXT NOT NULL,
+   112→    "status" TEXT NOT NULL DEFAULT 'draft',
+   113→    "lineItems" TEXT NOT NULL DEFAULT '[]',
+   114→    "subtotal" TEXT NOT NULL DEFAULT '0',
+   115→    "taxRate" TEXT NOT NULL DEFAULT '0',
+   116→    "taxAmount" TEXT NOT NULL DEFAULT '0',
+   117→    "total" TEXT NOT NULL DEFAULT '0',
+   118→    "shipping" TEXT NOT NULL DEFAULT '0',
+   119→    "discount" TEXT NOT NULL DEFAULT '0',
+   120→    "paid" TEXT NOT NULL DEFAULT '0',
+   121→    "notes" TEXT,
+   122→    "source" TEXT,
+   123→    "createdByEmail" TEXT,
+   124→    "createdByName" TEXT,
+   125→    "whatsappRawText" TEXT,
+   126→    "parsedConfidence" TEXT,
+   127→    "journalEntryId" INTEGER,
+   128→    "eInvoiceStatus" TEXT,
+   129→    "deliveryMethod" TEXT,
+   130→    "version" INTEGER NOT NULL DEFAULT 0,
+   131→    "deletedAt" DATETIME,
+   132→    "deletedBy" TEXT,
+   133→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   134→    "updatedAt" DATETIME NOT NULL,
+   135→    CONSTRAINT "invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
+   136→    CONSTRAINT "invoices_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "clients" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+   137→);
+   138→
+   139→-- CreateTable
+   140→CREATE TABLE "product_catalog" (
+   141→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   142→    "code" TEXT,
+   143→    "name" TEXT NOT NULL,
+   144→    "aliases" TEXT NOT NULL DEFAULT '[]',
+   145→    "purchasePrice" TEXT,
+   146→    "sellingPrice" TEXT,
+   147→    "wholesalePrice" TEXT,
+   148→    "companySlug" TEXT NOT NULL,
+   149→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   150→    "updatedAt" DATETIME NOT NULL,
+   151→    CONSTRAINT "product_catalog_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   152→);
+   153→
+   154→-- CreateTable
+   155→CREATE TABLE "warehouses" (
+   156→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   157→    "companySlug" TEXT NOT NULL,
+   158→    "name" TEXT NOT NULL,
+   159→    "code" TEXT NOT NULL,
+   160→    "address" TEXT,
+   161→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   162→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   163→    "updatedAt" DATETIME NOT NULL,
+   164→    CONSTRAINT "warehouses_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   165→);
+   166→
+   167→-- CreateTable
+   168→CREATE TABLE "inventory_items" (
+   169→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   170→    "companySlug" TEXT NOT NULL,
+   171→    "warehouseId" INTEGER NOT NULL,
+   172→    "productId" INTEGER NOT NULL,
+   173→    "quantity" TEXT NOT NULL DEFAULT '0',
+   174→    "reorderLevel" TEXT NOT NULL DEFAULT '0',
+   175→    "reorderQty" TEXT NOT NULL DEFAULT '0',
+   176→    "batchNumber" TEXT,
+   177→    "expiryDate" TEXT,
+   178→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   179→    "updatedAt" DATETIME NOT NULL,
+   180→    CONSTRAINT "inventory_items_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+   181→    CONSTRAINT "inventory_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "product_catalog" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+   182→    CONSTRAINT "inventory_items_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   183→);
+   184→
+   185→-- CreateTable
+   186→CREATE TABLE "stock_movements" (
+   187→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   188→    "companySlug" TEXT NOT NULL,
+   189→    "productId" INTEGER,
+   190→    "warehouseId" INTEGER NOT NULL,
+   191→    "qty" TEXT NOT NULL,
+   192→    "sourceType" TEXT NOT NULL,
+   193→    "sourceId" INTEGER,
+   194→    "note" TEXT,
+   195→    "createdBy" TEXT NOT NULL DEFAULT 'system',
+   196→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   197→    CONSTRAINT "stock_movements_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
+   198→    CONSTRAINT "stock_movements_productId_fkey" FOREIGN KEY ("productId") REFERENCES "product_catalog" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+   199→    CONSTRAINT "stock_movements_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   200→);
+   201→
+   202→-- CreateTable
+   203→CREATE TABLE "purchase_invoices" (
+   204→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   205→    "num" TEXT NOT NULL,
+   206→    "date" TEXT NOT NULL,
+   207→    "supplier" TEXT NOT NULL DEFAULT '',
+   208→    "companySlug" TEXT NOT NULL,
+   209→    "items" TEXT NOT NULL DEFAULT '[]',
+   210→    "sourceInvoiceIds" TEXT NOT NULL DEFAULT '[]',
+   211→    "totalQty" INTEGER NOT NULL DEFAULT 0,
+   212→    "notes" TEXT,
+   213→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   214→    "deletedAt" DATETIME,
+   215→    "deletedBy" TEXT,
+   216→    CONSTRAINT "purchase_invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   217→);
+   218→
+   219→-- CreateTable
+   220→CREATE TABLE "hr_employees" (
+   221→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   222→    "companySlug" TEXT NOT NULL,
+   223→    "name" TEXT NOT NULL,
+   224→    "nameEn" TEXT,
+   225→    "phone" TEXT,
+   226→    "email" TEXT,
+   227→    "position" TEXT,
+   228→    "department" TEXT,
+   229→    "baseSalary" TEXT NOT NULL DEFAULT '0',
+   230→    "allowances" TEXT NOT NULL DEFAULT '0',
+   231→    "currency" TEXT NOT NULL DEFAULT 'KWD',
+   232→    "joinDate" TEXT,
+   233→    "endDate" TEXT,
+   234→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   235→    "notes" TEXT,
+   236→    "civilId" TEXT,
+   237→    "nationality" TEXT,
+   238→    "residenceExpiry" TEXT,
+   239→    "passportNumber" TEXT,
+   240→    "bankAccount" TEXT,
+   241→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   242→    "updatedAt" DATETIME NOT NULL,
+   243→    CONSTRAINT "hr_employees_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   244→);
+   245→
+   246→-- CreateTable
+   247→CREATE TABLE "hr_attendance" (
+   248→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   249→    "companySlug" TEXT NOT NULL,
+   250→    "employeeId" INTEGER NOT NULL,
+   251→    "date" TEXT NOT NULL,
+   252→    "status" TEXT NOT NULL DEFAULT 'present',
+   253→    "checkIn" TEXT,
+   254→    "checkOut" TEXT,
+   255→    "notes" TEXT,
+   256→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   257→    CONSTRAINT "hr_attendance_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   258→);
+   259→
+   260→-- CreateTable
+   261→CREATE TABLE "hr_salaries" (
+   262→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   263→    "companySlug" TEXT NOT NULL,
+   264→    "employeeId" INTEGER NOT NULL,
+   265→    "month" TEXT NOT NULL,
+   266→    "baseSalary" TEXT NOT NULL DEFAULT '0',
+   267→    "allowances" TEXT NOT NULL DEFAULT '0',
+   268→    "deductions" TEXT NOT NULL DEFAULT '0',
+   269→    "bonus" TEXT NOT NULL DEFAULT '0',
+   270→    "netSalary" TEXT NOT NULL DEFAULT '0',
+   271→    "isPaid" BOOLEAN NOT NULL DEFAULT false,
+   272→    "paidAt" DATETIME,
+   273→    "notes" TEXT,
+   274→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   275→    CONSTRAINT "hr_salaries_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   276→);
+   277→
+   278→-- CreateTable
+   279→CREATE TABLE "hr_commissions" (
+   280→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   281→    "companySlug" TEXT NOT NULL,
+   282→    "employeeId" INTEGER NOT NULL,
+   283→    "date" TEXT NOT NULL,
+   284→    "type" TEXT NOT NULL DEFAULT 'sales',
+   285→    "description" TEXT,
+   286→    "amount" TEXT NOT NULL DEFAULT '0',
+   287→    "isPaid" BOOLEAN NOT NULL DEFAULT false,
+   288→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   289→    CONSTRAINT "hr_commissions_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   290→);
+   291→
+   292→-- CreateTable
+   293→CREATE TABLE "hr_leave_requests" (
+   294→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   295→    "companySlug" TEXT NOT NULL,
+   296→    "employeeId" INTEGER NOT NULL,
+   297→    "type" TEXT NOT NULL DEFAULT 'annual',
+   298→    "startDate" TEXT NOT NULL,
+   299→    "endDate" TEXT NOT NULL,
+   300→    "days" INTEGER NOT NULL DEFAULT 1,
+   301→    "reason" TEXT,
+   302→    "status" TEXT NOT NULL DEFAULT 'pending',
+   303→    "approvedBy" TEXT,
+   304→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   305→    CONSTRAINT "hr_leave_requests_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   306→);
+   307→
+   308→-- CreateTable
+   309→CREATE TABLE "hr_performance" (
+   310→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   311→    "companySlug" TEXT NOT NULL,
+   312→    "employeeId" INTEGER NOT NULL,
+   313→    "period" TEXT NOT NULL,
+   314→    "kpiScore" INTEGER,
+   315→    "attendScore" INTEGER,
+   316→    "teamScore" INTEGER,
+   317→    "overallScore" INTEGER,
+   318→    "rating" TEXT,
+   319→    "strengths" TEXT,
+   320→    "improvements" TEXT,
+   321→    "reviewerNote" TEXT,
+   322→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   323→    CONSTRAINT "hr_performance_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   324→);
+   325→
+   326→-- CreateTable
+   327→CREATE TABLE "accounts" (
+   328→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   329→    "code" TEXT NOT NULL,
+   330→    "nameAr" TEXT NOT NULL,
+   331→    "nameEn" TEXT,
+   332→    "type" TEXT NOT NULL,
+   333→    "parentId" INTEGER,
+   334→    "companySlug" TEXT NOT NULL,
+   335→    "balance" TEXT NOT NULL DEFAULT '0',
+   336→    "currency" TEXT NOT NULL DEFAULT 'KWD',
+   337→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   338→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   339→    "updatedAt" DATETIME NOT NULL,
+   340→    CONSTRAINT "accounts_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "accounts" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+   341→    CONSTRAINT "accounts_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   342→);
+   343→
+   344→-- CreateTable
+   345→CREATE TABLE "journal_entries" (
+   346→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   347→    "date" TEXT NOT NULL,
+   348→    "description" TEXT,
+   349→    "reference" TEXT,
+   350→    "companySlug" TEXT NOT NULL,
+   351→    "createdBy" TEXT NOT NULL,
+   352→    "status" TEXT NOT NULL DEFAULT 'draft',
+   353→    "sourceType" TEXT,
+   354→    "sourceId" INTEGER,
+   355→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   356→    "updatedAt" DATETIME NOT NULL,
+   357→    "deletedAt" DATETIME,
+   358→    "deletedBy" TEXT,
+   359→    CONSTRAINT "journal_entries_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   360→);
+   361→
+   362→-- CreateTable
+   363→CREATE TABLE "journal_entry_lines" (
+   364→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   365→    "entryId" INTEGER NOT NULL,
+   366→    "accountId" INTEGER NOT NULL,
+   367→    "debit" TEXT NOT NULL DEFAULT '0',
+   368→    "credit" TEXT NOT NULL DEFAULT '0',
+   369→    "description" TEXT,
+   370→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   371→    CONSTRAINT "journal_entry_lines_entryId_fkey" FOREIGN KEY ("entryId") REFERENCES "journal_entries" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+   372→    CONSTRAINT "journal_entry_lines_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+   373→);
+   374→
+   375→-- CreateTable
+   376→CREATE TABLE "e_invoices" (
+   377→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   378→    "invoiceId" INTEGER NOT NULL,
+   379→    "companySlug" TEXT NOT NULL,
+   380→    "authorityType" TEXT NOT NULL DEFAULT 'none',
+   381→    "submissionStatus" TEXT NOT NULL DEFAULT 'pending',
+   382→    "uuid" TEXT,
+   383→    "xmlHash" TEXT,
+   384→    "signedXml" TEXT,
+   385→    "rawXml" TEXT,
+   386→    "rejectionReason" TEXT,
+   387→    "submittedAt" DATETIME,
+   388→    "approvedAt" DATETIME,
+   389→    "retryCount" INTEGER NOT NULL DEFAULT 0,
+   390→    "lastRetryAt" DATETIME,
+   391→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   392→    "updatedAt" DATETIME NOT NULL,
+   393→    "deletedAt" DATETIME,
+   394→    "deletedBy" TEXT,
+   395→    CONSTRAINT "e_invoices_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+   396→    CONSTRAINT "e_invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   397→);
+   398→
+   399→-- CreateTable
+   400→CREATE TABLE "order_deliveries" (
+   401→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   402→    "invoiceId" INTEGER,
+   403→    "companySlug" TEXT NOT NULL,
+   404→    "clientName" TEXT,
+   405→    "clientPhone" TEXT,
+   406→    "address" TEXT,
+   407→    "locationUrl" TEXT,
+   408→    "preferredTime" DATETIME,
+   409→    "deliveryFee" TEXT NOT NULL DEFAULT '0',
+   410→    "status" TEXT NOT NULL DEFAULT 'Pending',
+   411→    "driverId" TEXT,
+   412→    "notes" TEXT,
+   413→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   414→    "updatedAt" DATETIME NOT NULL,
+   415→    CONSTRAINT "order_deliveries_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
+   416→    CONSTRAINT "order_deliveries_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+   417→    CONSTRAINT "order_deliveries_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "app_users" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+   418→);
+   419→
+   420→-- CreateTable
+   421→CREATE TABLE "payment_provider_configs" (
+   422→    "provider" TEXT NOT NULL PRIMARY KEY,
+   423→    "encryptedCredentials" TEXT,
+   424→    "publicConfig" TEXT,
+   425→    "credentialsUpdatedAt" DATETIME,
+   426→    "updatedBy" TEXT,
+   427→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   428→    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   429→);
+   430→
+   431→-- CreateTable
+   432→CREATE TABLE "payment_transactions" (
+   433→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   434→    "companySlug" TEXT NOT NULL,
+   435→    "plan" TEXT NOT NULL,
+   436→    "method" TEXT NOT NULL,
+   437→    "provider" TEXT NOT NULL,
+   438→    "amount" TEXT NOT NULL DEFAULT '0',
+   439→    "currency" TEXT NOT NULL DEFAULT 'EGP',
+   440→    "status" TEXT NOT NULL DEFAULT 'pending',
+   441→    "providerPaymentId" TEXT,
+   442→    "providerOrderId" TEXT,
+   443→    "providerEventId" TEXT,
+   444→    "checkoutUrl" TEXT,
+   445→    "failureReason" TEXT,
+   446→    "metadata" TEXT,
+   447→    "createdBy" TEXT,
+   448→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   449→    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   450→    "deletedAt" DATETIME,
+   451→    "deletedBy" TEXT,
+   452→    CONSTRAINT "payment_transactions_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   453→);
+   454→
+   455→-- CreateTable
+   456→CREATE TABLE "payments_vault" (
+   457→    "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton',
+   458→    "wrappedKey" TEXT NOT NULL,
+   459→    "kdfSalt" TEXT NOT NULL,
+   460→    "kdfN" INTEGER NOT NULL DEFAULT 16384,
+   461→    "fingerprint" TEXT NOT NULL,
+   462→    "algo" TEXT NOT NULL DEFAULT 'aes-256-gcm',
+   463→    "createdBy" TEXT,
+   464→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   465→    "rotatedAt" DATETIME,
+   466→    "rotatedBy" TEXT
+   467→);
+   468→
+   469→-- CreateTable
+   470→CREATE TABLE "permissions" (
+   471→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   472→    "key" TEXT NOT NULL,
+   473→    "labelAr" TEXT NOT NULL,
+   474→    "labelEn" TEXT,
+   475→    "category" TEXT NOT NULL DEFAULT 'general',
+   476→    "description" TEXT,
+   477→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   478→);
+   479→
+   480→-- CreateTable
+   481→CREATE TABLE "role_permissions" (
+   482→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   483→    "role" TEXT NOT NULL,
+   484→    "permissionKey" TEXT NOT NULL,
+   485→    "companySlug" TEXT,
+   486→    "value" INTEGER NOT NULL DEFAULT 1,
+   487→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   488→    "updatedAt" DATETIME NOT NULL,
+   489→    CONSTRAINT "role_permissions_permissionKey_fkey" FOREIGN KEY ("permissionKey") REFERENCES "permissions" ("key") ON DELETE CASCADE ON UPDATE CASCADE
+   490→);
+   491→
+   492→-- CreateTable
+   493→CREATE TABLE "audit_logs" (
+   494→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   495→    "userEmail" TEXT NOT NULL,
+   496→    "userUid" TEXT NOT NULL,
+   497→    "action" TEXT NOT NULL,
+   498→    "entity" TEXT NOT NULL,
+   499→    "entityId" TEXT,
+   500→    "companySlug" TEXT,
+   501→    "details" TEXT,
+   502→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   503→    CONSTRAINT "audit_logs_userUid_fkey" FOREIGN KEY ("userUid") REFERENCES "app_users" ("uid") ON DELETE NO ACTION ON UPDATE CASCADE
+   504→);
+   505→
+   506→-- CreateTable
+   507→CREATE TABLE "admin_audit_logs" (
+   508→    "id" TEXT NOT NULL PRIMARY KEY,
+   509→    "adminEmail" TEXT NOT NULL,
+   510→    "action" TEXT NOT NULL,
+   511→    "targetType" TEXT,
+   512→    "targetId" TEXT,
+   513→    "changes" TEXT,
+   514→    "ipAddress" TEXT,
+   515→    "userAgent" TEXT,
+   516→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   517→);
+   518→
+   519→-- CreateTable
+   520→CREATE TABLE "announcements" (
+   521→    "id" TEXT NOT NULL PRIMARY KEY,
+   522→    "title" TEXT NOT NULL,
+   523→    "body" TEXT NOT NULL,
+   524→    "type" TEXT NOT NULL DEFAULT 'info',
+   525→    "targetPlans" TEXT NOT NULL DEFAULT '[]',
+   526→    "startsAt" DATETIME,
+   527→    "endsAt" DATETIME,
+   528→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   529→    "createdBy" TEXT NOT NULL,
+   530→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   531→);
+   532→
+   533→-- CreateTable
+   534→CREATE TABLE "support_tickets" (
+   535→    "id" TEXT NOT NULL PRIMARY KEY,
+   536→    "tenantId" INTEGER,
+   537→    "userEmail" TEXT NOT NULL,
+   538→    "subject" TEXT NOT NULL,
+   539→    "body" TEXT NOT NULL,
+   540→    "status" TEXT NOT NULL DEFAULT 'open',
+   541→    "priority" TEXT NOT NULL DEFAULT 'normal',
+   542→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   543→    "updatedAt" DATETIME NOT NULL
+   544→);
+   545→
+   546→-- CreateTable
+   547→CREATE TABLE "ticket_replies" (
+   548→    "id" TEXT NOT NULL PRIMARY KEY,
+   549→    "ticketId" TEXT NOT NULL,
+   550→    "senderEmail" TEXT NOT NULL,
+   551→    "senderRole" TEXT NOT NULL,
+   552→    "body" TEXT NOT NULL,
+   553→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   554→    CONSTRAINT "ticket_replies_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "support_tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   555→);
+   556→
+   557→-- CreateTable
+   558→CREATE TABLE "platform_settings" (
+   559→    "key" TEXT NOT NULL PRIMARY KEY,
+   560→    "category" TEXT NOT NULL,
+   561→    "valueType" TEXT NOT NULL,
+   562→    "value" TEXT NOT NULL,
+   563→    "description" TEXT,
+   564→    "updatedBy" TEXT,
+   565→    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   566→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   567→);
+   568→
+   569→-- CreateTable
+   570→CREATE TABLE "platform_settings_history" (
+   571→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   572→    "settingKey" TEXT NOT NULL,
+   573→    "oldValue" TEXT,
+   574→    "newValue" TEXT,
+   575→    "changedBy" TEXT,
+   576→    "changedByEmail" TEXT,
+   577→    "changedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   578→    CONSTRAINT "platform_settings_history_settingKey_fkey" FOREIGN KEY ("settingKey") REFERENCES "platform_settings" ("key") ON DELETE CASCADE ON UPDATE CASCADE
+   579→);
+   580→
+   581→-- CreateTable
+   582→CREATE TABLE "modules" (
+   583→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   584→    "name" TEXT NOT NULL,
+   585→    "identifier" TEXT NOT NULL,
+   586→    "version" TEXT,
+   587→    "description" TEXT,
+   588→    "isActive" BOOLEAN NOT NULL DEFAULT false,
+   589→    "settings" TEXT NOT NULL DEFAULT '{}',
+   590→    "installedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   591→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   592→    "updatedAt" DATETIME NOT NULL
+   593→);
+   594→
+   595→-- CreateTable
+   596→CREATE TABLE "chat_history" (
+   597→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   598→    "userUid" TEXT NOT NULL,
+   599→    "companySlug" TEXT,
+   600→    "role" TEXT NOT NULL DEFAULT 'user',
+   601→    "content" TEXT NOT NULL,
+   602→    "functionName" TEXT,
+   603→    "functionArgs" TEXT,
+   604→    "functionResult" TEXT,
+   605→    "tokensUsed" INTEGER,
+   606→    "model" TEXT,
+   607→    "conversationId" TEXT,
+   608→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   609→    CONSTRAINT "chat_history_userUid_fkey" FOREIGN KEY ("userUid") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
+   610→);
+   611→
+   612→-- CreateTable
+   613→CREATE TABLE "ai_processing_logs" (
+   614→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   615→    "companySlug" TEXT,
+   616→    "endpoint" TEXT NOT NULL,
+   617→    "model" TEXT,
+   618→    "provider" TEXT,
+   619→    "ordersCount" INTEGER NOT NULL DEFAULT 0,
+   620→    "itemsCount" INTEGER NOT NULL DEFAULT 0,
+   621→    "processingMs" INTEGER NOT NULL DEFAULT 0,
+   622→    "inputTokens" INTEGER NOT NULL DEFAULT 0,
+   623→    "outputTokens" INTEGER NOT NULL DEFAULT 0,
+   624→    "totalTokens" INTEGER NOT NULL DEFAULT 0,
+   625→    "retried" BOOLEAN NOT NULL DEFAULT false,
+   626→    "success" BOOLEAN NOT NULL DEFAULT true,
+   627→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   628→    CONSTRAINT "ai_processing_logs_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE SET NULL ON UPDATE CASCADE
+   629→);
+   630→
+   631→-- CreateTable
+   632→CREATE TABLE "idempotency_keys" (
+   633→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   634→    "companySlug" TEXT NOT NULL,
+   635→    "endpoint" TEXT NOT NULL,
+   636→    "key" TEXT NOT NULL,
+   637→    "requestHash" TEXT NOT NULL,
+   638→    "responseJson" TEXT,
+   639→    "status" INTEGER NOT NULL DEFAULT 200,
+   640→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   641→);
+   642→
+   643→-- CreateTable
+   644→CREATE TABLE "notifications" (
+   645→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   646→    "userUid" TEXT NOT NULL,
+   647→    "companySlug" TEXT,
+   648→    "type" TEXT NOT NULL,
+   649→    "title" TEXT NOT NULL,
+   650→    "body" TEXT NOT NULL,
+   651→    "link" TEXT,
+   652→    "isRead" BOOLEAN NOT NULL DEFAULT false,
+   653→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   654→    "readAt" DATETIME
+   655→);
+   656→
+   657→-- CreateTable
+   658→CREATE TABLE "invoice_templates" (
+   659→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   660→    "companySlug" TEXT NOT NULL,
+   661→    "name" TEXT NOT NULL,
+   662→    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+   663→    "layoutType" TEXT NOT NULL DEFAULT 'classic',
+   664→    "primaryColor" TEXT NOT NULL DEFAULT '#7c3aed',
+   665→    "fontFamily" TEXT NOT NULL DEFAULT 'Cairo',
+   666→    "logoPosition" TEXT NOT NULL DEFAULT 'right',
+   667→    "showTaxNumber" BOOLEAN NOT NULL DEFAULT true,
+   668→    "showQrCode" BOOLEAN NOT NULL DEFAULT false,
+   669→    "showBankDetails" BOOLEAN NOT NULL DEFAULT false,
+   670→    "footerText" TEXT,
+   671→    "termsAndConditions" TEXT,
+   672→    "paperSize" TEXT NOT NULL DEFAULT 'A4',
+   673→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   674→    "updatedAt" DATETIME NOT NULL,
+   675→    CONSTRAINT "invoice_templates_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   676→);
+   677→
+   678→-- CreateTable
+   679→CREATE TABLE "invoice_template_settings" (
+   680→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   681→    "companySlug" TEXT NOT NULL,
+   682→    "templateId" TEXT NOT NULL DEFAULT 'modern',
+   683→    "primaryColor" TEXT NOT NULL DEFAULT '#7C3AED',
+   684→    "fontFamily" TEXT NOT NULL DEFAULT 'Noto Sans SC',
+   685→    "fontSize" INTEGER NOT NULL DEFAULT 12,
+   686→    "showLogo" BOOLEAN NOT NULL DEFAULT true,
+   687→    "logoPosition" TEXT NOT NULL DEFAULT 'right',
+   688→    "showPaymentInfo" BOOLEAN NOT NULL DEFAULT true,
+   689→    "showStamp" BOOLEAN NOT NULL DEFAULT false,
+   690→    "invoiceTypes" TEXT NOT NULL DEFAULT 'sales,purchase,quote',
+   691→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   692→    "updatedAt" DATETIME NOT NULL,
+   693→    CONSTRAINT "invoice_template_settings_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   694→);
+   695→
+   696→-- CreateTable
+   697→CREATE TABLE "ai_usage_logs" (
+   698→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   699→    "companySlug" TEXT,
+   700→    "userUid" TEXT,
+   701→    "provider" TEXT NOT NULL,
+   702→    "model" TEXT NOT NULL,
+   703→    "endpoint" TEXT NOT NULL,
+   704→    "tokensIn" INTEGER NOT NULL DEFAULT 0,
+   705→    "tokensOut" INTEGER NOT NULL DEFAULT 0,
+   706→    "totalTokens" INTEGER NOT NULL DEFAULT 0,
+   707→    "estimatedCost" REAL NOT NULL DEFAULT 0,
+   708→    "processingMs" INTEGER,
+   709→    "success" BOOLEAN NOT NULL DEFAULT true,
+   710→    "errorMessage" TEXT,
+   711→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   712→);
+   713→
+   714→-- CreateTable
+   715→CREATE TABLE "landing_content" (
+   716→    "key" TEXT NOT NULL PRIMARY KEY,
+   717→    "value" TEXT NOT NULL,
+   718→    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   719→    "updatedBy" TEXT
+   720→);
+   721→
+   722→-- CreateTable
+   723→CREATE TABLE "automation_rules" (
+   724→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   725→    "companySlug" TEXT NOT NULL,
+   726→    "name" TEXT NOT NULL,
+   727→    "trigger" TEXT NOT NULL,
+   728→    "condition" TEXT NOT NULL DEFAULT '{}',
+   729→    "actions" TEXT NOT NULL DEFAULT '[]',
+   730→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   731→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   732→    "updatedAt" DATETIME NOT NULL
+   733→);
+   734→
+   735→-- CreateTable
+   736→CREATE TABLE "automation_execution_logs" (
+   737→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   738→    "ruleId" INTEGER NOT NULL,
+   739→    "status" TEXT NOT NULL DEFAULT 'pending',
+   740→    "triggerData" TEXT,
+   741→    "error" TEXT,
+   742→    "durationMs" INTEGER NOT NULL DEFAULT 0,
+   743→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   744→    CONSTRAINT "automation_execution_logs_ruleId_fkey" FOREIGN KEY ("ruleId") REFERENCES "automation_rules" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   745→);
+   746→
+   747→-- CreateTable
+   748→CREATE TABLE "ai_memory_notes" (
+   749→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   750→    "companySlug" TEXT NOT NULL,
+   751→    "entityType" TEXT NOT NULL,
+   752→    "entityId" INTEGER NOT NULL,
+   753→    "note" TEXT NOT NULL,
+   754→    "createdBy" TEXT NOT NULL,
+   755→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   756→);
+   757→
+   758→-- CreateTable
+   759→CREATE TABLE "feature_flags" (
+   760→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   761→    "key" TEXT NOT NULL,
+   762→    "label" TEXT NOT NULL,
+   763→    "description" TEXT,
+   764→    "plans" TEXT NOT NULL DEFAULT '[]',
+   765→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   766→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   767→    "updatedAt" DATETIME NOT NULL
+   768→);
+   769→
+   770→-- CreateTable
+   771→CREATE TABLE "user_workspace_state" (
+   772→    "userUid" TEXT NOT NULL PRIMARY KEY,
+   773→    "pinnedViews" TEXT NOT NULL DEFAULT '[]',
+   774→    "lastActiveView" TEXT NOT NULL DEFAULT 'dash',
+   775→    "widgetOrder" TEXT NOT NULL DEFAULT '[]',
+   776→    "updatedAt" DATETIME NOT NULL
+   777→);
+   778→
+   779→-- CreateTable
+   780→CREATE TABLE "invoice_brain_templates" (
+   781→    "fingerprint" TEXT NOT NULL PRIMARY KEY,
+   782→    "fields" TEXT NOT NULL,
+   783→    "sampleCount" INTEGER NOT NULL DEFAULT 1,
+   784→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   785→    "lastUsedAt" DATETIME NOT NULL
+   786→);
+   787→
+   788→-- CreateTable
+   789→CREATE TABLE "invoice_brain_header_maps" (
+   790→    "headerFingerprint" TEXT NOT NULL PRIMARY KEY,
+   791→    "mapping" TEXT NOT NULL,
+   792→    "sampleCount" INTEGER NOT NULL DEFAULT 1,
+   793→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   794→    "lastUsedAt" DATETIME NOT NULL
+   795→);
+   796→
+   797→-- CreateTable
+   798→CREATE TABLE "product_aliases" (
+   799→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   800→    "productCatalogId" INTEGER NOT NULL,
+   801→    "companySlug" TEXT NOT NULL,
+   802→    "alias" TEXT NOT NULL,
+   803→    "language" TEXT NOT NULL DEFAULT 'unspecified',
+   804→    "source" TEXT NOT NULL DEFAULT 'manual',
+   805→    "confidence" REAL NOT NULL DEFAULT 1.0,
+   806→    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+   807→    "createdBy" TEXT NOT NULL DEFAULT 'system',
+   808→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   809→    "updatedAt" DATETIME NOT NULL,
+   810→    CONSTRAINT "product_aliases_productCatalogId_fkey" FOREIGN KEY ("productCatalogId") REFERENCES "product_catalog" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+   811→    CONSTRAINT "product_aliases_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   812→);
+   813→
+   814→-- CreateTable
+   815→CREATE TABLE "product_match_audit" (
+   816→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   817→    "companySlug" TEXT NOT NULL,
+   818→    "inputText" TEXT NOT NULL,
+   819→    "matchedProductId" INTEGER,
+   820→    "matchedAlias" TEXT,
+   821→    "confidence" REAL NOT NULL,
+   822→    "tier" TEXT NOT NULL,
+   823→    "action" TEXT NOT NULL,
+   824→    "isUndone" BOOLEAN NOT NULL DEFAULT false,
+   825→    "undoneBy" TEXT,
+   826→    "undoneAt" DATETIME,
+   827→    "invoiceId" INTEGER,
+   828→    "createdBy" TEXT NOT NULL DEFAULT 'system',
+   829→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   830→    "resolvedBy" TEXT,
+   831→    "aiReasoning" TEXT,
+   832→    "aiModel" TEXT,
+   833→    CONSTRAINT "product_match_audit_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   834→);
+   835→
+   836→-- CreateTable
+   837→CREATE TABLE "match_overrides" (
+   838→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   839→    "companySlug" TEXT NOT NULL,
+   840→    "inputText" TEXT NOT NULL,
+   841→    "inputNormalized" TEXT NOT NULL,
+   842→    "fromProductId" INTEGER,
+   843→    "toProductId" INTEGER NOT NULL,
+   844→    "chosenAlias" TEXT,
+   845→    "auditId" INTEGER,
+   846→    "reason" TEXT,
+   847→    "overriddenBy" TEXT NOT NULL,
+   848→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   849→    CONSTRAINT "match_overrides_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+   850→);
+   851→
+   852→-- CreateTable
+   853→CREATE TABLE "job_queue" (
+   854→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   855→    "queue" TEXT NOT NULL,
+   856→    "type" TEXT NOT NULL,
+   857→    "data" TEXT NOT NULL,
+   858→    "status" TEXT NOT NULL DEFAULT 'pending',
+   859→    "attempts" INTEGER NOT NULL DEFAULT 0,
+   860→    "maxAttempts" INTEGER NOT NULL DEFAULT 3,
+   861→    "lastError" TEXT,
+   862→    "lockedAt" DATETIME,
+   863→    "lockedBy" TEXT,
+   864→    "scheduledAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   865→    "startedAt" DATETIME,
+   866→    "completedAt" DATETIME,
+   867→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   868→);
+   869→
+   870→-- CreateTable
+   871→CREATE TABLE "ai_model_registry" (
+   872→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   873→    "provider" TEXT NOT NULL,
+   874→    "model" TEXT NOT NULL,
+   875→    "displayName" TEXT NOT NULL,
+   876→    "capabilities" TEXT NOT NULL DEFAULT '[]',
+   877→    "tier" TEXT NOT NULL DEFAULT 'free',
+   878→    "costPer1kIn" REAL NOT NULL DEFAULT 0,
+   879→    "costPer1kOut" REAL NOT NULL DEFAULT 0,
+   880→    "maxTokens" INTEGER NOT NULL DEFAULT 4096,
+   881→    "contextWindow" INTEGER NOT NULL DEFAULT 8192,
+   882→    "isEnabled" BOOLEAN NOT NULL DEFAULT true,
+   883→    "isHealthy" BOOLEAN NOT NULL DEFAULT true,
+   884→    "healthScore" REAL NOT NULL DEFAULT 0,
+   885→    "successRate" REAL NOT NULL DEFAULT 0,
+   886→    "avgLatencyMs" INTEGER NOT NULL DEFAULT 0,
+   887→    "p95LatencyMs" INTEGER NOT NULL DEFAULT 0,
+   888→    "avgQualityScore" REAL NOT NULL DEFAULT 0,
+   889→    "totalBenchmarks" INTEGER NOT NULL DEFAULT 0,
+   890→    "lastBenchmarkAt" DATETIME,
+   891→    "lastError" TEXT,
+   892→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   893→    "updatedAt" DATETIME NOT NULL
+   894→);
+   895→
+   896→-- CreateTable
+   897→CREATE TABLE "ai_benchmark_results" (
+   898→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   899→    "modelRegistryId" INTEGER NOT NULL,
+   900→    "capability" TEXT NOT NULL,
+   901→    "success" BOOLEAN NOT NULL,
+   902→    "latencyMs" INTEGER NOT NULL,
+   903→    "tokensIn" INTEGER NOT NULL DEFAULT 0,
+   904→    "tokensOut" INTEGER NOT NULL DEFAULT 0,
+   905→    "responseQuality" REAL NOT NULL DEFAULT 0,
+   906→    "responseSample" TEXT,
+   907→    "errorMessage" TEXT,
+   908→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   909→    CONSTRAINT "ai_benchmark_results_modelRegistryId_fkey" FOREIGN KEY ("modelRegistryId") REFERENCES "ai_model_registry" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   910→);
+   911→
+   912→-- CreateTable
+   913→CREATE TABLE "company_runtimes" (
+   914→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   915→    "companyId" INTEGER NOT NULL,
+   916→    "workerPoolSize" INTEGER NOT NULL DEFAULT 2,
+   917→    "status" TEXT NOT NULL DEFAULT 'active',
+   918→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   919→    "updatedAt" DATETIME NOT NULL,
+   920→    CONSTRAINT "company_runtimes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+   921→);
+   922→
+   923→-- CreateTable
+   924→CREATE TABLE "ai_request_logs" (
+   925→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   926→    "companySlug" TEXT NOT NULL,
+   927→    "requestType" TEXT NOT NULL,
+   928→    "resolvedBy" TEXT NOT NULL,
+   929→    "provider" TEXT,
+   930→    "tokensUsed" INTEGER,
+   931→    "costUsd" REAL NOT NULL DEFAULT 0,
+   932→    "latencyMs" INTEGER NOT NULL DEFAULT 0,
+   933→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   934→);
+   935→
+   936→-- CreateTable
+   937→CREATE TABLE "ai_fabric_cache_entries" (
+   938→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   939→    "key" TEXT NOT NULL,
+   940→    "companySlug" TEXT NOT NULL,
+   941→    "value" TEXT NOT NULL,
+   942→    "hitCount" INTEGER NOT NULL DEFAULT 0,
+   943→    "expiresAt" DATETIME NOT NULL,
+   944→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   945→    "updatedAt" DATETIME NOT NULL
+   946→);
+   947→
+   948→-- CreateTable
+   949→CREATE TABLE "budget_configs" (
+   950→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   951→    "companySlug" TEXT NOT NULL,
+   952→    "monthlyBudgetUsd" REAL NOT NULL,
+   953→    "currentSpendUsd" REAL NOT NULL DEFAULT 0,
+   954→    "alertThresholdPct" INTEGER NOT NULL DEFAULT 80,
+   955→    "hardStopEnabled" BOOLEAN NOT NULL DEFAULT false,
+   956→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   957→    "updatedAt" DATETIME NOT NULL
+   958→);
+   959→
+   960→-- CreateTable
+   961→CREATE TABLE "provider_configs" (
+   962→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   963→    "taskType" TEXT NOT NULL,
+   964→    "primaryProvider" TEXT NOT NULL,
+   965→    "fallbackProvider" TEXT NOT NULL,
+   966→    "costPerRequestUsd" REAL,
+   967→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   968→    "updatedAt" DATETIME NOT NULL
+   969→);
+   970→
+   971→-- CreateTable
+   972→CREATE TABLE "ai_memory_entries" (
+   973→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   974→    "companySlug" TEXT NOT NULL,
+   975→    "category" TEXT NOT NULL,
+   976→    "content" TEXT NOT NULL,
+   977→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   978→    "lastAccessedAt" DATETIME NOT NULL
+   979→);
+   980→
+   981→-- CreateTable
+   982→CREATE TABLE "profit_snapshots" (
+   983→    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+   984→    "companySlug" TEXT NOT NULL,
+   985→    "periodStart" DATETIME NOT NULL,
+   986→    "periodEnd" DATETIME NOT NULL,
+   987→    "revenueUsd" REAL NOT NULL DEFAULT 0,
+   988→    "infraCostUsd" REAL NOT NULL DEFAULT 0,
+   989→    "aiCostUsd" REAL NOT NULL DEFAULT 0,
+   990→    "workerCostUsd" REAL NOT NULL DEFAULT 0,
+   991→    "profitUsd" REAL NOT NULL DEFAULT 0,
+   992→    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+   993→);
+   994→
+   995→-- CreateIndex
+   996→CREATE UNIQUE INDEX "app_users_uid_key" ON "app_users"("uid");
+   997→
+   998→-- CreateIndex
+   999→CREATE UNIQUE INDEX "app_users_email_key" ON "app_users"("email");
+  1000→
+  1001→-- CreateIndex
+  1002→CREATE INDEX "app_users_role_idx" ON "app_users"("role");
+  1003→
+  1004→-- CreateIndex
+  1005→CREATE UNIQUE INDEX "email_verifications_token_key" ON "email_verifications"("token");
+  1006→
+  1007→-- CreateIndex
+  1008→CREATE INDEX "email_verifications_userId_purpose_createdAt_idx" ON "email_verifications"("userId", "purpose", "createdAt");
+  1009→
+  1010→-- CreateIndex
+  1011→CREATE UNIQUE INDEX "companies_slug_key" ON "companies"("slug");
+  1012→
+  1013→-- CreateIndex
+  1014→CREATE INDEX "companies_stripeCustomerId_idx" ON "companies"("stripeCustomerId");
+  1015→
+  1016→-- CreateIndex
+  1017→CREATE INDEX "companies_stripeSubscriptionId_idx" ON "companies"("stripeSubscriptionId");
+  1018→
+  1019→-- CreateIndex
+  1020→CREATE INDEX "companies_subscriptionStatus_idx" ON "companies"("subscriptionStatus");
+  1021→
+  1022→-- CreateIndex
+  1023→CREATE INDEX "companies_plan_idx" ON "companies"("plan");
+  1024→
+  1025→-- CreateIndex
+  1026→CREATE INDEX "companies_deletedAt_idx" ON "companies"("deletedAt");
+  1027→
+  1028→-- CreateIndex
+  1029→CREATE UNIQUE INDEX "setup_wizard_progress_companySlug_key" ON "setup_wizard_progress"("companySlug");
+  1030→
+  1031→-- CreateIndex
+  1032→CREATE INDEX "clients_companySlug_idx" ON "clients"("companySlug");
+  1033→
+  1034→-- CreateIndex
+  1035→CREATE INDEX "clients_companySlug_createdAt_id_idx" ON "clients"("companySlug", "createdAt", "id");
+  1036→
+  1037→-- CreateIndex
+  1038→CREATE INDEX "clients_companySlug_deletedAt_idx" ON "clients"("companySlug", "deletedAt");
+  1039→
+  1040→-- CreateIndex
+  1041→CREATE INDEX "invoices_companySlug_idx" ON "invoices"("companySlug");
+  1042→
+  1043→-- CreateIndex
+  1044→CREATE INDEX "invoices_companySlug_issueDate_idx" ON "invoices"("companySlug", "issueDate");
+  1045→
+  1046→-- CreateIndex
+  1047→CREATE INDEX "invoices_companySlug_status_idx" ON "invoices"("companySlug", "status");
+  1048→
+  1049→-- CreateIndex
+  1050→CREATE INDEX "invoices_clientId_idx" ON "invoices"("clientId");
+  1051→
+  1052→-- CreateIndex
+  1053→CREATE INDEX "invoices_companySlug_createdAt_id_idx" ON "invoices"("companySlug", "createdAt", "id");
+  1054→
+  1055→-- CreateIndex
+  1056→CREATE INDEX "invoices_journalEntryId_idx" ON "invoices"("journalEntryId");
+  1057→
+  1058→-- CreateIndex
+  1059→CREATE INDEX "invoices_companySlug_eInvoiceStatus_idx" ON "invoices"("companySlug", "eInvoiceStatus");
+  1060→
+  1061→-- CreateIndex
+  1062→CREATE INDEX "invoices_companySlug_deletedAt_idx" ON "invoices"("companySlug", "deletedAt");
+  1063→
+  1064→-- CreateIndex
+  1065→CREATE INDEX "invoices_companySlug_dueDate_status_idx" ON "invoices"("companySlug", "dueDate", "status");
+  1066→
+  1067→-- CreateIndex
+  1068→CREATE INDEX "invoices_invoiceNumber_idx" ON "invoices"("invoiceNumber");
+  1069→
+  1070→-- CreateIndex
+  1071→CREATE INDEX "invoices_status_idx" ON "invoices"("status");
+  1072→
+  1073→-- CreateIndex
+  1074→CREATE UNIQUE INDEX "invoices_companySlug_invoiceNumber_key" ON "invoices"("companySlug", "invoiceNumber");
+  1075→
+  1076→-- CreateIndex
+  1077→CREATE INDEX "product_catalog_companySlug_idx" ON "product_catalog"("companySlug");
+  1078→
+  1079→-- CreateIndex
+  1080→CREATE INDEX "product_catalog_companySlug_createdAt_id_idx" ON "product_catalog"("companySlug", "createdAt", "id");
+  1081→
+  1082→-- CreateIndex
+  1083→CREATE INDEX "warehouses_companySlug_idx" ON "warehouses"("companySlug");
+  1084→
+  1085→-- CreateIndex
+  1086→CREATE INDEX "warehouses_companySlug_isActive_idx" ON "warehouses"("companySlug", "isActive");
+  1087→
+  1088→-- CreateIndex
+  1089→CREATE UNIQUE INDEX "warehouses_companySlug_code_key" ON "warehouses"("companySlug", "code");
+  1090→
+  1091→-- CreateIndex
+  1092→CREATE INDEX "inventory_items_companySlug_idx" ON "inventory_items"("companySlug");
+  1093→
+  1094→-- CreateIndex
+  1095→CREATE INDEX "inventory_items_productId_idx" ON "inventory_items"("productId");
+  1096→
+  1097→-- CreateIndex
+  1098→CREATE INDEX "inventory_items_warehouseId_idx" ON "inventory_items"("warehouseId");
+  1099→
+  1100→-- CreateIndex
+  1101→CREATE UNIQUE INDEX "inventory_items_warehouseId_productId_key" ON "inventory_items"("warehouseId", "productId");
+  1102→
+  1103→-- CreateIndex
+  1104→CREATE INDEX "stock_movements_companySlug_createdAt_idx" ON "stock_movements"("companySlug", "createdAt");
+  1105→
+  1106→-- CreateIndex
+  1107→CREATE INDEX "stock_movements_companySlug_productId_idx" ON "stock_movements"("companySlug", "productId");
+  1108→
+  1109→-- CreateIndex
+  1110→CREATE INDEX "stock_movements_sourceType_sourceId_idx" ON "stock_movements"("sourceType", "sourceId");
+  1111→
+  1112→-- CreateIndex
+  1113→CREATE INDEX "stock_movements_warehouseId_idx" ON "stock_movements"("warehouseId");
+  1114→
+  1115→-- CreateIndex
+  1116→CREATE INDEX "stock_movements_companySlug_idx" ON "stock_movements"("companySlug");
+  1117→
+  1118→-- CreateIndex
+  1119→CREATE INDEX "stock_movements_productId_idx" ON "stock_movements"("productId");
+  1120→
+  1121→-- CreateIndex
+  1122→CREATE INDEX "purchase_invoices_companySlug_idx" ON "purchase_invoices"("companySlug");
+  1123→
+  1124→-- CreateIndex
+  1125→CREATE INDEX "purchase_invoices_companySlug_createdAt_id_idx" ON "purchase_invoices"("companySlug", "createdAt", "id");
+  1126→
+  1127→-- CreateIndex
+  1128→CREATE INDEX "purchase_invoices_companySlug_deletedAt_idx" ON "purchase_invoices"("companySlug", "deletedAt");
+  1129→
+  1130→-- CreateIndex
+  1131→CREATE INDEX "hr_employees_companySlug_idx" ON "hr_employees"("companySlug");
+  1132→
+  1133→-- CreateIndex
+  1134→CREATE INDEX "hr_employees_civilId_idx" ON "hr_employees"("civilId");
+  1135→
+  1136→-- CreateIndex
+  1137→CREATE INDEX "hr_employees_companySlug_isActive_idx" ON "hr_employees"("companySlug", "isActive");
+  1138→
+  1139→-- CreateIndex
+  1140→CREATE INDEX "hr_attendance_companySlug_idx" ON "hr_attendance"("companySlug");
+  1141→
+  1142→-- CreateIndex
+  1143→CREATE INDEX "hr_attendance_employeeId_date_idx" ON "hr_attendance"("employeeId", "date");
+  1144→
+  1145→-- CreateIndex
+  1146→CREATE INDEX "hr_attendance_companySlug_date_idx" ON "hr_attendance"("companySlug", "date");
+  1147→
+  1148→-- CreateIndex
+  1149→CREATE INDEX "hr_salaries_companySlug_idx" ON "hr_salaries"("companySlug");
+  1150→
+  1151→-- CreateIndex
+  1152→CREATE INDEX "hr_salaries_employeeId_month_idx" ON "hr_salaries"("employeeId", "month");
+  1153→
+  1154→-- CreateIndex
+  1155→CREATE INDEX "hr_salaries_companySlug_isPaid_idx" ON "hr_salaries"("companySlug", "isPaid");
+  1156→
+  1157→-- CreateIndex
+  1158→CREATE INDEX "hr_salaries_companySlug_month_idx" ON "hr_salaries"("companySlug", "month");
+  1159→
+  1160→-- CreateIndex
+  1161→CREATE INDEX "hr_commissions_companySlug_idx" ON "hr_commissions"("companySlug");
+  1162→
+  1163→-- CreateIndex
+  1164→CREATE INDEX "hr_commissions_employeeId_idx" ON "hr_commissions"("employeeId");
+  1165→
+  1166→-- CreateIndex
+  1167→CREATE INDEX "hr_commissions_companySlug_isPaid_idx" ON "hr_commissions"("companySlug", "isPaid");
+  1168→
+  1169→-- CreateIndex
+  1170→CREATE INDEX "hr_commissions_companySlug_date_idx" ON "hr_commissions"("companySlug", "date");
+  1171→
+  1172→-- CreateIndex
+  1173→CREATE INDEX "hr_leave_requests_companySlug_idx" ON "hr_leave_requests"("companySlug");
+  1174→
+  1175→-- CreateIndex
+  1176→CREATE INDEX "hr_leave_requests_employeeId_idx" ON "hr_leave_requests"("employeeId");
+  1177→
+  1178→-- CreateIndex
+  1179→CREATE INDEX "hr_leave_requests_companySlug_status_idx" ON "hr_leave_requests"("companySlug", "status");
+  1180→
+  1181→-- CreateIndex
+  1182→CREATE INDEX "hr_performance_companySlug_idx" ON "hr_performance"("companySlug");
+  1183→
+  1184→-- CreateIndex
+  1185→CREATE INDEX "hr_performance_employeeId_idx" ON "hr_performance"("employeeId");
+  1186→
+  1187→-- CreateIndex
+  1188→CREATE INDEX "hr_performance_companySlug_period_idx" ON "hr_performance"("companySlug", "period");
+  1189→
+  1190→-- CreateIndex
+  1191→CREATE INDEX "accounts_companySlug_idx" ON "accounts"("companySlug");
+  1192→
+  1193→-- CreateIndex
+  1194→CREATE INDEX "accounts_code_idx" ON "accounts"("code");
+  1195→
+  1196→-- CreateIndex
+  1197→CREATE INDEX "accounts_parentId_idx" ON "accounts"("parentId");
+  1198→
+  1199→-- CreateIndex
+  1200→CREATE INDEX "accounts_companySlug_type_idx" ON "accounts"("companySlug", "type");
+  1201→
+  1202→-- CreateIndex
+  1203→CREATE INDEX "accounts_companySlug_isActive_idx" ON "accounts"("companySlug", "isActive");
+  1204→
+  1205→-- CreateIndex
+  1206→CREATE UNIQUE INDEX "accounts_companySlug_code_key" ON "accounts"("companySlug", "code");
+  1207→
+  1208→-- CreateIndex
+  1209→CREATE INDEX "journal_entries_companySlug_idx" ON "journal_entries"("companySlug");
+  1210→
+  1211→-- CreateIndex
+  1212→CREATE INDEX "journal_entries_companySlug_date_idx" ON "journal_entries"("companySlug", "date");
+  1213→
+  1214→-- CreateIndex
+  1215→CREATE INDEX "journal_entries_companySlug_deletedAt_idx" ON "journal_entries"("companySlug", "deletedAt");
+  1216→
+  1217→-- CreateIndex
+  1218→CREATE INDEX "journal_entries_companySlug_status_idx" ON "journal_entries"("companySlug", "status");
+  1219→
+  1220→-- CreateIndex
+  1221→CREATE INDEX "journal_entries_companySlug_sourceType_sourceId_idx" ON "journal_entries"("companySlug", "sourceType", "sourceId");
+  1222→
+  1223→-- CreateIndex
+  1224→CREATE INDEX "journal_entry_lines_entryId_idx" ON "journal_entry_lines"("entryId");
+  1225→
+  1226→-- CreateIndex
+  1227→CREATE INDEX "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
+  1228→
+  1229→-- CreateIndex
+  1230→CREATE UNIQUE INDEX "e_invoices_invoiceId_key" ON "e_invoices"("invoiceId");
+  1231→
+  1232→-- CreateIndex
+  1233→CREATE INDEX "e_invoices_invoiceId_idx" ON "e_invoices"("invoiceId");
+  1234→
+  1235→-- CreateIndex
+  1236→CREATE INDEX "e_invoices_companySlug_idx" ON "e_invoices"("companySlug");
+  1237→
+  1238→-- CreateIndex
+  1239→CREATE INDEX "e_invoices_companySlug_submissionStatus_idx" ON "e_invoices"("companySlug", "submissionStatus");
+  1240→
+  1241→-- CreateIndex
+  1242→CREATE INDEX "e_invoices_companySlug_deletedAt_idx" ON "e_invoices"("companySlug", "deletedAt");
+  1243→
+  1244→-- CreateIndex
+  1245→CREATE UNIQUE INDEX "order_deliveries_invoiceId_key" ON "order_deliveries"("invoiceId");
+  1246→
+  1247→-- CreateIndex
+  1248→CREATE INDEX "order_deliveries_companySlug_idx" ON "order_deliveries"("companySlug");
+  1249→
+  1250→-- CreateIndex
+  1251→CREATE INDEX "order_deliveries_companySlug_status_idx" ON "order_deliveries"("companySlug", "status");
+  1252→
+  1253→-- CreateIndex
+  1254→CREATE INDEX "order_deliveries_companySlug_preferredTime_idx" ON "order_deliveries"("companySlug", "preferredTime");
+  1255→
+  1256→-- CreateIndex
+  1257→CREATE INDEX "order_deliveries_driverId_idx" ON "order_deliveries"("driverId");
+  1258→
+  1259→-- CreateIndex
+  1260→CREATE INDEX "payment_transactions_provider_providerPaymentId_idx" ON "payment_transactions"("provider", "providerPaymentId");
+  1261→
+  1262→-- CreateIndex
+  1263→CREATE INDEX "payment_transactions_companySlug_idx" ON "payment_transactions"("companySlug");
+  1264→
+  1265→-- CreateIndex
+  1266→CREATE INDEX "payment_transactions_companySlug_deletedAt_idx" ON "payment_transactions"("companySlug", "deletedAt");
+  1267→
+  1268→-- CreateIndex
+  1269→CREATE INDEX "payment_transactions_companySlug_status_idx" ON "payment_transactions"("companySlug", "status");
+  1270→
+  1271→-- CreateIndex
+  1272→CREATE INDEX "payment_transactions_companySlug_createdAt_idx" ON "payment_transactions"("companySlug", "createdAt");
+  1273→
+  1274→-- CreateIndex
+  1275→CREATE INDEX "payment_transactions_provider_idx" ON "payment_transactions"("provider");
+  1276→
+  1277→-- CreateIndex
+  1278→CREATE UNIQUE INDEX "payment_transactions_provider_providerEventId_key" ON "payment_transactions"("provider", "providerEventId");
+  1279→
+  1280→-- CreateIndex
+  1281→CREATE UNIQUE INDEX "permissions_key_key" ON "permissions"("key");
+  1282→
+  1283→-- CreateIndex
+  1284→CREATE INDEX "permissions_category_idx" ON "permissions"("category");
+  1285→
+  1286→-- CreateIndex
+  1287→CREATE INDEX "role_permissions_role_idx" ON "role_permissions"("role");
+  1288→
+  1289→-- CreateIndex
+  1290→CREATE INDEX "role_permissions_companySlug_idx" ON "role_permissions"("companySlug");
+  1291→
+  1292→-- CreateIndex
+  1293→CREATE INDEX "role_permissions_permissionKey_idx" ON "role_permissions"("permissionKey");
+  1294→
+  1295→-- CreateIndex
+  1296→CREATE UNIQUE INDEX "role_permissions_role_permissionKey_companySlug_key" ON "role_permissions"("role", "permissionKey", "companySlug");
+  1297→
+  1298→-- CreateIndex
+  1299→CREATE INDEX "audit_logs_companySlug_idx" ON "audit_logs"("companySlug");
+  1300→
+  1301→-- CreateIndex
+  1302→CREATE INDEX "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
+  1303→
+  1304→-- CreateIndex
+  1305→CREATE INDEX "audit_logs_action_idx" ON "audit_logs"("action");
+  1306→
+  1307→-- CreateIndex
+  1308→CREATE INDEX "audit_logs_userUid_idx" ON "audit_logs"("userUid");
+  1309→
+  1310→-- CreateIndex
+  1311→CREATE INDEX "audit_logs_companySlug_entity_idx" ON "audit_logs"("companySlug", "entity");
+  1312→
+  1313→-- CreateIndex
+  1314→CREATE INDEX "audit_logs_companySlug_createdAt_idx" ON "audit_logs"("companySlug", "createdAt");
+  1315→
+  1316→-- CreateIndex
+  1317→CREATE INDEX "admin_audit_logs_createdAt_idx" ON "admin_audit_logs"("createdAt");
+  1318→
+  1319→-- CreateIndex
+  1320→CREATE INDEX "admin_audit_logs_adminEmail_idx" ON "admin_audit_logs"("adminEmail");
+  1321→
+  1322→-- CreateIndex
+  1323→CREATE INDEX "admin_audit_logs_action_idx" ON "admin_audit_logs"("action");
+  1324→
+  1325→-- CreateIndex
+  1326→CREATE INDEX "admin_audit_logs_targetType_idx" ON "admin_audit_logs"("targetType");
+  1327→
+  1328→-- CreateIndex
+  1329→CREATE INDEX "announcements_isActive_startsAt_idx" ON "announcements"("isActive", "startsAt");
+  1330→
+  1331→-- CreateIndex
+  1332→CREATE INDEX "support_tickets_status_idx" ON "support_tickets"("status");
+  1333→
+  1334→-- CreateIndex
+  1335→CREATE INDEX "support_tickets_tenantId_idx" ON "support_tickets"("tenantId");
+  1336→
+  1337→-- CreateIndex
+  1338→CREATE INDEX "support_tickets_userEmail_idx" ON "support_tickets"("userEmail");
+  1339→
+  1340→-- CreateIndex
+  1341→CREATE INDEX "support_tickets_createdAt_idx" ON "support_tickets"("createdAt");
+  1342→
+  1343→-- CreateIndex
+  1344→CREATE INDEX "support_tickets_status_createdAt_idx" ON "support_tickets"("status", "createdAt");
+  1345→
+  1346→-- CreateIndex
+  1347→CREATE INDEX "ticket_replies_ticketId_idx" ON "ticket_replies"("ticketId");
+  1348→
+  1349→-- CreateIndex
+  1350→CREATE INDEX "platform_settings_category_idx" ON "platform_settings"("category");
+  1351→
+  1352→-- CreateIndex
+  1353→CREATE INDEX "platform_settings_history_settingKey_idx" ON "platform_settings_history"("settingKey");
+  1354→
+  1355→-- CreateIndex
+  1356→CREATE INDEX "platform_settings_history_changedAt_idx" ON "platform_settings_history"("changedAt");
+  1357→
+  1358→-- CreateIndex
+  1359→CREATE UNIQUE INDEX "modules_identifier_key" ON "modules"("identifier");
+  1360→
+  1361→-- CreateIndex
+  1362→CREATE INDEX "modules_isActive_idx" ON "modules"("isActive");
+  1363→
+  1364→-- CreateIndex
+  1365→CREATE INDEX "chat_history_userUid_createdAt_idx" ON "chat_history"("userUid", "createdAt");
+  1366→
+  1367→-- CreateIndex
+  1368→CREATE INDEX "chat_history_companySlug_createdAt_idx" ON "chat_history"("companySlug", "createdAt");
+  1369→
+  1370→-- CreateIndex
+  1371→CREATE INDEX "chat_history_userUid_conversationId_createdAt_idx" ON "chat_history"("userUid", "conversationId", "createdAt");
+  1372→
+  1373→-- CreateIndex
+  1374→CREATE INDEX "ai_processing_logs_companySlug_createdAt_idx" ON "ai_processing_logs"("companySlug", "createdAt");
+  1375→
+  1376→-- CreateIndex
+  1377→CREATE INDEX "ai_processing_logs_endpoint_createdAt_idx" ON "ai_processing_logs"("endpoint", "createdAt");
+  1378→
+  1379→-- CreateIndex
+  1380→CREATE UNIQUE INDEX "idempotency_keys_companySlug_endpoint_key_key" ON "idempotency_keys"("companySlug", "endpoint", "key");
+  1381→
+  1382→-- CreateIndex
+  1383→CREATE INDEX "notifications_userUid_isRead_idx" ON "notifications"("userUid", "isRead");
+  1384→
+  1385→-- CreateIndex
+  1386→CREATE INDEX "notifications_userUid_createdAt_idx" ON "notifications"("userUid", "createdAt");
+  1387→
+  1388→-- CreateIndex
+  1389→CREATE INDEX "notifications_companySlug_idx" ON "notifications"("companySlug");
+  1390→
+  1391→-- CreateIndex
+  1392→CREATE INDEX "invoice_templates_companySlug_idx" ON "invoice_templates"("companySlug");
+  1393→
+  1394→-- CreateIndex
+  1395→CREATE UNIQUE INDEX "invoice_template_settings_companySlug_key" ON "invoice_template_settings"("companySlug");
+  1396→
+  1397→-- CreateIndex
+  1398→CREATE INDEX "ai_usage_logs_companySlug_createdAt_idx" ON "ai_usage_logs"("companySlug", "createdAt");
+  1399→
+  1400→-- CreateIndex
+  1401→CREATE INDEX "ai_usage_logs_userUid_createdAt_idx" ON "ai_usage_logs"("userUid", "createdAt");
+  1402→
+  1403→-- CreateIndex
+  1404→CREATE INDEX "ai_usage_logs_endpoint_createdAt_idx" ON "ai_usage_logs"("endpoint", "createdAt");
+  1405→
+  1406→-- CreateIndex
+  1407→CREATE INDEX "automation_rules_companySlug_idx" ON "automation_rules"("companySlug");
+  1408→
+  1409→-- CreateIndex
+  1410→CREATE INDEX "automation_rules_trigger_idx" ON "automation_rules"("trigger");
+  1411→
+  1412→-- CreateIndex
+  1413→CREATE INDEX "automation_rules_companySlug_isActive_idx" ON "automation_rules"("companySlug", "isActive");
+  1414→
+  1415→-- CreateIndex
+  1416→CREATE INDEX "automation_execution_logs_ruleId_createdAt_idx" ON "automation_execution_logs"("ruleId", "createdAt");
+  1417→
+  1418→-- CreateIndex
+  1419→CREATE INDEX "automation_execution_logs_status_idx" ON "automation_execution_logs"("status");
+  1420→
+  1421→-- CreateIndex
+  1422→CREATE INDEX "ai_memory_notes_companySlug_entityType_entityId_idx" ON "ai_memory_notes"("companySlug", "entityType", "entityId");
+  1423→
+  1424→-- CreateIndex
+  1425→CREATE INDEX "ai_memory_notes_companySlug_createdAt_idx" ON "ai_memory_notes"("companySlug", "createdAt");
+  1426→
+  1427→-- CreateIndex
+  1428→CREATE UNIQUE INDEX "feature_flags_key_key" ON "feature_flags"("key");
+  1429→
+  1430→-- CreateIndex
+  1431→CREATE INDEX "feature_flags_isActive_idx" ON "feature_flags"("isActive");
+  1432→
+  1433→-- CreateIndex
+  1434→CREATE INDEX "product_aliases_companySlug_idx" ON "product_aliases"("companySlug");
+  1435→
+  1436→-- CreateIndex
+  1437→CREATE INDEX "product_aliases_productCatalogId_idx" ON "product_aliases"("productCatalogId");
+  1438→
+  1439→-- CreateIndex
+  1440→CREATE UNIQUE INDEX "product_aliases_companySlug_alias_key" ON "product_aliases"("companySlug", "alias");
+  1441→
+  1442→-- CreateIndex
+  1443→CREATE INDEX "product_match_audit_companySlug_createdAt_idx" ON "product_match_audit"("companySlug", "createdAt");
+  1444→
+  1445→-- CreateIndex
+  1446→CREATE INDEX "product_match_audit_companySlug_isUndone_idx" ON "product_match_audit"("companySlug", "isUndone");
+  1447→
+  1448→-- CreateIndex
+  1449→CREATE INDEX "product_match_audit_companySlug_resolvedBy_idx" ON "product_match_audit"("companySlug", "resolvedBy");
+  1450→
+  1451→-- CreateIndex
+  1452→CREATE INDEX "match_overrides_companySlug_inputNormalized_idx" ON "match_overrides"("companySlug", "inputNormalized");
+  1453→
+  1454→-- CreateIndex
+  1455→CREATE INDEX "match_overrides_companySlug_toProductId_idx" ON "match_overrides"("companySlug", "toProductId");
+  1456→
+  1457→-- CreateIndex
+  1458→CREATE INDEX "job_queue_queue_status_scheduledAt_idx" ON "job_queue"("queue", "status", "scheduledAt");
+  1459→
+  1460→-- CreateIndex
+  1461→CREATE INDEX "job_queue_status_scheduledAt_idx" ON "job_queue"("status", "scheduledAt");
+  1462→
+  1463→-- CreateIndex
+  1464→CREATE INDEX "ai_model_registry_isEnabled_isHealthy_healthScore_idx" ON "ai_model_registry"("isEnabled", "isHealthy", "healthScore");
+  1465→
+  1466→-- CreateIndex
+  1467→CREATE INDEX "ai_model_registry_tier_idx" ON "ai_model_registry"("tier");
+  1468→
+  1469→-- CreateIndex
+  1470→CREATE UNIQUE INDEX "ai_model_registry_provider_model_key" ON "ai_model_registry"("provider", "model");
+  1471→
+  1472→-- CreateIndex
+  1473→CREATE INDEX "ai_benchmark_results_modelRegistryId_createdAt_idx" ON "ai_benchmark_results"("modelRegistryId", "createdAt");
+  1474→
+  1475→-- CreateIndex
+  1476→CREATE INDEX "ai_benchmark_results_capability_createdAt_idx" ON "ai_benchmark_results"("capability", "createdAt");
+  1477→
+  1478→-- CreateIndex
+  1479→CREATE UNIQUE INDEX "company_runtimes_companyId_key" ON "company_runtimes"("companyId");
+  1480→
+  1481→-- CreateIndex
+  1482→CREATE INDEX "company_runtimes_status_idx" ON "company_runtimes"("status");
+  1483→
+  1484→-- CreateIndex
+  1485→CREATE INDEX "ai_request_logs_companySlug_createdAt_idx" ON "ai_request_logs"("companySlug", "createdAt");
+  1486→
+  1487→-- CreateIndex
+  1488→CREATE INDEX "ai_request_logs_companySlug_resolvedBy_createdAt_idx" ON "ai_request_logs"("companySlug", "resolvedBy", "createdAt");
+  1489→
+  1490→-- CreateIndex
+  1491→CREATE INDEX "ai_request_logs_requestType_resolvedBy_createdAt_idx" ON "ai_request_logs"("requestType", "resolvedBy", "createdAt");
+  1492→
+  1493→-- CreateIndex
+  1494→CREATE INDEX "ai_request_logs_resolvedBy_createdAt_idx" ON "ai_request_logs"("resolvedBy", "createdAt");
+  1495→
+  1496→-- CreateIndex
+  1497→CREATE UNIQUE INDEX "ai_fabric_cache_entries_key_key" ON "ai_fabric_cache_entries"("key");
+  1498→
+  1499→-- CreateIndex
+  1500→CREATE INDEX "ai_fabric_cache_entries_companySlug_idx" ON "ai_fabric_cache_entries"("companySlug");
+  1501→
+  1502→-- CreateIndex
+  1503→CREATE INDEX "ai_fabric_cache_entries_expiresAt_idx" ON "ai_fabric_cache_entries"("expiresAt");
+  1504→
+  1505→-- CreateIndex
+  1506→CREATE UNIQUE INDEX "budget_configs_companySlug_key" ON "budget_configs"("companySlug");
+  1507→
+  1508→-- CreateIndex
+  1509→CREATE INDEX "budget_configs_companySlug_idx" ON "budget_configs"("companySlug");
+  1510→
+  1511→-- CreateIndex
+  1512→CREATE UNIQUE INDEX "provider_configs_taskType_key" ON "provider_configs"("taskType");
+  1513→
+  1514→-- CreateIndex
+  1515→CREATE INDEX "ai_memory_entries_companySlug_category_idx" ON "ai_memory_entries"("companySlug", "category");
+  1516→
+  1517→-- CreateIndex
+  1518→CREATE INDEX "ai_memory_entries_companySlug_category_lastAccessedAt_idx" ON "ai_memory_entries"("companySlug", "category", "lastAccessedAt");
+  1519→
+  1520→-- CreateIndex
+  1521→CREATE INDEX "ai_memory_entries_lastAccessedAt_idx" ON "ai_memory_entries"("lastAccessedAt");
+  1522→
+  1523→-- CreateIndex
+  1524→CREATE INDEX "profit_snapshots_companySlug_periodStart_idx" ON "profit_snapshots"("companySlug", "periodStart");
+  1525→
+  1526→-- CreateIndex
+  1527→CREATE INDEX "profit_snapshots_periodStart_periodEnd_idx" ON "profit_snapshots"("periodStart", "periodEnd");
+  1528→
