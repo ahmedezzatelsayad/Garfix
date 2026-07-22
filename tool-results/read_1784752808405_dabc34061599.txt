@@ -1,0 +1,855 @@
+     1→/**
+     2→ * test-invoice-brain-100.ts — runs the uploaded 100-case bilingual product
+     3→ * matching test suite against the real `matchProduct()` engine.
+     4→ *
+     5→ * The uploaded file `/home/z/my-project/upload/garfix test invoices.json` is
+     6→ * the REAL spec fixture that `src/lib/__tests__/task1-100-cases.test.ts`
+     7→ * referenced but didn't have (it synthesized a beverage catalog instead).
+     8→ * This script uses the real 20-product auto-parts catalog + 100 cases.
+     9→ *
+    10→ * Strategy:
+    11→ *   1. Seed an in-memory catalog from `product_catalog_seed` (20 products ×
+    12→ *      2 aliases each = 40 aliases).
+    13→ *   2. Monkey-patch `db` (same pattern as task1-100-cases.test.ts) so
+    14→ *      `matchProduct()`'s internal Prisma calls hit our in-memory catalog,
+    15→ *      not the real DB.
+    16→ *   3. Parse each case's `raw_input_text` into line items (qty + product name).
+    17→ *      Handles Arabic + English, Arabic-Indic numerals (٠-٩), multi-item
+    18→ *      invoices (split on ، , و), and all the prefix/suffix patterns in the
+    19→ *      test file.
+    20→ *   4. Call `matchProduct()` per line item.
+    21→ *   5. Evaluate pass/fail per case: product matched correctly? tier/confidence
+    22→ *      in expected range? false_positive_trap didn't collapse? new_product
+    23→ *      routed to new-product tier?
+    24→ *   6. Print per-category report + write JSON results.
+    25→ *
+    26→ * Run:  cd /home/z/my-project && bun run scripts/test-invoice-brain-100.ts
+    27→ */
+    28→import { db } from "@/lib/db";
+    29→import {
+    30→  matchProduct,
+    31→  invalidateKillSwitchCache,
+    32→  normalizeArabic,
+    33→  extractBrands,
+    34→  deriveCategory,
+    35→  computeBrandMatch,
+    36→  computeCategoryMatch,
+    37→  computeHistoricalMatch,
+    38→  type MatchInput,
+    39→  type MatchResult,
+    40→  type MatchMethod,
+    41→  type MatchEvidence,
+    42→  type MatchCandidate,
+    43→} from "@/lib/productMatcher";
+    44→
+    45→// ─── Types (mirroring the uploaded JSON shape) ─────────────────────────────
+    46→
+    47→interface SeedProduct {
+    48→  ar: string;
+    49→  en: string;
+    50→  cat: string;
+    51→  price: number;
+    52→  wprice: number;
+    53→}
+    54→
+    55→interface ExpectedItem {
+    56→  expected_product_en?: string | null;
+    57→  expected_product_ar?: string | null;
+    58→  must_not_match_ar?: string | null;
+    59→  qty: number;
+    60→  expected_tier: string;
+    61→  expected_confidence?: number;
+    62→  expected_confidence_range?: [number, number];
+    63→  expected_inventory_effect?: string;
+    64→  note?: string;
+    65→}
+    66→
+    67→interface TestCase {
+    68→  id: number;
+    69→  type: string;
+    70→  invoice_type: "sale" | "purchase";
+    71→  company: string;
+    72→  customer: string | null;
+    73→  raw_input_text: string;
+    74→  expected_items: ExpectedItem[];
+    75→  note?: string;
+    76→}
+    77→
+    78→interface TestFile {
+    79→  meta: { purpose: string; total_cases: number; category_counts: Record<string, number> };
+    80→  product_catalog_seed: SeedProduct[];
+    81→  cases: TestCase[];
+    82→}
+    83→
+    84→// ─── In-memory catalog ──────────────────────────────────────────────────────
+    85→
+    86→interface FakeProduct {
+    87→  id: number;
+    88→  name: string;
+    89→  sellingPrice: string;
+    90→  arName: string;
+    91→  enName: string;
+    92→  category?: string; // from seed's `cat` field — used for evidence.categoryMatch
+    93→}
+    94→
+    95→interface FakeAlias {
+    96→  alias: string;
+    97→  isVerified: boolean; // true for seed aliases (canonical catalog, human-confirmed)
+    98→  source: string;      // "manual" for seed aliases
+    99→  product: FakeProduct;
+   100→}
+   101→
+   102→const CATALOG: FakeAlias[] = [];
+   103→
+   104→function seedCatalog(products: SeedProduct[]): void {
+   105→  CATALOG.length = 0;
+   106→  products.forEach((p, i) => {
+   107→    const id = i + 1;
+   108→    const product: FakeProduct = {
+   109→      id,
+   110→      name: p.en, // the matcher returns product.name — we use EN as canonical
+   111→      sellingPrice: String(p.price),
+   112→      arName: p.ar,
+   113→      enName: p.en,
+   114→      category: p.cat, // from seed — enables evidence.categoryMatch
+   115→    };
+   116→    // Two aliases per product: Arabic + English. Both are verified (canonical catalog).
+   117→    CATALOG.push({ alias: p.ar, isVerified: true, source: "manual", product });
+   118→    CATALOG.push({ alias: p.en, isVerified: true, source: "manual", product });
+   119→  });
+   120→}
+   121→
+   122→// ─── Monkey-patch db (same pattern as task1-100-cases.test.ts) ──────────────
+   123→
+   124→const _orig: Record<string, any> = {};
+   125→
+   126→function patchDb(): void {
+   127→  _orig.featureFlag = (db as any).featureFlag;
+   128→  _orig.platformSetting = (db as any).platformSetting;
+   129→  _orig.productAlias = (db as any).productAlias;
+   130→  _orig.productMatchAudit = (db as any).productMatchAudit;
+   131→  _orig.jobQueue = (db as any).jobQueue;
+   132→
+   133→  (db as any).featureFlag = {
+   134→    findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
+   135→  };
+   136→  (db as any).platformSetting = { findMany: async () => [] };
+   137→
+   138→  (db as any).productAlias = {
+   139→    findUnique: async (args: any) => {
+   140→      const alias = args.where.companySlug_alias.alias;
+   141→      // Case-sensitive exact match (mirrors real Prisma text column behavior)
+   142→      return CATALOG.find((a) => a.alias === alias) || null;
+   143→    },
+   144→    findMany: async () => CATALOG,
+   145→    upsert: async () => ({}),
+   146→    deleteMany: async () => ({ count: 0 }),
+   147→  };
+   148→
+   149→  (db as any).productMatchAudit = {
+   150→    create: async () => ({ id: 1 }),
+   151→    findUnique: async () => null,
+   152→    update: async () => ({}),
+   153→  };
+   154→
+   155→  // Stub the job queue so enqueueBackground inside the AI-resolver tier is a no-op
+   156→  (db as any).jobQueue = {
+   157→    create: async () => ({}),
+   158→    update: async () => ({}),
+   159→    findMany: async () => [],
+   160→  };
+   161→}
+   162→
+   163→function restoreDb(): void {
+   164→  (db as any).featureFlag = _orig.featureFlag;
+   165→  (db as any).platformSetting = _orig.platformSetting;
+   166→  (db as any).productAlias = _orig.productAlias;
+   167→  (db as any).productMatchAudit = _orig.productMatchAudit;
+   168→  (db as any).jobQueue = _orig.jobQueue;
+   169→}
+   170→
+   171→// ─── Line-item parser ───────────────────────────────────────────────────────
+   172→//
+   173→// Extracts { qty, product } items from free-form Arabic/English invoice text.
+   174→// Handles all 10 case-type patterns in the uploaded fixture.
+   175→
+   176→const ARABIC_INDIC = "٠١٢٣٤٥٦٧٨٩";
+   177→
+   178→function toAsciiDigits(s: string): string {
+   179→  return s.replace(/[٠-٩]/g, (d) => String(ARABIC_INDIC.indexOf(d)));
+   180→}
+   181→
+   182→function extractItemsPortion(raw: string): string {
+   183→  let t = raw.trim();
+   184→
+   185→  // Pattern: "تشمل: {items}" (multi-item marker — highest priority)
+   186→  const tashmel = t.match(/تشمل:\s*(.+)$/u);
+   187→  if (tashmel) return tashmel[1].trim();
+   188→
+   189→  // Pattern: "Invoice for {customer}: {items}"
+   190→  const colon = t.match(/^Invoice for\s+[^:]+:\s*(.+)$/u);
+   191→  if (colon) return colon[1].trim();
+   192→
+   193→  // Strip trailing customer/supplier suffixes
+   194→  t = t.replace(/\s+للعميل\s+.+$/u, "");
+   195→  t = t.replace(/\s+-\s+العميل\s+.+$/u, "");
+   196→  t = t.replace(/\s+من المورد للمخزن.*$/u, "");
+   197→
+   198→  // Strip known prefixes
+   199→  t = t.replace(/^فاتورة بيع لـ\s+[^-]+-\s*/u, "");
+   200→  t = t.replace(/^فاتورة بيع\s+/u, "");
+   201→  t = t.replace(/^فاتورة\s+/u, "");
+   202→  t = t.replace(/^عايز أعمل فاتورة بـ\s+/u, "");
+   203→  t = t.replace(/^سند شراء\s*\/\s*توريد\s+/u, "");
+   204→  t = t.replace(/^Sale invoice for\s+[^-]+-\s*/u, "");
+   205→
+   206→  return t.trim();
+   207→}
+   208→
+   209→interface ParsedItem {
+   210→  qty: number;
+   211→  product: string;
+   212→}
+   213→
+   214→function parseLineItems(raw: string): ParsedItem[] {
+   215→  const itemsText = extractItemsPortion(raw);
+   216→  if (!itemsText) return [];
+   217→
+   218→  // Split on Arabic comma ،, English comma, or Arabic conjunction و (with spaces)
+   219→  const parts = itemsText
+   220→    .split(/\s*،\s*|\s*,\s*|\s+و\s+/u)
+   221→    .map((p) => p.trim())
+   222→    .filter(Boolean);
+   223→
+   224→  return parts
+   225→    .map((part) => {
+   226→      // Extract leading qty (ASCII or Arabic-Indic), optional "x"/"×"
+   227→      const m = part.match(/^([0-9٠-٩]+)\s*(?:x|×)?\s*(.+)$/u);
+   228→      if (m) {
+   229→        const qty = parseInt(toAsciiDigits(m[1]), 10);
+   230→        return { qty, product: m[2].trim() };
+   231→      }
+   232→      return { qty: 1, product: part };
+   233→    })
+   234→    .filter((it) => it.product.length > 0);
+   235→}
+   236→
+   237→// ─── Case evaluation ────────────────────────────────────────────────────────
+   238→
+   239→type Verdict = "PASS" | "PARTIAL" | "FAIL";
+   240→
+   241→interface ItemResult {
+   242→  parsedQty: number;
+   243→  parsedProduct: string;
+   244→  matchedProductId: number | null;
+   245→  matchedProductName: string | null;
+   246→  matchedAlias: string | null;
+   247→  matchedArName: string | null;
+   248→  confidence: number;
+   249→  tier: string;
+   250→  action: string;
+   251→  // ── Explainability fields (v2) ──
+   252→  method: MatchMethod | null;
+   253→  rankScore: number | null;
+   254→  normalizationSteps: string[] | null;
+   255→  fuzzyDistance: number | null;
+   256→  confidenceBreakdown: { rawSimilarity: number; normalizationPenalty: number; fuzzyCap: number; finalConfidence: number } | null;
+   257→  // ── Enterprise fields (v3 — multi-signal evidence + candidate ranking) ──
+   258→  evidence: MatchEvidence | null;
+   259→  candidates: MatchCandidate[] | null;
+   260→  candidateCount: number | null;
+   261→  verdict: Verdict;
+   262→  reasons: string[];
+   263→}
+   264→
+   265→interface CaseResult {
+   266→  id: number;
+   267→  type: string;
+   268→  invoice_type: string;
+   269→  raw_input_text: string;
+   270→  parsedItems: ParsedItem[];
+   271→  itemResults: ItemResult[];
+   272→  caseVerdict: Verdict;
+   273→  notes: string[];
+   274→}
+   275→
+   276→function findCatalogProductByEn(enName: string): FakeAlias["product"] | null {
+   277→  const alias = CATALOG.find((a) => a.product.enName === enName);
+   278→  return alias?.product || null;
+   279→}
+   280→
+   281→function findCatalogProductByAr(arName: string): FakeAlias["product"] | null {
+   282→  const alias = CATALOG.find((a) => a.product.arName === arName);
+   283→  return alias?.product || null;
+   284→}
+   285→
+   286→function tierMatches(actualTier: string, expectedTier: string): boolean {
+   287→  switch (expectedTier) {
+   288→    case "exact":
+   289→      return actualTier === "auto-match";
+   290→    case "normalized":
+   291→      return actualTier === "auto-match";
+   292→    case "fuzzy":
+   293→      // Accept auto-match (≥0.85) OR new-product-with-AI-queued (0.70-0.84)
+   294→      return actualTier === "auto-match" || actualTier === "new-product";
+   295→    case "exact_or_normalized":
+   296→      return actualTier === "auto-match";
+   297→    case "new":
+   298→      return actualTier === "new-product";
+   299→    default:
+   300→      return false;
+   301→  }
+   302→}
+   303→
+   304→function confidenceInRange(conf: number, expected?: ExpectedItem): boolean {
+   305→  if (expected?.expected_confidence != null) {
+   306→    return Math.abs(conf - expected.expected_confidence) < 0.01;
+   307→  }
+   308→  if (expected?.expected_confidence_range) {
+   309→    const [lo, hi] = expected.expected_confidence_range;
+   310→    return conf >= lo && conf <= hi;
+   311→  }
+   312→  return true; // no range specified
+   313→}
+   314→
+   315→// ─── Explainability: derive expected method from expected_tier ─────────────
+   316→//
+   317→// The fixture's `expected_tier` describes the OUTCOME (auto-match / new-product),
+   318→// but the engine now also exposes `method` — HOW the match was achieved
+   319→// (exact / normalized / fuzzy / new). This function derives the acceptable
+   320→// set of methods for a given expected_tier, so the test can verify the
+   321→// engine's explainability claim, not just the confidence number.
+   322→//
+   323→//   exact                → method must be "exact"     (byte-identical alias)
+   324→//   normalized           → method ∈ {"exact","normalized"}  (byte-identical is
+   325→//                          a valid subset — normalized-exact includes exact)
+   326→//   exact_or_normalized  → method ∈ {"exact","normalized"}
+   327→//   fuzzy                → method must be "fuzzy"     (Levenshtein matched)
+   328→//   new                  → method ∈ {"new","fuzzy"}     ("fuzzy" when AI-zone
+   329→//                          deferred a 0.70-0.84 candidate to review)
+   330→function expectedMethodsForTier(expectedTier: string): MatchMethod[] {
+   331→  switch (expectedTier) {
+   332→    case "exact":               return ["exact"];
+   333→    case "normalized":          return ["exact", "normalized"];
+   334→    case "exact_or_normalized": return ["exact", "normalized"];
+   335→    case "fuzzy":               return ["fuzzy"];
+   336→    case "new":                 return ["new", "fuzzy"];
+   337→    default:                    return ["exact", "normalized", "fuzzy", "new"];
+   338→  }
+   339→}
+   340→
+   341→function methodOk(actualMethod: MatchMethod | null, expectedTier: string): boolean {
+   342→  if (!actualMethod) return false;
+   343→  return expectedMethodsForTier(expectedTier).includes(actualMethod);
+   344→}
+   345→
+   346→// ─── Evidence verification (v3 — multi-signal) ─────────────────────────────
+   347→//
+   348→// The expected evidence is computed using the SAME exported functions the
+   349→// engine uses (extractBrands, deriveCategory, computeBrandMatch, etc.).
+   350→// This satisfies the user's requirement: "القيم مشتقة آليًا من سياسة المطابقة
+   351→// وليست مكتوبة يدويًا" — values are derived automatically from the matching
+   352→// policy, not hand-written.
+   353→//
+   354→// Invariants (verified by reading productMatcher.ts computeEvidence calls):
+   355→//   evidence.textSimilarity  = confidenceBreakdown.rawSimilarity  (always)
+   356→//   evidence.aliasMatch       = confidence                        (always)
+   357→//   evidence.semanticMatch    = null                               (always — no embeddings yet)
+   358→//   evidence.historicalMatch  = 1.0 for matched (all seed aliases are isVerified=true,
+   359→//                            source="manual"), null for new product
+   360→function computeExpectedEvidence(
+   361→  inputText: string,
+   362→  result: MatchResult,
+   363→  matchedAliasObj: FakeAlias | null,
+   364→): MatchEvidence {
+   365→  const rawSim = result.confidenceBreakdown.rawSimilarity;
+   366→  const aliasMatch = result.confidence; // invariant: aliasMatch = confidence
+   367→
+   368→  const inputBrands = extractBrands(inputText);
+   369→  const aliasBrands = matchedAliasObj ? extractBrands(matchedAliasObj.alias) : new Set<string>();
+   370→
+   371→  // Category: prefer explicit product.category (from seed's `cat`), else derive
+   372→  const inputCat = matchedAliasObj?.product?.category ?? deriveCategory(inputText);
+   373→  const aliasCat = matchedAliasObj?.product?.category ?? (matchedAliasObj ? deriveCategory(matchedAliasObj.alias) : null);
+   374→
+   375→  return {
+   376→    textSimilarity: rawSim,
+   377→    aliasMatch,
+   378→    brandMatch: computeBrandMatch(inputBrands, aliasBrands),
+   379→    categoryMatch: computeCategoryMatch(inputCat, aliasCat),
+   380→    semanticMatch: null,
+   381→    historicalMatch: computeHistoricalMatch(matchedAliasObj),
+   382→  };
+   383→}
+   384→
+   385→/** Compare actual vs expected evidence. Returns list of mismatch reasons (empty = OK). */
+   386→function checkEvidence(actual: MatchEvidence, expected: MatchEvidence): string[] {
+   387→  const mismatches: string[] = [];
+   388→  const eps = 0.001;
+   389→  if (Math.abs(actual.textSimilarity - expected.textSimilarity) > eps) {
+   390→    mismatches.push(`evidence.textSimilarity: expected ${expected.textSimilarity.toFixed(3)} but got ${actual.textSimilarity.toFixed(3)}`);
+   391→  }
+   392→  if (Math.abs(actual.aliasMatch - expected.aliasMatch) > eps) {
+   393→    mismatches.push(`evidence.aliasMatch: expected ${expected.aliasMatch.toFixed(3)} but got ${actual.aliasMatch.toFixed(3)}`);
+   394→  }
+   395→  // brandMatch: null vs null, or number vs number
+   396→  if (expected.brandMatch === null && actual.brandMatch !== null) {
+   397→    mismatches.push(`evidence.brandMatch: expected null but got ${actual.brandMatch}`);
+   398→  } else if (expected.brandMatch !== null && actual.brandMatch === null) {
+   399→    mismatches.push(`evidence.brandMatch: expected ${expected.brandMatch} but got null`);
+   400→  } else if (expected.brandMatch !== null && actual.brandMatch !== null && Math.abs(actual.brandMatch - expected.brandMatch) > eps) {
+   401→    mismatches.push(`evidence.brandMatch: expected ${expected.brandMatch.toFixed(3)} but got ${actual.brandMatch.toFixed(3)}`);
+   402→  }
+   403→  // categoryMatch: same null-aware comparison
+   404→  if (expected.categoryMatch === null && actual.categoryMatch !== null) {
+   405→    mismatches.push(`evidence.categoryMatch: expected null but got ${actual.categoryMatch}`);
+   406→  } else if (expected.categoryMatch !== null && actual.categoryMatch === null) {
+   407→    mismatches.push(`evidence.categoryMatch: expected ${expected.categoryMatch} but got null`);
+   408→  } else if (expected.categoryMatch !== null && actual.categoryMatch !== null && Math.abs(actual.categoryMatch - expected.categoryMatch) > eps) {
+   409→    mismatches.push(`evidence.categoryMatch: expected ${expected.categoryMatch.toFixed(3)} but got ${actual.categoryMatch.toFixed(3)}`);
+   410→  }
+   411→  // semanticMatch: must always be null
+   412→  if (actual.semanticMatch !== null) {
+   413→    mismatches.push(`evidence.semanticMatch: expected null but got ${actual.semanticMatch}`);
+   414→  }
+   415→  // historicalMatch: null vs null, or number vs number
+   416→  if (expected.historicalMatch === null && actual.historicalMatch !== null) {
+   417→    mismatches.push(`evidence.historicalMatch: expected null but got ${actual.historicalMatch}`);
+   418→  } else if (expected.historicalMatch !== null && actual.historicalMatch === null) {
+   419→    mismatches.push(`evidence.historicalMatch: expected ${expected.historicalMatch} but got null`);
+   420→  } else if (expected.historicalMatch !== null && actual.historicalMatch !== null && Math.abs(actual.historicalMatch - expected.historicalMatch) > eps) {
+   421→    mismatches.push(`evidence.historicalMatch: expected ${expected.historicalMatch.toFixed(3)} but got ${actual.historicalMatch.toFixed(3)}`);
+   422→  }
+   423→  return mismatches;
+   424→}
+   425→
+   426→/** Verify candidates[] array structure. Returns list of issue reasons (empty = OK). */
+   427→function checkCandidates(result: MatchResult): string[] {
+   428→  const issues: string[] = [];
+   429→  const cands = result.candidates;
+   430→  if (!cands) {
+   431→    issues.push("candidates: array is null/undefined");
+   432→    return issues;
+   433→  }
+   434→  // Winner check: if productId !== null, candidates[0] must be the winner
+   435→  if (result.productId !== null && result.matchedAlias) {
+   436→    if (cands.length === 0) {
+   437→      issues.push(`candidates: expected non-empty (winner productId=${result.productId}) but got 0 candidates`);
+   438→    } else {
+   439→      const winner = cands[0];
+   440→      if (winner.productId !== result.productId) {
+   441→        issues.push(`candidates[0].productId: expected ${result.productId} (winner) but got ${winner.productId}`);
+   442→      }
+   443→      if (winner.matchedAlias !== result.matchedAlias) {
+   444→        issues.push(`candidates[0].matchedAlias: expected "${result.matchedAlias}" but got "${winner.matchedAlias}"`);
+   445→      }
+   446→    }
+   447→  }
+   448→  // Sorting check: candidates must be sorted by rankScore descending
+   449→  for (let i = 1; i < cands.length; i++) {
+   450→    if (cands[i].rankScore > cands[i - 1].rankScore) {
+   451→      issues.push(`candidates: not sorted by rankScore desc (index ${i-1}=${cands[i-1].rankScore.toFixed(3)} < index ${i}=${cands[i].rankScore.toFixed(3)})`);
+   452→      break;
+   453→    }
+   454→  }
+   455→  // Method-specific candidate count checks
+   456→  if (result.method === "exact" || result.method === "normalized") {
+   457→    if (cands.length !== 1) {
+   458→      issues.push(`candidates: expected exactly 1 for method="${result.method}" but got ${cands.length}`);
+   459→    }
+   460→  }
+   461→  if (result.method === "fuzzy" && result.productId !== null) {
+   462→    // Fuzzy matches must have ≥1 candidate (the winner). The bigram prefilter
+   463→    // (threshold 0.3) is intentionally selective — for short Arabic product
+   464→    // names with a typo, only 1-2 aliases may pass. That's correct behavior,
+   465→    // not a bug. The value of candidates[] is retaining ALL aliases that
+   466→    // passed the prefilter, even if that's just 1.
+   467→    if (cands.length < 1) {
+   468→      issues.push(`candidates: expected ≥1 for fuzzy match but got ${cands.length}`);
+   469→    }
+   470→  }
+   471→  return issues;
+   472→}
+   473→
+   474→function evaluateItem(
+   475→  parsed: ParsedItem,
+   476→  result: MatchResult,
+   477→  expected: ExpectedItem,
+   478→): ItemResult {
+   479→  const reasons: string[] = [];
+   480→  const matchedProduct = result.productId
+   481→    ? CATALOG.find((a) => a.product.id === result.productId)?.product || null
+   482→    : null;
+   483→
+   484→  // ── Check 1: product match ──
+   485→  let productOk = false;
+   486→  if (expected.expected_product_en === null || expected.expected_tier === "new") {
+   487→    // new product — must NOT match any existing product
+   488→    productOk = result.productId === null;
+   489→    if (!productOk) {
+   490→      reasons.push(`expected new-product but matched productId=${result.productId} (${matchedProduct?.enName})`);
+   491→    }
+   492→  } else if (expected.expected_product_en) {
+   493→    const expectedProduct = findCatalogProductByEn(expected.expected_product_en);
+   494→    productOk = expectedProduct !== null && result.productId === expectedProduct.id;
+   495→    if (!productOk) {
+   496→      reasons.push(`expected EN="${expected.expected_product_en}" (id=${expectedProduct?.id}) but got id=${result.productId} (${matchedProduct?.enName || "null"})`);
+   497→    }
+   498→  } else if (expected.expected_product_ar) {
+   499→    const expectedProduct = findCatalogProductByAr(expected.expected_product_ar);
+   500→    productOk = expectedProduct !== null && result.productId === expectedProduct.id;
+   501→    if (!productOk) {
+   502→      reasons.push(`expected AR="${expected.expected_product_ar}" (id=${expectedProduct?.id}) but got id=${result.productId} (${matchedProduct?.enName || "null"})`);
+   503→    }
+   504→  }
+   505→
+   506→  // ── Check 2: must_not_match_ar (false_positive_trap) ──
+   507→  if (expected.must_not_match_ar) {
+   508→    const trapProduct = findCatalogProductByAr(expected.must_not_match_ar);
+   509→    if (trapProduct && result.productId === trapProduct.id) {
+   510→      productOk = false;
+   511→      reasons.push(`FALSE POSITIVE: must not match "${expected.must_not_match_ar}" (id=${trapProduct.id}) but did`);
+   512→    }
+   513→  }
+   514→
+   515→  // ── Check 3: qty parsed correctly ──
+   516→  const qtyOk = parsed.qty === expected.qty;
+   517→  if (!qtyOk) {
+   518→    reasons.push(`qty: expected ${expected.qty} but parsed ${parsed.qty}`);
+   519→  }
+   520→
+   521→  // ── Check 4: tier ──
+   522→  const tierOk = tierMatches(result.tier, expected.expected_tier);
+   523→  if (!tierOk) {
+   524→    reasons.push(`tier: expected ~${expected.expected_tier} but got ${result.tier}`);
+   525→  }
+   526→
+   527→  // ── Check 5: confidence range ──
+   528→  const confOk = confidenceInRange(result.confidence, expected);
+   529→  if (!confOk) {
+   530→    const range = expected.expected_confidence_range
+   531→      ? `[${expected.expected_confidence_range[0]}, ${expected.expected_confidence_range[1]}]`
+   532→      : expected.expected_confidence != null
+   533→        ? `${expected.expected_confidence}`
+   534→        : "any";
+   535→    reasons.push(`confidence: expected ${range} but got ${result.confidence.toFixed(3)}`);
+   536→  }
+   537→
+   538→  // ── Check 6: method (explainability) ──
+   539→  // Verifies that the engine's conceptual match method (exact/normalized/fuzzy/new)
+   540→  // is consistent with what the fixture expects. This catches regressions where
+   541→  // the engine picks the right product via the WRONG path (e.g. a byte-identical
+   542→  // case accidentally going through normalization, or a fuzzy case accidentally
+   543→  // hitting the exact path).
+   544→  const mOk = methodOk(result.method, expected.expected_tier);
+   545→  if (!mOk) {
+   546→    reasons.push(`method: expected one of ${JSON.stringify(expectedMethodsForTier(expected.expected_tier))} for tier "${expected.expected_tier}" but got "${result.method}"`);
+   547→  }
+   548→
+   549→  // ── Check 7: evidence (multi-signal) ──
+   550→  // Computes the EXPECTED evidence using the same exported functions the engine
+   551→  // uses, then compares. This verifies the engine's evidence computation is
+   552→  // self-consistent — no hand-written expected values, all derived automatically.
+   553→  const matchedAliasObj = result.matchedAlias
+   554→    ? CATALOG.find((a) => a.alias === result.matchedAlias) || null
+   555→    : null;
+   556→  const expectedEvidence = computeExpectedEvidence(parsed.product, result, matchedAliasObj);
+   557→  const evidenceIssues = checkEvidence(result.evidence, expectedEvidence);
+   558→  for (const issue of evidenceIssues) reasons.push(issue);
+   559→
+   560→  // ── Check 8: candidates array ──
+   561→  // Verifies the winner is candidates[0], candidates are sorted, and method-specific
+   562→  // count constraints hold. Supports the user's enterprise goal: "الاحتفاظ بكل
+   563→  // المرشحين" for employee review, AI training, active learning.
+   564→  const candidateIssues = checkCandidates(result);
+   565→  for (const issue of candidateIssues) reasons.push(issue);
+   566→
+   567→  // ── Verdict ──
+   568→  const evidenceOk = evidenceIssues.length === 0;
+   569→  const candidatesOk = candidateIssues.length === 0;
+   570→  let verdict: Verdict;
+   571→  if (productOk && qtyOk && tierOk && confOk && mOk && evidenceOk && candidatesOk) {
+   572→    verdict = "PASS";
+   573→  } else if (productOk && qtyOk) {
+   574→    // Product + qty correct, but tier/confidence/method/evidence/candidates off → partial
+   575→    verdict = "PARTIAL";
+   576→  } else {
+   577→    verdict = "FAIL";
+   578→  }
+   579→
+   580→  return {
+   581→    parsedQty: parsed.qty,
+   582→    parsedProduct: parsed.product,
+   583→    matchedProductId: result.productId,
+   584→    matchedProductName: result.productName,
+   585→    matchedAlias: result.matchedAlias,
+   586→    matchedArName: matchedProduct?.arName || null,
+   587→    confidence: result.confidence,
+   588→    tier: result.tier,
+   589→    action: result.action,
+   590→    method: result.method,
+   591→    rankScore: result.rankScore,
+   592→    normalizationSteps: result.normalizationSteps,
+   593→    fuzzyDistance: result.fuzzyDistance,
+   594→    confidenceBreakdown: result.confidenceBreakdown,
+   595→    evidence: result.evidence,
+   596→    candidates: result.candidates,
+   597→    candidateCount: result.candidates?.length ?? 0,
+   598→    verdict,
+   599→    reasons,
+   600→  };
+   601→}
+   602→
+   603→// ─── Main ───────────────────────────────────────────────────────────────────
+   604→
+   605→async function main() {
+   606→  console.log("═".repeat(80));
+   607→  console.log("  GARFIX Invoice-Brain — 100-Case Bilingual Matching Test");
+   608→  console.log("═".repeat(80));
+   609→
+   610→  // 1. Load test file
+   611→  const fs = await import("fs");
+   612→  const path = "/home/z/my-project/upload/garfix test invoices.json";
+   613→  const raw = fs.readFileSync(path, "utf-8");
+   614→  const data: TestFile = JSON.parse(raw);
+   615→
+   616→  console.log(`\nLoaded: ${data.meta.total_cases} cases, ${data.product_catalog_seed.length} seed products`);
+   617→  console.log("Categories:", JSON.stringify(data.meta.category_counts));
+   618→
+   619→  // 2. Seed catalog
+   620→  seedCatalog(data.product_catalog_seed);
+   621→  console.log(`\nSeeded in-memory catalog: ${CATALOG.length} aliases (${CATALOG.length / 2} products × 2 aliases)`);
+   622→
+   623→  // 3. Patch db
+   624→  patchDb();
+   625→  invalidateKillSwitchCache();
+   626→
+   627→  // 4. Run cases
+   628→  const results: CaseResult[] = [];
+   629→  const companySlug = "test-co";
+   630→
+   631→  for (const tc of data.cases) {
+   632→    const parsedItems = parseLineItems(tc.raw_input_text);
+   633→    const itemResults: ItemResult[] = [];
+   634→
+   635→    for (let i = 0; i < parsedItems.length; i++) {
+   636→      const parsed = parsedItems[i];
+   637→      const expected = tc.expected_items[i];
+   638→      if (!expected) {
+   639→        itemResults.push({
+   640→          parsedQty: parsed.qty,
+   641→          parsedProduct: parsed.product,
+   642→          matchedProductId: null,
+   643→          matchedProductName: null,
+   644→          matchedAlias: null,
+   645→          matchedArName: null,
+   646→          confidence: 0,
+   647→          tier: "new-product",
+   648→          action: "no-expected",
+   649→          method: null,
+   650→          rankScore: null,
+   651→          normalizationSteps: null,
+   652→          fuzzyDistance: null,
+   653→          confidenceBreakdown: null,
+   654→          evidence: null,
+   655→          candidates: null,
+   656→          candidateCount: 0,
+   657→          verdict: "FAIL",
+   658→          reasons: [`parsed item has no corresponding expected_item (parsed ${parsedItems.length} items, expected ${tc.expected_items.length})`],
+   659→        });
+   660→        continue;
+   661→      }
+   662→
+   663→      const input: MatchInput = {
+   664→        description: parsed.product,
+   665→        qty: parsed.qty,
+   666→        price: 1,
+   667→        companySlug,
+   668→        invoiceId: "preview",
+   669→        lineItemIndex: i,
+   670→      };
+   671→
+   672→      try {
+   673→        const result = await matchProduct(input);
+   674→        itemResults.push(evaluateItem(parsed, result, expected));
+   675→      } catch (err) {
+   676→        itemResults.push({
+   677→          parsedQty: parsed.qty,
+   678→          parsedProduct: parsed.product,
+   679→          matchedProductId: null,
+   680→          matchedProductName: null,
+   681→          matchedAlias: null,
+   682→          matchedArName: null,
+   683→          confidence: 0,
+   684→          tier: "error",
+   685→          action: "error",
+   686→          method: null,
+   687→          rankScore: null,
+   688→          normalizationSteps: null,
+   689→          fuzzyDistance: null,
+   690→          confidenceBreakdown: null,
+   691→          evidence: null,
+   692→          candidates: null,
+   693→          candidateCount: 0,
+   694→          verdict: "FAIL",
+   695→          reasons: [`matchProduct threw: ${err instanceof Error ? err.message : String(err)}`],
+   696→        });
+   697→      }
+   698→    }
+   699→
+   700→    // Check for unparsed expected items (parser missed something)
+   701→    const notes: string[] = [];
+   702→    if (parsedItems.length < tc.expected_items.length) {
+   703→      notes.push(`parser extracted ${parsedItems.length} items but expected ${tc.expected_items.length}`);
+   704→    }
+   705→
+   706→    // Case verdict = worst item verdict
+   707→    const caseVerdict: Verdict = itemResults.some((r) => r.verdict === "FAIL")
+   708→      ? "FAIL"
+   709→      : itemResults.some((r) => r.verdict === "PARTIAL")
+   710→        ? "PARTIAL"
+   711→        : "PASS";
+   712→
+   713→    results.push({
+   714→      id: tc.id,
+   715→      type: tc.type,
+   716→      invoice_type: tc.invoice_type,
+   717→      raw_input_text: tc.raw_input_text,
+   718→      parsedItems,
+   719→      itemResults,
+   720→      caseVerdict,
+   721→      notes,
+   722→    });
+   723→  }
+   724→
+   725→  restoreDb();
+   726→
+   727→  // 5. Per-category report
+   728→  console.log("\n" + "═".repeat(80));
+   729→  console.log("  PER-CATEGORY RESULTS");
+   730→  console.log("═".repeat(80));
+   731→
+   732→  const categories = Object.keys(data.meta.category_counts);
+   733→  const catStats: Record<string, { pass: number; partial: number; fail: number; total: number }> = {};
+   734→
+   735→  for (const cat of categories) {
+   736→    const catResults = results.filter((r) => r.type === cat);
+   737→    const pass = catResults.filter((r) => r.caseVerdict === "PASS").length;
+   738→    const partial = catResults.filter((r) => r.caseVerdict === "PARTIAL").length;
+   739→    const fail = catResults.filter((r) => r.caseVerdict === "FAIL").length;
+   740→    catStats[cat] = { pass, partial, fail, total: catResults.length };
+   741→    const rate = ((pass / catResults.length) * 100).toFixed(0);
+   742→    const partialRate = (((pass + partial) / catResults.length) * 100).toFixed(0);
+   743→    console.log(
+   744→      `  ${cat.padEnd(28)} ${String(pass).padStart(2)}/${String(catResults.length).padStart(2)} pass  (${rate}% strict / ${partialRate}% with partials)  ${fail > 0 ? `❌ ${fail} fail` : "✅"}`,
+   745→    );
+   746→  }
+   747→
+   748→  // 6. Overall
+   749→  const totalPass = results.filter((r) => r.caseVerdict === "PASS").length;
+   750→  const totalPartial = results.filter((r) => r.caseVerdict === "PARTIAL").length;
+   751→  const totalFail = results.filter((r) => r.caseVerdict === "FAIL").length;
+   752→  console.log("\n" + "─".repeat(80));
+   753→  console.log(`  OVERALL: ${totalPass}/100 PASS  |  ${totalPartial}/100 PARTIAL  |  ${totalFail}/100 FAIL`);
+   754→  console.log(`  Strict pass rate:    ${((totalPass / 100) * 100).toFixed(0)}%`);
+   755→  console.log(`  Lenient pass rate:   ${(((totalPass + totalPartial) / 100) * 100).toFixed(0)}% (pass + partial)`);
+   756→  console.log("─".repeat(80));
+   757→
+   758→  // 7. List failures
+   759→  const failures = results.filter((r) => r.caseVerdict !== "PASS");
+   760→  if (failures.length > 0) {
+   761→    console.log(`\n${"═".repeat(80)}\n  NON-PASS CASES (${failures.length})\n${"═".repeat(80)}`);
+   762→    for (const r of failures) {
+   763→      console.log(`\n  Case ${r.id} [${r.type}] — ${r.caseVerdict}`);
+   764→      console.log(`    text: ${r.raw_input_text}`);
+   765→      console.log(`    parsed: ${JSON.stringify(r.parsedItems)}`);
+   766→      if (r.notes.length) console.log(`    notes: ${r.notes.join("; ")}`);
+   767→      for (const ir of r.itemResults) {
+   768→        if (ir.verdict !== "PASS") {
+   769→          console.log(`    item "${ir.parsedProduct}" (qty=${ir.parsedQty}): ${ir.verdict}`);
+   770→          console.log(`      matched: ${ir.matchedProductName || "null"} (id=${ir.matchedProductId}, ar=${ir.matchedArName || "null"}) conf=${ir.confidence.toFixed(3)} tier=${ir.tier} method=${ir.method || "?"}`);
+   771→          if (ir.confidenceBreakdown) {
+   772→            const bd = ir.confidenceBreakdown;
+   773→            console.log(`      breakdown: rawSim=${bd.rawSimilarity.toFixed(3)} normPenalty=${bd.normalizationPenalty.toFixed(3)} fuzzyCap=${bd.fuzzyCap.toFixed(2)} → final=${bd.finalConfidence.toFixed(3)}`);
+   774→          }
+   775→          if (ir.evidence) {
+   776→            const ev = ir.evidence;
+   777→            console.log(`      evidence: textSim=${ev.textSimilarity.toFixed(2)} alias=${ev.aliasMatch.toFixed(2)} brand=${ev.brandMatch?.toFixed(2) ?? "null"} cat=${ev.categoryMatch?.toFixed(2) ?? "null"} sem=${ev.semanticMatch ?? "null"} hist=${ev.historicalMatch?.toFixed(2) ?? "null"}`);
+   778→          }
+   779→          if (ir.candidates && ir.candidates.length > 0) {
+   780→            console.log(`      candidates (${ir.candidates.length}): ${ir.candidates.slice(0, 3).map(c => `#${c.productId}(${c.rankScore.toFixed(2)})`).join(" > ")}${ir.candidates.length > 3 ? " ..." : ""}`);
+   781→          }
+   782→          if (ir.normalizationSteps && ir.normalizationSteps.length > 0) {
+   783→            console.log(`      normSteps: [${ir.normalizationSteps.join(", ")}]  fuzzyDist=${ir.fuzzyDistance ?? 0}  rankScore=${ir.rankScore?.toFixed(3) ?? "?"}`);
+   784→          }
+   785→          for (const reason of ir.reasons) console.log(`      → ${reason}`);
+   786→        }
+   787→      }
+   788→    }
+   789→  }
+   790→
+   791→  // 7b. Method distribution (explainability analytics)
+   792→  const methodCounts: Record<string, number> = {};
+   793→  for (const r of results) {
+   794→    for (const ir of r.itemResults) {
+   795→      const m = ir.method || "unknown";
+   796→      methodCounts[m] = (methodCounts[m] || 0) + 1;
+   797→    }
+   798→  }
+   799→  console.log(`\n${"─".repeat(80)}`);
+   800→  console.log("  MATCH METHOD DISTRIBUTION (explainability)");
+   801→  console.log("─".repeat(80));
+   802→  for (const [m, count] of Object.entries(methodCounts).sort((a, b) => b[1] - a[1])) {
+   803→    const pct = ((count / 100) * 100).toFixed(0);
+   804→    console.log(`  ${m.padEnd(14)} ${String(count).padStart(3)} cases  (${pct}%)`);
+   805→  }
+   806→
+   807→  // 7c. Evidence signal summary (multi-signal analytics)
+   808→  const evStats = { brandDetected: 0, brandMatched: 0, catMatched: 0, catNull: 0, histVerified: 0, histNull: 0 };
+   809→  let totalCandidates = 0;
+   810→  let maxCandidates = 0;
+   811→  for (const r of results) {
+   812→    for (const ir of r.itemResults) {
+   813→      if (!ir.evidence) continue;
+   814→      if (ir.evidence.brandMatch !== null) { evStats.brandDetected++; if (ir.evidence.brandMatch > 0) evStats.brandMatched++; }
+   815→      if (ir.evidence.categoryMatch !== null) { if (ir.evidence.categoryMatch > 0) evStats.catMatched++; } else { evStats.catNull++; }
+   816→      if (ir.evidence.historicalMatch !== null) { if (ir.evidence.historicalMatch >= 1.0) evStats.histVerified++; } else { evStats.histNull++; }
+   817→      if (ir.candidateCount) { totalCandidates += ir.candidateCount; maxCandidates = Math.max(maxCandidates, ir.candidateCount); }
+   818→    }
+   819→  }
+   820→  console.log(`\n${"─".repeat(80)}`);
+   821→  console.log("  EVIDENCE SIGNAL SUMMARY (multi-signal analytics)");
+   822→  console.log("─".repeat(80));
+   823→  console.log(`  brand detected:   ${evStats.brandDetected} cases (${evStats.brandMatched} matched)`);
+   824→  console.log(`  category matched: ${evStats.catMatched} cases (${evStats.catNull} null = undeterminable)`);
+   825→  console.log(`  historical:       ${evStats.histVerified} verified (${evStats.histNull} null = no alias)`);
+   826→  console.log(`  candidates:       ${totalCandidates} total retained (max ${maxCandidates} per case, top ${5})`);
+   827→
+   828→  // 8. Write JSON report
+   829→  const report = {
+   830→    generatedAt: new Date().toISOString(),
+   831→    summary: {
+   832→      total: 100,
+   833→      pass: totalPass,
+   834→      partial: totalPartial,
+   835→      fail: totalFail,
+   836→      strictPassRate: parseFloat(((totalPass / 100) * 100).toFixed(1)),
+   837→      lenientPassRate: parseFloat((((totalPass + totalPartial) / 100) * 100).toFixed(1)),
+   838→    },
+   839→    perCategory: catStats,
+   840→    cases: results,
+   841→  };
+   842→  const reportPath = "/home/z/my-project/test-results-invoice-brain-100.json";
+   843→  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf-8");
+   844→  console.log(`\n📄 Full JSON report: ${reportPath}`);
+   845→
+   846→  console.log("\n" + "═".repeat(80));
+   847→  console.log("  Done.");
+   848→  console.log("═".repeat(80));
+   849→}
+   850→
+   851→main().catch((err) => {
+   852→  console.error("FATAL:", err);
+   853→  process.exit(1);
+   854→});
+   855→
