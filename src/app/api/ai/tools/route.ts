@@ -600,6 +600,6 @@ ${prevQty.toFixed(3)} → ${newQty.toFixed(3)} (الفرق ${signedDelta >= 0 ? 
     }
   } catch (err) {
     logger.error("[ai/tools] execution failed", { err: err instanceof Error ? err.message : String(err), intent });
-    return { ok: false, summary: `خطأ في التنفيذ: ${err instanceof Error ? err.message : "غير معروف"}` };
+    return { ok: false, summary: "خطأ في التنفيذ" };
   }
 }
