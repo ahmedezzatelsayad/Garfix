@@ -194,8 +194,8 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
         </div>
       </nav>
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="relative z-[5] py-20 md:py-28 px-[5%] text-center max-w-[1100px] mx-auto">
+      {/* ── About / Hero ─────────────────────────────────────────────── */}
+      <section id="about" className="relative z-[5] py-20 md:py-28 px-[5%] text-center max-w-[1100px] mx-auto">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-[rgba(124,58,237,0.15)] border border-[rgba(124,58,237,0.3)] text-[#c4b5fd] text-xs font-bold mb-6 [animation:garfix-fade-up_.6s_ease-out]">
           <Sparkles size={14} />
           منصة ERP متكاملة بمساعد ذكاء اصطناعي
@@ -240,7 +240,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       </section>
 
       {/* ── Features ─────────────────────────────────────────────────── */}
-      <section className="py-[60px] px-[5%] relative z-[5]">
+      <section id="features" className="py-[60px] px-[5%] relative z-[5]">
         <div className="text-center mb-[50px]">
           <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3 landing-section-title">
             كل ما تحتاجه لإدارة أعمالك في مكان واحد
@@ -288,7 +288,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────── */}
-      <section className="py-20 px-[5%] relative z-[5]">
+      <section id="faq" className="py-20 px-[5%] relative z-[5]">
         <div className="text-center mb-10">
           <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3 landing-section-title">
             أسئلة شائعة
@@ -305,7 +305,7 @@ export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
       </section>
 
       {/* ── Pricing ──────────────────────────────────────────────────── */}
-      <section className="py-20 px-[5%] relative z-[5]">
+      <section id="pricing" className="py-20 px-[5%] relative z-[5]">
         <div className="text-center mb-10">
           <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3 landing-section-title">
             باقات تناسب نموّ أعمالك
