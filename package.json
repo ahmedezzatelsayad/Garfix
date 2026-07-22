@@ -1,6 +1,6 @@
 {
   "name": "garfix-eos",
-  "version": "1.5.1",
+  "version": "12.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
