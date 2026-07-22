@@ -116,7 +116,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
               </div>
             </div>
             <p className={`text-[13px] leading-relaxed mb-5 max-w-[340px] ${colors.text}`}>
-              منصة سحابية متكاملة لإدارة الفواتير والعملاء والموارد البشرية والمحاسبة والمشتريات. مدعومة بالذكاء الاصطناعي، ومُحسّنة لأسواق الشرق الأوسط.
+              منصة سحابية متكاملة لإدارة الفواتير والعملاء والموارد البشرية والمحاسبة والمشتريات. مدعومة بالذكاء الاصطناعي، ومُحسّنة لـ 20+ دولة في الشرق الأوسط وشمال أفريقيا.
             </p>
 
             {/* Newsletter */}
@@ -182,7 +182,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
       <div className={`border-t ${colors.border} py-5 px-[5%]`}>
         <div className="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className={`text-[11px] ${colors.muted} flex flex-wrap items-center gap-x-2`}>
-            <span>&copy; {new Date().getFullYear()} GARFIX. جميع الحقوق محفوظة.</span>
+            <span>&copy; {new Date().getFullYear()} GARFIX v1.5.1. جميع الحقوق محفوظة.</span>
             <span className="mx-1">|</span>
             <span>صُنع بـ ❤️ في الكويت</span>
           </div>
@@ -190,7 +190,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
           <div className={`text-[11px] ${colors.muted} flex items-center gap-3`}>
             <span className="inline-flex items-center gap-1">
               <Globe size={11} />
-              MENA Region
+              MENA + الشرق الأوسط (20+ دولة)
             </span>
             <span className="inline-flex items-center gap-1">
               <Shield size={11} />

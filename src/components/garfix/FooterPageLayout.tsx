@@ -32,7 +32,7 @@ export function FooterPageLayout({
           </div>
           <div>
             <div className="text-xl font-black tracking-wider text-white">GARFIX</div>
-            <div className="text-[10px] text-white/50 tracking-[2px]">EOS v12</div>
+            <div className="text-[10px] text-white/50 tracking-[2px]">EOS v1.5.1</div>
           </div>
         </Link>
         <Link

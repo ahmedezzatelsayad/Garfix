@@ -256,6 +256,69 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
   },
+  // ────────────────────────────────────────────────────────────────────────────
+  // Expanded MENA (Horn of Africa + Sahel + Island nations) — L3
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    code: "SO",
+    nameAr: "جمهورية الصومال",
+    nameEn: "Somalia",
+    currency: "SOS",
+    currencyAr: "شلن صومالي",
+    vatRate: 0,
+    vatApplicable: false, // Somalia does not currently implement VAT
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "0",
+  },
+  {
+    code: "DJ",
+    nameAr: "جمهورية جيبوتي",
+    nameEn: "Djibouti",
+    currency: "DJF",
+    currencyAr: "فرنك جيبوتي",
+    vatRate: 0,
+    vatApplicable: false, // Djibouti does not currently implement VAT (uses indirect consumption tax)
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "0",
+  },
+  {
+    code: "KM",
+    nameAr: "اتحاد جزر القمر",
+    nameEn: "Comoros",
+    currency: "KMF",
+    currencyAr: "فرنك قمري",
+    vatRate: 0,
+    vatApplicable: false, // Comoros uses indirect taxes, no formal VAT system
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "0",
+  },
+  {
+    code: "MR",
+    nameAr: "جمهورية موريتانيا",
+    nameEn: "Mauritania",
+    currency: "MRU",
+    currencyAr: "أوقية موريتانية",
+    vatRate: 16,
+    vatApplicable: true, // Mauritania introduced VAT at 16% in 2021
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "16",
+  },
+  {
+    code: "ER",
+    nameAr: "دولة إريتريا",
+    nameEn: "Eritrea",
+    currency: "ERN",
+    currencyAr: "ناكفا إريتري",
+    vatRate: 0,
+    vatApplicable: false, // Eritrea does not currently implement VAT
+    eInvoiceAuthority: "none",
+    weekendDays: [5, 6], // Friday + Saturday
+    defaultTaxRate: "0",
+  },
 ];
 
 export function getCountryConfig(code?: string | null): CountryConfig | null {
