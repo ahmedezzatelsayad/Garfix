@@ -207,7 +207,7 @@ jobs:
           echo "✅ Migrations applied successfully"
 
       - name: Setup Node.js (for standalone server)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -314,7 +314,7 @@ jobs:
           echo "✅ Migrations applied successfully"
 
       - name: Setup Node.js (for standalone server)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
