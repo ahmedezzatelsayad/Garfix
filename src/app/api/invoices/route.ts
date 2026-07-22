@@ -31,7 +31,7 @@ const CreateSchema = z.object({
   clientAddress: z.string().optional(),
   issueDate: z.string().min(1, "تاريخ الإصدار مطلوب"),
   dueDate: z.string().min(1, "تاريخ الاستحقاق مطلوب"),
-  status: z.string().default("draft"),
+  status: z.enum(["draft", "sent", "overdue", "cancelled", "paid", "partial"]).default("draft"),
   lineItems: z.array(LineItemSchema).default([]),
   taxRate: z.union([z.number(), z.string()]).default(0),
   shipping: z.union([z.number(), z.string()]).default(0),

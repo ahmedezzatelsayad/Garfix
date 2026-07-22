@@ -172,7 +172,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         });
       } catch (err) {
         const latencyMs = Date.now() - t0;
-        const msg = err instanceof Error ? err.message.slice(0, 300) : String(err);
+        logger.error("[run-benchmark] provider call failed", { err: err instanceof Error ? err.message : String(err), model: model.model });
         await recordBenchmarkResult({
           modelRegistryId: model.id,
           capability: testCase.capability,
@@ -181,7 +181,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           tokensIn: 0,
           tokensOut: 0,
           responseQuality: 0,
-          errorMessage: msg,
+          errorMessage: "provider error",
         });
         results.push({
           model: model.model,
@@ -192,7 +192,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           tokensIn: 0,
           tokensOut: 0,
           quality: 0,
-          error: msg,
+          error: "Provider call failed",
         });
       }
     }

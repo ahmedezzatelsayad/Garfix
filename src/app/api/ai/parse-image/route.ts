@@ -300,7 +300,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }).catch(() => {});
 
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "خطأ في معالجة الصورة" },
+      { error: "خطأ في معالجة الصورة" },
       { status: 500 },
     );
   }

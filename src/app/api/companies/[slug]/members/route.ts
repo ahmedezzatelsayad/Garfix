@@ -46,6 +46,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const candidates = await db.user.findMany({
     where: { companies: { contains: slug } },
     orderBy: { createdAt: "desc" },
+    take: 200,
   });
 
   const members = candidates

@@ -453,7 +453,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }).catch(() => {});
 
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "خطأ في معالجة الذكاء الاصطناعي" },
+      { error: "خطأ في معالجة الذكاء الاصطناعي" },
       { status: 500 },
     );
   }

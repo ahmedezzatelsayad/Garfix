@@ -35,12 +35,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   let users;
   if (isFounderEmail(user.email)) {
-    users = await db.user.findMany({ orderBy: { createdAt: "desc" } });
+    users = await db.user.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
   } else {
     // Admin: list users that share at least one company
     users = await db.user.findMany({
       where: { companies: { contains: user.companies[0] || "____" } },
       orderBy: { createdAt: "desc" },
+      take: 200,
     });
   }
 

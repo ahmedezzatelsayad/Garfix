@@ -272,7 +272,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       errorMessage: err instanceof Error ? err.message : String(err),
     });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "خطأ في معالجة الملف" },
+      { error: "خطأ في معالجة الملف" },
       { status: 500 },
     );
   }

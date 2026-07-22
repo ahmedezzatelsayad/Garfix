@@ -82,7 +82,7 @@ model EmailVerification {
   usedAt    DateTime?
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [uid], onDelete: Restrict)
 
   @@index([userId, purpose, createdAt])
   @@map("email_verifications")
@@ -158,6 +158,16 @@ model Company {
   productAliases    ProductAlias[]
   matchOverrides    MatchOverride[]
   runtime           CompanyRuntime?
+  attendances       Attendance[]
+  salaries           Salary[]
+  commissions        Commission[]
+  leaveRequests      LeaveRequest[]
+  performances       Performance[]
+  automationRules    AutomationRule[]
+  notifications      Notification[]
+  suppliers          Supplier[]
+  salesReturns       SalesReturn[]
+  purchaseReturns    PurchaseReturn[]
 
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
@@ -203,7 +213,6 @@ model Client {
   tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   invoices Invoice[]
 
-  @@index([companySlug])
   @@index([companySlug, createdAt, id])
   @@index([companySlug, deletedAt])
   @@map("clients")
@@ -250,12 +259,12 @@ model Invoice {
   updatedAt       DateTime @updatedAt
 
   tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  client   Client?  @relation(fields: [clientId], references: [id])
-  eInvoice EInvoice?
-  delivery OrderDelivery?
+  client       Client?  @relation(fields: [clientId], references: [id])
+  eInvoice     EInvoice?
+  delivery     OrderDelivery?
+  salesReturns SalesReturn[]
 
   @@unique([companySlug, invoiceNumber])
-  @@index([companySlug])
   @@index([companySlug, issueDate])
   @@index([companySlug, status])
   @@index([clientId])
@@ -291,7 +300,6 @@ model ProductCatalog {
   productAliases ProductAlias[]
   stockMovements StockMovement[]
 
-  @@index([companySlug])
   @@index([companySlug, createdAt, id])
   @@map("product_catalog")
 }
@@ -351,6 +359,10 @@ model StockMovement {
   note         String?
   createdBy    String   @default("system")
   createdAt    DateTime @default(now())
+  // ERP-05 FIX: COGS tracking for cost engine
+  unitCost     String?  // cost per unit at time of movement
+  totalCost    String?  // qty * unitCost
+  costMethod   String?  // "fifo" | "weighted_average" | "specific"
 
   tenant      Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   product     ProductCatalog? @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -361,34 +373,127 @@ model StockMovement {
   @@index([sourceType, sourceId])
   @@index([warehouseId])
   // H4 FIX: additional indexes for frequently queried fields
-  @@index([companySlug])
   @@index([productId])
+  @@index([costMethod])
   @@map("stock_movements")
+}
+
+// ERP-05 FIX: Sales & Purchase Returns
+model SalesReturn {
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  invoiceId       Int
+  clientId        Int?
+  returnDate      String
+  reason          String?
+  items           String   @default("[]") // JSON: [{productId, qty, unitPrice, returnReason}]
+  totalAmount     String   @default("0")
+  status          String   @default("pending") // pending | approved | processed | refunded
+  refundMethod    String?  // "cash" | "credit_note" | "bank_transfer"
+  creditNoteId    Int?
+  journalEntryId  Int?     // link to reversal journal entry
+  approvedBy      String?
+  approvedAt      DateTime?
+  notes           String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+  deletedBy       String?
+
+  tenant        Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  invoice      Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([companySlug, createdAt])
+  @@index([companySlug, status])
+  @@index([invoiceId])
+  @@index([clientId])
+  @@map("sales_returns")
+}
+
+model PurchaseReturn {
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  purchaseInvoiceId Int?
+  supplierId      Int?
+  returnDate      String
+  reason          String?
+  items           String   @default("[]") // JSON: [{productId, qty, unitCost, returnReason}]
+  totalAmount     String   @default("0")
+  status          String   @default("pending") // pending | approved | processed | credited
+  journalEntryId  Int?     // link to reversal journal entry
+  approvedBy      String?
+  approvedAt      DateTime?
+  notes           String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+  deletedBy       String?
+
+  tenant             Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  purchaseInvoice    PurchaseInvoice? @relation("PurchaseReturnInvoice", fields: [purchaseInvoiceId], references: [id], onDelete: SetNull)
+  supplierEntity     Supplier?        @relation("SupplierReturns", fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([companySlug, createdAt])
+  @@index([companySlug, status])
+  @@index([purchaseInvoiceId])
+  @@index([supplierId])
+  @@map("purchase_returns")
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // Purchases
 // ────────────────────────────────────────────────────────────────────────────
 
+// ERP-05 FIX: Supplier as a proper entity (not inline string in PurchaseInvoice)
+model Supplier {
+  id            Int      @id @default(autoincrement())
+  companySlug   String
+  name          String
+  nameEn        String?
+  phone         String?
+  email         String?
+  address       String?
+  vatNumber     String?
+  contactPerson String?
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+  deletedBy     String?
+
+  tenant            Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  purchaseInvoices  PurchaseInvoice[]
+
+  @@index([companySlug, isActive])
+  @@index([companySlug, name])
+  @@map("suppliers")
+}
+
 model PurchaseInvoice {
   id              Int      @id @default(autoincrement())
   num             String
   date            String
   supplier        String   @default("")
+  supplierId      Int?     // ERP-05 FIX: FK to Supplier table (nullable for backward compat)
   companySlug     String
   items           String   @default("[]") // JSON
   sourceInvoiceIds String  @default("[]") // JSON
   totalQty        Int      @default(0)
+  totalAmount     String   @default("0")
   notes           String?
   createdAt       DateTime @default(now())
   deletedAt       DateTime?
   deletedBy       String?
 
-  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant         Company   @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  supplierEntity Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
-  @@index([companySlug])
   @@index([companySlug, createdAt, id])
   @@index([companySlug, deletedAt])
+  @@index([supplierId])
   @@map("purchase_invoices")
 }
 
@@ -428,7 +533,6 @@ model Employee {
   leaveReqs    LeaveRequest[]
   performances Performance[]
 
-  @@index([companySlug])
   @@index([civilId])
   @@index([companySlug, isActive])
   @@map("hr_employees")
@@ -446,8 +550,8 @@ model Attendance {
   createdAt   DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
-  @@index([companySlug])
   @@index([employeeId, date])
   @@index([companySlug, date])
   @@map("hr_attendance")
@@ -469,8 +573,8 @@ model Salary {
   createdAt   DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
-  @@index([companySlug])
   @@index([employeeId, month])
   @@index([companySlug, isPaid])
   @@index([companySlug, month])
@@ -489,8 +593,8 @@ model Commission {
   createdAt   DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
-  @@index([companySlug])
   @@index([employeeId])
   @@index([companySlug, isPaid])
   @@index([companySlug, date])
@@ -641,7 +745,7 @@ model EInvoice {
   deletedBy        String?
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  tenant  Company @relation(fields: [companySlug], references: [slug])
+  tenant  Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([invoiceId])
   @@index([companySlug])
@@ -718,7 +822,7 @@ model PaymentTransaction {
   deletedAt         DateTime?
   deletedBy         String?
 
-  tenant Company @relation(fields: [companySlug], references: [slug])
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@unique([provider, providerEventId])
   @@index([provider, providerPaymentId])
@@ -979,7 +1083,7 @@ model AiProcessingLog {
   success       Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  tenant Company? @relation(fields: [companySlug], references: [slug])
+  tenant Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([companySlug, createdAt])
   @@index([endpoint, createdAt])
@@ -1019,6 +1123,8 @@ model Notification {
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
   readAt      DateTime?
+
+  tenant   Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([userUid, isRead])
   @@index([userUid, createdAt])
@@ -1134,7 +1240,6 @@ model AutomationRule {
 
   executions AutomationExecutionLog[]
 
-  @@index([companySlug])
   @@index([trigger])
   @@index([companySlug, isActive])
   @@map("automation_rules")

@@ -256,8 +256,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const syncWarnings = syncResult.warnings || [];
       (created[created.length - 1] as any).warnings = syncWarnings;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error("[bulk-import] order failed", { err: msg, index: i, order: order.clientName });
+      const msg = "خطأ في إنشاء الفاتورة";
+      logger.error("[bulk-import] order failed", { err: err instanceof Error ? err.message : String(err), index: i, order: order.clientName });
       errors.push({ index: i, error: msg });
     }
   }

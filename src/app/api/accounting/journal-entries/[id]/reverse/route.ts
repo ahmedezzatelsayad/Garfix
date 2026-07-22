@@ -63,17 +63,26 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
       include: { lines: true },
     });
 
-    // 2. Update account balances for the reversal (same logic as POST handler)
+    // 2. Update account balances for the reversal — batch fetch + aggregate deltas
+    const accountIds = [...new Set(swappedLines.map((l) => l.accountId))];
+    const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+
+    const deltas = new Map<number, number>();
     for (const line of swappedLines) {
-      const acc = await tx.account.findUnique({ where: { id: line.accountId } });
+      const acc = accountMap.get(line.accountId);
       if (!acc) continue;
-      const currentBalance = num(acc.balance, 3);
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";
       const delta = isDebitNormal
         ? num(line.debit, 3) - num(line.credit, 3)
         : num(line.credit, 3) - num(line.debit, 3);
+      deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+    }
+    for (const [accountId, delta] of deltas) {
+      const acc = accountMap.get(accountId)!;
+      const currentBalance = num(acc.balance, 3);
       await tx.account.update({
-        where: { id: acc.id },
+        where: { id: accountId },
         data: { balance: (currentBalance + delta).toFixed(3) },
       });
     }

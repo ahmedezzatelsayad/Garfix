@@ -74,40 +74,53 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("Journal entry not balanced (debit ≠ credit)", 400);
   }
 
-  const entry = await db.journalEntry.create({
-    data: {
-      companySlug: data.companySlug, date: data.date, description: data.description || null,
-      reference: data.reference || null, status: data.status, createdBy: user.email,
-      lines: {
-        create: data.lines.map((l) => ({
-          accountId: l.accountId, debit: num(l.debit, 3).toFixed(3),
-          credit: num(l.credit, 3).toFixed(3), description: l.description || null,
-        })),
+  // DB-03 FIX: Wrap entry creation + balance updates in a single transaction
+  const entry = await db.$transaction(async (tx) => {
+    const created = await tx.journalEntry.create({
+      data: {
+        companySlug: data.companySlug, date: data.date, description: data.description || null,
+        reference: data.reference || null, status: data.status, createdBy: user.email,
+        lines: {
+          create: data.lines.map((l) => ({
+            accountId: l.accountId, debit: num(l.debit, 3).toFixed(3),
+            credit: num(l.credit, 3).toFixed(3), description: l.description || null,
+          })),
+        },
       },
-    },
-    include: { lines: true },
-  });
+      include: { lines: true },
+    });
 
-  // Update account balances if posted
-  if (data.status === "posted") {
-    for (const line of data.lines) {
-      // SEC FIX: filter by companySlug to prevent IDOR — without this,
-      // a user could pass an accountId from another tenant and corrupt their balances.
-      const acc = await db.account.findFirst({
-        where: { id: line.accountId, companySlug: data.companySlug },
+    // Update account balances if posted — within same transaction
+    if (data.status === "posted") {
+      const accountIds = [...new Set(data.lines.map((l) => l.accountId))];
+      const accounts = await tx.account.findMany({
+        where: { id: { in: accountIds }, companySlug: data.companySlug },
       });
-      if (!acc) continue;
-      const currentBalance = num(acc.balance, 3);
-      const isDebitNormal = acc.type === "asset" || acc.type === "expense";
-      const delta = isDebitNormal
-        ? num(line.debit, 3) - num(line.credit, 3)
-        : num(line.credit, 3) - num(line.debit, 3);
-      await db.account.update({
-        where: { id: acc.id },
-        data: { balance: (currentBalance + delta).toFixed(3) },
-      });
+      const accountMap = new Map(accounts.map((a) => [a.id, a]));
+
+      const deltas = new Map<number, number>();
+      for (const line of data.lines) {
+        const acc = accountMap.get(line.accountId);
+        if (!acc) continue;
+        const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+        const delta = isDebitNormal
+          ? num(line.debit, 3) - num(line.credit, 3)
+          : num(line.credit, 3) - num(line.debit, 3);
+        deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+      }
+
+      for (const [accountId, delta] of deltas) {
+        const acc = accountMap.get(accountId)!;
+        const currentBalance = num(acc.balance, 3);
+        await tx.account.update({
+          where: { id: accountId },
+          data: { balance: (currentBalance + delta).toFixed(3) },
+        });
+      }
     }
-  }
+
+    return created;
+  });
 
   await logAudit({
     userEmail: user.email, userUid: user.uid,
