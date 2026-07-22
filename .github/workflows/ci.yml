@@ -156,7 +156,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [lint, typecheck]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -222,7 +222,7 @@ jobs:
             echo "❌ Server entry point MISSING — cannot run standalone"
             exit 1
           fi
-          
+
           # List API routes count
           ROUTE_COUNT=$(find .next/standalone/server/app -name "route.js" 2>/dev/null | wc -l)
           echo "📦 API Routes compiled: $ROUTE_COUNT"
@@ -240,11 +240,11 @@ jobs:
           else
             echo "⚠️ Public folder missing from standalone — will need manual copy at deploy"
           fi
-          
+
           # ═══ ARCHITECTURE COMPLIANCE CHECK ═══
           echo ""
           echo "═══ Architecture Compliance ═══"
-          
+
           # Check that no worker files have module-level side effects
           SIDE_EFFECTS_FOUND=0
           for WORKER_FILE in src/lib/workers/*.ts; do
@@ -253,19 +253,19 @@ jobs:
               SIDE_EFFECTS_FOUND=$((SIDE_EFFECTS_FOUND + 1))
             fi
           done
-          
+
           # Check that startupCheck.ts does NOT import workers
           if grep -q 'import.*workers/' src/lib/startupCheck.ts 2>/dev/null; then
             echo "❌ startupCheck.ts still imports workers (should use bootstrap.ts)"
             SIDE_EFFECTS_FOUND=$((SIDE_EFFECTS_FOUND + 1))
           fi
-          
+
           if [ $SIDE_EFFECTS_FOUND -eq 0 ]; then
             echo "✅ No module-level side effects detected"
           else
             echo "⚠️ $SIDE_EFFECTS_FOUND potential side effect(s) found"
           fi
-          
+
           echo ""
           echo "═══════════════════════"
 
@@ -517,7 +517,7 @@ jobs:
       - name: Create Status Badge
         if: success()
         run: echo "## ✅ CI Passed" >> $GITHUB_STEP_SUMMARY
-      
+
       - name: Create Failure Badge
         if: failure()
         run: echo "## ❌ CI Failed" >> $GITHUB_STEP_SUMMARY
