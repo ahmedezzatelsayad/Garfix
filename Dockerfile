@@ -46,7 +46,7 @@ RUN bun run build
 # ── Stage 3: Production ─────────────────────────────────────────────────
 # Use Node.js for runtime — Next.js standalone server.js requires Node.js APIs
 # (Bun 1.3.x has native module compatibility issues with Next.js standalone)
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
