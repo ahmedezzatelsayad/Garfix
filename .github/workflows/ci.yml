@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload lint results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lint-results
           path: lint-results.txt
@@ -142,7 +142,7 @@ jobs:
 
       - name: Upload type check results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: typecheck-results
           path: typecheck-results.txt
@@ -270,7 +270,7 @@ jobs:
           echo "═══════════════════════"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: garfix-build-${{ github.sha }}
           path: .next/standalone/
@@ -278,7 +278,7 @@ jobs:
 
       - name: Upload build results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-results
           path: build-results.txt
@@ -372,7 +372,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-results
           path: test-results.txt
@@ -469,7 +469,7 @@ jobs:
 
       - name: Upload integration test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: integration-test-results
           path: integration-results.txt
