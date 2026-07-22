@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth, type AuthPayload } from "@/lib/auth";
 import { rateLimitResponse, getClientIp, LIMITS, type RateLimitConfig } from "@/lib/rateLimit";
+import { CSRF_COOKIE, generateCsrfToken, CSRF_COOKIE_OPTS } from "@/lib/cookies";
 
 // ── Public routes that skip authentication ──────────────────────────────────
 
@@ -22,6 +23,14 @@ const PUBLIC_ROUTES = [
   "/api/auth/reset-password",
   "/api/health",
   "/api/landing-content",
+];
+
+// Routes exempt from CSRF verification even though they are POST and protected.
+// Auth refresh only rotates tokens (no state change) and cannot be read cross-origin
+// (access token is httpOnly). Including it in CSRF enforcement would break
+// the automatic refresh flow in authedFetch.
+const CSRF_EXEMPT_ROUTES = [
+  "/api/auth/refresh",
 ];
 
 function isPublicRoute(pathname: string): boolean {
@@ -86,15 +95,45 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   const user: AuthPayload = authResult.user;
 
-  // ── 3. Rate limit by uid (authenticated user) ─────────────────────────
+  // ── 3. CSRF double-submit verification for mutating methods ──────────────
+  // SEC-010 FIX: Enforce CSRF protection on POST, PUT, PATCH, DELETE.
+  // The inv_csrf cookie is set on every authenticated response; JS must
+  // read it and echo the value in the X-CSRF-Token header on every
+  // mutating request. Safe methods (GET, HEAD, OPTIONS) are exempt.
+  // Certain auth routes (refresh) are also exempt — they only rotate tokens
+  // and the attacker cannot read the httpOnly access cookie anyway.
+  const mutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
+  if (mutatingMethods.includes(req.method) && !CSRF_EXEMPT_ROUTES.includes(pathname)) {
+    const csrfCookie = req.cookies.get(CSRF_COOKIE)?.value;
+    const csrfHeader = req.headers.get("x-csrf-token");
+
+    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+      const response = NextResponse.json(
+        { error: "رمز حماية CSRF غير صالح أو مفقود" },
+        { status: 403 },
+      );
+      return withSecurityHeaders(response);
+    }
+  }
+
+  // ── 4. Rate limit by uid (authenticated user) ─────────────────────────
   const limited = await rateLimitResponse(req, "api", GENERAL_API_LIMIT, user.uid);
   if (limited) return withSecurityHeaders(limited);
 
-  // ── 4. Continue with security headers + user info ──────────────────────
+  // ── 5. Continue with security headers + user info ──────────────────────
   const response = NextResponse.next();
 
   // Set authenticated user info on a custom header so route handlers can access it
   response.headers.set("x-user-payload", encodeURIComponent(JSON.stringify(user)));
+
+  // SEC-010: Issue/refresh CSRF cookie on every authenticated response so the
+  // client always has a fresh token. If the cookie is already set and not
+  // expired, we keep it; otherwise we generate a new one.
+  const existingCsrf = req.cookies.get(CSRF_COOKIE)?.value;
+  if (!existingCsrf) {
+    const newCsrf = generateCsrfToken();
+    response.cookies.set(CSRF_COOKIE, newCsrf, CSRF_COOKIE_OPTS);
+  }
 
   return withSecurityHeaders(response);
 }

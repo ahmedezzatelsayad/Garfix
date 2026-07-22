@@ -1,9 +1,26 @@
 /**
  * AuthContext — Client-side auth provider.
+ *
+ * SEC-010: All mutating requests (POST, PUT, PATCH, DELETE) automatically
+ * include the X-CSRF-Token header by reading the inv_csrf cookie. The
+ * edge middleware verifies this header matches the cookie value (double-submit
+ * pattern). GET requests and auth/refresh are exempt.
  */
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+
+/** Cookie name for CSRF double-submit (same as server-side CSRF_COOKIE in cookies.ts). */
+const CSRF_COOKIE_NAME = "inv_csrf";
+
+/** Read the CSRF token from the browser's cookie jar. */
+function getCsrfToken(): string | undefined {
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${CSRF_COOKIE_NAME}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+/** Mutating HTTP methods that require the CSRF header. */
+const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 
 export interface UserProfile {
   uid: string;
@@ -67,11 +84,26 @@ async function fetchMe(): Promise<UserProfile | null> {
 }
 
 export async function authedFetch(url: string, opts: RequestInit = {}): Promise<Response> {
-  const res = await fetch(url, { ...opts, credentials: "include" });
+  // SEC-010: Attach CSRF token header on mutating requests.
+  const method = (opts.method || "GET").toUpperCase();
+  const headers = new Headers(opts.headers || undefined);
+  if (MUTATING_METHODS.includes(method)) {
+    const csrf = getCsrfToken();
+    if (csrf) headers.set("X-CSRF-Token", csrf);
+  }
+  const finalOpts: RequestInit = { ...opts, headers, credentials: "include" };
+
+  const res = await fetch(url, finalOpts);
   if (res.status !== 401) return res;
   const refreshRes = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
   if (!refreshRes.ok) return res;
-  return fetch(url, { ...opts, credentials: "include" });
+  // After refresh, re-read CSRF token (it may have been re-issued)
+  const refreshedHeaders = new Headers(opts.headers || undefined);
+  if (MUTATING_METHODS.includes(method)) {
+    const csrfAfterRefresh = getCsrfToken();
+    if (csrfAfterRefresh) refreshedHeaders.set("X-CSRF-Token", csrfAfterRefresh);
+  }
+  return fetch(url, { ...opts, headers: refreshedHeaders, credentials: "include" });
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -88,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    // Login is a PUBLIC route — no CSRF header needed (edge middleware skips CSRF for public routes)
     const res = await fetch("/api/auth/login", {
       method: "POST", headers: { "Content-Type": "application/json" },
       credentials: "include", body: JSON.stringify({ email, password }),
@@ -96,13 +129,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json().catch(() => ({ error: "Login failed" }));
       throw new Error(data.error || "Login failed");
     }
+    // After login, the server has set the inv_csrf cookie — fetchMe will now work with CSRF
     const me = await fetchMe();
     setUser(me);
   }, []);
 
   const logout = useCallback(async () => {
     setUser(null);
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    // SEC-010: Logout is a protected POST route — needs CSRF header
+    const csrf = getCsrfToken();
+    const headers: Record<string, string> = {};
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+    await fetch("/api/auth/logout", {
+      method: "POST", headers, credentials: "include",
+    }).catch(() => {});
   }, []);
 
   const isAdmin = user?.role === "admin";
