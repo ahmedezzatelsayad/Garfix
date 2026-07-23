@@ -13,6 +13,44 @@
 | `clients.spec.ts` | إدارة العملاء: إضافة، بحث، CSV import |
 | `settings.spec.ts` | إعدادات الشركة و قوالب الفواتير |
 
+## اختبار التجاوب مع الأجهزة (Responsive Design)
+
+Playwright يدعم اختبار عدة أحجام للشاشة (viewport sizes) للتحقق من تجاوب الواجهة مع الأجهزة المختلفة:
+
+- **المحمول**: 375×667 (iPhone SE) — 390×844 (iPhone 14)
+- **اللوحي**: 768×1024 (iPad) — 1024×1366 (iPad Pro)
+- **الحاسوب**: 1280×720 — 1920×1080
+
+يمكن إضافة مشروع متعدد في `playwright.config.ts`:
+
+```ts
+projects: [
+  { name: 'mobile',  use: { ...devices['iPhone 14'] } },
+  { name: 'tablet',  use: { ...devices['iPad Pro'] } },
+  { name: 'desktop', use: { viewport: { width: 1280, height: 720 } } },
+]
+```
+
+## اختبار العربية و RTL
+
+GarfiX منصة **Arabic-first** لمنطقة الخليج، لذا يجب مراعاة:
+
+- ✅ اتجاه الصفحة `dir="rtl"` مفعّل على جميع الصفحات
+- ✅ محاذاة النصوص والعناصر من اليمين إلى اليسار
+- ✅ ترتيب الحقول والأزرار يعكس اتجاه RTL (flip logical order)
+- ✅ خطوط العربية تُعرض بدون أحرف مكسورة أو أرقام معكوسة
+- ✅ ترجمة أسماء الأيام/الشهور ورسائل الخطأ بالعربية
+
+**نصيحة**: أضف اختبار RTL مخصص:
+
+```ts
+test('RTL layout', async ({ page }) => {
+  await page.goto('/dashboard');
+  const dir = await page.getAttribute('html', 'dir');
+  expect(dir).toBe('rtl');
+});
+```
+
 ## التشغيل
 
 ```bash
@@ -28,6 +66,9 @@ bunx playwright test --ui
 # تشغيل test معين
 bunx playwright test e2e/invoices.spec.ts
 
+# تشغيل على محمول فقط (مشروع mobile)
+bunx playwright test --project=mobile
+
 # تقرير HTML
 bunx playwright show-report
 ```
@@ -39,9 +80,11 @@ bunx playwright show-report
 - Web server: يبدأ تلقائياً قبل الاختبارات
 - Retry: مرتين عند الفشل
 - Screenshot عند الفشل تلقائياً
+- مشاريع متعددة: محمول، لوحي، حاسوب
 
 ## المتطلبات
 
 - Tailwind CSS rendering مُفعّل (no JS-only)
 - البيئة (`baseURL`) يجب أن تكون قيد التشغيل
 - متصفح Chromium (يُثبّت عبر `playwright install`)
+- اتجاه RTL مفعّل في صفحات المشروع (`dir="rtl"`)

@@ -1,13 +1,14 @@
 # Components — مكونات واجهة المستخدم
 
-> مكتبة مكونات GarfiX: 40+ مكون shadcn/ui في `ui/` + 8 مكونات مخصصة في `garfix/` + QueryProvider.
+> مكتبة مكونات GarfiX: 40+ مكون shadcn/ui في `ui/` + 9 مكونات مخصصة في `garfix/` + QueryProvider.
+> جميع مكونات `garfix/` مُصمّمة بالاستجابة التكيّفية عبر نقاط التوقف `sm`/`md`/`lg` من Tailwind CSS.
 
 ## البنية
 
 ```
 components/
 ├── ui/                  # 40+ مكون shadcn/ui (لا تُعدّل مباشرة)
-├── garfix/              # مكونات GarfiX المخصصة
+├── garfix/              # مكونات GarfiX المخصصة (9 مكونات)
 └── QueryProvider.tsx    # React Query provider
 ```
 
@@ -38,7 +39,10 @@ components/
 | `CommandPaletteProvider.tsx` | Provider للوحة الأوامر |
 | `LoadingSkeleton.tsx` | هيكل تحميل متحرك يُطابق شكل المحتوى |
 | `ProfessionalFooter.tsx` | تذييل احترافي للصفحات |
-| `DataTable.tsx` | جدول بيانات متقدم مع فرز، تصفية، وترقيم صفحات |
+| `FooterPageLayout.tsx` | تخطيط صفحة كامل يتضمن تنقل، رأس، محتوى، وتذييل احترافي |
+| `DataTable.tsx` | جدول بيانات متقدم مع فرز، تصفية، وترقيم صفحات — يدعم عرض بطاقات على الأجهزة المحمولة |
+
+> 📱 جميع مكونات `garfix/` تستخدم نقاط التوقف `sm`/`md`/`lg` من Tailwind CSS لضمان الاستجابة التكيّفية على جميع أحجام الشاشات. يدعم `DataTable` عرض بطاقات (Card View) على الأجهزة المحمولة كبديل لعرض الجدول التقليدي.
 
 ## `QueryProvider.tsx`
 
@@ -61,4 +65,5 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 // من garfix/
 import { DataTable } from '@/components/garfix/DataTable';
 import { EmptyState } from '@/components/garfix/EmptyState';
+import { FooterPageLayout } from '@/components/garfix/FooterPageLayout';
 ```
