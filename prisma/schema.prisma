@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,10 +14,300 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  password  String?
+  role      String   @default("user")
+  companyId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  company   Company? @relation(fields: [companyId], references: [id])
 }
 
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  currency    String   @default("USD")
+  taxId       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  accounts    Account[]
+  clients     Client[]
+  suppliers   Supplier[]
+  vouchers    Voucher[]
+  paymentVouchers PaymentVoucher[]
+  openingBalances OpeningBalance[]
+  profitDistributions ProfitDistribution[]
+  lettersOfCredit  LetterOfCredit[]
+  productCatalogs  ProductCatalog[]
+  inventoryItems   InventoryItem[]
+  financialPeriods FinancialPeriod[]
+}
+
+// ─── Chart of Accounts ───
+
+model Account {
+  id          String   @id @default(cuid())
+  code        String
+  name        String
+  type        String   // asset, liability, equity, revenue, expense
+  parentId    String?
+  companyId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id])
+  parent      Account? @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children    Account[] @relation("AccountHierarchy")
+  openingBalances OpeningBalance[]
+  voucherLines    VoucherLine[]
+  @@unique([code, companyId])
+}
+
+// ─── Clients (Accounts Receivable) ───
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  code        String
+  email       String?
+  phone       String?
+  address     String?
+  taxId       String?
+  companyId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id])
+  paymentVouchers PaymentVoucher[]
+  @@unique([code, companyId])
+}
+
+// ─── Suppliers (Accounts Payable) ───
+
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  code        String
+  email       String?
+  phone       String?
+  address     String?
+  taxId       String?
+  companyId   String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id])
+  paymentVouchers PaymentVoucher[]
+  lettersOfCredit  LetterOfCredit[]
+  @@unique([code, companyId])
+}
+
+// ─── Product Catalog ───
+
+model ProductCatalog {
+  id            String   @id @default(cuid())
+  name          String
+  sku           String
+  category      String?
+  purchasePrice Float    @default(0)  // NOT "cost" — this is the correct field name
+  sellingPrice  Float    @default(0)
+  unit          String   @default("piece")
+  description   String?
+  companyId     String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id])
+  inventoryItems InventoryItem[]
+  @@unique([sku, companyId])
+}
+
+// ─── Inventory Items ───
+
+model InventoryItem {
+  id            String   @id @default(cuid())
+  productId     String
+  quantity      Int      @default(0)
+  warehouse     String?
+  batchNumber   String?
+  expiryDate    DateTime?
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  product       ProductCatalog @relation(fields: [productId], references: [id])
+  company       Company  @relation(fields: [companyId], references: [id])
+}
+
+// ─── Financial Periods ───
+
+model FinancialPeriod {
+  id          String   @id @default(cuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("open") // open, closed, locked
+  companyId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id])
+  openingBalances OpeningBalance[]
+  @@unique([name, companyId])
+}
+
+// ─── Vouchers (Journal Entries) ───
+
+model Voucher {
+  id            String   @id @default(cuid())
+  number        String
+  date          DateTime
+  description   String?
+  reference     String?
+  status        String   @default("draft") // draft, posted, cancelled
+  voucherType   String   @default("general") // general, payment, receipt, transfer
+  companyId     String
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id])
+  lines         VoucherLine[]
+  @@unique([number, companyId])
+}
+
+model VoucherLine {
+  id           String   @id @default(cuid())
+  accountId    String
+  debit        Float    @default(0)
+  credit       Float    @default(0)
+  description  String?
+  sortOrder    Int      @default(0)
+  voucherId    String
+  account      Account  @relation(fields: [accountId], references: [id])
+  voucher      Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+}
+
+// ─── Payment Vouchers (AR/AP) ───
+
+model PaymentVoucher {
+  id            String   @id @default(cuid())
+  number        String
+  date          DateTime
+  amount        Float
+  paymentType   String   // receipt, payment
+  direction     String   // inbound, outbound
+  status        String   @default("draft") // draft, posted, cancelled
+  description   String?
+  reference     String?
+  clientId      String?
+  supplierId    String?
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  // NOTE: No deletedAt field — PaymentVoucher does not support soft-delete
+  client        Client?  @relation(fields: [clientId], references: [id])
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  company       Company  @relation(fields: [companyId], references: [id])
+  installments  Installment[]
+  @@unique([number, companyId])
+}
+
+model Installment {
+  id              String   @id @default(cuid())
+  paymentVoucherId String
+  amount          Float
+  dueDate         DateTime
+  status          String   @default("pending") // pending, paid, overdue, cancelled
+  paidDate        DateTime?
+  paymentRef      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  paymentVoucher  PaymentVoucher @relation(fields: [paymentVoucherId], references: [id], onDelete: Cascade)
+}
+
+// ─── Opening Balances ───
+
+model OpeningBalance {
+  id            String   @id @default(cuid())
+  accountId     String
+  periodId      String
+  debit         Float    @default(0)
+  credit        Float    @default(0)
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  account       Account  @relation(fields: [accountId], references: [id])
+  period        FinancialPeriod @relation(fields: [periodId], references: [id])
+  company       Company  @relation(fields: [companyId], references: [id])
+  @@unique([accountId, periodId])
+}
+
+// ─── Profit Distribution ───
+
+model ProfitDistribution {
+  id            String   @id @default(cuid())
+  periodId      String?
+  totalProfit   Float    @default(0)
+  retained      Float    @default(0)
+  distributed   Float    @default(0)
+  distributionType String @default("proportional") // proportional, equal, custom
+  status        String   @default("draft") // draft, approved, executed
+  notes         String?
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id])
+  entries       ProfitDistributionEntry[]
+}
+
+model ProfitDistributionEntry {
+  id            String   @id @default(cuid())
+  distributionId String
+  shareholder   String
+  shareRatio    Float    @default(0)
+  amount        Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  distribution  ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+}
+
+// ─── Letters of Credit (Trade Finance) ───
+
+model LetterOfCredit {
+  id            String   @id @default(cuid())
+  number        String
+  type          String   @default("import") // import, export
+  amount        Float
+  currency      String   @default("USD")
+  status        String   @default("draft") // draft, issued, confirmed, utilized, expired, cancelled
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  beneficiary   String?
+  issuingBank   String?
+  description   String?
+  reference     String?
+  supplierId    String?
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  company       Company  @relation(fields: [companyId], references: [id])
+  lcDocuments   LetterOfCreditDocument[]
+  @@unique([number, companyId])
+}
+
+model LetterOfCreditDocument {
+  id            String   @id @default(cuid())
+  letterOfCreditId String
+  documentType  String  // invoice, bill_of_lading, packing_list, insurance, certificate
+  fileName      String
+  fileUrl       String?
+  uploadedAt    DateTime @default(now())
+  letterOfCredit LetterOfCredit @relation(fields: [letterOfCreditId], references: [id], onDelete: Cascade)
+}
+
+// Keep the existing Post model for compatibility
 model Post {
   id        String   @id @default(cuid())
   title     String

@@ -1,0 +1,742 @@
+     1→/**
+     2→ * oman-tax.ts — Oman Tax Authority e-invoicing compliance module.
+     3→ *
+     4→ * Implements Oman Tax Authority (هيئة الضرائب العُمانية) e-invoicing requirements.
+     5→ * Oman introduced VAT at 5% in 2021 and is developing an e-invoicing framework.
+     6→ *
+     7→ * Key requirements:
+     8→ * - VAT at 5% (standard rate per Oman VAT law)
+     9→ * - OMR currency with exactly 3 decimal places
+    10→ * - Arabic mandatory for all invoice fields
+    11→ * - English optional (recommended for B2B)
+    12→ * - Tax Authority portal submission (framework being developed)
+    13→ * - TRN (Tax Registration Number) mandatory for seller
+    14→ * - Buyer TRN required for B2B (standard) invoices
+    15→ * - 5-year record retention
+    16→ * - Fines for non-compliance up to OMR 20,000
+    17→ *
+    18→ * Oman Tax Authority e-invoicing framework is currently under development.
+    19→ * The structure is ready to plug in when the portal becomes available.
+    20→ */
+    21→
+    22→import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
+    23→import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+    24→import {
+    25→  getCountryConfig,
+    26→  type EInvoiceAuthority,
+    27→} from "@/lib/gulfConfig";
+    28→import { logger } from "@/lib/logger";
+    29→import { db } from "@/lib/db";
+    30→
+    31→// ── Types ──────────────────────────────────────────────────────────────────
+    32→
+    33→export interface OmanTaxValidationError {
+    34→  field: string;
+    35→  messageAr: string; // Arabic error message (Gulf Arabic — Omani style)
+    36→  messageEn: string; // English error message for developer reference
+    37→  severity: "error" | "warning"; // error = blocks submission, warning = advisory
+    38→}
+    39→
+    40→export interface OmanTaxValidationResult {
+    41→  valid: boolean;
+    42→  errors: OmanTaxValidationError[];
+    43→  warnings: OmanTaxValidationError[];
+    44→}
+    45→
+    46→export type OmanTaxInvoiceType = "standard" | "simplified";
+    47→// standard = B2B tax invoice (فاتورة ضريبية) — requires buyer TRN, Arabic mandatory
+    48→// simplified = B2C retail invoice (فاتورة مبسطة) — lighter requirements
+    49→
+    50→export interface OmanTaxInvoicePayload {
+    51→  // ── Header ───────────────────────────────────────────────────────────
+    52→  uuid: string;
+    53→  invoiceNumber: string;
+    54→  invoiceType: OmanTaxInvoiceType;
+    55→  invoiceTypeAr: string;
+    56→  invoiceTypeEn: string;
+    57→  omanTaxRegulation: string; // "Oman Tax Authority e-invoicing"
+    58→
+    59→  // ── Dates (dual calendar) ────────────────────────────────────────────
+    60→  issueDateGregorian: string; // YYYY-MM-DD
+    61→  issueDateHijri: string; // formatted Hijri string
+    62→  issueDateDual: string; // dual format
+    63→  dueDateGregorian: string;
+    64→  dueDateHijri: string;
+    65→  dueDateDual: string;
+    66→
+    67→  // ── Currency ─────────────────────────────────────────────────────────
+    68→  currency: string; // "OMR"
+    69→  currencyDecimalPlaces: number; // 3
+    70→
+    71→  // ── Seller ───────────────────────────────────────────────────────────
+    72→  sellerNameAr: string;
+    73→  sellerNameEn: string | null; // Optional for Oman
+    74→  sellerAddressAr: string;
+    75→  sellerAddressEn: string | null;
+    76→  sellerVatTrn: string; // VAT TRN — mandatory for Oman Tax Authority
+    77→  sellerCommercialRegistration: string | null;
+    78→  sellerCountryCode: string; // "OM"
+    79→
+    80→  // ── Buyer ────────────────────────────────────────────────────────────
+    81→  buyerNameAr: string | null; // Required for standard (B2B)
+    82→  buyerNameEn: string | null;
+    83→  buyerAddressAr: string | null;
+    84→  buyerAddressEn: string | null;
+    85→  buyerVatTrn: string | null; // Required for standard (B2B)
+    86→  buyerCountryCode: string | null;
+    87→
+    88→  // ── Line items ───────────────────────────────────────────────────────
+    89→  lineItems: OmanTaxLineItemPayload[];
+    90→
+    91→  // ── Totals (OMR, 3 decimal places) ───────────────────────────────────
+    92→  subtotal: string;
+    93→  taxRate: string; // "5.000"
+    94→  taxAmount: string;
+    95→  total: string;
+    96→  shipping: string;
+    97→  discount: string;
+    98→  paid: string;
+    99→
+   100→  // ── Notes ────────────────────────────────────────────────────────────
+   101→  notesAr: string | null;
+   102→  notesEn: string | null;
+   103→
+   104→  // ── Oman Tax-specific ────────────────────────────────────────────────
+   105→  eInvoiceAuthority: string; // "oman_tax"
+   106→  previousInvoiceHash: string;
+   107→  invoiceHash: string;
+   108→  paymentMethod: string | null;
+   109→}
+   110→
+   111→export interface OmanTaxLineItemPayload {
+   112→  id: string;
+   113→  descriptionAr: string;
+   114→  descriptionEn: string | null;
+   115→  qty: string; // formatted with 3 decimals
+   116→  unitPrice: string;
+   117→  unitCode: string;
+   118→  lineTotal: string;
+   119→  taxRate: string;
+   120→  taxAmount: string;
+   121→  taxCategory: string; // "S" standard, "Z" zero, "E" exempt
+   122→  taxSchemeAr: string; // "ضريبة القيمة المضافة"
+   123→  taxSchemeEn: string; // "Value Added Tax"
+   124→  discountAmount: string | null;
+   125→}
+   126→
+   127→export interface OmanTaxSubmissionResult {
+   128→  ok: boolean;
+   129→  eInvoiceId?: number;
+   130→  submissionStatus: "pending" | "submitted" | "approved" | "rejected";
+   131→  omanTaxSubmissionId?: string;
+   132→  error?: string;
+   133→  rejectionReason?: string;
+   134→}
+   135→
+   136→// ── Constants ──────────────────────────────────────────────────────────────
+   137→
+   138→export const OMAN_TAX_AUTHORITY: EInvoiceAuthority = "oman_tax";
+   139→export const OMAN_TAX_CURRENCY = "OMR";
+   140→export const OMAN_TAX_DECIMAL_PLACES = 3;
+   141→export const OMAN_TAX_VAT_RATE = 5;
+   142→export const OMAN_TAX_REGULATION = "Oman Tax Authority e-invoicing";
+   143→export const OMAN_TAX_MAX_FINE_OMR = 20000;
+   144→const OMAN_TAX_PORTAL_BASE_URL = "https://tax.gov.om/api/v1"; // placeholder
+   145→
+   146→// ── Arabic error messages (Gulf Arabic — Omani style) ─────────────────────
+   147→
+   148→const ERROR_MESSAGES = {
+   149→  // ── Seller validation ────────────────────────────────────────────────
+   150→  sellerNameArRequired: "اسم البائع باللغة العربية مطلوب — هيئة الضرائب العُمانية",
+   151→  sellerAddressArRequired: "عنوان البائع باللغة العربية مطلوب",
+   152→  sellerTrnRequired: "الرقم الضريبي للبائع مطلوب — هيئة الضرائب العُمانية",
+   153→
+   154→  // ── Buyer validation ─────────────────────────────────────────────────
+   155→  buyerNameArRequired: "اسم المشتري باللغة العربية مطلوب للفواتير الضريبية (B2B)",
+   156→  buyerTrnRequiredB2b: "الرقم الضريبي للمشتري مطلوب للفواتير الضريبية (B2B)",
+   157→  buyerAddressArRequired: "عنوان المشتري باللغة العربية مطلوب للفواتير الضريبية (B2B)",
+   158→
+   159→  // ── Currency ─────────────────────────────────────────────────────────
+   160→  currencyMustBeOmr: "يجب أن تكون العملة ريال عُماني (OMR) — هيئة الضرائب العُمانية",
+   161→  decimalPlacesMustBe3: "يجب أن يكون عدد المنازل العشرية 3 للريال العُماني (OMR)",
+   162→
+   163→  // ── VAT ──────────────────────────────────────────────────────────────
+   164→  vatRateMustBe5: "يجب أن تكون نسبة ضريبة القيمة المضافة 5% — قانون عُمان",
+   165→  vatZeroRateAllowed: "نسبة 0% مسموحة للسلع المعفاة من الضريبة",
+   166→
+   167→  // ── Invoice type ─────────────────────────────────────────────────────
+   168→  invoiceTypeRequired: "نوع الفاتورة مطلوب (ضريبية / مبسطة)",
+   169→  b2bBuyerTrnMismatch: "نوع الفاتورة ضريبية (B2B) يتطلب رقم ضريبي للمشتري",
+   170→
+   171→  // ── Language ─────────────────────────────────────────────────────────
+   172→  arabicMandatory: "اللغة العربية مطلوبة لجميع الفواتير — هيئة الضرائب العُمانية",
+   173→  lineItemDescriptionArRequired: "وصف الصف باللغة العربية مطلوب",
+   174→  englishRecommendedB2b: "اللغة الإنجليزية مقترحة للفواتير B2B (الضريبية)",
+   175→
+   176→  // ── Retention ────────────────────────────────────────────────────────
+   177→  retentionWarning: "⚠️ يجب الاحتفاظ بالسجلات لمدة 5 سنوات — هيئة الضرائب العُمانية. الغرامة قد تصل إلى 20,000 ريال عُماني",
+   178→
+   179→  // ── Portal ───────────────────────────────────────────────────────────
+   180→  portalFrameworkInDevelopment: "⚠️ نظام الفواتير الإلكترونية لدى هيئة الضرائب العُمانية قيد التطوير",
+   181→};
+   182→
+   183→const EN_MESSAGES = {
+   184→  sellerNameArRequired: "Seller name in Arabic is required — Oman Tax Authority",
+   185→  sellerAddressArRequired: "Seller address in Arabic is required",
+   186→  sellerTrnRequired: "Seller VAT TRN is required — Oman Tax Authority",
+   187→  buyerNameArRequired: "Buyer name in Arabic is required for standard (B2B) invoices",
+   188→  buyerTrnRequiredB2b: "Buyer VAT TRN is required for standard (B2B) invoices",
+   189→  buyerAddressArRequired: "Buyer address in Arabic is required for standard (B2B) invoices",
+   190→  currencyMustBeOmr: "Currency must be OMR (Omani Rial) — Oman Tax Authority",
+   191→  decimalPlacesMustBe3: "Currency decimal places must be 3 for OMR",
+   192→  vatRateMustBe5: "VAT rate must be 5% — Oman VAT law",
+   193→  vatZeroRateAllowed: "0% rate is allowed for VAT-exempt goods",
+   194→  invoiceTypeRequired: "Invoice type is required (standard/simplified)",
+   195→  b2bBuyerTrnMismatch: "Standard (B2B) invoice requires buyer VAT TRN",
+   196→  arabicMandatory: "Arabic language is mandatory for all invoices — Oman Tax Authority",
+   197→  lineItemDescriptionArRequired: "Line item description in Arabic is required",
+   198→  englishRecommendedB2b: "English language is recommended for B2B (standard) invoices",
+   199→  retentionWarning: "⚠️ Records must be retained for 5 years — Oman Tax Authority. Fine up to OMR 20,000",
+   200→  portalFrameworkInDevelopment: "⚠️ Oman Tax Authority e-invoicing framework is under development",
+   201→};
+   202→
+   203→// ── Invoice Type Classification ──────────────────────────────────────────
+   204→
+   205→/**
+   206→ * determineOmanTaxInvoiceType — Classifies an invoice as standard (B2B) or simplified (B2C).
+   207→ */
+   208→export function determineOmanTaxInvoiceType(
+   209→  invoice: Record<string, unknown>,
+   210→): OmanTaxInvoiceType {
+   211→  const explicit = invoice.invoiceTypeEn as string;
+   212→  if (explicit === "standard") return "standard";
+   213→  if (explicit === "simplified") return "simplified";
+   214→
+   215→  const typeAr = invoice.invoiceTypeAr as string;
+   216→  if (typeAr === "فاتورة ضريبية") return "standard";
+   217→  if (typeAr === "فاتورة مبسطة") return "simplified";
+   218→
+   219→  // B2B if buyer has VAT number or clientId
+   220→  if (invoice.buyerVatNumber || invoice.clientId) {
+   221→    return "standard";
+   222→  }
+   223→
+   224→  return "simplified";
+   225→}
+   226→
+   227→// ── UUID Generation ──────────────────────────────────────────────────────
+   228→
+   229→/**
+   230→ * generateOmanTaxUuid — Generates a UUID v4 for Oman Tax invoice identification.
+   231→ */
+   232→export function generateOmanTaxUuid(): string {
+   233→  return crypto.randomUUID();
+   234→}
+   235→
+   236→// ── Validation ──────────────────────────────────────────────────────────
+   237→
+   238→/**
+   239→ * validateOmanTaxInvoice — Validates invoice data for Oman Tax Authority compliance.
+   240→ *
+   241→ * Checks:
+   242→ * - Arabic mandatory for all invoice fields (seller name, seller address)
+   243→ * - Buyer Arabic name + TRN required for B2B (standard)
+   244→ * - OMR currency with exactly 3 decimal places
+   245→ * - 5% VAT rate (0% allowed for exempt)
+   246→ * - Seller VAT TRN mandatory
+   247→ * - Buyer VAT TRN mandatory for B2B (standard)
+   248→ * - English recommended (warning) for B2B invoices
+   249→ * - Line items must have Arabic descriptions
+   250→ */
+   251→export function validateOmanTaxInvoice(
+   252→  invoice: Record<string, unknown>,
+   253→  company: Record<string, unknown>,
+   254→): OmanTaxValidationResult {
+   255→  const errors: OmanTaxValidationError[] = [];
+   256→  const warnings: OmanTaxValidationError[] = [];
+   257→
+   258→  // ── Step 0: Skip for non-Oman companies ──────────────────────────────
+   259→  const countryCode = company.country as string;
+   260→  if (countryCode !== "OM") {
+   261→    return { valid: true, errors: [], warnings: [] };
+   262→  }
+   263→
+   264→  const invoiceType = determineOmanTaxInvoiceType(invoice);
+   265→
+   266→  // ── Step 1: Seller VAT TRN ───────────────────────────────────────────
+   267→  const sellerTrn =
+   268→    (invoice.vatNumber as string) || (company.vatNumber as string);
+   269→  if (!sellerTrn) {
+   270→    errors.push({
+   271→      field: "vatNumber",
+   272→      messageAr: ERROR_MESSAGES.sellerTrnRequired,
+   273→      messageEn: EN_MESSAGES.sellerTrnRequired,
+   274→      severity: "error",
+   275→    });
+   276→  }
+   277→
+   278→  // ── Step 2: Seller name (Arabic mandatory) ──────────────────────────
+   279→  const sellerNameAr =
+   280→    (invoice.sellerNameAr as string) || (company.nameAr as string);
+   281→  if (!sellerNameAr) {
+   282→    errors.push({
+   283→      field: "sellerNameAr",
+   284→      messageAr: ERROR_MESSAGES.sellerNameArRequired,
+   285→      messageEn: EN_MESSAGES.sellerNameArRequired,
+   286→      severity: "error",
+   287→    });
+   288→  }
+   289→
+   290→  // English seller name — recommended warning for B2B
+   291→  const sellerNameEn =
+   292→    (invoice.sellerNameEn as string) || (company.name as string);
+   293→  if (!sellerNameEn && invoiceType === "standard") {
+   294→    warnings.push({
+   295→      field: "sellerNameEn",
+   296→      messageAr: ERROR_MESSAGES.englishRecommendedB2b,
+   297→      messageEn: EN_MESSAGES.englishRecommendedB2b,
+   298→      severity: "warning",
+   299→    });
+   300→  }
+   301→
+   302→  // ── Step 3: Seller address (Arabic mandatory) ────────────────────────
+   303→  const sellerAddressAr =
+   304→    (invoice.sellerAddressAr as string) ||
+   305→    (company.addressAr as string) ||
+   306→    (company.address as string);
+   307→  if (!sellerAddressAr) {
+   308→    errors.push({
+   309→      field: "sellerAddressAr",
+   310→      messageAr: ERROR_MESSAGES.sellerAddressArRequired,
+   311→      messageEn: EN_MESSAGES.sellerAddressArRequired,
+   312→      severity: "error",
+   313→    });
+   314→  }
+   315→
+   316→  // ── Step 4: Buyer validation (type-specific) ─────────────────────────
+   317→  if (invoiceType === "standard") {
+   318→    const buyerNameAr = invoice.buyerNameAr as string;
+   319→    if (!buyerNameAr) {
+   320→      errors.push({
+   321→        field: "buyerNameAr",
+   322→        messageAr: ERROR_MESSAGES.buyerNameArRequired,
+   323→        messageEn: EN_MESSAGES.buyerNameArRequired,
+   324→        severity: "error",
+   325→      });
+   326→    }
+   327→
+   328→    const buyerTrn =
+   329→      (invoice.buyerVatNumber as string) ||
+   330→      (invoice.buyerTaxRegistrationNumber as string);
+   331→    if (!buyerTrn) {
+   332→      errors.push({
+   333→        field: "buyerVatNumber",
+   334→        messageAr: ERROR_MESSAGES.buyerTrnRequiredB2b,
+   335→        messageEn: EN_MESSAGES.buyerTrnRequiredB2b,
+   336→        severity: "error",
+   337→      });
+   338→    }
+   339→
+   340→    const buyerAddressAr = invoice.buyerAddressAr as string;
+   341→    if (!buyerAddressAr) {
+   342→      errors.push({
+   343→        field: "buyerAddressAr",
+   344→        messageAr: ERROR_MESSAGES.buyerAddressArRequired,
+   345→        messageEn: EN_MESSAGES.buyerAddressArRequired,
+   346→        severity: "error",
+   347→      });
+   348→    }
+   349→
+   350→    // English buyer name — recommended warning for B2B
+   351→    const buyerNameEn = invoice.buyerNameEn as string;
+   352→    if (!buyerNameEn) {
+   353→      warnings.push({
+   354→        field: "buyerNameEn",
+   355→        messageAr: ERROR_MESSAGES.englishRecommendedB2b,
+   356→        messageEn: EN_MESSAGES.englishRecommendedB2b,
+   357→        severity: "warning",
+   358→      });
+   359→    }
+   360→  }
+   361→
+   362→  // ── Step 5: Currency ─────────────────────────────────────────────────
+   363→  const currency = invoice.currency as string;
+   364→  if (currency && currency !== OMAN_TAX_CURRENCY) {
+   365→    errors.push({
+   366→      field: "currency",
+   367→      messageAr: ERROR_MESSAGES.currencyMustBeOmr,
+   368→      messageEn: EN_MESSAGES.currencyMustBeOmr,
+   369→      severity: "error",
+   370→    });
+   371→  }
+   372→
+   373→  const decimalPlaces = invoice.currencyDecimalPlaces as number;
+   374→  if (decimalPlaces && decimalPlaces !== OMAN_TAX_DECIMAL_PLACES) {
+   375→    errors.push({
+   376→      field: "currencyDecimalPlaces",
+   377→      messageAr: ERROR_MESSAGES.decimalPlacesMustBe3,
+   378→      messageEn: EN_MESSAGES.decimalPlacesMustBe3,
+   379→      severity: "error",
+   380→    });
+   381→  }
+   382→
+   383→  // ── Step 6: VAT rate ─────────────────────────────────────────────────
+   384→  const taxRate = parseFloat(
+   385→    (invoice.taxRate as string) || (company.defaultTaxRate as string) || "0",
+   386→  );
+   387→  if (taxRate !== OMAN_TAX_VAT_RATE && taxRate !== 0) {
+   388→    errors.push({
+   389→      field: "taxRate",
+   390→      messageAr: ERROR_MESSAGES.vatRateMustBe5,
+   391→      messageEn: EN_MESSAGES.vatRateMustBe5,
+   392→      severity: "error",
+   393→    });
+   394→  }
+   395→
+   396→  // ── Step 7: Line items Arabic description ────────────────────────────
+   397→  const lineItemsAr = invoice.lineItemsAr as string;
+   398→  if (!lineItemsAr) {
+   399→    warnings.push({
+   400→      field: "lineItemsAr",
+   401→      messageAr: ERROR_MESSAGES.lineItemDescriptionArRequired,
+   402→      messageEn: EN_MESSAGES.lineItemDescriptionArRequired,
+   403→      severity: "warning",
+   404→    });
+   405→  }
+   406→
+   407→  // ── Step 8: Advisory warnings ────────────────────────────────────────
+   408→  warnings.push({
+   409→    field: "recordRetention",
+   410→    messageAr: ERROR_MESSAGES.retentionWarning,
+   411→    messageEn: EN_MESSAGES.retentionWarning,
+   412→    severity: "warning",
+   413→  });
+   414→
+   415→  warnings.push({
+   416→    field: "omanTaxPortal",
+   417→    messageAr: ERROR_MESSAGES.portalFrameworkInDevelopment,
+   418→    messageEn: EN_MESSAGES.portalFrameworkInDevelopment,
+   419→    severity: "warning",
+   420→  });
+   421→
+   422→  const valid = errors.length === 0;
+   423→  if (!valid) {
+   424→    logger.warn("[oman-tax] Invoice validation failed", {
+   425→      companySlug: company.slug,
+   426→      invoiceNumber: invoice.invoiceNumber,
+   427→      errorCount: errors.length,
+   428→      errors: errors.map((e) => e.messageEn),
+   429→    });
+   430→  } else {
+   431→    logger.info("[oman-tax] Invoice validation passed", {
+   432→      companySlug: company.slug,
+   433→      invoiceNumber: invoice.invoiceNumber,
+   434→      warningCount: warnings.length,
+   435→    });
+   436→  }
+   437→
+   438→  return { valid, errors, warnings };
+   439→}
+   440→
+   441→// ── Payload Generation ──────────────────────────────────────────────────
+   442→
+   443→/**
+   444→ * generateOmanTaxInvoicePayload — Generates a structured payload for Oman Tax submission.
+   445→ */
+   446→export function generateOmanTaxInvoicePayload(
+   447→  invoice: Record<string, unknown>,
+   448→  company: Record<string, unknown>,
+   449→): OmanTaxInvoicePayload {
+   450→  const invoiceType = determineOmanTaxInvoiceType(invoice);
+   451→  const uuid = (invoice.uuid as string) || generateOmanTaxUuid();
+   452→  const dp = OMAN_TAX_DECIMAL_PLACES;
+   453→
+   454→  // ── Dates ────────────────────────────────────────────────────────────
+   455→  const issueDate = (invoice.issueDate as string) || new Date().toISOString().split("T")[0];
+   456→  const dueDate = (invoice.dueDate as string) || issueDate;
+   457→
+   458→  const issueHijri = formatHijri(issueDate);
+   459→  const dueHijri = formatHijri(dueDate);
+   460→  const issueDual = formatDualDate(issueDate);
+   461→  const dueDual = formatDualDate(dueDate);
+   462→
+   463→  // ── Seller fields ────────────────────────────────────────────────────
+   464→  const sellerNameAr = (invoice.sellerNameAr as string) || (company.nameAr as string) || "";
+   465→  const sellerNameEn = (invoice.sellerNameEn as string) || (company.name as string) || null;
+   466→  const sellerAddressAr =
+   467→    (invoice.sellerAddressAr as string) ||
+   468→    (company.addressAr as string) ||
+   469→    (company.address as string) ||
+   470→    "";
+   471→  const sellerAddressEn =
+   472→    (invoice.sellerAddressEn as string) || (company.address as string) || null;
+   473→  const sellerTrn = (invoice.vatNumber as string) || (company.vatNumber as string) || "";
+   474→
+   475→  // ── Buyer fields ─────────────────────────────────────────────────────
+   476→  const buyerNameAr = (invoice.buyerNameAr as string) || null;
+   477→  const buyerNameEn = (invoice.buyerNameEn as string) || null;
+   478→  const buyerAddressAr = (invoice.buyerAddressAr as string) || null;
+   479→  const buyerAddressEn = (invoice.buyerAddressEn as string) || null;
+   480→  const buyerTrn = (invoice.buyerVatNumber as string) || null;
+   481→  const buyerCountryCode = (invoice.buyerCountryCode as string) || null;
+   482→
+   483→  // ── Line items ───────────────────────────────────────────────────────
+   484→  const lineItemsRaw = (invoice.lineItems as string) || "[]";
+   485→  let parsedItems: LineItem[] = [];
+   486→  try {
+   487→    parsedItems = JSON.parse(lineItemsRaw);
+   488→  } catch {
+   489→    parsedItems = [];
+   490→  }
+   491→
+   492→  const omanLineItems: OmanTaxLineItemPayload[] = parsedItems.map((item, idx) => {
+   493→    const lineTotal = num(item.total ?? num(item.qty) * num(item.price), dp);
+   494→    const lineTaxAmount = (lineTotal * OMAN_TAX_VAT_RATE) / 100;
+   495→    return {
+   496→      id: `LI-${idx + 1}`,
+   497→      descriptionAr: ((item as unknown) as Record<string, unknown>).descriptionAr as string || item.description || "",
+   498→      descriptionEn: item.description || null,
+   499→      qty: num(item.qty, dp).toFixed(dp),
+   500→      unitPrice: num(item.price, dp).toFixed(dp),
+   501→      unitCode: "EA",
+   502→      lineTotal: lineTotal.toFixed(dp),
+   503→      taxRate: OMAN_TAX_VAT_RATE.toFixed(dp),
+   504→      taxAmount: num(lineTaxAmount, dp).toFixed(dp),
+   505→      taxCategory: "S",
+   506→      taxSchemeAr: "ضريبة القيمة المضافة",
+   507→      taxSchemeEn: "Value Added Tax",
+   508→      discountAmount: null,
+   509→    };
+   510→  });
+   511→
+   512→  // ── Totals ───────────────────────────────────────────────────────────
+   513→  const shipping = num(invoice.shipping, dp);
+   514→  const discount = num(invoice.discount, dp);
+   515→  const totals = calcInvoiceTotals(parsedItems, OMAN_TAX_VAT_RATE, shipping, discount);
+   516→
+   517→  const typeLabels: Record<OmanTaxInvoiceType, { ar: string; en: string }> = {
+   518→    standard: { ar: "فاتورة ضريبية", en: "standard" },
+   519→    simplified: { ar: "فاتورة مبسطة", en: "simplified" },
+   520→  };
+   521→
+   522→  return {
+   523→    uuid,
+   524→    invoiceNumber: (invoice.invoiceNumber as string) || "",
+   525→    invoiceType,
+   526→    invoiceTypeAr: typeLabels[invoiceType].ar,
+   527→    invoiceTypeEn: typeLabels[invoiceType].en,
+   528→    omanTaxRegulation: OMAN_TAX_REGULATION,
+   529→
+   530→    issueDateGregorian: issueDate,
+   531→    issueDateHijri: issueHijri,
+   532→    issueDateDual: issueDual,
+   533→    dueDateGregorian: dueDate,
+   534→    dueDateHijri: dueHijri,
+   535→    dueDateDual: dueDual,
+   536→
+   537→    currency: OMAN_TAX_CURRENCY,
+   538→    currencyDecimalPlaces: dp,
+   539→
+   540→    sellerNameAr,
+   541→    sellerNameEn,
+   542→    sellerAddressAr,
+   543→    sellerAddressEn,
+   544→    sellerVatTrn: sellerTrn,
+   545→    sellerCommercialRegistration:
+   546→      (company.commercialRegistration as string) || null,
+   547→    sellerCountryCode: "OM",
+   548→
+   549→    buyerNameAr,
+   550→    buyerNameEn,
+   551→    buyerAddressAr,
+   552→    buyerAddressEn,
+   553→    buyerVatTrn: buyerTrn,
+   554→    buyerCountryCode,
+   555→
+   556→    lineItems: omanLineItems,
+   557→
+   558→    subtotal: num(totals.subtotal, dp).toFixed(dp),
+   559→    taxRate: OMAN_TAX_VAT_RATE.toFixed(dp),
+   560→    taxAmount: num(totals.taxAmount, dp).toFixed(dp),
+   561→    total: num(totals.total, dp).toFixed(dp),
+   562→    shipping: num(totals.shipping, dp).toFixed(dp),
+   563→    discount: num(totals.discount, dp).toFixed(dp),
+   564→    paid: num(invoice.paid, dp).toFixed(dp),
+   565→
+   566→    notesAr: (invoice.notesAr as string) || null,
+   567→    notesEn: (invoice.notes as string) || null,
+   568→
+   569→    eInvoiceAuthority: OMAN_TAX_AUTHORITY,
+   570→    previousInvoiceHash: (invoice.previousInvoiceHash as string) || "",
+   571→    invoiceHash: "",
+   572→    paymentMethod: (invoice.paymentMethod as string) || null,
+   573→  };
+   574→}
+   575→
+   576→// ── Submission ──────────────────────────────────────────────────────────
+   577→
+   578→/**
+   579→ * submitOmanTaxInvoice — Submits an invoice payload to the Oman Tax Authority portal.
+   580→ *
+   581→ * Placeholder: Oman Tax e-invoicing framework is under development.
+   582→ * Stores EInvoice record with authorityType="oman_tax".
+   583→ */
+   584→export async function submitOmanTaxInvoice(
+   585→  payload: OmanTaxInvoicePayload,
+   586→): Promise<OmanTaxSubmissionResult> {
+   587→  logger.info("[oman-tax] Submitting invoice to Oman Tax Authority portal", {
+   588→    invoiceNumber: payload.invoiceNumber,
+   589→    invoiceType: payload.invoiceType,
+   590→    note: "Oman Tax e-invoicing framework is under development — placeholder submission",
+   591→  });
+   592→
+   593→  try {
+   594→    const eInvoice = await db.eInvoice.create({
+   595→      data: {
+   596→        authorityType: OMAN_TAX_AUTHORITY,
+   597→        submissionStatus: "pending",
+   598→        uuid: payload.uuid,
+   599→        rawXml: JSON.stringify(payload),
+   600→        companySlug: payload.sellerNameAr, // Temporary — should use actual companySlug
+   601→        invoiceId: 0, // Placeholder — should link to actual invoice
+   602→      },
+   603→    });
+   604→
+   605→    logger.info("[oman-tax] EInvoice record created (placeholder)", {
+   606→      eInvoiceId: eInvoice.id,
+   607→      invoiceNumber: payload.invoiceNumber,
+   608→      authorityType: OMAN_TAX_AUTHORITY,
+   609→    });
+   610→
+   611→    return {
+   612→      ok: true,
+   613→      eInvoiceId: eInvoice.id,
+   614→      submissionStatus: "pending",
+   615→      omanTaxSubmissionId: `OMAN-PLACEHOLDER-${eInvoice.id}`,
+   616→    };
+   617→  } catch (err) {
+   618→    const errorMsg = err instanceof Error ? err.message : String(err);
+   619→    logger.error("[oman-tax] Failed to create EInvoice record", {
+   620→      error: errorMsg,
+   621→      invoiceNumber: payload.invoiceNumber,
+   622→    });
+   623→
+   624→    return {
+   625→      ok: false,
+   626→      submissionStatus: "rejected",
+   627→      error: errorMsg,
+   628→      rejectionReason: "Failed to create EInvoice record — Oman Tax portal submission placeholder",
+   629→    };
+   630→  }
+   631→}
+   632→
+   633→// ── Auto-Populate ──────────────────────────────────────────────────────
+   634→
+   635→/**
+   636→ * autoPopulateOmanTaxFields — Auto-populates Oman Tax-specific fields for an invoice.
+   637→ *
+   638→ * Populates:
+   639→ * - UUID for Oman Tax identification
+   640→ * - Hijri dates
+   641→ * - Seller VAT TRN from company
+   642→ * - Arabic seller fields from company (mandatory)
+   643→ * - English seller fields (optional, recommended for B2B)
+   644→ * - OMR currency enforcement, 3-decimal precision
+   645→ * - 5% VAT rate
+   646→ * - Invoice type classification
+   647→ * - E-invoice authority
+   648→ * - PIH placeholder
+   649→ */
+   650→export function autoPopulateOmanTaxFields(
+   651→  invoiceData: Record<string, unknown>,
+   652→  company: Record<string, unknown>,
+   653→): Record<string, unknown> {
+   654→  const result = { ...invoiceData };
+   655→  const dp = OMAN_TAX_DECIMAL_PLACES;
+   656→
+   657→  // ── UUID ─────────────────────────────────────────────────────────────
+   658→  if (!result.uuid) {
+   659→    result.uuid = generateOmanTaxUuid();
+   660→  }
+   661→
+   662→  // ── Hijri dates ──────────────────────────────────────────────────────
+   663→  if (result.issueDate && !result.hijriIssueDate) {
+   664→    result.hijriIssueDate = formatHijri(result.issueDate as string);
+   665→  }
+   666→  if (result.dueDate && !result.hijriDueDate) {
+   667→    result.hijriDueDate = formatHijri(result.dueDate as string);
+   668→  }
+   669→  if (result.issueDate && !result.issueDateDual) {
+   670→    result.issueDateDual = formatDualDate(result.issueDate as string);
+   671→  }
+   672→  if (result.dueDate && !result.dueDateDual) {
+   673→    result.dueDateDual = formatDualDate(result.dueDate as string);
+   674→  }
+   675→
+   676→  // ── Seller VAT TRN ───────────────────────────────────────────────────
+   677→  if (!result.vatNumber) {
+   678→    result.vatNumber = company.vatNumber || "";
+   679→  }
+   680→
+   681→  // ── Seller name (Arabic mandatory) ──────────────────────────────────
+   682→  if (!result.sellerNameAr) {
+   683→    result.sellerNameAr = company.nameAr || "";
+   684→  }
+   685→  // English seller name — optional, fill if available
+   686→  if (!result.sellerNameEn && company.name) {
+   687→    result.sellerNameEn = company.name;
+   688→  }
+   689→
+   690→  // ── Seller address ───────────────────────────────────────────────────
+   691→  if (!result.sellerAddressAr) {
+   692→    result.sellerAddressAr = company.addressAr || company.address || "";
+   693→  }
+   694→  if (!result.sellerAddressEn && company.address) {
+   695→    result.sellerAddressEn = company.address;
+   696→  }
+   697→
+   698→  // ── Currency ─────────────────────────────────────────────────────────
+   699→  result.currency = OMAN_TAX_CURRENCY;
+   700→  result.currencyDecimalPlaces = dp;
+   701→
+   702→  // ── Invoice type ─────────────────────────────────────────────────────
+   703→  const invoiceType = determineOmanTaxInvoiceType(result);
+   704→  result.invoiceTypeEn = invoiceType;
+   705→
+   706→  const typeLabelsAr: Record<OmanTaxInvoiceType, string> = {
+   707→    standard: "فاتورة ضريبية",
+   708→    simplified: "فاتورة مبسطة",
+   709→  };
+   710→  result.invoiceTypeAr = typeLabelsAr[invoiceType];
+   711→
+   712→  // ── VAT rate ─────────────────────────────────────────────────────────
+   713→  if (!result.taxRate) {
+   714→    result.taxRate = OMAN_TAX_VAT_RATE.toFixed(dp);
+   715→  }
+   716→
+   717→  // ── 3-decimal precision on monetary fields ───────────────────────────
+   718→  const monetaryFields = ["subtotal", "taxAmount", "total", "shipping", "discount", "paid"];
+   719→  for (const field of monetaryFields) {
+   720→    if (result[field] !== undefined && result[field] !== null) {
+   721→      result[field] = num(result[field], dp).toFixed(dp);
+   722→    }
+   723→  }
+   724→
+   725→  // ── E-invoice authority ──────────────────────────────────────────────
+   726→  result.eInvoiceAuthority = OMAN_TAX_AUTHORITY;
+   727→
+   728→  // ── PIH placeholder ──────────────────────────────────────────────────
+   729→  if (!result.previousInvoiceHash) {
+   730→    result.previousInvoiceHash = "";
+   731→  }
+   732→
+   733→  logger.debug("[oman-tax] Auto-populated Oman Tax fields", {
+   734→    uuid: result.uuid,
+   735→    invoiceType: result.invoiceTypeEn,
+   736→    currency: result.currency,
+   737→    taxRate: result.taxRate,
+   738→  });
+   739→
+   740→  return result;
+   741→}
+   742→

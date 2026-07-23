@@ -1,0 +1,2002 @@
+     1→// Garfix v12 — Prisma schema
+     2→// Multi-tenant SaaS ERP/Invoicing platform
+     3→//
+     4→// ─────────────────────────────────────────────────────────────────────────────
+     5→// UNIFIED POSTGRESQL CONFIGURATION (All Environments)
+     6→// ─────────────────────────────────────────────────────────────────────────────
+     7→// This project uses PostgreSQL in ALL environments:
+     8→//   - Development: Docker Compose or Neon serverless
+     9→//   - CI/CD: GitHub Actions with postgres:16-alpine service
+    10→//   - Production: Managed PostgreSQL (Neon, RDS, or Supabase)
+    11→//
+    12→// SQLite has been REMOVED as it's unsuitable for multi-tenant SaaS:
+    13→//   - No concurrent writes under load
+    14→//   - No connection pooling
+    15→//   - No read replicas
+    16→//   - WAL mode is a workaround, not a solution
+    17→//
+    18→// Migration from SQLite to PostgreSQL required NO model changes because
+    19→// the schema was already PostgreSQL-compatible (String for money/JSON).
+    20→// ─────────────────────────────────────────────────────────────────────────────
+    21→
+    22→generator client {
+    23→  provider = "prisma-client-js"
+    24→}
+    25→
+    26→// ── UNIFIED POSTGRESQL (all environments) ────────────────────────────────
+    27→// EA-002 FIX: Switched from SQLite to PostgreSQL universally.
+    28→// All environments now use PostgreSQL for consistency and reliability.
+    29→// H1 FIX: directUrl enables Prisma Studio / migrate deploy to use a direct
+    30→// connection while the app uses pooled URL.
+    31→datasource db {
+    32→  provider  = "postgresql"
+    33→  url       = env("DATABASE_URL")
+    34→  // H1 FIX: directUrl for Prisma Studio / migrate deploy
+    35→  // REQUIRED: Set DATABASE_DIRECT_URL in all environments (see .env.example)
+    36→  directUrl = env("DATABASE_DIRECT_URL")
+    37→}
+    38→
+    39→// ── SQLite removed — kept for reference only ────────────────────────────────
+    40→// datasource db {
+    41→//   provider = "sqlite"
+    42→//   url      = env("DATABASE_URL")
+    43→// }
+    44→
+    45→// ────────────────────────────────────────────────────────────────────────────
+    46→// Users & Auth
+    47→// ────────────────────────────────────────────────────────────────────────────
+    48→
+    49→model User {
+    50→  id            String   @id @default(cuid())
+    51→  uid           String   @unique
+    52→  email         String   @unique
+    53→  passwordHash  String
+    54→  displayName   String
+    55→  role          String   @default("employee") // admin | editor | employee | viewer
+    56→  companies     String   @default("[]") // JSON array of company slugs
+    57→  permissions   String   @default("{}") // JSON map
+    58→  tokenVersion  Int      @default(0)
+    59→  emailVerified Boolean  @default(false)
+    60→  createdAt     DateTime @default(now())
+    61→  updatedAt     DateTime @updatedAt
+    62→
+    63→  chatHistory        ChatMessage[]
+    64→  emailVerifications EmailVerification[]
+    65→  orderDeliveries    OrderDelivery[]
+    66→  auditLogs          AuditLog[]
+    67→  mfaSecrets         MFASecret[]
+    68→  sessions           SessionRegistry[]
+    69→
+    70→  @@index([role])
+    71→  @@map("app_users")
+    72→}
+    73→
+    74→model EmailVerification {
+    75→  id        String    @id @default(cuid())
+    76→  userId    String
+    77→  token     String?   @unique
+    78→  codeHash  String?
+    79→  purpose   String    @default("email_verify") // email_verify | password_reset
+    80→  attempts  Int       @default(0)
+    81→  expiresAt DateTime
+    82→  usedAt    DateTime?
+    83→  createdAt DateTime  @default(now())
+    84→
+    85→  user User @relation(fields: [userId], references: [uid], onDelete: Restrict)
+    86→
+    87→  @@index([userId, purpose, createdAt])
+    88→  @@map("email_verifications")
+    89→}
+    90→
+    91→// ────────────────────────────────────────────────────────────────────────────
+    92→// Companies (Tenants)
+    93→// ────────────────────────────────────────────────────────────────────────────
+    94→
+    95→model Company {
+    96→  id                           Int       @id @default(autoincrement())
+    97→  name                         String
+    98→  slug                         String    @unique
+    99→  logoBase64                   String? // EA-013 DEPRECATED: Use storage.ts instead. This column will be removed in a future migration.
+   100→  nameAr                       String?
+   101→  emoji                        String?
+   102→  color                        String?
+   103→  phone                        String?
+   104→  email                        String?
+   105→  address                      String?
+   106→  vatNumber                    String?
+   107→  commercialRegistration       String? // السجل التجاري (Kuwait CR number)
+   108→  mociNumber                   String? // رقم وزارة التجارة والصناعة (Kuwait MOCI registration number)
+   109→  currency                     String    @default("KWD")
+   110→  country                      String? // KW | SA | AE | BH | OM | QA | EG
+   111→  timezone                     String?
+   112→  defaultTaxRate               String    @default("0")
+   113→  // Gulf-specific settings
+   114→  weekendDays                  String    @default("[5,6]") // JSON array: 5=Fri, 6=Sat (Gulf weekend)
+   115→  ramadanHours                 Boolean   @default(false) // reduced working hours during Ramadan
+   116→  hijriDateRequired            Boolean   @default(false) // require Hijri (Islamic) date alongside Gregorian
+   117→  arabicMandatory              Boolean   @default(false) // Arabic language mandatory for all documents
+   118→  recordRetentionYears         Int       @default(5) // minimum record retention period in years (GCC compliance)
+   119→  openrouterApiKey             String?
+   120→  openrouterModel              String    @default("anthropic/claude-3.5-haiku")
+   121→  // SaaS subscription
+   122→  plan                         String    @default("trial")
+   123→  subscriptionStatus           String    @default("active")
+   124→  trialEndsAt                  DateTime?
+   125→  currentBillingCycleEnd       DateTime? // end of the current billing cycle
+   126→  stripeCustomerId             String?
+   127→  stripeSubscriptionId         String?
+   128→  myfatoorahCustomerId         String?
+   129→  paymobCustomerId             String?
+   130→  // WhatsApp config (encrypted at rest in production)
+   131→  whatsappEnabled              Boolean   @default(false)
+   132→  whatsappBusinessNumber       String?
+   133→  whatsappPhoneNumberId        String?
+   134→  whatsappAccessTokenEnc       String?
+   135→  whatsappAppSecretEnc         String?
+   136→  whatsappVerifyTokenHash      String?
+   137→  whatsappGreeting             String?
+   138→  whatsappCredentialsUpdatedAt DateTime?
+   139→  // P0.3 fix: deletedAt was referenced by tenants/[slug] + companies/[slug]
+   140→  // DELETE handlers but was missing from the model — caused 3 pre-existing
+   141→  // tsc errors. Adding it here closes all of them and enables proper
+   142→  // soft-delete cascade for tenants (5-year financial-record retention).
+   143→  deletedAt                    DateTime?
+   144→  createdAt                    DateTime  @default(now())
+   145→  updatedAt                    DateTime  @updatedAt
+   146→
+   147→  clients                 Client[]
+   148→  invoices                Invoice[]
+   149→  products                ProductCatalog[]
+   150→  purchaseInvoices        PurchaseInvoice[]
+   151→  employees               Employee[]
+   152→  journalEntries          JournalEntry[]
+   153→  accounts                Account[]
+   154→  eInvoices               EInvoice[]
+   155→  zatcaCertificates       ZatcaCertificate[]
+   156→  orderDeliveries         OrderDelivery[]
+   157→  setupWizard             SetupWizardProgress?
+   158→  paymentTxns             PaymentTransaction[]
+   159→  aiLogs                  AiProcessingLog[]
+   160→  invoiceTemplates        InvoiceTemplate[]
+   161→  invoiceTemplateSettings InvoiceTemplateSettings?
+   162→  warehouses              Warehouse[]
+   163→  inventoryItems          InventoryItem[]
+   164→  stockMovements          StockMovement[]
+   165→  productMatchAudit       ProductMatchAudit[]
+   166→  productAliases          ProductAlias[]
+   167→  matchOverrides          MatchOverride[]
+   168→  runtime                 CompanyRuntime?
+   169→  attendances             Attendance[]
+   170→  salaries                Salary[]
+   171→  commissions             Commission[]
+   172→  leaveRequests           LeaveRequest[]
+   173→  performances            Performance[]
+   174→  automationRules         AutomationRule[]
+   175→  notifications           Notification[]
+   176→  suppliers               Supplier[]
+   177→  salesReturns            SalesReturn[]
+   178→  purchaseReturns         PurchaseReturn[]
+   179→  refundTransactions      RefundTransaction[]
+   180→  subscriptionSchedules   SubscriptionSchedule[]
+   181→
+   182→  @@index([stripeCustomerId])
+   183→  @@index([stripeSubscriptionId])
+   184→  @@index([subscriptionStatus])
+   185→  @@index([myfatoorahCustomerId])
+   186→  @@index([paymobCustomerId])
+   187→  @@index([plan])
+   188→  @@index([deletedAt])
+   189→  @@map("companies")
+   190→}
+   191→
+   192→model SetupWizardProgress {
+   193→  id          Int      @id @default(autoincrement())
+   194→  companySlug String   @unique
+   195→  currentStep Int      @default(1)
+   196→  completed   Boolean  @default(false)
+   197→  data        String   @default("{}") // JSON
+   198→  createdAt   DateTime @default(now())
+   199→  updatedAt   DateTime @updatedAt
+   200→
+   201→  company Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   202→
+   203→  @@map("setup_wizard_progress")
+   204→}
+   205→
+   206→// ────────────────────────────────────────────────────────────────────────────
+   207→// Clients
+   208→// ────────────────────────────────────────────────────────────────────────────
+   209→
+   210→model Client {
+   211→  id          Int       @id @default(autoincrement())
+   212→  name        String
+   213→  email       String?
+   214→  phone       String?
+   215→  company     String?
+   216→  address     String?
+   217→  notes       String?
+   218→  companySlug String
+   219→  // DB-005 FIX: Soft delete
+   220→  deletedAt   DateTime?
+   221→  deletedBy   String?
+   222→  createdAt   DateTime  @default(now())
+   223→  updatedAt   DateTime  @updatedAt
+   224→
+   225→  tenant   Company   @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   226→  invoices Invoice[]
+   227→
+   228→  @@index([companySlug, createdAt, id])
+   229→  @@index([companySlug, deletedAt])
+   230→  @@map("clients")
+   231→}
+   232→
+   233→// ────────────────────────────────────────────────────────────────────────────
+   234→// Invoices
+   235→// ────────────────────────────────────────────────────────────────────────────
+   236→
+   237→model Invoice {
+   238→  id                    Int       @id @default(autoincrement())
+   239→  invoiceNumber         String
+   240→  companySlug           String
+   241→  clientId              Int?
+   242→  clientName            String
+   243→  clientEmail           String?
+   244→  clientPhone           String?
+   245→  clientAddress         String?
+   246→  issueDate             String // YYYY-MM-DD
+   247→  dueDate               String
+   248→  status                String    @default("draft") // draft | sent | paid | partial | overdue | cancelled
+   249→  lineItems             String    @default("[]") // JSON
+   250→  subtotal              String    @default("0")
+   251→  taxRate               String    @default("0")
+   252→  taxAmount             String    @default("0")
+   253→  total                 String    @default("0")
+   254→  shipping              String    @default("0")
+   255→  discount              String    @default("0")
+   256→  paid                  String    @default("0")
+   257→  notes                 String?
+   258→  source                String?
+   259→  createdByEmail        String?
+   260→  createdByName         String?
+   261→  whatsappRawText       String?
+   262→  parsedConfidence      String?
+   263→  journalEntryId        Int?
+   264→  eInvoiceStatus        String?
+   265→  deliveryMethod        String?
+   266→  version               Int       @default(0) // optimistic lock
+   267→  // ── Kuwait Decree 10/2026 compliance fields ──────────────────────────────
+   268→  hijriIssueDate        String? // Hijri date for issue date (e.g. "١٢ رجب ١٤٤٧")
+   269→  hijriDueDate          String? // Hijri date for due date
+   270→  mociNumber            String? // MOCI registration number (copied from company for immutability)
+   271→  invoiceTypeAr         String? // Arabic invoice type description (فاتورة ضريبية / فاتورة مبسطة)
+   272→  invoiceTypeEn         String? // English invoice type description (standard / simplified)
+   273→  sellerNameAr          String? // Arabic seller name
+   274→  sellerAddressAr       String? // Arabic seller address
+   275→  buyerNameAr           String? // Arabic buyer name (B2B required)
+   276→  buyerAddressAr        String? // Arabic buyer address (B2B required)
+   277→  lineItemsAr           String    @default("[]") // Arabic line items JSON (mirrors lineItems with Arabic descriptions)
+   278→  notesAr               String? // Arabic notes
+   279→  currencyDecimalPlaces Int       @default(3) // KWD=3, SAR/AED=2, EGP=2
+   280→  eInvoiceAuthority     String? // which authority this invoice is submitted to (kuwait_decree_10_2026, zatca, etc.)
+   281→  // DB-005 FIX: Soft delete for financial records
+   282→  deletedAt             DateTime?
+   283→  deletedBy             String?
+   284→  createdAt             DateTime  @default(now())
+   285→  updatedAt             DateTime  @updatedAt
+   286→
+   287→  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   288→  client       Client?        @relation(fields: [clientId], references: [id])
+   289→  eInvoice     EInvoice?
+   290→  delivery     OrderDelivery?
+   291→  salesReturns SalesReturn[]
+   292→
+   293→  @@unique([companySlug, invoiceNumber])
+   294→  @@index([companySlug, issueDate])
+   295→  @@index([companySlug, status])
+   296→  @@index([clientId])
+   297→  @@index([companySlug, createdAt, id])
+   298→  @@index([journalEntryId])
+   299→  @@index([companySlug, eInvoiceStatus])
+   300→  @@index([companySlug, deletedAt])
+   301→  @@index([companySlug, dueDate, status])
+   302→  // H4 FIX: additional indexes for frequently queried fields
+   303→  @@index([invoiceNumber])
+   304→  @@index([status])
+   305→  @@map("invoices")
+   306→}
+   307→
+   308→// ────────────────────────────────────────────────────────────────────────────
+   309→// Product Catalog
+   310→// ────────────────────────────────────────────────────────────────────────────
+   311→
+   312→model ProductCatalog {
+   313→  id             Int      @id @default(autoincrement())
+   314→  code           String?
+   315→  name           String
+   316→  aliases        String   @default("[]") // JSON
+   317→  purchasePrice  String?
+   318→  sellingPrice   String?
+   319→  wholesalePrice String?
+   320→  companySlug    String
+   321→  createdAt      DateTime @default(now())
+   322→  updatedAt      DateTime @updatedAt
+   323→
+   324→  tenant         Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   325→  inventoryItems InventoryItem[]
+   326→  productAliases ProductAlias[]
+   327→  stockMovements StockMovement[]
+   328→
+   329→  @@index([companySlug, createdAt, id])
+   330→  @@map("product_catalog")
+   331→}
+   332→
+   333→// ────────────────────────────────────────────────────────────────────────────
+   334→// Inventory (Warehouses + Stock Items) — P2-D
+   335→// ────────────────────────────────────────────────────────────────────────────
+   336→
+   337→model Warehouse {
+   338→  id             Int             @id @default(autoincrement())
+   339→  companySlug    String
+   340→  name           String
+   341→  code           String
+   342→  address        String?
+   343→  isActive       Boolean         @default(true)
+   344→  createdAt      DateTime        @default(now())
+   345→  updatedAt      DateTime        @updatedAt
+   346→  tenant         Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   347→  items          InventoryItem[]
+   348→  stockMovements StockMovement[]
+   349→
+   350→  @@unique([companySlug, code])
+   351→  @@index([companySlug])
+   352→  @@index([companySlug, isActive])
+   353→  @@map("warehouses")
+   354→}
+   355→
+   356→model InventoryItem {
+   357→  id           Int            @id @default(autoincrement())
+   358→  companySlug  String
+   359→  warehouseId  Int
+   360→  productId    Int
+   361→  quantity     String         @default("0")
+   362→  reorderLevel String         @default("0")
+   363→  reorderQty   String         @default("0")
+   364→  batchNumber  String?
+   365→  expiryDate   String?
+   366→  createdAt    DateTime       @default(now())
+   367→  updatedAt    DateTime       @updatedAt
+   368→  warehouse    Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+   369→  product      ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
+   370→  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   371→
+   372→  @@unique([warehouseId, productId])
+   373→  @@index([companySlug])
+   374→  @@index([productId])
+   375→  @@index([warehouseId])
+   376→  @@map("inventory_items")
+   377→}
+   378→
+   379→model StockMovement {
+   380→  id          Int      @id @default(autoincrement())
+   381→  companySlug String
+   382→  productId   Int?
+   383→  warehouseId Int
+   384→  qty         String
+   385→  sourceType  String
+   386→  sourceId    Int?
+   387→  note        String?
+   388→  createdBy   String   @default("system")
+   389→  createdAt   DateTime @default(now())
+   390→  // ERP-05 FIX: COGS tracking for cost engine
+   391→  unitCost    String? // cost per unit at time of movement
+   392→  totalCost   String? // qty * unitCost
+   393→  costMethod  String? // "fifo" | "weighted_average" | "specific"
+   394→
+   395→  tenant    Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   396→  product   ProductCatalog? @relation(fields: [productId], references: [id], onDelete: Cascade)
+   397→  warehouse Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+   398→
+   399→  @@index([companySlug, createdAt])
+   400→  @@index([companySlug, productId])
+   401→  @@index([sourceType, sourceId])
+   402→  @@index([warehouseId])
+   403→  // H4 FIX: additional indexes for frequently queried fields
+   404→  @@index([productId])
+   405→  @@index([costMethod])
+   406→  @@map("stock_movements")
+   407→}
+   408→
+   409→// ERP-05 FIX: Sales & Purchase Returns
+   410→model SalesReturn {
+   411→  id             Int       @id @default(autoincrement())
+   412→  companySlug    String
+   413→  invoiceId      Int
+   414→  clientId       Int?
+   415→  returnDate     String
+   416→  reason         String?
+   417→  items          String    @default("[]") // JSON: [{productId, qty, unitPrice, returnReason}]
+   418→  totalAmount    String    @default("0")
+   419→  status         String    @default("pending") // pending | approved | processed | refunded
+   420→  refundMethod   String? // "cash" | "credit_note" | "bank_transfer"
+   421→  creditNoteId   Int?
+   422→  journalEntryId Int? // link to reversal journal entry
+   423→  approvedBy     String?
+   424→  approvedAt     DateTime?
+   425→  notes          String?
+   426→  createdBy      String
+   427→  createdAt      DateTime  @default(now())
+   428→  updatedAt      DateTime  @updatedAt
+   429→  deletedAt      DateTime?
+   430→  deletedBy      String?
+   431→
+   432→  tenant  Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   433→  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+   434→
+   435→  @@index([companySlug, createdAt])
+   436→  @@index([companySlug, status])
+   437→  @@index([invoiceId])
+   438→  @@index([clientId])
+   439→  @@map("sales_returns")
+   440→}
+   441→
+   442→model PurchaseReturn {
+   443→  id                Int       @id @default(autoincrement())
+   444→  companySlug       String
+   445→  purchaseInvoiceId Int?
+   446→  supplierId        Int?
+   447→  returnDate        String
+   448→  reason            String?
+   449→  items             String    @default("[]") // JSON: [{productId, qty, unitCost, returnReason}]
+   450→  totalAmount       String    @default("0")
+   451→  status            String    @default("pending") // pending | approved | processed | credited
+   452→  journalEntryId    Int? // link to reversal journal entry
+   453→  approvedBy        String?
+   454→  approvedAt        DateTime?
+   455→  notes             String?
+   456→  createdBy         String
+   457→  createdAt         DateTime  @default(now())
+   458→  updatedAt         DateTime  @updatedAt
+   459→  deletedAt         DateTime?
+   460→  deletedBy         String?
+   461→
+   462→  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   463→  purchaseInvoice PurchaseInvoice? @relation("PurchaseReturnInvoice", fields: [purchaseInvoiceId], references: [id], onDelete: SetNull)
+   464→  supplierEntity  Supplier?        @relation("SupplierReturns", fields: [supplierId], references: [id], onDelete: SetNull)
+   465→
+   466→  @@index([companySlug, createdAt])
+   467→  @@index([companySlug, status])
+   468→  @@index([purchaseInvoiceId])
+   469→  @@index([supplierId])
+   470→  @@map("purchase_returns")
+   471→}
+   472→
+   473→// ────────────────────────────────────────────────────────────────────────────
+   474→// Purchases
+   475→// ────────────────────────────────────────────────────────────────────────────
+   476→
+   477→// ERP-05 FIX: Supplier as a proper entity (not inline string in PurchaseInvoice)
+   478→model Supplier {
+   479→  id            Int       @id @default(autoincrement())
+   480→  companySlug   String
+   481→  name          String
+   482→  nameEn        String?
+   483→  phone         String?
+   484→  email         String?
+   485→  address       String?
+   486→  vatNumber     String?
+   487→  contactPerson String?
+   488→  notes         String?
+   489→  isActive      Boolean   @default(true)
+   490→  createdAt     DateTime  @default(now())
+   491→  updatedAt     DateTime  @updatedAt
+   492→  deletedAt     DateTime?
+   493→  deletedBy     String?
+   494→
+   495→  tenant           Company           @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   496→  purchaseInvoices PurchaseInvoice[]
+   497→  purchaseReturns  PurchaseReturn[]  @relation("SupplierReturns")
+   498→
+   499→  @@index([companySlug, isActive])
+   500→  @@index([companySlug, name])
+   501→  @@map("suppliers")
+   502→}
+   503→
+   504→model PurchaseInvoice {
+   505→  id               Int       @id @default(autoincrement())
+   506→  num              String
+   507→  date             String
+   508→  supplier         String    @default("")
+   509→  supplierId       Int? // ERP-05 FIX: FK to Supplier table (nullable for backward compat)
+   510→  companySlug      String
+   511→  items            String    @default("[]") // JSON
+   512→  sourceInvoiceIds String    @default("[]") // JSON
+   513→  totalQty         Int       @default(0)
+   514→  totalAmount      String    @default("0")
+   515→  notes            String?
+   516→  createdAt        DateTime  @default(now())
+   517→  deletedAt        DateTime?
+   518→  deletedBy        String?
+   519→
+   520→  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   521→  supplierEntity  Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+   522→  purchaseReturns PurchaseReturn[] @relation("PurchaseReturnInvoice")
+   523→
+   524→  @@index([companySlug, createdAt, id])
+   525→  @@index([companySlug, deletedAt])
+   526→  @@index([supplierId])
+   527→  @@map("purchase_invoices")
+   528→}
+   529→
+   530→// ────────────────────────────────────────────────────────────────────────────
+   531→// HR Module
+   532→// ────────────────────────────────────────────────────────────────────────────
+   533→
+   534→model Employee {
+   535→  id              Int      @id @default(autoincrement())
+   536→  companySlug     String
+   537→  name            String
+   538→  nameEn          String?
+   539→  phone           String?
+   540→  email           String?
+   541→  position        String?
+   542→  department      String?
+   543→  baseSalary      String   @default("0") // الراتب الأساسي (for gratuity calc)
+   544→  allowances      String   @default("0") // البدلات (housing, transport, etc.)
+   545→  currency        String   @default("KWD")
+   546→  joinDate        String?
+   547→  endDate         String? // تاريخ انتهاء الخدمة (for gratuity calc)
+   548→  isActive        Boolean  @default(true)
+   549→  notes           String?
+   550→  // Gulf-specific fields
+   551→  civilId         String? // الرقم المدني (Kuwait Civil ID - PacI)
+   552→  nationality     String? // الجنسية
+   553→  residenceExpiry String? // تاريخ انتهاء الإقامة (YYYY-MM-DD)
+   554→  passportNumber  String? // رقم الجواز
+   555→  bankAccount     String? // رقم الحساب البنكي (for salary transfer)
+   556→  createdAt       DateTime @default(now())
+   557→  updatedAt       DateTime @updatedAt
+   558→
+   559→  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   560→  attendance   Attendance[]
+   561→  salaries     Salary[]
+   562→  commissions  Commission[]
+   563→  leaveReqs    LeaveRequest[]
+   564→  performances Performance[]
+   565→
+   566→  @@index([civilId])
+   567→  @@index([companySlug, isActive])
+   568→  @@map("hr_employees")
+   569→}
+   570→
+   571→model Attendance {
+   572→  id          Int      @id @default(autoincrement())
+   573→  companySlug String
+   574→  employeeId  Int
+   575→  date        String
+   576→  status      String   @default("present") // present | absent | late | half | remote
+   577→  checkIn     String?
+   578→  checkOut    String?
+   579→  notes       String?
+   580→  createdAt   DateTime @default(now())
+   581→
+   582→  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   583→  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   584→
+   585→  @@index([employeeId, date])
+   586→  @@index([companySlug, date])
+   587→  @@map("hr_attendance")
+   588→}
+   589→
+   590→model Salary {
+   591→  id          Int       @id @default(autoincrement())
+   592→  companySlug String
+   593→  employeeId  Int
+   594→  month       String // "2025-06"
+   595→  baseSalary  String    @default("0")
+   596→  allowances  String    @default("0")
+   597→  deductions  String    @default("0")
+   598→  bonus       String    @default("0")
+   599→  netSalary   String    @default("0")
+   600→  isPaid      Boolean   @default(false)
+   601→  paidAt      DateTime?
+   602→  notes       String?
+   603→  createdAt   DateTime  @default(now())
+   604→
+   605→  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   606→  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   607→
+   608→  @@index([employeeId, month])
+   609→  @@index([companySlug, isPaid])
+   610→  @@index([companySlug, month])
+   611→  @@map("hr_salaries")
+   612→}
+   613→
+   614→model Commission {
+   615→  id          Int      @id @default(autoincrement())
+   616→  companySlug String
+   617→  employeeId  Int
+   618→  date        String
+   619→  type        String   @default("sales") // sales | referral | target | other
+   620→  description String?
+   621→  amount      String   @default("0")
+   622→  isPaid      Boolean  @default(false)
+   623→  createdAt   DateTime @default(now())
+   624→
+   625→  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   626→  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   627→
+   628→  @@index([employeeId])
+   629→  @@index([companySlug, isPaid])
+   630→  @@index([companySlug, date])
+   631→  @@map("hr_commissions")
+   632→}
+   633→
+   634→model LeaveRequest {
+   635→  id          Int      @id @default(autoincrement())
+   636→  companySlug String
+   637→  employeeId  Int
+   638→  type        String   @default("annual") // annual | sick | unpaid | maternity | other
+   639→  startDate   String
+   640→  endDate     String
+   641→  days        Int      @default(1)
+   642→  reason      String?
+   643→  status      String   @default("pending") // pending | approved | rejected
+   644→  approvedBy  String?
+   645→  createdAt   DateTime @default(now())
+   646→
+   647→  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   648→  company   Company? @relation(fields: [companyId], references: [id])
+   649→  companyId Int?
+   650→
+   651→  @@index([companySlug])
+   652→  @@index([employeeId])
+   653→  @@index([companySlug, status])
+   654→  @@map("hr_leave_requests")
+   655→}
+   656→
+   657→model Performance {
+   658→  id           Int      @id @default(autoincrement())
+   659→  companySlug  String
+   660→  employeeId   Int
+   661→  period       String // "2025-Q2"
+   662→  kpiScore     Int?
+   663→  attendScore  Int?
+   664→  teamScore    Int?
+   665→  overallScore Int?
+   666→  rating       String?
+   667→  strengths    String?
+   668→  improvements String?
+   669→  reviewerNote String?
+   670→  createdAt    DateTime @default(now())
+   671→
+   672→  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   673→  company   Company? @relation(fields: [companyId], references: [id])
+   674→  companyId Int?
+   675→
+   676→  @@index([companySlug])
+   677→  @@index([employeeId])
+   678→  @@index([companySlug, period])
+   679→  @@map("hr_performance")
+   680→}
+   681→
+   682→// ────────────────────────────────────────────────────────────────────────────
+   683→// Accounting
+   684→// ────────────────────────────────────────────────────────────────────────────
+   685→
+   686→model Account {
+   687→  id          Int      @id @default(autoincrement())
+   688→  code        String
+   689→  nameAr      String
+   690→  nameEn      String?
+   691→  type        String // asset | liability | equity | revenue | expense | contra_revenue | contra_asset
+   692→  parentId    Int?
+   693→  companySlug String
+   694→  balance     String   @default("0")
+   695→  currency    String   @default("KWD")
+   696→  isActive    Boolean  @default(true)
+   697→  createdAt   DateTime @default(now())
+   698→  updatedAt   DateTime @updatedAt
+   699→
+   700→  parent       Account?           @relation("AccountParent", fields: [parentId], references: [id])
+   701→  children     Account[]          @relation("AccountParent")
+   702→  journalLines JournalEntryLine[]
+   703→  tenant       Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   704→
+   705→  @@unique([companySlug, code])
+   706→  @@index([companySlug])
+   707→  @@index([code])
+   708→  @@index([parentId])
+   709→  @@index([companySlug, type])
+   710→  @@index([companySlug, isActive])
+   711→  @@map("accounts")
+   712→}
+   713→
+   714→model JournalEntry {
+   715→  id          Int       @id @default(autoincrement())
+   716→  date        String // YYYY-MM-DD
+   717→  description String?
+   718→  reference   String?
+   719→  companySlug String
+   720→  createdBy   String
+   721→  status      String    @default("draft") // draft | posted | reversed
+   722→  sourceType  String?
+   723→  sourceId    Int?
+   724→  createdAt   DateTime  @default(now())
+   725→  updatedAt   DateTime  @updatedAt
+   726→  deletedAt   DateTime?
+   727→  deletedBy   String?
+   728→
+   729→  tenant Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   730→  lines  JournalEntryLine[]
+   731→
+   732→  @@index([companySlug])
+   733→  @@index([companySlug, date])
+   734→  @@index([companySlug, deletedAt])
+   735→  @@index([companySlug, status])
+   736→  @@index([companySlug, sourceType, sourceId])
+   737→  @@map("journal_entries")
+   738→}
+   739→
+   740→model JournalEntryLine {
+   741→  id          Int      @id @default(autoincrement())
+   742→  entryId     Int
+   743→  accountId   Int
+   744→  debit       String   @default("0")
+   745→  credit      String   @default("0")
+   746→  description String?
+   747→  createdAt   DateTime @default(now())
+   748→
+   749→  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+   750→  account Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+   751→
+   752→  @@index([entryId])
+   753→  @@index([accountId])
+   754→  @@map("journal_entry_lines")
+   755→}
+   756→
+   757→// ────────────────────────────────────────────────────────────────────────────
+   758→// E-Invoicing
+   759→// ────────────────────────────────────────────────────────────────────────────
+   760→
+   761→model EInvoice {
+   762→  id               Int       @id @default(autoincrement())
+   763→  invoiceId        Int       @unique
+   764→  companySlug      String
+   765→  authorityType    String    @default("none") // none | zatca | uae_fta | bahrain_nbr | oman_tax | kuwait_decree_10_2026 | eta_egypt
+   766→  submissionStatus String    @default("pending") // pending | submitted | approved | rejected
+   767→  uuid             String?
+   768→  xmlHash          String?
+   769→  signedXml        String?
+   770→  rawXml           String?
+   771→  rejectionReason  String?
+   772→  submittedAt      DateTime?
+   773→  approvedAt       DateTime?
+   774→  retryCount       Int       @default(0)
+   775→  lastRetryAt      DateTime?
+   776→  createdAt        DateTime  @default(now())
+   777→  updatedAt        DateTime  @updatedAt
+   778→  deletedAt        DateTime?
+   779→  deletedBy        String?
+   780→
+   781→  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+   782→  tenant  Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   783→
+   784→  @@index([invoiceId])
+   785→  @@index([companySlug])
+   786→  @@index([companySlug, submissionStatus])
+   787→  @@index([companySlug, deletedAt])
+   788→  @@map("e_invoices")
+   789→}
+   790→
+   791→// ────────────────────────────────────────────────────────────────────────────
+   792→// ZATCA Certificate Management (Saudi e-invoicing Phase 2)
+   793→// ────────────────────────────────────────────────────────────────────────────
+   794→
+   795→model ZatcaCertificate {
+   796→  id                 Int      @id @default(autoincrement())
+   797→  companySlug        String
+   798→  certificateType    String   @default("csid") // csid | ccd
+   799→  certificateDataEnc String // AES-256-GCM encrypted X.509 certificate PEM
+   800→  privateKeyDataEnc  String // AES-256-GCM encrypted ECDSA private key PEM
+   801→  serialNumber       String   @unique
+   802→  expiryDate         DateTime
+   803→  status             String   @default("active") // active | expired | revoked | pending
+   804→  createdAt          DateTime @default(now())
+   805→  updatedAt          DateTime @updatedAt
+   806→
+   807→  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   808→
+   809→  @@index([companySlug])
+   810→  @@index([companySlug, certificateType, status])
+   811→  @@index([companySlug, expiryDate])
+   812→  @@map("zatca_certificates")
+   813→}
+   814→
+   815→// ────────────────────────────────────────────────────────────────────────────
+   816→// Order Deliveries
+   817→// ────────────────────────────────────────────────────────────────────────────
+   818→
+   819→model OrderDelivery {
+   820→  id            Int       @id @default(autoincrement())
+   821→  invoiceId     Int?      @unique
+   822→  companySlug   String
+   823→  clientName    String?
+   824→  clientPhone   String?
+   825→  address       String?
+   826→  locationUrl   String?
+   827→  preferredTime DateTime?
+   828→  deliveryFee   String    @default("0")
+   829→  status        String    @default("Pending") // Pending | Assigned | Delivered | Cancelled
+   830→  driverId      String?
+   831→  notes         String?
+   832→  createdAt     DateTime  @default(now())
+   833→  updatedAt     DateTime  @updatedAt
+   834→
+   835→  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   836→  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+   837→  driver  User?    @relation(fields: [driverId], references: [id], onDelete: SetNull)
+   838→
+   839→  @@index([companySlug])
+   840→  @@index([companySlug, status])
+   841→  @@index([companySlug, preferredTime])
+   842→  @@index([driverId])
+   843→  @@map("order_deliveries")
+   844→}
+   845→
+   846→// ────────────────────────────────────────────────────────────────────────────
+   847→// Payments & SaaS Billing
+   848→// ────────────────────────────────────────────────────────────────────────────
+   849→
+   850→model PaymentProviderConfig {
+   851→  provider             String    @id // 'stripe' | 'paymob'
+   852→  encryptedCredentials String?
+   853→  publicConfig         String?
+   854→  credentialsUpdatedAt DateTime?
+   855→  updatedBy            String?
+   856→  createdAt            DateTime  @default(now())
+   857→  updatedAt            DateTime  @default(now())
+   858→
+   859→  @@map("payment_provider_configs")
+   860→}
+   861→
+   862→model PaymentTransaction {
+   863→  id                Int       @id @default(autoincrement())
+   864→  companySlug       String
+   865→  plan              String
+   866→  method            String // myfatoorah_card | myfatoorah_mada | myfatoorah_apple_pay | myfatoorah_knet | paymob_wallet | paymob_meeza | paymob_card | paymob_bank_installment
+   867→  provider          String // myfatoorah | paymob
+   868→  amount            String    @default("0")
+   869→  currency          String    @default("KWD")
+   870→  status            String    @default("pending") // pending | paid | failed | cancelled
+   871→  providerPaymentId String?
+   872→  providerOrderId   String?
+   873→  providerEventId   String?
+   874→  checkoutUrl       String?
+   875→  failureReason     String?
+   876→  metadata          String? // JSON
+   877→  createdBy         String?
+   878→  createdAt         DateTime  @default(now())
+   879→  updatedAt         DateTime  @default(now())
+   880→  deletedAt         DateTime?
+   881→  deletedBy         String?
+   882→
+   883→  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   884→
+   885→  refundTransactions RefundTransaction[]
+   886→
+   887→  @@unique([provider, providerEventId])
+   888→  @@index([provider, providerPaymentId])
+   889→  @@index([companySlug])
+   890→  @@index([companySlug, deletedAt])
+   891→  @@index([companySlug, status])
+   892→  @@index([companySlug, createdAt])
+   893→  @@index([provider])
+   894→  @@map("payment_transactions")
+   895→}
+   896→
+   897→model PaymentsVault {
+   898→  id          String    @id @default("singleton")
+   899→  wrappedKey  String
+   900→  kdfSalt     String
+   901→  kdfN        Int       @default(16384)
+   902→  fingerprint String
+   903→  algo        String    @default("aes-256-gcm")
+   904→  createdBy   String?
+   905→  createdAt   DateTime  @default(now())
+   906→  rotatedAt   DateTime?
+   907→  rotatedBy   String?
+   908→
+   909→  @@map("payments_vault")
+   910→}
+   911→
+   912→// ────────────────────────────────────────────────────────────────────────────
+   913→// Refund Transactions
+   914→// ────────────────────────────────────────────────────────────────────────────
+   915→
+   916→model RefundTransaction {
+   917→  id               Int       @id @default(autoincrement())
+   918→  paymentTxnId     Int // FK to PaymentTransaction.id
+   919→  companySlug      String
+   920→  refundAmount     String    @default("0") // amount to refund (may be partial)
+   921→  currency         String    @default("KWD")
+   922→  reason           String? // free-text reason for refund
+   923→  status           String    @default("pending") // pending | processing | completed | failed | cancelled
+   924→  providerRefundId String? // refund ID from payment provider (MyFatoorah / Paymob)
+   925→  failureReason    String?
+   926→  metadata         String? // JSON
+   927→  createdBy        String?
+   928→  createdAt        DateTime  @default(now())
+   929→  updatedAt        DateTime  @default(now())
+   930→  completedAt      DateTime?
+   931→
+   932→  paymentTransaction PaymentTransaction @relation(fields: [paymentTxnId], references: [id], onDelete: Restrict)
+   933→  tenant             Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   934→
+   935→  @@index([paymentTxnId])
+   936→  @@index([companySlug])
+   937→  @@index([providerRefundId])
+   938→  @@index([status])
+   939→  @@map("refund_transactions")
+   940→}
+   941→
+   942→// ────────────────────────────────────────────────────────────────────────────
+   943→// Subscription Schedules (recurring billing)
+   944→// ────────────────────────────────────────────────────────────────────────────
+   945→
+   946→model SubscriptionSchedule {
+   947→  id              Int       @id @default(autoincrement())
+   948→  companySlug     String
+   949→  plan            String // starter | professional | unlimited
+   950→  billingPeriod   String    @default("monthly") // monthly | yearly
+   951→  status          String    @default("active") // active | past_due | cancelled | reactivated | paused
+   952→  amount          String    @default("0") // per-cycle charge amount
+   953→  currency        String    @default("KWD")
+   954→  provider        String    @default("myfatoorah") // myfatoorah | paymob
+   955→  paymentMethod   String    @default("myfatoorah_card") // payment method slug
+   956→  nextChargeDate  DateTime // next scheduled charge date
+   957→  lastChargeDate  DateTime? // last successful charge date
+   958→  lastChargeTxnId Int? // FK to PaymentTransaction.id of last successful charge
+   959→  retryCount      Int       @default(0) // number of consecutive failed charge attempts
+   960→  maxRetries      Int       @default(3) // dunning: max retries before downgrade (3 over 7 days)
+   961→  downgradePlan   String    @default("trial") // plan to downgrade to after max retries exceeded
+   962→  cycleStart      DateTime // start of current billing cycle
+   963→  cycleEnd        DateTime // end of current billing cycle
+   964→  cancelledAt     DateTime?
+   965→  reactivatedAt   DateTime?
+   966→  metadata        String? // JSON
+   967→  createdBy       String?
+   968→  createdAt       DateTime  @default(now())
+   969→  updatedAt       DateTime  @updatedAt
+   970→
+   971→  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+   972→
+   973→  @@index([companySlug])
+   974→  @@index([status])
+   975→  @@index([nextChargeDate])
+   976→  @@index([companySlug, status])
+   977→  @@map("subscription_schedules")
+   978→}
+   979→
+   980→// ────────────────────────────────────────────────────────────────────────────
+   981→// Permissions & RBAC
+   982→// ────────────────────────────────────────────────────────────────────────────
+   983→
+   984→model Permission {
+   985→  id          Int      @id @default(autoincrement())
+   986→  key         String   @unique
+   987→  labelAr     String
+   988→  labelEn     String?
+   989→  category    String   @default("general")
+   990→  description String?
+   991→  createdAt   DateTime @default(now())
+   992→
+   993→  rolePermissions RolePermission[]
+   994→
+   995→  @@index([category])
+   996→  @@map("permissions")
+   997→}
+   998→
+   999→model RolePermission {
+  1000→  id            Int      @id @default(autoincrement())
+  1001→  role          String
+  1002→  permissionKey String
+  1003→  companySlug   String?
+  1004→  value         Int      @default(1)
+  1005→  createdAt     DateTime @default(now())
+  1006→  updatedAt     DateTime @updatedAt
+  1007→
+  1008→  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+  1009→
+  1010→  @@unique([role, permissionKey, companySlug])
+  1011→  @@index([role])
+  1012→  @@index([companySlug])
+  1013→  @@index([permissionKey])
+  1014→  @@map("role_permissions")
+  1015→}
+  1016→
+  1017→// ────────────────────────────────────────────────────────────────────────────
+  1018→// Audit Logs
+  1019→// ────────────────────────────────────────────────────────────────────────────
+  1020→
+  1021→model AuditLog {
+  1022→  id          Int      @id @default(autoincrement())
+  1023→  userEmail   String
+  1024→  userUid     String
+  1025→  action      String
+  1026→  entity      String
+  1027→  entityId    String?
+  1028→  companySlug String?
+  1029→  details     String? // JSON
+  1030→  createdAt   DateTime @default(now())
+  1031→
+  1032→  user User? @relation(fields: [userUid], references: [uid], onDelete: NoAction)
+  1033→
+  1034→  @@index([companySlug])
+  1035→  @@index([createdAt])
+  1036→  @@index([action])
+  1037→  @@index([userUid])
+  1038→  @@index([companySlug, entity])
+  1039→  @@index([companySlug, createdAt])
+  1040→  @@map("audit_logs")
+  1041→}
+  1042→
+  1043→// ────────────────────────────────────────────────────────────────────────────
+  1044→// Platform Admin
+  1045→// ────────────────────────────────────────────────────────────────────────────
+  1046→
+  1047→model AdminAuditLog {
+  1048→  id         String   @id @default(cuid())
+  1049→  adminEmail String
+  1050→  action     String
+  1051→  targetType String?
+  1052→  targetId   String?
+  1053→  changes    String? // JSON
+  1054→  ipAddress  String?
+  1055→  userAgent  String?
+  1056→  createdAt  DateTime @default(now())
+  1057→
+  1058→  @@index([createdAt])
+  1059→  @@index([adminEmail])
+  1060→  @@index([action])
+  1061→  @@index([targetType])
+  1062→  @@map("admin_audit_logs")
+  1063→}
+  1064→
+  1065→model Announcement {
+  1066→  id          String    @id @default(cuid())
+  1067→  title       String
+  1068→  body        String
+  1069→  type        String    @default("info")
+  1070→  targetPlans String    @default("[]") // JSON
+  1071→  startsAt    DateTime?
+  1072→  endsAt      DateTime?
+  1073→  isActive    Boolean   @default(true)
+  1074→  createdBy   String
+  1075→  createdAt   DateTime  @default(now())
+  1076→
+  1077→  @@index([isActive, startsAt])
+  1078→  @@map("announcements")
+  1079→}
+  1080→
+  1081→model SupportTicket {
+  1082→  id        String   @id @default(cuid())
+  1083→  tenantId  Int?
+  1084→  userEmail String
+  1085→  subject   String
+  1086→  body      String
+  1087→  status    String   @default("open") // open | pending | resolved | closed
+  1088→  priority  String   @default("normal") // low | normal | high | urgent
+  1089→  createdAt DateTime @default(now())
+  1090→  updatedAt DateTime @updatedAt
+  1091→
+  1092→  replies TicketReply[]
+  1093→
+  1094→  @@index([status])
+  1095→  @@index([tenantId])
+  1096→  @@index([userEmail])
+  1097→  @@index([createdAt])
+  1098→  @@index([status, createdAt])
+  1099→  @@map("support_tickets")
+  1100→}
+  1101→
+  1102→model TicketReply {
+  1103→  id          String   @id @default(cuid())
+  1104→  ticketId    String
+  1105→  senderEmail String
+  1106→  senderRole  String
+  1107→  body        String
+  1108→  createdAt   DateTime @default(now())
+  1109→
+  1110→  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  1111→
+  1112→  @@index([ticketId])
+  1113→  @@map("ticket_replies")
+  1114→}
+  1115→
+  1116→// ────────────────────────────────────────────────────────────────────────────
+  1117→// Platform Settings (settings-as-data)
+  1118→// ────────────────────────────────────────────────────────────────────────────
+  1119→
+  1120→model PlatformSetting {
+  1121→  key         String   @id
+  1122→  category    String
+  1123→  valueType   String // number | string | boolean | json
+  1124→  value       String // JSON-encoded
+  1125→  description String?
+  1126→  updatedBy   String?
+  1127→  updatedAt   DateTime @default(now())
+  1128→  createdAt   DateTime @default(now())
+  1129→
+  1130→  history PlatformSettingHistory[]
+  1131→
+  1132→  @@index([category])
+  1133→  @@map("platform_settings")
+  1134→}
+  1135→
+  1136→model PlatformSettingHistory {
+  1137→  id             Int      @id @default(autoincrement())
+  1138→  settingKey     String
+  1139→  oldValue       String? // JSON
+  1140→  newValue       String? // JSON
+  1141→  changedBy      String?
+  1142→  changedByEmail String?
+  1143→  changedAt      DateTime @default(now())
+  1144→
+  1145→  setting PlatformSetting @relation(fields: [settingKey], references: [key], onDelete: Cascade)
+  1146→
+  1147→  @@index([settingKey])
+  1148→  @@index([changedAt])
+  1149→  @@map("platform_settings_history")
+  1150→}
+  1151→
+  1152→// ────────────────────────────────────────────────────────────────────────────
+  1153→// Modules (extensibility)
+  1154→// ────────────────────────────────────────────────────────────────────────────
+  1155→
+  1156→model Module {
+  1157→  id          Int      @id @default(autoincrement())
+  1158→  name        String
+  1159→  identifier  String   @unique
+  1160→  version     String?
+  1161→  description String?
+  1162→  isActive    Boolean  @default(false)
+  1163→  settings    String   @default("{}") // JSON
+  1164→  installedAt DateTime @default(now())
+  1165→  createdAt   DateTime @default(now())
+  1166→  updatedAt   DateTime @updatedAt
+  1167→
+  1168→  @@index([isActive])
+  1169→  @@map("modules")
+  1170→}
+  1171→
+  1172→// ────────────────────────────────────────────────────────────────────────────
+  1173→// AI
+  1174→// ────────────────────────────────────────────────────────────────────────────
+  1175→
+  1176→model ChatMessage {
+  1177→  id             Int      @id @default(autoincrement())
+  1178→  userUid        String
+  1179→  companySlug    String?
+  1180→  role           String   @default("user") // user | assistant | system | tool
+  1181→  content        String
+  1182→  functionName   String?
+  1183→  functionArgs   String? // JSON
+  1184→  functionResult String? // JSON
+  1185→  tokensUsed     Int?
+  1186→  model          String?
+  1187→  conversationId String?
+  1188→  createdAt      DateTime @default(now())
+  1189→
+  1190→  user User @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  1191→
+  1192→  @@index([userUid, createdAt])
+  1193→  @@index([companySlug, createdAt])
+  1194→  @@index([userUid, conversationId, createdAt])
+  1195→  @@map("chat_history")
+  1196→}
+  1197→
+  1198→model AiProcessingLog {
+  1199→  id           Int      @id @default(autoincrement())
+  1200→  companySlug  String?
+  1201→  endpoint     String // smart-parse | parse-orders | parse-products
+  1202→  model        String?
+  1203→  provider     String?
+  1204→  ordersCount  Int      @default(0)
+  1205→  itemsCount   Int      @default(0)
+  1206→  processingMs Int      @default(0)
+  1207→  inputTokens  Int      @default(0)
+  1208→  outputTokens Int      @default(0)
+  1209→  totalTokens  Int      @default(0)
+  1210→  retried      Boolean  @default(false)
+  1211→  success      Boolean  @default(true)
+  1212→  createdAt    DateTime @default(now())
+  1213→
+  1214→  tenant Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1215→
+  1216→  @@index([companySlug, createdAt])
+  1217→  @@index([endpoint, createdAt])
+  1218→  @@map("ai_processing_logs")
+  1219→}
+  1220→
+  1221→// ────────────────────────────────────────────────────────────────────────────
+  1222→// Idempotency Keys
+  1223→// ────────────────────────────────────────────────────────────────────────────
+  1224→
+  1225→model IdempotencyKey {
+  1226→  id           Int      @id @default(autoincrement())
+  1227→  companySlug  String
+  1228→  endpoint     String
+  1229→  key          String
+  1230→  requestHash  String
+  1231→  responseJson String?
+  1232→  status       Int      @default(200)
+  1233→  createdAt    DateTime @default(now())
+  1234→
+  1235→  @@unique([companySlug, endpoint, key])
+  1236→  @@map("idempotency_keys")
+  1237→}
+  1238→
+  1239→// ────────────────────────────────────────────────────────────────────────────
+  1240→// Notifications (real notification system — replaces the dead UI button)
+  1241→// ────────────────────────────────────────────────────────────────────────────
+  1242→
+  1243→model Notification {
+  1244→  id          Int       @id @default(autoincrement())
+  1245→  userUid     String
+  1246→  companySlug String?
+  1247→  type        String // overdue_invoice | subscription_expiring | residence_expiring | low_stock | payment_received | general
+  1248→  title       String
+  1249→  body        String
+  1250→  link        String? // hash route to navigate to
+  1251→  isRead      Boolean   @default(false)
+  1252→  createdAt   DateTime  @default(now())
+  1253→  readAt      DateTime?
+  1254→
+  1255→  tenant Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1256→
+  1257→  @@index([userUid, isRead])
+  1258→  @@index([userUid, createdAt])
+  1259→  @@index([companySlug])
+  1260→  @@map("notifications")
+  1261→}
+  1262→
+  1263→// ────────────────────────────────────────────────────────────────────────────
+  1264→// Invoice Templates (print customization)
+  1265→// ────────────────────────────────────────────────────────────────────────────
+  1266→
+  1267→model InvoiceTemplate {
+  1268→  id                 Int      @id @default(autoincrement())
+  1269→  companySlug        String
+  1270→  name               String
+  1271→  isDefault          Boolean  @default(false)
+  1272→  layoutType         String   @default("classic") // classic | modern | minimal | thermal
+  1273→  primaryColor       String   @default("#7c3aed")
+  1274→  fontFamily         String   @default("Cairo")
+  1275→  logoPosition       String   @default("right") // right | left | center
+  1276→  showTaxNumber      Boolean  @default(true)
+  1277→  showQrCode         Boolean  @default(false)
+  1278→  showBankDetails    Boolean  @default(false)
+  1279→  footerText         String?
+  1280→  termsAndConditions String?
+  1281→  paperSize          String   @default("A4") // A4 | Thermal80mm
+  1282→  createdAt          DateTime @default(now())
+  1283→  updatedAt          DateTime @updatedAt
+  1284→
+  1285→  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1286→
+  1287→  @@index([companySlug])
+  1288→  @@map("invoice_templates")
+  1289→}
+  1290→
+  1291→// ────────────────────────────────────────────────────────────────────────────
+  1292→// PDF Template Settings (per-company invoice template customization)
+  1293→// ────────────────────────────────────────────────────────────────────────────
+  1294→
+  1295→model InvoiceTemplateSettings {
+  1296→  id              Int      @id @default(autoincrement())
+  1297→  companySlug     String
+  1298→  templateId      String   @default("modern") // classic | modern | minimal | arabic-rtl
+  1299→  primaryColor    String   @default("#7C3AED")
+  1300→  fontFamily      String   @default("Noto Sans SC")
+  1301→  fontSize        Int      @default(12)
+  1302→  showLogo        Boolean  @default(true)
+  1303→  logoPosition    String   @default("right") // left | center | right
+  1304→  showPaymentInfo Boolean  @default(true)
+  1305→  showStamp       Boolean  @default(false)
+  1306→  invoiceTypes    String   @default("sales,purchase,quote") // comma-separated
+  1307→  createdAt       DateTime @default(now())
+  1308→  updatedAt       DateTime @updatedAt
+  1309→
+  1310→  company Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1311→
+  1312→  @@unique([companySlug])
+  1313→  @@map("invoice_template_settings")
+  1314→}
+  1315→
+  1316→// ────────────────────────────────────────────────────────────────────────────
+  1317→// AI Usage Log (cost tracker for AI calls)
+  1318→// ────────────────────────────────────────────────────────────────────────────
+  1319→
+  1320→model AIUsageLog {
+  1321→  id            Int      @id @default(autoincrement())
+  1322→  companySlug   String?
+  1323→  userUid       String?
+  1324→  provider      String
+  1325→  model         String
+  1326→  endpoint      String // chat, chat-stream, smart-parse, parse-image, parse-file, tools, invoice-brain
+  1327→  tokensIn      Int      @default(0)
+  1328→  tokensOut     Int      @default(0)
+  1329→  totalTokens   Int      @default(0)
+  1330→  estimatedCost Float    @default(0) // in USD
+  1331→  processingMs  Int? // wall-clock latency of the actual AI provider call (null if not measured)
+  1332→  success       Boolean  @default(true)
+  1333→  errorMessage  String?
+  1334→  createdAt     DateTime @default(now())
+  1335→
+  1336→  @@index([companySlug, createdAt])
+  1337→  @@index([userUid, createdAt])
+  1338→  @@index([endpoint, createdAt])
+  1339→  @@map("ai_usage_logs")
+  1340→}
+  1341→
+  1342→// ────────────────────────────────────────────────────────────────────────────
+  1343→// Landing Page Content (settings-as-data for marketing page)
+  1344→// ────────────────────────────────────────────────────────────────────────────
+  1345→
+  1346→model LandingContent {
+  1347→  key       String   @id
+  1348→  value     String // JSON
+  1349→  updatedAt DateTime @default(now())
+  1350→  updatedBy String?
+  1351→
+  1352→  @@map("landing_content")
+  1353→}
+  1354→
+  1355→// ────────────────────────────────────────────────────────────────────────────
+  1356→// Automation Engine
+  1357→// ────────────────────────────────────────────────────────────────────────────
+  1358→
+  1359→model AutomationRule {
+  1360→  id          Int      @id @default(autoincrement())
+  1361→  companySlug String
+  1362→  name        String
+  1363→  trigger     String // invoice_created | stock_low | payment_overdue
+  1364→  condition   String   @default("{}") // JSON
+  1365→  actions     String   @default("[]") // JSON array of actions
+  1366→  isActive    Boolean  @default(true)
+  1367→  createdAt   DateTime @default(now())
+  1368→  updatedAt   DateTime @updatedAt
+  1369→
+  1370→  executions AutomationExecutionLog[]
+  1371→  company    Company?                 @relation(fields: [companyId], references: [id])
+  1372→  companyId  Int?
+  1373→
+  1374→  @@index([trigger])
+  1375→  @@index([companySlug, isActive])
+  1376→  @@map("automation_rules")
+  1377→}
+  1378→
+  1379→model AutomationExecutionLog {
+  1380→  id          Int      @id @default(autoincrement())
+  1381→  ruleId      Int
+  1382→  status      String   @default("pending") // pending | success | failed | skipped
+  1383→  triggerData String? // JSON — what triggered it
+  1384→  error       String?
+  1385→  durationMs  Int      @default(0)
+  1386→  createdAt   DateTime @default(now())
+  1387→
+  1388→  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  1389→
+  1390→  @@index([ruleId, createdAt])
+  1391→  @@index([status])
+  1392→  @@map("automation_execution_logs")
+  1393→}
+  1394→
+  1395→// ────────────────────────────────────────────────────────────────────────────
+  1396→// AI Memory
+  1397→// ────────────────────────────────────────────────────────────────────────────
+  1398→
+  1399→model AIMemoryNote {
+  1400→  id          Int      @id @default(autoincrement())
+  1401→  companySlug String
+  1402→  entityType  String // client | invoice | product | employee
+  1403→  entityId    Int
+  1404→  note        String
+  1405→  createdBy   String
+  1406→  createdAt   DateTime @default(now())
+  1407→
+  1408→  @@index([companySlug, entityType, entityId])
+  1409→  @@index([companySlug, createdAt])
+  1410→  @@map("ai_memory_notes")
+  1411→}
+  1412→
+  1413→// ────────────────────────────────────────────────────────────────────────────
+  1414→// Feature Flags
+  1415→// ────────────────────────────────────────────────────────────────────────────
+  1416→
+  1417→model FeatureFlag {
+  1418→  id          Int      @id @default(autoincrement())
+  1419→  key         String   @unique
+  1420→  label       String
+  1421→  description String?
+  1422→  plans       String   @default("[]") // JSON array of plan names
+  1423→  isActive    Boolean  @default(true)
+  1424→  createdAt   DateTime @default(now())
+  1425→  updatedAt   DateTime @updatedAt
+  1426→
+  1427→  @@index([isActive])
+  1428→  @@map("feature_flags")
+  1429→}
+  1430→
+  1431→// ────────────────────────────────────────────────────────────────────────────
+  1432→// User Workspace State (personalizable dashboard)
+  1433→// ────────────────────────────────────────────────────────────────────────────
+  1434→
+  1435→model UserWorkspaceState {
+  1436→  userUid        String   @id
+  1437→  pinnedViews    String   @default("[]") // JSON
+  1438→  lastActiveView String   @default("dash")
+  1439→  widgetOrder    String   @default("[]") // JSON
+  1440→  updatedAt      DateTime @updatedAt
+  1441→
+  1442→  @@map("user_workspace_state")
+  1443→}
+  1444→
+  1445→// ────────────────────────────────────────────────────────────────────────────
+  1446→// Invoice Brain — learning templates for the hybrid (pattern + AI) extractor.
+  1447→// (P1-invoice-brain / checklist 2.1, 2.2)
+  1448→// ────────────────────────────────────────────────────────────────────────────
+  1449→
+  1450→// A learned extraction template for a document SHAPE (fingerprint).
+  1451→// Named "InvoiceBrainTemplate" to avoid collision with the print-layout
+  1452→// `InvoiceTemplate` model above. `fields` is a JSON string of
+  1453→// FieldTemplate[] (SQLite-compatible; works as Json on PostgreSQL too).
+  1454→model InvoiceBrainTemplate {
+  1455→  fingerprint String   @id // 16-char sha256 prefix of the structural/content fingerprint
+  1456→  fields      String // JSON: [{field, label, regex}, ...]
+  1457→  sampleCount Int      @default(1) // times this template was successfully reused
+  1458→  createdAt   DateTime @default(now())
+  1459→  lastUsedAt  DateTime @updatedAt
+  1460→
+  1461→  @@map("invoice_brain_templates")
+  1462→}
+  1463→
+  1464→// A learned header→field mapping for a tabular source's column set.
+  1465→// Resolved once per distinct column-set (synonyms first, AI fallback once),
+  1466→// then reused for every row of every file with the same headers.
+  1467→model InvoiceBrainHeaderMap {
+  1468→  headerFingerprint String   @id // 16-char sha256 prefix of sorted lowercased headers
+  1469→  mapping           String // JSON: { "column name": "field", ... }
+  1470→  sampleCount       Int      @default(1)
+  1471→  createdAt         DateTime @default(now())
+  1472→  lastUsedAt        DateTime @updatedAt
+  1473→
+  1474→  @@map("invoice_brain_header_maps")
+  1475→}
+  1476→
+  1477→// ────────────────────────────────────────────────────────────────────────────
+  1478→// Product Matching (Task B)
+  1479→// ────────────────────────────────────────────────────────────────────────────
+  1480→
+  1481→model ProductAlias {
+  1482→  id               Int      @id @default(autoincrement())
+  1483→  productCatalogId Int
+  1484→  companySlug      String
+  1485→  alias            String
+  1486→  language         String   @default("unspecified")
+  1487→  source           String   @default("manual")
+  1488→  confidence       Float    @default(1.0)
+  1489→  isVerified       Boolean  @default(false)
+  1490→  createdBy        String   @default("system")
+  1491→  createdAt        DateTime @default(now())
+  1492→  updatedAt        DateTime @updatedAt
+  1493→
+  1494→  product ProductCatalog @relation(fields: [productCatalogId], references: [id], onDelete: Cascade)
+  1495→  tenant  Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1496→
+  1497→  @@unique([companySlug, alias])
+  1498→  @@index([companySlug])
+  1499→  @@index([productCatalogId])
+  1500→  @@map("product_aliases")
+  1501→}
+  1502→
+  1503→model ProductMatchAudit {
+  1504→  id               Int       @id @default(autoincrement())
+  1505→  companySlug      String
+  1506→  inputText        String
+  1507→  matchedProductId Int?
+  1508→  matchedAlias     String?
+  1509→  confidence       Float
+  1510→  tier             String
+  1511→  action           String
+  1512→  isUndone         Boolean   @default(false)
+  1513→  undoneBy         String?
+  1514→  undoneAt         DateTime?
+  1515→  invoiceId        Int?
+  1516→  createdBy        String    @default("system")
+  1517→  createdAt        DateTime  @default(now())
+  1518→
+  1519→  // ── Task 17a: AI resolution tracking ───────────────────────────────────────
+  1520→  // resolvedBy: who made the final decision — "ai" (OpenRouter/z-ai), "human"
+  1521→  // (admin confirmed via review queue), "auto" (deterministic matcher tier 1/2/3),
+  1522→  // or null for legacy entries created before this column existed.
+  1523→  resolvedBy  String?
+  1524→  // aiReasoning: the reasoning_ar text returned by the AI model — null if the
+  1525→  // entry was not AI-resolved (legacy/auto/human).
+  1526→  aiReasoning String?
+  1527→  // aiModel: "{provider}/{model}" used for the call, e.g. "openrouter/deepseek/deepseek-r1"
+  1528→  // or "z-ai/z-ai-glm". Null for non-AI entries. Used for monitoring overturn rate
+  1529→  // per model in the first two weeks of production usage.
+  1530→  aiModel     String?
+  1531→
+  1532→  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1533→
+  1534→  @@index([companySlug, createdAt])
+  1535→  @@index([companySlug, isUndone])
+  1536→  @@index([companySlug, resolvedBy])
+  1537→  @@map("product_match_audit")
+  1538→}
+  1539→
+  1540→/// Learning Engine — records when a human employee overrides the matcher's
+  1541→/// chosen candidate (e.g. matcher picked candidates[0] but employee confirmed
+  1542→/// candidates[1]). These overrides feed back into the `historicalMatch` evidence
+  1543→/// signal so the matcher LEARNS from human corrections over time.
+  1544→///
+  1545→/// Lifecycle:
+  1546→///   1. matcher returns candidates[0] as winner (productId=A)
+  1547→///   2. employee reviews, decides productId=B (candidates[1]) is correct
+  1548→///   3. POST /api/products/match-override records:
+  1549→///        inputText, inputNormalized, fromProductId=A, toProductId=B,
+  1550→///        chosenAlias, auditId (link to original ProductMatchAudit decision)
+  1551→///   4. Next time the SAME normalized input is matched, the matcher sees a past
+  1552→///      override and boosts confidence for productId=B's aliases.
+  1553→///
+  1554→/// `inputNormalized` is the Arabic-normalized form (via normalizeArabic) so that
+  1555→/// minor spelling variations still hit the same override record. The compound
+  1556→/// index `(companySlug, inputNormalized)` is the primary lookup path.
+  1557→model MatchOverride {
+  1558→  id              Int      @id @default(autoincrement())
+  1559→  companySlug     String
+  1560→  inputText       String // raw invoice line description that was overridden
+  1561→  inputNormalized String // normalizeArabic(inputText) — fast exact re-lookup
+  1562→  fromProductId   Int? // matcher's original winner (null if matcher said "new")
+  1563→  toProductId     Int // product the employee chose instead
+  1564→  chosenAlias     String? // alias text the employee confirmed
+  1565→  auditId         Int? // link to ProductMatchAudit row of the original decision
+  1566→  reason          String? // optional employee note ("brand mismatch", "wrong size")
+  1567→  overriddenBy    String // user email/id
+  1568→  createdAt       DateTime @default(now())
+  1569→
+  1570→  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  1571→
+  1572→  @@index([companySlug, inputNormalized])
+  1573→  @@index([companySlug, toProductId])
+  1574→  @@map("match_overrides")
+  1575→}
+  1576→
+  1577→/// Task 18a — DB-backed persistent job queue.
+  1578→///
+  1579→/// Replaces the in-memory-only job runner for jobs that MUST survive server
+  1580→/// restarts (specifically the AI Product Match Resolver, which is enqueued
+  1581→/// inside the invoice sync transaction and must complete even if the server
+  1582→/// crashes between enqueue and execution).
+  1583→///
+  1584→/// SQLite-compatible (no Postgres-specific features). The compound index
+  1585→/// `(queue, status, scheduledAt)` is the primary polling index used by
+  1586→/// `recoverPendingJobs()` and the worker loop.
+  1587→model JobQueue {
+  1588→  id          Int       @id @default(autoincrement())
+  1589→  queue       String // queue name (e.g. "ai-jobs")
+  1590→  type        String // job type (e.g. "ai-product-match-resolve")
+  1591→  data        String // JSON-serialized payload
+  1592→  status      String    @default("pending") // pending | running | completed | failed | dead-letter
+  1593→  attempts    Int       @default(0)
+  1594→  maxAttempts Int       @default(3)
+  1595→  lastError   String?
+  1596→  lockedAt    DateTime?
+  1597→  lockedBy    String? // worker ID (process-unique)
+  1598→  scheduledAt DateTime  @default(now())
+  1599→  startedAt   DateTime?
+  1600→  completedAt DateTime?
+  1601→  createdAt   DateTime  @default(now())
+  1602→
+  1603→  @@index([queue, status, scheduledAt])
+  1604→  @@index([status, scheduledAt])
+  1605→  @@map("job_queue")
+  1606→}
+  1607→
+  1608→// ────────────────────────────────────────────────────────────────────────────
+  1609→// AI Orchestration Layer — Model Registry + Benchmark Results
+  1610→//
+  1611→// Replaces the "hardcoded provider chain" with a live, self-tuning registry.
+  1612→// Each model declares which capabilities it supports (chat, invoice-extraction,
+  1613→// reasoning, vision). A periodic auto-benchmark measures success rate, latency,
+  1614→// and response quality per (model × capability), then rolls those metrics into
+  1615→// a single 0-10 `healthScore`. The Smart Router picks the highest-scoring
+  1616→// healthy model for the requested capability at request time — so the system
+  1617→// never hard-binds to a model name that might disappear next month.
+  1618→// ────────────────────────────────────────────────────────────────────────────
+  1619→
+  1620→model AIModelRegistry {
+  1621→  id            Int     @id @default(autoincrement())
+  1622→  provider      String // openrouter | z-ai | anthropic | openai | gemini | custom
+  1623→  model         String // e.g. "tencent/hy3:free", "z-ai-glm"
+  1624→  displayName   String // human-friendly label for the dashboard
+  1625→  capabilities  String  @default("[]") // JSON array: ["chat","invoice-extraction","reasoning","vision"]
+  1626→  tier          String  @default("free") // "free" | "paid"
+  1627→  costPer1kIn   Float   @default(0) // USD per 1k input tokens
+  1628→  costPer1kOut  Float   @default(0) // USD per 1k output tokens
+  1629→  maxTokens     Int     @default(4096)
+  1630→  contextWindow Int     @default(8192)
+  1631→  isEnabled     Boolean @default(true) // founder can disable a model
+  1632→  isHealthy     Boolean @default(true) // auto-set false when healthScore < threshold
+  1633→
+  1634→  // ── Live health metrics (updated by auto-benchmark) ───────────────────────
+  1635→  healthScore     Float     @default(0) // 0-10 composite
+  1636→  successRate     Float     @default(0) // 0-100 %
+  1637→  avgLatencyMs    Int       @default(0)
+  1638→  p95LatencyMs    Int       @default(0)
+  1639→  avgQualityScore Float     @default(0) // 0-10 heuristic
+  1640→  totalBenchmarks Int       @default(0)
+  1641→  lastBenchmarkAt DateTime?
+  1642→  lastError       String?
+  1643→
+  1644→  createdAt DateTime @default(now())
+  1645→  updatedAt DateTime @updatedAt
+  1646→
+  1647→  benchmarks AIBenchmarkResult[]
+  1648→
+  1649→  @@unique([provider, model])
+  1650→  @@index([isEnabled, isHealthy, healthScore])
+  1651→  @@index([tier])
+  1652→  @@map("ai_model_registry")
+  1653→}
+  1654→
+  1655→model AIBenchmarkResult {
+  1656→  id              Int      @id @default(autoincrement())
+  1657→  modelRegistryId Int
+  1658→  capability      String // chat | invoice-extraction | reasoning | vision
+  1659→  success         Boolean
+  1660→  latencyMs       Int
+  1661→  tokensIn        Int      @default(0)
+  1662→  tokensOut       Int      @default(0)
+  1663→  responseQuality Float    @default(0) // 0-10 heuristic score
+  1664→  responseSample  String? // truncated response text for manual inspection
+  1665→  errorMessage    String?
+  1666→  createdAt       DateTime @default(now())
+  1667→
+  1668→  model AIModelRegistry @relation(fields: [modelRegistryId], references: [id], onDelete: Cascade)
+  1669→
+  1670→  @@index([modelRegistryId, createdAt])
+  1671→  @@index([capability, createdAt])
+  1672→  @@map("ai_benchmark_results")
+  1673→}
+  1674→
+  1675→// ────────────────────────────────────────────────────────────────────────────
+  1676→// AI Fabric — Phase 0 Data Model Foundation
+  1677→//
+  1678→// These models support the AI Fabric intelligence cascade: every AI request
+  1679→// passes through cache → pattern → rule → memory → AI, with per-company
+  1680→// budgeting, cost tracking, and profit measurement. Schema-only in Phase 0;
+  1681→// business logic is added in subsequent phases.
+  1682→// ────────────────────────────────────────────────────────────────────────────
+  1683→
+  1684→/// Per-company runtime configuration for the AI Fabric worker pool.
+  1685→/// Controls how many concurrent AI workers a company can use and its
+  1686→/// throttling/paused state. Tier-based defaults are enforced in
+  1687→/// /lib/ai-fabric/worker-scaler.ts constants, not hardcoded here.
+  1688→model CompanyRuntime {
+  1689→  id                     Int      @id @default(autoincrement())
+  1690→  companyId              Int      @unique
+  1691→  workerPoolSize         Int      @default(2)
+  1692→  status                 String   @default("active") // active | throttled | paused
+  1693→  slaTier                String   @default("starter") // enterprise | business | starter (Phase 9)
+  1694→  maxAcceptableLatencyMs Int      @default(2000) // SLA latency target (Phase 9)
+  1695→  createdAt              DateTime @default(now())
+  1696→  updatedAt              DateTime @updatedAt
+  1697→
+  1698→  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  1699→
+  1700→  @@index([status])
+  1701→  @@index([slaTier])
+  1702→  @@map("company_runtimes")
+  1703→}
+  1704→
+  1705→/// Central log for every AI Fabric request — regardless of which cascade
+  1706→/// stage resolved it. This is the primary data source for cost optimization
+  1707→/// metrics (Phase 2), AI Score (Phase 14), and Cost-per-Invoice (Phase 15).
+  1708→/// Complements (does NOT replace) AIUsageLog, which tracks raw provider
+  1709→/// calls. AIRequestLog tracks the BUSINESS-LEVEL resolution path.
+  1710→model AIRequestLog {
+  1711→  id          Int      @id @default(autoincrement())
+  1712→  companySlug String
+  1713→  requestType String // ocr | whatsapp | financial_analysis | matching | other
+  1714→  resolvedBy  String // cache | pattern | rule | memory | ai
+  1715→  provider    String? // actual model used, e.g. "openrouter/deepseek/deepseek-chat"
+  1716→  tokensUsed  Int?
+  1717→  costUsd     Float    @default(0)
+  1718→  latencyMs   Int      @default(0)
+  1719→  createdAt   DateTime @default(now())
+  1720→
+  1721→  @@index([companySlug, createdAt])
+  1722→  @@index([companySlug, resolvedBy, createdAt])
+  1723→  @@index([requestType, resolvedBy, createdAt])
+  1724→  @@index([resolvedBy, createdAt])
+  1725→  @@map("ai_request_logs")
+  1726→}
+  1727→
+  1728→/// Persistent cache entries for the AI Fabric L2 cache layer (Valkey is
+  1729→/// L1/L2 already, but this table enables auditability, hit-count tracking,
+  1730→/// and cache analytics that pure Valkey cannot provide). The key is a
+  1731→/// SHA-256 hash of (companyId + normalized input) to ensure deterministic
+  1732→/// cache hits across identical requests.
+  1733→model CacheEntry {
+  1734→  id          Int      @id @default(autoincrement())
+  1735→  key         String   @unique // sha256(companyId + normalized input)
+  1736→  companySlug String
+  1737→  value       String // JSON — the cached AI response
+  1738→  hitCount    Int      @default(0)
+  1739→  expiresAt   DateTime
+  1740→  createdAt   DateTime @default(now())
+  1741→  updatedAt   DateTime @updatedAt
+  1742→
+  1743→  @@index([companySlug])
+  1744→  @@index([expiresAt])
+  1745→  @@map("ai_fabric_cache_entries")
+  1746→}
+  1747→
+  1748→/// Per-company AI spending budget configuration. The Budget Engine
+  1749→/// (Phase 6) increments currentSpendUsd after each AIRequestLog with a
+  1750→/// cost, and triggers alerts / hard-stop throttling when thresholds are
+  1751→/// reached. Founder Panel only — not visible to tenants.
+  1752→model BudgetConfig {
+  1753→  id                Int      @id @default(autoincrement())
+  1754→  companySlug       String   @unique
+  1755→  monthlyBudgetUsd  Float
+  1756→  currentSpendUsd   Float    @default(0)
+  1757→  alertThresholdPct Int      @default(80) // alert at 80% of budget
+  1758→  hardStopEnabled   Boolean  @default(false)
+  1759→  createdAt         DateTime @default(now())
+  1760→  updatedAt         DateTime @updatedAt
+  1761→
+  1762→  @@index([companySlug])
+  1763→  @@map("budget_configs")
+  1764→}
+  1765→
+  1766→/// Global task-type → provider routing configuration. Unlike AIModelRegistry
+  1767→/// (which tracks individual model health), this maps business TASK TYPES to
+  1768→/// their optimal primary + fallback providers. The Provider Optimizer
+  1769→/// (Phase 3) reads this table to route requests to the right model for
+  1770→/// the task, with automatic fallback on primary failure.
+  1771→model ProviderConfig {
+  1772→  id                Int      @id @default(autoincrement())
+  1773→  taskType          String   @unique // ocr | whatsapp | financial_analysis | matching | other
+  1774→  primaryProvider   String // e.g. "anthropic/claude-3-5-haiku" or "z-ai/z-ai-glm"
+  1775→  fallbackProvider  String // fallback when primary fails
+  1776→  costPerRequestUsd Float? // estimated average cost per request for this task type
+  1777→  createdAt         DateTime @default(now())
+  1778→  updatedAt         DateTime @updatedAt
+  1779→
+  1780→  @@map("provider_configs")
+  1781→}
+  1782→
+  1783→/// AI decision memory for the AI Fabric cascade. Unlike AIMemoryNote
+  1784→/// (which stores human-authored entity notes), AIMemoryEntry stores
+  1785→/// AI-GENERATED decisions and their context — enabling the cascade to
+  1786→/// replay previous decisions without re-calling the LLM.
+  1787→/// Categories: product | customer | invoice | rule | decision
+  1788→model AIMemoryEntry {
+  1789→  id             Int      @id @default(autoincrement())
+  1790→  companySlug    String
+  1791→  category       String // product | customer | invoice | rule | decision
+  1792→  content        String // JSON — the decision + its context
+  1793→  createdAt      DateTime @default(now())
+  1794→  lastAccessedAt DateTime @updatedAt
+  1795→
+  1796→  @@index([companySlug, category])
+  1797→  @@index([companySlug, category, lastAccessedAt])
+  1798→  @@index([lastAccessedAt])
+  1799→  @@map("ai_memory_entries")
+  1800→}
+  1801→
+  1802→/// Periodic profit snapshots for GarfiX itself (not per-tenant).
+  1803→/// Revenue (from subscription) minus infra cost, AI cost (from
+  1804→/// AIRequestLog), and worker cost = gross profit. The Profit Engine
+  1805→/// (Phase 8) computes and stores these snapshots on a daily or
+  1806→/// on-demand basis. Founder Panel only.
+  1807→model ProfitSnapshot {
+  1808→  id            Int      @id @default(autoincrement())
+  1809→  companySlug   String
+  1810→  periodStart   DateTime
+  1811→  periodEnd     DateTime
+  1812→  revenueUsd    Float    @default(0)
+  1813→  infraCostUsd  Float    @default(0)
+  1814→  aiCostUsd     Float    @default(0)
+  1815→  workerCostUsd Float    @default(0)
+  1816→  profitUsd     Float    @default(0)
+  1817→  createdAt     DateTime @default(now())
+  1818→
+  1819→  @@index([companySlug, periodStart])
+  1820→  @@index([periodStart, periodEnd])
+  1821→  @@map("profit_snapshots")
+  1822→}
+  1823→
+  1824→// ────────────────────────────────────────────────────────────────────────────
+  1825→// AI Fabric — Economics Layer Schema (Phases 9-16)
+  1826→//
+  1827→// These models support the Economics Layer: Worker Marketplace, Learning
+  1828→// Engine, Cross-Company Intelligence, AI Score, and AI Compiler.
+  1829→// ────────────────────────────────────────────────────────────────────────────
+  1830→
+  1831→/// Learning Engine candidate — tracks repeated AI decisions that MAY be
+  1832→/// promotable to deterministic rules (Phase 11).
+  1833→///
+  1834→/// When the same normalized input produces the same AI output N times
+  1835→/// (sampleCount >= threshold) with high consistency (confidence >= 0.95),
+  1836→/// the candidate is promoted to status='promoted' and a Rule is created.
+  1837→model RuleCandidate {
+  1838→  id               Int      @id @default(autoincrement())
+  1839→  companySlug      String
+  1840→  requestType      String // ocr | whatsapp | financial_analysis | matching | other
+  1841→  patternSignature String // hash of normalized inputs grouped together
+  1842→  sampleCount      Int      @default(0)
+  1843→  consistentOutput String // JSON — the output that appeared in >= 95% of samples
+  1844→  confidence       Float    @default(0) // 0-1, percentage of samples matching consistentOutput
+  1845→  status           String   @default("observing") // observing | promoted | rejected
+  1846→  createdAt        DateTime @default(now())
+  1847→  updatedAt        DateTime @updatedAt
+  1848→
+  1849→  @@index([companySlug, status])
+  1850→  @@index([companySlug, patternSignature])
+  1851→  @@index([status, confidence])
+  1852→  @@map("rule_candidates")
+  1853→}
+  1854→
+  1855→/// Cross-company de-identified patterns (Phase 12).
+  1856→///
+  1857→/// Stores GENERAL patterns (e.g. "Apple Charger → SKU/VAT/Category") stripped
+  1858→/// of all company-specific data. NO financial data, NO customer data, NO
+  1859→/// company-identifying information. Only the product name/classification.
+  1860→///
+  1861→/// Privacy guarantee: no field in this table can be traced back to any
+  1862→/// specific company. Only contributingCompaniesCount (an integer) is stored.
+  1863→model GlobalPattern {
+  1864→  id                         Int      @id @default(autoincrement())
+  1865→  patternKey                 String // normalized product name, e.g. "apple charger"
+  1866→  suggestedSku               String? // JSON — suggested SKU mapping
+  1867→  suggestedVatCategory       String? // suggested VAT category
+  1868→  suggestedCategory          String? // JSON — suggested product category
+  1869→  contributingCompaniesCount Int      @default(0) // COUNT ONLY, no company IDs
+  1870→  confidence                 Float    @default(0)
+  1871→  lastUpdated                DateTime @updatedAt
+  1872→
+  1873→  @@unique([patternKey])
+  1874→  @@index([confidence])
+  1875→  @@index([lastUpdated])
+  1876→  @@map("global_patterns")
+  1877→}
+  1878→
+  1879→/// AI Score daily snapshot per company (Phase 14).
+  1880→///
+  1881→/// Internal metric (Founder Panel only) measuring cascade efficiency.
+  1882→/// Score 0-100: higher = more requests resolved without AI calls.
+  1883→/// Triggers Learning Engine and Cost Optimizer when score drops below threshold.
+  1884→model AIScoreSnapshot {
+  1885→  id                Int      @id @default(autoincrement())
+  1886→  companySlug       String
+  1887→  period            String // e.g. "2026-07-20" (daily)
+  1888→  score             Float    @default(0) // 0-100
+  1889→  cacheHitPct       Float    @default(0)
+  1890→  ruleHitPct        Float    @default(0)
+  1891→  aiCallPct         Float    @default(0)
+  1892→  avgCostPerRequest Float    @default(0)
+  1893→  createdAt         DateTime @default(now())
+  1894→
+  1895→  @@unique([companySlug, period])
+  1896→  @@index([companySlug, createdAt])
+  1897→  @@index([score])
+  1898→  @@map("ai_score_snapshots")
+  1899→}
+  1900→
+  1901→/// AI Compiler — compiled rules distilled from repeated AI patterns (Phase 16).
+  1902→///
+  1903→/// When the Learning Engine identifies a cluster of AI decisions that can be
+  1904→/// replaced by deterministic logic (regex, decision tree, extractor), this
+  1905→/// table stores the compiled rule PENDING HUMAN REVIEW. No compiled rule
+  1906→/// is ever activated without explicit human approval (reviewedBy + reviewedAt).
+  1907→///
+  1908→/// This is the most critical table in the Economics Layer — a wrong compiled
+  1909→/// rule could silently corrupt business decisions. Human-in-the-loop is
+  1910→/// MANDATORY for status transitions from pending_review → active.
+  1911→model CompiledRule {
+  1912→  id                         Int       @id @default(autoincrement())
+  1913→  requestType                String // ocr | whatsapp | financial_analysis | matching | other
+  1914→  patternDescription         String // human-readable description of the pattern
+  1915→  logicType                  String // regex | decision_tree | extractor
+  1916→  logicDefinition            String // JSON — the actual compiled logic (regex, tree, etc.)
+  1917→  accuracyOnHistoricalSample Float     @default(0) // measured accuracy (0-1)
+  1918→  status                     String    @default("pending_review") // pending_review | active | rejected
+  1919→  reviewedBy                 String? // email of the human who approved/rejected
+  1920→  reviewedAt                 DateTime?
+  1921→  sourceCandidateId          Int? // link to RuleCandidate that generated this
+  1922→  createdAt                  DateTime  @default(now())
+  1923→  updatedAt                  DateTime  @updatedAt
+  1924→
+  1925→  @@index([status])
+  1926→  @@index([requestType, status])
+  1927→  @@index([accuracyOnHistoricalSample])
+  1928→  @@map("compiled_rules")
+  1929→}
+  1930→
+  1931→model MFASecret {
+  1932→  id            String    @id @default(cuid())
+  1933→  userUid       String
+  1934→  secret        String /// encrypted TOTP secret (stored via cryptoVault)
+  1935→  recoveryCodes String /// JSON array of hashed recovery codes, encrypted
+  1936→  enabled       Boolean   @default(true)
+  1937→  verifiedAt    DateTime?
+  1938→  lastUsedAt    DateTime?
+  1939→  createdAt     DateTime  @default(now())
+  1940→  updatedAt     DateTime  @updatedAt
+  1941→  user          User      @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  1942→
+  1943→  @@index([userUid])
+  1944→}
+  1945→
+  1946→model SessionRegistry {
+  1947→  id        String   @id @default(cuid())
+  1948→  userUid   String
+  1949→  jti       String   @unique
+  1950→  ipAddress String?
+  1951→  userAgent String?
+  1952→  createdAt DateTime @default(now())
+  1953→  expiresAt DateTime
+  1954→  user      User     @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  1955→
+  1956→  @@index([userUid])
+  1957→  @@index([expiresAt])
+  1958→}
+  1959→
+  1960→model TamperEvidenceChain {
+  1961→  id          String    @id @default(cuid())
+  1962→  companySlug String?
+  1963→  entryId     String    @unique /// references AuditLog.id or AdminAuditLog.id
+  1964→  contentHash String /// SHA-256 of the entry content at write time
+  1965→  prevHash    String /// hash of the previous entry in the chain (null for first)
+  1966→  chainOrder  Int       @default(0)
+  1967→  verifiedAt  DateTime?
+  1968→  isValid     Boolean? /// null = not yet verified, true = chain intact, false = tampered
+  1969→  createdAt   DateTime  @default(now())
+  1970→
+  1971→  @@index([companySlug])
+  1972→  @@index([chainOrder])
+  1973→}
+  1974→
+  1975→model WebhookEndpoint {
+  1976→  id          String            @id @default(cuid())
+  1977→  companySlug String
+  1978→  url         String
+  1979→  events      String /// JSON array of subscribed event types
+  1980→  secret      String /// HMAC signing secret (encrypted via cryptoVault)
+  1981→  isActive    Boolean           @default(true)
+  1982→  lastPingAt  DateTime?
+  1983→  failCount   Int               @default(0)
+  1984→  createdAt   DateTime          @default(now())
+  1985→  updatedAt   DateTime          @updatedAt
+  1986→  deliveries  WebhookDelivery[]
+  1987→
+  1988→  @@index([companySlug])
+  1989→}
+  1990→
+  1991→model WebhookDelivery {
+  1992→  id          String          @id @default(cuid())
+  1993→  endpointId  String
+  1994→  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  1995→  eventType   String
+  1996→  payload     String /// JSON payload
+  1997→  statusCode  Int?
+  1998→  response    String?
+  1999→  attempts    Int             @default(0)
+  2000→  maxAttempts Int             @default(3)
+
+[showing lines 1-2000 of 2010; use offset=2001 with limit to continue reading]

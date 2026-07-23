@@ -1,0 +1,906 @@
+     1→/**
+     2→ * trade-finance.ts — Trade Finance engine (Phase 9).
+     3→ *
+     4→ * Handles Letters of Credit, Landed Cost Allocation, and FX Revaluation.
+     5→ * All monetary values stored as String; uses num() for arithmetic.
+     6→ */
+     7→import { db } from "@/lib/db";
+     8→import { num, addNums, subNums, mulNums, toNum } from "@/lib/money";
+     9→import { logger } from "@/lib/logger";
+    10→import { parseJsonField } from "@/lib/api";
+    11→
+    12→// ─── Letters of Credit ────────────────────────────────────────────────────
+    13→
+    14→export interface TrackLCInput {
+    15→  lcNumber: string;
+    16→  supplierId: number;
+    17→  bankAccountId: number;
+    18→  amount: string;
+    19→  currency: string;
+    20→  issueDate: string;
+    21→  expiryDate: string;
+    22→  documentsRequired?: string[];
+    23→  notes?: string;
+    24→}
+    25→
+    26→/**
+    27→ * Create a LetterOfCredit record and track its lifecycle.
+    28→ * LC lifecycle: issued → amended → utilized → expired/cancelled
+    29→ */
+    30→export async function trackLetterOfCredit(
+    31→  companySlug: string,
+    32→  lcData: TrackLCInput,
+    33→): Promise<{ ok: boolean; lc?: Record<string, unknown>; error?: string }> {
+    34→  try {
+    35→    // Verify supplier belongs to company
+    36→    const supplier = await db.supplier.findFirst({
+    37→      where: { id: lcData.supplierId, companySlug, isActive: true, deletedAt: null },
+    38→    });
+    39→    if (!supplier) {
+    40→      return { ok: false, error: "المورد غير موجود أو غير نشط في هذه الشركة" };
+    41→    }
+    42→
+    43→    // Verify bank account belongs to company
+    44→    const bankAccount = await db.bankAccount.findFirst({
+    45→      where: { id: lcData.bankAccountId, companySlug, isActive: true },
+    46→    });
+    47→    if (!bankAccount) {
+    48→      return { ok: false, error: "الحساب البنكي غير موجود أو غير نشط في هذه الشركة" };
+    49→    }
+    50→
+    51→    const lc = await db.letterOfCredit.create({
+    52→      data: {
+    53→        companySlug,
+    54→        lcNumber: lcData.lcNumber,
+    55→        supplierId: lcData.supplierId,
+    56→        bankAccountId: lcData.bankAccountId,
+    57→        amount: toNum(lcData.amount),
+    58→        currency: lcData.currency || "KWD",
+    59→        issueDate: lcData.issueDate,
+    60→        expiryDate: lcData.expiryDate,
+    61→        status: "issued",
+    62→        utilizationAmount: "0.000",
+    63→        documentsRequired: lcData.documentsRequired
+    64→          ? JSON.stringify(lcData.documentsRequired)
+    65→          : null,
+    66→        notes: lcData.notes || null,
+    67→      },
+    68→    });
+    69→
+    70→    logger.info("[trade-finance] LC created", {
+    71→      companySlug,
+    72→      lcNumber: lc.lcNumber,
+    73→      amount: lc.amount,
+    74→      currency: lc.currency,
+    75→    });
+    76→
+    77→    return {
+    78→      ok: true,
+    79→      lc: {
+    80→        id: lc.id,
+    81→        lcNumber: lc.lcNumber,
+    82→        supplierId: lc.supplierId,
+    83→        bankAccountId: lc.bankAccountId,
+    84→        amount: num(lc.amount, 3),
+    85→        currency: lc.currency,
+    86→        issueDate: lc.issueDate,
+    87→        expiryDate: lc.expiryDate,
+    88→        status: lc.status,
+    89→        utilizationAmount: num(lc.utilizationAmount, 3),
+    90→        documentsRequired: parseJsonField<string[]>(lc.documentsRequired, []),
+    91→        notes: lc.notes,
+    92→        createdAt: lc.createdAt,
+    93→        updatedAt: lc.updatedAt,
+    94→      },
+    95→    };
+    96→  } catch (err) {
+    97→    const msg = err instanceof Error ? err.message : String(err);
+    98→    logger.error("[trade-finance] trackLetterOfCredit failed", { err: msg });
+    99→    return { ok: false, error: msg };
+   100→  }
+   101→}
+   102→
+   103→export interface AmendLCInput {
+   104→  amount?: string;
+   105→  expiryDate?: string;
+   106→  documentsRequired?: string[];
+   107→  notes?: string;
+   108→}
+   109→
+   110→/**
+   111→ * Amend an existing LC — update amount, expiry, documents.
+   112→ * Status transitions from issued/amended to amended.
+   113→ * Tracks amendment history in notes.
+   114→ */
+   115→export async function amendLC(
+   116→  companySlug: string,
+   117→  lcId: number,
+   118→  amendmentData: AmendLCInput,
+   119→): Promise<{ ok: boolean; lc?: Record<string, unknown>; error?: string }> {
+   120→  try {
+   121→    const existing = await db.letterOfCredit.findFirst({
+   122→      where: { id: lcId, companySlug },
+   123→    });
+   124→    if (!existing) {
+   125→      return { ok: false, error: "الاعتماد المستندي غير موجود" };
+   126→    }
+   127→    if (existing.status === "utilized" || existing.status === "expired" || existing.status === "cancelled") {
+   128→      return { ok: false, error: `لا يمكن تعديل اعتماد مستندي بحالة ${existing.status}` };
+   129→    }
+   130→
+   131→    const amendmentNotes = `[تعديل ${new Date().toISOString().slice(0, 10)}]`;
+   132→    const newNotes = amendmentData.notes
+   133→      ? `${existing.notes || ""}\n${amendmentNotes}: ${amendmentData.notes}`
+   134→      : `${existing.notes || ""}\n${amendmentNotes}`;
+   135→
+   136→    const updated = await db.letterOfCredit.update({
+   137→      where: { id: lcId },
+   138→      data: {
+   139→        amount: amendmentData.amount ? toNum(amendmentData.amount) : undefined,
+   140→        expiryDate: amendmentData.expiryDate || undefined,
+   141→        documentsRequired: amendmentData.documentsRequired
+   142→          ? JSON.stringify(amendmentData.documentsRequired)
+   143→          : undefined,
+   144→        notes: newNotes,
+   145→        status: "amended",
+   146→      },
+   147→    });
+   148→
+   149→    logger.info("[trade-finance] LC amended", {
+   150→      companySlug,
+   151→      lcId,
+   152→      lcNumber: updated.lcNumber,
+   153→      newAmount: amendmentData.amount,
+   154→    });
+   155→
+   156→    return {
+   157→      ok: true,
+   158→      lc: {
+   159→        id: updated.id,
+   160→        lcNumber: updated.lcNumber,
+   161→        supplierId: updated.supplierId,
+   162→        bankAccountId: updated.bankAccountId,
+   163→        amount: num(updated.amount, 3),
+   164→        currency: updated.currency,
+   165→        issueDate: updated.issueDate,
+   166→        expiryDate: updated.expiryDate,
+   167→        status: updated.status,
+   168→        utilizationAmount: num(updated.utilizationAmount, 3),
+   169→        documentsRequired: parseJsonField<string[]>(updated.documentsRequired, []),
+   170→        notes: updated.notes,
+   171→        createdAt: updated.createdAt,
+   172→        updatedAt: updated.updatedAt,
+   173→      },
+   174→    };
+   175→  } catch (err) {
+   176→    const msg = err instanceof Error ? err.message : String(err);
+   177→    logger.error("[trade-finance] amendLC failed", { err: msg });
+   178→    return { ok: false, error: msg };
+   179→  }
+   180→}
+   181→
+   182→/**
+   183→ * Utilize an LC — mark it as utilized and create a JE.
+   184→ * JE: Debit: Inventory/Purchases, Credit: LC Payable
+   185→ */
+   186→export async function utilizeLC(
+   187→  companySlug: string,
+   188→  lcId: number,
+   189→  utilizationAmount: string,
+   190→  userEmail: string,
+   191→): Promise<{ ok: boolean; lc?: Record<string, unknown>; jeId?: number; error?: string }> {
+   192→  try {
+   193→    const existing = await db.letterOfCredit.findFirst({
+   194→      where: { id: lcId, companySlug },
+   195→    });
+   196→    if (!existing) {
+   197→      return { ok: false, error: "الاعتماد المستندي غير موجود" };
+   198→    }
+   199→    if (existing.status !== "issued" && existing.status !== "amended") {
+   200→      return { ok: false, error: `لا يمكن استخدام اعتماد مستندي بحالة ${existing.status}` };
+   201→    }
+   202→
+   203→    const utilAmt = num(utilizationAmount, 3);
+   204→    const lcAmt = num(existing.amount, 3);
+   205→    if (utilAmt > lcAmt + 0.001) {
+   206→      return { ok: false, error: "مبلغ الاستخدام أكبر من مبلغ الاعتماد المستندي" };
+   207→    }
+   208→
+   209→    // Find appropriate accounts
+   210→    // Purchases/Inventory account (expense or asset type)
+   211→    const purchasesAccount = await db.account.findFirst({
+   212→      where: {
+   213→        companySlug,
+   214→        type: { in: ["expense", "asset"] },
+   215→        code: { startsWith: "5" }, // expense accounts typically start with 5
+   216→        isActive: true,
+   217→      },
+   218→      orderBy: { code: "asc" },
+   219→    });
+   220→    // LC Payable account (liability type)
+   221→    const lcPayableAccount = await db.account.findFirst({
+   222→      where: {
+   223→        companySlug,
+   224→        type: "liability",
+   225→        isActive: true,
+   226→        code: { startsWith: "2" }, // liability accounts typically start with 2
+   227→      },
+   228→      orderBy: { code: "asc" },
+   229→    });
+   230→
+   231→    if (!purchasesAccount || !lcPayableAccount) {
+   232→      return { ok: false, error: "حسابات المشتريات/الاعتمادات المستندية غير مُهيّأة — يرجى إنشاء حسابات مناسبة" };
+   233→    }
+   234→
+   235→    const totalUtil = addNums(existing.utilizationAmount, utilizationAmount);
+   236→
+   237→    // Create JE + update LC in a transaction
+   238→    const result = await db.$transaction(async (tx) => {
+   239→      const je = await tx.journalEntry.create({
+   240→        data: {
+   241→          companySlug,
+   242→          date: new Date().toISOString().slice(0, 10),
+   243→          description: `استخدام اعتماد مستندي ${existing.lcNumber}`,
+   244→          reference: `LC-${existing.lcNumber}`,
+   245→          status: "posted",
+   246→          sourceType: "letter_of_credit",
+   247→          sourceId: lcId,
+   248→          createdBy: userEmail,
+   249→          lines: {
+   250→            create: [
+   251→              {
+   252→                accountId: purchasesAccount.id,
+   253→                debit: toNum(utilAmt),
+   254→                credit: "0.000",
+   255→                description: `مشتريات عبر اعتماد مستندي ${existing.lcNumber}`,
+   256→              },
+   257→              {
+   258→                accountId: lcPayableAccount.id,
+   259→                debit: "0.000",
+   260→                credit: toNum(utilAmt),
+   261→                description: `التزامات اعتماد مستندي ${existing.lcNumber}`,
+   262→              },
+   263→            ],
+   264→          },
+   265→        },
+   266→        include: { lines: true },
+   267→      });
+   268→
+   269→      // Update account balances
+   270→      const isDebitNormalPurchases = purchasesAccount.type === "asset" || purchasesAccount.type === "expense";
+   271→      const deltaPurchases = isDebitNormalPurchases ? utilAmt : -utilAmt;
+   272→      await tx.account.update({
+   273→        where: { id: purchasesAccount.id },
+   274→        data: { balance: (num(purchasesAccount.balance, 3) + deltaPurchases).toFixed(3) },
+   275→      });
+   276→
+   277→      const isDebitNormalPayable = lcPayableAccount.type === "asset" || lcPayableAccount.type === "expense";
+   278→      const deltaPayable = isDebitNormalPayable ? -utilAmt : utilAmt;
+   279→      await tx.account.update({
+   280→        where: { id: lcPayableAccount.id },
+   281→        data: { balance: (num(lcPayableAccount.balance, 3) + deltaPayable).toFixed(3) },
+   282→      });
+   283→
+   284→      // Update LC
+   285→      const newStatus = num(totalUtil, 3) >= lcAmt - 0.001 ? "utilized" : existing.status;
+   286→      const lc = await tx.letterOfCredit.update({
+   287→        where: { id: lcId },
+   288→        data: {
+   289→          utilizationAmount: totalUtil,
+   290→          status: newStatus,
+   291→          notes: `${existing.notes || ""}\n[استخدام ${new Date().toISOString().slice(0, 10)}]: مبلغ ${toNum(utilAmt)}`,
+   292→        },
+   293→      });
+   294→
+   295→      return { je, lc };
+   296→    });
+   297→
+   298→    logger.info("[trade-finance] LC utilized", {
+   299→      companySlug,
+   300→      lcId,
+   301→      jeId: result.je.id,
+   302→      utilizationAmount: toNum(utilAmt),
+   303→    });
+   304→
+   305→    return {
+   306→      ok: true,
+   307→      lc: {
+   308→        id: result.lc.id,
+   309→        lcNumber: result.lc.lcNumber,
+   310→        amount: num(result.lc.amount, 3),
+   311→        utilizationAmount: num(result.lc.utilizationAmount, 3),
+   312→        status: result.lc.status,
+   313→      },
+   314→      jeId: result.je.id,
+   315→    };
+   316→  } catch (err) {
+   317→    const msg = err instanceof Error ? err.message : String(err);
+   318→    logger.error("[trade-finance] utilizeLC failed", { err: msg });
+   319→    return { ok: false, error: msg };
+   320→  }
+   321→}
+   322→
+   323→/**
+   324→ * Cancel an LC — mark as cancelled.
+   325→ */
+   326→export async function cancelLC(
+   327→  companySlug: string,
+   328→  lcId: number,
+   329→): Promise<{ ok: boolean; lc?: Record<string, unknown>; error?: string }> {
+   330→  try {
+   331→    const existing = await db.letterOfCredit.findFirst({
+   332→      where: { id: lcId, companySlug },
+   333→    });
+   334→    if (!existing) {
+   335→      return { ok: false, error: "الاعتماد المستندي غير موجود" };
+   336→    }
+   337→    if (existing.status === "utilized" || existing.status === "cancelled") {
+   338→      return { ok: false, error: `لا يمكن إلغاء اعتماد مستندي بحالة ${existing.status}` };
+   339→    }
+   340→
+   341→    const lc = await db.letterOfCredit.update({
+   342→      where: { id: lcId },
+   343→      data: {
+   344→        status: "cancelled",
+   345→        notes: `${existing.notes || ""}\n[إلغاء ${new Date().toISOString().slice(0, 10)}]`,
+   346→      },
+   347→    });
+   348→
+   349→    return {
+   350→      ok: true,
+   351→      lc: {
+   352→        id: lc.id,
+   353→        lcNumber: lc.lcNumber,
+   354→        status: lc.status,
+   355→      },
+   356→    };
+   357→  } catch (err) {
+   358→    const msg = err instanceof Error ? err.message : String(err);
+   359→    logger.error("[trade-finance] cancelLC failed", { err: msg });
+   360→    return { ok: false, error: msg };
+   361→  }
+   362→}
+   363→
+   364→// ─── Landed Cost Allocation ───────────────────────────────────────────────
+   365→
+   366→export interface LandedCostLineInput {
+   367→  inventoryItemId?: number;
+   368→  productId?: number;
+   369→  allocatedCost: string;
+   370→  baseQuantity?: string;
+   371→  baseValue?: string;
+   372→}
+   373→
+   374→export interface AllocateLandedCostInput {
+   375→  purchaseInvoiceId: number;
+   376→  costType: string; // shipping/customs/clearance/insurance/other
+   377→  totalCost: string;
+   378→  allocationMethod: string; // quantity/value/weight/volume
+   379→  lines: LandedCostLineInput[];
+   380→}
+   381→
+   382→/**
+   383→ * Allocate landed costs across items based on the chosen method.
+   384→ * Creates JE: Debit Inventory (allocated cost per item), Credit Cash/AP.
+   385→ */
+   386→export async function allocateLandedCost(
+   387→  companySlug: string,
+   388→  allocationData: AllocateLandedCostInput,
+   389→  userEmail: string,
+   390→): Promise<{ ok: boolean; allocation?: Record<string, unknown>; jeId?: number; error?: string }> {
+   391→  try {
+   392→    // Verify purchase invoice
+   393→    const pi = await db.purchaseInvoice.findFirst({
+   394→      where: { id: allocationData.purchaseInvoiceId, companySlug, deletedAt: null },
+   395→    });
+   396→    if (!pi) {
+   397→      return { ok: false, error: "فاتورة المشتريات غير موجودة" };
+   398→    }
+   399→
+   400→    const totalCost = num(allocationData.totalCost, 3);
+   401→    const method = allocationData.allocationMethod;
+   402→
+   403→    // Validate total allocated cost matches sum of lines
+   404→    const linesTotal = allocationData.lines.reduce(
+   405→      (sum, l) => sum + num(l.allocatedCost, 3), 0
+   406→    );
+   407→    if (Math.abs(linesTotal - totalCost) > 0.01) {
+   408→      // Auto-distribute if lines don't sum correctly
+   409→      logger.info("[trade-finance] auto-distributing landed cost", {
+   410→        linesTotal,
+   411→        totalCost,
+   412→        method,
+   413→      });
+   414→    }
+   415→
+   416→    // Find inventory account (asset type, code starting with 1) and cash/AP account
+   417→    const inventoryAccount = await db.account.findFirst({
+   418→      where: { companySlug, type: "asset", isActive: true, code: { startsWith: "1" } },
+   419→      orderBy: { code: "asc" },
+   420→    });
+   421→    const cashOrAPAccount = await db.account.findFirst({
+   422→      where: {
+   423→        companySlug,
+   424→        type: { in: ["asset", "liability"] },
+   425→        isActive: true,
+   426→        OR: [
+   427→          { code: { startsWith: "1" }, nameAr: { contains: "نقد" } },
+   428→          { code: { startsWith: "1" }, nameAr: { contains: "بنك" } },
+   429→          { code: { startsWith: "2" }, nameAr: { contains: "مورد" } },
+   430→          { code: { startsWith: "2" }, nameAr: { contains: "دائن" } },
+   431→        ],
+   432→      },
+   433→      orderBy: { code: "asc" },
+   434→    });
+   435→
+   436→    if (!inventoryAccount || !cashOrAPAccount) {
+   437→      return { ok: false, error: "حسابات المخزون/النقد أو الموردون غير مُهيّأة — يرجى إنشاء حسابات مناسبة" };
+   438→    }
+   439→
+   440→    const result = await db.$transaction(async (tx) => {
+   441→      // Create LandedCostAllocation
+   442→      const allocation = await tx.landedCostAllocation.create({
+   443→        data: {
+   444→          companySlug,
+   445→          purchaseInvoiceId: allocationData.purchaseInvoiceId,
+   446→          costType: allocationData.costType,
+   447→          totalCost: toNum(totalCost),
+   448→          allocationMethod: method,
+   449→          lines: {
+   450→            create: allocationData.lines.map((l) => ({
+   451→              inventoryItemId: l.inventoryItemId || null,
+   452→              productId: l.productId || null,
+   453→              allocatedCost: toNum(l.allocatedCost),
+   454→              baseQuantity: l.baseQuantity || null,
+   455→              baseValue: l.baseValue || null,
+   456→            })),
+   457→          },
+   458→        },
+   459→        include: { lines: true },
+   460→      });
+   461→
+   462→      // Update inventory item costs
+   463→      for (const line of allocation.lines) {
+   464→        if (line.inventoryItemId) {
+   465→          const item = await tx.inventoryItem.findUnique({
+   466→            where: { id: line.inventoryItemId },
+   467→          });
+   468→          if (item) {
+   469→            // Add allocated cost to the product's cost (via product catalog)
+   470→            if (item.productId) {
+   471→              const product = await tx.productCatalog.findUnique({
+   472→                where: { id: item.productId },
+   473→              });
+   474→              if (product) {
+   475→                // FIX #12: ProductCatalog uses `purchasePrice`, NOT `cost`.
+   476→                const currentCost = num(product.purchasePrice, 3);
+   477→                const qty = num(item.quantity, 3);
+   478→                const lineCost = num(line.allocatedCost, 3);
+   479→                const perUnitCost = qty > 0 ? lineCost / qty : 0;
+   480→                await tx.productCatalog.update({
+   481→                  where: { id: item.productId },
+   482→                // FIX #13: ProductCatalogUncheckedUpdateInput uses `purchasePrice`, NOT `cost`.
+   483→                  data: { purchasePrice: (currentCost + perUnitCost).toFixed(3) },
+   484→                });
+   485→              }
+   486→            }
+   487→          }
+   488→        }
+   489→      }
+   490→
+   491→      // Create JE: Debit Inventory, Credit Cash/AP
+   492→      const je = await tx.journalEntry.create({
+   493→        data: {
+   494→          companySlug,
+   495→          date: new Date().toISOString().slice(0, 10),
+   496→          description: `تكلفة استيراد — ${allocationData.costType} (فاتورة ${pi.num})`,
+   497→          reference: `LandedCost-${allocation.id}`,
+   498→          status: "posted",
+   499→          sourceType: "landed_cost_allocation",
+   500→          sourceId: allocation.id,
+   501→          createdBy: userEmail,
+   502→          lines: {
+   503→            create: [
+   504→              {
+   505→                accountId: inventoryAccount.id,
+   506→                debit: toNum(totalCost),
+   507→                credit: "0.000",
+   508→                description: `تكلفة استيراد (${allocationData.costType})`,
+   509→              },
+   510→              {
+   511→                accountId: cashOrAPAccount.id,
+   512→                debit: "0.000",
+   513→                credit: toNum(totalCost),
+   514→                description: `سداد تكلفة استيراد (${allocationData.costType})`,
+   515→              },
+   516→            ],
+   517→          },
+   518→        },
+   519→        include: { lines: true },
+   520→      });
+   521→
+   522→      // Update account balances
+   523→      const isDebitNormalInv = inventoryAccount.type === "asset" || inventoryAccount.type === "expense";
+   524→      const deltaInv = isDebitNormalInv ? totalCost : -totalCost;
+   525→      await tx.account.update({
+   526→        where: { id: inventoryAccount.id },
+   527→        data: { balance: (num(inventoryAccount.balance, 3) + deltaInv).toFixed(3) },
+   528→      });
+   529→
+   530→      const isDebitNormalCash = cashOrAPAccount.type === "asset" || cashOrAPAccount.type === "expense";
+   531→      const deltaCash = isDebitNormalCash ? -totalCost : totalCost;
+   532→      await tx.account.update({
+   533→        where: { id: cashOrAPAccount.id },
+   534→        data: { balance: (num(cashOrAPAccount.balance, 3) + deltaCash).toFixed(3) },
+   535→      });
+   536→
+   537→      return { allocation, je };
+   538→    });
+   539→
+   540→    logger.info("[trade-finance] landed cost allocated", {
+   541→      companySlug,
+   542→      allocationId: result.allocation.id,
+   543→      totalCost: toNum(totalCost),
+   544→      method,
+   545→      jeId: result.je.id,
+   546→    });
+   547→
+   548→    return {
+   549→      ok: true,
+   550→      allocation: {
+   551→        id: result.allocation.id,
+   552→        purchaseInvoiceId: result.allocation.purchaseInvoiceId,
+   553→        costType: result.allocation.costType,
+   554→        totalCost: num(result.allocation.totalCost, 3),
+   555→        allocationMethod: result.allocation.allocationMethod,
+   556→        lines: result.allocation.lines.map((l) => ({
+   557→          id: l.id,
+   558→          inventoryItemId: l.inventoryItemId,
+   559→          productId: l.productId,
+   560→          allocatedCost: num(l.allocatedCost, 3),
+   561→          baseQuantity: l.baseQuantity ? num(l.baseQuantity, 3) : null,
+   562→          baseValue: l.baseValue ? num(l.baseValue, 3) : null,
+   563→        })),
+   564→        createdAt: result.allocation.createdAt,
+   565→      },
+   566→      jeId: result.je.id,
+   567→    };
+   568→  } catch (err) {
+   569→    const msg = err instanceof Error ? err.message : String(err);
+   570→    logger.error("[trade-finance] allocateLandedCost failed", { err: msg });
+   571→    return { ok: false, error: msg };
+   572→  }
+   573→}
+   574→
+   575→// ─── FX Revaluation ───────────────────────────────────────────────────────
+   576→
+   577→export interface FxRevaluationDetail {
+   578→  sourceType: string; // invoice / purchase_invoice / bank_account
+   579→  sourceId: number;
+   580→  originalAmount: number;
+   581→  originalRate: number;
+   582→  currentRate: number;
+   583→  revaluedAmount: number;
+   584→  gain: number;
+   585→  loss: number;
+   586→}
+   587→
+   588→export interface FxRevaluationResult {
+   589→  realizedGain: number;
+   590→  realizedLoss: number;
+   591→  unrealizedGain: number;
+   592→  unrealizedLoss: number;
+   593→  details: FxRevaluationDetail[];
+   594→  revaluationId?: number;
+   595→  jeId?: number;
+   596→}
+   597→
+   598→/**
+   599→ * Calculate FX revaluation for open foreign currency transactions.
+   600→ *
+   601→ * 1. Find all open foreign currency transactions (invoices, purchase invoices, bank accounts)
+   602→ * 2. Revalue at current exchange rate vs original rate
+   603→ * 3. Calculate realized gains/losses (settled transactions)
+   604→ * 4. Calculate unrealized gains/losses (open transactions)
+   605→ * 5. Create FxRevaluation record
+   606→ * 6. Optionally create JE for unrealized portion
+   607→ */
+   608→export async function calculateFxRevaluation(
+   609→  companySlug: string,
+   610→  fromCurrency: string,
+   611→  toCurrency: string,
+   612→  rate: number,
+   613→  period: string,
+   614→  userEmail: string,
+   615→  postImmediately: boolean = false,
+   616→): Promise<{ ok: boolean; result?: FxRevaluationResult; error?: string }> {
+   617→  try {
+   618→    if (fromCurrency === toCurrency) {
+   619→      return { ok: false, error: "لا يمكن إعادة تقييم نفس العملة" };
+   620→    }
+   621→    if (rate <= 0) {
+   622→      return { ok: false, error: "سعر الصرف يجب أن يكون أكبر من صفر" };
+   623→    }
+   624→
+   625→    const details: FxRevaluationDetail[] = [];
+   626→    let realizedGain = 0;
+   627→    let realizedLoss = 0;
+   628→    let unrealizedGain = 0;
+   629→    let unrealizedLoss = 0;
+   630→
+   631→    // 1. Open invoices (receivables) in foreign currency
+   632→    const openInvoices = await db.invoice.findMany({
+   633→      where: {
+   634→        companySlug,
+   635→        deletedAt: null,
+   636→        // Foreign currency invoices (currency != company default)
+   637→      },
+   638→    });
+   639→
+   640→    const company = await db.company.findUnique({
+   641→      where: { slug: companySlug },
+   642→      select: { currency: true },
+   643→    });
+   644→    const baseCurrency = company?.currency || "KWD";
+   645→
+   646→    // Find invoices with currency different from base
+   647→    const foreignInvoices = openInvoices.filter(
+   648→      (inv) => inv.status !== "cancelled" && inv.status !== "paid"
+   649→    );
+   650→
+   651→    for (const inv of foreignInvoices) {
+   652→      // For simplicity, we revalue based on the invoice total vs what's been paid
+   653→      const invTotal = num(inv.total, 3);
+   654→      const invPaid = num(inv.paid, 3);
+   655→      const outstanding = invTotal - invPaid;
+   656→      if (outstanding <= 0.001) continue;
+   657→
+   658→      // Assume original rate = 1 (if invoice in base currency) or compute from metadata
+   659→      // In a production system, originalRate would come from invoice metadata
+   660→      const originalRate = 1; // simplified — real system would track original FX rate
+   661→      const revaluedAmount = outstanding * rate;
+   662→      const difference = revaluedAmount - outstanding;
+   663→
+   664→      const detail: FxRevaluationDetail = {
+   665→        sourceType: "invoice",
+   666→        sourceId: inv.id,
+   667→        originalAmount: outstanding,
+   668→        originalRate,
+   669→        currentRate: rate,
+   670→        revaluedAmount,
+   671→        gain: difference > 0 ? difference : 0,
+   672→        loss: difference < 0 ? Math.abs(difference) : 0,
+   673→      };
+   674→      details.push(detail);
+   675→
+   676→      if (difference > 0) unrealizedGain += difference;
+   677→      else unrealizedLoss += Math.abs(difference);
+   678→    }
+   679→
+   680→    // 2. Open purchase invoices (payables) in foreign currency
+   681→    const openPurchaseInvoices = await db.purchaseInvoice.findMany({
+   682→      where: {
+   683→        companySlug,
+   684→        deletedAt: null,
+   685→      },
+   686→    });
+   687→
+   688→    for (const pi of openPurchaseInvoices) {
+   689→      const piTotal = num(pi.totalAmount, 3);
+   690→      if (piTotal <= 0.001) continue;
+   691→
+   692→      const originalRate = 1;
+   693→      const revaluedAmount = piTotal * rate;
+   694→      const difference = revaluedAmount - piTotal;
+   695→
+   696→      const detail: FxRevaluationDetail = {
+   697→        sourceType: "purchase_invoice",
+   698→        sourceId: pi.id,
+   699→        originalAmount: piTotal,
+   700→        originalRate,
+   701→        currentRate: rate,
+   702→        revaluedAmount,
+   703→        gain: difference < 0 ? Math.abs(difference) : 0, // For payables, FX decrease is a gain
+   704→        loss: difference > 0 ? difference : 0,
+   705→      };
+   706→      details.push(detail);
+   707→
+   708→      // For payables: if revalued amount > original, it's a loss (we owe more)
+   709→      // If revalued amount < original, it's a gain (we owe less)
+   710→      if (difference > 0) unrealizedLoss += difference;
+   711→      else unrealizedGain += Math.abs(difference);
+   712→    }
+   713→
+   714→    // 3. Bank accounts in foreign currency
+   715→    const foreignBankAccounts = await db.bankAccount.findMany({
+   716→      where: { companySlug, isActive: true, currency: fromCurrency },
+   717→    });
+   718→
+   719→    for (const ba of foreignBankAccounts) {
+   720→      const balance = num(ba.balance, 3);
+   721→      if (balance <= 0.001) continue;
+   722→
+   723→      const revaluedAmount = balance * rate;
+   724→      const difference = revaluedAmount - balance;
+   725→
+   726→      const detail: FxRevaluationDetail = {
+   727→        sourceType: "bank_account",
+   728→        sourceId: ba.id,
+   729→        originalAmount: balance,
+   730→        originalRate: 1,
+   731→        currentRate: rate,
+   732→        revaluedAmount,
+   733→        gain: difference > 0 ? difference : 0,
+   734→        loss: difference < 0 ? Math.abs(difference) : 0,
+   735→      };
+   736→      details.push(detail);
+   737→
+   738→      if (difference > 0) unrealizedGain += difference;
+   739→      else unrealizedLoss += Math.abs(difference);
+   740→    }
+   741→
+   742→    // Create FxRevaluation record
+   743→    const revaluation = await db.fxRevaluation.create({
+   744→      data: {
+   745→        companySlug,
+   746→        fromCurrency,
+   747→        toCurrency,
+   748→        rate: rate.toFixed(3),
+   749→        period,
+   750→        realizedGain: toNum(realizedGain),
+   751→        realizedLoss: toNum(realizedLoss),
+   752→        unrealizedGain: toNum(unrealizedGain),
+   753→        unrealizedLoss: toNum(unrealizedLoss),
+   754→        status: postImmediately ? "posted" : "draft",
+   755→      },
+   756→    });
+   757→
+   758→    let jeId: number | undefined;
+   759→
+   760→    // Optionally create JE for unrealized portion
+   761→    if (postImmediately && (unrealizedGain > 0.001 || unrealizedLoss > 0.001)) {
+   762→      // Find FX gain/loss accounts
+   763→      const fxGainAccount = await db.account.findFirst({
+   764→        where: { companySlug, type: "revenue", isActive: true },
+   765→        orderBy: { code: "asc" },
+   766→      });
+   767→      const fxLossAccount = await db.account.findFirst({
+   768→        where: { companySlug, type: "expense", isActive: true },
+   769→        orderBy: { code: "asc" },
+   770→      });
+   771→      const fxReceivableAccount = await db.account.findFirst({
+   772→        where: { companySlug, type: "asset", isActive: true },
+   773→        orderBy: { code: "asc" },
+   774→      });
+   775→      const fxPayableAccount = await db.account.findFirst({
+   776→        where: { companySlug, type: "liability", isActive: true },
+   777→        orderBy: { code: "asc" },
+   778→      });
+   779→
+   780→      if (fxGainAccount && fxLossAccount && fxReceivableAccount && fxPayableAccount) {
+   781→        const je = await db.$transaction(async (tx) => {
+   782→          const lines: Array<{
+   783→            accountId: number;
+   784→            debit: string;
+   785→            credit: string;
+   786→            description: string;
+   787→          }> = [];
+   788→
+   789→          // Unrealized gain: Debit FX Receivable, Credit FX Gain
+   790→          if (unrealizedGain > 0.001) {
+   791→            lines.push({
+   792→              accountId: fxReceivableAccount.id,
+   793→              debit: toNum(unrealizedGain),
+   794→              credit: "0.000",
+   795→              description: `أرباح عملات غير محققة — ${fromCurrency}/${toCurrency}`,
+   796→            });
+   797→            lines.push({
+   798→              accountId: fxGainAccount.id,
+   799→              debit: "0.000",
+   800→              credit: toNum(unrealizedGain),
+   801→              description: `أرباح عملات غير محققة — ${fromCurrency}/${toCurrency}`,
+   802→            });
+   803→          }
+   804→
+   805→          // Unrealized loss: Debit FX Loss, Credit FX Payable
+   806→          if (unrealizedLoss > 0.001) {
+   807→            lines.push({
+   808→              accountId: fxLossAccount.id,
+   809→              debit: toNum(unrealizedLoss),
+   810→              credit: "0.000",
+   811→              description: `خسائر عملات غير محققة — ${fromCurrency}/${toCurrency}`,
+   812→            });
+   813→            lines.push({
+   814→              accountId: fxPayableAccount.id,
+   815→              debit: "0.000",
+   816→              credit: toNum(unrealizedLoss),
+   817→              description: `خسائر عملات غير محققة — ${fromCurrency}/${toCurrency}`,
+   818→            });
+   819→          }
+   820→
+   821→          const entry = await tx.journalEntry.create({
+   822→            data: {
+   823→              companySlug,
+   824→              date: new Date().toISOString().slice(0, 10),
+   825→              description: `إعادة تقييم عملة — ${fromCurrency}/${toCurrency} (سعر ${rate})`,
+   826→              reference: `FX-Rev-${revaluation.id}`,
+   827→              status: "posted",
+   828→              sourceType: "fx_revaluation",
+   829→              sourceId: revaluation.id,
+   830→              createdBy: userEmail,
+   831→              lines: { create: lines },
+   832→            },
+   833→            include: { lines: true },
+   834→          });
+   835→
+   836→          // Update account balances
+   837→          const accountIds = [...new Set(lines.map((l) => l.accountId))];
+   838→          const accounts = await tx.account.findMany({
+   839→            where: { id: { in: accountIds } },
+   840→          });
+   841→          const accountMap = new Map(accounts.map((a) => [a.id, a]));
+   842→
+   843→          const deltas = new Map<number, number>();
+   844→          for (const line of lines) {
+   845→            const acc = accountMap.get(line.accountId);
+   846→            if (!acc) continue;
+   847→            const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+   848→            const delta = isDebitNormal
+   849→              ? num(line.debit, 3) - num(line.credit, 3)
+   850→              : num(line.credit, 3) - num(line.debit, 3);
+   851→            deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+   852→          }
+   853→
+   854→          for (const [accountId, delta] of deltas) {
+   855→            const acc = accountMap.get(accountId)!;
+   856→            await tx.account.update({
+   857→              where: { id: accountId },
+   858→              data: { balance: (num(acc.balance, 3) + delta).toFixed(3) },
+   859→            });
+   860→          }
+   861→
+   862→          // Link JE to revaluation
+   863→          await tx.fxRevaluation.update({
+   864→            where: { id: revaluation.id },
+   865→            data: { journalEntryId: entry.id },
+   866→          });
+   867→
+   868→          return entry;
+   869→        });
+   870→
+   871→        jeId = je.id;
+   872→      }
+   873→    }
+   874→
+   875→    logger.info("[trade-finance] FX revaluation calculated", {
+   876→      companySlug,
+   877→      fromCurrency,
+   878→      toCurrency,
+   879→      rate,
+   880→      period,
+   881→      unrealizedGain,
+   882→      unrealizedLoss,
+   883→      realizedGain,
+   884→      realizedLoss,
+   885→      posted: postImmediately,
+   886→    });
+   887→
+   888→    return {
+   889→      ok: true,
+   890→      result: {
+   891→        realizedGain,
+   892→        realizedLoss,
+   893→        unrealizedGain,
+   894→        unrealizedLoss,
+   895→        details,
+   896→        revaluationId: revaluation.id,
+   897→        jeId,
+   898→      },
+   899→    };
+   900→  } catch (err) {
+   901→    const msg = err instanceof Error ? err.message : String(err);
+   902→    logger.error("[trade-finance] calculateFxRevaluation failed", { err: msg });
+   903→    return { ok: false, error: msg };
+   904→  }
+   905→}
+   906→
