@@ -178,6 +178,28 @@ model Company {
   purchaseReturns         PurchaseReturn[]
   refundTransactions      RefundTransaction[]
   subscriptionSchedules   SubscriptionSchedule[]
+  fiscalPeriods           FiscalPeriod[]
+  costCenters             CostCenter[]
+  bankAccounts            BankAccount[]
+  bankTransactions        BankTransaction[]
+  bankReconciliations     BankReconciliation[]
+  postDatedChecks         PostDatedCheck[]
+  installmentSchedules    InstallmentSchedule[]
+  fixedAssets             FixedAsset[]
+  depreciationEntries     DepreciationEntry[]
+  paymentVouchers         PaymentVoucher[]
+  quotations              Quotation[]
+  purchaseOrders          PurchaseOrder[]
+  budgets                 Budget[]
+  lettersOfCredit         LetterOfCredit[]
+  landedCostAllocations   LandedCostAllocation[]
+  fxRevaluations          FxRevaluation[]
+  interCompanyFrom        InterCompanyTransaction[] @relation("InterCompanyFrom")
+  interCompanyTo          InterCompanyTransaction[] @relation("InterCompanyTo")
+  wpsFiles                WpsFile[]
+  taxFilings              TaxFiling[]
+  accountingAuditLogs     AccountingAuditLog[]
+  openingBalanceEntries   OpeningBalanceEntry[]
 
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
@@ -222,8 +244,11 @@ model Client {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  tenant   Company   @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  invoices Invoice[]
+  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  invoices        Invoice[]
+  postDatedChecks PostDatedCheck[]
+  paymentVouchers PaymentVoucher[]
+  quotations      Quotation[]
 
   @@index([companySlug, createdAt, id])
   @@index([companySlug, deletedAt])
@@ -288,7 +313,8 @@ model Invoice {
   client       Client?        @relation(fields: [clientId], references: [id])
   eInvoice     EInvoice?
   delivery     OrderDelivery?
-  salesReturns SalesReturn[]
+  salesReturns            SalesReturn[]
+  installmentSchedules    InstallmentSchedule[]
 
   @@unique([companySlug, invoiceNumber])
   @@index([companySlug, issueDate])
@@ -321,10 +347,11 @@ model ProductCatalog {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant         Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  inventoryItems InventoryItem[]
-  productAliases ProductAlias[]
-  stockMovements StockMovement[]
+  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  inventoryItems  InventoryItem[]
+  productAliases  ProductAlias[]
+  stockMovements  StockMovement[]
+  landedCostLines LandedCostLine[]
 
   @@index([companySlug, createdAt, id])
   @@map("product_catalog")
@@ -354,20 +381,21 @@ model Warehouse {
 }
 
 model InventoryItem {
-  id           Int            @id @default(autoincrement())
-  companySlug  String
-  warehouseId  Int
-  productId    Int
-  quantity     String         @default("0")
-  reorderLevel String         @default("0")
-  reorderQty   String         @default("0")
-  batchNumber  String?
-  expiryDate   String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  warehouse    Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  product      ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  id              Int              @id @default(autoincrement())
+  companySlug     String
+  warehouseId     Int
+  productId       Int
+  quantity        String           @default("0")
+  reorderLevel    String           @default("0")
+  reorderQty      String           @default("0")
+  batchNumber     String?
+  expiryDate      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product         ProductCatalog   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  landedCostLines LandedCostLine[]
 
   @@unique([warehouseId, productId])
   @@index([companySlug])
@@ -495,6 +523,10 @@ model Supplier {
   tenant           Company           @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   purchaseInvoices PurchaseInvoice[]
   purchaseReturns  PurchaseReturn[]  @relation("SupplierReturns")
+  postDatedChecks  PostDatedCheck[]
+  paymentVouchers  PaymentVoucher[]
+  purchaseOrders   PurchaseOrder[]
+  lettersOfCredit  LetterOfCredit[]
 
   @@index([companySlug, isActive])
   @@index([companySlug, name])
@@ -517,9 +549,10 @@ model PurchaseInvoice {
   deletedAt        DateTime?
   deletedBy        String?
 
-  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  supplierEntity  Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  purchaseReturns PurchaseReturn[] @relation("PurchaseReturnInvoice")
+  tenant                Company                @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  supplierEntity        Supplier?              @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseReturns       PurchaseReturn[]       @relation("PurchaseReturnInvoice")
+  landedCostAllocations LandedCostAllocation[]
 
   @@index([companySlug, createdAt, id])
   @@index([companySlug, deletedAt])
@@ -697,10 +730,18 @@ model Account {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  parent       Account?           @relation("AccountParent", fields: [parentId], references: [id])
-  children     Account[]          @relation("AccountParent")
-  journalLines JournalEntryLine[]
-  tenant       Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  parent               Account?              @relation("AccountParent", fields: [parentId], references: [id])
+  children             Account[]             @relation("AccountParent")
+  journalLines         JournalEntryLine[]
+  bankAccounts         BankAccount[]
+  fixedAssets          FixedAsset[]
+  depreciationAccounts FixedAsset[]          @relation("FixedAssetDepreciationAccount")
+  expenseAccounts      FixedAsset[]          @relation("FixedAssetExpenseAccount")
+  paymentVouchers      PaymentVoucher[]
+  budgets              Budget[]
+  openingBalances      OpeningBalanceEntry[]
+  tenant               Company               @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  postDatedChecks      PostDatedCheck[]
 
   @@unique([companySlug, code])
   @@index([companySlug])
@@ -712,22 +753,34 @@ model Account {
 }
 
 model JournalEntry {
-  id          Int       @id @default(autoincrement())
-  date        String // YYYY-MM-DD
-  description String?
-  reference   String?
-  companySlug String
-  createdBy   String
-  status      String    @default("draft") // draft | posted | reversed
-  sourceType  String?
-  sourceId    Int?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  deletedBy   String?
+  id           Int       @id @default(autoincrement())
+  date         String // YYYY-MM-DD
+  description  String?
+  reference    String?
+  companySlug  String
+  currency     String    @default("KWD")
+  createdBy    String
+  status       String    @default("draft") // draft | posted | reversed
+  sourceType   String?
+  sourceId     Int?
+  reversedById Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  deletedBy    String?
 
-  tenant Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  lines  JournalEntryLine[]
+  tenant              Company                   @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  lines               JournalEntryLine[]
+  reversedBy          JournalEntry?             @relation("JEReversal", fields: [reversedById], references: [id])
+  reversalEntries     JournalEntry[]            @relation("JEReversal")
+  interCompanyFrom    InterCompanyTransaction[] @relation("InterCompanyJEFrom")
+  interCompanyTo      InterCompanyTransaction[] @relation("InterCompanyJETo")
+  depreciationEntries DepreciationEntry[]
+  paymentVouchers     PaymentVoucher[]
+  fxRevaluations      FxRevaluation[]
+  taxFilings          TaxFiling[]
+  openingBalances     OpeningBalanceEntry[]
+  postDatedChecks     PostDatedCheck[]
 
   @@index([companySlug])
   @@index([companySlug, date])
@@ -738,19 +791,22 @@ model JournalEntry {
 }
 
 model JournalEntryLine {
-  id          Int      @id @default(autoincrement())
-  entryId     Int
-  accountId   Int
-  debit       String   @default("0")
-  credit      String   @default("0")
-  description String?
-  createdAt   DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  entryId      Int
+  accountId    Int
+  costCenterId Int?
+  debit        String   @default("0")
+  credit       String   @default("0")
+  description  String?
+  createdAt    DateTime @default(now())
 
-  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  entry      JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account    Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  costCenter CostCenter?  @relation(fields: [costCenterId], references: [id])
 
   @@index([entryId])
   @@index([accountId])
+  @@index([costCenterId])
   @@map("journal_entry_lines")
 }
 
@@ -2006,4 +2062,667 @@ model WebhookDelivery {
   @@index([endpointId])
   @@index([status])
   @@index([nextRetryAt])
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Fiscal Periods (إقفال الفترة)
+// ────────────────────────────────────────────────────────────────────────────
+
+model FiscalPeriod {
+  id          Int       @id @default(autoincrement())
+  companySlug String
+  name        String // e.g. "2024-Q1", "2024"
+  startDate   String // YYYY-MM-DD
+  endDate     String // YYYY-MM-DD
+  fiscalYear  Int
+  periodType  String // monthly/quarterly/yearly
+  status      String    @default("open") // open/closed/locked
+  closedBy    String?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@unique([companySlug, name])
+  @@index([companySlug, startDate])
+  @@index([companySlug, status])
+  @@map("fiscal_periods")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Cost Centers (مراكز التكلفة)
+// ────────────────────────────────────────────────────────────────────────────
+
+model CostCenter {
+  id          Int      @id @default(autoincrement())
+  companySlug String
+  code        String
+  nameAr      String
+  nameEn      String?
+  parentId    Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent       CostCenter?        @relation("CostCenterParent", fields: [parentId], references: [id])
+  children     CostCenter[]       @relation("CostCenterParent")
+  tenant       Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  journalLines JournalEntryLine[]
+  budgets      Budget[]
+
+  @@unique([companySlug, code])
+  @@index([companySlug])
+  @@map("cost_centers")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Bank Accounts (حسابات بنكية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model BankAccount {
+  id            Int      @id @default(autoincrement())
+  companySlug   String
+  bankName      String
+  accountName   String
+  accountNumber String
+  iban          String?
+  branchCode    String?
+  currency      String   @default("KWD")
+  balance       String   @default("0")
+  accountType   String   @default("checking") // checking/savings/cash_vault
+  glAccountId   Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant              Company              @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  glAccount           Account?             @relation(fields: [glAccountId], references: [id])
+  bankTransactions    BankTransaction[]
+  bankReconciliations BankReconciliation[]
+  paymentVouchers     PaymentVoucher[]
+  letterOfCredits     LetterOfCredit[]
+
+  @@index([companySlug])
+  @@index([companySlug, currency])
+  @@map("bank_accounts")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Bank Transactions (حركات بنكية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model BankTransaction {
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  bankAccountId   Int
+  date            String // YYYY-MM-DD
+  reference       String?
+  description     String?
+  amount          String // positive = deposit, negative = withdrawal
+  transactionType String // deposit/withdrawal/transfer/fee
+  isReconciled    Boolean  @default(false)
+  reconciledWith  String? // journal_entry / payment / invoice
+  reconciledId    Int?
+  importedFrom    String? // csv/excel/api/manual
+  rawRow          String? // JSON of original import row
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  tenant      Company     @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug, date])
+  @@index([bankAccountId])
+  @@index([companySlug, isReconciled])
+  @@map("bank_transactions")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Bank Reconciliation (تسوية بنكية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model BankReconciliation {
+  id               Int       @id @default(autoincrement())
+  companySlug      String
+  bankAccountId    Int
+  periodStart      String // YYYY-MM-DD
+  periodEnd        String // YYYY-MM-DD
+  statementBalance String
+  bookBalance      String
+  adjustedBalance  String
+  difference       String
+  status           String    @default("draft") // draft/completed/approved
+  completedBy      String?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  tenant      Company     @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug, periodEnd])
+  @@index([bankAccountId])
+  @@map("bank_reconciliations")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Post-Dated Checks (شيكات آجلة)
+// ────────────────────────────────────────────────────────────────────────────
+
+model PostDatedCheck {
+  id             Int       @id @default(autoincrement())
+  companySlug    String
+  checkNumber    String
+  bankName       String
+  amount         String
+  currency       String    @default("KWD")
+  dueDate        String // YYYY-MM-DD
+  issueDate      String?
+  payee          String? // received from client
+  payer          String? // issued to supplier
+  direction      String // receivable/payable
+  status         String    @default("pending") // pending/deposited/cleared/returned/cancelled
+  clientId       Int?
+  supplierId     Int?
+  glAccountId    Int?
+  journalEntryId Int?
+  clearedAt      DateTime?
+  returnedReason String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  client       Client?       @relation(fields: [clientId], references: [id])
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id])
+  glAccount    Account?      @relation(fields: [glAccountId], references: [id])
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@index([companySlug, dueDate])
+  @@index([companySlug, status])
+  @@index([companySlug, direction])
+  @@map("post_dated_checks")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Installment Schedules (جدول الدفعات)
+// ────────────────────────────────────────────────────────────────────────────
+
+model InstallmentSchedule {
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  invoiceId       Int?
+  totalAmount     String   @default("0")
+  installmentCount Int
+  interval        String   @default("monthly") // monthly/weekly
+  startDate       String // YYYY-MM-DD
+  status          String   @default("active") // active/completed/cancelled
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id])
+  installments Installment[]
+
+  @@index([companySlug])
+  @@index([invoiceId])
+  @@index([companySlug, status])
+  @@map("installment_schedules")
+}
+
+model Installment {
+  id                Int      @id @default(autoincrement())
+  scheduleId        Int
+  installmentNumber Int
+  amount            String   @default("0")
+  dueDate           String // YYYY-MM-DD
+  status            String   @default("pending") // pending/paid/overdue/cancelled
+  paidAt            DateTime?
+  paidAmount        String   @default("0")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  schedule InstallmentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("installments")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Fixed Assets (أصول ثابتة)
+// ────────────────────────────────────────────────────────────────────────────
+
+model FixedAsset {
+  id                      Int      @id @default(autoincrement())
+  companySlug             String
+  nameAr                  String
+  nameEn                  String?
+  category                String // vehicle/equipment/building/it/furniture/other
+  acquisitionDate         String // YYYY-MM-DD
+  acquisitionCost         String
+  salvageValue            String   @default("0")
+  usefulLifeYears         Int
+  depreciationMethod      String   @default("straight_line") // straight_line/declining_balance
+  decliningRate           String   @default("0") // for declining balance method
+  currentBookValue        String
+  accumulatedDepreciation String   @default("0")
+  location                String?
+  assetTag                String?
+  isActive                Boolean  @default(true)
+  disposalDate            String?
+  disposalType            String? // sold/scrapped/donated
+  disposalAmount          String?
+  glAccountId             Int? // asset account
+  depreciationAccountId   Int? // accumulated depreciation account
+  expenseAccountId        Int? // depreciation expense account
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant              Company             @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  glAccount           Account?            @relation(fields: [glAccountId], references: [id])
+  depreciationAccount Account?            @relation("FixedAssetDepreciationAccount", fields: [depreciationAccountId], references: [id])
+  expenseAccount      Account?            @relation("FixedAssetExpenseAccount", fields: [expenseAccountId], references: [id])
+  depreciationEntries DepreciationEntry[]
+
+  @@index([companySlug])
+  @@index([companySlug, category])
+  @@index([companySlug, isActive])
+  @@map("fixed_assets")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Depreciation Entries (إهلاك)
+// ────────────────────────────────────────────────────────────────────────────
+
+model DepreciationEntry {
+  id                 Int      @id @default(autoincrement())
+  companySlug        String
+  assetId            Int
+  period             String // YYYY-MM or YYYY
+  depreciationAmount String
+  bookValueAfter     String
+  journalEntryId     Int?
+  status             String   @default("draft") // draft/posted
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  asset        FixedAsset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@unique([assetId, period])
+  @@index([companySlug, period])
+  @@map("depreciation_entries")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Payment Vouchers (سندات قبض وصرف)
+// ────────────────────────────────────────────────────────────────────────────
+
+model PaymentVoucher {
+  id             Int      @id @default(autoincrement())
+  companySlug    String
+  voucherNumber  String
+  voucherType    String // receipt/payment
+  date           String // YYYY-MM-DD
+  amount         String
+  currency       String   @default("KWD")
+  amountArText   String? // Arabic text of amount like "خمسمائة دينار"
+  payee          String
+  payer          String
+  description    String?
+  reference      String?
+  clientId       Int?
+  supplierId     Int?
+  bankAccountId  Int?
+  glAccountId    Int?
+  journalEntryId Int?
+  status         String   @default("draft") // draft/posted/cancelled
+  createdBy      String
+  approvedBy     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  client       Client?       @relation(fields: [clientId], references: [id])
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id])
+  bankAccount  BankAccount?  @relation(fields: [bankAccountId], references: [id])
+  glAccount    Account?      @relation(fields: [glAccountId], references: [id])
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([companySlug, voucherNumber])
+  @@index([companySlug, date])
+  @@index([companySlug, voucherType])
+  @@map("payment_vouchers")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Quotations (عروض أسعار)
+// ────────────────────────────────────────────────────────────────────────────
+
+model Quotation {
+  id                 Int      @id @default(autoincrement())
+  companySlug        String
+  quotationNumber    String
+  clientId           Int
+  date               String // YYYY-MM-DD
+  validUntil         String?
+  lineItems          String // JSON
+  subtotal           String
+  taxRate            String
+  taxAmount          String
+  total              String
+  notes              String?
+  status             String   @default("draft") // draft/sent/accepted/rejected/converted
+  convertedInvoiceId Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  client Client  @relation(fields: [clientId], references: [id])
+
+  @@unique([companySlug, quotationNumber])
+  @@index([companySlug, date])
+  @@index([companySlug, status])
+  @@map("quotations")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Purchase Orders (أوامر شراء)
+// ────────────────────────────────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id               Int      @id @default(autoincrement())
+  companySlug      String
+  poNumber         String
+  supplierId       Int
+  date             String // YYYY-MM-DD
+  expectedDelivery String?
+  lineItems        String // JSON
+  subtotal         String
+  taxRate          String
+  taxAmount        String
+  total            String
+  notes            String?
+  status           String   @default("draft") // draft/sent/received/partial_received/completed/cancelled
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@unique([companySlug, poNumber])
+  @@index([companySlug, date])
+  @@index([companySlug, status])
+  @@map("purchase_orders")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Budgets (موازنة تخطيطية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model Budget {
+  id            Int      @id @default(autoincrement())
+  companySlug   String
+  fiscalYear    Int
+  period        String // monthly/quarterly/yearly
+  periodName    String // e.g. "2024-Q1"
+  accountId     Int
+  costCenterId  Int?
+  plannedAmount String
+  actualAmount  String   @default("0")
+  variance      String   @default("0")
+  notes         String?
+  status        String   @default("draft") // draft/approved/revised
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  account    Account     @relation(fields: [accountId], references: [id])
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+  tenant     Company     @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@unique([companySlug, periodName, accountId, costCenterId])
+  @@index([companySlug, fiscalYear])
+  @@index([accountId])
+  @@map("budgets")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Letters of Credit (اعتمادات مستندية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model LetterOfCredit {
+  id                Int      @id @default(autoincrement())
+  companySlug       String
+  lcNumber          String
+  supplierId        Int
+  bankAccountId     Int
+  amount            String
+  currency          String   @default("KWD")
+  issueDate         String // YYYY-MM-DD
+  expiryDate        String // YYYY-MM-DD
+  status            String   @default("issued") // issued/amended/utilized/expired/cancelled
+  utilizationAmount String   @default("0")
+  documentsRequired String? // JSON array of required docs
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Company     @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  supplier    Supplier    @relation(fields: [supplierId], references: [id])
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
+
+  @@unique([companySlug, lcNumber])
+  @@index([companySlug, expiryDate])
+  @@index([supplierId])
+  @@map("letters_of_credit")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Landed Cost Allocation (تكلفة الاستيراد)
+// ────────────────────────────────────────────────────────────────────────────
+
+model LandedCostAllocation {
+  id                Int      @id @default(autoincrement())
+  companySlug       String
+  purchaseInvoiceId Int
+  costType          String // shipping/customs/clearance/insurance/other
+  totalCost         String
+  allocationMethod  String   @default("quantity") // quantity/value/weight/volume
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  lines           LandedCostLine[]
+  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  purchaseInvoice PurchaseInvoice  @relation(fields: [purchaseInvoiceId], references: [id])
+
+  @@index([companySlug])
+  @@index([purchaseInvoiceId])
+  @@map("landed_cost_allocations")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Landed Cost Lines (تفاصيل تكلفة الاستيراد)
+// ────────────────────────────────────────────────────────────────────────────
+
+model LandedCostLine {
+  id              Int     @id @default(autoincrement())
+  allocationId    Int
+  inventoryItemId Int?
+  productId       Int?
+  allocatedCost   String
+  baseQuantity    String?
+  baseValue       String?
+
+  allocation       LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  productCatalog   ProductCatalog?      @relation(fields: [productCatalogId], references: [id])
+  productCatalogId Int?
+  inventoryItem    InventoryItem?       @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([allocationId])
+  @@map("landed_cost_lines")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// FX Revaluation (إعادة تقييم العملة)
+// ────────────────────────────────────────────────────────────────────────────
+
+model FxRevaluation {
+  id             Int      @id @default(autoincrement())
+  companySlug    String
+  fromCurrency   String
+  toCurrency     String
+  rate           String
+  period         String // YYYY-MM
+  realizedGain   String   @default("0")
+  realizedLoss   String   @default("0")
+  unrealizedGain String   @default("0")
+  unrealizedLoss String   @default("0")
+  journalEntryId Int?
+  status         String   @default("draft") // draft/posted
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug, period])
+  @@map("fx_revaluations")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Inter-Company Transactions (معاملات بين فروع)
+// ────────────────────────────────────────────────────────────────────────────
+
+model InterCompanyTransaction {
+  id                 Int       @id @default(autoincrement())
+  companySlugFrom    String
+  companySlugTo      String
+  amount             String
+  currency           String
+  description        String?
+  journalEntryIdFrom Int?
+  journalEntryIdTo   Int?
+  status             String    @default("pending") // pending/settled/cancelled
+  settledAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  companyFrom      Company       @relation("InterCompanyFrom", fields: [companySlugFrom], references: [slug], onDelete: Restrict)
+  companyTo        Company       @relation("InterCompanyTo", fields: [companySlugTo], references: [slug], onDelete: Restrict)
+  journalEntryFrom JournalEntry? @relation("InterCompanyJEFrom", fields: [journalEntryIdFrom], references: [id])
+  journalEntryTo   JournalEntry? @relation("InterCompanyJETo", fields: [journalEntryIdTo], references: [id])
+
+  @@index([companySlugFrom])
+  @@index([companySlugTo])
+  @@index([companySlugFrom, companySlugTo, status])
+  @@map("inter_company_transactions")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// WPS Files (ملف حماية الأجور)
+// ────────────────────────────────────────────────────────────────────────────
+
+model WpsFile {
+  id              Int       @id @default(autoincrement())
+  companySlug     String
+  country         String // KW/SA/AE
+  month           String // YYYY-MM
+  fileName        String
+  fileContent     String? // base64 of generated file
+  totalEmployees  Int       @default(0)
+  totalAmount     String    @default("0")
+  status          String    @default("draft") // draft/submitted/accepted/rejected
+  submittedAt     DateTime?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@unique([companySlug, country, month])
+  @@index([companySlug, month])
+  @@map("wps_files")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Tax Filings (إقرارات ضريبية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model TaxFiling {
+  id              Int       @id @default(autoincrement())
+  companySlug     String
+  country         String
+  taxType         String // vat/zakat/income/other
+  periodFrom      String // YYYY-MM-DD
+  periodTo        String // YYYY-MM-DD
+  totalSales      String    @default("0")
+  totalPurchases  String    @default("0")
+  vatDue          String    @default("0")
+  filingReference String?
+  status          String    @default("draft") // draft/submitted/accepted/rejected
+  submittedAt     DateTime?
+  rejectionReason String?
+  journalEntryId  Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug, country, taxType])
+  @@index([companySlug, periodTo])
+  @@map("tax_filings")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Accounting Audit Log (سجل تعديلات محاسبي)
+// ────────────────────────────────────────────────────────────────────────────
+
+model AccountingAuditLog {
+  id          Int      @id @default(autoincrement())
+  companySlug String
+  userEmail   String
+  action      String // create/modify/reverse/delete/approve/close_period
+  entity      String // journal_entry/account/period/voucher/budget
+  entityId    Int?
+  beforeState String? // JSON
+  afterState  String? // JSON
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug])
+  @@index([companySlug, entity, entityId])
+  @@index([companySlug, createdAt])
+  @@map("accounting_audit_logs")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Opening Balance Entries (ترحيل أرصدة افتتاحية)
+// ────────────────────────────────────────────────────────────────────────────
+
+model OpeningBalanceEntry {
+  id             Int      @id @default(autoincrement())
+  companySlug    String
+  accountId      Int
+  amount         String
+  asOfDate       String // YYYY-MM-DD
+  importedFrom   String? // manual/excel/other_system
+  journalEntryId Int?
+  status         String   @default("draft") // draft/posted
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  account      Account       @relation(fields: [accountId], references: [id])
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  tenant       Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@unique([companySlug, accountId, asOfDate])
+  @@index([companySlug, asOfDate])
+  @@map("opening_balance_entries")
 }
