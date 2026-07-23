@@ -21,6 +21,12 @@ export interface CountryConfig {
   eInvoiceAuthority: EInvoiceAuthority;
   weekendDays: number[]; // 0=Sun, 5=Fri, 6=Sat
   defaultTaxRate: string;
+  // Kuwait Decree 10/2026 compliance fields
+  decreeRef?: string; // e.g. "Decree 10/2026" for Kuwait
+  paymentGatewayLicense?: string; // e.g. "CBK" for Kuwait (Central Bank of Kuwait licensed gateway required)
+  invoiceLanguageRequired: "arabic_mandatory" | "arabic_optional"; // Kuwait: arabic_mandatory, others: arabic_optional
+  retentionYears: number; // minimum record retention in years (Kuwait: 5 per Decree 10/2026)
+  currencyDecimalPlaces: number; // KWD=3, SAR/AED/BHD/OMR/QAR=2 (but BHD/OMR also use 3), EGP=2
 }
 
 export type EInvoiceAuthority =
@@ -29,7 +35,7 @@ export type EInvoiceAuthority =
   | "uae_fta" // UAE Federal Tax Authority
   | "bahrain_nbr" // Bahrain National Bureau for Revenue
   | "oman_tax" // Oman Tax Authority
-  | "kuwait_future" // Kuwait (not yet mandatory, placeholder)
+  | "kuwait_decree_10_2026" // Kuwait Decree 10/2026 (Digital Commerce Law)
   | "eta_egypt"; // Egyptian Tax Authority
 
 export const GULF_COUNTRIES: CountryConfig[] = [
@@ -41,9 +47,14 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     currencyAr: "دينار كويتي",
     vatRate: 0,
     vatApplicable: false,
-    eInvoiceAuthority: "kuwait_future",
+    eInvoiceAuthority: "kuwait_decree_10_2026",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    decreeRef: "Decree 10/2026",
+    paymentGatewayLicense: "CBK",
+    invoiceLanguageRequired: "arabic_mandatory",
+    retentionYears: 5,
+    currencyDecimalPlaces: 3,
   },
   {
     code: "SA",
@@ -56,6 +67,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "zatca",
     weekendDays: [5, 6],
     defaultTaxRate: "15",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "AE",
@@ -68,6 +82,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "uae_fta",
     weekendDays: [5, 6],
     defaultTaxRate: "5",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "BH",
@@ -80,6 +97,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "bahrain_nbr",
     weekendDays: [5, 6],
     defaultTaxRate: "10",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 3,
   },
   {
     code: "OM",
@@ -92,6 +112,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "oman_tax",
     weekendDays: [5, 6],
     defaultTaxRate: "5",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 3,
   },
   {
     code: "QA",
@@ -104,6 +127,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6],
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   // ────────────────────────────────────────────────────────────────────────────
   // Expanded MENA (Levant + North Africa + Iraq) — L1
@@ -119,6 +145,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "16",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 3,
   },
   {
     code: "MA",
@@ -131,6 +160,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [6, 0], // Saturday + Sunday
     defaultTaxRate: "20",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "DZ",
@@ -143,6 +175,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "19",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "TN",
@@ -155,6 +190,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [6, 0], // Saturday + Sunday
     defaultTaxRate: "19",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 3,
   },
   {
     code: "IQ",
@@ -167,6 +205,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "15",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "LB",
@@ -180,6 +221,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     weekendDays: [6, 0], // Saturday + Sunday
     // Note: economic crisis — rate may vary; 11% is the statutory standard VAT rate.
     defaultTaxRate: "11",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   // ────────────────────────────────────────────────────────────────────────────
   // Expanded MENA (Egypt + Levant + North Africa + Yemen + Sudan) — L2
@@ -195,6 +239,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "eta_egypt", // Egyptian Tax Authority (e-invoicing mandatory since 2022)
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "14",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "PS",
@@ -207,6 +254,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "16",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "SY",
@@ -219,6 +269,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "YE",
@@ -231,6 +284,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "5",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "SD",
@@ -243,6 +299,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "17",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "LY",
@@ -255,6 +314,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   // ────────────────────────────────────────────────────────────────────────────
   // Expanded MENA (Horn of Africa + Sahel + Island nations) — L3
@@ -270,6 +332,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "DJ",
@@ -282,6 +347,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "KM",
@@ -294,6 +362,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "MR",
@@ -306,6 +377,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "16",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
   {
     code: "ER",
@@ -318,6 +392,9 @@ export const GULF_COUNTRIES: CountryConfig[] = [
     eInvoiceAuthority: "none",
     weekendDays: [5, 6], // Friday + Saturday
     defaultTaxRate: "0",
+    invoiceLanguageRequired: "arabic_optional",
+    retentionYears: 5,
+    currencyDecimalPlaces: 2,
   },
 ];
 
@@ -364,4 +441,35 @@ export function formatCurrency(amount: number, countryCode?: string | null): str
   } catch {
     return `${amount.toFixed(3)} ${currency}`;
   }
+}
+
+/** Get retention years for a country (Kuwait: 5 per Decree 10/2026). */
+export function getRetentionYears(countryCode?: string | null): number {
+  return getCountryConfig(countryCode)?.retentionYears ?? 5;
+}
+
+/** Get currency decimal places for a country (KWD=3, SAR/AED/EGP=2). */
+export function getCurrencyDecimalPlaces(countryCode?: string | null): number {
+  return getCountryConfig(countryCode)?.currencyDecimalPlaces ?? 3;
+}
+
+/** Check if Arabic language is mandatory for invoices in the given country. */
+export function isArabicMandatory(countryCode?: string | null): boolean {
+  const config = getCountryConfig(countryCode);
+  return config?.invoiceLanguageRequired === "arabic_mandatory";
+}
+
+/** Get the payment gateway license requirement for a country. */
+export function getPaymentGatewayLicense(countryCode?: string | null): string | null {
+  return getCountryConfig(countryCode)?.paymentGatewayLicense ?? null;
+}
+
+/** Get the decree reference for a country (e.g. "Decree 10/2026" for Kuwait). */
+export function getDecreeRef(countryCode?: string | null): string | null {
+  return getCountryConfig(countryCode)?.decreeRef ?? null;
+}
+
+/** Check if a country is Kuwait (KW). */
+export function isKuwait(countryCode?: string | null): boolean {
+  return countryCode?.toUpperCase() === "KW";
 }
