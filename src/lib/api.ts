@@ -105,8 +105,42 @@ export function withErrorHandler<T extends unknown[]>(
   };
 }
 
-/** Parse JSON body from a NextRequest. */
+/**
+ * Parse JSON body from a NextRequest.
+ *
+ * LOW-005 FIX (Cycle 3): enforce a maximum request body size to prevent
+ * memory-exhaustion DoS. Next.js Route Handlers don't expose a built-in
+ * body-size limit (unlike the Pages API `bodyParser.sizeLimit` config), so
+ * we enforce it here by reading the Content-Length header and rejecting
+ * oversize payloads BEFORE calling `req.json()` (which would buffer the
+ * entire body into memory).
+ *
+ * Default limit: 1 MiB (matches Next.js Pages API default). Configurable
+ * via MAX_JSON_BODY_BYTES env var. Routes that legitimately need larger
+ * payloads (e.g. file uploads) bypass parseJsonBody and read the body
+ * directly via req.body / req.formData().
+ *
+ * Returns:
+ *   - parsed JSON on success
+ *   - null on parse failure OR oversize body (caller should treat both
+ *     as "invalid input" and return 400; the distinction is logged but
+ *     not exposed to the client to avoid information leakage)
+ */
 export async function parseJsonBody(req: NextRequest): Promise<unknown> {
+  // LOW-005 FIX (Cycle 3): reject oversize bodies before buffering.
+  const maxBytes = parseInt(
+    process.env.MAX_JSON_BODY_BYTES || String(1024 * 1024),
+    10,
+  );
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    logger.warn("[api] rejected oversize JSON body", {
+      contentLength,
+      maxBytes,
+      path: req.nextUrl.pathname,
+    });
+    return null;
+  }
   try {
     return await req.json();
   } catch {

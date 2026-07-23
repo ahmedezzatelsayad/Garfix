@@ -90,8 +90,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // issueSession issues BOTH a fresh access token AND a fresh refresh token,
   // which is exactly what we want for rotation.
+  // SEC-H4 FIX (Cycle 3): pass `req` so the new access token's JTI is
+  // registered in SessionRegistry with IP + User-Agent context.
   const response = NextResponse.json({ ok: true });
-  await issueSession(response, sessionUser);
+  await issueSession(response, sessionUser, req);
   return response;
 });
 

@@ -114,7 +114,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     ok: true,
     user: await buildUserProfile(sessionUser),
   });
-  await issueSession(response, sessionUser);
+  // SEC-H4 FIX (Cycle 3): pass `req` so issueSession can register the JTI
+  // in the SessionRegistry with IP + User-Agent context for forensic use.
+  await issueSession(response, sessionUser, req);
 
   await logAudit({
     userEmail: user.email,
