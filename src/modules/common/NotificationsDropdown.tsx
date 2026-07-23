@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -173,7 +174,7 @@ export function NotificationsDropdown() {
 
       {open && (
         <div
-          className="absolute top-[calc(100%+8px)] left-0 w-[350px] max-h-[440px] bg-popover border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] z-[200] flex flex-col overflow-hidden"
+          className="absolute top-[calc(100%+8px)] left-0 w-[calc(100vw-32px)] sm:w-[350px] max-h-[440px] bg-popover border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] z-[200] flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div

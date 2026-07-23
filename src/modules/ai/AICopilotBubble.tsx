@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { useAuth, authedFetch } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 import {
   Bot, User, Send, X, Maximize2, Minimize2, ShieldAlert,
   Loader2, CheckCircle2, XCircle, ListOrdered, Wallet, BarChart3, Plus,
@@ -350,19 +351,7 @@ export function AICopilotBubble() {
   //   height: calc(100vh - 16px), positioned with 8px margin from edges.
   //   The close (X) button is always visible on mobile.
   // - Fullscreen mode: unchanged (covers entire viewport on all sizes).
-  const panelStyle: React.CSSProperties = fullscreen
-    ? {
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        width: "100vw", height: "100vh", maxWidth: "100vw", maxHeight: "100vh",
-        borderRadius: 0, border: "none",
-      }
-    : {
-        // Desktop: 380px floating panel
-        position: "fixed", bottom: "92px", left: "24px",
-        width: "380px", maxWidth: "calc(100vw - 48px)",
-        height: "540px", maxHeight: "calc(100vh - 130px)",
-        // Mobile override via media query (injected as a className below)
-      };
+  // Layout styles converted from inline panelStyle to Tailwind classes on the panel div.
 
   return (
     <>
@@ -412,27 +401,15 @@ export function AICopilotBubble() {
         onClick={() => setOpen(!open)}
         aria-label="مساعد Garfix AI"
         title="مساعد Garfix AI"
+        className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(124,58,237,0.5)] animate-[garfix-agent-pulse_3s_infinite]"
         style={{
-          position: "fixed", bottom: "24px", left: "24px",
-          width: "60px", height: "60px", borderRadius: "50%",
           background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 60%, #c4b5fd 100%)",
-          color: "#fff", border: "2px solid rgba(255,255,255,0.15)",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 12px 32px rgba(124, 58, 237, 0.5)",
-          zIndex: 150, transition: "transform .25s, box-shadow .25s",
-          animation: "garfix-agent-pulse 3s infinite",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
-        {open ? <X size={26} /> : <img src="/logo.svg" alt="" style={{ width: 30, height: 30, borderRadius: 6 }} />}
+        {open ? <X size={26} /> : <img src="/logo.svg" alt="" className="w-[30px] h-[30px] rounded-md" />}
         {/* Small "online" indicator dot */}
         <span
-          style={{
-            position: "absolute", top: "4px", right: "4px",
-            width: "12px", height: "12px", borderRadius: "50%",
-            background: "#22c55e", border: "2px solid #fff",
-          }}
+          className="absolute top-1 right-1 w-[12px] h-[12px] rounded-full bg-green-500 border-2 border-white"
         />
       </button>
 
@@ -440,81 +417,47 @@ export function AICopilotBubble() {
       {open && (
         <div
           dir="rtl"
-          className="garfix-ai-panel"
-          style={{
-            ...panelStyle,
-            background: fullscreen ? "rgba(15, 10, 30, 0.96)" : "var(--card)",
-            border: fullscreen ? "none" : "1px solid var(--border)",
-            borderRadius: fullscreen ? 0 : "16px",
-            boxShadow: fullscreen
-              ? "0 0 0 9999px rgba(0,0,0,0.7)"
-              : "0 24px 64px rgba(0,0,0,0.2)",
-            zIndex: 200, display: "flex", flexDirection: "column",
-            overflow: "hidden", fontFamily: "var(--font-cairo), sans-serif",
-            animation: "garfix-fade-up .25s ease-out",
-          }}
+          style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+          className={cn(
+            "garfix-ai-panel flex flex-col overflow-hidden z-[200] animate-[garfix-fade-up_0.25s_ease-out]",
+            fullscreen
+              ? "fixed inset-0 w-screen h-screen max-w-screen max-h-screen rounded-none border-none bg-[rgba(15,10,30,0.96)] shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]"
+              : "fixed bottom-[92px] left-6 w-[380px] max-w-[calc(100vw-48px)] h-[540px] max-h-[calc(100vh-130px)] rounded-2xl border border-border bg-card shadow-[0_24px_64px_rgba(0,0,0,0.2)]"
+          )}
         >
           {/* Header */}
           <div
-            style={{
-              padding: "14px 18px",
-              background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)",
-              color: "#fff", display: "flex", alignItems: "center", gap: "10px",
-              flexShrink: 0,
-            }}
+            className="px-[18px] py-[14px] text-white flex items-center gap-2.5 shrink-0 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
           >
             {/* Fullscreen toggle — top-left (RTL → visually right) */}
             <button
               onClick={() => setFullscreen(!fullscreen)}
               aria-label={fullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
               title={fullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
-              style={{
-                width: "34px", height: "34px", borderRadius: "8px",
-                background: "rgba(255,255,255,0.18)", border: "none", color: "#fff",
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "background .15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
+              className="w-[34px] h-[34px] rounded-lg border-none text-white cursor-pointer flex items-center justify-center transition-[background] duration-150 bg-white/[0.18] hover:bg-white/30"
             >
               {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
 
             {/* Bot avatar */}
             <div
-              style={{
-                width: "36px", height: "36px", borderRadius: "10px",
-                background: "rgba(255,255,255,0.18)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)",
-              }}
+              className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-white/[0.18] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
             >
-              <img src="/logo.svg" alt="" style={{ width: 20, height: 20, borderRadius: 4 }} />
+              <img src="/logo.svg" alt="" className="w-5 h-5 rounded" />
             </div>
 
             {/* Title + Agent badge */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "14px", fontWeight: 800 }}>مساعد Garfix AI</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-extrabold">مساعد Garfix AI</span>
                 <span
-                  style={{
-                    fontSize: "9px", fontWeight: 800, letterSpacing: "0.5px",
-                    padding: "2px 7px", borderRadius: "999px",
-                    background: "rgba(255,255,255,0.25)", color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.35)",
-                    textTransform: "uppercase",
-                  }}
+                  className="text-[9px] font-extrabold tracking-[0.5px] px-[7px] py-[2px] rounded-full bg-white/25 text-white border border-white/35 uppercase"
                 >
                   Agent
                 </span>
               </div>
-              <div style={{ fontSize: "10px", opacity: 0.85, display: "flex", alignItems: "center", gap: "5px" }}>
-                <span
-                  style={{
-                    width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e",
-                    display: "inline-block", boxShadow: "0 0 6px #22c55e",
-                  }}
-                />
+              <div className="text-[10px] opacity-85 flex items-center gap-1.5">
+                <span className="w-[6px] h-[6px] rounded-full bg-green-500 inline-block shadow-[0_0_6px_#22c55e]" />
                 وكيل ذكي جاهز لتنفيذ الأوامر
               </div>
             </div>
@@ -524,11 +467,7 @@ export function AICopilotBubble() {
               <button
                 onClick={() => setOpen(false)}
                 aria-label="إغلاق"
-                style={{
-                  width: "34px", height: "34px", borderRadius: "8px",
-                  background: "rgba(255,255,255,0.18)", border: "none", color: "#fff",
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                }}
+                className="w-[34px] h-[34px] rounded-lg border-none text-white cursor-pointer flex items-center justify-center bg-white/[0.18]"
               >
                 <X size={16} />
               </button>
@@ -538,53 +477,38 @@ export function AICopilotBubble() {
           {/* Messages */}
           <div
             ref={scrollRef}
-            className="garfix-scroll"
-            style={{
-              flex: 1, overflowY: "auto",
-              padding: fullscreen ? "24px" : "14px",
-              display: "flex", flexDirection: "column", gap: "10px",
-              background: fullscreen ? "transparent" : "transparent",
-            }}
+            className={cn(
+              "garfix-scroll flex-1 overflow-y-auto flex flex-col gap-2.5 bg-transparent",
+              fullscreen ? "p-6" : "p-3.5"
+            )}
           >
             {messages.length === 0 && (
               <div
-                style={{
-                  textAlign: "center",
-                  color: fullscreen ? "rgba(255,255,255,0.7)" : "var(--muted-foreground)",
-                  fontSize: "12px",
-                  padding: "24px 8px",
-                }}
+                className={cn(
+                  "text-center text-[12px] py-6 px-2",
+                  fullscreen ? "text-white/70" : "text-muted-foreground"
+                )}
               >
                 <div
-                  style={{
-                    width: "64px", height: "64px", borderRadius: "50%",
-                    background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    margin: "0 auto 14px", color: "#fff",
-                    boxShadow: "0 8px 24px rgba(124,58,237,0.4)",
-                  }}
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-[14px] text-white shadow-[0_8px_24px_rgba(124,58,237,0.4)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
                 >
-                  <img src="/logo.svg" alt="" style={{ width: 32, height: 32, borderRadius: 6 }} />
+                  <img src="/logo.svg" alt="" className="w-8 h-8 rounded-md" />
                 </div>
-                <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "4px" }}>
+                <div className="text-sm font-bold mb-1">
                   مرحباً {user.displayName}!
                 </div>
-                <div style={{ opacity: 0.8, marginBottom: "18px" }}>
+                <div className="opacity-80 mb-[18px]">
                   أنا Garfix AI، وكيلك الذكي. أستطيع تنفيذ أوامر حقيقية على نظامك.
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "14px" }}>
+                <div className="flex flex-col gap-1.5 mt-3.5">
                   {SUGGESTIONS.map((s, i) => (
                     <button
                       key={i}
                       onClick={() => send(s)}
-                      style={{
-                        padding: "9px 12px", borderRadius: "8px",
-                        background: fullscreen ? "rgba(255,255,255,0.08)" : "var(--muted)",
-                        border: `1px solid ${fullscreen ? "rgba(255,255,255,0.15)" : "var(--border)"}`,
-                        color: fullscreen ? "#fff" : "var(--foreground)",
-                        fontFamily: "inherit", fontSize: "12px",
-                        cursor: "pointer", textAlign: "right", transition: "all .15s",
-                      }}
+                      className={cn(
+                        "px-3 py-2 rounded-lg font-[inherit] text-xs cursor-pointer text-right transition-all duration-150",
+                        fullscreen ? "bg-white/8 border border-white/15 text-white" : "bg-muted border border-border text-foreground"
+                      )}
                     >
                       {s}
                     </button>
@@ -604,52 +528,37 @@ export function AICopilotBubble() {
               return (
                 <div
                   key={i}
-                  style={{
-                    display: "flex", gap: "8px",
-                    alignSelf: isUser ? "flex-start" : "flex-end",
-                    flexDirection: isUser ? "row" : "row-reverse",
-                    maxWidth: fullscreen ? "80%" : "100%",
-                  }}
+                  className={cn(
+                    "flex gap-2",
+                    isUser ? "self-start flex-row" : "self-end flex-row-reverse",
+                    fullscreen ? "max-w-[80%]" : "max-w-full"
+                  )}
                 >
                   <div
-                    style={{
-                      width: "30px", height: "30px", borderRadius: "50%",
-                      background: isUser
-                        ? "var(--accent)"
-                        : "linear-gradient(135deg, #7c3aed, #a78bfa)",
-                      color: isUser ? "var(--accent-foreground)" : "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0, boxShadow: isUser ? "none" : "0 4px 12px rgba(124,58,237,0.3)",
-                    }}
+                    className={cn(
+                      "w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0",
+                      isUser ? "bg-accent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(124,58,237,0.3)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
+                    )}
                   >
                     {isUser ? <User size={14} /> : <Bot size={14} />}
                   </div>
                   <div
-                    style={{
-                      background: isUser
-                        ? (fullscreen ? "rgba(255,255,255,0.08)" : "var(--muted)")
-                        : (isAgent
-                            ? "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(167,139,250,0.08))"
-                            : (fullscreen ? "rgba(124,58,237,0.25)" : "var(--primary)")),
-                      color: isUser
-                        ? (fullscreen ? "#fff" : "var(--foreground)")
-                        : (isAgent
-                            ? (fullscreen ? "#fff" : "var(--foreground)")
-                            : (fullscreen ? "#fff" : "var(--primary-foreground)")),
-                      padding: "10px 14px", borderRadius: "12px",
-                      fontSize: "13px", lineHeight: 1.65,
-                      maxWidth: "320px", whiteSpace: "pre-wrap",
-                      border: isAgent ? "1px solid rgba(124,58,237,0.25)" : "none",
-                    }}
+                    className={cn(
+                      "px-[14px] py-2.5 rounded-xl text-[13px] leading-[1.65] max-w-[320px] whitespace-pre-wrap",
+                      isAgent ? "border border-purple-500/25" : "border-none",
+                      isUser && !fullscreen ? "bg-muted text-foreground" : "",
+                      isUser && fullscreen ? "bg-white/8 text-white" : "",
+                      !isUser && !isAgent && fullscreen ? "bg-violet-500/25 text-white" : "",
+                      !isUser && !isAgent && !fullscreen ? "bg-primary text-primary-foreground" : "",
+                      isAgent && !fullscreen ? "" : "",
+                      isAgent && fullscreen ? "text-white" : "",
+                    )}
+                    style={isAgent ? {
+                      background: "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(167,139,250,0.08))",
+                    } : undefined}
                   >
                     {isAgent && (
-                      <div
-                        style={{
-                          display: "flex", alignItems: "center", gap: "5px",
-                          fontSize: "10px", fontWeight: 800, color: "#7c3aed",
-                          marginBottom: "5px", letterSpacing: "0.3px",
-                        }}
-                      >
+                      <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-violet-600 mb-1.5 tracking-[0.3px]">
                         <Bot size={11} /> AGENT ACTION {statusIcon}
                       </div>
                     )}
@@ -664,27 +573,18 @@ export function AICopilotBubble() {
                     {m.meta?.reviewQueueWarnings && m.meta.reviewQueueWarnings.length > 0 && (
                       <div
                         role="alert"
-                        style={{
-                          marginTop: "10px",
-                          padding: "8px 10px",
-                          borderRadius: "8px",
-                          border: "1px solid #ef4444",
-                          background: "rgba(239, 68, 68, 0.12)",
-                          fontSize: "11px",
-                          color: "#ef4444",
-                          lineHeight: 1.5,
-                        }}
+                        className="mt-2.5 px-2.5 py-2 rounded-lg border border-red-500 bg-red-500/12 text-[11px] text-red-500 leading-[1.5]"
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "5px", fontWeight: 800, marginBottom: "4px" }}>
+                        <div className="flex items-center gap-1.5 font-extrabold mb-1">
                           <ShieldAlert size={12} />
                           ⚠️ {m.meta.reviewQueueWarnings.length} صنف يحتاج مراجعة
                         </div>
-                        <ul style={{ margin: 0, paddingInlineStart: "16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <ul className="m-0 pl-4 flex flex-col gap-0.5">
                           {m.meta.reviewQueueWarnings.slice(0, 3).map((w, idx) => (
-                            <li key={idx} style={{ color: "var(--foreground)", fontSize: "10px" }}>{w}</li>
+                            <li key={idx} className="text-foreground text-[10px]">{w}</li>
                           ))}
                           {m.meta.reviewQueueWarnings.length > 3 && (
-                            <li style={{ color: "var(--muted-foreground)", fontSize: "10px" }}>
+                            <li className="text-muted-foreground text-[10px]">
                               + {m.meta.reviewQueueWarnings.length - 3} تحذيرات أخرى…
                             </li>
                           )}
@@ -692,7 +592,7 @@ export function AICopilotBubble() {
                         <button
                           type="button"
                           onClick={() => setShowReviewQueue(true)}
-                          style={{ display: "inline-block", marginTop: "6px", color: "#ef4444", fontWeight: 700, textDecoration: "underline", fontSize: "10px", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                          className="inline-block mt-1.5 text-red-500 font-bold underline text-[10px] bg-transparent border-none cursor-pointer p-0"
                         >
                           فتح صفحة المراجعة ←
                         </button>
@@ -703,25 +603,19 @@ export function AICopilotBubble() {
               );
             })}
             {loading && (
-              <div style={{ display: "flex", gap: "8px", alignSelf: "flex-end", flexDirection: "row-reverse" }}>
+              <div className="flex gap-2 self-end flex-row-reverse">
                 <div
-                  style={{
-                    width: "30px", height: "30px", borderRadius: "50%",
-                    background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-                    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
+                  className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
                 >
                   <Bot size={14} />
                 </div>
                 <div
-                  style={{
-                    background: fullscreen ? "rgba(124,58,237,0.25)" : "var(--primary)",
-                    color: "#fff",
-                    padding: "10px 14px", borderRadius: "12px", fontSize: "13px",
-                    display: "flex", alignItems: "center", gap: "4px",
-                  }}
+                  className={cn(
+                    "px-[14px] py-2.5 rounded-xl text-[13px] flex items-center gap-1",
+                    fullscreen ? "bg-violet-500/25 text-white" : "bg-primary text-primary-foreground"
+                  )}
                 >
-                  <span style={{ display: "inline-block", animation: "garfix-glow 1s infinite" }}>…</span>
+                  <span className="inline-block animate-[garfix-glow_1s_infinite]">…</span>
                 </div>
               </div>
             )}
@@ -731,70 +625,47 @@ export function AICopilotBubble() {
           {confirmation && (
             <div
               dir="rtl"
-              style={{
-                padding: "12px",
-                borderTop: "1px solid var(--border)",
-                background: fullscreen ? "rgba(124,58,237,0.08)" : "var(--muted)",
-                flexShrink: 0,
-              }}
+              className={cn(
+                "p-3 border-t border-border shrink-0",
+                fullscreen ? "bg-violet-500/8" : "bg-muted"
+              )}
             >
               <div
-                style={{
-                  background: "var(--card)", borderRadius: "12px",
-                  border: "1px solid rgba(245,158,11,0.4)",
-                  padding: "14px", display: "flex", flexDirection: "column", gap: "10px",
-                  boxShadow: "0 8px 24px rgba(245,158,11,0.15)",
-                }}
+                className="bg-card rounded-xl border border-amber-500/40 p-3.5 flex flex-col gap-2.5 shadow-[0_8px_24px_rgba(245,158,11,0.15)]"
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div
-                    style={{
-                      width: "32px", height: "32px", borderRadius: "8px",
-                      background: "rgba(245,158,11,0.15)", color: "#f59e0b",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center">
                     <ShieldAlert size={18} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--foreground)" }}>
+                  <div className="flex-1">
+                    <div className="text-[13px] font-extrabold text-foreground">
                       تأكيد تنفيذ الإجراء
                     </div>
-                    <div style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
-                      Intent: <code style={{ fontFamily: "monospace" }}>{confirmation.intent}</code>
+                    <div className="text-[10px] text-muted-foreground">
+                      Intent: <code className="font-mono">{confirmation.intent}</code>
                     </div>
                   </div>
                 </div>
 
                 <div
-                  style={{
-                    fontSize: "12px", lineHeight: 1.6, color: "var(--foreground)",
-                    padding: "10px 12px", borderRadius: "8px",
-                    background: "var(--muted)", border: "1px solid var(--border)",
-                  }}
+                  className="text-xs leading-[1.6] text-foreground p-2.5 px-3 rounded-lg bg-muted border border-border"
                 >
                   {confirmation.description}
                 </div>
 
                 {confirmation.warning && (
                   <div
-                    style={{
-                      fontSize: "11px", color: "#b45309",
-                      padding: "8px 10px", borderRadius: "8px",
-                      background: "rgba(245,158,11,0.1)",
-                      border: "1px solid rgba(245,158,11,0.3)",
-                      display: "flex", gap: "6px", alignItems: "flex-start",
-                    }}
+                    className="text-[11px] text-amber-700 p-2 px-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex gap-1.5 items-start"
                   >
-                    <ShieldAlert size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
+                    <ShieldAlert size={13} className="shrink-0 mt-0.5" />
                     <span>{confirmation.warning}</span>
                   </div>
                 )}
 
                 {confirmation.affectedRecords && confirmation.affectedRecords.length > 0 && (
-                  <div style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
+                  <div className="text-[10px] text-muted-foreground">
                     <strong>السجلات المتأثرة:</strong>
-                    <ul style={{ margin: "4px 0 0 0", paddingInlineStart: "18px" }}>
+                    <ul className="mt-1 pl-[18px]">
                       {confirmation.affectedRecords.map((r, i) => (
                         <li key={i}>
                           {r.type}
@@ -806,19 +677,14 @@ export function AICopilotBubble() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-start" }}>
+                <div className="flex gap-2 justify-start">
                   <button
                     onClick={executeConfirmed}
                     disabled={executing}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: "6px",
-                      padding: "9px 18px", borderRadius: "9px",
-                      background: executing ? "#dc2626" : "#ef4444", color: "#fff",
-                      border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 800,
-                      cursor: executing ? "not-allowed" : "pointer",
-                      opacity: executing ? 0.7 : 1,
-                      boxShadow: "0 4px 12px rgba(239,68,68,0.3)",
-                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-[18px] py-2 rounded-[9px] border-none font-[inherit] text-xs font-extrabold",
+                      executing ? "bg-red-600 opacity-70 cursor-not-allowed" : "bg-red-500 text-white cursor-pointer shadow-[0_4px_12px_rgba(239,68,68,0.3)]"
+                    )}
                   >
                     {executing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                     تنفيذ
@@ -826,15 +692,10 @@ export function AICopilotBubble() {
                   <button
                     onClick={cancelConfirmation}
                     disabled={executing}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: "6px",
-                      padding: "9px 18px", borderRadius: "9px",
-                      background: "var(--muted)", color: "var(--foreground)",
-                      border: "1px solid var(--border)",
-                      fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-                      cursor: executing ? "not-allowed" : "pointer",
-                      opacity: executing ? 0.6 : 1,
-                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-[18px] py-2 rounded-[9px] bg-muted text-foreground border border-border font-[inherit] text-xs font-bold",
+                      executing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+                    )}
                   >
                     <X size={13} /> إلغاء
                   </button>
@@ -846,12 +707,10 @@ export function AICopilotBubble() {
           {/* Quick actions row (above input) */}
           {!confirmation && (
             <div
-              style={{
-                padding: "8px 10px 4px", display: "flex", gap: "6px",
-                flexWrap: "wrap", flexShrink: 0,
-                borderTop: "1px solid var(--border)",
-                background: fullscreen ? "rgba(0,0,0,0.2)" : "transparent",
-              }}
+              className={cn(
+                "px-2.5 pt-2 pb-1 flex gap-1.5 flex-wrap shrink-0 border-t border-border",
+                fullscreen ? "bg-black/20" : "bg-transparent"
+              )}
             >
               {QUICK_ACTIONS.map((a) => (
                 <button
@@ -859,15 +718,13 @@ export function AICopilotBubble() {
                   onClick={() => triggerAgentAction(a)}
                   disabled={loading || executing || !activeCompany?.slug}
                   title={a.userMessage}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-card font-[inherit] text-[11px] font-bold transition-all duration-150",
+                    (loading || executing || !activeCompany?.slug) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                  )}
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: "5px",
-                    padding: "6px 10px", borderRadius: "8px",
-                    background: "var(--card)",
                     border: `1px solid ${a.color}40`,
-                    color: a.color, fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
-                    cursor: loading || executing ? "not-allowed" : "pointer",
-                    opacity: loading || executing || !activeCompany?.slug ? 0.5 : 1,
-                    transition: "all .15s",
+                    color: a.color,
                   }}
                   onMouseEnter={(e) => {
                     if (!loading && !executing) {
@@ -888,12 +745,10 @@ export function AICopilotBubble() {
 
           {/* Input */}
           <div
-            style={{
-              padding: "10px 12px",
-              display: "flex", gap: "8px",
-              flexShrink: 0,
-              background: fullscreen ? "rgba(0,0,0,0.2)" : "transparent",
-            }}
+            className={cn(
+              "px-3 py-2.5 flex gap-2 shrink-0",
+              fullscreen ? "bg-black/20" : "bg-transparent"
+            )}
           >
             <input
               value={input}
@@ -901,26 +756,18 @@ export function AICopilotBubble() {
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder={activeCompany?.slug ? "اكتب رسالتك أو استخدم أحد الإجراءات أعلاه…" : "اختر شركة نشطة أولاً…"}
               disabled={loading || executing || !!confirmation}
-              style={{
-                flex: 1, padding: "10px 14px", borderRadius: "10px",
-                background: fullscreen ? "rgba(255,255,255,0.08)" : "var(--background)",
-                border: `1px solid ${fullscreen ? "rgba(255,255,255,0.15)" : "var(--border)"}`,
-                color: fullscreen ? "#fff" : "var(--foreground)",
-                fontFamily: "inherit", fontSize: "13px", outline: "none",
-              }}
+              className={cn(
+                "flex-1 px-[14px] py-2.5 rounded-[10px] font-[inherit] text-[13px] outline-none",
+                fullscreen ? "bg-white/8 border border-white/15 text-white" : "bg-background border border-border text-foreground"
+              )}
             />
             <button
               onClick={() => send()}
               disabled={loading || executing || !input.trim() || !!confirmation}
-              style={{
-                width: "40px", height: "40px", borderRadius: "10px",
-                background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-                color: "#fff", border: "none",
-                cursor: loading || executing || !input.trim() || !!confirmation ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                opacity: loading || executing || !input.trim() || !!confirmation ? 0.5 : 1,
-                boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
-              }}
+              className={cn(
+                "w-10 h-10 rounded-[10px] text-white border-none flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]",
+                (loading || executing || !input.trim() || !!confirmation) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              )}
             >
               <Send size={16} />
             </button>

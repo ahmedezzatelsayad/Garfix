@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -25,8 +26,8 @@ type Direction = "receivable" | "payable";
 
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -144,7 +145,7 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
       </div>
 
       {data && (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: `${accentColor}20`, color: accentColor }}><ArrowUpDown size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي {direction === "receivable" ? "الذمم المدينة" : "الذمم الدائنة"}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandTotal)}</div></div>
@@ -253,7 +254,7 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><FileText size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">{data.clientName}</div><div className="text-[13px] font-bold">رصيد افتتاحي: {fmt(data.openingBalance)}</div></div>
@@ -342,7 +343,7 @@ function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: s
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الشيكات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAmount)}</div></div>
@@ -422,7 +423,7 @@ function PDCForm({ company, onClose, onSaved }: { company: { slug: string }; onC
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold flex items-center gap-2"><Banknote size={16} /> شيك مؤجل جديد</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>رقم الشيك *</label><input value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
         <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
         <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
@@ -449,7 +450,7 @@ function InstallmentList({ installments }: { installments: Installment[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><CalendarDays size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">أقساط نشطة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalActive)}</div></div>
@@ -515,7 +516,7 @@ function InstallmentForm({ company, onClose, onSaved }: { company: { slug: strin
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold flex items-center gap-2"><CalendarDays size={16} /> اتفاق تقسيط جديد</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>المرجع *</label><input value={reference} onChange={(e) => setReference(e.target.value)} className={inputStyle} dir="ltr" /></div>
         <div><label className={labelStyle}>العميل *</label><input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputStyle} /></div>
         <div><label className={labelStyle}>المبلغ الإجمالي *</label><input type="number" value={totalAmount} onChange={(e) => setTotalAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
