@@ -1,0 +1,321 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarFiX v1.4 — Security Scan Pipeline
+# Runs on push to main + weekly schedule + manual trigger
+# Jobs: dependency audit, CodeQL (with SARIF), secret scan, license check
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: GarFiX Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"  # Every Monday at 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Dependency Audit ─────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Bun audit
+        run: |
+          echo "─── Bun Package Audit ──"
+          # bun audit exits non-zero if vulnerabilities found — capture exit code
+          set +e
+          bun audit 2>&1 | tee audit-results.txt
+          AUDIT_EXIT=$?
+          set -e
+          echo "Audit exit code: $AUDIT_EXIT"
+
+      - name: Check for critical or high vulnerabilities
+        run: |
+          echo "─── Checking for critical / high vulnerabilities ───"
+          # CI-001 FIX (Cycle 2): fail on HIGH as well as CRITICAL.
+          #   The previous threshold only failed on CRITICAL, which let
+          #   HIGH-severity issues (e.g. the Next.js SSRF advisory
+          #   GHSA-89xv-2m56-2m9x) merge into main. HIGH-severity issues
+          #   in a production ERP SaaS handling 6,000 invoices are
+          #   blockers, not warnings. MODERATE remains a warning.
+          if grep -qiE "critical" audit-results.txt; then
+            echo "❌ CRITICAL vulnerabilities found — review audit-results.txt"
+            echo "Failing the pipeline to prevent shipping critically vulnerable code."
+            exit 1
+          fi
+
+          if grep -qiE "high:" audit-results.txt; then
+            HIGH_COUNT=$(grep -oiE "high:" audit-results.txt | wc -l)
+            echo "❌ $HIGH_COUNT HIGH severity vulnerability(ies) found — review audit-results.txt"
+            echo "High severity issues are now blockers (Cycle 2 hardening). Fix or pin an override."
+            exit 1
+          else
+            echo "✅ No high vulnerabilities detected"
+          fi
+
+          # Check for moderate — informational only (still a warning, not a blocker).
+          if grep -qiE "moderate:" audit-results.txt; then
+            MOD_COUNT=$(grep -oiE "moderate:" audit-results.txt | wc -l)
+            echo "ℹ️ $MOD_COUNT MODERATE severity vulnerability(ies) found — review when convenient"
+          fi
+
+          echo ""
+          echo "✅ No CRITICAL or HIGH vulnerabilities detected — pipeline continues"
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "─── Outdated Dependencies Check ──"
+          # bun outdated exits non-zero if outdated packages found — informational only
+          set +e
+          bun outdated 2>&1 | tee outdated-results.txt || true
+          set -e
+          echo ""
+          echo "Review outdated-results.txt for potential updates"
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-results
+          path: |
+            audit-results.txt
+            outdated-results.txt
+          retention-days: 30
+
+  # ── Job 2: CodeQL Analysis ─────────────────────────────────────────────
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["javascript-typescript"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+          config: |
+            paths-ignore:
+              - '**/__tests__/**'
+              - '**/*.test.ts'
+              - '**/*.spec.ts'
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true  # Already uploads SARIF to GitHub Security tab
+
+  # ── Job 3: Secret Scanning ─────────────────────────────────────────────
+  secret-scan:
+    name: Secret & Credential Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for thorough scan
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@v3.88.0
+        with:
+          extra_args: --only-verified
+        continue-on-error: true  # Don't block on scan failures — review SARIF instead
+
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true  # Don't block on scan failures — review results instead
+
+      - name: Upload secret scan results
+        if: always()
+        run: |
+          echo "─── Secret Scan Summary ───"
+          echo "TruffleHog and Gitleaks both ran with continue-on-error."
+          echo "Review the scan output above for any detected secrets."
+          echo "If verified secrets are found, take immediate action to rotate them."
+
+  # ── Job 4: License Compliance ──────────────────────────────────────────
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check licenses
+        run: |
+          echo "─── License Compliance Check ──"
+          # List all dependency licenses
+          bun pm ls 2>/dev/null | head -50 > license-report.txt || true
+          echo "" >> license-report.txt
+          echo "Checking for problematic licenses (GPL, AGPL, SSPL)..." >> license-report.txt
+          # Scan for problematic licenses in node_modules
+          PROBLEMATIC=0
+          if [ -d "node_modules" ]; then
+            for pkg in node_modules/*/; do
+              if [ -f "$pkg/LICENSE" ] || [ -f "$pkg/license" ]; then
+                LICENSE=$(cat "$pkg/LICENSE" "$pkg/license" 2>/dev/null | head -5)
+                if echo "$LICENSE" | grep -qiE "(affero general public|gnu general public|server side public|SSPL)"; then
+                  echo "❌ Copyleft license found: $(basename $pkg)"
+                  echo "Copyleft license found: $(basename $pkg)" >> license-report.txt
+                  PROBLEMATIC=1
+                fi
+              fi
+            done
+          fi
+          if [ "$PROBLEMATIC" -eq 0 ]; then
+            echo "✅ No problematic copyleft licenses found"
+            echo "No problematic copyleft licenses found" >> license-report.txt
+          else
+            echo "❌ Copyleft licenses found — review before distribution"
+            echo "Copyleft licenses found — review before distribution" >> license-report.txt
+            exit 1
+          fi
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance-report
+          path: license-report.txt
+          retention-days: 30
+
+  # ── Job 5: Container Image Vulnerability Scan ───────────────────────────
+  # CONT-001 FIX (Cycle 3): scan the production Docker image for known
+  # vulnerabilities using Trivy. Fails on CRITICAL or HIGH findings so
+  # vulnerable images can't be deployed. The scan runs after a successful
+  # build of all branches that produce an image (main + PRs).
+  container-scan:
+    name: Container Image Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only run if the Dockerfile exists (always true for this repo) and the
+    # build job would have run. We don't formally depend on the build job
+    # because GitHub Actions doesn't have a "build" job in this workflow —
+    # the image is built fresh here just for scanning.
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: garfix-scan:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: garfix-scan:latest
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: "trivy-container-scan"
+
+      - name: Upload Trivy scan results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-container-scan-results
+          path: trivy-results.sarif
+          retention-days: 30
+
+  # ── Job 6: Security Summary ────────────────────────────────────────────
+  security-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, codeql, secret-scan, license-check, container-scan]
+    if: always()
+
+    steps:
+      - name: Security Scan Status
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║      GarFiX v1.4 Security Scan Summary          ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Dependency Audit:  ${{ needs.dependency-audit.result }}"
+          echo "CodeQL Analysis:   ${{ needs.codeql.result }}"
+          echo "Secret Scan:       ${{ needs.secret-scan.result }}"
+          echo "License Check:     ${{ needs.license-check.result }}"
+          echo "Container Scan:    ${{ needs.container-scan.result }}"
+          echo ""
+
+          # Fail if any security check failed
+          RESULTS="${{ needs.dependency-audit.result }}${{ needs.codeql.result }}${{ needs.secret-scan.result }}${{ needs.license-check.result }}${{ needs.container-scan.result }}"
+          if echo "$RESULTS" | grep -q "failure"; then
+            echo "❌ Security scan FAILED — review findings"
+            exit 1
+          else
+            echo "✅ Security scan completed"
+          fi

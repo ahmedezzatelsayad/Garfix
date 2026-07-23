@@ -1,161 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { resolveAuth, assertCompanyAccess } from '@/lib/auth'
-import { db } from '@/lib/db'
-// FIX #6: Import `num` from @/lib/money — it was previously missing
-import { num, round, sum } from '@/lib/money'
-
-type DistributionEntry = {
-  shareholder: string
-  shareRatio: number
-  amount: number
-}
-
 /**
- * GET /api/accounting/profit-distribution
- * List profit distributions for a company.
+ * /api/accounting/profit-distribution
+ * GET  — Profit distribution calculation (?companySlug=X&from=YYYY-MM-DD&to=YYYY-MM-DD)
+ * POST — Post profit distribution JE
  */
-export async function GET(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+import { NextRequest } from "next/server";
+import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { calculateProfitDistribution, postProfitDistributionJE } from "@/lib/accounting/partner-capital";
+import { num } from "@/lib/money";
+import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { z } from "zod";
 
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
-    const status = searchParams.get('status')
+// ─── GET ─────────────────────────────────────────────────────────────────
 
-    assertCompanyAccess(auth, companyId)
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const sp = req.nextUrl.searchParams;
+  const companySlug = sp.get("companySlug");
+  if (!companySlug) return apiError("companySlug مطلوب", 400);
 
-    const where: Record<string, unknown> = { companyId }
-    if (status) where.status = status
+  const from = sp.get("from");
+  const to = sp.get("to");
+  if (!from || !to) return apiError("from و to مطلوبان (YYYY-MM-DD)", 400);
 
-    const distributions = await db.profitDistribution.findMany({
-      where: where as Parameters<typeof db.profitDistribution.findMany>[0]['where'],
-      include: { entries: true },
-      orderBy: { createdAt: 'desc' },
-    })
+  const access = await requirePermissionForCompany(req, "finance_access", companySlug);
+  if ("error" in access) return access.error;
 
-    return NextResponse.json({ distributions })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    if (message.startsWith('Forbidden:')) {
-      return NextResponse.json({ error: message }, { status: 403 })
-    }
-    return NextResponse.json({ error: message }, { status: 500 })
+  const result = await calculateProfitDistribution(companySlug, from, to);
+  return apiOk(result);
+});
+
+// ─── POST ──────────────────────────────────────────────────────────────
+
+const PostDistributionSchema = z.object({
+  companySlug: z.string().min(1),
+  periodFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  periodTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  const body = await parseJsonBody(req);
+  const parsed = PostDistributionSchema.safeParse(body);
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+  const data = parsed.data;
+
+  const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+  if ("error" in access) return access.error;
+  const user = access.user;
+
+  // First calculate distribution
+  const distribution = await calculateProfitDistribution(data.companySlug, data.periodFrom, data.periodTo);
+
+  if (distribution.partners.length === 0) {
+    return apiError("No partner capital accounts found for profit distribution", 400);
   }
-}
 
-/**
- * POST /api/accounting/profit-distribution
- * Create a profit distribution plan.
- */
-export async function POST(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
-    const {
-      periodId,
-      totalProfit,
-      retained,
-      distributed,
-      distributionType,
-      notes,
-      entries,
-    } = body as {
-      periodId?: string
-      totalProfit: number
-      retained?: number
-      distributed?: number
-      distributionType?: string
-      notes?: string
-      entries: DistributionEntry[]
-    }
-
-    assertCompanyAccess(auth, companyId)
-
-    if (!totalProfit || !entries || !Array.isArray(entries)) {
-      return NextResponse.json({ error: 'totalProfit and entries are required' }, { status: 400 })
-    }
-
-    // Calculate distributed amount from entries if not provided
-    const totalDistributed = distributed ?? round(sum(entries.map(e => num(e.amount))))
-    const totalRetained = retained ?? round(num(totalProfit) - totalDistributed)
-
-    const distribution = await db.profitDistribution.create({
-      data: {
-        periodId,
-        totalProfit: num(totalProfit),
-        retained: num(totalRetained),
-        distributed: num(totalDistributed),
-        distributionType: distributionType ?? 'proportional',
-        status: 'draft',
-        notes,
-        companyId,
-        entries: {
-          create: entries.map((entry: DistributionEntry) => ({
-            shareholder: entry.shareholder,
-            shareRatio: num(entry.shareRatio),
-            amount: num(entry.amount),
-          })),
-        },
-      },
-      include: { entries: true },
-    })
-
-    return NextResponse.json({ distribution }, { status: 201 })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
+  if (num(distribution.netProfit, 3) <= 0) {
+    return apiError("Net profit is zero or negative — cannot distribute", 400);
   }
-}
 
-/**
- * PATCH /api/accounting/profit-distribution
- * Update a profit distribution (e.g., approve it).
- */
-export async function PATCH(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  // Then post JE
+  const jeResult = await postProfitDistributionJE(
+    data.companySlug,
+    distribution,
+    user.email,
+  );
 
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
-    const { id, status, notes } = body
+  await logAudit({
+    userEmail: user.email, userUid: user.uid,
+    action: "post_profit_distribution", entity: "journal_entry", entityId: jeResult.jeId, companySlug: data.companySlug,
+    details: { periodFrom: data.periodFrom, periodTo: data.periodTo, netProfit: distribution.netProfit, partnersCount: distribution.partners.length },
+  });
 
-    assertCompanyAccess(auth, companyId)
-
-    if (!id) {
-      return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    }
-
-    const existing = await db.profitDistribution.findFirst({
-      where: { id, companyId },
-    })
-
-    if (!existing) {
-      return NextResponse.json({ error: 'Profit distribution not found' }, { status: 404 })
-    }
-
-    const updated = await db.profitDistribution.update({
-      where: { id },
-      data: {
-        ...(status ? { status } : {}),
-        ...(notes ? { notes } : {}),
-      },
-      include: { entries: true },
-    })
-
-    return NextResponse.json({ distribution: updated })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
+  return apiOk({
+    ok: true,
+    jeId: jeResult.jeId,
+    lines: jeResult.lines,
+    distribution,
+  });
+});

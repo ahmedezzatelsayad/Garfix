@@ -1,200 +1,144 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { resolveAuth, assertCompanyAccess } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { num } from '@/lib/money'
-
-type VoucherLineInput = {
-  accountId: string
-  debit: number
-  credit: number
-  description?: string
-}
-
 /**
- * GET /api/accounting/vouchers/[id]
- * Get a single voucher by ID.
+ * /api/accounting/vouchers/[id]
+ * GET  — Single voucher details
+ * PATCH — Approve or cancel voucher
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { cancelVoucher } from "@/lib/accounting/vouchers";
+import { numberToArabicText, type SupportedCurrency } from "@/lib/accounting/arabic-amount-text";
+import { num } from "@/lib/money";
+import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { z } from "zod";
 
-    const { id } = await params
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
+type RouteParams = { params: Promise<{ id: string }> };
 
-    assertCompanyAccess(auth, companyId)
+// ─── GET ─────────────────────────────────────────────────────────────────
 
-    const voucher = await db.voucher.findFirst({
-      where: { id, companyId },
-      include: {
-        lines: {
-          include: {
-            account: { select: { id: true, code: true, name: true, type: true } },
+export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  const { id } = await params;
+  const voucherId = parseInt(id);
+
+  const voucher = await db.paymentVoucher.findUnique({
+    where: { id: voucherId },
+    include: {
+      client: { select: { id: true, name: true } },
+      supplier: { select: { id: true, name: true } },
+      bankAccount: { select: { id: true, bankName: true, accountName: true, currency: true } },
+      glAccount: { select: { id: true, code: true, nameAr: true } },
+      journalEntry: {
+        select: {
+          id: true,
+          status: true,
+          description: true,
+          reference: true,
+          lines: {
+            include: { account: { select: { code: true, nameAr: true } } },
           },
-          orderBy: { sortOrder: 'asc' },
         },
       },
-    })
+    },
+  });
+  if (!voucher) return apiError("Voucher not found", 404);
 
-    if (!voucher) {
-      return NextResponse.json({ error: 'Voucher not found' }, { status: 404 })
-    }
+  const access = await requirePermissionForCompany(req, "finance_access", voucher.companySlug);
+  if ("error" in access) return access.error;
 
-    // FIX #7: Only ONE 'ok' property — do NOT duplicate it.
-    // The response object below has a single 'ok' field, not two.
-    return NextResponse.json({ ok: true, voucher })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    if (message.startsWith('Forbidden:')) {
-      return NextResponse.json({ error: message }, { status: 403 })
-    }
-    return NextResponse.json({ error: message }, { status: 500 })
+  // Check if request is for print view
+  const sp = req.nextUrl.searchParams;
+  const isPrint = sp.get("print") === "true";
+
+  const result: Record<string, unknown> = {
+    ...voucher,
+    amount: num(voucher.amount, 3),
+    amountArText: voucher.amountArText || numberToArabicText(num(voucher.amount, 3), voucher.currency as SupportedCurrency),
+  };
+
+  if (isPrint) {
+    // Include printable voucher data with Arabic amount text
+    result.printData = {
+      voucherNumber: voucher.voucherNumber,
+      voucherType: voucher.voucherType === "receipt" ? "سند قبض" : "سند دفع",
+      date: voucher.date,
+      amount: num(voucher.amount, 3).toFixed(3),
+      amountArText: voucher.amountArText || numberToArabicText(num(voucher.amount, 3), voucher.currency as SupportedCurrency),
+      currency: voucher.currency,
+      payee: voucher.payee,
+      payer: voucher.payer,
+      description: voucher.description,
+      reference: voucher.reference,
+      clientName: voucher.client?.name,
+      supplierName: voucher.supplier?.name,
+      bankName: voucher.bankAccount?.bankName,
+      accountName: voucher.bankAccount?.accountName,
+      status: voucher.status,
+      createdBy: voucher.createdBy,
+      createdAt: voucher.createdAt.toISOString(),
+    };
   }
-}
 
-/**
- * PUT /api/accounting/vouchers/[id]
- * Update a voucher (edit lines, change status, etc.)
- */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  return apiOk(result);
+});
 
-    const { id } = await params
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
+// ─── PATCH ────────────────────────────────────────────────────────────
 
-    assertCompanyAccess(auth, companyId)
+const PatchSchema = z.object({
+  companySlug: z.string().min(1).optional(),
+  action: z.enum(["approve", "cancel"]),
+  reason: z.string().optional(), // required for cancel
+});
 
-    const existing = await db.voucher.findFirst({
-      where: { id, companyId },
-    })
+export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  const { id } = await params;
+  const voucherId = parseInt(id);
 
-    if (!existing) {
-      return NextResponse.json({ error: 'Voucher not found' }, { status: 404 })
-    }
+  const body = await parseJsonBody(req);
+  const parsed = PatchSchema.safeParse(body);
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+  const data = parsed.data;
 
-    if (existing.status === 'posted') {
-      return NextResponse.json({ error: 'Cannot update a posted voucher' }, { status: 400 })
-    }
+  const voucher = await db.paymentVoucher.findUnique({
+    where: { id: voucherId },
+  });
+  if (!voucher) return apiError("Voucher not found", 404);
 
-    const { description, reference, status, lines } = body as {
-      description?: string
-      reference?: string
-      status?: string
-      lines?: VoucherLineInput[]
-    }
+  const companySlug = data.companySlug || voucher.companySlug;
+  const access = await requirePermissionForCompany(req, "finance_access", companySlug);
+  if ("error" in access) return access.error;
+  const user = access.user;
 
-    // If lines are provided, validate debit/credit totals balance
-    if (lines && Array.isArray(lines)) {
-      const totalDebit = num(lines.reduce((sum, l) => sum + num(l.debit), 0))
-      const totalCredit = num(lines.reduce((sum, l) => sum + num(l.credit), 0))
+  if (data.action === "approve") {
+    if (voucher.status !== "draft") return apiError("Only draft vouchers can be approved", 400);
 
-      if (totalDebit !== totalCredit) {
-        return NextResponse.json(
-          { error: `Debit total (${totalDebit}) must equal credit total (${totalCredit})` },
-          { status: 400 }
-        )
-      }
-    }
+    const updated = await db.paymentVoucher.update({
+      where: { id: voucherId },
+      data: { status: "posted", approvedBy: user.email },
+    });
 
-    // Update voucher and replace lines in a transaction
-    const updated = await db.$transaction(async (tx) => {
-      // Delete old lines if new ones are provided
-      if (lines && Array.isArray(lines)) {
-        await tx.voucherLine.deleteMany({ where: { voucherId: id } })
+    await logAudit({
+      userEmail: user.email, userUid: user.uid,
+      action: "approve", entity: "voucher", entityId: voucherId, companySlug,
+      details: { voucherNumber: voucher.voucherNumber, priorStatus: voucher.status },
+    });
 
-        // Create new lines
-        await tx.voucherLine.createMany({
-          data: lines.map((line: VoucherLineInput, index: number) => ({
-            accountId: line.accountId,
-            debit: num(line.debit),
-            credit: num(line.credit),
-            description: line.description,
-            sortOrder: index,
-            voucherId: id,
-          })),
-        })
-      }
-
-      // Update voucher metadata
-      return tx.voucher.update({
-        where: { id },
-        data: {
-          ...(description !== undefined ? { description } : {}),
-          ...(reference !== undefined ? { reference } : {}),
-          ...(status ? { status } : {}),
-        },
-        include: {
-          lines: {
-            include: {
-              account: { select: { id: true, code: true, name: true, type: true } },
-            },
-            orderBy: { sortOrder: 'asc' },
-          },
-        },
-      })
-    })
-
-    // FIX #7 (continued): Single 'ok' property, not duplicated
-    return NextResponse.json({ ok: true, voucher: updated })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return apiOk({ ok: true, voucher: { ...updated, amount: num(updated.amount, 3) } });
   }
-}
 
-/**
- * DELETE /api/accounting/vouchers/[id]
- * Delete a draft voucher.
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (data.action === "cancel") {
+    if (!data.reason) return apiError("Reason is required for cancellation", 400);
 
-    const { id } = await params
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
+    const result = await cancelVoucher(companySlug, voucherId, data.reason, user.email);
 
-    assertCompanyAccess(auth, companyId)
+    await logAudit({
+      userEmail: user.email, userUid: user.uid,
+      action: "cancel", entity: "voucher", entityId: voucherId, companySlug,
+      details: { voucherNumber: voucher.voucherNumber, reason: data.reason, reversedJEId: result.reversedJEId },
+    });
 
-    const existing = await db.voucher.findFirst({
-      where: { id, companyId },
-    })
-
-    if (!existing) {
-      return NextResponse.json({ error: 'Voucher not found' }, { status: 404 })
-    }
-
-    if (existing.status === 'posted') {
-      return NextResponse.json({ error: 'Cannot delete a posted voucher; cancel it instead' }, { status: 400 })
-    }
-
-    // Delete lines first (they have cascade, but explicit is safer)
-    await db.voucherLine.deleteMany({ where: { voucherId: id } })
-    await db.voucher.delete({ where: { id } })
-
-    return NextResponse.json({ ok: true, deleted: id })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return apiOk({ ...result });
   }
-}
+
+  return apiError("Unknown action", 400);
+});

@@ -1,0 +1,4063 @@
+openapi: 3.1.0
+info:
+  title: Garfix EOS API
+  description: |
+    Garfix EOS — منصة إدارة الأعمال المتكاملة (Enterprise Operating System)
+    
+    A multi-tenant ERP/SaaS platform for managing invoices, clients, inventory,
+    accounting, HR, automation, and AI-powered business intelligence. Designed
+    for Gulf-region businesses with Kuwait Decree 10/2026 e-invoicing compliance,
+    Arabic-first UI, and RTL support.
+    
+    **Authentication**: JWT Bearer tokens via HttpOnly cookies (access + refresh).
+    **Multi-Tenancy**: Scoped via `companySlug` query param or `X-Company-Slug` header.
+    **Permissions**: Role-based with granular permission bits (view_invoices, finance_access, etc.)
+    **Rate Limiting**: Applied per-IP and per-user on sensitive endpoints.
+  version: 12.0.0
+  contact:
+    name: Garfix Engineering
+    email: dev@garfix.io
+  license:
+    name: Proprietary
+    url: https://garfix.io/terms
+
+servers:
+  - url: https://app.garfix.io/api
+    description: Production
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication & session management (تسجيل الدخول والجلسات)
+  - name: Invoices
+    description: Invoice CRUD + payment/status workflows (الفواتير)
+  - name: Clients
+    description: Client/customer management (العملاء)
+  - name: Catalog
+    description: Product catalog management (كتالوج المنتجات)
+  - name: Inventory
+    description: Warehouses, items, stock levels, movements (المخزون والمستودعات)
+  - name: Accounting
+    description: Journal entries, financial statements, banking (المحاسبة والمالية)
+  - name: HR
+    description: Employees, salaries, attendance, leaves (الموارد البشرية)
+  - name: AI
+    description: AI Copilot chat, image parsing, invoice brain (الذكاء الاصطناعي)
+  - name: Dashboard
+    description: KPI dashboard stats (لوحة القيادة)
+  - name: Settings
+    description: Platform settings (founder-only for write) (الإعدادات)
+  - name: Automation
+    description: Automation rules engine (الأتمتة)
+  - name: Webhooks
+    description: External webhook receivers (WhatsApp, etc.) (ويب هوك)
+  - name: SaaS
+    description: SaaS billing, payments, subscriptions (إدارة الاشتراكات)
+  - name: Reports
+    description: Business reports (sales, profit, cash flow, tax) (التقارير)
+  - name: Health
+    description: System health & monitoring (الصحة والمراقبة)
+  - name: Companies
+    description: Multi-company/tenant management (الشركات)
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+
+paths:
+  # ─── AUTH ─────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login (تسجيل الدخول)
+      description: |
+        Validates credentials, issues access + refresh cookies, returns user profile.
+        Rate-limited: 5 attempts per 15 min per IP AND per email.
+        Account lockout after 5 failures.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: البريد الإلكتروني
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 1
+                  description: كلمة المرور
+                  example: StrongP@ssw0rd!
+      responses:
+        '200':
+          description: Login successful — cookies set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials (البريد الإلكتروني أو كلمة المرور غير صحيحة)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register (إنشاء حساب)
+      description: |
+        Creates a new user account. Anti-enumeration: always returns 200 with a
+        generic message whether or not the email was already registered.
+        Password policy: 10+ chars, upper/lower/digit/symbol, score ≥ 40.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, displayName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: صيغة البريد الإلكتروني غير صحيحة
+                  example: newuser@example.com
+                password:
+                  type: string
+                  minLength: 10
+                  description: كلمة المرور (10+ chars, upper/lower/digit/symbol)
+                  example: StrongP@ssw0rd!
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: الاسم مطلوب
+                  example: أحمد محمد
+      responses:
+        '200':
+          description: Generic anti-enumeration response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "إذا كان البريد غير مسجّل، تم إنشاء الحساب. تحقق من بريدك لتأكيد الحساب."
+                  uid:
+                    type: string
+                    format: uuid
+                    description: New user UID (only present on actual creation)
+                  isFounder:
+                    type: boolean
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile (الملف الشخصي)
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token (تجديد الجلسة)
+      security: []
+      responses:
+        '200':
+          description: New access cookie issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '401':
+          description: Refresh token expired or invalid
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (تسجيل الخروج)
+      description: Clears both access and refresh cookies, increments tokenVersion.
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password (تغيير كلمة المرور)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 10
+      responses:
+        '200':
+          description: Password changed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Forgot password (نسيت كلمة المرور)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset email sent (or silently ignored if email not found)
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token (إعادة تعيين كلمة المرور)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password reset successful
+
+  /auth/csrf:
+    get:
+      tags: [Auth]
+      summary: Get CSRF token (رمز الحماية)
+      security: []
+      responses:
+        '200':
+          description: CSRF token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken:
+                    type: string
+
+  # ─── INVOICES ────────────────────────────────────────────────────────
+  /invoices:
+    get:
+      tags: [Invoices]
+      summary: List invoices (قائمة الفواتير)
+      description: |
+        List invoices with cursor-based pagination, filterable by company, status, and search.
+        Requires `view_invoices` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+          description: Tenant company slug
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, sent, overdue, cancelled, paid, partial]
+          description: Filter by invoice status
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search invoice number, client name, email, phone
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Cursor-based pagination (invoice ID)
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Invoice'
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Invoices]
+      summary: Create invoice (إنشاء فاتورة)
+      description: |
+        Create a new invoice. Requires `create_invoice` permission.
+        Enforces trial expiry and invoice quota (SaaS limits).
+        Kuwait companies: auto-validates Decree 10/2026 compliance fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreate'
+      responses:
+        '200':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+                  reviewQueueWarnings:
+                    type: array
+                    items:
+                      type: string
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                  kuwaitWarnings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        messageAr:
+                          type: string
+                        messageEn:
+                          type: string
+        '400':
+          description: Validation error or Kuwait compliance error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum: [KUWAIT_COMPLIANCE_ERROR]
+                  details:
+                    type: array
+        '402':
+          description: Trial expired or quota exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum: [TRIAL_EXPIRED, QUOTA_EXCEEDED]
+        '409':
+          description: Invoice number already exists in company
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "رقم الفاتورة مستخدم مسبقاً في هذه الشركة"
+
+  /invoices/{id}:
+    get:
+      tags: [Invoices]
+      summary: Get invoice (عرض فاتورة)
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Invoices]
+      summary: Update invoice (تحديث فاتورة)
+      description: |
+        Update invoice with optimistic-lock version check. `status` changes are NOT
+        allowed here — use `/invoices/{id}/status` or `/invoices/{id}/payment`.
+        Requires `edit_invoice` permission.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceUpdate'
+      responses:
+        '200':
+          description: Invoice updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+                  kuwaitWarnings:
+                    type: array
+                    items:
+                      type: object
+        '409':
+          description: Version conflict — concurrent edit or soft-delete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum: [VERSION_CONFLICT]
+
+    delete:
+      tags: [Invoices]
+      summary: Soft-delete invoice (حذف فاتورة)
+      description: Soft-delete (sets deletedAt). Kuwait invoices: retention check logged.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      responses:
+        '200':
+          description: Invoice soft-deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /invoices/{id}/status:
+    patch:
+      tags: [Invoices]
+      summary: Change invoice status (تغيير حالة الفاتورة)
+      description: |
+        Operational status transitions only (draft → sent, sent → overdue, etc.).
+        Requires `edit_invoice` permission. `paid`/`partial` must go through `/payment`.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [draft, sent, overdue, cancelled]
+      responses:
+        '200':
+          description: Status updated
+
+  /invoices/{id}/payment:
+    patch:
+      tags: [Invoices]
+      summary: Record payment on invoice (تسجيل دفعة)
+      description: |
+        Update invoice to paid/partial status with payment amount. Requires `finance_access`.
+        Creates payment audit trail.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paidAmount]
+              properties:
+                paidAmount:
+                  type: number
+                  description: Amount paid
+                paymentMethod:
+                  type: string
+                reference:
+                  type: string
+      responses:
+        '200':
+          description: Payment recorded
+
+  # ─── CLIENTS ──────────────────────────────────────────────────────────
+  /clients:
+    get:
+      tags: [Clients]
+      summary: List clients (قائمة العملاء)
+      description: Requires `view_customers` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search name, email, phone, company
+      responses:
+        '200':
+          description: Client list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Client'
+                  nextCursor:
+                    type: string
+                    nullable: true
+
+    post:
+      tags: [Clients]
+      summary: Create client (إنشاء عميل)
+      description: Requires `edit_customer` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientCreate'
+      responses:
+        '200':
+          description: Client created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  client:
+                    $ref: '#/components/schemas/Client'
+
+  /clients/{id}:
+    get:
+      tags: [Clients]
+      summary: Get client (عرض عميل)
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+      responses:
+        '200':
+          description: Client details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client:
+                    $ref: '#/components/schemas/Client'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Clients]
+      summary: Update client (تحديث عميل)
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientUpdate'
+      responses:
+        '200':
+          description: Client updated
+
+    delete:
+      tags: [Clients]
+      summary: Soft-delete client (حذف عميل)
+      description: Soft-delete (sets deletedAt timestamp).
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+      responses:
+        '200':
+          description: Client soft-deleted
+
+  /clients/{id}/profile:
+    get:
+      tags: [Clients]
+      summary: Get client profile with invoices summary
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+      responses:
+        '200':
+          description: Client profile
+
+  # ─── CATALOG ──────────────────────────────────────────────────────────
+  /catalog:
+    get:
+      tags: [Catalog]
+      summary: List products (قائمة المنتجات)
+      description: Requires `view_catalog` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search product name or code
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  nextCursor:
+                    type: string
+                    nullable: true
+
+    post:
+      tags: [Catalog]
+      summary: Create product (إنشاء منتج)
+      description: Requires `settings_access` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '200':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  product:
+                    $ref: '#/components/schemas/Product'
+
+  /catalog/{id}:
+    patch:
+      tags: [Catalog]
+      summary: Update product (تحديث منتج)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product updated
+
+    delete:
+      tags: [Catalog]
+      summary: Delete product (حذف منتج)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product deleted
+
+  # ─── INVENTORY ─────────────────────────────────────────────────────────
+  /inventory/warehouses:
+    get:
+      tags: [Inventory]
+      summary: List warehouses (قائمة المستودعات)
+      description: Requires `settings_access` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+          description: companySlug مطلوب
+      responses:
+        '200':
+          description: Warehouse list with item counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  warehouses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Warehouse'
+
+    post:
+      tags: [Inventory]
+      summary: Create warehouse (إنشاء مستودع)
+      description: Requires `settings_access` permission. Warehouse code must be unique per company.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WarehouseCreate'
+      responses:
+        '201':
+          description: Warehouse created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  warehouse:
+                    $ref: '#/components/schemas/Warehouse'
+        '409':
+          description: Warehouse code already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "كود المستودع مستخدم بالفعل"
+
+  /inventory/warehouses/{id}:
+    patch:
+      tags: [Inventory]
+      summary: Update warehouse (تحديث مستودع)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Warehouse updated
+    delete:
+      tags: [Inventory]
+      summary: Delete warehouse (حذف مستودع)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Warehouse deleted
+
+  /inventory/items:
+    get:
+      tags: [Inventory]
+      summary: List inventory items with stock status (قائمة المخزون)
+      description: |
+        Returns inventory items with computed status (OK/Low/Out).
+        Requires `settings_access` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+          description: companySlug مطلوب
+        - name: warehouseId
+          in: query
+          schema:
+            type: integer
+          description: Filter by warehouse
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OK, Low, Out]
+          description: Filter by stock status
+      responses:
+        '200':
+          description: Inventory items with summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryItem'
+                  summary:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      ok:
+                        type: integer
+                      low:
+                        type: integer
+                      out:
+                        type: integer
+
+    post:
+      tags: [Inventory]
+      summary: Adjust stock (تعديل المخزون)
+      description: |
+        Set absolute quantity or adjust by delta (+/-). Creates or updates InventoryItem.
+        Records StockMovement ledger entry. Cannot go below zero.
+        Requires `settings_access` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryAdjust'
+      responses:
+        '200':
+          description: Stock adjusted (existing item updated)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  item:
+                    $ref: '#/components/schemas/InventoryItem'
+        '201':
+          description: New inventory item created
+        '400':
+          description: Cannot go below zero
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "لا يمكن تقليل المخزون تحت الصفر"
+
+  /inventory/movements:
+    get:
+      tags: [Inventory]
+      summary: List stock movements (سجل حركة المخزون)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Movement list
+
+  # ─── ACCOUNTING ────────────────────────────────────────────────────────
+  /accounting/journal-entries:
+    get:
+      tags: [Accounting]
+      summary: List journal entries (قائمة القيود المحاسبية)
+      description: Requires `finance_access` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Journal entries with lines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JournalEntry'
+
+    post:
+      tags: [Accounting]
+      summary: Create journal entry (إنشاء قيد محاسبي)
+      description: |
+        Requires `finance_access` permission. Entry must be balanced (debit = credit).
+        If status='posted', account balances are updated atomically within transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalEntryCreate'
+      responses:
+        '200':
+          description: Journal entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  entry:
+                    $ref: '#/components/schemas/JournalEntry'
+        '400':
+          description: Unbalanced entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Journal entry not balanced (debit ≠ credit)"
+
+  /accounting/journal-entries/{id}:
+    get:
+      tags: [Accounting]
+      summary: Get journal entry (عرض قيد)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Journal entry details
+
+    patch:
+      tags: [Accounting]
+      summary: Update journal entry (تحديث قيد)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Journal entry updated
+
+  /accounting/journal-entries/{id}/reverse:
+    post:
+      tags: [Accounting]
+      summary: Reverse journal entry (عكس قيد)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Entry reversed
+
+  /accounting/balance-sheet:
+    get:
+      tags: [Accounting]
+      summary: Balance Sheet (الميزانية العمومية)
+      description: Returns assets, liabilities, equity with totals and balance check.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+          description: companySlug مطلوب
+        - name: asOf
+          in: query
+          schema:
+            type: string
+            format: date
+          description: As-of date (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Balance sheet report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asOf:
+                    type: string
+                    format: date
+                  assets:
+                    type: object
+                    properties:
+                      accounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                            nameAr:
+                              type: string
+                              description: اسم الحساب بالعربي
+                            balance:
+                              type: number
+                      total:
+                        type: number
+                  liabilities:
+                    type: object
+                    properties:
+                      accounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                            nameAr:
+                              type: string
+                            balance:
+                              type: number
+                      total:
+                        type: number
+                  equity:
+                    type: object
+                    properties:
+                      accounts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                            nameAr:
+                              type: string
+                            balance:
+                              type: number
+                      total:
+                        type: number
+                  totalLiabilitiesAndEquity:
+                    type: number
+                  isBalanced:
+                    type: boolean
+
+  /accounting/trial-balance:
+    get:
+      tags: [Accounting]
+      summary: Trial Balance (ميزان المراجعة)
+      description: Returns debit/credit totals per account with grand totals.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+          description: companySlug مطلوب
+      responses:
+        '200':
+          description: Trial balance report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        nameAr:
+                          type: string
+                        type:
+                          type: string
+                        totalDebit:
+                          type: number
+                        totalCredit:
+                          type: number
+                        balance:
+                          type: number
+                  totals:
+                    type: object
+                    properties:
+                      totalDebit:
+                        type: number
+                      totalCredit:
+                        type: number
+                      isBalanced:
+                        type: boolean
+
+  /accounting/profit-loss:
+    get:
+      tags: [Accounting]
+      summary: Profit & Loss Statement (قائمة الدخل)
+      description: Returns revenue, expenses, net profit with margin percentage.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date (defaults to Jan 1 of current year)
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date (defaults to today)
+      responses:
+        '200':
+          description: P&L report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dateRange:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                      to:
+                        type: string
+                  revenue:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                      contra:
+                        type: number
+                      net:
+                        type: number
+                  expenses:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                  netProfit:
+                    type: number
+                  margin:
+                    type: string
+                    example: "45.00%"
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        nameAr:
+                          type: string
+                        type:
+                          type: string
+                        amount:
+                          type: number
+
+  /accounting/accounts:
+    get:
+      tags: [Accounting]
+      summary: List accounts (قائمة الحسابات)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account list
+
+    post:
+      tags: [Accounting]
+      summary: Create account (إنشاء حساب)
+      responses:
+        '200':
+          description: Account created
+
+  /accounting/accounts/{id}:
+    patch:
+      tags: [Accounting]
+      summary: Update account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Account updated
+    delete:
+      tags: [Accounting]
+      summary: Delete account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Account deleted
+
+  /accounting/cash-flow:
+    get:
+      tags: [Accounting]
+      summary: Cash Flow report (التدفقات النقدية)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cash flow report
+
+  /accounting/aging:
+    get:
+      tags: [Accounting]
+      summary: Aging report (تقرير الأعمار)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Aging report
+
+  /accounting/bank-reconciliation:
+    get:
+      tags: [Accounting]
+      summary: Bank reconciliation list
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bank reconciliation list
+    post:
+      tags: [Accounting]
+      summary: Create bank reconciliation
+      responses:
+        '200':
+          description: Bank reconciliation created
+
+  /accounting/bank-accounts:
+    get:
+      tags: [Accounting]
+      summary: List bank accounts
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bank account list
+    post:
+      tags: [Accounting]
+      summary: Create bank account
+      responses:
+        '200':
+          description: Bank account created
+
+  /accounting/vouchers:
+    get:
+      tags: [Accounting]
+      summary: List vouchers (قائمة السندات)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Voucher list
+    post:
+      tags: [Accounting]
+      summary: Create voucher (إنشاء سند)
+      responses:
+        '200':
+          description: Voucher created
+
+  /accounting/fixed-assets:
+    get:
+      tags: [Accounting]
+      summary: List fixed assets (الأصول الثابتة)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fixed assets list
+    post:
+      tags: [Accounting]
+      summary: Create fixed asset
+      responses:
+        '200':
+          description: Fixed asset created
+
+  /accounting/budgets:
+    get:
+      tags: [Accounting]
+      summary: List budgets (الميزانيات)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Budget list
+    post:
+      tags: [Accounting]
+      summary: Create budget
+      responses:
+        '200':
+          description: Budget created
+
+  /accounting/fiscal-periods:
+    get:
+      tags: [Accounting]
+      summary: List fiscal periods (الفترات المالية)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fiscal period list
+    post:
+      tags: [Accounting]
+      summary: Create fiscal period
+      responses:
+        '200':
+          description: Fiscal period created
+
+  /accounting/cost-centers:
+    get:
+      tags: [Accounting]
+      summary: List cost centers (مراكز التكلفة)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cost center list
+    post:
+      tags: [Accounting]
+      summary: Create cost center
+      responses:
+        '200':
+          description: Cost center created
+
+  /accounting/tax-filing:
+    get:
+      tags: [Accounting]
+      summary: List tax filings (الإقرارات الضريبية)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tax filing list
+    post:
+      tags: [Accounting]
+      summary: Create tax filing
+      responses:
+        '200':
+          description: Tax filing created
+
+  /accounting/financial-dashboard:
+    get:
+      tags: [Accounting]
+      summary: Financial dashboard (لوحة القيادة المالية)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Financial dashboard data
+
+  /accounting/quotations:
+    get:
+      tags: [Accounting]
+      summary: List quotations (عروض الأسعار)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Quotation list
+    post:
+      tags: [Accounting]
+      summary: Create quotation
+      responses:
+        '200':
+          description: Quotation created
+
+  /accounting/payroll:
+    get:
+      tags: [Accounting]
+      summary: Payroll data (الراتب)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payroll data
+
+  /accounting/depreciation:
+    get:
+      tags: [Accounting]
+      summary: Depreciation schedule
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Depreciation schedule
+
+  /accounting/consolidation:
+    get:
+      tags: [Accounting]
+      summary: Multi-company consolidation
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consolidation report
+
+  /accounting/inventory-valuation:
+    get:
+      tags: [Accounting]
+      summary: Inventory valuation (تقييم المخزون)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inventory valuation
+
+  /accounting/letters-of-credit:
+    get:
+      tags: [Accounting]
+      summary: Letters of credit (اعتمادات مستندي)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: LC list
+    post:
+      tags: [Accounting]
+      summary: Create letter of credit
+      responses:
+        '200':
+          description: LC created
+
+  /accounting/inter-company:
+    get:
+      tags: [Accounting]
+      summary: Inter-company transactions
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inter-company transactions
+    post:
+      tags: [Accounting]
+      summary: Create inter-company transaction
+      responses:
+        '200':
+          description: Transaction created
+
+  /accounting/landed-cost:
+    get:
+      tags: [Accounting]
+      summary: Landed cost calculations
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Landed cost data
+    post:
+      tags: [Accounting]
+      summary: Create landed cost
+      responses:
+        '200':
+          description: Landed cost created
+
+  /accounting/fx-revaluation:
+    get:
+      tags: [Accounting]
+      summary: FX revaluation entries
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: FX revaluation list
+    post:
+      tags: [Accounting]
+      summary: Create FX revaluation
+      responses:
+        '200':
+          description: FX revaluation created
+
+  /accounting/post-dated-checks:
+    get:
+      tags: [Accounting]
+      summary: Post-dated checks (شيكات مؤجلة)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDC list
+    post:
+      tags: [Accounting]
+      summary: Create post-dated check
+      responses:
+        '200':
+          description: PDC created
+
+  /accounting/export-excel:
+    get:
+      tags: [Accounting]
+      summary: Export accounting data as Excel
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: report
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Excel file download
+
+  /accounting/initiate-payment:
+    post:
+      tags: [Accounting]
+      summary: Initiate payment (بدء دفعة)
+      responses:
+        '200':
+          description: Payment initiated
+
+  /accounting/verify-payment:
+    post:
+      tags: [Accounting]
+      summary: Verify payment (تأكيد دفعة)
+      responses:
+        '200':
+          description: Payment verified
+
+  /accounting/bank-transfer:
+    post:
+      tags: [Accounting]
+      summary: Bank transfer (تحويل بنكي)
+      responses:
+        '200':
+          description: Transfer processed
+
+  /accounting/bank-import:
+    post:
+      tags: [Accounting]
+      summary: Import bank statement (استيراد كشف بنكي)
+      responses:
+        '200':
+          description: Bank statement imported
+
+  /accounting/accountant-access:
+    get:
+      tags: [Accounting]
+      summary: Accountant access settings
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accountant access config
+
+  /accounting/client-statement:
+    get:
+      tags: [Accounting]
+      summary: Client statement (كشف حساب العميل)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Client statement
+
+  /accounting/supplier-statement:
+    get:
+      tags: [Accounting]
+      summary: Supplier statement (كشف حساب المورد)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Supplier statement
+
+  /accounting/period-comparison:
+    get:
+      tags: [Accounting]
+      summary: Period comparison (مقارنة الفترات)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Period comparison
+
+  /accounting/budget-vs-actual:
+    get:
+      tags: [Accounting]
+      summary: Budget vs Actual (الميزانية مقابل الفعلي)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Budget vs actual report
+
+  /accounting/profit-distribution:
+    get:
+      tags: [Accounting]
+      summary: Profit distribution (توزيع الأرباح)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profit distribution data
+
+  /accounting/wps:
+    get:
+      tags: [Accounting]
+      summary: WPS (Wage Protection System)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: WPS data
+    post:
+      tags: [Accounting]
+      summary: Create WPS entry
+      responses:
+        '200':
+          description: WPS entry created
+
+  /accounting/commissions:
+    get:
+      tags: [Accounting]
+      summary: Commissions (العمولات)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commissions data
+
+  /accounting/installments:
+    get:
+      tags: [Accounting]
+      summary: Installments (الأقساط)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Installment data
+
+  /accounting/payment-methods:
+    get:
+      tags: [Accounting]
+      summary: Payment methods (طرق الدفع)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment method list
+
+  /accounting/purchase-orders:
+    get:
+      tags: [Accounting]
+      summary: Purchase orders (أوامر الشراء)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Purchase order list
+    post:
+      tags: [Accounting]
+      summary: Create purchase order
+      responses:
+        '200':
+          description: Purchase order created
+
+  /accounting/opening-balances:
+    post:
+      tags: [Accounting]
+      summary: Set opening balances (أرصدة افتتاحية)
+      responses:
+        '200':
+          description: Opening balances set
+
+  /accounting/accounting-audit:
+    get:
+      tags: [Accounting]
+      summary: Accounting audit log
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accounting audit data
+
+  /accounting/retention-check:
+    get:
+      tags: [Accounting]
+      summary: Retention period check
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retention check results
+
+  /accounting/filing-reminders:
+    get:
+      tags: [Accounting]
+      summary: Tax filing reminders
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Filing reminders
+
+  # ─── HR ────────────────────────────────────────────────────────────────
+  /hr/employees:
+    get:
+      tags: [HR]
+      summary: List employees (قائمة الموظفين)
+      description: Requires `employee_management` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Employee list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  employees:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Employee'
+
+    post:
+      tags: [HR]
+      summary: Create employee (إنشاء موظف)
+      description: Requires `employee_management` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeCreate'
+      responses:
+        '200':
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  employee:
+                    $ref: '#/components/schemas/Employee'
+
+  /hr/employees/{id}:
+    get:
+      tags: [HR]
+      summary: Get employee (عرض موظف)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee details
+    patch:
+      tags: [HR]
+      summary: Update employee (تحديث موظف)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee updated
+    delete:
+      tags: [HR]
+      summary: Delete employee (حذف موظف)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee deleted
+
+  /hr/salaries:
+    get:
+      tags: [HR]
+      summary: List salary records (سجل الرواتب)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Salary records
+
+  /hr/attendance:
+    get:
+      tags: [HR]
+      summary: List attendance (سجل الحضور)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attendance records
+    post:
+      tags: [HR]
+      summary: Record attendance (تسجيل حضور)
+      responses:
+        '200':
+          description: Attendance recorded
+
+  /hr/leaves:
+    get:
+      tags: [HR]
+      summary: List leave requests (طلبات الإجازات)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Leave requests
+    post:
+      tags: [HR]
+      summary: Create leave request (طلب إجازة)
+      responses:
+        '200':
+          description: Leave request created
+
+  /hr/performance:
+    get:
+      tags: [HR]
+      summary: Performance reviews (تقييم الأداء)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Performance reviews
+    post:
+      tags: [HR]
+      summary: Create performance review
+      responses:
+        '200':
+          description: Performance review created
+
+  /hr/commissions:
+    get:
+      tags: [HR]
+      summary: Employee commissions (عمولات الموظفين)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commission records
+    post:
+      tags: [HR]
+      summary: Create commission record
+      responses:
+        '200':
+          description: Commission recorded
+
+  /hr/gratuity:
+    get:
+      tags: [HR]
+      summary: Gratuity calculator (حاسبة المكافأة)
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Gratuity calculations
+
+  # ─── AI ────────────────────────────────────────────────────────────────
+  /ai/chat:
+    get:
+      tags: [AI]
+      summary: Get chat history (سجل المحادثات)
+      parameters:
+        - name: conversationId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        userUid:
+                          type: string
+                        companySlug:
+                          type: string
+                        role:
+                          type: string
+                          enum: [user, assistant, system]
+                        content:
+                          type: string
+                        conversationId:
+                          type: string
+                        model:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+
+    post:
+      tags: [AI]
+      summary: AI Copilot chat (محادثة الذكاء الاصطناعي)
+      description: |
+        Sends messages to the AI Copilot. Rate-limited: 10/min per user.
+        Injects real-time business context (invoices, clients, revenue).
+        Uses Smart Router with automatic provider fallback and cost optimizer cache.
+        Requires `view_invoices` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, assistant, system]
+                      content:
+                        type: string
+                        minLength: 1
+                companySlug:
+                  type: string
+                  description: Optional company context for business-aware replies
+                conversationId:
+                  type: string
+                  description: Continuation of an existing conversation
+      responses:
+        '200':
+          description: AI reply
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:
+                    type: string
+                    description: AI assistant response
+                  conversationId:
+                    type: string
+                  meta:
+                    type: object
+                    properties:
+                      processingMs:
+                        type: integer
+                      tokensIn:
+                        type: integer
+                      tokensOut:
+                        type: integer
+                      model:
+                        type: string
+                        example: "cache-hit"
+                      source:
+                        type: string
+                        enum: [cache, ai]
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /ai/parse-image:
+    post:
+      tags: [AI]
+      summary: Parse invoice image (تحليل صورة فاتورة)
+      description: |
+        Takes a base64-encoded image and uses VLM to extract structured invoice drafts.
+        Rate-limited per user. Requires `bulk_input` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [imageBase64]
+              properties:
+                imageBase64:
+                  type: string
+                  minLength: 100
+                  description: Base64-encoded image (receipt, invoice, handwritten order)
+                mimeType:
+                  type: string
+                  default: image/jpeg
+                  description: Image MIME type
+                companySlug:
+                  type: string
+                  description: Company slug for context + auto-product-add
+                autoAddProducts:
+                  type: boolean
+                  default: false
+                  description: Auto-add discovered products to catalog
+      responses:
+        '200':
+          description: Parsed orders from image
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ParsedOrder'
+                  meta:
+                    type: object
+                    properties:
+                      processingMs:
+                        type: integer
+                      aiMs:
+                        type: integer
+                      inputTokens:
+                        type: integer
+                      outputTokens:
+                        type: integer
+                      totalTokens:
+                        type: integer
+                      model:
+                        type: string
+                        example: z-ai-vlm
+                      ordersCount:
+                        type: integer
+                      itemsCount:
+                        type: integer
+        '502':
+          description: AI response was invalid JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "رد الذكاء الاصطناعي غير صالح (JSON)"
+                  raw:
+                    type: string
+
+  /ai/smart-parse:
+    post:
+      tags: [AI]
+      summary: Smart-parse text orders (تحليل نص الطلبات)
+      responses:
+        '200':
+          description: Parsed orders from text
+
+  /ai/bulk-import:
+    post:
+      tags: [AI]
+      summary: Bulk import orders via AI
+      responses:
+        '200':
+          description: Orders imported
+
+  /ai/memory:
+    get:
+      tags: [AI]
+      summary: List AI memories
+      responses:
+        '200':
+          description: Memory list
+    post:
+      tags: [AI]
+      summary: Create AI memory
+      responses:
+        '200':
+          description: Memory created
+
+  /ai/agents:
+    get:
+      tags: [AI]
+      summary: List AI agents
+      responses:
+        '200':
+          description: Agent list
+    post:
+      tags: [AI]
+      summary: Create AI agent
+      responses:
+        '200':
+          description: Agent created
+
+  /ai/tools:
+    get:
+      tags: [AI]
+      summary: List AI tools
+      responses:
+        '200':
+          description: Tool list
+
+  /ai/invoice-brain/extract:
+    post:
+      tags: [AI]
+      summary: Invoice Brain extraction (استخراج بيانات الفاتورة)
+      responses:
+        '200':
+          description: Extracted invoice data
+
+  /ai/invoice-brain/stats:
+    get:
+      tags: [AI]
+      summary: Invoice Brain statistics
+      responses:
+        '200':
+          description: Invoice brain stats
+
+  /ai/parse-file:
+    post:
+      tags: [AI]
+      summary: Parse file (PDF, Excel, etc.)
+      responses:
+        '200':
+          description: Parsed file data
+
+  /ai/chat/stream:
+    post:
+      tags: [AI]
+      summary: Streaming AI chat (محادثة متدفقة)
+      description: SSE streaming variant of /ai/chat
+      responses:
+        '200':
+          description: SSE stream of AI responses
+
+  # ─── DASHBOARD ─────────────────────────────────────────────────────────
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard KPI stats (إحصائيات لوحة القيادة)
+      description: |
+        Returns aggregated KPIs: total invoices, revenue, paid, outstanding,
+        client count, monthly breakdown, recent invoices. Cached 30s per user+company.
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+        - name: fresh
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+          description: Bypass cache (bypass=1)
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalInvoices:
+                    type: integer
+                  totalRevenue:
+                    type: number
+                  totalPaid:
+                    type: number
+                  totalOutstanding:
+                    type: number
+                  clientsCount:
+                    type: integer
+                  byStatus:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    description: Invoice count per status
+                  monthly:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        month:
+                          type: string
+                          example: "2025-07"
+                        revenue:
+                          type: number
+                        count:
+                          type: integer
+                  recent:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        invoiceNumber:
+                          type: string
+                        clientName:
+                          type: string
+                        status:
+                          type: string
+                        total:
+                          type: number
+                        paid:
+                          type: number
+                        issueDate:
+                          type: string
+                        companySlug:
+                          type: string
+
+  # ─── SETTINGS ─────────────────────────────────────────────────────────
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Get platform settings (الإعدادات)
+      description: |
+        Returns platform settings. Non-founder/non-admin users only see public settings
+        (plans.catalog, feature.public_signup, branding.*). Founder/admin sees all.
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    type: object
+                    additionalProperties: true
+                  defaults:
+                    type: object
+                    properties:
+                      "plans.catalog":
+                        type: object
+                      "feature.public_signup":
+                        type: boolean
+                      "branding.name":
+                        type: string
+                        example: "GARFIX"
+                      "branding.tagline":
+                        type: string
+                        example: "منصة إدارة الأعمال المتكاملة"
+                      "branding.primary_color":
+                        type: string
+                        example: "#7c3aed"
+
+    patch:
+      tags: [Settings]
+      summary: Update settings (تحديث الإعدادات)
+      description: Founder-only. Updates arbitrary key/value pairs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: Key-value pairs to update
+              example:
+                "branding.name": "MyCompany"
+                "feature.public_signup": false
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '403':
+          description: Founder only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Founder only"
+
+  # ─── AUTOMATION ────────────────────────────────────────────────────────
+  /automation:
+    get:
+      tags: [Automation]
+      summary: List automation rules (قائمة قواعد الأتمتة)
+      description: Requires `settings_access` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Automation rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AutomationRule'
+
+    post:
+      tags: [Automation]
+      summary: Create automation rule (إنشاء قاعدة أتمتة)
+      description: Requires `settings_access` permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutomationRuleCreate'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  rule:
+                    $ref: '#/components/schemas/AutomationRule'
+
+  /automation/{id}:
+    patch:
+      tags: [Automation]
+      summary: Update automation rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Rule updated
+    delete:
+      tags: [Automation]
+      summary: Delete automation rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Rule deleted
+
+  /automation/{id}/logs:
+    get:
+      tags: [Automation]
+      summary: Automation execution logs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Execution logs
+
+  # ─── WEBHOOKS ──────────────────────────────────────────────────────────
+  /webhooks/whatsapp:
+    get:
+      tags: [Webhooks]
+      summary: WhatsApp webhook verification
+      description: |
+        Meta webhook subscription verification. Compares `hub.verify_token`
+        against platform env var or company hashed tokens.
+      security: []
+      parameters:
+        - name: hub.mode
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [subscribe]
+        - name: hub.challenge
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: hub.verify_token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification challenge echoed back
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Invalid verification request
+        '403':
+          description: Token mismatch
+
+    post:
+      tags: [Webhooks]
+      summary: WhatsApp incoming messages
+      description: |
+        Receives incoming WhatsApp messages from Meta. Verifies x-hub-signature-256
+        HMAC-SHA256. Routes messages to the correct company by phone_number_id.
+      security: []
+      responses:
+        '200':
+          description: Message processed (always 200 to prevent Meta retries)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, ignored, error]
+        '403':
+          description: Missing signature or invalid signature
+
+  # ─── SaaS ──────────────────────────────────────────────────────────────
+  /saas/payments:
+    get:
+      tags: [SaaS]
+      summary: List payment transactions (سجل المدفوعات)
+      description: Founder sees all; admin sees assigned companies.
+      responses:
+        '200':
+          description: Payment transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PaymentTransaction'
+
+  /saas/payments/initiate:
+    post:
+      tags: [SaaS]
+      summary: Initiate payment (بدء عملية الدفع)
+      responses:
+        '200':
+          description: Payment initiated
+
+  /saas/payments/callback:
+    post:
+      tags: [SaaS]
+      summary: Payment gateway callback
+      security: []
+      responses:
+        '200':
+          description: Callback processed
+
+  /saas/users:
+    get:
+      tags: [SaaS]
+      summary: List SaaS users
+      responses:
+        '200':
+          description: SaaS user list
+
+  /saas/users/{uid}:
+    get:
+      tags: [SaaS]
+      summary: Get SaaS user details
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SaaS user details
+
+  # ─── REPORTS ──────────────────────────────────────────────────────────
+  /reports:
+    get:
+      tags: [Reports]
+      summary: Generate business report (تقرير الأعمال)
+      description: |
+        Generate sales, profit, cash flow, or tax reports with CSV export support.
+        Requires `reports_access` permission.
+      parameters:
+        - name: companySlug
+          in: query
+          required: true
+          schema:
+            type: string
+          description: companySlug مطلوب
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [sales, profit, cashflow, tax]
+            default: sales
+          description: Report type
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+          description: Output format (CSV includes UTF-8 BOM for Arabic)
+      responses:
+        '200':
+          description: Report data (JSON or CSV)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  companySlug:
+                    type: string
+                  dateRange:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                      to:
+                        type: string
+                  summary:
+                    type: object
+                    additionalProperties: true
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  count:
+                    type: integer
+            text/csv:
+              schema:
+                type: string
+
+  # ─── HEALTH ────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: System health check (فحص صحة النظام)
+      description: |
+        Unauthenticated. Checks PostgreSQL, Valkey, BullMQ queues, disk, memory.
+        Returns 200 when critical services healthy, 503 when degraded.
+      security: []
+      responses:
+        '200':
+          description: All critical services healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  version:
+                    type: string
+                    example: "12.0.0"
+                  uptime:
+                    type: integer
+                    description: Process uptime in seconds
+                  latencyMs:
+                    type: integer
+                  checks:
+                    type: object
+                    properties:
+                      db:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                          error:
+                            type: string
+                      valkey:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                      queues:
+                        type: object
+                        description: BullMQ stats (non-critical)
+                      cache:
+                        type: object
+                        description: Cache stats
+                      memory:
+                        type: object
+                        properties:
+                          rssMB:
+                            type: integer
+                          heapMB:
+                            type: integer
+                          systemTotalMB:
+                            type: integer
+                          rssPercent:
+                            type: string
+                      disk:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: Critical service degraded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [degraded]
+                  checks:
+                    type: object
+
+  # ─── COMPANIES ─────────────────────────────────────────────────────────
+  /companies:
+    get:
+      tags: [Companies]
+      summary: List companies (قائمة الشركات)
+      responses:
+        '200':
+          description: Company list
+    post:
+      tags: [Companies]
+      summary: Create company (إنشاء شركة)
+      responses:
+        '200':
+          description: Company created
+
+  /companies/{slug}:
+    get:
+      tags: [Companies]
+      summary: Get company details
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Company details
+    patch:
+      tags: [Companies]
+      summary: Update company
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Company updated
+
+  /companies/{slug}/members:
+    get:
+      tags: [Companies]
+      summary: List company members
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member list
+    post:
+      tags: [Companies]
+      summary: Add member to company
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member added
+
+  # ─── OTHER ENDPOINTS ──────────────────────────────────────────────────
+  /notifications:
+    get:
+      tags: [Auth]
+      summary: Get notifications (الإشعارات)
+      responses:
+        '200':
+          description: Notification list
+
+  /audit:
+    get:
+      tags: [Settings]
+      summary: Audit log (سجل المراجعة)
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit entries
+
+  /feature-flags:
+    get:
+      tags: [Settings]
+      summary: Feature flags (علامات الميزات)
+      responses:
+        '200':
+          description: Feature flag config
+
+  /modules:
+    get:
+      tags: [Settings]
+      summary: Available modules (الوحدات المتاحة)
+      responses:
+        '200':
+          description: Module list
+
+  /onboarding:
+    post:
+      tags: [Settings]
+      summary: Company onboarding wizard
+      responses:
+        '200':
+          description: Onboarding step completed
+
+  /backups:
+    get:
+      tags: [Health]
+      summary: List backups
+      responses:
+        '200':
+          description: Backup list
+    post:
+      tags: [Health]
+      summary: Create backup
+      responses:
+        '200':
+          description: Backup initiated
+
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Application metrics
+      responses:
+        '200':
+          description: Prometheus-style metrics
+
+  /startup-check:
+    get:
+      tags: [Health]
+      summary: Startup readiness check
+      security: []
+      responses:
+        '200':
+          description: Startup check results
+
+  /purchases:
+    get:
+      tags: [Invoices]
+      summary: List purchase invoices
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Purchase invoice list
+    post:
+      tags: [Invoices]
+      summary: Create purchase invoice
+      responses:
+        '200':
+          description: Purchase invoice created
+
+  /invoice-templates:
+    get:
+      tags: [Invoices]
+      summary: List invoice templates
+      parameters:
+        - name: companySlug
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template list
+    post:
+      tags: [Invoices]
+      summary: Create invoice template
+      responses:
+        '200':
+          description: Template created
+
+  /product-matching/config:
+    get:
+      tags: [Catalog]
+      summary: Product matching configuration
+      responses:
+        '200':
+          description: Matching config
+
+  /product-matching/confirm:
+    post:
+      tags: [Catalog]
+      summary: Confirm product match
+      responses:
+        '200':
+          description: Match confirmed
+
+  /product-matching/review:
+    get:
+      tags: [Catalog]
+      summary: Review unmatched products
+      responses:
+        '200':
+          description: Review queue
+
+  /storage/{key}:
+    get:
+      tags: [Settings]
+      summary: Get stored file
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token (also set as HttpOnly cookie)
+    cookieAuth:
+      type: cookie
+      name: __garfix_access
+      description: HttpOnly JWT access cookie (set by login/refresh)
+
+  parameters:
+    InvoiceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Invoice ID
+    ClientId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Client ID
+    CompanySlugHeader:
+      name: X-Company-Slug
+      in: header
+      schema:
+        type: string
+      description: Multi-tenant company scope header
+
+  responses:
+    BadRequest:
+      description: Invalid input or validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+    Forbidden:
+      description: Insufficient permissions or company access
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "ليس لديك صلاحية: view_invoices"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invoice not found"
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Rate limit exceeded"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message (Arabic or English)
+        code:
+          type: string
+          description: Optional error code for programmatic handling
+
+    UserProfile:
+      type: object
+      properties:
+        uid:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          description: الاسم المعروض
+        role:
+          type: string
+          enum: [admin, manager, accountant, employee, viewer]
+        companies:
+          type: array
+          items:
+            type: string
+          description: List of company slugs the user has access to
+        permissions:
+          type: object
+          additionalProperties:
+            type: number
+          description: Permission bits map
+        emailVerified:
+          type: boolean
+        tokenVersion:
+          type: integer
+        isFounder:
+          type: boolean
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        invoiceNumber:
+          type: string
+          description: رقم الفاتورة
+        clientId:
+          type: integer
+          nullable: true
+        clientName:
+          type: string
+          description: اسم العميل
+        clientEmail:
+          type: string
+          nullable: true
+        clientPhone:
+          type: string
+          nullable: true
+        clientAddress:
+          type: string
+          nullable: true
+        issueDate:
+          type: string
+          description: تاريخ الإصدار
+        dueDate:
+          type: string
+          description: تاريخ الاستحقاق
+        status:
+          type: string
+          enum: [draft, sent, overdue, cancelled, paid, partial]
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        subtotal:
+          type: number
+          description: المجموع الفرعي
+        taxRate:
+          type: number
+        taxAmount:
+          type: number
+          description: مبلغ الضريبة
+        total:
+          type: number
+          description: الإجمالي
+        shipping:
+          type: number
+        paid:
+          type: number
+          description: المدفوع
+        discount:
+          type: number
+          description: الخصم
+        notes:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          description: Optimistic lock version
+        # Kuwait Decree 10/2026 fields
+        hijriIssueDate:
+          type: string
+          nullable: true
+          description: تاريخ الإصدار الهجري
+        hijriDueDate:
+          type: string
+          nullable: true
+        mociNumber:
+          type: string
+          nullable: true
+          description: رقم وزارة التجارة
+        invoiceTypeAr:
+          type: string
+          nullable: true
+          description: فاتورة ضريبية / فاتورة مبسطة
+        invoiceTypeEn:
+          type: string
+          nullable: true
+        sellerNameAr:
+          type: string
+          nullable: true
+          description: اسم البائع بالعربي
+        sellerAddressAr:
+          type: string
+          nullable: true
+        buyerNameAr:
+          type: string
+          nullable: true
+          description: اسم المشتري بالعربي
+        buyerAddressAr:
+          type: string
+          nullable: true
+        lineItemsAr:
+          type: string
+          nullable: true
+          description: بنود الفاتورة بالعربي (JSON)
+        notesAr:
+          type: string
+          nullable: true
+          description: ملاحظات بالعربي
+        currencyDecimalPlaces:
+          type: integer
+          default: 3
+        eInvoiceAuthority:
+          type: string
+          nullable: true
+        createdByEmail:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    InvoiceCreate:
+      type: object
+      required: [companySlug, invoiceNumber, clientName, issueDate, dueDate]
+      properties:
+        companySlug:
+          type: string
+        invoiceNumber:
+          type: string
+          description: رقم الفاتورة مطلوب
+        clientId:
+          type: integer
+          nullable: true
+        clientName:
+          type: string
+          description: اسم العميل مطلوب
+        clientEmail:
+          type: string
+          nullable: true
+        clientPhone:
+          type: string
+        clientAddress:
+          type: string
+        issueDate:
+          type: string
+          description: تاريخ الإصدار مطلوب
+        dueDate:
+          type: string
+          description: تاريخ الاستحقاق مطلوب
+        status:
+          type: string
+          enum: [draft, sent, overdue, cancelled, paid, partial]
+          default: draft
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+          default: []
+        taxRate:
+          type: number
+          default: 0
+        shipping:
+          type: number
+          default: 0
+        discount:
+          type: number
+          default: 0
+        notes:
+          type: string
+        source:
+          type: string
+        sellerNameAr:
+          type: string
+          description: اسم البائع بالعربي
+        sellerAddressAr:
+          type: string
+        buyerNameAr:
+          type: string
+          description: اسم المشتري بالعربي
+        buyerAddressAr:
+          type: string
+        lineItemsAr:
+          type: string
+          description: بنود بالعربي (JSON string)
+        notesAr:
+          type: string
+        invoiceTypeAr:
+          type: string
+          description: فاتورة ضريبية / فاتورة مبسطة
+        invoiceTypeEn:
+          type: string
+        mociNumber:
+          type: string
+          description: رقم وزارة التجارة
+
+    InvoiceUpdate:
+      type: object
+      properties:
+        invoiceNumber:
+          type: string
+        clientId:
+          type: integer
+          nullable: true
+        clientName:
+          type: string
+        clientEmail:
+          type: string
+          nullable: true
+        clientPhone:
+          type: string
+          nullable: true
+        clientAddress:
+          type: string
+          nullable: true
+        issueDate:
+          type: string
+        dueDate:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+        taxRate:
+          type: number
+        shipping:
+          type: number
+        discount:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        expectedVersion:
+          type: integer
+          description: Optimistic lock version — send to detect concurrent edits
+        sellerNameAr:
+          type: string
+        sellerAddressAr:
+          type: string
+        buyerNameAr:
+          type: string
+        buyerAddressAr:
+          type: string
+        lineItemsAr:
+          type: string
+        notesAr:
+          type: string
+          nullable: true
+        invoiceTypeAr:
+          type: string
+        invoiceTypeEn:
+          type: string
+        mociNumber:
+          type: string
+
+    LineItem:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+          description: وصف البند
+        qty:
+          type: number
+          default: 1
+        price:
+          type: number
+          default: 0
+        total:
+          type: number
+          description: Auto-calculated if omitted
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        name:
+          type: string
+          description: اسم العميل
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+          description: اسم شركة العميل
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ClientCreate:
+      type: object
+      required: [name, companySlug]
+      properties:
+        name:
+          type: string
+          description: اسم العميل مطلوب
+        email:
+          type: string
+        phone:
+          type: string
+        company:
+          type: string
+        address:
+          type: string
+        notes:
+          type: string
+        companySlug:
+          type: string
+          description: companySlug is required
+
+    ClientUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        code:
+          type: string
+          nullable: true
+          description: كود المنتج
+        name:
+          type: string
+          description: اسم المنتج
+        aliases:
+          type: array
+          items:
+            type: string
+          description: Product name aliases for matching
+        purchasePrice:
+          type: number
+          nullable: true
+        sellingPrice:
+          type: number
+          nullable: true
+        wholesalePrice:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProductCreate:
+      type: object
+      required: [companySlug, name]
+      properties:
+        companySlug:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+          description: اسم المنتج مطلوب
+        aliases:
+          type: array
+          items:
+            type: string
+          default: []
+        purchasePrice:
+          type: number
+        sellingPrice:
+          type: number
+        wholesalePrice:
+          type: number
+
+    Warehouse:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        name:
+          type: string
+          description: اسم المستودع
+        code:
+          type: string
+          description: كود المستودع
+        address:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        itemCount:
+          type: integer
+          description: Number of inventory items in this warehouse
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WarehouseCreate:
+      type: object
+      required: [companySlug, name, code]
+      properties:
+        companySlug:
+          type: string
+        name:
+          type: string
+          description: اسم المستودع مطلوب
+        code:
+          type: string
+          description: كود المستودع مطلوب
+        address:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        warehouseId:
+          type: integer
+        warehouseName:
+          type: string
+        warehouseCode:
+          type: string
+        productId:
+          type: integer
+        productCode:
+          type: string
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+        reorderLevel:
+          type: number
+        reorderQty:
+          type: number
+        batchNumber:
+          type: string
+          nullable: true
+        expiryDate:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [OK, Low, Out]
+          description: Computed from quantity vs reorderLevel
+        updatedAt:
+          type: string
+          format: date-time
+
+    InventoryAdjust:
+      type: object
+      required: [companySlug, warehouseId, productId]
+      properties:
+        companySlug:
+          type: string
+        warehouseId:
+          type: integer
+        productId:
+          type: integer
+        quantity:
+          type: number
+          default: 0
+        reorderLevel:
+          type: number
+          default: 0
+        reorderQty:
+          type: number
+          default: 0
+        batchNumber:
+          type: string
+          nullable: true
+        expiryDate:
+          type: string
+          nullable: true
+        mode:
+          type: string
+          enum: [set, adjust]
+          default: set
+          description: "set = absolute quantity, adjust = +/- delta"
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+          nullable: true
+        reference:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, posted, reversed]
+        createdBy:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalLine'
+        createdAt:
+          type: string
+          format: date-time
+
+    JournalEntryCreate:
+      type: object
+      required: [companySlug, date, lines]
+      properties:
+        companySlug:
+          type: string
+        date:
+          type: string
+          description: Date string (YYYY-MM-DD)
+        description:
+          type: string
+        reference:
+          type: string
+        status:
+          type: string
+          enum: [draft, posted, reversed]
+          default: draft
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/JournalLineCreate'
+
+    JournalLine:
+      type: object
+      properties:
+        id:
+          type: integer
+        accountId:
+          type: integer
+        debit:
+          type: number
+        credit:
+          type: number
+        description:
+          type: string
+          nullable: true
+
+    JournalLineCreate:
+      type: object
+      required: [accountId]
+      properties:
+        accountId:
+          type: integer
+        debit:
+          type: number
+          default: 0
+        credit:
+          type: number
+          default: 0
+        description:
+          type: string
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        name:
+          type: string
+          description: اسم الموظف
+        nameEn:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+          description: المسمى الوظيفي
+        department:
+          type: string
+          nullable: true
+          description: القسم
+        baseSalary:
+          type: number
+          description: الراتب الأساسي
+        currency:
+          type: string
+          default: KWD
+        joinDate:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    EmployeeCreate:
+      type: object
+      required: [companySlug, name]
+      properties:
+        companySlug:
+          type: string
+        name:
+          type: string
+          description: اسم الموظف مطلوب
+        nameEn:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        baseSalary:
+          type: number
+          default: 0
+        currency:
+          type: string
+          default: KWD
+        joinDate:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+        notes:
+          type: string
+
+    AutomationRule:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        name:
+          type: string
+        trigger:
+          type: string
+          enum: [invoice_created, stock_low, payment_overdue]
+        condition:
+          type: object
+          additionalProperties: true
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [send_whatsapp, create_task, send_email]
+              params:
+                type: object
+                additionalProperties: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AutomationRuleCreate:
+      type: object
+      required: [companySlug, name, trigger, actions]
+      properties:
+        companySlug:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        trigger:
+          type: string
+          enum: [invoice_created, stock_low, payment_overdue]
+        condition:
+          type: object
+          additionalProperties: true
+        actions:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [type]
+            properties:
+              type:
+                type: string
+                enum: [send_whatsapp, create_task, send_email]
+              params:
+                type: object
+                additionalProperties: true
+        isActive:
+          type: boolean
+
+    ParsedOrder:
+      type: object
+      properties:
+        clientName:
+          type: string
+          description: اسم العميل
+        clientPhone:
+          type: string
+        clientAddress:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              qty:
+                type: integer
+                minimum: 1
+              unitPrice:
+                type: number
+                minimum: 0
+        taxRate:
+          type: number
+        shipping:
+          type: number
+        discount:
+          type: number
+        notes:
+          type: string
+
+    PaymentTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        companySlug:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+        gateway:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time

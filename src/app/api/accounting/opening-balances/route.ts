@@ -1,219 +1,297 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { resolveAuth, assertCompanyAccess } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { num, sum, round } from '@/lib/money'
-
-type OpeningBalanceLine = {
-  accountId: string
-  debit: number
-  credit: number
-}
-
 /**
- * GET /api/accounting/opening-balances
- * List opening balances for a financial period.
+ * /api/accounting/opening-balances
+ * GET       — List opening balance entries (?companySlug=X)
+ * POST      — Create opening balance entries (asOfDate, entries: [{accountId, amount}], importedFrom)
+ * POST /post — Post all opening balance entries as a single JE
  */
-export async function GET(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { logAccountingChange } from "@/lib/accounting/accountant-collab";
+import { num } from "@/lib/money";
+import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { z } from "zod";
+
+// ─── GET ─────────────────────────────────────────────────────────────────
+
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const sp = req.nextUrl.searchParams;
+  const companySlug = sp.get("companySlug");
+  if (!companySlug) return apiError("companySlug مطلوب", 400);
+
+  const access = await requirePermissionForCompany(req, "finance_access", companySlug);
+  if ("error" in access) return access.error;
+
+  const asOfDate = sp.get("asOfDate");
+  const status = sp.get("status");
+
+  const where: Record<string, unknown> = { companySlug };
+  if (asOfDate) where.asOfDate = asOfDate;
+  if (status) where.status = status;
+
+  const entries = await db.openingBalanceEntry.findMany({
+    where,
+    orderBy: { accountId: "asc" },
+    include: {
+      account: { select: { id: true, code: true, nameAr: true, type: true } },
+      journalEntry: { select: { id: true, status: true, reference: true } },
+    },
+  });
+
+  return apiOk({
+    entries: entries.map((e) => ({
+      ...e,
+      amount: num(e.amount, 3),
+    })),
+  });
+});
+
+// ─── POST (create entries) ────────────────────────────────────────────
+
+const EntrySchema = z.object({
+  accountId: z.number().int(),
+  amount: z.union([z.number(), z.string()]),
+});
+
+const CreateOBSchema = z.object({
+  companySlug: z.string().min(1),
+  asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "asOfDate must be YYYY-MM-DD"),
+  entries: z.array(EntrySchema).min(1, "At least one entry required"),
+  importedFrom: z.string().default("manual"),
+});
+
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  const sp = req.nextUrl.searchParams;
+  const action = sp.get("action");
+
+  // ── POST /post — Post all opening balance entries as a single JE ────
+  if (action === "post") {
+    const body = await parseJsonBody(req);
+    const PostSchema = z.object({ companySlug: z.string().min(1) });
+    const parsed = PostSchema.safeParse(body);
+    if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+    const data = parsed.data;
+
+    const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+    if ("error" in access) return access.error;
+    const user = access.user;
+
+    // Get all draft opening balance entries
+    const draftEntries = await db.openingBalanceEntry.findMany({
+      where: { companySlug: data.companySlug, status: "draft" },
+      include: { account: true },
+    });
+
+    if (draftEntries.length === 0) return apiError("No draft opening balance entries to post", 400);
+
+    // Validate that the entries are balanced (total debits = total credits)
+    // Opening balances: assets/expenses are debit, liabilities/equity/revenue are credit
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    const lines: Array<{ accountId: number; debit: string; credit: string; description: string }> = [];
+    for (const entry of draftEntries) {
+      const amount = num(entry.amount, 3);
+      const isDebitNormal = entry.account.type === "asset" || entry.account.type === "expense";
+
+      if (isDebitNormal) {
+        totalDebit += amount;
+        lines.push({
+          accountId: entry.accountId,
+          debit: amount.toFixed(3),
+          credit: "0.000",
+          description: `رصيد افتتاحي - ${entry.account.nameAr}`,
+        });
+      } else {
+        totalCredit += amount;
+        lines.push({
+          accountId: entry.accountId,
+          debit: "0.000",
+          credit: amount.toFixed(3),
+          description: `رصيد افتتاحي - ${entry.account.nameAr}`,
+        });
+      }
     }
 
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
-    const periodId = searchParams.get('periodId')
+    // If not balanced, we need a balancing line (typically to Retained Earnings)
+    const diff = Math.abs(totalDebit - totalCredit);
+    if (diff > 0.001) {
+      // Create a balancing entry to equity (Retained Earnings / Income Summary)
+      const equityAccount = await db.account.findFirst({
+        where: { companySlug: data.companySlug, type: "equity", isActive: true },
+        orderBy: { code: "asc" },
+      });
+      if (!equityAccount) return apiError("Cannot balance opening entries — no equity account found", 400);
 
-    assertCompanyAccess(auth, companyId)
-
-    if (!periodId) {
-      return NextResponse.json({ error: 'periodId is required' }, { status: 400 })
+      if (totalDebit > totalCredit) {
+        // Need a credit to balance
+        totalCredit += diff;
+        lines.push({
+          accountId: equityAccount.id,
+          debit: "0.000",
+          credit: num(diff, 3).toFixed(3),
+          description: `تسوية أرصدة افتتاحية - ${equityAccount.nameAr}`,
+        });
+      } else {
+        // Need a debit to balance
+        totalDebit += diff;
+        lines.push({
+          accountId: equityAccount.id,
+          debit: num(diff, 3).toFixed(3),
+          credit: "0.000",
+          description: `تسوية أرصدة افتتاحية - ${equityAccount.nameAr}`,
+        });
+      }
     }
 
-    const balances = await db.openingBalance.findMany({
-      where: { periodId, companyId },
-      include: {
-        account: { select: { id: true, code: true, name: true, type: true } },
+    // Use the asOfDate from the first entry as the JE date
+    const jeDate = draftEntries[0].asOfDate;
+
+    // Create JE + update opening balance entries in a transaction
+    const result = await db.$transaction(async (tx) => {
+      // Create the journal entry
+      const je = await tx.journalEntry.create({
+        data: {
+          companySlug: data.companySlug,
+          date: jeDate,
+          description: "ترحيل أرصدة افتتاحية",
+          reference: "OB-OPENING",
+          status: "posted",
+          createdBy: user.email,
+          sourceType: "opening_balance",
+          lines: { create: lines },
+        },
+      });
+
+      // Update all opening balance entries to "posted" and link to the JE
+      for (const entry of draftEntries) {
+        await tx.openingBalanceEntry.update({
+          where: { id: entry.id },
+          data: { status: "posted", journalEntryId: je.id },
+        });
+      }
+
+      // Update account balances
+      const accountIds = [...new Set(lines.map((l) => l.accountId))];
+      const accounts = await tx.account.findMany({
+        where: { id: { in: accountIds }, companySlug: data.companySlug },
+      });
+      const accountMap = new Map(accounts.map((a) => [a.id, a]));
+
+      for (const line of lines) {
+        const acc = accountMap.get(line.accountId);
+        if (!acc) continue;
+        const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+        const delta = isDebitNormal
+          ? num(line.debit, 3) - num(line.credit, 3)
+          : num(line.credit, 3) - num(line.debit, 3);
+        await tx.account.update({
+          where: { id: acc.id },
+          data: { balance: (num(acc.balance, 3) + delta).toFixed(3) },
+        });
+      }
+
+      return { jeId: je.id, totalDebit, totalCredit, entriesPosted: draftEntries.length };
+    });
+
+    await logAudit({
+      userEmail: user.email, userUid: user.uid,
+      action: "post", entity: "opening_balance", companySlug: data.companySlug,
+      details: { jeId: result.jeId, entriesPosted: result.entriesPosted, totalDebit: result.totalDebit.toFixed(3), totalCredit: result.totalCredit.toFixed(3) },
+    });
+
+    await logAccountingChange(
+      data.companySlug, user.email, "post", "opening_balance", null,
+      { entriesCount: draftEntries.length, status: "draft" },
+      { status: "posted", jeId: result.jeId },
+      null,
+    );
+
+    return apiOk({ ok: true, ...result });
+  }
+
+  // ── POST (create entries) ──────────────────────────────────────────
+  const body = await parseJsonBody(req);
+  const parsed = CreateOBSchema.safeParse(body);
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+  const data = parsed.data;
+
+  const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+  if ("error" in access) return access.error;
+  const user = access.user;
+
+  // Verify all accounts exist and belong to this company
+  const accountIds = data.entries.map((e) => e.accountId);
+  const accounts = await db.account.findMany({
+    where: { id: { in: accountIds }, companySlug: data.companySlug, isActive: true },
+  });
+  if (accounts.length !== accountIds.length) {
+    const found = new Set(accounts.map((a) => a.id));
+    const missing = accountIds.filter((id) => !found.has(id));
+    return apiError(`Accounts not found or not active: ${missing.join(", ")}`, 400);
+  }
+
+  // Create opening balance entries (use upsert since there's a unique constraint on companySlug+accountId+asOfDate)
+  const createdEntries: Array<{
+    id: number; companySlug: string; accountId: number; amount: string;
+    asOfDate: string; importedFrom: string | null; status: string;
+    journalEntryId: number | null; account: { id: number; code: string; nameAr: string; type: string };
+  }> = [];
+  for (const entry of data.entries) {
+    const ob = await db.openingBalanceEntry.upsert({
+      where: {
+        companySlug_accountId_asOfDate: {
+          companySlug: data.companySlug,
+          accountId: entry.accountId,
+          asOfDate: data.asOfDate,
+        },
       },
-      orderBy: { account: { code: 'asc' } },
-    })
-
-    const totalDebit = round(sum(balances.map(b => num(b.debit))))
-    const totalCredit = round(sum(balances.map(b => num(b.credit))))
-
-    return NextResponse.json({
-      openingBalances: balances,
-      totals: { debit: totalDebit, credit: totalCredit },
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    if (message.startsWith('Forbidden:')) {
-      return NextResponse.json({ error: message }, { status: 403 })
-    }
-    return NextResponse.json({ error: message }, { status: 500 })
+      update: {
+        amount: num(entry.amount, 3).toFixed(3),
+        importedFrom: data.importedFrom,
+      },
+      create: {
+        companySlug: data.companySlug,
+        accountId: entry.accountId,
+        amount: num(entry.amount, 3).toFixed(3),
+        asOfDate: data.asOfDate,
+        importedFrom: data.importedFrom,
+        status: "draft",
+      },
+      include: { account: { select: { id: true, code: true, nameAr: true, type: true } } },
+    });
+    createdEntries.push({
+      id: ob.id as number,
+      companySlug: ob.companySlug as string,
+      accountId: ob.accountId as number,
+      amount: ob.amount as string,
+      asOfDate: ob.asOfDate as string,
+      importedFrom: ob.importedFrom as string | null,
+      status: ob.status as string,
+      journalEntryId: ob.journalEntryId as number | null,
+      account: ob.account as { id: number; code: string; nameAr: string; type: string },
+    });
   }
-}
 
-/**
- * POST /api/accounting/opening-balances
- * Create opening balances for a financial period.
- * Accepts an array of { accountId, debit, credit } lines.
- */
-export async function POST(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  await logAudit({
+    userEmail: user.email, userUid: user.uid,
+    action: "create", entity: "opening_balance", companySlug: data.companySlug,
+    details: { asOfDate: data.asOfDate, entriesCount: createdEntries.length, importedFrom: data.importedFrom },
+  });
 
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
-    const { periodId, lines } = body as {
-      periodId: string
-      lines: OpeningBalanceLine[]
-    }
-
-    assertCompanyAccess(auth, companyId)
-
-    if (!periodId || !lines || !Array.isArray(lines)) {
-      return NextResponse.json({ error: 'periodId and lines array are required' }, { status: 400 })
-    }
-
-    // Verify the period belongs to the company
-    const period = await db.financialPeriod.findFirst({
-      where: { id: periodId, companyId },
-    })
-
-    if (!period) {
-      return NextResponse.json({ error: 'Financial period not found' }, { status: 404 })
-    }
-
-    if (period.status !== 'open') {
-      return NextResponse.json({ error: 'Cannot add opening balances to a closed/locked period' }, { status: 400 })
-    }
-
-    // Validate accounts belong to company
-    const accountIds = lines.map(l => l.accountId)
-    const accounts = await db.account.findMany({
-      where: { id: { in: accountIds }, companyId },
-    })
-
-    if (accounts.length !== accountIds.length) {
-      return NextResponse.json({ error: 'Some accounts not found or do not belong to this company' }, { status: 400 })
-    }
-
-    // FIX #4 & #5: Properly construct Prisma create data — avoid spread issues
-    // by explicitly mapping each line to a well-typed object, not spreading unknown types.
-    const created = await db.$transaction(
-      lines.map((line: OpeningBalanceLine) =>
-        db.openingBalance.upsert({
-          where: {
-            accountId_periodId: {
-              accountId: line.accountId,
-              periodId,
-            },
-          },
-          update: {
-            debit: num(line.debit),
-            credit: num(line.credit),
-          },
-          create: {
-            accountId: line.accountId,
-            periodId,
-            debit: num(line.debit),
-            credit: num(line.credit),
-            companyId,
-          },
-        })
-      )
-    )
-
-    return NextResponse.json({ openingBalances: created }, { status: 201 })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
-
-/**
- * PUT /api/accounting/opening-balances
- * Bulk update opening balances for a period.
- */
-export async function PUT(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
-    const { periodId, lines } = body as {
-      periodId: string
-      lines: OpeningBalanceLine[]
-    }
-
-    assertCompanyAccess(auth, companyId)
-
-    if (!periodId || !lines || !Array.isArray(lines)) {
-      return NextResponse.json({ error: 'periodId and lines array are required' }, { status: 400 })
-    }
-
-    // FIX #4 (continued): Explicitly typed update objects to avoid spread type mismatches.
-    // Instead of spreading `...line` (which may include unknown fields), construct the
-    // update payload explicitly with only the known Prisma fields.
-    const updated = await db.$transaction(
-      lines.map((line: OpeningBalanceLine) =>
-        db.openingBalance.update({
-          where: {
-            accountId_periodId: {
-              accountId: line.accountId,
-              periodId,
-            },
-          },
-          data: {
-            debit: num(line.debit),
-            credit: num(line.credit),
-          },
-        })
-      )
-    )
-
-    return NextResponse.json({ openingBalances: updated })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
-
-/**
- * DELETE /api/accounting/opening-balances
- * Delete all opening balances for a period.
- */
-export async function DELETE(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
-    const periodId = searchParams.get('periodId')
-
-    assertCompanyAccess(auth, companyId)
-
-    if (!periodId) {
-      return NextResponse.json({ error: 'periodId is required' }, { status: 400 })
-    }
-
-    const deleted = await db.openingBalance.deleteMany({
-      where: { periodId, companyId },
-    })
-
-    return NextResponse.json({ deleted: deleted.count })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
+  return apiOk({
+    ok: true,
+    entries: createdEntries.map((e: Record<string, unknown>) => ({
+      id: e.id as number,
+      companySlug: e.companySlug as string,
+      accountId: e.accountId as number,
+      amount: num(e.amount, 3),
+      asOfDate: e.asOfDate as string,
+      importedFrom: e.importedFrom as string | null,
+      status: e.status as string,
+      journalEntryId: e.journalEntryId as number | null,
+      account: e.account as { id: number; code: string; nameAr: string; type: string },
+    })),
+  });
+});

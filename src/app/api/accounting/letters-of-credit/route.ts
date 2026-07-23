@@ -1,211 +1,107 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { resolveAuth, assertCompanyAccess } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { num, round } from '@/lib/money'
-
 /**
- * GET /api/accounting/letters-of-credit
- * List all letters of credit for a company.
+ * /api/accounting/letters-of-credit
+ * GET: List LCs (?companySlug=X&status=issued)
+ * POST: Create LC
  */
-export async function GET(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { num } from "@/lib/money";
+import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { trackLetterOfCredit } from "@/lib/accounting/trade-finance";
+import { z } from "zod";
 
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
-    const status = searchParams.get('status')
-    const type = searchParams.get('type')
+const CreateLCSchema = z.object({
+  companySlug: z.string().min(1),
+  lcNumber: z.string().min(1),
+  supplierId: z.number().int(),
+  bankAccountId: z.number().int(),
+  amount: z.union([z.number(), z.string()]),
+  currency: z.string().default("KWD"),
+  issueDate: z.string().min(1),
+  expiryDate: z.string().min(1),
+  documentsRequired: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+});
 
-    assertCompanyAccess(auth, companyId)
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const sp = req.nextUrl.searchParams;
+  const companySlug = sp.get("companySlug");
+  if (!companySlug) return apiError("companySlug مطلوب", 400);
 
-    const where: Record<string, unknown> = { companyId }
-    if (status) where.status = status
-    if (type) where.type = type
+  const access = await requirePermissionForCompany(req, "finance_access", companySlug);
+  if ("error" in access) return access.error;
 
-    // FIX #3: Properly type the findMany result instead of relying on 'unknown'
-    const lettersOfCredit = await db.letterOfCredit.findMany({
-      where: where as Parameters<typeof db.letterOfCredit.findMany>[0]['where'],
-      include: {
-        supplier: { select: { id: true, name: true, code: true } },
-        lcDocuments: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+  const where: Record<string, unknown> = { companySlug };
+  const status = sp.get("status");
+  if (status) where.status = status;
 
-    return NextResponse.json({ lettersOfCredit })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    if (message.startsWith('Forbidden:')) {
-      return NextResponse.json({ error: message }, { status: 403 })
-    }
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
+  const lcs = await db.letterOfCredit.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: {
+      supplier: { select: { id: true, name: true, nameEn: true } },
+      bankAccount: { select: { id: true, bankName: true, accountNumber: true, currency: true } },
+    },
+  });
 
-/**
- * POST /api/accounting/letters-of-credit
- * Create a new letter of credit.
- */
-export async function POST(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  return NextResponse.json({
+    lettersOfCredit: lcs.map((lc) => ({
+      id: lc.id,
+      lcNumber: lc.lcNumber,
+      supplierId: lc.supplierId,
+      supplierName: lc.supplier.name,
+      bankAccountId: lc.bankAccountId,
+      bankName: lc.bankAccount.bankName,
+      amount: num(lc.amount, 3),
+      currency: lc.currency,
+      issueDate: lc.issueDate,
+      expiryDate: lc.expiryDate,
+      status: lc.status,
+      utilizationAmount: num(lc.utilizationAmount, 3),
+      documentsRequired: parseJsonField<string[]>(lc.documentsRequired, []),
+      notes: lc.notes,
+      createdAt: lc.createdAt,
+      updatedAt: lc.updatedAt,
+    })),
+  });
+});
 
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  const body = await parseJsonBody(req);
+  const parsed = CreateLCSchema.safeParse(body);
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "مدخلات غير صالحة", 400);
 
-    assertCompanyAccess(auth, companyId)
+  const data = parsed.data;
+  const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+  if ("error" in access) return access.error;
+  const user = access.user;
 
-    const {
-      number,
-      type,
-      amount,
-      currency,
-      beneficiary,
-      issuingBank,
-      issueDate,
-      expiryDate,
-      description,
-      reference,
-      supplierId,
-    } = body
+  const result = await trackLetterOfCredit(data.companySlug, {
+    lcNumber: data.lcNumber,
+    supplierId: data.supplierId,
+    bankAccountId: data.bankAccountId,
+    amount: String(data.amount),
+    currency: data.currency,
+    issueDate: data.issueDate,
+    expiryDate: data.expiryDate,
+    documentsRequired: data.documentsRequired,
+    notes: data.notes,
+  });
 
-    if (!number || !amount) {
-      return NextResponse.json({ error: 'number and amount are required' }, { status: 400 })
-    }
+  if (!result.ok) return apiError(result.error || "فشل إنشاء الاعتماد المستندي", 400);
 
-    // Validate supplier if provided
-    if (supplierId) {
-      const supplier = await db.supplier.findFirst({
-        where: { id: supplierId, companyId },
-      })
-      if (!supplier) {
-        return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
-      }
-    }
+  await logAudit({
+    userEmail: user.email,
+    userUid: user.uid,
+    action: "create",
+    entity: "letter_of_credit",
+    entityId: result.lc?.id as string | undefined,
+    companySlug: data.companySlug,
+    details: { lcNumber: data.lcNumber, amount: String(data.amount), currency: data.currency },
+  });
 
-    const lc = await db.letterOfCredit.create({
-      data: {
-        number,
-        type: type ?? 'import',
-        amount: num(amount),
-        currency: currency ?? 'USD',
-        status: 'draft',
-        beneficiary,
-        issuingBank,
-        issueDate: issueDate ? new Date(issueDate) : undefined,
-        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
-        description,
-        reference,
-        supplierId,
-        companyId,
-      },
-      include: {
-        supplier: { select: { id: true, name: true, code: true } },
-      },
-    })
-
-    return NextResponse.json({ letterOfCredit: lc }, { status: 201 })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
-
-/**
- * PATCH /api/accounting/letters-of-credit
- * Update a letter of credit (e.g., change status).
- */
-export async function PATCH(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const companyId = body.companyId ?? auth.companyId
-    const { id, status, amount, beneficiary, issuingBank, expiryDate, description } = body
-
-    assertCompanyAccess(auth, companyId)
-
-    if (!id) {
-      return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    }
-
-    // Verify the LC belongs to the company
-    const existing = await db.letterOfCredit.findFirst({
-      where: { id, companyId },
-    })
-
-    if (!existing) {
-      return NextResponse.json({ error: 'Letter of credit not found' }, { status: 404 })
-    }
-
-    const updateData: Record<string, unknown> = {}
-    if (status) updateData.status = status
-    if (amount !== undefined) updateData.amount = num(amount)
-    if (beneficiary) updateData.beneficiary = beneficiary
-    if (issuingBank) updateData.issuingBank = issuingBank
-    if (expiryDate) updateData.expiryDate = new Date(expiryDate)
-    if (description) updateData.description = description
-
-    // FIX #3 (continued): Use proper type assertion for update operations too
-    const updated = await db.letterOfCredit.update({
-      where: { id },
-      data: updateData as Parameters<typeof db.letterOfCredit.update>[0]['data'],
-    })
-
-    return NextResponse.json({ letterOfCredit: updated })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
-
-/**
- * DELETE /api/accounting/letters-of-credit
- * Cancel (soft-delete by status change) a letter of credit.
- */
-export async function DELETE(request: NextRequest) {
-  try {
-    const auth = await resolveAuth(request)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
-    const id = searchParams.get('id')
-
-    assertCompanyAccess(auth, companyId)
-
-    if (!id) {
-      return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    }
-
-    const existing = await db.letterOfCredit.findFirst({
-      where: { id, companyId },
-    })
-
-    if (!existing) {
-      return NextResponse.json({ error: 'Letter of credit not found' }, { status: 404 })
-    }
-
-    // Mark as cancelled instead of deleting
-    const cancelled = await db.letterOfCredit.update({
-      where: { id },
-      data: { status: 'cancelled' },
-    })
-
-    return NextResponse.json({ letterOfCredit: cancelled })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-}
+  return NextResponse.json({ ok: true, letterOfCredit: result.lc }, { status: 201 });
+});
