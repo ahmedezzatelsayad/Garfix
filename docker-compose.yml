@@ -1,0 +1,129 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarfiX v12 — Docker Compose (Production)
+# Valkey replaces Redis — 100% API-compatible, BSD-3 licensed, faster.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Valkey (Redis-compatible) ──────────────────────────────────────────
+  # Drop-in replacement for Redis. Supports RESP protocol — ioredis and
+  # BullMQ connect without any code changes.
+  valkey:
+    image: valkey/valkey:8.1
+    container_name: garfix-valkey
+    restart: unless-stopped
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    command: >
+      valkey-server
+      --maxmemory ${VALKEY_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --save 60 1000
+      --save 300 100
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: garfix-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-garfix}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS must be explicitly set}
+      POSTGRES_DB: ${DB_NAME:-garfix}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-garfix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── GarfiX App ─────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: garfix-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}?schema=public
+
+      # Valkey (preferred) or Redis (backward-compat)
+      VALKEY_URL: valkey://valkey:6379
+      # REDIS_URL: valkey://valkey:6379  # uncomment if existing code expects REDIS_URL
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+
+      # Direct URL (required by Prisma schema directUrl field)
+      DATABASE_DIRECT_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}
+
+      # Founder & encryption (required by startupCheck.ts — FATAL if missing)
+      FOUNDER_EMAIL: ${FOUNDER_EMAIL:?FOUNDER_EMAIL must be set}
+      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY must be set (32+ chars)}
+
+      # Other
+      BACKUP_DIR: /app/storage/backups
+
+      # SEC-H4 (Cycle 3): set to "true" AFTER rolling out registerSession-on-
+      # issue and waiting one access-token TTL (30 min). See auth.ts comment.
+      SESSION_REGISTRY_ENFORCED: ${SESSION_REGISTRY_ENFORCED:-false}
+    volumes:
+      - app-storage:/app/storage
+      # CONT-002 FIX (Cycle 3): tmpfs mounts for the writable directories
+      # that Next.js standalone expects to exist at runtime. Combined with
+      # `read_only: true` below, this gives us a read-only root filesystem
+      # (defense against RCE — attacker can't persist binaries / cron jobs /
+      # SSH keys to the container) while still allowing the runtime to write
+      # to the few places it legitimately needs to.
+      - tmpfs:/tmp:rw,noexec,nosuid,nodev,size=64m
+    # CONT-002 FIX (Cycle 3): make the container's root filesystem read-only.
+    # The Next.js standalone server only needs to write to /app/storage
+    # (backups, uploads) and /tmp (caches, temp files). Both are mounted
+    # explicitly above. If an attacker achieves RCE, they cannot:
+    #   - install backdoor binaries to /usr/local/bin
+    #   - write a cron job to /etc/cron.d
+    #   - add an SSH key to /root/.ssh
+    # They CAN still write to /app/storage and /tmp, but those are wiped
+    # on container restart (tmpfs) or persisted to a named volume
+    # (app-storage) that can be audited independently.
+    read_only: true
+    # Allow the container to write to /tmp even though the rootfs is
+    # read-only. (The tmpfs mount above handles the actual writes; this
+    # flag is required by Docker to acknowledge the writable mount.)
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+volumes:
+  valkey-data:
+    driver: local
+  postgres-data:
+    driver: local
+  app-storage:
+    driver: local

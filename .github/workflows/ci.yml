@@ -1,0 +1,525 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarfiX EOS v12.2 — Continuous Integration Pipeline
+# ─────────────────────────────────────────────────────────────────────────────
+# ARCHITECTURAL CHANGE (v12.2):
+# - Upgraded Bun to 1.3.14 (latest stable)
+# - Added concurrency group per PR to cancel redundant runs
+# - Build verification step now checks standalone architecture
+# - Tests are strict — no silent failures
+# - Added artifact retention optimization
+#
+# Runs on every push & PR to main/develop
+# Jobs: lint → typecheck → build → unit-tests → integration-tests → summary → deploy
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: GarfiX CI v12
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: test
+  # PostgreSQL (Unified for all environments)
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
+  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  # Auth secrets (test values)
+  JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
+  JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
+  FOUNDER_EMAIL: "founder@test.com"
+  PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-characters!"
+
+jobs:
+  # ── Job 1: Lint & Code Quality ──────────────────────────────────────────
+  lint:
+    name: 🔍 Lint & Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run ESLint (production code only)
+        run: |
+          echo "Running ESLint on production code..."
+          # Capture exit code properly without pipefail clobbering it
+          # NOTE: ESLint 9 removed --format=compact from core; use default stylish format
+          set +e
+          set +o pipefail
+          bunx eslint src/app src/lib src/modules 2>&1 | tee lint-results.txt
+          ESLINT_EXIT=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+
+          if [ $ESLINT_EXIT -ne 0 ]; then
+            echo "❌ ESLint found errors — check lint-results.txt"
+            exit 1
+          else
+            echo "✅ ESLint passed — no errors"
+          fi
+
+      - name: Upload lint results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: lint-results.txt
+          retention-days: 7
+
+  # ── Job 2: TypeScript Type Check (Production Only) ──────────────────────
+  typecheck:
+    name: 📝 TypeScript Type Check (Prod)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: TypeScript type check (production code only)
+        run: |
+          echo "Checking production code for type errors..."
+
+          # Ensure tsconfig.prod.json exists
+          if [ ! -f tsconfig.prod.json ]; then
+            echo '{"extends": "./tsconfig.json", "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"]}' > tsconfig.prod.json
+          fi
+
+          # Disable errexit and pipefail so PIPESTATUS captures tsc exit code
+          set +e
+          set +o pipefail
+          bunx tsc --noEmit -p tsconfig.prod.json 2>&1 | tee typecheck-results.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Type errors found in production code!"
+            exit 1
+          else
+            echo "✅ No type errors in production code"
+          fi
+
+      - name: Upload type check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-results
+          path: typecheck-results.txt
+          retention-days: 7
+
+  # ── Job 3: Build Verification (Critical Gate) ───────────────────────────
+  # NOTE: Build no longer requires database service!
+  # All Prisma queries moved to API routes / runtime bootstrap.
+  build:
+    name: 🏗️ Build Verification (Critical)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [lint, typecheck]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Build application
+        id: build_step
+        run: |
+          echo "Starting Next.js production build..."
+          # Disable errexit and pipefail so PIPESTATUS captures build exit code
+          set +e
+          set +o pipefail
+          bun run build 2>&1 | tee build-results.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ Build successful"
+            echo "build_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Build failed (exit code $EXIT_CODE)"
+            echo "build_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Verify build output + architecture compliance
+        run: |
+          echo "═══ Build Verification ═══"
+          echo ""
+
+          # Check standalone output
+          if [ -d ".next/standalone" ]; then
+            echo "✅ Standalone build output exists"
+            echo "   Files: $(find .next/standalone -type f | wc -l)"
+          else
+            echo "❌ Standalone build output MISSING — build is broken"
+            exit 1
+          fi
+
+          # Check server entry point
+          if [ -f ".next/standalone/server.js" ]; then
+            echo "✅ Server entry point exists"
+          else
+            echo "❌ Server entry point MISSING — cannot run standalone"
+            exit 1
+          fi
+
+          # List API routes count
+          ROUTE_COUNT=$(find .next/standalone/server/app -name "route.js" 2>/dev/null | wc -l)
+          echo "📦 API Routes compiled: $ROUTE_COUNT"
+
+          # Verify static assets were copied into standalone
+          if [ -d ".next/standalone/.next/static" ]; then
+            echo "✅ Static assets present in standalone output"
+          else
+            echo "⚠️ Static assets missing from standalone — will need manual copy at deploy"
+          fi
+
+          # Verify public folder was copied
+          if [ -d ".next/standalone/public" ]; then
+            echo "✅ Public folder present in standalone output"
+          else
+            echo "⚠️ Public folder missing from standalone — will need manual copy at deploy"
+          fi
+
+          # ═══ ARCHITECTURE COMPLIANCE CHECK ═══
+          echo ""
+          echo "═══ Architecture Compliance ═══"
+
+          # Check that no worker files have module-level side effects
+          SIDE_EFFECTS_FOUND=0
+          for WORKER_FILE in src/lib/workers/*.ts; do
+            if grep -q "^register.*Worker()\|^recoverPendingJobs()" "$WORKER_FILE" 2>/dev/null; then
+              echo "❌ Side effect found in $WORKER_FILE"
+              SIDE_EFFECTS_FOUND=$((SIDE_EFFECTS_FOUND + 1))
+            fi
+          done
+
+          # Check that startupCheck.ts does NOT import workers
+          if grep -q 'import.*workers/' src/lib/startupCheck.ts 2>/dev/null; then
+            echo "❌ startupCheck.ts still imports workers (should use bootstrap.ts)"
+            SIDE_EFFECTS_FOUND=$((SIDE_EFFECTS_FOUND + 1))
+          fi
+
+          if [ $SIDE_EFFECTS_FOUND -eq 0 ]; then
+            echo "✅ No module-level side effects detected"
+          else
+            echo "⚠️ $SIDE_EFFECTS_FOUND potential side effect(s) found"
+          fi
+
+          echo ""
+          echo "═══════════════════════"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: garfix-build-${{ github.sha }}
+          path: .next/standalone/
+          retention-days: 3
+
+      - name: Upload build results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-results
+          path: build-results.txt
+          retention-days: 7
+
+  # ── Job 4: Unit Tests ──────────────────────────────────────────────────
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build]
+
+    env:
+      # Required by Prisma schema (directUrl field)
+      DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: garfix_test
+          POSTGRES_PASSWORD: garfix_test_pass
+          POSTGRES_DB: garfix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL..."
+          for i in $(seq 1 10); do
+            if pg_isready -h localhost -p 5432 -U garfix_test 2>/dev/null; then
+              echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "Attempt $i/10 - waiting..."
+            sleep 2
+          done
+
+      - name: Run Prisma migrations
+        run: |
+          echo "Running Prisma migrations..."
+          if ! bun run db:deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ Prisma migration FAILED — database schema is not ready for tests"
+            echo "Review migrate-output.txt for details"
+            exit 1
+          fi
+          echo "✅ Migrations applied successfully"
+
+      - name: Run unit tests (core modules)
+        run: |
+          echo "Running core unit tests..."
+          PASS=true
+          bun test src/lib/__tests__/secretsManager.test.ts 2>&1 | tee test-results.txt || PASS=false
+          bun test src/lib/__tests__/rateLimit-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
+          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
+          echo ""
+          if [ "$PASS" = "false" ]; then
+            echo "❌ Some unit tests failed — review test-results.txt"
+            exit 1
+          else
+            echo "✅ All unit tests passed"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: test-results.txt
+          retention-days: 14
+
+  # ── Job 5: Integration / API Tests ─────────────────────────────────────
+  integration-tests:
+    name: 🔗 Integration & API Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build]
+
+    env:
+      # Required by Prisma schema (directUrl field)
+      DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: garfix_test
+          POSTGRES_PASSWORD: garfix_test_pass
+          POSTGRES_DB: garfix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL..."
+          for i in $(seq 1 10); do
+            if pg_isready -h localhost -p 5432 -U garfix_test 2>/dev/null; then
+              echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "Attempt $i/10 - waiting..."
+            sleep 2
+          done
+
+      - name: Run Prisma migrations
+        run: |
+          echo "Running Prisma migrations..."
+          if ! bun run db:deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ Prisma migration FAILED — database schema is not ready for tests"
+            echo "Review migrate-output.txt for details"
+            exit 1
+          fi
+          echo "✅ Migrations applied successfully"
+
+      - name: Seed test database
+        run: bun run seed 2>&1 || echo "Seed completed with warnings"
+        continue-on-error: true  # Seed data is optional — tests can work without it
+
+      - name: Run integration tests (API endpoints)
+        run: |
+          echo "Testing API routes..."
+          PASS=true
+          bun test src/lib/__tests__/api-helpers.test.ts 2>&1 | tee integration-results.txt || PASS=false
+          bun test src/lib/__tests__/inventorySync.test.ts 2>&1 | tee -a integration-results.txt || PASS=false
+          echo ""
+          if [ "$PASS" = "false" ]; then
+            echo "❌ Some integration tests failed — review integration-results.txt"
+            exit 1
+          else
+            echo "✅ All integration tests passed"
+          fi
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: integration-results.txt
+          retention-days: 14
+
+  # ── Job 6: CI Summary ──────────────────────────────────────────────────
+  ci-summary:
+    name: 📊 CI Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, build, unit-tests, integration-tests]
+    if: always()
+
+    steps:
+      - name: Pipeline Status Report
+        run: |
+          echo "╔══════════════════════════════════════════════════════╗"
+          echo "║     GarfiX EOS v12.2 — CI Pipeline Summary           ║"
+          echo "╚══════════════════════════════════════════════════════╝"
+          echo ""
+          echo "📅 Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "🔗 Commit:    ${{ github.sha }}"
+          echo "🌿 Branch:    ${{ github.ref_name }}"
+          echo "👤 Actor:     ${{ github.actor }}"
+          echo "🔢 Run ID:    ${{ github.run_id }}"
+          echo ""
+          echo "═════════════════════════════════════════"
+          echo "              JOB RESULTS                "
+          echo "═════════════════════════════════════════"
+          printf "%-20s %s\n" "🔍 Lint:" "${{ needs.lint.result }}"
+          printf "%-20s %s\n" "📝 TypeCheck:" "${{ needs.typecheck.result }}"
+          printf "%-20s %s\n" "🏗️ Build:" "${{ needs.build.result }}"
+          printf "%-20s %s\n" "🧪 UnitTests:" "${{ needs.unit-tests.result }}"
+          printf "%-20s %s\n" "🔗 Integration:" "${{ needs.integration-tests.result }}"
+          echo "═════════════════════════════════════════"
+          echo ""
+
+          # Fail the pipeline if any critical job failed
+          if echo "${{ needs.typecheck.result }}${{ needs.build.result }}${{ needs.unit-tests.result }}${{ needs.integration-tests.result }}" | grep -q "failure"; then
+            echo "❌ CI Pipeline FAILED — critical job(s) failed"
+            exit 1
+          fi
+
+          echo "✅ CI Pipeline PASSED"
+
+      - name: Create Status Badge
+        if: success()
+        run: echo "## ✅ CI Passed" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create Failure Badge
+        if: failure()
+        run: echo "## ❌ CI Failed" >> $GITHUB_STEP_SUMMARY
+
+  # NOTE: Deployment is handled by cd.yml — no deploy job here to avoid race conditions
