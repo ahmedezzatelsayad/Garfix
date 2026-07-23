@@ -1,0 +1,856 @@
+     1→/**
+     2→ * uae-fta.test.ts — Tests for UAE FTA e-invoicing (Peppol BIS 3) compliance module.
+     3→ *
+     4→ * Covers:
+     5→ * - UBL XML generation (Peppol BIS 3 structure validation)
+     6→ * - Invoice hash computation (SHA-256)
+     7→ * - UUID generation (Peppol spec format)
+     8→ * - Validation (English mandatory, TRN, AED, 5% VAT, B2B/B2C)
+     9→ * - Auto-population of UAE FTA-specific fields
+    10→ * - Simplified vs Standard invoice classification
+    11→ * - Digital signing (PKI placeholder)
+    12→ * - Middleware integration
+    13→ */
+    14→
+    15→import { describe, it, expect } from "vitest";
+    16→import {
+    17→  validateUaeFtaInvoice,
+    18→  generateUaeFtaUblXml,
+    19→  computeUaeFtaInvoiceHash,
+    20→  generateUaeFtaUuid,
+    21→  signUaeFtaInvoice,
+    22→  determineUaeFtaInvoiceType,
+    23→  autoPopulateUaeFtaFields,
+    24→  UAE_FTA_CURRENCY,
+    25→  UAE_FTA_DECIMAL_PLACES,
+    26→  UAE_FTA_VAT_RATE,
+    27→  UAE_FTA_AUTHORITY,
+    28→  UAE_FTA_REGULATION,
+    29→  UAE_FTA_MAX_FINE_AED,
+    30→} from "../uae-fta";
+    31→import {
+    32→  uaeFtaInvoiceValidationMiddleware,
+    33→  applyUaeFtaCompliance,
+    34→  formatUaeFtaErrorsForResponse,
+    35→} from "../uae-fta-validation";
+    36→import { formatHijri, formatDualDate } from "../../hijri";
+    37→import { num } from "../../money";
+    38→
+    39→// ── Test fixtures ──────────────────────────────────────────────────────────
+    40→
+    41→const uaeCompany = {
+    42→  id: 1,
+    43→  slug: "uae-trading",
+    44→  name: "UAE Trading LLC",
+    45→  nameAr: "شركة التجارة الإماراتية",
+    46→  country: "AE",
+    47→  currency: "AED",
+    48→  vatNumber: "100123456789003", // UAE TRN format (15 digits)
+    49→  address: "Business Bay, Dubai, UAE",
+    50→  addressAr: "الخليج التجاري، دبي، الإمارات",
+    51→  defaultTaxRate: "5",
+    52→  commercialRegistration: "CR-AE-2023-001",
+    53→  recordRetentionYears: 5,
+    54→};
+    55→
+    56→const uaeCompanyMinimal = {
+    57→  id: 2,
+    58→  slug: "uae-retail",
+    59→  name: "UAE Retail Shop",
+    60→  nameAr: null, // Arabic name optional for UAE
+    61→  country: "AE",
+    62→  currency: "AED",
+    63→  vatNumber: "300456789012005", // UAE TRN format
+    64→  address: "Dubai Marina, UAE",
+    65→  addressAr: null, // Arabic address optional for UAE
+    66→  defaultTaxRate: "5",
+    67→  commercialRegistration: "CR-AE-2024-002",
+    68→  recordRetentionYears: 5,
+    69→};
+    70→
+    71→const nonUaeCompany = {
+    72→  id: 3,
+    73→  slug: "saudi-trading",
+    74→  name: "Saudi Trading Co.",
+    75→  country: "SA",
+    76→  currency: "SAR",
+    77→  vatNumber: "310000000100003",
+    78→  address: "Riyadh, Saudi Arabia",
+    79→  defaultTaxRate: "15",
+    80→};
+    81→
+    82→const validB2BInvoice = {
+    83→  invoiceNumber: "INV-2024-001",
+    84→  issueDate: "2024-06-15",
+    85→  dueDate: "2024-07-15",
+    86→  currency: "AED",
+    87→  currencyDecimalPlaces: 2,
+    88→  taxRate: "5.00",
+    89→  invoiceTypeEn: "standard",
+    90→  invoiceTypeAr: "فاتورة ضريبية",
+    91→  sellerVatTrn: "100123456789003",
+    92→  sellerNameEn: "UAE Trading LLC",
+    93→  sellerNameAr: "شركة التجارة الإماراتية",
+    94→  sellerAddressEn: "Business Bay, Dubai, UAE",
+    95→  buyerNameEn: "Emirates Corp",
+    96→  buyerNameAr: "شركة الإمارات",
+    97→  buyerAddressEn: "Abu Dhabi, UAE",
+    98→  buyerVatTrn: "200123456789004",
+    99→  lineItems: [
+   100→    { description: "Consulting Services", qty: 10, price: 500, total: 5000 },
+   101→    { description: "Software License", qty: 1, price: 2000, total: 2000 },
+   102→  ],
+   103→  subtotal: "7000.00",
+   104→  taxAmount: "350.00",
+   105→  total: "7350.00",
+   106→  uuid: "test-uuid-b2b",
+   107→};
+   108→
+   109→const validB2CInvoice = {
+   110→  invoiceNumber: "INV-2024-002",
+   111→  issueDate: "2024-06-15",
+   112→  dueDate: "2024-06-15",
+   113→  currency: "AED",
+   114→  currencyDecimalPlaces: 2,
+   115→  taxRate: "5.00",
+   116→  invoiceTypeEn: "simplified",
+   117→  invoiceTypeAr: "فاتورة مبسطة",
+   118→  sellerVatTrn: "300456789012005",
+   119→  sellerNameEn: "UAE Retail Shop",
+   120→  sellerAddressEn: "Dubai Marina, UAE",
+   121→  // No buyer TRN for B2C
+   122→  buyerNameEn: "Walk-in Customer",
+   123→  lineItems: [
+   124→    { description: "Coffee", qty: 2, price: 25, total: 50 },
+   125→  ],
+   126→  subtotal: "50.00",
+   127→  taxAmount: "2.50",
+   128→  total: "52.50",
+   129→  uuid: "test-uuid-b2c",
+   130→};
+   131→
+   132→// ── UUID Generation Tests ──────────────────────────────────────────────────
+   133→
+   134→describe("UAE FTA UUID Generation", () => {
+   135→  it("should generate a UUID in v4 format", () => {
+   136→    const uuid = generateUaeFtaUuid();
+   137→    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+   138→  });
+   139→
+   140→  it("should generate unique UUIDs", () => {
+   141→    const uuids = Array.from({ length: 100 }, () => generateUaeFtaUuid());
+   142→    const uniqueSet = new Set(uuids);
+   143→    expect(uniqueSet.size).toBe(100);
+   144→  });
+   145→
+   146→  it("should generate UUIDs with correct length (36 chars with dashes)", () => {
+   147→    const uuid = generateUaeFtaUuid();
+   148→    expect(uuid.length).toBe(36);
+   149→  });
+   150→});
+   151→
+   152→// ── Invoice Hash Computation Tests ─────────────────────────────────────────
+   153→
+   154→describe("UAE FTA Invoice Hash Computation", () => {
+   155→  it("should compute a SHA-256 hash in hex format", () => {
+   156→    const xml = "<?xml version=\"1.0\"?><Invoice>test</Invoice>";
+   157→    const hash = computeUaeFtaInvoiceHash(xml);
+   158→    // SHA-256 hash should be 64 hex characters
+   159→    expect(hash.length).toBeGreaterThanOrEqual(64);
+   160→    expect(hash).toMatch(/^[0-9a-f]+$/);
+   161→  });
+   162→
+   163→  it("should produce consistent hashes for same input", () => {
+   164→    const xml = "<?xml version=\"1.0\"?><Invoice>consistent</Invoice>";
+   165→    const hash1 = computeUaeFtaInvoiceHash(xml);
+   166→    const hash2 = computeUaeFtaInvoiceHash(xml);
+   167→    expect(hash1).toBe(hash2);
+   168→  });
+   169→
+   170→  it("should produce different hashes for different inputs", () => {
+   171→    const hash1 = computeUaeFtaInvoiceHash("<Invoice>input1</Invoice>");
+   172→    const hash2 = computeUaeFtaInvoiceHash("<Invoice>input2</Invoice>");
+   173→    expect(hash1).not.toBe(hash2);
+   174→  });
+   175→});
+   176→
+   177→// ── Invoice Type Classification Tests ──────────────────────────────────────
+   178→
+   179→describe("UAE FTA Invoice Type Classification", () => {
+   180→  it("should classify as standard (B2B) when buyer TRN is present", () => {
+   181→    const invoice = { buyerVatTrn: "200123456789004" };
+   182→    expect(determineUaeFtaInvoiceType(invoice)).toBe("standard");
+   183→  });
+   184→
+   185→  it("should classify as standard (B2B) when clientId is present", () => {
+   186→    const invoice = { clientId: 5 };
+   187→    expect(determineUaeFtaInvoiceType(invoice)).toBe("standard");
+   188→  });
+   189→
+   190→  it("should classify as simplified (B2C) when no buyer TRN or clientId", () => {
+   191→    const invoice = {};
+   192→    expect(determineUaeFtaInvoiceType(invoice)).toBe("simplified");
+   193→  });
+   194→
+   195→  it("should use explicit invoiceTypeEn setting when provided", () => {
+   196→    const invoice = { invoiceTypeEn: "standard" };
+   197→    expect(determineUaeFtaInvoiceType(invoice)).toBe("standard");
+   198→  });
+   199→
+   200→  it("should use explicit invoiceTypeAr setting when provided", () => {
+   201→    const invoice = { invoiceTypeAr: "فاتورة ضريبية" };
+   202→    expect(determineUaeFtaInvoiceType(invoice)).toBe("standard");
+   203→  });
+   204→
+   205→  it("should classify as simplified when invoiceTypeEn is 'simplified'", () => {
+   206→    const invoice = { invoiceTypeEn: "simplified" };
+   207→    expect(determineUaeFtaInvoiceType(invoice)).toBe("simplified");
+   208→  });
+   209→
+   210→  it("should classify as simplified when invoiceTypeAr is 'فاتورة مبسطة'", () => {
+   211→    const invoice = { invoiceTypeAr: "فاتورة مبسطة" };
+   212→    expect(determineUaeFtaInvoiceType(invoice)).toBe("simplified");
+   213→  });
+   214→});
+   215→
+   216→// ── Validation Tests ───────────────────────────────────────────────────────
+   217→
+   218→describe("UAE FTA Invoice Validation", () => {
+   219→  it("should pass validation for a valid B2B invoice with UAE company", () => {
+   220→    const result = validateUaeFtaInvoice(validB2BInvoice, uaeCompany);
+   221→    // May have warnings but should have no blocking errors
+   222→    expect(result.errors.length).toBe(0);
+   223→  });
+   224→
+   225→  it("should pass validation for a valid B2C invoice with UAE company", () => {
+   226→    const result = validateUaeFtaInvoice(validB2CInvoice, uaeCompanyMinimal);
+   227→    // May have warnings but should have no blocking errors
+   228→    expect(result.errors.length).toBe(0);
+   229→  });
+   230→
+   231→  it("should pass validation for non-UAE company (passthrough)", () => {
+   232→    const result = validateUaeFtaInvoice({}, nonUaeCompany);
+   233→    expect(result.valid).toBe(true);
+   234→    expect(result.errors.length).toBe(0);
+   235→    expect(result.warnings.length).toBe(0);
+   236→  });
+   237→
+   238→  // ── TRN (Tax Registration Number) ──────────────────────────────────────
+   239→
+   240→  it("should block invoice if seller TRN is missing", () => {
+   241→    const invoice = { ...validB2BInvoice, sellerVatTrn: undefined };
+   242→    const company = { ...uaeCompany, vatNumber: undefined };
+   243→    const result = validateUaeFtaInvoice(invoice, company);
+   244→    expect(result.valid).toBe(false);
+   245→    expect(result.errors.some((e) => e.field === "vatTrn")).toBe(true);
+   246→  });
+   247→
+   248→  // ── English language mandatory ────────────────────────────────────────
+   249→
+   250→  it("should block invoice if English seller name is missing", () => {
+   251→    const invoice = { ...validB2BInvoice, sellerNameEn: undefined };
+   252→    const company = { ...uaeCompany, name: undefined };
+   253→    const result = validateUaeFtaInvoice(invoice, company);
+   254→    expect(result.valid).toBe(false);
+   255→    expect(result.errors.some((e) => e.field === "sellerNameEn")).toBe(true);
+   256→  });
+   257→
+   258→  it("should block invoice if English seller address is missing", () => {
+   259→    const invoice = { ...validB2BInvoice, sellerAddressEn: undefined };
+   260→    const company = { ...uaeCompany, address: undefined };
+   261→    const result = validateUaeFtaInvoice(invoice, company);
+   262→    expect(result.valid).toBe(false);
+   263→    expect(result.errors.some((e) => e.field === "sellerAddressEn")).toBe(true);
+   264→  });
+   265→
+   266→  it("should block B2B invoice if English buyer name is missing", () => {
+   267→    const invoice = { ...validB2BInvoice, buyerNameEn: undefined, clientName: undefined };
+   268→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   269→    expect(result.valid).toBe(false);
+   270→    expect(result.errors.some((e) => e.field === "buyerNameEn")).toBe(true);
+   271→  });
+   272→
+   273→  it("should block B2B invoice if English buyer address is missing", () => {
+   274→    const invoice = { ...validB2BInvoice, buyerAddressEn: undefined, clientAddress: undefined };
+   275→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   276→    expect(result.valid).toBe(false);
+   277→    expect(result.errors.some((e) => e.field === "buyerAddressEn")).toBe(true);
+   278→  });
+   279→
+   280→  // ── Buyer TRN required for B2B ───────────────────────────────────────
+   281→
+   282→  it("should block B2B invoice if buyer TRN is missing", () => {
+   283→    const invoice = { ...validB2BInvoice, buyerVatTrn: undefined, buyerVatNumber: undefined };
+   284→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   285→    expect(result.valid).toBe(false);
+   286→    expect(result.errors.some((e) => e.field === "buyerVatTrn")).toBe(true);
+   287→  });
+   288→
+   289→  // ── Currency must be AED ──────────────────────────────────────────────
+   290→
+   291→  it("should block invoice if currency is not AED", () => {
+   292→    const invoice = { ...validB2BInvoice, currency: "USD" };
+   293→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   294→    expect(result.valid).toBe(false);
+   295→    expect(result.errors.some((e) => e.field === "currency")).toBe(true);
+   296→  });
+   297→
+   298→  // ── Decimal places must be 2 ──────────────────────────────────────────
+   299→
+   300→  it("should block invoice if decimal places are not 2", () => {
+   301→    const invoice = { ...validB2BInvoice, currencyDecimalPlaces: 3 };
+   302→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   303→    expect(result.valid).toBe(false);
+   304→    expect(result.errors.some((e) => e.field === "currencyDecimalPlaces")).toBe(true);
+   305→  });
+   306→
+   307→  // ── VAT rate must be 5% ────────────────────────────────────────────────
+   308→
+   309→  it("should block invoice if VAT rate is not 5%", () => {
+   310→    const invoice = { ...validB2BInvoice, taxRate: "15.00" };
+   311→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   312→    expect(result.valid).toBe(false);
+   313→    expect(result.errors.some((e) => e.field === "vatRate")).toBe(true);
+   314→  });
+   315→
+   316→  it("should allow 0% VAT (exempt items) with warning", () => {
+   317→    const invoice = { ...validB2BInvoice, taxRate: "0" };
+   318→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   319→    // 0% should not produce VAT rate error
+   320→    expect(result.errors.some((e) => e.field === "vatRate")).toBe(false);
+   321→  });
+   322→
+   323→  // ── Invoice type classification ──────────────────────────────────────
+   324→
+   325→  it("should block invoice if invoice type is missing", () => {
+   326→    const invoice = { ...validB2BInvoice, invoiceTypeEn: undefined, invoiceTypeAr: undefined };
+   327→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   328→    expect(result.valid).toBe(false);
+   329→    expect(result.errors.some((e) => e.field === "invoiceType")).toBe(true);
+   330→  });
+   331→
+   332→  // ── B2B/B2C classification consistency ───────────────────────────────
+   333→
+   334→  it("should block simplified invoice with buyer TRN (mismatch)", () => {
+   335→    const invoice = { ...validB2CInvoice, buyerVatTrn: "200123456789004" };
+   336→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   337→    expect(result.valid).toBe(false);
+   338→    expect(result.errors.some((e) => e.field === "invoiceTypeClassification")).toBe(true);
+   339→  });
+   340→
+   341→  // ── Arabic fields are recommended (not required for UAE) ──────────────
+   342→
+   343→  it("should produce warning when Arabic seller name is missing (not error)", () => {
+   344→    const invoice = { ...validB2BInvoice };
+   345→    const company = { ...uaeCompany, nameAr: undefined };
+   346→    const result = validateUaeFtaInvoice(invoice, company);
+   347→    // Should be a warning, not an error
+   348→    expect(result.errors.some((e) => e.field === "sellerNameAr")).toBe(false);
+   349→    expect(result.warnings.some((w) => w.field === "sellerNameAr")).toBe(true);
+   350→  });
+   351→
+   352→  it("should produce warning when Arabic buyer name is missing for B2B (not error)", () => {
+   353→    const invoice = { ...validB2BInvoice, buyerNameAr: undefined };
+   354→    const result = validateUaeFtaInvoice(invoice, uaeCompany);
+   355→    // Should be a warning, not an error
+   356→    expect(result.errors.some((e) => e.field === "buyerNameAr")).toBe(false);
+   357→    expect(result.warnings.some((w) => w.field === "buyerNameAr")).toBe(true);
+   358→  });
+   359→
+   360→  // ── Retention warning ────────────────────────────────────────────────
+   361→
+   362→  it("should always include retention warning", () => {
+   363→    const result = validateUaeFtaInvoice(validB2BInvoice, uaeCompany);
+   364→    expect(result.warnings.some((w) => w.field === "recordRetention")).toBe(true);
+   365→    expect(result.warnings.find((w) => w.field === "recordRetention")?.messageEn).toContain("5 years");
+   366→    expect(result.warnings.find((w) => w.field === "recordRetention")?.messageEn).toContain("20,000 AED");
+   367→  });
+   368→});
+   369→
+   370→// ── UBL XML Generation Tests ───────────────────────────────────────────────
+   371→
+   372→describe("UAE FTA UBL XML Generation (Peppol BIS 3)", () => {
+   373→  it("should generate valid XML structure with proper namespaces", () => {
+   374→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   375→    expect(result.xml).toContain("xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:Invoice-2\"");
+   376→    expect(result.xml).toContain("xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\"");
+   377→    expect(result.xml).toContain("xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\"");
+   378→  });
+   379→
+   380→  it("should include Peppol BIS 3 profile identifier", () => {
+   381→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   382→    expect(result.xml).toContain("urn:fdc:peppol.eu:2017:poacc:billing:01:1.0");
+   383→  });
+   384→
+   385→  it("should include UUID in the XML", () => {
+   386→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   387→    expect(result.xml).toContain("<cbc:UUID>");
+   388→    expect(result.uuid).toBeTruthy();
+   389→  });
+   390→
+   391→  it("should include seller TRN in the XML", () => {
+   392→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   393→    expect(result.xml).toContain("100123456789003");
+   394→    expect(result.xml).toContain("schemeID=\"TRN\"");
+   395→  });
+   396→
+   397→  it("should include AED currency code", () => {
+   398→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   399→    expect(result.xml).toContain("<cbc:DocumentCurrencyCode>AED</cbc:DocumentCurrencyCode>");
+   400→    expect(result.xml).toContain("<cbc:TaxCurrencyCode>AED</cbc:TaxCurrencyCode>");
+   401→    expect(result.xml).toContain("currencyID=\"AED\"");
+   402→  });
+   403→
+   404→  it("should include 5% VAT rate in tax breakdown", () => {
+   405→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   406→    expect(result.xml).toContain("<cbc:Percent>5.00</cbc:Percent>");
+   407→  });
+   408→
+   409→  it("should include VAT scheme with Arabic and English names", () => {
+   410→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   411→    expect(result.xml).toContain("ضريبة القيمة المضافة");
+   412→    expect(result.xml).toContain("Value Added Tax");
+   413→  });
+   414→
+   415→  // ── Standard Invoice (B2B) ──────────────────────────────────────────
+   416→
+   417→  it("should generate standard B2B invoice with buyer party details", () => {
+   418→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   419→    expect(result.xml).toContain("<cac:AccountingCustomerParty>");
+   420→    expect(result.xml).toContain("Emirates Corp");
+   421→    expect(result.xml).toContain("200123456789004");
+   422→  });
+   423→
+   424→  it("should include buyer TRN scheme for B2B invoices", () => {
+   425→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   426→    expect(result.xml).toContain("<cac:PartyTaxScheme>");
+   427→    expect(result.xml).toContain("<cbc:CompanyID>200123456789004</cbc:CompanyID>");
+   428→  });
+   429→
+   430→  it("should include Arabic buyer name for B2B invoices when available", () => {
+   431→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   432→    expect(result.xml).toContain("شركة الإمارات");
+   433→    expect(result.xml).toContain("languageID=\"ar\"");
+   434→  });
+   435→
+   436→  // ── Simplified Invoice (B2C) ─────────────────────────────────────────
+   437→
+   438→  it("should NOT include buyer party for simplified B2C invoices", () => {
+   439→    const result = generateUaeFtaUblXml(validB2CInvoice, uaeCompanyMinimal);
+   440→    expect(result.xml).not.toContain("<cac:AccountingCustomerParty>");
+   441→  });
+   442→
+   443→  // ── Invoice type code ────────────────────────────────────────────────
+   444→
+   445→  it("should use 380 as invoice type code (Peppol BIS 3 standard)", () => {
+   446→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   447→    expect(result.xml).toContain("<cbc:InvoiceTypeCode");
+   448→    expect(result.xml).toContain("380</cbc:InvoiceTypeCode>");
+   449→  });
+   450→
+   451→  it("should include invoice type name attribute in XML", () => {
+   452→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   453→    expect(result.xml).toContain("Standard Tax Invoice");
+   454→  });
+   455→
+   456→  it("should include 'Simplified Tax Invoice' for B2C invoices", () => {
+   457→    const result = generateUaeFtaUblXml(validB2CInvoice, uaeCompanyMinimal);
+   458→    expect(result.xml).toContain("Simplified Tax Invoice");
+   459→  });
+   460→
+   461→  // ── Seller details ────────────────────────────────────────────────────
+   462→
+   463→  it("should include English seller name (mandatory)", () => {
+   464→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   465→    expect(result.xml).toContain("UAE Trading LLC");
+   466→    expect(result.xml).toContain("languageID=\"en\"");
+   467→  });
+   468→
+   469→  it("should include Arabic seller name when available (optional)", () => {
+   470→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   471→    expect(result.xml).toContain("شركة التجارة الإماراتية");
+   472→  });
+   473→
+   474→  it("should NOT include Arabic seller name when not available", () => {
+   475→    const result = generateUaeFtaUblXml(validB2CInvoice, uaeCompanyMinimal);
+   476→    // Should not have seller Arabic name since uaeCompanyMinimal.nameAr is null
+   477→    expect(result.xml).not.toContain("شركة");
+   478→  });
+   479→
+   480→  it("should include AE country code for seller", () => {
+   481→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   482→    expect(result.xml).toContain("<cbc:IdentificationCode>AE</cbc:IdentificationCode>");
+   483→  });
+   484→
+   485→  // ── PIH and Signature ────────────────────────────────────────────────
+   486→
+   487→  it("should include PIH reference in the XML", () => {
+   488→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   489→    expect(result.xml).toContain("PIH");
+   490→    expect(result.xml).toContain("<cbc:PreviousInvoiceHash>");
+   491→  });
+   492→
+   493→  it("should include PKI signature placeholder", () => {
+   494→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   495→    expect(result.xml).toContain("#PKI-Signature");
+   496→    expect(result.xml).toContain("<cac:Signature>");
+   497→  });
+   498→
+   499→  // ── Line items ────────────────────────────────────────────────────────
+   500→
+   501→  it("should include line items with AED amounts", () => {
+   502→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   503→    expect(result.xml).toContain("<cac:InvoiceLine>");
+   504→    expect(result.xml).toContain("Consulting Services");
+   505→    expect(result.xml).toContain("currencyID=\"AED\"");
+   506→  });
+   507→
+   508→  it("should include line item tax breakdowns with 5% VAT", () => {
+   509→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   510→    expect(result.xml).toContain("<cac:TaxTotal>");
+   511→    expect(result.xml).toContain("<cbc:TaxAmount currencyID=\"AED\">");
+   512→  });
+   513→
+   514→  // ── Monetary totals ────────────────────────────────────────────────────
+   515→
+   516→  it("should include legal monetary total with AED", () => {
+   517→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   518→    expect(result.xml).toContain("<cac:LegalMonetaryTotal>");
+   519→    expect(result.xml).toContain("<cbc:LineExtensionAmount currencyID=\"AED\">");
+   520→    expect(result.xml).toContain("<cbc:PayableAmount currencyID=\"AED\">");
+   521→  });
+   522→
+   523→  it("should include tax total with 5% VAT subtotal", () => {
+   524→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   525→    expect(result.xml).toContain("<cac:TaxSubtotal>");
+   526→    expect(result.xml).toContain("<cbc:Percent>5.00</cbc:Percent>");
+   527→  });
+   528→
+   529→  // ── Invoice hash ──────────────────────────────────────────────────────
+   530→
+   531→  it("should return invoice hash and UUID in result", () => {
+   532→    const result = generateUaeFtaUblXml(validB2BInvoice, uaeCompany);
+   533→    expect(result.invoiceHash).toBeTruthy();
+   534→    expect(result.invoiceHash.length).toBeGreaterThanOrEqual(64);
+   535→    expect(result.uuid).toBeTruthy();
+   536→  });
+   537→});
+   538→
+   539→// ── Digital Signing Tests ──────────────────────────────────────────────────
+   540→
+   541→describe("UAE FTA Digital Signing (PKI)", () => {
+   542→  const testXml = "<?xml version=\"1.0\"?><Invoice xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:Invoice-2\"><cbc:URI>#PKI-Signature</cbc:URI><cac:DigitalSignatureAttachment><cac:ExternalReference><cbc:URI>#PKI-Signature</cbc:URI></cac:ExternalReference></cac:DigitalSignatureAttachment></Invoice>";
+   543→
+   544→  it("should embed signature reference in signed XML", () => {
+   545→    const result = signUaeFtaInvoice(testXml, "test-certificate", "test-key");
+   546→    expect(result.signedXml).toContain("<cbc:Reference>");
+   547→    expect(result.invoiceHash).toBeTruthy();
+   548→  });
+   549→
+   550→  it("should include certificate hash in signed XML", () => {
+   551→    const result = signUaeFtaInvoice(testXml, "test-certificate", "test-key");
+   552→    expect(result.signedXml).toContain("<cbc:CertificateHash>");
+   553→    expect(result.certificateHash).toBeTruthy();
+   554→  });
+   555→
+   556→  it("should return digital signature and invoice hash", () => {
+   557→    const result = signUaeFtaInvoice(testXml, "test-certificate", "test-key");
+   558→    expect(result.digitalSignature).toBeTruthy();
+   559→    expect(result.invoiceHash).toBeTruthy();
+   560→  });
+   561→
+   562→  it("should produce consistent results for same input", () => {
+   563→    const result1 = signUaeFtaInvoice(testXml, "cert-A", "key-A");
+   564→    const result2 = signUaeFtaInvoice(testXml, "cert-A", "key-A");
+   565→    expect(result1.digitalSignature).toBe(result2.digitalSignature);
+   566→    expect(result1.certificateHash).toBe(result2.certificateHash);
+   567→  });
+   568→});
+   569→
+   570→// ── Auto-population Tests ──────────────────────────────────────────────────
+   571→
+   572→describe("UAE FTA Auto-population", () => {
+   573→  it("should auto-populate UUID when missing", () => {
+   574→    const invoiceData = { invoiceNumber: "INV-001" };
+   575→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   576→    expect(result.uuid).toBeTruthy();
+   577→    expect(result.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+   578→  });
+   579→
+   580→  it("should NOT overwrite existing UUID", () => {
+   581→    const invoiceData = { invoiceNumber: "INV-001", uuid: "existing-uuid" };
+   582→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   583→    expect(result.uuid).toBe("existing-uuid");
+   584→  });
+   585→
+   586→  it("should auto-populate Hijri dates when issue date is present", () => {
+   587→    const invoiceData = { invoiceNumber: "INV-001", issueDate: "2024-06-15" };
+   588→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   589→    expect(result.hijriIssueDate).toBeTruthy();
+   590→  });
+   591→
+   592→  it("should auto-populate Hijri dates when due date is present", () => {
+   593→    const invoiceData = { invoiceNumber: "INV-001", dueDate: "2024-07-15" };
+   594→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   595→    expect(result.hijriDueDate).toBeTruthy();
+   596→  });
+   597→
+   598→  it("should auto-populate TRN from company VAT number", () => {
+   599→    const invoiceData = { invoiceNumber: "INV-001" };
+   600→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   601→    expect(result.sellerVatTrn).toBe("100123456789003");
+   602→  });
+   603→
+   604→  it("should auto-populate English seller name from company", () => {
+   605→    const invoiceData = { invoiceNumber: "INV-001" };
+   606→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   607→    expect(result.sellerNameEn).toBe("UAE Trading LLC");
+   608→  });
+   609→
+   610→  it("should auto-populate Arabic seller name when available in company", () => {
+   611→    const invoiceData = { invoiceNumber: "INV-001" };
+   612→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   613→    expect(result.sellerNameAr).toBe("شركة التجارة الإماراتية");
+   614→  });
+   615→
+   616→  it("should NOT auto-populate Arabic seller name when not available in company", () => {
+   617→    const invoiceData = { invoiceNumber: "INV-001" };
+   618→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompanyMinimal);
+   619→    // nameAr is null in uaeCompanyMinimal, so sellerNameAr should not be populated
+   620→    expect(result.sellerNameAr).toBeFalsy();
+   621→  });
+   622→
+   623→  it("should auto-populate invoice type classification", () => {
+   624→    const invoiceData = { invoiceNumber: "INV-001" };
+   625→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   626→    expect(result.invoiceTypeEn).toBeTruthy(); // Should be either "standard" or "simplified"
+   627→    expect(result.invoiceTypeAr).toBeTruthy(); // Arabic type name
+   628→  });
+   629→
+   630→  it("should classify as standard when buyer TRN is present", () => {
+   631→    const invoiceData = { buyerVatTrn: "200123456789004" };
+   632→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   633→    expect(result.invoiceTypeEn).toBe("standard");
+   634→    expect(result.invoiceTypeAr).toBe("فاتورة ضريبية");
+   635→  });
+   636→
+   637→  it("should classify as simplified when no buyer TRN", () => {
+   638→    const invoiceData = {};
+   639→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   640→    expect(result.invoiceTypeEn).toBe("simplified");
+   641→    expect(result.invoiceTypeAr).toBe("فاتورة مبسطة");
+   642→  });
+   643→
+   644→  it("should enforce AED currency", () => {
+   645→    const invoiceData = { currency: "USD" };
+   646→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   647→    expect(result.currency).toBe("AED");
+   648→  });
+   649→
+   650→  it("should enforce 2 decimal places", () => {
+   651→    const invoiceData = { currencyDecimalPlaces: 3 };
+   652→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   653→    expect(result.currencyDecimalPlaces).toBe(2);
+   654→  });
+   655→
+   656→  it("should enforce 5% VAT rate", () => {
+   657→    const invoiceData = { taxRate: "15.00" };
+   658→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   659→    expect(result.taxRate).toBe("5.00");
+   660→  });
+   661→
+   662→  it("should enforce 2-decimal precision on monetary fields", () => {
+   663→    const invoiceData = { subtotal: 7000, taxAmount: 350, total: 7350 };
+   664→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   665→    expect(result.subtotal).toBe("7000.00");
+   666→    expect(result.taxAmount).toBe("350.00");
+   667→    expect(result.total).toBe("7350.00");
+   668→  });
+   669→
+   670→  it("should set e-invoice authority to uae_fta", () => {
+   671→    const invoiceData = {};
+   672→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   673→    expect(result.eInvoiceAuthority).toBe("uae_fta");
+   674→  });
+   675→
+   676→  it("should set PIH placeholder when not provided", () => {
+   677→    const invoiceData = {};
+   678→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   679→    expect(result.previousInvoiceHash).toBeTruthy();
+   680→  });
+   681→
+   682→  it("should NOT overwrite existing PIH", () => {
+   683→    const invoiceData = { previousInvoiceHash: "existing-pih-hash" };
+   684→    const result = autoPopulateUaeFtaFields(invoiceData, uaeCompany);
+   685→    expect(result.previousInvoiceHash).toBe("existing-pih-hash");
+   686→  });
+   687→});
+   688→
+   689→// ── Middleware Tests ────────────────────────────────────────────────────────
+   690→
+   691→describe("UAE FTA Validation Middleware", () => {
+   692→  it("should pass through non-UAE companies without validation", () => {
+   693→    const result = uaeFtaInvoiceValidationMiddleware({}, nonUaeCompany);
+   694→    expect(result.valid).toBe(true);
+   695→    expect(result.blockingErrors.length).toBe(0);
+   696→    expect(result.warnings.length).toBe(0);
+   697→    expect(result.enrichedData).toEqual({});
+   698→  });
+   699→
+   700→  it("should block UAE company invoice with missing TRN", () => {
+   701→    const invoiceData = { invoiceNumber: "INV-001" };
+   702→    const company = { ...uaeCompany, vatNumber: undefined };
+   703→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, company);
+   704→    expect(result.valid).toBe(false);
+   705→    expect(result.blockingErrors.some((e) => e.field === "vatTrn")).toBe(true);
+   706→  });
+   707→
+   708→  it("should override non-AED currency for UAE companies", () => {
+   709→    const invoiceData = { currency: "USD", invoiceNumber: "INV-001" };
+   710→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, uaeCompany);
+   711→    expect(result.enrichedData.currency).toBe("AED");
+   712→  });
+   713→
+   714→  it("should override VAT rate to 5% for UAE companies", () => {
+   715→    const invoiceData = { taxRate: "10.00", invoiceNumber: "INV-001" };
+   716→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, uaeCompany);
+   717→    expect(result.enrichedData.taxRate).toBe("5.00");
+   718→  });
+   719→
+   720→  it("should auto-populate UAE FTA fields for UAE companies", () => {
+   721→    const invoiceData = { invoiceNumber: "INV-001" };
+   722→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, uaeCompany);
+   723→    expect(result.enrichedData.uuid).toBeTruthy();
+   724→    expect(result.enrichedData.sellerVatTrn).toBe("100123456789003");
+   725→    expect(result.enrichedData.currency).toBe("AED");
+   726→    expect(result.enrichedData.eInvoiceAuthority).toBe("uae_fta");
+   727→  });
+   728→
+   729→  it("should validate UAE FTA compliance for UAE companies", () => {
+   730→    const invoiceData = { invoiceNumber: "INV-001" };
+   731→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, uaeCompany);
+   732→    // Should have at least the retention warning
+   733→    expect(result.warnings.some((w) => w.field === "recordRetention")).toBe(true);
+   734→  });
+   735→});
+   736→
+   737→// ── applyUaeFtaCompliance convenience wrapper ─────────────────────────────
+   738→
+   739→describe("applyUaeFtaCompliance", () => {
+   740→  it("should behave identically to uaeFtaInvoiceValidationMiddleware", () => {
+   741→    const invoiceData = { invoiceNumber: "INV-001" };
+   742→    const result1 = uaeFtaInvoiceValidationMiddleware(invoiceData, uaeCompany);
+   743→    const result2 = applyUaeFtaCompliance(invoiceData, uaeCompany);
+   744→    expect(result1.valid).toBe(result2.valid);
+   745→    expect(result1.enrichedData).toEqual(result2.enrichedData);
+   746→    expect(result1.blockingErrors).toEqual(result2.blockingErrors);
+   747→  });
+   748→});
+   749→
+   750→// ── formatUaeFtaErrorsForResponse ──────────────────────────────────────────
+   751→
+   752→describe("formatUaeFtaErrorsForResponse", () => {
+   753→  it("should return empty error when no blocking errors", () => {
+   754→    const result = uaeFtaInvoiceValidationMiddleware(validB2BInvoice, uaeCompany);
+   755→    const formatted = formatUaeFtaErrorsForResponse(result);
+   756→    expect(formatted.error).toBe("");
+   757→    expect(formatted.details).toEqual({});
+   758→  });
+   759→
+   760→  it("should return Arabic error messages when blocking errors exist", () => {
+   761→    const invoiceData = { invoiceNumber: "INV-001" };
+   762→    const company = { ...uaeCompany, vatNumber: undefined };
+   763→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, company);
+   764→    const formatted = formatUaeFtaErrorsForResponse(result);
+   765→    expect(formatted.error).toBeTruthy();
+   766→    // Arabic message should contain TRN reference
+   767→    expect(formatted.error).toContain("TRN");
+   768→  });
+   769→
+   770→  it("should include regulation reference in details", () => {
+   771→    const invoiceData = { invoiceNumber: "INV-001" };
+   772→    const company = { ...uaeCompany, vatNumber: undefined };
+   773→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, company);
+   774→    const formatted = formatUaeFtaErrorsForResponse(result);
+   775→    expect(formatted.details.regulation).toBe("uae_fta");
+   776→  });
+   777→
+   778→  it("should include both Arabic and English error details", () => {
+   779→    const invoiceData = { invoiceNumber: "INV-001" };
+   780→    const company = { ...uaeCompany, vatNumber: undefined };
+   781→    const result = uaeFtaInvoiceValidationMiddleware(invoiceData, company);
+   782→    const formatted = formatUaeFtaErrorsForResponse(result);
+   783→    expect(formatted.details.errorsAr).toBeTruthy();
+   784→    expect(formatted.details.errorsEn).toBeTruthy();
+   785→  });
+   786→});
+   787→
+   788→// ── Money / AED 2-decimal integration ──────────────────────────────────────
+   789→
+   790→describe("AED 2-decimal Money Integration", () => {
+   791→  it("should format AED amounts with 2 decimal places", () => {
+   792→    const amount = num(7350, 2);
+   793→    expect(amount.toFixed(2)).toBe("7350.00");
+   794→  });
+   795→
+   796→  it("should calculate invoice totals with 2 decimal places for AED", () => {
+   797→    const items = [
+   798→      { description: "Service A", qty: 10, price: 500 },
+   799→    ];
+   800→    const totals = calcInvoiceTotals(items, UAE_FTA_VAT_RATE, 0, 0);
+   801→    // 5000 subtotal, 250 tax (5%), 5250 total
+   802→    expect(totals.subtotal).toBeTruthy();
+   803→    expect(totals.taxRate).toBe("5.00");
+   804→  });
+   805→
+   806→  it("should handle AED precision correctly for small amounts", () => {
+   807→    const amount = num(2.5, 2);
+   808→    expect(amount.toFixed(2)).toBe("2.50");
+   809→  });
+   810→});
+   811→
+   812→// ── Hijri Date Integration (optional for UAE) ──────────────────────────────
+   813→
+   814→describe("UAE Hijri Date Integration", () => {
+   815→  it("should format Hijri date from Gregorian issue date", () => {
+   816→    const hijri = formatHijri("2024-06-15");
+   817→    // Hijri date should be present (may vary by locale)
+   818→    expect(hijri).toBeTruthy();
+   819→  });
+   820→
+   821→  it("should format dual date combining Gregorian and Hijri", () => {
+   822→    const dual = formatDualDate("2024-06-15");
+   823→    expect(dual).toBeTruthy();
+   824→    expect(dual).toContain("2024");
+   825→  });
+   826→});
+   827→
+   828→// ── Constants Validation Tests ─────────────────────────────────────────────
+   829→
+   830→describe("UAE FTA Constants", () => {
+   831→  it("should have correct authority type", () => {
+   832→    expect(UAE_FTA_AUTHORITY).toBe("uae_fta");
+   833→  });
+   834→
+   835→  it("should have correct currency (AED)", () => {
+   836→    expect(UAE_FTA_CURRENCY).toBe("AED");
+   837→  });
+   838→
+   839→  it("should have correct decimal places (2)", () => {
+   840→    expect(UAE_FTA_DECIMAL_PLACES).toBe(2);
+   841→  });
+   842→
+   843→  it("should have correct VAT rate (5%)", () => {
+   844→    expect(UAE_FTA_VAT_RATE).toBe(5);
+   845→  });
+   846→
+   847→  it("should have correct regulation name", () => {
+   848→    expect(UAE_FTA_REGULATION).toContain("UAE FTA");
+   849→    expect(UAE_FTA_REGULATION).toContain("Peppol");
+   850→  });
+   851→
+   852→  it("should have correct max fine (20,000 AED)", () => {
+   853→    expect(UAE_FTA_MAX_FINE_AED).toBe(20000);
+   854→  });
+   855→});
+   856→
