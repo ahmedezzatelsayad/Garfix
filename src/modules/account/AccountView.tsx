@@ -95,7 +95,7 @@ export function AccountView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-extrabold flex items-center gap-2">
+      <h1 className="text-lg md:text-2xl font-extrabold flex items-center gap-2">
         <User size={20} /> حسابي
       </h1>
 

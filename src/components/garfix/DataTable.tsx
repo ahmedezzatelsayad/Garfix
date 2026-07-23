@@ -118,7 +118,7 @@ export function DataTable({
               <thead>
                 <tr className="bg-[var(--muted)]">
                   {columns.map((col) => (
-                    <th key={col.key} className={thClass} style={col.width ? { width: col.width } : undefined} /* TAILWINDBREAK: dynamic width */>{col.label}</th>
+                    <th key={col.key} className={cn(thClass, col.width && `[width:${col.width}]`)}>{col.label}</th>
                   ))}
                 </tr>
               </thead>

@@ -147,7 +147,7 @@ export function InventoryView() {
 
       {/* Summary cards — stack on mobile, grid on desktop */}
       {tab === "stock" && summary && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           <SummaryCard icon={<Boxes size={16} />} label="إجمالي الأصناف" value={summary.total} color="var(--primary)" />
           <SummaryCard icon={<CheckCircle2 size={16} />} label="متوفر" value={summary.ok} color="#10b981" />
           <SummaryCard icon={<AlertTriangle size={16} />} label="تحت الحد الأدنى" value={summary.low} color="#f59e0b" />
@@ -541,14 +541,14 @@ function AdjustStockForm({
 
   if (warehouses.length === 0) {
     return (
-      <div className="bg-card rounded-[14px] border border-border p-8 text-center text-muted-foreground">
+      <div className="bg-card rounded-[14px] border border-border p-4 md:p-8 text-center text-muted-foreground">
         أنشئ مستودعاً أولاً قبل إضافة أصناف.
       </div>
     );
   }
   if (products.length === 0) {
     return (
-      <div className="bg-card rounded-[14px] border border-border p-8 text-center text-muted-foreground">
+      <div className="bg-card rounded-[14px] border border-border p-4 md:p-8 text-center text-muted-foreground">
         أنشئ منتجاً في كتالوج المنتجات أولاً.
       </div>
     );
@@ -623,7 +623,7 @@ const pageBtnStyle = (disabled: boolean): string =>
 
 function Empty({ label }: { label: string }) {
   return (
-    <div className="p-12 text-center text-muted-foreground">
+    <div className="p-6 md:p-12 text-center text-muted-foreground">
       <Boxes size={36} className="opacity-30 mb-2 mx-auto" />
       <div>لا توجد {label} بعد</div>
     </div>

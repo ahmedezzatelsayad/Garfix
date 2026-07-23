@@ -399,7 +399,7 @@ export function AICopilotBubble() {
       {/* Floating bubble — Garfix AI logo mark, 60px, purple gradient */}
       <button
         onClick={() => setOpen(!open)}
-        aria-label="مساعد Garfix AI"
+        aria-label="فتح المساعد الذكي"
         title="مساعد Garfix AI"
         className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(124,58,237,0.5)] animate-[garfix-agent-pulse_3s_infinite] bg-[linear-gradient(135deg,#7c3aed_0%,#a78bfa_60%,#c4b5fd_100%)]"
       >
@@ -414,9 +414,8 @@ export function AICopilotBubble() {
       {open && (
         <div
           dir="rtl"
-          style={{ fontFamily: "var(--font-cairo), sans-serif" }} /* TAILWINDBREAK: CSS variable font-family with fallback */
           className={cn(
-            "garfix-ai-panel flex flex-col overflow-hidden z-[200] animate-[garfix-fade-up_0.25s_ease-out]",
+            "garfix-ai-panel flex flex-col overflow-hidden z-[200] animate-[garfix-fade-up_0.25s_ease-out] [font-family:var(--font-cairo),sans-serif]",
             fullscreen
               ? "fixed inset-0 w-screen h-screen max-w-screen max-h-screen rounded-none border-none bg-[rgba(15,10,30,0.96)] shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]"
               : "fixed bottom-[92px] left-6 w-[380px] max-w-[calc(100vw-48px)] h-[540px] max-h-[calc(100vh-130px)] rounded-2xl border border-border bg-card shadow-[0_24px_64px_rgba(0,0,0,0.2)]"
@@ -752,6 +751,7 @@ export function AICopilotBubble() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder={activeCompany?.slug ? "اكتب رسالتك أو استخدم أحد الإجراءات أعلاه…" : "اختر شركة نشطة أولاً…"}
+              aria-label="رسالة"
               disabled={loading || executing || !!confirmation}
               className={cn(
                 "flex-1 px-[14px] py-2.5 rounded-[10px] font-[inherit] text-[13px] outline-none",
@@ -760,6 +760,7 @@ export function AICopilotBubble() {
             />
             <button
               onClick={() => send()}
+              aria-label="إرسال"
               disabled={loading || executing || !input.trim() || !!confirmation}
               className={cn(
                 "w-10 h-10 rounded-[10px] text-white border-none flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]",

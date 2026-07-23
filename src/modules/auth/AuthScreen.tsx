@@ -124,12 +124,10 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-gradient-to-br from-[#0f0a1e] via-[#1e1147] to-[#2d1b69] text-white flex items-center justify-center p-5"
-      style={{ fontFamily: "var(--font-cairo), sans-serif" }} // TAILWINDBREAK: dynamic font family from CSS variable
+      className="min-h-screen bg-gradient-to-br from-[#0f0a1e] via-[#1e1147] to-[#2d1b69] text-white flex items-center justify-center p-5 [font-family:var(--font-cairo),sans-serif]"
     >
       <div
-        className="w-full max-w-[440px] bg-white/4 border border-white/8 rounded-[20px] py-10 px-8 backdrop-blur-xl"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }} // TAILWINDBREAK: rgba values don't map cleanly to Tailwind opacity scale
+        className="w-full max-w-[440px] bg-white/4 border border-white/8 rounded-[20px] py-10 px-8 backdrop-blur-[12px]"
       >
         {/* Logo */}
         <div className="flex items-center gap-3 justify-center mb-8">
@@ -184,6 +182,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
               />
               <button
                 type="button"
+                aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute left-3 top-1/2 -translate-y-1/2 bg-transparent border-none text-white/50 cursor-pointer p-1 flex items-center"
               >
@@ -349,6 +348,7 @@ function Field({
       <input
         type={type}
         placeholder={placeholder}
+        aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}

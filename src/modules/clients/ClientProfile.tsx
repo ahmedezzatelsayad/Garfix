@@ -218,7 +218,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-6 md:p-12 text-center text-muted-foreground">
         جارٍ التحميل…
       </div>
     );
@@ -226,7 +226,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
   if (!client) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-6 md:p-12 text-center text-muted-foreground">
         تعذّر تحميل بيانات العميل
       </div>
     );
@@ -353,7 +353,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         </div>
 
         {invoices.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
+          <div className="p-6 md:p-12 text-center text-muted-foreground">
             <FileText size={36} className="opacity-30 mb-2" />
             <div>لا توجد فواتير لهذا العميل</div>
           </div>
@@ -364,13 +364,13 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className={thStyle}>رقم الفاتورة</th>
-                  <th className={thStyle}>تاريخ الإصدار</th>
-                  <th className={thStyle}>الاستحقاق</th>
-                  <th className={thStyle}>الحالة</th>
-                  <th className={thStyle}>الإجمالي</th>
-                  <th className={thStyle}>المدفوع</th>
-                  <th className={thStyle}>المستحق</th>
+                  <th scope="col" className={thStyle}>رقم الفاتورة</th>
+                  <th scope="col" className={thStyle}>تاريخ الإصدار</th>
+                  <th scope="col" className={thStyle}>الاستحقاق</th>
+                  <th scope="col" className={thStyle}>الحالة</th>
+                  <th scope="col" className={thStyle}>الإجمالي</th>
+                  <th scope="col" className={thStyle}>المدفوع</th>
+                  <th scope="col" className={thStyle}>المستحق</th>
                 </tr>
               </thead>
               <tbody>
@@ -384,7 +384,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                       <td className={tdStyle}>{fmtDate(inv.issueDate)}</td>
                       <td className={tdStyle}>{fmtDate(inv.dueDate)}</td>
                       <td className={tdStyle}>
-                        <span className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                        <span role="status" aria-label={meta.label} className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
                           style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
                           {meta.label}
                         </span>
@@ -432,7 +432,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <div key={inv.id} className="p-3 flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-[13px]" dir="ltr">{inv.invoiceNumber}</span>
-                    <span className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                    <span role="status" aria-label={meta.label} className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
                       style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
                       {meta.label}
                     </span>
@@ -474,6 +474,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             <textarea
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
+              aria-label="ملاحظة ذكاء اصطناعي"
               placeholder="اكتب ملاحظة عن هذا العميل — يستخدمها الذكاء الاصطناعي لاحقًا لتقديم توصيات أفضل (مثال: يفضّل الدفع نقدًا، يعمل في مجال البناء، موسمي النشاط في الصيف…)"
               rows={3}
               maxLength={4000}
@@ -522,6 +523,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                     onClick={() => deleteMemoryNote(n.id)}
                     disabled={deletingNoteId === n.id}
                     title="حذف الملاحظة"
+                    aria-label="حذف"
                     className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive transition-colors cursor-pointer disabled:opacity-50"
                   >
                     {deletingNoteId === n.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
