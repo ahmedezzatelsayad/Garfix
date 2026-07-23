@@ -1,0 +1,768 @@
+     1→/**
+     2→ * bahrain-nbr.ts — Bahrain NBR (National Bureau for Revenue) e-invoicing compliance module.
+     3→ *
+     4→ * Implements Bahrain NBR (هيئة الإيرادات الوطنية) e-invoicing requirements.
+     5→ * Bahrain introduced VAT at 10% in 2019 and is developing an e-invoicing framework.
+     6→ *
+     7→ * Key requirements:
+     8→ * - VAT at 10% (standard rate per Bahrain VAT law)
+     9→ * - BHD currency with exactly 3 decimal places
+    10→ * - Arabic language mandatory for B2C invoices
+    11→ * - English mandatory for B2B invoices
+    12→ * - NBR portal submission (framework being developed)
+    13→ * - TRN (Tax Registration Number) mandatory for seller
+    14→ * - Buyer TRN required for B2B (standard) invoices
+    15→ * - 5-year record retention
+    16→ * - Fines for non-compliance up to BHD 10,000
+    17→ *
+    18→ * NBR portal API is currently under development.
+    19→ * The structure is ready to plug in when the portal becomes available.
+    20→ */
+    21→
+    22→import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
+    23→import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+    24→import {
+    25→  getCountryConfig,
+    26→  type EInvoiceAuthority,
+    27→} from "@/lib/gulfConfig";
+    28→import { logger } from "@/lib/logger";
+    29→import { db } from "@/lib/db";
+    30→
+    31→// ── Types ──────────────────────────────────────────────────────────────────
+    32→
+    33→export interface BahrainNbrValidationError {
+    34→  field: string;
+    35→  messageAr: string; // Arabic error message (Gulf Arabic — Bahraini style)
+    36→  messageEn: string; // English error message for developer reference
+    37→  severity: "error" | "warning"; // error = blocks submission, warning = advisory
+    38→}
+    39→
+    40→export interface BahrainNbrValidationResult {
+    41→  valid: boolean;
+    42→  errors: BahrainNbrValidationError[];
+    43→  warnings: BahrainNbrValidationError[];
+    44→}
+    45→
+    46→export type BahrainNbrInvoiceType = "standard" | "simplified";
+    47→// standard = B2B tax invoice (فاتورة ضريبية) — requires buyer TRN
+    48→// simplified = B2C retail invoice (فاتورة مبسطة) — lighter requirements
+    49→
+    50→export interface BahrainNbrInvoicePayload {
+    51→  // ── Header ───────────────────────────────────────────────────────────
+    52→  uuid: string;
+    53→  invoiceNumber: string;
+    54→  invoiceType: BahrainNbrInvoiceType;
+    55→  invoiceTypeAr: string;
+    56→  invoiceTypeEn: string;
+    57→  nbrRegulation: string; // "Bahrain NBR e-invoicing"
+    58→
+    59→  // ── Dates (dual calendar) ────────────────────────────────────────────
+    60→  issueDateGregorian: string; // YYYY-MM-DD
+    61→  issueDateHijri: string; // formatted Hijri string
+    62→  issueDateDual: string; // dual format
+    63→  dueDateGregorian: string;
+    64→  dueDateHijri: string;
+    65→  dueDateDual: string;
+    66→
+    67→  // ── Currency ─────────────────────────────────────────────────────────
+    68→  currency: string; // "BHD"
+    69→  currencyDecimalPlaces: number; // 3
+    70→
+    71→  // ── Seller ───────────────────────────────────────────────────────────
+    72→  sellerNameAr: string;
+    73→  sellerNameEn: string;
+    74→  sellerAddressAr: string;
+    75→  sellerAddressEn: string;
+    76→  sellerVatTrn: string; // VAT TRN — mandatory for NBR
+    77→  sellerCommercialRegistration: string | null;
+    78→  sellerCountryCode: string; // "BH"
+    79→
+    80→  // ── Buyer ────────────────────────────────────────────────────────────
+    81→  buyerNameAr: string | null; // Required for standard (B2B)
+    82→  buyerNameEn: string | null;
+    83→  buyerAddressAr: string | null;
+    84→  buyerAddressEn: string | null;
+    85→  buyerVatTrn: string | null; // Required for standard (B2B)
+    86→  buyerCountryCode: string | null;
+    87→
+    88→  // ── Line items ───────────────────────────────────────────────────────
+    89→  lineItems: BahrainNbrLineItemPayload[];
+    90→
+    91→  // ── Totals (BHD, 3 decimal places) ───────────────────────────────────
+    92→  subtotal: string;
+    93→  taxRate: string; // "10.000"
+    94→  taxAmount: string;
+    95→  total: string;
+    96→  shipping: string;
+    97→  discount: string;
+    98→  paid: string;
+    99→
+   100→  // ── Notes ────────────────────────────────────────────────────────────
+   101→  notesAr: string | null;
+   102→  notesEn: string | null;
+   103→
+   104→  // ── NBR-specific ─────────────────────────────────────────────────────
+   105→  eInvoiceAuthority: string; // "bahrain_nbr"
+   106→  previousInvoiceHash: string;
+   107→  invoiceHash: string;
+   108→  paymentMethod: string | null;
+   109→}
+   110→
+   111→export interface BahrainNbrLineItemPayload {
+   112→  id: string;
+   113→  descriptionAr: string;
+   114→  descriptionEn: string;
+   115→  qty: string; // formatted with 3 decimals
+   116→  unitPrice: string;
+   117→  unitCode: string;
+   118→  lineTotal: string;
+   119→  taxRate: string;
+   120→  taxAmount: string;
+   121→  taxCategory: string; // "S" standard, "Z" zero, "E" exempt
+   122→  taxSchemeAr: string; // "ضريبة القيمة المضافة"
+   123→  taxSchemeEn: string; // "Value Added Tax"
+   124→  discountAmount: string | null;
+   125→}
+   126→
+   127→export interface BahrainNbrSubmissionResult {
+   128→  ok: boolean;
+   129→  eInvoiceId?: number;
+   130→  submissionStatus: "pending" | "submitted" | "approved" | "rejected";
+   131→  nbrSubmissionId?: string;
+   132→  error?: string;
+   133→  rejectionReason?: string;
+   134→}
+   135→
+   136→// ── Constants ──────────────────────────────────────────────────────────────
+   137→
+   138→export const BAHRAIN_NBR_AUTHORITY: EInvoiceAuthority = "bahrain_nbr";
+   139→export const BAHRAIN_NBR_CURRENCY = "BHD";
+   140→export const BAHRAIN_NBR_DECIMAL_PLACES = 3;
+   141→export const BAHRAIN_NBR_VAT_RATE = 10;
+   142→export const BAHRAIN_NBR_REGULATION = "Bahrain NBR e-invoicing";
+   143→export const BAHRAIN_NBR_MAX_FINE_BHD = 10000;
+   144→const BAHRAIN_NBR_PORTAL_BASE_URL = "https://nbr.gov.bh/api/v1"; // placeholder
+   145→
+   146→// ── Arabic error messages (Gulf Arabic — Bahraini style) ──────────────────
+   147→
+   148→const ERROR_MESSAGES = {
+   149→  // ── Seller validation ────────────────────────────────────────────────
+   150→  sellerNameArRequired: "اسم البائع باللغة العربية مطلوب — هيئة الإيرادات الوطنية",
+   151→  sellerNameEnRequired: "اسم البائع باللغة الإنجليزية مطلوب — هيئة الإيرادات الوطنية",
+   152→  sellerAddressArRequired: "عنوان البائع باللغة العربية مطلوب",
+   153→  sellerAddressEnRequired: "عنوان البائع باللغة الإنجليزية مطلوب",
+   154→  sellerTrnRequired: "الرقم الضريبي للبائع مطلوب — هيئة الإيرادات الوطنية البحرينية",
+   155→
+   156→  // ── Buyer validation ─────────────────────────────────────────────────
+   157→  buyerNameArRequired: "اسم المشتري باللغة العربية مطلوب للفواتير الضريبية (B2B)",
+   158→  buyerNameEnRequired: "اسم المشتري باللغة الإنجليزية مطلوب للفواتير الضريبية (B2B)",
+   159→  buyerTrnRequiredB2b: "الرقم الضريبي للمشتري مطلوب للفواتير الضريبية (B2B)",
+   160→  buyerAddressArRequired: "عنوان المشتري باللغة العربية مطلوب للفواتير الضريبية (B2B)",
+   161→  buyerAddressEnRequired: "عنوان المشتري باللغة الإنجليزية مطلوب للفواتير الضريبية (B2B)",
+   162→
+   163→  // ── Currency ─────────────────────────────────────────────────────────
+   164→  currencyMustBeBhd: "يجب أن تكون العملة دينار بحريني (BHD) — هيئة الإيرادات الوطنية",
+   165→  decimalPlacesMustBe3: "يجب أن يكون عدد المنازل العشرية 3 للدينار البحريني (BHD)",
+   166→
+   167→  // ── VAT ──────────────────────────────────────────────────────────────
+   168→  vatRateMustBe10: "يجب أن تكون نسبة ضريبة القيمة المضافة 10% — قانون البحرين",
+   169→  vatZeroRateAllowed: "نسبة 0% مسموحة للسلع المعفاة من الضريبة",
+   170→
+   171→  // ── Invoice type ─────────────────────────────────────────────────────
+   172→  invoiceTypeRequired: "نوع الفاتورة مطلوب (ضريبية / مبسطة)",
+   173→  b2bBuyerTrnMismatch: "نوع الفاتورة ضريبية (B2B) يتطلب رقم ضريبي للمشتري",
+   174→
+   175→  // ── Language ─────────────────────────────────────────────────────────
+   176→  arabicMandatoryForB2c: "اللغة العربية مطلوبة لفواتير B2C (المبسطة) — هيئة الإيرادات الوطنية",
+   177→  lineItemDescriptionArRequired: "وصف الصف باللغة العربية مطلوب",
+   178→  lineItemDescriptionEnRequired: "وصف الصف باللغة الإنجليزية مطلوب",
+   179→
+   180→  // ── Retention ────────────────────────────────────────────────────────
+   181→  retentionWarning: "⚠️ يجب الاحتفاظ بالسجلات لمدة 5 سنوات — هيئة الإيرادات الوطنية البحرينية. الغرامة قد تصل إلى 10,000 دينار بحريني",
+   182→
+   183→  // ── Portal ───────────────────────────────────────────────────────────
+   184→  portalFrameworkInDevelopment: "⚠️ نظام الفواتير الإلكترونية لدى هيئة الإيرادات الوطنية البحرينية قيد التطوير",
+   185→};
+   186→
+   187→const EN_MESSAGES = {
+   188→  sellerNameArRequired: "Seller name in Arabic is required — Bahrain NBR",
+   189→  sellerNameEnRequired: "Seller name in English is required — Bahrain NBR",
+   190→  sellerAddressArRequired: "Seller address in Arabic is required",
+   191→  sellerAddressEnRequired: "Seller address in English is required",
+   192→  sellerTrnRequired: "Seller VAT TRN is required — Bahrain NBR",
+   193→  buyerNameArRequired: "Buyer name in Arabic is required for standard (B2B) invoices",
+   194→  buyerNameEnRequired: "Buyer name in English is required for standard (B2B) invoices",
+   195→  buyerTrnRequiredB2b: "Buyer VAT TRN is required for standard (B2B) invoices",
+   196→  buyerAddressArRequired: "Buyer address in Arabic is required for standard (B2B) invoices",
+   197→  buyerAddressEnRequired: "Buyer address in English is required for standard (B2B) invoices",
+   198→  currencyMustBeBhd: "Currency must be BHD (Bahraini Dinar) — Bahrain NBR",
+   199→  decimalPlacesMustBe3: "Currency decimal places must be 3 for BHD",
+   200→  vatRateMustBe10: "VAT rate must be 10% — Bahrain VAT law",
+   201→  vatZeroRateAllowed: "0% rate is allowed for VAT-exempt goods",
+   202→  invoiceTypeRequired: "Invoice type is required (standard/simplified)",
+   203→  b2bBuyerTrnMismatch: "Standard (B2B) invoice requires buyer VAT TRN",
+   204→  arabicMandatoryForB2c: "Arabic language is required for B2C (simplified) invoices — NBR Bahrain",
+   205→  lineItemDescriptionArRequired: "Line item description in Arabic is required",
+   206→  lineItemDescriptionEnRequired: "Line item description in English is required",
+   207→  retentionWarning: "⚠️ Records must be retained for 5 years — Bahrain NBR. Fine up to BHD 10,000",
+   208→  portalFrameworkInDevelopment: "⚠️ Bahrain NBR e-invoicing framework is under development",
+   209→};
+   210→
+   211→// ── Invoice Type Classification ──────────────────────────────────────────
+   212→
+   213→/**
+   214→ * determineBahrainNbrInvoiceType — Classifies an invoice as standard (B2B) or simplified (B2C).
+   215→ */
+   216→export function determineBahrainNbrInvoiceType(
+   217→  invoice: Record<string, unknown>,
+   218→): BahrainNbrInvoiceType {
+   219→  const explicit = invoice.invoiceTypeEn as string;
+   220→  if (explicit === "standard") return "standard";
+   221→  if (explicit === "simplified") return "simplified";
+   222→
+   223→  const typeAr = invoice.invoiceTypeAr as string;
+   224→  if (typeAr === "فاتورة ضريبية") return "standard";
+   225→  if (typeAr === "فاتورة مبسطة") return "simplified";
+   226→
+   227→  // B2B if buyer has VAT number or clientId
+   228→  if (invoice.buyerVatNumber || invoice.clientId) {
+   229→    return "standard";
+   230→  }
+   231→
+   232→  return "simplified";
+   233→}
+   234→
+   235→// ── UUID Generation ──────────────────────────────────────────────────────
+   236→
+   237→/**
+   238→ * generateBahrainNbrUuid — Generates a UUID v4 for NBR invoice identification.
+   239→ */
+   240→export function generateBahrainNbrUuid(): string {
+   241→  return crypto.randomUUID();
+   242→}
+   243→
+   244→// ── Validation ──────────────────────────────────────────────────────────
+   245→
+   246→/**
+   247→ * validateBahrainNbrInvoice — Validates invoice data for Bahrain NBR compliance.
+   248→ *
+   249→ * Checks:
+   250→ * - Arabic mandatory for seller (B2C), Arabic + English for seller (B2B)
+   251→ * - Buyer Arabic + English required for B2B (standard)
+   252→ * - BHD currency with exactly 3 decimal places
+   253→ * - 10% VAT rate (0% allowed for exempt)
+   254→ * - Seller VAT TRN mandatory
+   255→ * - Buyer VAT TRN mandatory for B2B (standard)
+   256→ * - Line items must have Arabic descriptions (B2C) or dual language (B2B)
+   257→ */
+   258→export function validateBahrainNbrInvoice(
+   259→  invoice: Record<string, unknown>,
+   260→  company: Record<string, unknown>,
+   261→): BahrainNbrValidationResult {
+   262→  const errors: BahrainNbrValidationError[] = [];
+   263→  const warnings: BahrainNbrValidationError[] = [];
+   264→
+   265→  // ── Step 0: Skip for non-Bahrain companies ───────────────────────────
+   266→  const countryCode = company.country as string;
+   267→  if (countryCode !== "BH") {
+   268→    return { valid: true, errors: [], warnings: [] };
+   269→  }
+   270→
+   271→  const invoiceType = determineBahrainNbrInvoiceType(invoice);
+   272→
+   273→  // ── Step 1: Seller VAT TRN ───────────────────────────────────────────
+   274→  const sellerTrn =
+   275→    (invoice.vatNumber as string) || (company.vatNumber as string);
+   276→  if (!sellerTrn) {
+   277→    errors.push({
+   278→      field: "vatNumber",
+   279→      messageAr: ERROR_MESSAGES.sellerTrnRequired,
+   280→      messageEn: EN_MESSAGES.sellerTrnRequired,
+   281→      severity: "error",
+   282→    });
+   283→  }
+   284→
+   285→  // ── Step 2: Seller name (Arabic mandatory, English required) ────────
+   286→  const sellerNameAr =
+   287→    (invoice.sellerNameAr as string) || (company.nameAr as string);
+   288→  if (!sellerNameAr) {
+   289→    errors.push({
+   290→      field: "sellerNameAr",
+   291→      messageAr: ERROR_MESSAGES.sellerNameArRequired,
+   292→      messageEn: EN_MESSAGES.sellerNameArRequired,
+   293→      severity: "error",
+   294→    });
+   295→  }
+   296→
+   297→  const sellerNameEn =
+   298→    (invoice.sellerNameEn as string) || (company.name as string);
+   299→  if (!sellerNameEn) {
+   300→    errors.push({
+   301→      field: "sellerNameEn",
+   302→      messageAr: ERROR_MESSAGES.sellerNameEnRequired,
+   303→      messageEn: EN_MESSAGES.sellerNameEnRequired,
+   304→      severity: "error",
+   305→    });
+   306→  }
+   307→
+   308→  // ── Step 3: Seller address ──────────────────────────────────────────
+   309→  const sellerAddressAr =
+   310→    (invoice.sellerAddressAr as string) ||
+   311→    (company.addressAr as string) ||
+   312→    (company.address as string);
+   313→  if (!sellerAddressAr) {
+   314→    errors.push({
+   315→      field: "sellerAddressAr",
+   316→      messageAr: ERROR_MESSAGES.sellerAddressArRequired,
+   317→      messageEn: EN_MESSAGES.sellerAddressArRequired,
+   318→      severity: "error",
+   319→    });
+   320→  }
+   321→
+   322→  const sellerAddressEn =
+   323→    (invoice.sellerAddressEn as string) || (company.address as string);
+   324→  if (!sellerAddressEn) {
+   325→    errors.push({
+   326→      field: "sellerAddressEn",
+   327→      messageAr: ERROR_MESSAGES.sellerAddressEnRequired,
+   328→      messageEn: EN_MESSAGES.sellerAddressEnRequired,
+   329→      severity: "error",
+   330→    });
+   331→  }
+   332→
+   333→  // ── Step 4: Buyer validation (type-specific) ─────────────────────────
+   334→  if (invoiceType === "standard") {
+   335→    const buyerNameAr = invoice.buyerNameAr as string;
+   336→    if (!buyerNameAr) {
+   337→      errors.push({
+   338→        field: "buyerNameAr",
+   339→        messageAr: ERROR_MESSAGES.buyerNameArRequired,
+   340→        messageEn: EN_MESSAGES.buyerNameArRequired,
+   341→        severity: "error",
+   342→      });
+   343→    }
+   344→
+   345→    const buyerNameEn = invoice.buyerNameEn as string;
+   346→    if (!buyerNameEn) {
+   347→      errors.push({
+   348→        field: "buyerNameEn",
+   349→        messageAr: ERROR_MESSAGES.buyerNameEnRequired,
+   350→        messageEn: EN_MESSAGES.buyerNameEnRequired,
+   351→        severity: "error",
+   352→      });
+   353→    }
+   354→
+   355→    const buyerTrn =
+   356→      (invoice.buyerVatNumber as string) ||
+   357→      (invoice.buyerTaxRegistrationNumber as string);
+   358→    if (!buyerTrn) {
+   359→      errors.push({
+   360→        field: "buyerVatNumber",
+   361→        messageAr: ERROR_MESSAGES.buyerTrnRequiredB2b,
+   362→        messageEn: EN_MESSAGES.buyerTrnRequiredB2b,
+   363→        severity: "error",
+   364→      });
+   365→    }
+   366→
+   367→    const buyerAddressAr = invoice.buyerAddressAr as string;
+   368→    if (!buyerAddressAr) {
+   369→      errors.push({
+   370→        field: "buyerAddressAr",
+   371→        messageAr: ERROR_MESSAGES.buyerAddressArRequired,
+   372→        messageEn: EN_MESSAGES.buyerAddressArRequired,
+   373→        severity: "error",
+   374→      });
+   375→    }
+   376→
+   377→    const buyerAddressEn = invoice.buyerAddressEn as string;
+   378→    if (!buyerAddressEn) {
+   379→      errors.push({
+   380→        field: "buyerAddressEn",
+   381→        messageAr: ERROR_MESSAGES.buyerAddressEnRequired,
+   382→        messageEn: EN_MESSAGES.buyerAddressEnRequired,
+   383→        severity: "error",
+   384→      });
+   385→    }
+   386→  }
+   387→
+   388→  // ── Step 5: Currency ─────────────────────────────────────────────────
+   389→  const currency = invoice.currency as string;
+   390→  if (currency && currency !== BAHRAIN_NBR_CURRENCY) {
+   391→    errors.push({
+   392→      field: "currency",
+   393→      messageAr: ERROR_MESSAGES.currencyMustBeBhd,
+   394→      messageEn: EN_MESSAGES.currencyMustBeBhd,
+   395→      severity: "error",
+   396→    });
+   397→  }
+   398→
+   399→  const decimalPlaces = invoice.currencyDecimalPlaces as number;
+   400→  if (decimalPlaces && decimalPlaces !== BAHRAIN_NBR_DECIMAL_PLACES) {
+   401→    errors.push({
+   402→      field: "currencyDecimalPlaces",
+   403→      messageAr: ERROR_MESSAGES.decimalPlacesMustBe3,
+   404→      messageEn: EN_MESSAGES.decimalPlacesMustBe3,
+   405→      severity: "error",
+   406→    });
+   407→  }
+   408→
+   409→  // ── Step 6: VAT rate ─────────────────────────────────────────────────
+   410→  const taxRate = parseFloat(
+   411→    (invoice.taxRate as string) || (company.defaultTaxRate as string) || "0",
+   412→  );
+   413→  if (taxRate !== BAHRAIN_NBR_VAT_RATE && taxRate !== 0) {
+   414→    errors.push({
+   415→      field: "taxRate",
+   416→      messageAr: ERROR_MESSAGES.vatRateMustBe10,
+   417→      messageEn: EN_MESSAGES.vatRateMustBe10,
+   418→      severity: "error",
+   419→    });
+   420→  }
+   421→
+   422→  // ── Step 7: Arabic mandatory for B2C ─────────────────────────────────
+   423→  if (invoiceType === "simplified") {
+   424→    const lineItemsAr = invoice.lineItemsAr as string;
+   425→    if (!lineItemsAr) {
+   426→      warnings.push({
+   427→        field: "lineItemsAr",
+   428→        messageAr: ERROR_MESSAGES.arabicMandatoryForB2c,
+   429→        messageEn: EN_MESSAGES.arabicMandatoryForB2c,
+   430→        severity: "warning",
+   431→      });
+   432→    }
+   433→  }
+   434→
+   435→  // ── Step 8: Advisory warnings ────────────────────────────────────────
+   436→  warnings.push({
+   437→    field: "recordRetention",
+   438→    messageAr: ERROR_MESSAGES.retentionWarning,
+   439→    messageEn: EN_MESSAGES.retentionWarning,
+   440→    severity: "warning",
+   441→  });
+   442→
+   443→  warnings.push({
+   444→    field: "nbrPortal",
+   445→    messageAr: ERROR_MESSAGES.portalFrameworkInDevelopment,
+   446→    messageEn: EN_MESSAGES.portalFrameworkInDevelopment,
+   447→    severity: "warning",
+   448→  });
+   449→
+   450→  const valid = errors.length === 0;
+   451→  if (!valid) {
+   452→    logger.warn("[bahrain-nbr] Invoice validation failed", {
+   453→      companySlug: company.slug,
+   454→      invoiceNumber: invoice.invoiceNumber,
+   455→      errorCount: errors.length,
+   456→      errors: errors.map((e) => e.messageEn),
+   457→    });
+   458→  } else {
+   459→    logger.info("[bahrain-nbr] Invoice validation passed", {
+   460→      companySlug: company.slug,
+   461→      invoiceNumber: invoice.invoiceNumber,
+   462→      warningCount: warnings.length,
+   463→    });
+   464→  }
+   465→
+   466→  return { valid, errors, warnings };
+   467→}
+   468→
+   469→// ── Payload Generation ──────────────────────────────────────────────────
+   470→
+   471→/**
+   472→ * generateBahrainNbrInvoicePayload — Generates a structured payload for NBR submission.
+   473→ */
+   474→export function generateBahrainNbrInvoicePayload(
+   475→  invoice: Record<string, unknown>,
+   476→  company: Record<string, unknown>,
+   477→): BahrainNbrInvoicePayload {
+   478→  const invoiceType = determineBahrainNbrInvoiceType(invoice);
+   479→  const uuid = (invoice.uuid as string) || generateBahrainNbrUuid();
+   480→  const dp = BAHRAIN_NBR_DECIMAL_PLACES;
+   481→
+   482→  // ── Dates ────────────────────────────────────────────────────────────
+   483→  const issueDate = (invoice.issueDate as string) || new Date().toISOString().split("T")[0];
+   484→  const dueDate = (invoice.dueDate as string) || issueDate;
+   485→
+   486→  const issueHijri = formatHijri(issueDate);
+   487→  const dueHijri = formatHijri(dueDate);
+   488→  const issueDual = formatDualDate(issueDate);
+   489→  const dueDual = formatDualDate(dueDate);
+   490→
+   491→  // ── Seller fields ────────────────────────────────────────────────────
+   492→  const sellerNameAr = (invoice.sellerNameAr as string) || (company.nameAr as string) || "";
+   493→  const sellerNameEn = (invoice.sellerNameEn as string) || (company.name as string) || "";
+   494→  const sellerAddressAr =
+   495→    (invoice.sellerAddressAr as string) ||
+   496→    (company.addressAr as string) ||
+   497→    (company.address as string) ||
+   498→    "";
+   499→  const sellerAddressEn =
+   500→    (invoice.sellerAddressEn as string) || (company.address as string) || "";
+   501→  const sellerTrn = (invoice.vatNumber as string) || (company.vatNumber as string) || "";
+   502→
+   503→  // ── Buyer fields ─────────────────────────────────────────────────────
+   504→  const buyerNameAr = (invoice.buyerNameAr as string) || null;
+   505→  const buyerNameEn = (invoice.buyerNameEn as string) || null;
+   506→  const buyerAddressAr = (invoice.buyerAddressAr as string) || null;
+   507→  const buyerAddressEn = (invoice.buyerAddressEn as string) || null;
+   508→  const buyerTrn = (invoice.buyerVatNumber as string) || null;
+   509→  const buyerCountryCode = (invoice.buyerCountryCode as string) || null;
+   510→
+   511→  // ── Line items ───────────────────────────────────────────────────────
+   512→  const lineItemsRaw = (invoice.lineItems as string) || "[]";
+   513→  let parsedItems: LineItem[] = [];
+   514→  try {
+   515→    parsedItems = JSON.parse(lineItemsRaw);
+   516→  } catch {
+   517→    parsedItems = [];
+   518→  }
+   519→
+   520→  const nbrLineItems: BahrainNbrLineItemPayload[] = parsedItems.map((item, idx) => {
+   521→    const lineTotal = num(item.total ?? num(item.qty) * num(item.price), dp);
+   522→    const lineTaxAmount = (lineTotal * BAHRAIN_NBR_VAT_RATE) / 100;
+   523→    return {
+   524→      id: `LI-${idx + 1}`,
+   525→      descriptionAr: ((item as unknown) as Record<string, unknown>).descriptionAr as string || item.description || "",
+   526→      descriptionEn: item.description || "",
+   527→      qty: num(item.qty, dp).toFixed(dp),
+   528→      unitPrice: num(item.price, dp).toFixed(dp),
+   529→      unitCode: "EA",
+   530→      lineTotal: lineTotal.toFixed(dp),
+   531→      taxRate: BAHRAIN_NBR_VAT_RATE.toFixed(dp),
+   532→      taxAmount: num(lineTaxAmount, dp).toFixed(dp),
+   533→      taxCategory: "S",
+   534→      taxSchemeAr: "ضريبة القيمة المضافة",
+   535→      taxSchemeEn: "Value Added Tax",
+   536→      discountAmount: null,
+   537→    };
+   538→  });
+   539→
+   540→  // ── Totals ───────────────────────────────────────────────────────────
+   541→  const shipping = num(invoice.shipping, dp);
+   542→  const discount = num(invoice.discount, dp);
+   543→  const totals = calcInvoiceTotals(parsedItems, BAHRAIN_NBR_VAT_RATE, shipping, discount);
+   544→
+   545→  const typeLabels: Record<BahrainNbrInvoiceType, { ar: string; en: string }> = {
+   546→    standard: { ar: "فاتورة ضريبية", en: "standard" },
+   547→    simplified: { ar: "فاتورة مبسطة", en: "simplified" },
+   548→  };
+   549→
+   550→  return {
+   551→    uuid,
+   552→    invoiceNumber: (invoice.invoiceNumber as string) || "",
+   553→    invoiceType,
+   554→    invoiceTypeAr: typeLabels[invoiceType].ar,
+   555→    invoiceTypeEn: typeLabels[invoiceType].en,
+   556→    nbrRegulation: BAHRAIN_NBR_REGULATION,
+   557→
+   558→    issueDateGregorian: issueDate,
+   559→    issueDateHijri: issueHijri,
+   560→    issueDateDual: issueDual,
+   561→    dueDateGregorian: dueDate,
+   562→    dueDateHijri: dueHijri,
+   563→    dueDateDual: dueDual,
+   564→
+   565→    currency: BAHRAIN_NBR_CURRENCY,
+   566→    currencyDecimalPlaces: dp,
+   567→
+   568→    sellerNameAr,
+   569→    sellerNameEn,
+   570→    sellerAddressAr,
+   571→    sellerAddressEn,
+   572→    sellerVatTrn: sellerTrn,
+   573→    sellerCommercialRegistration:
+   574→      (company.commercialRegistration as string) || null,
+   575→    sellerCountryCode: "BH",
+   576→
+   577→    buyerNameAr,
+   578→    buyerNameEn,
+   579→    buyerAddressAr,
+   580→    buyerAddressEn,
+   581→    buyerVatTrn: buyerTrn,
+   582→    buyerCountryCode,
+   583→
+   584→    lineItems: nbrLineItems,
+   585→
+   586→    subtotal: num(totals.subtotal, dp).toFixed(dp),
+   587→    taxRate: BAHRAIN_NBR_VAT_RATE.toFixed(dp),
+   588→    taxAmount: num(totals.taxAmount, dp).toFixed(dp),
+   589→    total: num(totals.total, dp).toFixed(dp),
+   590→    shipping: num(totals.shipping, dp).toFixed(dp),
+   591→    discount: num(totals.discount, dp).toFixed(dp),
+   592→    paid: num(invoice.paid, dp).toFixed(dp),
+   593→
+   594→    notesAr: (invoice.notesAr as string) || null,
+   595→    notesEn: (invoice.notes as string) || null,
+   596→
+   597→    eInvoiceAuthority: BAHRAIN_NBR_AUTHORITY,
+   598→    previousInvoiceHash: (invoice.previousInvoiceHash as string) || "",
+   599→    invoiceHash: "",
+   600→    paymentMethod: (invoice.paymentMethod as string) || null,
+   601→  };
+   602→}
+   603→
+   604→// ── Submission ──────────────────────────────────────────────────────────
+   605→
+   606→/**
+   607→ * submitBahrainNbrInvoice — Submits an invoice payload to the NBR portal.
+   608→ *
+   609→ * Placeholder: NBR e-invoicing framework is under development.
+   610→ * Stores EInvoice record with authorityType="bahrain_nbr".
+   611→ */
+   612→export async function submitBahrainNbrInvoice(
+   613→  payload: BahrainNbrInvoicePayload,
+   614→): Promise<BahrainNbrSubmissionResult> {
+   615→  logger.info("[bahrain-nbr] Submitting invoice to NBR portal", {
+   616→    invoiceNumber: payload.invoiceNumber,
+   617→    invoiceType: payload.invoiceType,
+   618→    note: "NBR e-invoicing framework is under development — placeholder submission",
+   619→  });
+   620→
+   621→  try {
+   622→    const eInvoice = await db.eInvoice.create({
+   623→      data: {
+   624→        authorityType: BAHRAIN_NBR_AUTHORITY,
+   625→        submissionStatus: "pending",
+   626→        uuid: payload.uuid,
+   627→        rawXml: JSON.stringify(payload),
+   628→        companySlug: payload.sellerNameEn, // Temporary — should use actual companySlug
+   629→        invoiceId: 0, // Placeholder — should link to actual invoice
+   630→      },
+   631→    });
+   632→
+   633→    logger.info("[bahrain-nbr] EInvoice record created (placeholder)", {
+   634→      eInvoiceId: eInvoice.id,
+   635→      invoiceNumber: payload.invoiceNumber,
+   636→      authorityType: BAHRAIN_NBR_AUTHORITY,
+   637→    });
+   638→
+   639→    return {
+   640→      ok: true,
+   641→      eInvoiceId: eInvoice.id,
+   642→      submissionStatus: "pending",
+   643→      nbrSubmissionId: `NBR-PLACEHOLDER-${eInvoice.id}`,
+   644→    };
+   645→  } catch (err) {
+   646→    const errorMsg = err instanceof Error ? err.message : String(err);
+   647→    logger.error("[bahrain-nbr] Failed to create EInvoice record", {
+   648→      error: errorMsg,
+   649→      invoiceNumber: payload.invoiceNumber,
+   650→    });
+   651→
+   652→    return {
+   653→      ok: false,
+   654→      submissionStatus: "rejected",
+   655→      error: errorMsg,
+   656→      rejectionReason: "Failed to create EInvoice record — NBR portal submission placeholder",
+   657→    };
+   658→  }
+   659→}
+   660→
+   661→// ── Auto-Populate ──────────────────────────────────────────────────────
+   662→
+   663→/**
+   664→ * autoPopulateBahrainNbrFields — Auto-populates NBR-specific fields for an invoice.
+   665→ *
+   666→ * Populates:
+   667→ * - UUID for NBR identification
+   668→ * - Hijri dates
+   669→ * - Seller VAT TRN from company
+   670→ * - Arabic + English seller fields from company
+   671→ * - BHD currency enforcement, 3-decimal precision
+   672→ * - 10% VAT rate
+   673→ * - Invoice type classification
+   674→ * - E-invoice authority
+   675→ * - PIH placeholder
+   676→ */
+   677→export function autoPopulateBahrainNbrFields(
+   678→  invoiceData: Record<string, unknown>,
+   679→  company: Record<string, unknown>,
+   680→): Record<string, unknown> {
+   681→  const result = { ...invoiceData };
+   682→  const dp = BAHRAIN_NBR_DECIMAL_PLACES;
+   683→
+   684→  // ── UUID ─────────────────────────────────────────────────────────────
+   685→  if (!result.uuid) {
+   686→    result.uuid = generateBahrainNbrUuid();
+   687→  }
+   688→
+   689→  // ── Hijri dates ──────────────────────────────────────────────────────
+   690→  if (result.issueDate && !result.hijriIssueDate) {
+   691→    result.hijriIssueDate = formatHijri(result.issueDate as string);
+   692→  }
+   693→  if (result.dueDate && !result.hijriDueDate) {
+   694→    result.hijriDueDate = formatHijri(result.dueDate as string);
+   695→  }
+   696→  if (result.issueDate && !result.issueDateDual) {
+   697→    result.issueDateDual = formatDualDate(result.issueDate as string);
+   698→  }
+   699→  if (result.dueDate && !result.dueDateDual) {
+   700→    result.dueDateDual = formatDualDate(result.dueDate as string);
+   701→  }
+   702→
+   703→  // ── Seller VAT TRN ───────────────────────────────────────────────────
+   704→  if (!result.vatNumber) {
+   705→    result.vatNumber = company.vatNumber || "";
+   706→  }
+   707→
+   708→  // ── Seller name (Arabic + English) ──────────────────────────────────
+   709→  if (!result.sellerNameAr) {
+   710→    result.sellerNameAr = company.nameAr || "";
+   711→  }
+   712→  if (!result.sellerNameEn) {
+   713→    result.sellerNameEn = company.name || "";
+   714→  }
+   715→
+   716→  // ── Seller address ───────────────────────────────────────────────────
+   717→  if (!result.sellerAddressAr) {
+   718→    result.sellerAddressAr = company.addressAr || company.address || "";
+   719→  }
+   720→  if (!result.sellerAddressEn) {
+   721→    result.sellerAddressEn = company.address || "";
+   722→  }
+   723→
+   724→  // ── Currency ─────────────────────────────────────────────────────────
+   725→  result.currency = BAHRAIN_NBR_CURRENCY;
+   726→  result.currencyDecimalPlaces = dp;
+   727→
+   728→  // ── Invoice type ─────────────────────────────────────────────────────
+   729→  const invoiceType = determineBahrainNbrInvoiceType(result);
+   730→  result.invoiceTypeEn = invoiceType;
+   731→
+   732→  const typeLabelsAr: Record<BahrainNbrInvoiceType, string> = {
+   733→    standard: "فاتورة ضريبية",
+   734→    simplified: "فاتورة مبسطة",
+   735→  };
+   736→  result.invoiceTypeAr = typeLabelsAr[invoiceType];
+   737→
+   738→  // ── VAT rate ─────────────────────────────────────────────────────────
+   739→  if (!result.taxRate) {
+   740→    result.taxRate = BAHRAIN_NBR_VAT_RATE.toFixed(dp);
+   741→  }
+   742→
+   743→  // ── 3-decimal precision on monetary fields ───────────────────────────
+   744→  const monetaryFields = ["subtotal", "taxAmount", "total", "shipping", "discount", "paid"];
+   745→  for (const field of monetaryFields) {
+   746→    if (result[field] !== undefined && result[field] !== null) {
+   747→      result[field] = num(result[field], dp).toFixed(dp);
+   748→    }
+   749→  }
+   750→
+   751→  // ── E-invoice authority ──────────────────────────────────────────────
+   752→  result.eInvoiceAuthority = BAHRAIN_NBR_AUTHORITY;
+   753→
+   754→  // ── PIH placeholder ──────────────────────────────────────────────────
+   755→  if (!result.previousInvoiceHash) {
+   756→    result.previousInvoiceHash = "";
+   757→  }
+   758→
+   759→  logger.debug("[bahrain-nbr] Auto-populated NBR fields", {
+   760→    uuid: result.uuid,
+   761→    invoiceType: result.invoiceTypeEn,
+   762→    currency: result.currency,
+   763→    taxRate: result.taxRate,
+   764→  });
+   765→
+   766→  return result;
+   767→}
+   768→

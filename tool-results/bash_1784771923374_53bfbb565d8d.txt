@@ -1,0 +1,200 @@
+🌱 Seeding GarfiX accounting module...
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`Company`.`id` FROM `main`.`Company` WHERE (`main`.`Company`.`code` = ? AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Company` (`id`, `name`, `code`, `currency`, `taxId`, `address`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Company`.`id`, `main`.`Company`.`name`, `main`.`Company`.`code`, `main`.`Company`.`currency`, `main`.`Company`.`taxId`, `main`.`Company`.`address`, `main`.`Company`.`createdAt`, `main`.`Company`.`updatedAt` FROM `main`.`Company` WHERE `main`.`Company`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ Company: GarfiX Trading Co. (cmrwv4dor0000qyn1p9c1hnkh)
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`User`.`id` FROM `main`.`User` WHERE (`main`.`User`.`email` = ? AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`User` (`id`, `email`, `name`, `role`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`name`, `main`.`User`.`password`, `main`.`User`.`role`, `main`.`User`.`companyId`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt` FROM `main`.`User` WHERE `main`.`User`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ User: Admin User (cmrwv4dot0002qyn1n5axplfv)
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Account`.`id` FROM `main`.`Account` WHERE ((`main`.`Account`.`code` = ? AND `main`.`Account`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Account` (`id`, `code`, `name`, `type`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Account`.`id`, `main`.`Account`.`code`, `main`.`Account`.`name`, `main`.`Account`.`type`, `main`.`Account`.`parentId`, `main`.`Account`.`companyId`, `main`.`Account`.`isActive`, `main`.`Account`.`createdAt`, `main`.`Account`.`updatedAt` FROM `main`.`Account` WHERE `main`.`Account`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 13 accounts created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`FinancialPeriod`.`id` FROM `main`.`FinancialPeriod` WHERE ((`main`.`FinancialPeriod`.`name` = ? AND `main`.`FinancialPeriod`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`FinancialPeriod` (`id`, `name`, `startDate`, `endDate`, `status`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`FinancialPeriod`.`id`, `main`.`FinancialPeriod`.`name`, `main`.`FinancialPeriod`.`startDate`, `main`.`FinancialPeriod`.`endDate`, `main`.`FinancialPeriod`.`status`, `main`.`FinancialPeriod`.`companyId`, `main`.`FinancialPeriod`.`createdAt`, `main`.`FinancialPeriod`.`updatedAt` FROM `main`.`FinancialPeriod` WHERE `main`.`FinancialPeriod`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ Period: FY-2025
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`Client`.`id` FROM `main`.`Client` WHERE ((`main`.`Client`.`code` = ? AND `main`.`Client`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Client` (`id`, `name`, `code`, `email`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Client`.`id`, `main`.`Client`.`name`, `main`.`Client`.`code`, `main`.`Client`.`email`, `main`.`Client`.`phone`, `main`.`Client`.`address`, `main`.`Client`.`taxId`, `main`.`Client`.`companyId`, `main`.`Client`.`isActive`, `main`.`Client`.`createdAt`, `main`.`Client`.`updatedAt` FROM `main`.`Client` WHERE `main`.`Client`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Client`.`id` FROM `main`.`Client` WHERE ((`main`.`Client`.`code` = ? AND `main`.`Client`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Client` (`id`, `name`, `code`, `email`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Client`.`id`, `main`.`Client`.`name`, `main`.`Client`.`code`, `main`.`Client`.`email`, `main`.`Client`.`phone`, `main`.`Client`.`address`, `main`.`Client`.`taxId`, `main`.`Client`.`companyId`, `main`.`Client`.`isActive`, `main`.`Client`.`createdAt`, `main`.`Client`.`updatedAt` FROM `main`.`Client` WHERE `main`.`Client`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Client`.`id` FROM `main`.`Client` WHERE ((`main`.`Client`.`code` = ? AND `main`.`Client`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Client` (`id`, `name`, `code`, `email`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Client`.`id`, `main`.`Client`.`name`, `main`.`Client`.`code`, `main`.`Client`.`email`, `main`.`Client`.`phone`, `main`.`Client`.`address`, `main`.`Client`.`taxId`, `main`.`Client`.`companyId`, `main`.`Client`.`isActive`, `main`.`Client`.`createdAt`, `main`.`Client`.`updatedAt` FROM `main`.`Client` WHERE `main`.`Client`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 3 clients created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`Supplier`.`id` FROM `main`.`Supplier` WHERE ((`main`.`Supplier`.`code` = ? AND `main`.`Supplier`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Supplier` (`id`, `name`, `code`, `email`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Supplier`.`id`, `main`.`Supplier`.`name`, `main`.`Supplier`.`code`, `main`.`Supplier`.`email`, `main`.`Supplier`.`phone`, `main`.`Supplier`.`address`, `main`.`Supplier`.`taxId`, `main`.`Supplier`.`companyId`, `main`.`Supplier`.`isActive`, `main`.`Supplier`.`createdAt`, `main`.`Supplier`.`updatedAt` FROM `main`.`Supplier` WHERE `main`.`Supplier`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Supplier`.`id` FROM `main`.`Supplier` WHERE ((`main`.`Supplier`.`code` = ? AND `main`.`Supplier`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Supplier` (`id`, `name`, `code`, `email`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Supplier`.`id`, `main`.`Supplier`.`name`, `main`.`Supplier`.`code`, `main`.`Supplier`.`email`, `main`.`Supplier`.`phone`, `main`.`Supplier`.`address`, `main`.`Supplier`.`taxId`, `main`.`Supplier`.`companyId`, `main`.`Supplier`.`isActive`, `main`.`Supplier`.`createdAt`, `main`.`Supplier`.`updatedAt` FROM `main`.`Supplier` WHERE `main`.`Supplier`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Supplier`.`id` FROM `main`.`Supplier` WHERE ((`main`.`Supplier`.`code` = ? AND `main`.`Supplier`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Supplier` (`id`, `name`, `code`, `email`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`Supplier`.`id`, `main`.`Supplier`.`name`, `main`.`Supplier`.`code`, `main`.`Supplier`.`email`, `main`.`Supplier`.`phone`, `main`.`Supplier`.`address`, `main`.`Supplier`.`taxId`, `main`.`Supplier`.`companyId`, `main`.`Supplier`.`isActive`, `main`.`Supplier`.`createdAt`, `main`.`Supplier`.`updatedAt` FROM `main`.`Supplier` WHERE `main`.`Supplier`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 3 suppliers created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`ProductCatalog`.`id` FROM `main`.`ProductCatalog` WHERE ((`main`.`ProductCatalog`.`sku` = ? AND `main`.`ProductCatalog`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`ProductCatalog` (`id`, `name`, `sku`, `category`, `purchasePrice`, `sellingPrice`, `unit`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`ProductCatalog`.`id`, `main`.`ProductCatalog`.`name`, `main`.`ProductCatalog`.`sku`, `main`.`ProductCatalog`.`category`, `main`.`ProductCatalog`.`purchasePrice`, `main`.`ProductCatalog`.`sellingPrice`, `main`.`ProductCatalog`.`unit`, `main`.`ProductCatalog`.`description`, `main`.`ProductCatalog`.`companyId`, `main`.`ProductCatalog`.`isActive`, `main`.`ProductCatalog`.`createdAt`, `main`.`ProductCatalog`.`updatedAt` FROM `main`.`ProductCatalog` WHERE `main`.`ProductCatalog`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ProductCatalog`.`id` FROM `main`.`ProductCatalog` WHERE ((`main`.`ProductCatalog`.`sku` = ? AND `main`.`ProductCatalog`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`ProductCatalog` (`id`, `name`, `sku`, `category`, `purchasePrice`, `sellingPrice`, `unit`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`ProductCatalog`.`id`, `main`.`ProductCatalog`.`name`, `main`.`ProductCatalog`.`sku`, `main`.`ProductCatalog`.`category`, `main`.`ProductCatalog`.`purchasePrice`, `main`.`ProductCatalog`.`sellingPrice`, `main`.`ProductCatalog`.`unit`, `main`.`ProductCatalog`.`description`, `main`.`ProductCatalog`.`companyId`, `main`.`ProductCatalog`.`isActive`, `main`.`ProductCatalog`.`createdAt`, `main`.`ProductCatalog`.`updatedAt` FROM `main`.`ProductCatalog` WHERE `main`.`ProductCatalog`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ProductCatalog`.`id` FROM `main`.`ProductCatalog` WHERE ((`main`.`ProductCatalog`.`sku` = ? AND `main`.`ProductCatalog`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`ProductCatalog` (`id`, `name`, `sku`, `category`, `purchasePrice`, `sellingPrice`, `unit`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`ProductCatalog`.`id`, `main`.`ProductCatalog`.`name`, `main`.`ProductCatalog`.`sku`, `main`.`ProductCatalog`.`category`, `main`.`ProductCatalog`.`purchasePrice`, `main`.`ProductCatalog`.`sellingPrice`, `main`.`ProductCatalog`.`unit`, `main`.`ProductCatalog`.`description`, `main`.`ProductCatalog`.`companyId`, `main`.`ProductCatalog`.`isActive`, `main`.`ProductCatalog`.`createdAt`, `main`.`ProductCatalog`.`updatedAt` FROM `main`.`ProductCatalog` WHERE `main`.`ProductCatalog`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ProductCatalog`.`id` FROM `main`.`ProductCatalog` WHERE ((`main`.`ProductCatalog`.`sku` = ? AND `main`.`ProductCatalog`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`ProductCatalog` (`id`, `name`, `sku`, `category`, `purchasePrice`, `sellingPrice`, `unit`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`ProductCatalog`.`id`, `main`.`ProductCatalog`.`name`, `main`.`ProductCatalog`.`sku`, `main`.`ProductCatalog`.`category`, `main`.`ProductCatalog`.`purchasePrice`, `main`.`ProductCatalog`.`sellingPrice`, `main`.`ProductCatalog`.`unit`, `main`.`ProductCatalog`.`description`, `main`.`ProductCatalog`.`companyId`, `main`.`ProductCatalog`.`isActive`, `main`.`ProductCatalog`.`createdAt`, `main`.`ProductCatalog`.`updatedAt` FROM `main`.`ProductCatalog` WHERE `main`.`ProductCatalog`.`id` = ? LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`ProductCatalog`.`id` FROM `main`.`ProductCatalog` WHERE ((`main`.`ProductCatalog`.`sku` = ? AND `main`.`ProductCatalog`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`ProductCatalog` (`id`, `name`, `sku`, `category`, `purchasePrice`, `sellingPrice`, `unit`, `companyId`, `isActive`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`ProductCatalog`.`id`, `main`.`ProductCatalog`.`name`, `main`.`ProductCatalog`.`sku`, `main`.`ProductCatalog`.`category`, `main`.`ProductCatalog`.`purchasePrice`, `main`.`ProductCatalog`.`sellingPrice`, `main`.`ProductCatalog`.`unit`, `main`.`ProductCatalog`.`description`, `main`.`ProductCatalog`.`companyId`, `main`.`ProductCatalog`.`isActive`, `main`.`ProductCatalog`.`createdAt`, `main`.`ProductCatalog`.`updatedAt` FROM `main`.`ProductCatalog` WHERE `main`.`ProductCatalog`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 5 products created
+prisma:query INSERT INTO `main`.`InventoryItem` (`id`, `productId`, `quantity`, `warehouse`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?) ON CONFLICT  (`id`) DO UPDATE SET `quantity` = ?, `updatedAt` = ? WHERE (`main`.`InventoryItem`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `productId` AS `productId`, `quantity` AS `quantity`, `warehouse` AS `warehouse`, `batchNumber` AS `batchNumber`, `expiryDate` AS `expiryDate`, `companyId` AS `companyId`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+prisma:query INSERT INTO `main`.`InventoryItem` (`id`, `productId`, `quantity`, `warehouse`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?) ON CONFLICT  (`id`) DO UPDATE SET `quantity` = ?, `updatedAt` = ? WHERE (`main`.`InventoryItem`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `productId` AS `productId`, `quantity` AS `quantity`, `warehouse` AS `warehouse`, `batchNumber` AS `batchNumber`, `expiryDate` AS `expiryDate`, `companyId` AS `companyId`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+prisma:query INSERT INTO `main`.`InventoryItem` (`id`, `productId`, `quantity`, `warehouse`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?) ON CONFLICT  (`id`) DO UPDATE SET `quantity` = ?, `updatedAt` = ? WHERE (`main`.`InventoryItem`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `productId` AS `productId`, `quantity` AS `quantity`, `warehouse` AS `warehouse`, `batchNumber` AS `batchNumber`, `expiryDate` AS `expiryDate`, `companyId` AS `companyId`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+prisma:query INSERT INTO `main`.`InventoryItem` (`id`, `productId`, `quantity`, `warehouse`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?) ON CONFLICT  (`id`) DO UPDATE SET `quantity` = ?, `updatedAt` = ? WHERE (`main`.`InventoryItem`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `productId` AS `productId`, `quantity` AS `quantity`, `warehouse` AS `warehouse`, `batchNumber` AS `batchNumber`, `expiryDate` AS `expiryDate`, `companyId` AS `companyId`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+prisma:query INSERT INTO `main`.`InventoryItem` (`id`, `productId`, `quantity`, `warehouse`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?) ON CONFLICT  (`id`) DO UPDATE SET `quantity` = ?, `updatedAt` = ? WHERE (`main`.`InventoryItem`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `productId` AS `productId`, `quantity` AS `quantity`, `warehouse` AS `warehouse`, `batchNumber` AS `batchNumber`, `expiryDate` AS `expiryDate`, `companyId` AS `companyId`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+✅ 5 inventory items created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`PaymentVoucher`.`id` FROM `main`.`PaymentVoucher` WHERE ((`main`.`PaymentVoucher`.`number` = ? AND `main`.`PaymentVoucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`PaymentVoucher` (`id`, `number`, `date`, `amount`, `paymentType`, `direction`, `status`, `description`, `clientId`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Installment` (`id`, `paymentVoucherId`, `amount`, `dueDate`, `status`, `paidDate`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,null,?,?)
+prisma:query SELECT `main`.`PaymentVoucher`.`id`, `main`.`PaymentVoucher`.`number`, `main`.`PaymentVoucher`.`date`, `main`.`PaymentVoucher`.`amount`, `main`.`PaymentVoucher`.`paymentType`, `main`.`PaymentVoucher`.`direction`, `main`.`PaymentVoucher`.`status`, `main`.`PaymentVoucher`.`description`, `main`.`PaymentVoucher`.`reference`, `main`.`PaymentVoucher`.`clientId`, `main`.`PaymentVoucher`.`supplierId`, `main`.`PaymentVoucher`.`companyId`, `main`.`PaymentVoucher`.`createdAt`, `main`.`PaymentVoucher`.`updatedAt` FROM `main`.`PaymentVoucher` WHERE `main`.`PaymentVoucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`PaymentVoucher`.`id` FROM `main`.`PaymentVoucher` WHERE ((`main`.`PaymentVoucher`.`number` = ? AND `main`.`PaymentVoucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`PaymentVoucher` (`id`, `number`, `date`, `amount`, `paymentType`, `direction`, `status`, `description`, `clientId`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Installment` (`id`, `paymentVoucherId`, `amount`, `dueDate`, `status`, `paidDate`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,null,?,?)
+prisma:query SELECT `main`.`PaymentVoucher`.`id`, `main`.`PaymentVoucher`.`number`, `main`.`PaymentVoucher`.`date`, `main`.`PaymentVoucher`.`amount`, `main`.`PaymentVoucher`.`paymentType`, `main`.`PaymentVoucher`.`direction`, `main`.`PaymentVoucher`.`status`, `main`.`PaymentVoucher`.`description`, `main`.`PaymentVoucher`.`reference`, `main`.`PaymentVoucher`.`clientId`, `main`.`PaymentVoucher`.`supplierId`, `main`.`PaymentVoucher`.`companyId`, `main`.`PaymentVoucher`.`createdAt`, `main`.`PaymentVoucher`.`updatedAt` FROM `main`.`PaymentVoucher` WHERE `main`.`PaymentVoucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`PaymentVoucher`.`id` FROM `main`.`PaymentVoucher` WHERE ((`main`.`PaymentVoucher`.`number` = ? AND `main`.`PaymentVoucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`PaymentVoucher` (`id`, `number`, `date`, `amount`, `paymentType`, `direction`, `status`, `description`, `clientId`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Installment` (`id`, `paymentVoucherId`, `amount`, `dueDate`, `status`, `paidDate`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,null,?,?)
+prisma:query SELECT `main`.`PaymentVoucher`.`id`, `main`.`PaymentVoucher`.`number`, `main`.`PaymentVoucher`.`date`, `main`.`PaymentVoucher`.`amount`, `main`.`PaymentVoucher`.`paymentType`, `main`.`PaymentVoucher`.`direction`, `main`.`PaymentVoucher`.`status`, `main`.`PaymentVoucher`.`description`, `main`.`PaymentVoucher`.`reference`, `main`.`PaymentVoucher`.`clientId`, `main`.`PaymentVoucher`.`supplierId`, `main`.`PaymentVoucher`.`companyId`, `main`.`PaymentVoucher`.`createdAt`, `main`.`PaymentVoucher`.`updatedAt` FROM `main`.`PaymentVoucher` WHERE `main`.`PaymentVoucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`PaymentVoucher`.`id` FROM `main`.`PaymentVoucher` WHERE ((`main`.`PaymentVoucher`.`number` = ? AND `main`.`PaymentVoucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`PaymentVoucher` (`id`, `number`, `date`, `amount`, `paymentType`, `direction`, `status`, `description`, `clientId`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Installment` (`id`, `paymentVoucherId`, `amount`, `dueDate`, `status`, `paidDate`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,null,?,?)
+prisma:query SELECT `main`.`PaymentVoucher`.`id`, `main`.`PaymentVoucher`.`number`, `main`.`PaymentVoucher`.`date`, `main`.`PaymentVoucher`.`amount`, `main`.`PaymentVoucher`.`paymentType`, `main`.`PaymentVoucher`.`direction`, `main`.`PaymentVoucher`.`status`, `main`.`PaymentVoucher`.`description`, `main`.`PaymentVoucher`.`reference`, `main`.`PaymentVoucher`.`clientId`, `main`.`PaymentVoucher`.`supplierId`, `main`.`PaymentVoucher`.`companyId`, `main`.`PaymentVoucher`.`createdAt`, `main`.`PaymentVoucher`.`updatedAt` FROM `main`.`PaymentVoucher` WHERE `main`.`PaymentVoucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`PaymentVoucher`.`id` FROM `main`.`PaymentVoucher` WHERE ((`main`.`PaymentVoucher`.`number` = ? AND `main`.`PaymentVoucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`PaymentVoucher` (`id`, `number`, `date`, `amount`, `paymentType`, `direction`, `status`, `description`, `clientId`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Installment` (`id`, `paymentVoucherId`, `amount`, `dueDate`, `status`, `paidDate`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,null,?,?)
+prisma:query SELECT `main`.`PaymentVoucher`.`id`, `main`.`PaymentVoucher`.`number`, `main`.`PaymentVoucher`.`date`, `main`.`PaymentVoucher`.`amount`, `main`.`PaymentVoucher`.`paymentType`, `main`.`PaymentVoucher`.`direction`, `main`.`PaymentVoucher`.`status`, `main`.`PaymentVoucher`.`description`, `main`.`PaymentVoucher`.`reference`, `main`.`PaymentVoucher`.`clientId`, `main`.`PaymentVoucher`.`supplierId`, `main`.`PaymentVoucher`.`companyId`, `main`.`PaymentVoucher`.`createdAt`, `main`.`PaymentVoucher`.`updatedAt` FROM `main`.`PaymentVoucher` WHERE `main`.`PaymentVoucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 5 payment vouchers created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`Voucher`.`id` FROM `main`.`Voucher` WHERE ((`main`.`Voucher`.`number` = ? AND `main`.`Voucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Voucher` (`id`, `number`, `date`, `description`, `status`, `voucherType`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`VoucherLine` (`id`, `accountId`, `debit`, `credit`, `sortOrder`, `voucherId`) VALUES (?,?,?,?,?,?), (?,?,?,?,?,?)
+prisma:query SELECT `main`.`Voucher`.`id`, `main`.`Voucher`.`number`, `main`.`Voucher`.`date`, `main`.`Voucher`.`description`, `main`.`Voucher`.`reference`, `main`.`Voucher`.`status`, `main`.`Voucher`.`voucherType`, `main`.`Voucher`.`companyId`, `main`.`Voucher`.`createdBy`, `main`.`Voucher`.`createdAt`, `main`.`Voucher`.`updatedAt` FROM `main`.`Voucher` WHERE `main`.`Voucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`Voucher`.`id` FROM `main`.`Voucher` WHERE ((`main`.`Voucher`.`number` = ? AND `main`.`Voucher`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`Voucher` (`id`, `number`, `date`, `description`, `status`, `voucherType`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`VoucherLine` (`id`, `accountId`, `debit`, `credit`, `sortOrder`, `voucherId`) VALUES (?,?,?,?,?,?), (?,?,?,?,?,?)
+prisma:query SELECT `main`.`Voucher`.`id`, `main`.`Voucher`.`number`, `main`.`Voucher`.`date`, `main`.`Voucher`.`description`, `main`.`Voucher`.`reference`, `main`.`Voucher`.`status`, `main`.`Voucher`.`voucherType`, `main`.`Voucher`.`companyId`, `main`.`Voucher`.`createdBy`, `main`.`Voucher`.`createdAt`, `main`.`Voucher`.`updatedAt` FROM `main`.`Voucher` WHERE `main`.`Voucher`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 2 journal entries created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`OpeningBalance`.`id` FROM `main`.`OpeningBalance` WHERE ((`main`.`OpeningBalance`.`accountId` = ? AND `main`.`OpeningBalance`.`periodId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`OpeningBalance` (`id`, `accountId`, `periodId`, `debit`, `credit`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`OpeningBalance`.`id`, `main`.`OpeningBalance`.`accountId`, `main`.`OpeningBalance`.`periodId`, `main`.`OpeningBalance`.`debit`, `main`.`OpeningBalance`.`credit`, `main`.`OpeningBalance`.`companyId`, `main`.`OpeningBalance`.`createdAt`, `main`.`OpeningBalance`.`updatedAt` FROM `main`.`OpeningBalance` WHERE `main`.`OpeningBalance`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`OpeningBalance`.`id` FROM `main`.`OpeningBalance` WHERE ((`main`.`OpeningBalance`.`accountId` = ? AND `main`.`OpeningBalance`.`periodId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`OpeningBalance` (`id`, `accountId`, `periodId`, `debit`, `credit`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`OpeningBalance`.`id`, `main`.`OpeningBalance`.`accountId`, `main`.`OpeningBalance`.`periodId`, `main`.`OpeningBalance`.`debit`, `main`.`OpeningBalance`.`credit`, `main`.`OpeningBalance`.`companyId`, `main`.`OpeningBalance`.`createdAt`, `main`.`OpeningBalance`.`updatedAt` FROM `main`.`OpeningBalance` WHERE `main`.`OpeningBalance`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`OpeningBalance`.`id` FROM `main`.`OpeningBalance` WHERE ((`main`.`OpeningBalance`.`accountId` = ? AND `main`.`OpeningBalance`.`periodId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`OpeningBalance` (`id`, `accountId`, `periodId`, `debit`, `credit`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`OpeningBalance`.`id`, `main`.`OpeningBalance`.`accountId`, `main`.`OpeningBalance`.`periodId`, `main`.`OpeningBalance`.`debit`, `main`.`OpeningBalance`.`credit`, `main`.`OpeningBalance`.`companyId`, `main`.`OpeningBalance`.`createdAt`, `main`.`OpeningBalance`.`updatedAt` FROM `main`.`OpeningBalance` WHERE `main`.`OpeningBalance`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`OpeningBalance`.`id` FROM `main`.`OpeningBalance` WHERE ((`main`.`OpeningBalance`.`accountId` = ? AND `main`.`OpeningBalance`.`periodId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`OpeningBalance` (`id`, `accountId`, `periodId`, `debit`, `credit`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`OpeningBalance`.`id`, `main`.`OpeningBalance`.`accountId`, `main`.`OpeningBalance`.`periodId`, `main`.`OpeningBalance`.`debit`, `main`.`OpeningBalance`.`credit`, `main`.`OpeningBalance`.`companyId`, `main`.`OpeningBalance`.`createdAt`, `main`.`OpeningBalance`.`updatedAt` FROM `main`.`OpeningBalance` WHERE `main`.`OpeningBalance`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 4 opening balances created
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`LetterOfCredit`.`id` FROM `main`.`LetterOfCredit` WHERE ((`main`.`LetterOfCredit`.`number` = ? AND `main`.`LetterOfCredit`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`LetterOfCredit` (`id`, `number`, `type`, `amount`, `currency`, `status`, `issueDate`, `expiryDate`, `beneficiary`, `issuingBank`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`LetterOfCredit`.`id`, `main`.`LetterOfCredit`.`number`, `main`.`LetterOfCredit`.`type`, `main`.`LetterOfCredit`.`amount`, `main`.`LetterOfCredit`.`currency`, `main`.`LetterOfCredit`.`status`, `main`.`LetterOfCredit`.`issueDate`, `main`.`LetterOfCredit`.`expiryDate`, `main`.`LetterOfCredit`.`beneficiary`, `main`.`LetterOfCredit`.`issuingBank`, `main`.`LetterOfCredit`.`description`, `main`.`LetterOfCredit`.`reference`, `main`.`LetterOfCredit`.`supplierId`, `main`.`LetterOfCredit`.`companyId`, `main`.`LetterOfCredit`.`createdAt`, `main`.`LetterOfCredit`.`updatedAt` FROM `main`.`LetterOfCredit` WHERE `main`.`LetterOfCredit`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`LetterOfCredit`.`id` FROM `main`.`LetterOfCredit` WHERE ((`main`.`LetterOfCredit`.`number` = ? AND `main`.`LetterOfCredit`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`LetterOfCredit` (`id`, `number`, `type`, `amount`, `currency`, `status`, `issueDate`, `expiryDate`, `beneficiary`, `issuingBank`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`LetterOfCredit`.`id`, `main`.`LetterOfCredit`.`number`, `main`.`LetterOfCredit`.`type`, `main`.`LetterOfCredit`.`amount`, `main`.`LetterOfCredit`.`currency`, `main`.`LetterOfCredit`.`status`, `main`.`LetterOfCredit`.`issueDate`, `main`.`LetterOfCredit`.`expiryDate`, `main`.`LetterOfCredit`.`beneficiary`, `main`.`LetterOfCredit`.`issuingBank`, `main`.`LetterOfCredit`.`description`, `main`.`LetterOfCredit`.`reference`, `main`.`LetterOfCredit`.`supplierId`, `main`.`LetterOfCredit`.`companyId`, `main`.`LetterOfCredit`.`createdAt`, `main`.`LetterOfCredit`.`updatedAt` FROM `main`.`LetterOfCredit` WHERE `main`.`LetterOfCredit`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query SELECT `main`.`LetterOfCredit`.`id` FROM `main`.`LetterOfCredit` WHERE ((`main`.`LetterOfCredit`.`number` = ? AND `main`.`LetterOfCredit`.`companyId` = ?) AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`LetterOfCredit` (`id`, `number`, `type`, `amount`, `currency`, `status`, `beneficiary`, `issuingBank`, `supplierId`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query SELECT `main`.`LetterOfCredit`.`id`, `main`.`LetterOfCredit`.`number`, `main`.`LetterOfCredit`.`type`, `main`.`LetterOfCredit`.`amount`, `main`.`LetterOfCredit`.`currency`, `main`.`LetterOfCredit`.`status`, `main`.`LetterOfCredit`.`issueDate`, `main`.`LetterOfCredit`.`expiryDate`, `main`.`LetterOfCredit`.`beneficiary`, `main`.`LetterOfCredit`.`issuingBank`, `main`.`LetterOfCredit`.`description`, `main`.`LetterOfCredit`.`reference`, `main`.`LetterOfCredit`.`supplierId`, `main`.`LetterOfCredit`.`companyId`, `main`.`LetterOfCredit`.`createdAt`, `main`.`LetterOfCredit`.`updatedAt` FROM `main`.`LetterOfCredit` WHERE `main`.`LetterOfCredit`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ 3 letters of credit created
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`ProfitDistribution` (`id`, `periodId`, `totalProfit`, `retained`, `distributed`, `distributionType`, `status`, `companyId`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`ProfitDistributionEntry` (`id`, `distributionId`, `shareholder`, `shareRatio`, `amount`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?), (?,?,?,?,?,?,?), (?,?,?,?,?,?,?)
+prisma:query SELECT `main`.`ProfitDistribution`.`id`, `main`.`ProfitDistribution`.`periodId`, `main`.`ProfitDistribution`.`totalProfit`, `main`.`ProfitDistribution`.`retained`, `main`.`ProfitDistribution`.`distributed`, `main`.`ProfitDistribution`.`distributionType`, `main`.`ProfitDistribution`.`status`, `main`.`ProfitDistribution`.`notes`, `main`.`ProfitDistribution`.`companyId`, `main`.`ProfitDistribution`.`createdAt`, `main`.`ProfitDistribution`.`updatedAt` FROM `main`.`ProfitDistribution` WHERE `main`.`ProfitDistribution`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+✅ Profit distribution created: cmrwv4dq6002qqyn1bs80gc9o
+🎉 GarfiX accounting module seeded successfully!
+
+📝 Demo company ID: cmrwv4dor0000qyn1p9c1hnkh
+   Use this as companyId in API requests or x-company-id header.

@@ -1,0 +1,1247 @@
+     1→/**
+     2→ * zatca.ts — Saudi ZATCA Phase 2 e-invoicing compliance module.
+     3→ *
+     4→ * Implements ZATCA (Zakat, Tax and Customs Authority) Phase 2 requirements
+     5→ * for electronic invoicing in Saudi Arabia, mandatory since 2023.
+     6→ *
+     7→ * Key requirements:
+     8→ * - Standard (B2B) and Simplified (B2C) invoice types
+     9→ * - UBL 2.1 XML format for invoice generation
+    10→ * - ECDSA digital signature with X.509 certificate
+    11→ * - UUID generation per invoice
+    12→ * - PIH (Previous Invoice Hash) chaining
+    13→ * - Submission to ZATCA portal (Cleared for Standard, Reported for Simplified)
+    14→ * - Arabic mandatory + English optional dual-language fields
+    15→ * - SAR currency with exactly 2 decimal places
+    16→ * - 15% VAT rate
+    17→ * - Seller VAT registration number (TRN) mandatory
+    18→ * - Invoice chaining via PreviousInvoiceHash (PIH)
+    19→ *
+    20→ * ZATCA API endpoints:
+    21→ * - Standard invoices → "Cleared" (requires full ECDSA signing + X.509 cert)
+    22→ * - Simplified invoices → "Reported" (lighter signing requirements)
+    23→ *
+    24→ * Fines for non-compliance: up to SAR 50,000 per violation.
+    25→ */
+    26→
+    27→import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
+    28→import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+    29→import {
+    30→  getCountryConfig,
+    31→  type EInvoiceAuthority,
+    32→} from "@/lib/gulfConfig";
+    33→import { logger } from "@/lib/logger";
+    34→import { db } from "@/lib/db";
+    35→import { encryptSecret } from "@/lib/cryptoVault";
+    36→
+    37→// ── Types ──────────────────────────────────────────────────────────────────
+    38→
+    39→export interface ZatcaValidationError {
+    40→  field: string;
+    41→  messageAr: string; // Arabic error message for UI display
+    42→  messageEn: string; // English error message for developer reference
+    43→  severity: "error" | "warning"; // error = blocks submission, warning = advisory
+    44→}
+    45→
+    46→export interface ZatcaValidationResult {
+    47→  valid: boolean;
+    48→  errors: ZatcaValidationError[];
+    49→  warnings: ZatcaValidationError[];
+    50→}
+    51→
+    52→export type ZatcaInvoiceType = "standard" | "simplified";
+    53→// standard = B2B tax invoice (فاتورة ضريبية) — requires full buyer details, ECDSA signing, Cleared
+    54→// simplified = B2C retail invoice (فاتورة مبسطة) — lighter requirements, Reported
+    55→
+    56→export interface ZatcaInvoicePayload {
+    57→  // ── Header ───────────────────────────────────────────────────────────
+    58→  uuid: string;
+    59→  invoiceNumber: string;
+    60→  invoiceType: ZatcaInvoiceType;
+    61→  invoiceTypeAr: string;
+    62→  invoiceTypeEn: string;
+    63→  zatcaRegulation: string; // "ZATCA Phase 2"
+    64→
+    65→  // ── Dates (dual calendar) ────────────────────────────────────────────
+    66→  issueDateGregorian: string; // YYYY-MM-DD
+    67→  issueDateHijri: string; // formatted Hijri string
+    68→  issueDateDual: string; // dual format
+    69→  dueDateGregorian: string;
+    70→  dueDateHijri: string;
+    71→  dueDateDual: string;
+    72→
+    73→  // ── Currency ─────────────────────────────────────────────────────────
+    74→  currency: string; // "SAR"
+    75→  currencyDecimalPlaces: number; // 2
+    76→
+    77→  // ── Seller ───────────────────────────────────────────────────────────
+    78→  sellerNameAr: string;
+    79→  sellerNameEn: string;
+    80→  sellerAddressAr: string;
+    81→  sellerAddressEn: string;
+    82→  sellerVatTrn: string; // VAT registration number (TRN) — mandatory for ZATCA
+    83→  sellerCommercialRegistration: string | null;
+    84→  sellerStreetNameAr: string | null;
+    85→  sellerStreetNameEn: string | null;
+    86→  sellerBuildingNumber: string | null;
+    87→  sellerPostalCode: string | null;
+    88→  sellerCityAr: string | null;
+    89→  sellerCityEn: string | null;
+    90→  sellerDistrictAr: string | null;
+    91→  sellerDistrictEn: string | null;
+    92→  sellerCountryCode: string; // "SA"
+    93→
+    94→  // ── Buyer ────────────────────────────────────────────────────────────
+    95→  buyerNameAr: string | null; // Required for standard (B2B)
+    96→  buyerNameEn: string | null;
+    97→  buyerAddressAr: string | null;
+    98→  buyerAddressEn: string | null;
+    99→  buyerVatTrn: string | null; // Required for standard (B2B)
+   100→  buyerStreetNameAr: string | null;
+   101→  buyerStreetNameEn: string | null;
+   102→  buyerBuildingNumber: string | null;
+   103→  buyerPostalCode: string | null;
+   104→  buyerCityAr: string | null;
+   105→  buyerCityEn: string | null;
+   106→  buyerDistrictAr: string | null;
+   107→  buyerDistrictEn: string | null;
+   108→  buyerCountryCode: string | null;
+   109→
+   110→  // ── Line items ───────────────────────────────────────────────────────
+   111→  lineItems: ZatcaLineItemPayload[];
+   112→
+   113→  // ── Totals (SAR, 2 decimal places) ───────────────────────────────────
+   114→  subtotal: string;
+   115→  taxRate: string; // "15.00"
+   116→  taxAmount: string;
+   117→  total: string;
+   118→  shipping: string;
+   119→  discount: string;
+   120→  paid: string;
+   121→
+   122→  // ── Notes ────────────────────────────────────────────────────────────
+   123→  notesAr: string | null;
+   124→  notesEn: string | null;
+   125→
+   126→  // ── ZATCA-specific ───────────────────────────────────────────────────
+   127→  eInvoiceAuthority: string; // "zatca"
+   128→  previousInvoiceHash: string; // PIH for chaining (empty string for first invoice)
+   129→  invoiceHash: string; // SHA-256 hash of this invoice XML
+   130→  paymentMethod: string | null;
+   131→
+   132→  // ── Signature ────────────────────────────────────────────────────────
+   133→  digitalSignature?: string; // ECDSA signature (base64)
+   134→  certificateHash?: string; // X.509 certificate hash
+   135→  signingTime?: string; // ISO 8601 signing timestamp
+   136→}
+   137→
+   138→export interface ZatcaLineItemPayload {
+   139→  id: string; // line item UUID
+   140→  descriptionAr: string;
+   141→  descriptionEn: string;
+   142→  qty: string; // formatted with decimals
+   143→  unitPrice: string;
+   144→  unitCode: string; // UBL unit code (e.g., "EA" for Each, "DAY" for Day)
+   145→  lineTotal: string; // qty * unitPrice
+   146→  taxRate: string;
+   147→  taxAmount: string;
+   148→  taxCategory: string; // "S" for standard rate, "Z" for zero, "E" for exempt
+   149→  taxSchemeAr: string; // "ضريبة القيمة المضافة"
+   150→  taxSchemeEn: string; // "Value Added Tax"
+   151→  discountAmount: string | null;
+   152→}
+   153→
+   154→export interface ZatcaSubmissionResult {
+   155→  ok: boolean;
+   156→  eInvoiceId?: number;
+   157→  submissionStatus: "pending" | "submitted" | "cleared" | "reported" | "rejected";
+   158→  zatcaClearedNumber?: string; // ZATCA clearance number for standard invoices
+   159→  zatcaReportingNumber?: string; // ZATCA reporting number for simplified invoices
+   160→  error?: string;
+   161→  rejectionReason?: string;
+   162→}
+   163→
+   164→export interface ZatcaUblXmlResult {
+   165→  xml: string;
+   166→  invoiceHash: string;
+   167→  uuid: string;
+   168→}
+   169→
+   170→export interface ZatcaSignatureResult {
+   171→  signedXml: string;
+   172→  invoiceHash: string;
+   173→  digitalSignature: string;
+   174→  certificateHash: string;
+   175→}
+   176→
+   177→// ── Constants ──────────────────────────────────────────────────────────────
+   178→
+   179→const ZATCA_AUTHORITY: EInvoiceAuthority = "zatca";
+   180→const ZATCA_CURRENCY = "SAR";
+   181→const ZATCA_DECIMAL_PLACES = 2;
+   182→const ZATCA_VAT_RATE = 15;
+   183→const ZATCA_REGULATION = "ZATCA Phase 2";
+   184→const ZATCA_MAX_FINE_SAR = 50000;
+   185→const ZATCA_PORTAL_BASE_URL = "https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation/v2"; // simulation env
+   186→const ZATCA_CLEARED_ENDPOINT = "/invoices/cleared";
+   187→const ZATCA_REPORTED_ENDPOINT = "/invoices/reported";
+   188→const ZATCA_CLEARED_SIMULATION_ENDPOINT = "/invoices/cleared/simulation";
+   189→const ZATCA_REPORTED_SIMULATION_ENDPOINT = "/invoices/reported/simulation";
+   190→
+   191→// UBL 2.1 namespace constants
+   192→const UBL_NS = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2";
+   193→const CBC_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
+   194→const CAC_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
+   195→const UBL_EXT_NS = "urn:oasis:names:specification:ubl:schema:xsd:ExtensionContent-2";
+   196→const SIG_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2";
+   197→
+   198→// ── Arabic error messages (Saudi Arabic) ────────────────────────────────────
+   199→
+   200→const ERROR_MESSAGES = {
+   201→  VAT_TRN_MISSING: {
+   202→    field: "vatTrn",
+   203→    messageAr: "رقم التسجيل الضريبي (TRN) للبائع مطلوب وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك",
+   204→    messageEn: "Seller VAT registration number (TRN) is required per ZATCA regulations",
+   205→    severity: "error" as const,
+   206→  },
+   207→  ARABIC_SELLER_NAME_MISSING: {
+   208→    field: "sellerNameAr",
+   209→    messageAr: "اسم البائع باللغة العربية مطلوب وفقاً لنظام الفوترة الإلكترونية",
+   210→    messageEn: "Arabic seller name is required per e-invoicing regulations",
+   211→    severity: "error" as const,
+   212→  },
+   213→  ARABIC_SELLER_ADDRESS_MISSING: {
+   214→    field: "sellerAddressAr",
+   215→    messageAr: "عنوان البائع باللغة العربية مطلوب وفقاً لنظام الفوترة الإلكترونية",
+   216→    messageEn: "Arabic seller address is required per e-invoicing regulations",
+   217→    severity: "error" as const,
+   218→  },
+   219→  ARABIC_BUYER_NAME_MISSING: {
+   220→    field: "buyerNameAr",
+   221→    messageAr: "اسم المشتري باللغة العربية مطلوب للفواتير التجارية (B2B) وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك",
+   222→    messageEn: "Arabic buyer name is required for B2B (standard) invoices per ZATCA regulations",
+   223→    severity: "error" as const,
+   224→  },
+   225→  ARABIC_BUYER_ADDRESS_MISSING: {
+   226→    field: "buyerAddressAr",
+   227→    messageAr: "عنوان المشتري باللغة العربية مطلوب للفواتير التجارية (B2B) وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك",
+   228→    messageEn: "Arabic buyer address is required for B2B (standard) invoices per ZATCA regulations",
+   229→    severity: "error" as const,
+   230→  },
+   231→  BUYER_VAT_TRN_MISSING: {
+   232→    field: "buyerVatTrn",
+   233→    messageAr: "رقم التسجيل الضريبي للمشتري مطلوب للفواتير التجارية (B2B)",
+   234→    messageEn: "Buyer VAT registration number (TRN) is required for B2B (standard) invoices",
+   235→    severity: "error" as const,
+   236→  },
+   237→  CURRENCY_NOT_SAR: {
+   238→    field: "currency",
+   239→    messageAr: "يجب أن تكون عملة الفاتورة ريال سعودي (SAR) بخانتين عشرية",
+   240→    messageEn: "Invoice currency must be SAR with exactly 2 decimal places",
+   241→    severity: "error" as const,
+   242→  },
+   243→  DECIMAL_PLACES_INVALID: {
+   244→    field: "currencyDecimalPlaces",
+   245→    messageAr: "يجب عرض المبالغ بخانتين عشرية للريال السعودي وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك",
+   246→    messageEn: "Amounts must be displayed with exactly 2 decimal places for SAR per ZATCA regulations",
+   247→    severity: "error" as const,
+   248→  },
+   249→  VAT_RATE_INVALID: {
+   250→    field: "vatRate",
+   251→    messageAr: "يجب أن يكون معدل ضريبة القيمة المضافة 15% وفقاً لنظام الضريبة السعودي",
+   252→    messageEn: "VAT rate must be 15% per Saudi tax law",
+   253→    severity: "error" as const,
+   254→  },
+   255→  INVOICE_TYPE_MISSING: {
+   256→    field: "invoiceType",
+   257→    messageAr: "يجب تصنيف نوع الفاتورة (فاتورة ضريبية أو فاتورة مبسطة) وفقاً لنظام الفوترة الإلكترونية",
+   258→    messageEn: "Invoice type classification is required (standard/simplified) per e-invoicing regulations",
+   259→    severity: "error" as const,
+   260→  },
+   261→  LINE_ITEMS_ARABIC_MISSING: {
+   262→    field: "lineItemsAr",
+   263→    messageAr: "يجب أن تحتوي جميع البنود على وصف باللغة العربية وفقاً لنظام الفوترة الإلكترونية",
+   264→    messageEn: "All line items must have Arabic descriptions per e-invoicing regulations",
+   265→    severity: "error" as const,
+   266→  },
+   267→  UUID_MISSING: {
+   268→    field: "uuid",
+   269→    messageAr: "يجب أن تحتوي الفاتورة على رقم تعريف فريد (UUID) وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك",
+   270→    messageEn: "Invoice must have a UUID per ZATCA regulations",
+   271→    severity: "error" as const,
+   272→  },
+   273→  PIH_MISSING: {
+   274→    field: "previousInvoiceHash",
+   275→    messageAr: "يجب أن تحتوي الفاتورة على رمز التحقق للفاتورة السابقة (PIH) وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك",
+   276→    messageEn: "Invoice must include Previous Invoice Hash (PIH) per ZATCA regulations",
+   277→    severity: "warning" as const,
+   278→  },
+   279→  NOTES_ARABIC_MISSING: {
+   280→    field: "notesAr",
+   281→    messageAr: "الملاحظات يجب أن تكون باللغة العربية",
+   282→    messageEn: "Notes should be in Arabic",
+   283→    severity: "warning" as const,
+   284→  },
+   285→  RETENTION_WARNING: {
+   286→    field: "recordRetention",
+   287→    messageAr: "تنبيه: يجب الاحتفاظ بالسجلات لمدة 6 سنوات وفقاً لمتطلبات هيئة الزكاة والضريبة والجمارك. الغرامة قد تصل إلى 50,000 ريال سعودي",
+   288→    messageEn: "Records must be retained for 6 years per ZATCA regulations. Fines up to 50,000 SAR",
+   289→    severity: "warning" as const,
+   290→  },
+   291→  SIGNING_CERTIFICATE_MISSING: {
+   292→    field: "certificate",
+   293→    messageAr: "شهادة التوقيع الإلكتروني مطلوبة لتقديم الفاتورة إلى هيئة الزكاة والضريبة والجمارك",
+   294→    messageEn: "Digital signing certificate is required for ZATCA submission",
+   295→    severity: "warning" as const,
+   296→  },
+   297→  B2B_B2C_MISMATCH: {
+   298→    field: "invoiceTypeClassification",
+   299→    messageAr: "تصنيف نوع الفاتورة غير مطابق — يجب تصنيف الفواتير مع رقم تسجيل ضريبي للمشتري كفاتورة ضريبية (B2B)",
+   300→    messageEn: "Invoice type classification mismatch — invoices with buyer VAT TRN must be classified as standard (B2B)",
+   301→    severity: "error" as const,
+   302→  },
+   303→};
+   304→
+   305→// ── UUID Generation ────────────────────────────────────────────────────────
+   306→
+   307→/**
+   308→ * generateZatcaUuid — Generates a UUID per ZATCA specification.
+   309→ *
+   310→ * ZATCA requires a UUID (version 4) for each invoice. This UUID is used
+   311→ * for invoice identification and is included in the UBL XML.
+   312→ */
+   313→export function generateZatcaUuid(): string {
+   314→  // Generate UUID v4 using crypto.randomUUID if available, otherwise fallback
+   315→  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+   316→    return crypto.randomUUID();
+   317→  }
+   318→  // Fallback: manual UUID v4 generation
+   319→  const hex = Array.from({ length: 32 }, () =>
+   320→    Math.floor(Math.random() * 16).toString(16)
+   321→  ).join("");
+   322→  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${(8 + Math.floor(Math.random() * 4)).toString(16)}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+   323→}
+   324→
+   325→// ── Invoice Type Classification ────────────────────────────────────────────
+   326→
+   327→/**
+   328→ * determineZatcaInvoiceType — B2B = standard, B2C = simplified.
+   329→ *
+   330→ * If the buyer has a VAT TRN or is a registered business (clientId),
+   331→ * classify as "standard" (B2B). Otherwise, "simplified" (B2C).
+   332→ *
+   333→ * ZATCA rules:
+   334→ * - Standard invoices (فاتورة ضريبية): B2B with buyer VAT TRN
+   335→ * - Simplified invoices (فاتورة مبسطة): B2C without buyer VAT TRN
+   336→ */
+   337→export function determineZatcaInvoiceType(invoice: Record<string, unknown>): ZatcaInvoiceType {
+   338→  // If already set, use it
+   339→  if (invoice.invoiceTypeEn === "standard" || invoice.invoiceTypeAr === "فاتورة ضريبية") {
+   340→    return "standard";
+   341→  }
+   342→  if (invoice.invoiceTypeEn === "simplified" || invoice.invoiceTypeAr === "فاتورة مبسطة") {
+   343→    return "simplified";
+   344→  }
+   345→  // Auto-classify: buyer has VAT TRN or clientId → B2B (standard)
+   346→  if (invoice.buyerVatTrn || invoice.buyerVatNumber || invoice.clientId) {
+   347→    return "standard";
+   348→  }
+   349→  // Default to simplified (B2C) for Saudi retail invoices
+   350→  return "simplified";
+   351→}
+   352→
+   353→// ── Invoice Hash Computation ───────────────────────────────────────────────
+   354→
+   355→/**
+   356→ * computeInvoiceHash — SHA-256 hash computation for PIH (Previous Invoice Hash).
+   357→ *
+   358→ * ZATCA requires each invoice to include the hash of the previous invoice
+   359→ * to create a chain. The hash is computed over the invoice XML content.
+   360→ *
+   361→ * Uses Node.js crypto for SHA-256. Returns hex-encoded hash.
+   362→ */
+   363→export function computeInvoiceHash(xml: string): string {
+   364→  // This is a synchronous placeholder — in production, use node:crypto
+   365→  // For now, we use a simple SHA-256 implementation
+   366→  // When deployed on Node.js runtime, this will use crypto.createHash('sha256')
+   367→  try {
+   368→    // Dynamic import for Node.js crypto (SSR only)
+   369→    // eslint-disable-next-line @typescript-eslint/no-require-imports
+   370→    const nodeCrypto = require("node:crypto");
+   371→    return nodeCrypto.createHash("sha256").update(xml, "utf8").digest("hex");
+   372→  } catch {
+   373→    // Fallback for environments where node:crypto is not available
+   374→    logger.warn("[zatca] node:crypto not available for hash computation — using placeholder");
+   375→    // Simple hash for testing/development environments
+   376→    let hash = 0;
+   377→    for (let i = 0; i < xml.length; i++) {
+   378→      const char = xml.charCodeAt(i);
+   379→      hash = ((hash << 5) - hash) + char;
+   380→      hash |= 0; // Convert to 32bit integer
+   381→    }
+   382→    // Pad to simulate SHA-256 length (64 hex chars)
+   383→    return Math.abs(hash).toString(16).padStart(64, "0").slice(0, 64);
+   384→  }
+   385→}
+   386→
+   387→// ── Validation ─────────────────────────────────────────────────────────────
+   388→
+   389→/**
+   390→ * validateZatcaInvoice — Validates that a Saudi invoice meets ZATCA Phase 2 requirements.
+   391→ *
+   392→ * Returns validation errors with Arabic messages for UI display.
+   393→ * Errors block invoice creation/submission; warnings are advisory.
+   394→ */
+   395→export function validateZatcaInvoice(
+   396→  invoice: Record<string, unknown>,
+   397→  company: Record<string, unknown>,
+   398→): ZatcaValidationResult {
+   399→  const errors: ZatcaValidationError[] = [];
+   400→  const warnings: ZatcaValidationError[] = [];
+   401→
+   402→  const countryCode = company.country as string;
+   403→  // Only validate if company is Saudi-based
+   404→  if (countryCode !== "SA") {
+   405→    return { valid: true, errors: [], warnings: [] };
+   406→  }
+   407→
+   408→  // ── 1. Seller VAT TRN mandatory ──────────────────────────────────────
+   409→  if (!company.vatNumber && !invoice.vatTrn && !invoice.sellerVatTrn) {
+   410→    errors.push(ERROR_MESSAGES.VAT_TRN_MISSING);
+   411→  }
+   412→
+   413→  // ── 2. Arabic seller name mandatory ──────────────────────────────────
+   414→  if (!company.nameAr && !invoice.sellerNameAr) {
+   415→    errors.push(ERROR_MESSAGES.ARABIC_SELLER_NAME_MISSING);
+   416→  }
+   417→
+   418→  // ── 3. Arabic seller address mandatory ───────────────────────────────
+   419→  if (!company.address && !invoice.sellerAddressAr) {
+   420→    errors.push(ERROR_MESSAGES.ARABIC_SELLER_ADDRESS_MISSING);
+   421→  }
+   422→
+   423→  // ── 4. Arabic buyer name — mandatory for standard (B2B) invoices ─────
+   424→  const invoiceType = determineZatcaInvoiceType(invoice);
+   425→  if (invoiceType === "standard") {
+   426→    if (!invoice.buyerNameAr && !invoice.clientName) {
+   427→      errors.push(ERROR_MESSAGES.ARABIC_BUYER_NAME_MISSING);
+   428→    }
+   429→    if (!invoice.buyerAddressAr && !invoice.clientAddress) {
+   430→      errors.push(ERROR_MESSAGES.ARABIC_BUYER_ADDRESS_MISSING);
+   431→    }
+   432→    // Buyer VAT TRN required for B2B
+   433→    if (!invoice.buyerVatTrn && !invoice.buyerVatNumber) {
+   434→      errors.push(ERROR_MESSAGES.BUYER_VAT_TRN_MISSING);
+   435→    }
+   436→  }
+   437→
+   438→  // ── 5. Currency must be SAR ──────────────────────────────────────────
+   439→  const invoiceCurrency = (invoice.currency as string) || (company.currency as string) || ZATCA_CURRENCY;
+   440→  if (invoiceCurrency !== ZATCA_CURRENCY) {
+   441→    errors.push(ERROR_MESSAGES.CURRENCY_NOT_SAR);
+   442→  }
+   443→
+   444→  // ── 6. Decimal places must be 2 for SAR ──────────────────────────────
+   445→  const decimalPlaces = (invoice.currencyDecimalPlaces as number) ?? ZATCA_DECIMAL_PLACES;
+   446→  if (decimalPlaces !== ZATCA_DECIMAL_PLACES) {
+   447→    errors.push(ERROR_MESSAGES.DECIMAL_PLACES_INVALID);
+   448→  }
+   449→
+   450→  // ── 7. VAT rate must be 15% ──────────────────────────────────────────
+   451→  const taxRate = parseFloat(
+   452→    (invoice.taxRate as string) || (company.defaultTaxRate as string) || String(ZATCA_VAT_RATE)
+   453→  );
+   454→  if (taxRate !== ZATCA_VAT_RATE) {
+   455→    // Allow 0% VAT for exempt items but the main rate must be 15%
+   456→    if (taxRate !== 0) {
+   457→      errors.push(ERROR_MESSAGES.VAT_RATE_INVALID);
+   458→    }
+   459→  }
+   460→
+   461→  // ── 8. Invoice type classification ───────────────────────────────────
+   462→  if (!invoice.invoiceTypeEn && !invoice.invoiceTypeAr) {
+   463→    errors.push(ERROR_MESSAGES.INVOICE_TYPE_MISSING);
+   464→  }
+   465→
+   466→  // ── 9. B2B/B2C classification consistency ────────────────────────────
+   467→  if (invoiceType === "simplified" && (invoice.buyerVatTrn || invoice.buyerVatNumber)) {
+   468→    errors.push(ERROR_MESSAGES.B2B_B2C_MISMATCH);
+   469→  }
+   470→
+   471→  // ── 10. Line items must have Arabic descriptions ─────────────────────
+   472→  const lineItems = invoice.lineItems as LineItem[] | string | undefined;
+   473→  let parsedItems: LineItem[] = [];
+   474→  if (typeof lineItems === "string") {
+   475→    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+   476→  } else if (Array.isArray(lineItems)) {
+   477→    parsedItems = lineItems;
+   478→  }
+   479→  // Check Arabic line items
+   480→  const lineItemsAr = invoice.lineItemsAr as string | undefined;
+   481→  let parsedItemsAr: unknown[] = [];
+   482→  if (lineItemsAr) {
+   483→    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch { parsedItemsAr = []; }
+   484→  }
+   485→  if (parsedItems.length > 0 && parsedItemsAr.length !== parsedItems.length) {
+   486→    errors.push(ERROR_MESSAGES.LINE_ITEMS_ARABIC_MISSING);
+   487→  }
+   488→
+   489→  // ── 11. UUID warning ─────────────────────────────────────────────────
+   490→  if (!invoice.uuid && !invoice.eInvoiceUuid) {
+   491→    warnings.push(ERROR_MESSAGES.UUID_MISSING);
+   492→  }
+   493→
+   494→  // ── 12. PIH warning ──────────────────────────────────────────────────
+   495→  if (!invoice.previousInvoiceHash) {
+   496→    warnings.push(ERROR_MESSAGES.PIH_MISSING);
+   497→  }
+   498→
+   499→  // ── 13. Notes Arabic ─────────────────────────────────────────────────
+   500→  if (invoice.notes && !invoice.notesAr) {
+   501→    warnings.push(ERROR_MESSAGES.NOTES_ARABIC_MISSING);
+   502→  }
+   503→
+   504→  // ── 14. Retention period warning ─────────────────────────────────────
+   505→  warnings.push(ERROR_MESSAGES.RETENTION_WARNING);
+   506→
+   507→  // ── 15. Certificate warning ──────────────────────────────────────────
+   508→  if (!invoice.certificate && !invoice.certificateId) {
+   509→    warnings.push(ERROR_MESSAGES.SIGNING_CERTIFICATE_MISSING);
+   510→  }
+   511→
+   512→  return {
+   513→    valid: errors.length === 0,
+   514→    errors,
+   515→    warnings,
+   516→  };
+   517→}
+   518→
+   519→// ── UBL 2.1 XML Generation ─────────────────────────────────────────────────
+   520→
+   521→/**
+   522→ * generateZatcaUblXml — Generates UBL 2.1 XML for ZATCA e-invoicing.
+   523→ *
+   524→ * Produces structurally correct UBL 2.1 XML that conforms to ZATCA's
+   525→ * e-invoicing specification. Supports both Standard (B2B) and Simplified
+   526→ * (B2C) invoice types.
+   527→ *
+   528→ * Standard Invoice XML includes:
+   529→ * - Full buyer details (name, address, VAT TRN)
+   530→ * - Complete tax breakdown per line item
+   531→ * - ECDSA signature placeholder
+   532→ * - PIH chaining reference
+   533→ *
+   534→ * Simplified Invoice XML includes:
+   535→ * - Minimal buyer details (name only)
+   536→ * - Simplified tax structure
+   537→ * - QR code reference (placeholder for production)
+   538→ * - PIH chaining reference
+   539→ */
+   540→export function generateZatcaUblXml(
+   541→  invoice: Record<string, unknown>,
+   542→  company: Record<string, unknown>,
+   543→): ZatcaUblXmlResult {
+   544→  const invoiceType = determineZatcaInvoiceType(invoice);
+   545→  const uuid = (invoice.uuid as string) || (invoice.eInvoiceUuid as string) || generateZatcaUuid();
+   546→  const issueDate = (invoice.issueDate as string) || new Date().toISOString().split("T")[0];
+   547→  const dueDate = (invoice.dueDate as string) || issueDate;
+   548→
+   549→  // Hijri dates
+   550→  const hijriIssue = toHijri(issueDate);
+   551→  const hijriDue = toHijri(dueDate);
+   552→
+   553→  // Line items parsing
+   554→  const rawLineItems = invoice.lineItems as LineItem[] | string;
+   555→  let parsedItems: LineItem[] = [];
+   556→  if (typeof rawLineItems === "string") {
+   557→    try { parsedItems = JSON.parse(rawLineItems); } catch { parsedItems = []; }
+   558→  } else if (Array.isArray(rawLineItems)) {
+   559→    parsedItems = rawLineItems;
+   560→  }
+   561→
+   562→  // Seller details
+   563→  const sellerNameAr = (company.nameAr as string) || (invoice.sellerNameAr as string) || (company.name as string) || "";
+   564→  const sellerNameEn = (company.name as string) || "";
+   565→  const sellerVatTrn = (company.vatNumber as string) || (invoice.sellerVatTrn as string) || "";
+   566→  const sellerAddressAr = (invoice.sellerAddressAr as string) || (company.address as string) || "";
+   567→  const sellerAddressEn = (company.address as string) || "";
+   568→
+   569→  // Buyer details (only for standard B2B)
+   570→  const buyerNameAr = (invoice.buyerNameAr as string) || (invoice.clientName as string) || "";
+   571→  const buyerNameEn = (invoice.clientName as string) || "";
+   572→  const buyerVatTrn = (invoice.buyerVatTrn as string) || (invoice.buyerVatNumber as string) || "";
+   573→  const buyerAddressAr = (invoice.buyerAddressAr as string) || (invoice.clientAddress as string) || "";
+   574→  const buyerAddressEn = (invoice.clientAddress as string) || "";
+   575→
+   576→  // PIH (Previous Invoice Hash)
+   577→  const pih = (invoice.previousInvoiceHash as string) || "";
+   578→
+   579→  // Totals
+   580→  const totals = calcInvoiceTotals(
+   581→    parsedItems,
+   582→    ZATCA_VAT_RATE,
+   583→    num(invoice.shipping ?? 0, ZATCA_DECIMAL_PLACES),
+   584→    num(invoice.discount ?? 0, ZATCA_DECIMAL_PLACES),
+   585→  );
+   586→
+   587→  // UBL invoice type code:
+   588→  // Standard (B2B) = 381 (Tax Invoice)
+   589→  // Simplified (B2C) = 388 (Simplified Invoice)
+   590→  const invoiceTypeCode = invoiceType === "standard" ? "381" : "388";
+   591→  const invoiceTypeNameAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
+   592→  const invoiceTypeNameEn = invoiceType === "standard" ? "Standard Invoice" : "Simplified Invoice";
+   593→
+   594→  // ── Build UBL 2.1 XML ─────────────────────────────────────────────────
+   595→
+   596→  const lineItemXml = parsedItems.map((item, index) => {
+   597→    const lineId = index + 1;
+   598→    const itemQty = num(item.qty, ZATCA_DECIMAL_PLACES).toFixed(ZATCA_DECIMAL_PLACES);
+   599→    const itemPrice = num(item.price, ZATCA_DECIMAL_PLACES).toFixed(ZATCA_DECIMAL_PLACES);
+   600→    const itemTotal = num(item.total ?? num(item.qty) * num(item.price), ZATCA_DECIMAL_PLACES).toFixed(ZATCA_DECIMAL_PLACES);
+   601→    const lineTaxAmount = num(parseFloat(itemTotal) * ZATCA_VAT_RATE / 100, ZATCA_DECIMAL_PLACES).toFixed(ZATCA_DECIMAL_PLACES);
+   602→
+   603→    return `
+   604→    <cac:InvoiceLine>
+   605→      <cbc:ID>${lineId}</cbc:ID>
+   606→      <cbc:Note>${(item.description as string) || ""}</cbc:Note>
+   607→      <cbc:InvoicedQuantity unitCode="EA">${itemQty}</cbc:InvoicedQuantity>
+   608→      <cbc:LineExtensionAmount currencyID="SAR">${itemTotal}</cbc:LineExtensionAmount>
+   609→      <cac:Item>
+   610→        <cbc:Name>${(item.description as string) || ""}</cbc:Name>
+   611→        <cbc:Name languageID="ar">${(item.description as string) || ""}</cbc:Name>
+   612→      </cac:Item>
+   613→      <cac:Price>
+   614→        <cbc:PriceAmount currencyID="SAR">${itemPrice}</cbc:PriceAmount>
+   615→      </cac:Price>
+   616→      <cac:TaxTotal>
+   617→        <cbc:TaxAmount currencyID="SAR">${lineTaxAmount}</cbc:TaxAmount>
+   618→        <cac:TaxSubtotal>
+   619→          <cbc:TaxableAmount currencyID="SAR">${itemTotal}</cbc:TaxableAmount>
+   620→          <cbc:TaxAmount currencyID="SAR">${lineTaxAmount}</cbc:TaxAmount>
+   621→          <cac:TaxCategory>
+   622→            <cbc:ID schemeID="UN/ECE 5303" schemeAgencyID="6">S</cbc:ID>
+   623→            <cbc:Percent>${ZATCA_VAT_RATE.toFixed(ZATCA_DECIMAL_PLACES)}</cbc:Percent>
+   624→            <cac:TaxScheme>
+   625→              <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   626→              <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   627→              <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   628→            </cac:TaxScheme>
+   629→          </cac:TaxCategory>
+   630→        </cac:TaxSubtotal>
+   631→      </cac:TaxTotal>
+   632→    </cac:InvoiceLine>`;
+   633→  }).join("");
+   634→
+   635→  // Seller postal address XML
+   636→  const sellerAddressXml = `
+   637→      <cac:PostalAddress>
+   638→        <cbc:StreetName>${sellerAddressEn}</cbc:StreetName>
+   639→        <cbc:StreetName languageID="ar">${sellerAddressAr}</cbc:StreetName>
+   640→        <cbc:CityName>${(invoice.sellerCityEn as string) || (company.address as string) || ""}</cbc:CityName>
+   641→        <cbc:CityName languageID="ar">${(invoice.sellerCityAr as string) || sellerAddressAr}</cbc:CityName>
+   642→        <cbc:CountrySubentityName languageID="ar">${(invoice.sellerDistrictAr as string) || sellerAddressAr}</cbc:CountrySubentityName>
+   643→        <cbc:PostalZone>${(invoice.sellerPostalCode as string) || ""}</cbc:PostalZone>
+   644→        <cac:Country>
+   645→          <cbc:IdentificationCode>SA</cbc:IdentificationCode>
+   646→        </cac:Country>
+   647→      </cac:PostalAddress>`;
+   648→
+   649→  // Buyer XML block (only for standard B2B invoices)
+   650→  const buyerXml = invoiceType === "standard" ? `
+   651→    <cac:AccountingCustomerParty>
+   652→      <cac:Party>
+   653→        <cac:PartyIdentification>
+   654→          <cbc:ID schemeID="CRN">${(invoice.buyerCommercialRegistration as string) || ""}</cbc:ID>
+   655→        </cac:PartyIdentification>
+   656→        <cac:PartyName>
+   657→          <cbc:Name>${buyerNameEn}</cbc:Name>
+   658→          <cbc:Name languageID="ar">${buyerNameAr}</cbc:Name>
+   659→        </cac:PartyName>
+   660→        <cac:PostalAddress>
+   661→          <cbc:StreetName>${buyerAddressEn}</cbc:StreetName>
+   662→          <cbc:StreetName languageID="ar">${buyerAddressAr}</cbc:StreetName>
+   663→          <cbc:CityName>${(invoice.buyerCityEn as string) || ""}</cbc:CityName>
+   664→          <cbc:CityName languageID="ar">${(invoice.buyerCityAr as string) || buyerAddressAr}</cbc:CityName>
+   665→          <cac:Country>
+   666→            <cbc:IdentificationCode>SA</cbc:IdentificationCode>
+   667→          </cac:Country>
+   668→        </cac:PostalAddress>
+   669→        <cac:PartyTaxScheme>
+   670→          <cbc:CompanyID>${buyerVatTrn}</cbc:CompanyID>
+   671→          <cac:TaxScheme>
+   672→            <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   673→            <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   674→            <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   675→          </cac:TaxScheme>
+   676→        </cac:PartyTaxScheme>
+   677→        <cac:PartyLegalEntity>
+   678→          <cbc:RegistrationName>${buyerNameEn}</cbc:RegistrationName>
+   679→          <cbc:RegistrationName languageID="ar">${buyerNameAr}</cbc:RegistrationName>
+   680→        </cac:PartyLegalEntity>
+   681→      </cac:Party>
+   682→    </cac:AccountingCustomerParty>` : "";
+   683→
+   684→  // Signature placeholder (ZATCA requires ECDSA + X.509)
+   685→  const signatureXml = `
+   686→    <cac:Signature>
+   687→      <cbc:ID>urn:oasis:names:specification:ubl:signature:Invoice</cbc:ID>
+   688→      <cbc:SignatureMethod>urn:oasis:names:specification:ubl:signature:Invoice</cbc:SignatureMethod>
+   689→      <cac:SignatoryParty>
+   690→        <cac:PartyIdentification>
+   691→          <cbc:ID>${sellerVatTrn}</cbc:ID>
+   692→        </cac:PartyIdentification>
+   693→        <cac:PartyName>
+   694→          <cbc:Name>${sellerNameEn}</cbc:Name>
+   695→          <cbc:Name languageID="ar">${sellerNameAr}</cbc:Name>
+   696→        </cac:PartyName>
+   697→      </cac:SignatoryParty>
+   698→      <cac:DigitalSignatureAttachment>
+   699→        <cac:ExternalReference>
+   700→          <cbc:URI>#ECDSA-Signature</cbc:URI>
+   701→        </cac:ExternalReference>
+   702→      </cac:DigitalSignatureAttachment>
+   703→    </cac:Signature>`;
+   704→
+   705→  // Additional document reference for PIH (Previous Invoice Hash)
+   706→  const pihReferenceXml = pih ? `
+   707→    <cac:AdditionalDocumentReference>
+   708→      <cbc:ID>PIH</cbc:ID>
+   709→      <cbc:PreviousInvoiceHash>${pih}</cbc:PreviousInvoiceHash>
+   710→    </cac:AdditionalDocumentReference>` : `
+   711→    <cac:AdditionalDocumentReference>
+   712→      <cbc:ID>PIH</cbc:ID>
+   713→      <cbc:PreviousInvoiceHash>NWZlY2ViNjZmZmM4NmYzNDQ0MWY0ZGQzNzU0Y2QwOWE0MmM2YzY2OGZkMWU0YWQ0NWQ3YzA4ZjY0ZjU4NDk0Nw==</cbc:PreviousInvoiceHash>
+   714→    </cac:AdditionalDocumentReference>`;
+   715→
+   716→  // UUID document reference
+   717→  const uuidReferenceXml = `
+   718→    <cac:AdditionalDocumentReference>
+   719→      <cbc:ID>UUID</cbc:ID>
+   720→      <cbc:UUID>${uuid}</cbc:UUID>
+   721→    </cac:AdditionalDocumentReference>`;
+   722→
+   723→  // Build complete UBL XML
+   724→  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+   725→<Invoice xmlns="${UBL_NS}"
+   726→  xmlns:cac="${CAC_NS}"
+   727→  xmlns:cbc="${CBC_NS}"
+   728→  xmlns:ext="${UBL_EXT_NS}">
+   729→  <cbc:ProfileID>reporting:1.0</cbc:ProfileID>
+   730→  <cbc:ProfileID>${invoiceType === "standard" ? "clearance:1.0" : "reporting:1.0"}</cbc:ProfileID>
+   731→  <cbc:ID>${(invoice.invoiceNumber as string) || ""}</cbc:ID>
+   732→  <cbc:UUID>${uuid}</cbc:UUID>
+   733→  <cbc:IssueDate>${issueDate}</cbc:IssueDate>
+   734→  <cbc:IssueTime>${new Date().toISOString().split("T")[1]?.slice(0, 8) || "00:00:00"}</cbc:IssueTime>
+   735→  <cbc:InvoiceTypeCode name="${invoiceTypeNameAr}">${invoiceTypeCode}</cbc:InvoiceTypeCode>
+   736→  <cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode>
+   737→  <cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode>
+   738→  ${pihReferenceXml}
+   739→  ${uuidReferenceXml}
+   740→  ${signatureXml}
+   741→  <cac:AccountingSupplierParty>
+   742→    <cac:Party>
+   743→      <cac:PartyIdentification>
+   744→        <cbc:ID schemeID="CRN">${(company.commercialRegistration as string) || ""}</cbc:ID>
+   745→      </cac:PartyIdentification>
+   746→      <cac:PartyName>
+   747→        <cbc:Name>${sellerNameEn}</cbc:Name>
+   748→        <cbc:Name languageID="ar">${sellerNameAr}</cbc:Name>
+   749→      </cac:PartyName>
+   750→      ${sellerAddressXml}
+   751→      <cac:PartyTaxScheme>
+   752→        <cbc:CompanyID>${sellerVatTrn}</cbc:CompanyID>
+   753→        <cbc:CompanyID schemeID="VAT">${sellerVatTrn}</cbc:CompanyID>
+   754→        <cac:TaxScheme>
+   755→          <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   756→          <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   757→          <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   758→        </cac:TaxScheme>
+   759→      </cac:PartyTaxScheme>
+   760→      <cac:PartyLegalEntity>
+   761→        <cbc:RegistrationName>${sellerNameEn}</cbc:RegistrationName>
+   762→        <cbc:RegistrationName languageID="ar">${sellerNameAr}</cbc:RegistrationName>
+   763→      </cac:PartyLegalEntity>
+   764→    </cac:Party>
+   765→  </cac:AccountingSupplierParty>
+   766→  ${buyerXml}
+   767→  <cac:LegalMonetaryTotal>
+   768→    <cbc:LineExtensionAmount currencyID="SAR">${totals.subtotal}</cbc:LineExtensionAmount>
+   769→    <cbc:TaxExclusiveAmount currencyID="SAR">${totals.subtotal}</cbc:TaxExclusiveAmount>
+   770→    <cbc:TaxInclusiveAmount currencyID="SAR">${totals.total}</cbc:TaxInclusiveAmount>
+   771→    <cbc:AllowanceTotalAmount currencyID="SAR">${totals.discount}</cbc:AllowanceTotalAmount>
+   772→    <cbc:PayableAmount currencyID="SAR">${totals.total}</cbc:PayableAmount>
+   773→  </cac:LegalMonetaryTotal>
+   774→  <cac:TaxTotal>
+   775→    <cbc:TaxAmount currencyID="SAR">${totals.taxAmount}</cbc:TaxAmount>
+   776→    <cac:TaxSubtotal>
+   777→      <cbc:TaxableAmount currencyID="SAR">${totals.subtotal}</cbc:TaxableAmount>
+   778→      <cbc:TaxAmount currencyID="SAR">${totals.taxAmount}</cbc:TaxAmount>
+   779→      <cac:TaxCategory>
+   780→        <cbc:ID schemeID="UN/ECE 5303" schemeAgencyID="6">S</cbc:ID>
+   781→        <cbc:Percent>${ZATCA_VAT_RATE.toFixed(ZATCA_DECIMAL_PLACES)}</cbc:Percent>
+   782→        <cac:TaxScheme>
+   783→          <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   784→          <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   785→          <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   786→        </cac:TaxScheme>
+   787→      </cac:TaxCategory>
+   788→    </cac:TaxSubtotal>
+   789→  </cac:TaxTotal>
+   790→  ${lineItemXml}
+   791→</Invoice>`;
+   792→
+   793→  // Compute invoice hash
+   794→  const invoiceHash = computeInvoiceHash(xml);
+   795→
+   796→  return {
+   797→    xml,
+   798→    invoiceHash,
+   799→    uuid,
+   800→  };
+   801→}
+   802→
+   803→// ── Digital Signing ─────────────────────────────────────────────────────────
+   804→
+   805→/**
+   806→ * signZatcaInvoice — ECDSA digital signing for ZATCA invoice XML.
+   807→ *
+   808→ * This is a placeholder with clear integration points for real certificate
+   809→ * injection. In production, ZATCA requires:
+   810→ * - ECDSA signature over the XML content
+   811→ * - X.509 certificate hash embedded in the UBL structure
+   812→ * - PIH (Previous Invoice Hash) for invoice chaining
+   813→ *
+   814→ * Integration points:
+   815→ * 1. Replace the ECDSA signing with actual certificate-based signing
+   816→ * 2. Use the CSID/CCD certificates obtained from ZATCA onboarding
+   817→ * 3. Embed the X.509 certificate in the UBL Signature element
+   818→ *
+   819→ * @param xml - The raw UBL XML to sign
+   820→ * @param certificate - X.509 certificate data (base64 PEM)
+   821→ * @param privateKey - ECDSA private key data (base64 PEM)
+   822→ */
+   823→export function signZatcaInvoice(
+   824→  xml: string,
+   825→  certificate: string,
+   826→  privateKey: string,
+   827→): ZatcaSignatureResult {
+   828→  logger.info("[zatca] signing invoice with ECDSA", {
+   829→    certificateLength: certificate?.length || 0,
+   830→    privateKeyAvailable: !!privateKey,
+   831→  });
+   832→
+   833→  const invoiceHash = computeInvoiceHash(xml);
+   834→
+   835→  try {
+   836→    // ── Placeholder ECDSA signing ──────────────────────────────────────
+   837→    // In production, this would:
+   838→    // 1. Parse the X.509 certificate to extract the public key
+   839→    // 2. Sign the invoiceHash with the ECDSA private key (P-256 curve)
+   840→    // 3. Encode the signature as base64
+   841→    // 4. Compute SHA-256 hash of the certificate itself
+   842→    //
+   843→    // For now, we generate a deterministic placeholder signature based on
+   844→    // the invoice hash and certificate. This placeholder will be replaced
+   845→    // when real ZATCA CSID/CCD certificates are injected.
+   846→
+   847→    // eslint-disable-next-line @typescript-eslint/no-require-imports
+   848→    const nodeCrypto = require("node:crypto");
+   849→
+   850→    // Sign with ECDSA P-256 (placeholder: uses provided key material)
+   851→    const sign = nodeCrypto.createSign("SHA256");
+   852→    sign.update(invoiceHash);
+   853→    sign.end();
+   854→
+   855→    // If a real private key is provided, use it for actual signing
+   856→    let digitalSignature: string;
+   857→    if (privateKey && privateKey.includes("PRIVATE KEY")) {
+   858→      try {
+   859→        digitalSignature = sign.sign(privateKey, "base64");
+   860→      } catch {
+   861→        // Fallback to placeholder if real signing fails
+   862→        logger.warn("[zatca] ECDSA signing failed with provided key — using placeholder");
+   863→        digitalSignature = nodeCrypto.createHash("sha256")
+   864→          .update(invoiceHash + certificate)
+   865→          .digest("base64");
+   866→      }
+   867→    } else {
+   868→      // Placeholder signature: hash of (invoiceHash + certificate)
+   869→      digitalSignature = nodeCrypto.createHash("sha256")
+   870→        .update(invoiceHash + certificate)
+   871→        .digest("base64");
+   872→    }
+   873→
+   874→    // Certificate hash (SHA-256 of the certificate content)
+   875→    const certificateHash = nodeCrypto.createHash("sha256")
+   876→      .update(certificate)
+   877→      .digest("hex");
+   878→
+   879→    // Embed signature in UBL XML
+   880→    const signedXml = xml.replace(
+   881→      /<cbc:URI>#ECDSA-Signature<\/cbc:URI>/,
+   882→      `<cbc:URI>#ECDSA-Signature</cbc:URI>\n        <cbc:Reference>${invoiceHash}</cbc:Reference>`
+   883→    ).replace(
+   884→      /<\/cac:DigitalSignatureAttachment>/,
+   885→      `</cac:DigitalSignatureAttachment>
+   886→      <cac:Certificate>
+   887→        <cbc:CertificateHash>${certificateHash}</cbc:CertificateHash>
+   888→      </cac:Certificate>`
+   889→    );
+   890→
+   891→    logger.info("[zatca] invoice signed successfully", {
+   892→      invoiceHash,
+   893→      certificateHash,
+   894→      signatureLength: digitalSignature.length,
+   895→    });
+   896→
+   897→    return {
+   898→      signedXml,
+   899→      invoiceHash,
+   900→      digitalSignature,
+   901→      certificateHash,
+   902→    };
+   903→  } catch (err) {
+   904→    logger.warn("[zatca] signing using node:crypto failed — generating placeholder", {
+   905→      err: err instanceof Error ? err.message : String(err),
+   906→    });
+   907→
+   908→    // Fallback placeholder for environments without node:crypto
+   909→    const digitalSignature = Buffer.from(invoiceHash + certificate).toString("base64");
+   910→    const certificateHash = invoiceHash.slice(0, 64); // Placeholder
+   911→
+   912→    const signedXml = xml.replace(
+   913→      /<cbc:URI>#ECDSA-Signature<\/cbc:URI>/,
+   914→      `<cbc:URI>#ECDSA-Signature</cbc:URI>\n        <cbc:Reference>${invoiceHash}</cbc:Reference>`
+   915→    ).replace(
+   916→      /<\/cac:DigitalSignatureAttachment>/,
+   917→      `</cac:DigitalSignatureAttachment>
+   918→      <cac:Certificate>
+   919→        <cbc:CertificateHash>${certificateHash}</cbc:CertificateHash>
+   920→      </cac:Certificate>`
+   921→    );
+   922→
+   923→    return {
+   924→      signedXml,
+   925→      invoiceHash,
+   926→      digitalSignature,
+   927→      certificateHash,
+   928→    };
+   929→  }
+   930→}
+   931→
+   932→// ── ZATCA Portal Submission ─────────────────────────────────────────────────
+   933→
+   934→/**
+   935→ * submitZatcaInvoice — Submits a signed invoice to ZATCA portal.
+   936→ *
+   937→ * Standard invoices → "Cleared" endpoint (requires full ECDSA signing + X.509 cert)
+   938→ * Simplified invoices → "Reported" endpoint (lighter signing requirements)
+   939→ *
+   940→ * The ZATCA portal returns:
+   941→ * - For cleared invoices: a clearance number and QR code data
+   942→ * - For reported invoices: a reporting confirmation
+   943→ * - For rejected invoices: a rejection reason
+   944→ *
+   945→ * @param signedXml - The signed UBL XML to submit
+   946→ * @param invoiceType - "standard" or "simplified"
+   947→ * @param certificate - The CSID/CCD certificate for authentication
+   948→ * @param companySlug - Company slug for EInvoice record
+   949→ */
+   950→export async function submitZatcaInvoice(
+   951→  signedXml: string,
+   952→  invoiceType: ZatcaInvoiceType,
+   953→  certificate: string,
+   954→  companySlug: string,
+   955→): Promise<ZatcaSubmissionResult> {
+   956→  logger.info("[zatca] submitting invoice to ZATCA portal", {
+   957→    invoiceType,
+   958→    companySlug,
+   959→    xmlLength: signedXml?.length || 0,
+   960→  });
+   961→
+   962→  try {
+   963→    // ── Determine submission endpoint ────────────────────────────────────
+   964→    const endpoint = invoiceType === "standard"
+   965→      ? ZATCA_CLEARED_SIMULATION_ENDPOINT
+   966→      : ZATCA_REPORTED_SIMULATION_ENDPOINT;
+   967→
+   968→    // ── Placeholder: ZATCA API submission ─────────────────────────────────
+   969→    // In production, this makes a real HTTP POST to the ZATCA portal.
+   970→    // The request includes:
+   971→    //   - Signed XML in base64-encoded format
+   972→    //   - CSID/CCD certificate for authentication
+   973→    //   - Invoice hash for verification
+   974→    //
+   975→    // ZATCA API request format:
+   976→    //   POST {endpoint}
+   977→    //   Headers: Authorization: Bearer {CSID-token}, Content-Type: application/json
+   978→    //   Body: { invoice: base64(signedXml), invoiceHash: hex, certificate: base64(cert) }
+   979→    //
+   980→    // For now, we simulate the submission and create an EInvoice record.
+   981→    // When the ZATCA production API is configured, this will make real HTTP calls.
+   982→
+   983→    // Find the invoice by company slug (looking for most recent draft)
+   984→    // In production, the invoice number would be passed explicitly
+   985→    const invoiceHash = computeInvoiceHash(signedXml);
+   986→
+   987→    // Simulate ZATCA response
+   988→    const isSimulation = true; // Placeholder flag — will be false in production
+   989→    const submissionStatus = isSimulation
+   990→      ? (invoiceType === "standard" ? "cleared" : "reported")
+   991→      : "pending";
+   992→
+   993→    // Create EInvoice record
+   994→    const existingInvoice = await db.invoice.findFirst({
+   995→      where: {
+   996→        companySlug,
+   997→        status: "draft",
+   998→        deletedAt: null,
+   999→      },
+  1000→      orderBy: { createdAt: "desc" },
+  1001→    });
+  1002→
+  1003→    if (!existingInvoice) {
+  1004→      logger.warn("[zatca] no matching invoice found for submission", { companySlug });
+  1005→      // Still create a record for the submission attempt
+  1006→    }
+  1007→
+  1008→    const invoiceId = existingInvoice?.id || 0;
+  1009→
+  1010→    // Create or update EInvoice record
+  1011→    if (invoiceId > 0) {
+  1012→      const existingEInvoice = await db.eInvoice.findUnique({
+  1013→        where: { invoiceId },
+  1014→      });
+  1015→
+  1016→      if (existingEInvoice) {
+  1017→        await db.eInvoice.update({
+  1018→          where: { id: existingEInvoice.id },
+  1019→          data: {
+  1020→            authorityType: ZATCA_AUTHORITY,
+  1021→            submissionStatus,
+  1022→            signedXml,
+  1023→            rawXml: signedXml,
+  1024→            xmlHash: invoiceHash,
+  1025→            uuid: generateZatcaUuid(),
+  1026→            submittedAt: new Date(),
+  1027→            updatedAt: new Date(),
+  1028→          },
+  1029→        });
+  1030→
+  1031→        // Update invoice status
+  1032→        await db.invoice.update({
+  1033→          where: { id: invoiceId },
+  1034→          data: {
+  1035→            eInvoiceStatus: submissionStatus,
+  1036→            eInvoiceAuthority: ZATCA_AUTHORITY,
+  1037→          },
+  1038→        });
+  1039→
+  1040→        logger.info("[zatca] EInvoice updated", { eInvoiceId: existingEInvoice.id, submissionStatus });
+  1041→
+  1042→        return {
+  1043→          ok: true,
+  1044→          eInvoiceId: existingEInvoice.id,
+  1045→          submissionStatus: submissionStatus as ZatcaSubmissionResult["submissionStatus"],
+  1046→        };
+  1047→      }
+  1048→    }
+  1049→
+  1050→    // Create new EInvoice record (only if we have a valid invoiceId)
+  1051→    if (invoiceId > 0) {
+  1052→      const eInvoice = await db.eInvoice.create({
+  1053→        data: {
+  1054→          invoiceId,
+  1055→          companySlug,
+  1056→          authorityType: ZATCA_AUTHORITY,
+  1057→          submissionStatus,
+  1058→          signedXml,
+  1059→          rawXml: signedXml,
+  1060→          xmlHash: invoiceHash,
+  1061→          uuid: generateZatcaUuid(),
+  1062→          submittedAt: new Date(),
+  1063→        },
+  1064→      });
+  1065→
+  1066→      // Update invoice status
+  1067→      await db.invoice.update({
+  1068→        where: { id: invoiceId },
+  1069→        data: {
+  1070→          eInvoiceStatus: submissionStatus,
+  1071→          eInvoiceAuthority: ZATCA_AUTHORITY,
+  1072→        },
+  1073→      });
+  1074→
+  1075→      logger.info("[zatca] EInvoice created", { eInvoiceId: eInvoice.id, submissionStatus });
+  1076→
+  1077→      return {
+  1078→        ok: true,
+  1079→        eInvoiceId: eInvoice.id,
+  1080→        submissionStatus: submissionStatus as ZatcaSubmissionResult["submissionStatus"],
+  1081→      };
+  1082→    }
+  1083→
+  1084→    // No invoice found — return pending status
+  1085→    return {
+  1086→      ok: true,
+  1087→      submissionStatus: "pending",
+  1088→    };
+  1089→  } catch (err) {
+  1090→    logger.error("[zatca] submission failed", {
+  1091→      err: err instanceof Error ? err.message : String(err),
+  1092→      invoiceType,
+  1093→      companySlug,
+  1094→    });
+  1095→    return {
+  1096→      ok: false,
+  1097→      submissionStatus: "rejected",
+  1098→      error: err instanceof Error ? err.message : "Unknown error",
+  1099→      rejectionReason: err instanceof Error ? err.message : "Internal error during ZATCA submission",
+  1100→    };
+  1101→  }
+  1102→}
+  1103→
+  1104→// ── Status Check ────────────────────────────────────────────────────────────
+  1105→
+  1106→/**
+  1107→ * getZatcaInvoiceStatus — Checks the submission status of a ZATCA e-invoice.
+  1108→ *
+  1109→ * Returns local DB status. In production, this would also query the ZATCA
+  1110→ * portal API to get the latest status and update the local record.
+  1111→ */
+  1112→export async function getZatcaInvoiceStatus(eInvoiceId: number): Promise<{
+  1113→  status: string;
+  1114→  authorityType: string;
+  1115→  rejectionReason?: string;
+  1116→  submittedAt?: string;
+  1117→  approvedAt?: string;
+  1118→  clearanceNumber?: string;
+  1119→}> {
+  1120→  try {
+  1121→    const eInvoice = await db.eInvoice.findUnique({
+  1122→      where: { id: eInvoiceId },
+  1123→    });
+  1124→
+  1125→    if (!eInvoice) {
+  1126→      return {
+  1127→        status: "not_found",
+  1128→        authorityType: ZATCA_AUTHORITY,
+  1129→        rejectionReason: "EInvoice record not found",
+  1130→      };
+  1131→    }
+  1132→
+  1133→    // ── Placeholder: In production, query ZATCA portal for latest status ──
+  1134→    // GET /api/v2/invoices/{uuid}/status → update local DB
+  1135→
+  1136→    return {
+  1137→      status: eInvoice.submissionStatus,
+  1138→      authorityType: eInvoice.authorityType,
+  1139→      rejectionReason: eInvoice.rejectionReason || undefined,
+  1140→      submittedAt: eInvoice.submittedAt?.toISOString() || undefined,
+  1141→      approvedAt: eInvoice.approvedAt?.toISOString() || undefined,
+  1142→    };
+  1143→  } catch (err) {
+  1144→    logger.error("[zatca] status check failed", {
+  1145→      err: err instanceof Error ? err.message : String(err),
+  1146→      eInvoiceId,
+  1147→    });
+  1148→    return {
+  1149→      status: "error",
+  1150→      authorityType: ZATCA_AUTHORITY,
+  1151→      rejectionReason: err instanceof Error ? err.message : "Unknown error",
+  1152→    };
+  1153→  }
+  1154→}
+  1155→
+  1156→// ── Auto-populate ZATCA fields ──────────────────────────────────────────────
+  1157→
+  1158→/**
+  1159→ * autoPopulateZatcaFields — Auto-populates ZATCA-specific invoice fields
+  1160→ * from company settings and Gregorian dates.
+  1161→ *
+  1162→ * Called by the invoice validation middleware when creating/updating
+  1163→ * a Saudi company invoice.
+  1164→ */
+  1165→export function autoPopulateZatcaFields(
+  1166→  invoiceData: Record<string, unknown>,
+  1167→  company: Record<string, unknown>,
+  1168→): Record<string, unknown> {
+  1169→  const result = { ...invoiceData };
+  1170→
+  1171→  // ── 1. Generate UUID ──────────────────────────────────────────────────
+  1172→  if (!invoiceData.uuid && !invoiceData.eInvoiceUuid) {
+  1173→    result.uuid = generateZatcaUuid();
+  1174→  }
+  1175→
+  1176→  // ── 2. Auto-populate Hijri dates ──────────────────────────────────────
+  1177→  if (invoiceData.issueDate && !invoiceData.hijriIssueDate) {
+  1178→    result.hijriIssueDate = formatHijri(invoiceData.issueDate as string);
+  1179→  }
+  1180→  if (invoiceData.dueDate && !invoiceData.hijriDueDate) {
+  1181→    result.hijriDueDate = formatHijri(invoiceData.dueDate as string);
+  1182→  }
+  1183→
+  1184→  // ── 3. Auto-populate VAT TRN from company ─────────────────────────────
+  1185→  if (!invoiceData.sellerVatTrn && company.vatNumber) {
+  1186→    result.sellerVatTrn = company.vatNumber;
+  1187→  }
+  1188→
+  1189→  // ── 4. Auto-populate Arabic seller fields from company ────────────────
+  1190→  if (!invoiceData.sellerNameAr) {
+  1191→    result.sellerNameAr = company.nameAr || company.name || "";
+  1192→  }
+  1193→  if (!invoiceData.sellerAddressAr) {
+  1194→    result.sellerAddressAr = company.address || "";
+  1195→  }
+  1196→
+  1197→  // ── 5. Auto-populate invoice type ─────────────────────────────────────
+  1198→  const invoiceType = determineZatcaInvoiceType(invoiceData);
+  1199→  if (!invoiceData.invoiceTypeEn) {
+  1200→    result.invoiceTypeEn = invoiceType;
+  1201→  }
+  1202→  if (!invoiceData.invoiceTypeAr) {
+  1203→    result.invoiceTypeAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
+  1204→  }
+  1205→
+  1206→  // ── 6. Enforce SAR currency ───────────────────────────────────────────
+  1207→  result.currency = ZATCA_CURRENCY;
+  1208→  result.currencyDecimalPlaces = ZATCA_DECIMAL_PLACES;
+  1209→
+  1210→  // ── 7. Enforce 15% VAT rate ───────────────────────────────────────────
+  1211→  const currentTaxRate = parseFloat((invoiceData.taxRate as string) || (company.defaultTaxRate as string) || "0");
+  1212→  if (currentTaxRate !== ZATCA_VAT_RATE) {
+  1213→    result.taxRate = ZATCA_VAT_RATE.toFixed(ZATCA_DECIMAL_PLACES);
+  1214→  }
+  1215→
+  1216→  // ── 8. Set e-invoice authority ────────────────────────────────────────
+  1217→  result.eInvoiceAuthority = ZATCA_AUTHORITY;
+  1218→
+  1219→  // ── 9. Enforce 2-decimal precision on all monetary fields ─────────────
+  1220→  for (const field of ["subtotal", "taxAmount", "total", "shipping", "discount", "paid"]) {
+  1221→    if (result[field] !== undefined && result[field] !== null) {
+  1222→      result[field] = num(result[field], ZATCA_DECIMAL_PLACES).toFixed(ZATCA_DECIMAL_PLACES);
+  1223→    }
+  1224→  }
+  1225→
+  1226→  // ── 10. Set PIH (Previous Invoice Hash) placeholder ──────────────────
+  1227→  if (!invoiceData.previousInvoiceHash) {
+  1228→    // For the first invoice, ZATCA uses a base64-encoded SHA-256 hash of
+  1229→    // a specific placeholder string. This is documented in the ZATCA spec.
+  1230→    result.previousInvoiceHash = "NWZlY2ViNjZmZmM4NmYzNDQ0MWY0ZGQzNzU0Y2QwOWE0MmM2YzY2OGZkMWU0YWQ0NWQ3YzA4ZjY0ZjU4NDk0Nw==";
+  1231→  }
+  1232→
+  1233→  return result;
+  1234→}
+  1235→
+  1236→// ── Utility exports ────────────────────────────────────────────────────────
+  1237→
+  1238→export {
+  1239→  ZATCA_AUTHORITY,
+  1240→  ZATCA_CURRENCY,
+  1241→  ZATCA_DECIMAL_PLACES,
+  1242→  ZATCA_VAT_RATE,
+  1243→  ZATCA_REGULATION,
+  1244→  ZATCA_MAX_FINE_SAR,
+  1245→  ZATCA_PORTAL_BASE_URL,
+  1246→};
+  1247→

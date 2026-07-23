@@ -1,0 +1,963 @@
+     1→/**
+     2→ * egypt-eta.ts — Egyptian Tax Authority (ETA) e-invoicing compliance module.
+     3→ *
+     4→ * Implements ETA (مصلحة الضرائب المصرية) e-invoicing requirements for Egypt,
+     5→ * mandatory since 2022 for all registered taxpayers.
+     6→ *
+     7→ * Key requirements:
+     8→ * - Arabic + English dual language required on invoices
+     9→ * - EGP currency with exactly 2 decimal places
+    10→ * - 14% VAT rate (standard rate since 2022)
+    11→ * - Tax registration number (TRN) required for seller
+    12→ * - Buyer TRN required for B2B (standard) invoices
+    13→ * - Invoice classification: standard (B2B), simplified (B2C), export
+    14→ * - Digital receipt (إيصال إلكتروني) for B2C transactions
+    15→ * - Submission via ETA portal API (requires registration first)
+    16→ * - 5-year record retention
+    17→ * - Fines for non-compliance up to EGP 500,000
+    18→ *
+    19→ * ETA portal API endpoints (placeholder — requires taxpayer registration):
+    20→ * - Standard invoices → submit for clearance
+    21→ * - Simplified invoices → submit as digital receipt
+    22→ * - Export invoices → special handling per customs regulations
+    23→ */
+    24→
+    25→import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
+    26→import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+    27→import {
+    28→  getCountryConfig,
+    29→  type EInvoiceAuthority,
+    30→} from "@/lib/gulfConfig";
+    31→import { logger } from "@/lib/logger";
+    32→import { db } from "@/lib/db";
+    33→
+    34→// ── Types ──────────────────────────────────────────────────────────────────
+    35→
+    36→export interface EgyptEtaValidationError {
+    37→  field: string;
+    38→  messageAr: string; // Arabic error message for UI display (Egyptian Arabic)
+    39→  messageEn: string; // English error message for developer reference
+    40→  severity: "error" | "warning"; // error = blocks submission, warning = advisory
+    41→}
+    42→
+    43→export interface EgyptEtaValidationResult {
+    44→  valid: boolean;
+    45→  errors: EgyptEtaValidationError[];
+    46→  warnings: EgyptEtaValidationError[];
+    47→}
+    48→
+    49→export type EgyptEtaInvoiceType = "standard" | "simplified" | "export";
+    50→// standard = B2B tax invoice (فاتورة ضريبية) — requires buyer TRN, full details
+    51→// simplified = B2C retail receipt (إيصال إلكتروني) — lighter requirements
+    52→// export = export invoice (فاتورة تصدير) — special handling, 0% VAT
+    53→
+    54→export interface EgyptEtaInvoicePayload {
+    55→  // ── Header ───────────────────────────────────────────────────────────
+    56→  uuid: string;
+    57→  invoiceNumber: string;
+    58→  invoiceType: EgyptEtaInvoiceType;
+    59→  invoiceTypeAr: string;
+    60→  invoiceTypeEn: string;
+    61→  etaRegulation: string; // "ETA Egypt e-invoicing"
+    62→
+    63→  // ── Dates (dual calendar) ────────────────────────────────────────────
+    64→  issueDateGregorian: string; // YYYY-MM-DD
+    65→  issueDateHijri: string; // formatted Hijri string (optional for Egypt)
+    66→  issueDateDual: string; // dual format
+    67→  dueDateGregorian: string;
+    68→  dueDateHijri: string;
+    69→  dueDateDual: string;
+    70→
+    71→  // ── Currency ─────────────────────────────────────────────────────────
+    72→  currency: string; // "EGP"
+    73→  currencyDecimalPlaces: number; // 2
+    74→
+    75→  // ── Seller ───────────────────────────────────────────────────────────
+    76→  sellerNameAr: string;
+    77→  sellerNameEn: string;
+    78→  sellerAddressAr: string;
+    79→  sellerAddressEn: string;
+    80→  sellerTaxRegistrationNumber: string; // TRN — mandatory for ETA
+    81→  sellerCommercialRegistration: string | null;
+    82→  sellerCountryCode: string; // "EG"
+    83→
+    84→  // ── Buyer ────────────────────────────────────────────────────────────
+    85→  buyerNameAr: string | null; // Required for standard (B2B) and export
+    86→  buyerNameEn: string | null;
+    87→  buyerAddressAr: string | null;
+    88→  buyerAddressEn: string | null;
+    89→  buyerTaxRegistrationNumber: string | null; // Required for standard (B2B)
+    90→  buyerCountryCode: string | null;
+    91→
+    92→  // ── Line items ───────────────────────────────────────────────────────
+    93→  lineItems: EgyptEtaLineItemPayload[];
+    94→
+    95→  // ── Totals (EGP, 2 decimal places) ───────────────────────────────────
+    96→  subtotal: string;
+    97→  taxRate: string; // "14.00" for standard, "0.00" for export
+    98→  taxAmount: string;
+    99→  total: string;
+   100→  shipping: string;
+   101→  discount: string;
+   102→  paid: string;
+   103→
+   104→  // ── Notes ────────────────────────────────────────────────────────────
+   105→  notesAr: string | null;
+   106→  notesEn: string | null;
+   107→
+   108→  // ── ETA-specific ─────────────────────────────────────────────────────
+   109→  eInvoiceAuthority: string; // "eta_egypt"
+   110→  previousInvoiceHash: string; // PIH for chaining
+   111→  invoiceHash: string; // SHA-256 hash
+   112→  paymentMethod: string | null;
+   113→  isExport: boolean; // true for export invoices (0% VAT)
+   114→  digitalReceipt: boolean; // true for simplified (B2C) invoices
+   115→}
+   116→
+   117→export interface EgyptEtaLineItemPayload {
+   118→  id: string;
+   119→  descriptionAr: string;
+   120→  descriptionEn: string;
+   121→  qty: string; // formatted with 2 decimals
+   122→  unitPrice: string;
+   123→  unitCode: string; // "EA", "DAY", etc.
+   124→  lineTotal: string;
+   125→  taxRate: string;
+   126→  taxAmount: string;
+   127→  taxCategory: string; // "S" standard, "Z" zero, "E" exempt
+   128→  taxSchemeAr: string; // "ضريبة القيمة المضافة"
+   129→  taxSchemeEn: string; // "Value Added Tax"
+   130→  discountAmount: string | null;
+   131→}
+   132→
+   133→export interface EgyptEtaSubmissionResult {
+   134→  ok: boolean;
+   135→  eInvoiceId?: number;
+   136→  submissionStatus: "pending" | "submitted" | "cleared" | "rejected";
+   137→  etaSubmissionId?: string; // ETA portal submission reference
+   138→  error?: string;
+   139→  rejectionReason?: string;
+   140→}
+   141→
+   142→// ── Constants ──────────────────────────────────────────────────────────────
+   143→
+   144→export const EGYPT_ETA_AUTHORITY: EInvoiceAuthority = "eta_egypt";
+   145→export const EGYPT_ETA_CURRENCY = "EGP";
+   146→export const EGYPT_ETA_DECIMAL_PLACES = 2;
+   147→export const EGYPT_ETA_VAT_RATE = 14;
+   148→export const EGYPT_ETA_REGULATION = "ETA Egypt e-invoicing";
+   149→export const EGYPT_ETA_MAX_FINE_EGP = 500000;
+   150→const EGYPT_ETA_PORTAL_BASE_URL = "https://invoicing.eta.gov.eg/api/v1"; // placeholder
+   151→const EGYPT_ETA_RECEIPT_ENDPOINT = "/receiptrequests";
+   152→const EGYPT_ETA_INVOICE_ENDPOINT = "/invoiceRequests";
+   153→const EGYPT_ETA_EXPORT_ENDPOINT = "/exportInvoiceRequests";
+   154→
+   155→// ── Arabic error messages (Egyptian Arabic — مصلحة الضرائب المصرية) ──────────
+   156→
+   157→const ERROR_MESSAGES = {
+   158→  // ── Seller validation ────────────────────────────────────────────────
+   159→  sellerNameArRequired: "اسم البائع باللغة العربية مطلوب — مصلحة الضرائب المصرية",
+   160→  sellerNameEnRequired: "اسم البائع باللغة الإنجليزية مطلوب — مصلحة الضرائب المصرية",
+   161→  sellerAddressArRequired: "عنوان البائع باللغة العربية مطلوب",
+   162→  sellerAddressEnRequired: "عنوان البائع باللغة الإنجليزية مطلوب",
+   163→  sellerTrnRequired: "الرقم الضريبي للبائع مطلوب — مصلحة الضرائب المصرية",
+   164→
+   165→  // ── Buyer validation ─────────────────────────────────────────────────
+   166→  buyerNameArRequired: "اسم المشتري باللغة العربية مطلوب للفواتير الضريبية (B2B)",
+   167→  buyerNameEnRequired: "اسم المشتري باللغة الإنجليزية مطلوب للفواتير الضريبية (B2B)",
+   168→  buyerTrnRequiredB2b: "الرقم الضريبي للمشتري مطلوب للفواتير الضريبية (B2B)",
+   169→  buyerAddressArRequired: "عنوان المشتري باللغة العربية مطلوب للفواتير الضريبية (B2B)",
+   170→  buyerAddressEnRequired: "عنوان المشتري باللغة الإنجليزية مطلوب للفواتير الضريبية (B2B)",
+   171→
+   172→  // ── Currency ─────────────────────────────────────────────────────────
+   173→  currencyMustBeEgp: "يجب أن تكون العملة جنيه مصري (EGP) — مصلحة الضرائب المصرية",
+   174→  decimalPlacesMustBe2: "يجب أن يكون عدد المنازل العشرية 2 للجنيه المصري (EGP)",
+   175→
+   176→  // ── VAT ──────────────────────────────────────────────────────────────
+   177→  vatRateMustBe14: "يجب أن تكون نسبة ضريبة القيمة المضافة 14% — القانون المصري",
+   178→  vatRateMustBe0ForExport: "يجب أن تكون نسبة ضريبة القيمة المضافة 0% للفواتير التصديرية",
+   179→  vatExemptRateMustBe0: "نسبة الضريبة المعفاة يجب أن تكون 0%",
+   180→
+   181→  // ── Invoice type ─────────────────────────────────────────────────────
+   182→  invoiceTypeRequired: "نوع الفاتورة مطلوب (ضريبية / إيصال إلكتروني / تصدير)",
+   183→  b2bBuyerTrnMismatch: "نوع الفاتورة ضريبية (B2B) يتطلب رقم ضريبي للمشتري",
+   184→  b2cNoBuyerTrn: "الإيصال الإلكتروني (B2C) لا يتطلب رقم ضريبي للمشتري",
+   185→
+   186→  // ── Dual language ────────────────────────────────────────────────────
+   187→  dualLanguageRequired: "اللغة المزدوجة (العربية والإنجليزية) مطلوبة — مصلحة الضرائب المصرية",
+   188→  lineItemDescriptionArRequired: "وصف الصف باللغة العربية مطلوب",
+   189→  lineItemDescriptionEnRequired: "وصف الصف باللغة الإنجليزية مطلوب",
+   190→
+   191→  // ── Retention ────────────────────────────────────────────────────────
+   192→  retentionWarning: "⚠️ يجب الاحتفاظ بالسجلات لمدة 5 سنوات — مصلحة الضرائب المصرية. الغرامة قد تصل إلى 500,000 جنيه مصري",
+   193→
+   194→  // ── Portal ───────────────────────────────────────────────────────────
+   195→  portalRegistrationRequired: "⚠️ يجب التسجيل في بوابة مصلحة الضرائب المصرية قبل تقديم الفواتير الإلكترونية",
+   196→  digitalReceiptRequired: "⚠️ الإيصال الإلكتروني مطلوب للمعاملات B2C (التاجر إلى المستهلك)",
+   197→};
+   198→
+   199→const EN_MESSAGES = {
+   200→  sellerNameArRequired: "Seller name in Arabic is required — ETA Egypt",
+   201→  sellerNameEnRequired: "Seller name in English is required — ETA Egypt",
+   202→  sellerAddressArRequired: "Seller address in Arabic is required",
+   203→  sellerAddressEnRequired: "Seller address in English is required",
+   204→  sellerTrnRequired: "Seller tax registration number (TRN) is required — ETA Egypt",
+   205→  buyerNameArRequired: "Buyer name in Arabic is required for standard (B2B) invoices",
+   206→  buyerNameEnRequired: "Buyer name in English is required for standard (B2B) invoices",
+   207→  buyerTrnRequiredB2b: "Buyer tax registration number (TRN) is required for standard (B2B) invoices",
+   208→  buyerAddressArRequired: "Buyer address in Arabic is required for standard (B2B) invoices",
+   209→  buyerAddressEnRequired: "Buyer address in English is required for standard (B2B) invoices",
+   210→  currencyMustBeEgp: "Currency must be EGP (Egyptian Pound) — ETA Egypt",
+   211→  decimalPlacesMustBe2: "Currency decimal places must be 2 for EGP",
+   212→  vatRateMustBe14: "VAT rate must be 14% — Egyptian VAT law",
+   213→  vatRateMustBe0ForExport: "VAT rate must be 0% for export invoices",
+   214→  vatExemptRateMustBe0: "Exempt VAT rate must be 0%",
+   215→  invoiceTypeRequired: "Invoice type is required (standard/simplified/export)",
+   216→  b2bBuyerTrnMismatch: "Standard (B2B) invoice requires buyer TRN",
+   217→  b2cNoBuyerTrn: "Simplified (B2C) receipt does not require buyer TRN",
+   218→  dualLanguageRequired: "Dual language (Arabic + English) is required — ETA Egypt",
+   219→  lineItemDescriptionArRequired: "Line item description in Arabic is required",
+   220→  lineItemDescriptionEnRequired: "Line item description in English is required",
+   221→  retentionWarning: "⚠️ Records must be retained for 5 years — ETA Egypt. Fine up to EGP 500,000",
+   222→  portalRegistrationRequired: "⚠️ Registration with ETA portal is required before submitting e-invoices",
+   223→  digitalReceiptRequired: "⚠️ Digital receipt (إيصال إلكتروني) is required for B2C transactions",
+   224→};
+   225→
+   226→// ── Invoice Type Classification ──────────────────────────────────────────
+   227→
+   228→/**
+   229→ * determineEgyptEtaInvoiceType — Classifies an invoice as standard, simplified, or export.
+   230→ *
+   231→ * Classification rules:
+   232→ * - export: invoice has isExport=true, or invoiceTypeEn="export", or export-related fields
+   233→ * - standard (B2B): has buyerVatNumber/clientId, or invoiceTypeEn="standard"
+   234→ * - simplified (B2C): no buyer TRN, retail transaction
+   235→ */
+   236→export function determineEgyptEtaInvoiceType(
+   237→  invoice: Record<string, unknown>,
+   238→): EgyptEtaInvoiceType {
+   239→  // Explicit setting
+   240→  const explicit = invoice.invoiceTypeEn as string;
+   241→  if (explicit === "export") return "export";
+   242→  if (explicit === "standard") return "standard";
+   243→  if (explicit === "simplified") return "simplified";
+   244→
+   245→  // Check Arabic type
+   246→  const typeAr = invoice.invoiceTypeAr as string;
+   247→  if (typeAr === "فاتورة تصدير") return "export";
+   248→  if (typeAr === "فاتورة ضريبية") return "standard";
+   249→  if (typeAr === "إيصال إلكتروني") return "simplified";
+   250→
+   251→  // Check export flag
+   252→  if (invoice.isExport === true) return "export";
+   253→
+   254→  // B2B if buyer has VAT number or clientId
+   255→  if (invoice.buyerVatNumber || invoice.buyerTaxRegistrationNumber || invoice.clientId) {
+   256→    return "standard";
+   257→  }
+   258→
+   259→  // Default: simplified (B2C)
+   260→  return "simplified";
+   261→}
+   262→
+   263→// ── UUID Generation ──────────────────────────────────────────────────────
+   264→
+   265→/**
+   266→ * generateEgyptEtaUuid — Generates a UUID v4 for ETA invoice identification.
+   267→ */
+   268→export function generateEgyptEtaUuid(): string {
+   269→  return crypto.randomUUID();
+   270→}
+   271→
+   272→// ── Validation ──────────────────────────────────────────────────────────
+   273→
+   274→/**
+   275→ * validateEgyptEtaInvoice — Validates invoice data for Egyptian ETA compliance.
+   276→ *
+   277→ * Checks:
+   278→ * - Arabic + English dual language required (seller name, seller address)
+   279→ * - Buyer Arabic + English required for B2B (standard)
+   280→ * - EGP currency with exactly 2 decimal places
+   281→ * - 14% VAT rate for standard/simplified, 0% for export
+   282→ * - Seller TRN mandatory
+   283→ * - Buyer TRN mandatory for B2B (standard)
+   284→ * - Line items must have Arabic + English descriptions
+   285→ * - Invoice type classification consistency
+   286→ * - Returns Egyptian Arabic error messages
+   287→ */
+   288→export function validateEgyptEtaInvoice(
+   289→  invoice: Record<string, unknown>,
+   290→  company: Record<string, unknown>,
+   291→): EgyptEtaValidationResult {
+   292→  const errors: EgyptEtaValidationError[] = [];
+   293→  const warnings: EgyptEtaValidationError[] = [];
+   294→
+   295→  // ── Step 0: Skip for non-Egyptian companies ──────────────────────────
+   296→  const countryCode = company.country as string;
+   297→  if (countryCode !== "EG") {
+   298→    return { valid: true, errors: [], warnings: [] };
+   299→  }
+   300→
+   301→  const invoiceType = determineEgyptEtaInvoiceType(invoice);
+   302→
+   303→  // ── Step 1: Seller TRN ───────────────────────────────────────────────
+   304→  const sellerTrn =
+   305→    (invoice.sellerTaxRegistrationNumber as string) ||
+   306→    (invoice.vatNumber as string) ||
+   307→    (company.vatNumber as string);
+   308→  if (!sellerTrn) {
+   309→    errors.push({
+   310→      field: "sellerTaxRegistrationNumber",
+   311→      messageAr: ERROR_MESSAGES.sellerTrnRequired,
+   312→      messageEn: EN_MESSAGES.sellerTrnRequired,
+   313→      severity: "error",
+   314→    });
+   315→  }
+   316→
+   317→  // ── Step 2: Dual language (Arabic + English) ────────────────────────
+   318→  // Seller name — both Arabic and English required
+   319→  const sellerNameAr =
+   320→    (invoice.sellerNameAr as string) || (company.nameAr as string);
+   321→  if (!sellerNameAr) {
+   322→    errors.push({
+   323→      field: "sellerNameAr",
+   324→      messageAr: ERROR_MESSAGES.sellerNameArRequired,
+   325→      messageEn: EN_MESSAGES.sellerNameArRequired,
+   326→      severity: "error",
+   327→    });
+   328→  }
+   329→
+   330→  const sellerNameEn =
+   331→    (invoice.sellerNameEn as string) || (company.name as string);
+   332→  if (!sellerNameEn) {
+   333→    errors.push({
+   334→      field: "sellerNameEn",
+   335→      messageAr: ERROR_MESSAGES.sellerNameEnRequired,
+   336→      messageEn: EN_MESSAGES.sellerNameEnRequired,
+   337→      severity: "error",
+   338→    });
+   339→  }
+   340→
+   341→  // Seller address — both Arabic and English required
+   342→  const sellerAddressAr =
+   343→    (invoice.sellerAddressAr as string) || (company.addressAr as string) || (company.address as string);
+   344→  if (!sellerAddressAr) {
+   345→    errors.push({
+   346→      field: "sellerAddressAr",
+   347→      messageAr: ERROR_MESSAGES.sellerAddressArRequired,
+   348→      messageEn: EN_MESSAGES.sellerAddressEnRequired,
+   349→      severity: "error",
+   350→    });
+   351→  }
+   352→
+   353→  const sellerAddressEn =
+   354→    (invoice.sellerAddressEn as string) || (company.address as string);
+   355→  if (!sellerAddressEn) {
+   356→    errors.push({
+   357→      field: "sellerAddressEn",
+   358→      messageAr: ERROR_MESSAGES.sellerAddressEnRequired,
+   359→      messageEn: EN_MESSAGES.sellerAddressEnRequired,
+   360→      severity: "error",
+   361→    });
+   362→  }
+   363→
+   364→  // ── Step 3: Buyer validation (type-specific) ─────────────────────────
+   365→  if (invoiceType === "standard") {
+   366→    // B2B: buyer Arabic + English name, buyer TRN, buyer address
+   367→    const buyerNameAr = invoice.buyerNameAr as string;
+   368→    if (!buyerNameAr) {
+   369→      errors.push({
+   370→        field: "buyerNameAr",
+   371→        messageAr: ERROR_MESSAGES.buyerNameArRequired,
+   372→        messageEn: EN_MESSAGES.buyerNameArRequired,
+   373→        severity: "error",
+   374→      });
+   375→    }
+   376→
+   377→    const buyerNameEn = invoice.buyerNameEn as string;
+   378→    if (!buyerNameEn) {
+   379→      errors.push({
+   380→        field: "buyerNameEn",
+   381→        messageAr: ERROR_MESSAGES.buyerNameEnRequired,
+   382→        messageEn: EN_MESSAGES.buyerNameEnRequired,
+   383→        severity: "error",
+   384→      });
+   385→    }
+   386→
+   387→    const buyerTrn =
+   388→      (invoice.buyerTaxRegistrationNumber as string) ||
+   389→      (invoice.buyerVatNumber as string);
+   390→    if (!buyerTrn) {
+   391→      errors.push({
+   392→        field: "buyerTaxRegistrationNumber",
+   393→        messageAr: ERROR_MESSAGES.buyerTrnRequiredB2b,
+   394→        messageEn: EN_MESSAGES.buyerTrnRequiredB2b,
+   395→        severity: "error",
+   396→      });
+   397→    }
+   398→
+   399→    const buyerAddressAr = invoice.buyerAddressAr as string;
+   400→    if (!buyerAddressAr) {
+   401→      errors.push({
+   402→        field: "buyerAddressAr",
+   403→        messageAr: ERROR_MESSAGES.buyerAddressArRequired,
+   404→        messageEn: EN_MESSAGES.buyerAddressArRequired,
+   405→        severity: "error",
+   406→      });
+   407→    }
+   408→
+   409→    const buyerAddressEn = invoice.buyerAddressEn as string;
+   410→    if (!buyerAddressEn) {
+   411→      errors.push({
+   412→        field: "buyerAddressEn",
+   413→        messageAr: ERROR_MESSAGES.buyerAddressEnRequired,
+   414→        messageEn: EN_MESSAGES.buyerAddressEnRequired,
+   415→        severity: "error",
+   416→      });
+   417→    }
+   418→  }
+   419→
+   420→  if (invoiceType === "export") {
+   421→    // Export: buyer name required (both languages), buyer TRN recommended
+   422→    const buyerNameAr = invoice.buyerNameAr as string;
+   423→    if (!buyerNameAr) {
+   424→      errors.push({
+   425→        field: "buyerNameAr",
+   426→        messageAr: ERROR_MESSAGES.buyerNameArRequired,
+   427→        messageEn: EN_MESSAGES.buyerNameArRequired,
+   428→        severity: "error",
+   429→      });
+   430→    }
+   431→  }
+   432→
+   433→  // ── Step 4: Currency ─────────────────────────────────────────────────
+   434→  const currency = invoice.currency as string;
+   435→  if (currency && currency !== EGYPT_ETA_CURRENCY) {
+   436→    errors.push({
+   437→      field: "currency",
+   438→      messageAr: ERROR_MESSAGES.currencyMustBeEgp,
+   439→      messageEn: EN_MESSAGES.currencyMustBeEgp,
+   440→      severity: "error",
+   441→    });
+   442→  }
+   443→
+   444→  const decimalPlaces = invoice.currencyDecimalPlaces as number;
+   445→  if (decimalPlaces && decimalPlaces !== EGYPT_ETA_DECIMAL_PLACES) {
+   446→    errors.push({
+   447→      field: "currencyDecimalPlaces",
+   448→      messageAr: ERROR_MESSAGES.decimalPlacesMustBe2,
+   449→      messageEn: EN_MESSAGES.decimalPlacesMustBe2,
+   450→      severity: "error",
+   451→    });
+   452→  }
+   453→
+   454→  // ── Step 5: VAT rate ─────────────────────────────────────────────────
+   455→  const taxRate = parseFloat(
+   456→    (invoice.taxRate as string) || (company.defaultTaxRate as string) || "0",
+   457→  );
+   458→
+   459→  if (invoiceType === "export") {
+   460→    // Export invoices must have 0% VAT
+   461→    if (taxRate !== 0) {
+   462→      errors.push({
+   463→        field: "taxRate",
+   464→        messageAr: ERROR_MESSAGES.vatRateMustBe0ForExport,
+   465→        messageEn: EN_MESSAGES.vatRateMustBe0ForExport,
+   466→        severity: "error",
+   467→      });
+   468→    }
+   469→  } else {
+   470→    // Standard and simplified invoices: 14% VAT
+   471→    // Allow 0% for exempt items but not as the main rate
+   472→    if (taxRate !== EGYPT_ETA_VAT_RATE && taxRate !== 0) {
+   473→      errors.push({
+   474→        field: "taxRate",
+   475→        messageAr: ERROR_MESSAGES.vatRateMustBe14,
+   476→        messageEn: EN_MESSAGES.vatRateMustBe14,
+   477→        severity: "error",
+   478→      });
+   479→    }
+   480→  }
+   481→
+   482→  // ── Step 6: Line items dual language ─────────────────────────────────
+   483→  const lineItemsRaw = invoice.lineItems as string;
+   484→  if (lineItemsRaw) {
+   485→    try {
+   486→      const items: LineItem[] = JSON.parse(lineItemsRaw);
+   487→      for (const item of items) {
+   488→        // Check if Arabic description exists (could be in lineItemsAr)
+   489→        if (!item.description) {
+   490→          errors.push({
+   491→            field: "lineItems",
+   492→            messageAr: ERROR_MESSAGES.lineItemDescriptionEnRequired,
+   493→            messageEn: EN_MESSAGES.lineItemDescriptionEnRequired,
+   494→            severity: "error",
+   495→          });
+   496→        }
+   497→      }
+   498→    } catch {
+   499→      // If lineItems can't be parsed, skip line item validation
+   500→    }
+   501→  }
+   502→
+   503→  const lineItemsArRaw = invoice.lineItemsAr as string;
+   504→  if (!lineItemsArRaw && lineItemsRaw) {
+   505→    // Arabic line items are required for ETA compliance
+   506→    warnings.push({
+   507→      field: "lineItemsAr",
+   508→      messageAr: ERROR_MESSAGES.lineItemDescriptionArRequired,
+   509→      messageEn: EN_MESSAGES.lineItemDescriptionArRequired,
+   510→      severity: "warning",
+   511→    });
+   512→  }
+   513→
+   514→  // ── Step 7: Invoice type consistency ─────────────────────────────────
+   515→  if (invoiceType === "standard" && !sellerTrn) {
+   516→    // Already caught in Step 1 — just ensure consistency
+   517→  }
+   518→
+   519→  // ── Step 8: Advisory warnings ────────────────────────────────────────
+   520→  // Retention warning
+   521→  warnings.push({
+   522→    field: "recordRetention",
+   523→    messageAr: ERROR_MESSAGES.retentionWarning,
+   524→    messageEn: EN_MESSAGES.retentionWarning,
+   525→    severity: "warning",
+   526→  });
+   527→
+   528→  // Portal registration warning
+   529→  warnings.push({
+   530→    field: "etaPortalRegistration",
+   531→    messageAr: ERROR_MESSAGES.portalRegistrationRequired,
+   532→    messageEn: EN_MESSAGES.portalRegistrationRequired,
+   533→    severity: "warning",
+   534→  });
+   535→
+   536→  // Digital receipt warning for B2C
+   537→  if (invoiceType === "simplified") {
+   538→    warnings.push({
+   539→      field: "digitalReceipt",
+   540→      messageAr: ERROR_MESSAGES.digitalReceiptRequired,
+   541→      messageEn: EN_MESSAGES.digitalReceiptRequired,
+   542→      severity: "warning",
+   543→    });
+   544→  }
+   545→
+   546→  const valid = errors.length === 0;
+   547→  if (!valid) {
+   548→    logger.warn("[egypt-eta] Invoice validation failed", {
+   549→      companySlug: company.slug,
+   550→      invoiceNumber: invoice.invoiceNumber,
+   551→      errorCount: errors.length,
+   552→      errors: errors.map((e) => e.messageEn),
+   553→    });
+   554→  } else {
+   555→    logger.info("[egypt-eta] Invoice validation passed", {
+   556→      companySlug: company.slug,
+   557→      invoiceNumber: invoice.invoiceNumber,
+   558→      warningCount: warnings.length,
+   559→    });
+   560→  }
+   561→
+   562→  return { valid, errors, warnings };
+   563→}
+   564→
+   565→// ── Payload Generation ──────────────────────────────────────────────────
+   566→
+   567→/**
+   568→ * generateEgyptEtaInvoicePayload — Generates a structured payload for ETA submission.
+   569→ *
+   570→ * Creates dual-language payload with:
+   571→ * - Arabic + English fields for seller/buyer
+   572→ * - EGP 2-decimal amounts
+   573→ * - 14% VAT for standard/simplified, 0% for export
+   574→ * - Seller/buyer TRN
+   575→ * - Invoice classification (standard/simplified/export)
+   576→ * - UUID for ETA identification
+   577→ */
+   578→export function generateEgyptEtaInvoicePayload(
+   579→  invoice: Record<string, unknown>,
+   580→  company: Record<string, unknown>,
+   581→): EgyptEtaInvoicePayload {
+   582→  const invoiceType = determineEgyptEtaInvoiceType(invoice);
+   583→  const uuid = (invoice.uuid as string) || generateEgyptEtaUuid();
+   584→
+   585→  // ── Dates ────────────────────────────────────────────────────────────
+   586→  const issueDate = (invoice.issueDate as string) || new Date().toISOString().split("T")[0];
+   587→  const dueDate = (invoice.dueDate as string) || issueDate;
+   588→
+   589→  const issueHijri = formatHijri(issueDate);
+   590→  const dueHijri = formatHijri(dueDate);
+   591→  const issueDual = formatDualDate(issueDate);
+   592→  const dueDual = formatDualDate(dueDate);
+   593→
+   594→  // ── Seller fields ────────────────────────────────────────────────────
+   595→  const sellerNameAr =
+   596→    (invoice.sellerNameAr as string) || (company.nameAr as string) || "";
+   597→  const sellerNameEn =
+   598→    (invoice.sellerNameEn as string) || (company.name as string) || "";
+   599→  const sellerAddressAr =
+   600→    (invoice.sellerAddressAr as string) ||
+   601→    (company.addressAr as string) ||
+   602→    (company.address as string) ||
+   603→    "";
+   604→  const sellerAddressEn =
+   605→    (invoice.sellerAddressEn as string) || (company.address as string) || "";
+   606→  const sellerTrn =
+   607→    (invoice.sellerTaxRegistrationNumber as string) ||
+   608→    (invoice.vatNumber as string) ||
+   609→    (company.vatNumber as string) ||
+   610→    "";
+   611→
+   612→  // ── Buyer fields ─────────────────────────────────────────────────────
+   613→  const buyerNameAr = (invoice.buyerNameAr as string) || (invoice.clientNameAr as string) || null;
+   614→  const buyerNameEn = (invoice.buyerNameEn as string) || (invoice.clientName as string) || null;
+   615→  const buyerAddressAr = (invoice.buyerAddressAr as string) || null;
+   616→  const buyerAddressEn = (invoice.buyerAddressEn as string) || null;
+   617→  const buyerTrn =
+   618→    (invoice.buyerTaxRegistrationNumber as string) ||
+   619→    (invoice.buyerVatNumber as string) ||
+   620→    null;
+   621→  const buyerCountryCode = (invoice.buyerCountryCode as string) || null;
+   622→
+   623→  // ── Line items ───────────────────────────────────────────────────────
+   624→  const lineItemsRaw = (invoice.lineItems as string) || "[]";
+   625→  let parsedItems: LineItem[] = [];
+   626→  try {
+   627→    parsedItems = JSON.parse(lineItemsRaw);
+   628→  } catch {
+   629→    parsedItems = [];
+   630→  }
+   631→
+   632→  const dp = EGYPT_ETA_DECIMAL_PLACES;
+   633→  const vatRate = invoiceType === "export" ? 0 : EGYPT_ETA_VAT_RATE;
+   634→
+   635→  const etaLineItems: EgyptEtaLineItemPayload[] = parsedItems.map((item, idx) => {
+   636→    const lineTotal = num(item.total ?? num(item.qty) * num(item.price), dp);
+   637→    const lineTaxAmount = (lineTotal * vatRate) / 100;
+   638→    return {
+   639→      id: `LI-${idx + 1}`,
+   640→      descriptionAr: ((item as unknown) as Record<string, unknown>).descriptionAr as string || item.description || "",
+   641→      descriptionEn: item.description || "",
+   642→      qty: num(item.qty, dp).toFixed(dp),
+   643→      unitPrice: num(item.price, dp).toFixed(dp),
+   644→      unitCode: "EA",
+   645→      lineTotal: lineTotal.toFixed(dp),
+   646→      taxRate: vatRate.toFixed(dp),
+   647→      taxAmount: num(lineTaxAmount, dp).toFixed(dp),
+   648→      taxCategory: vatRate === 0 ? "Z" : "S",
+   649→      taxSchemeAr: "ضريبة القيمة المضافة",
+   650→      taxSchemeEn: "Value Added Tax",
+   651→      discountAmount: null,
+   652→    };
+   653→  });
+   654→
+   655→  // ── Totals ───────────────────────────────────────────────────────────
+   656→  const shipping = num(invoice.shipping, dp);
+   657→  const discount = num(invoice.discount, dp);
+   658→  const totals = calcInvoiceTotals(parsedItems, vatRate, shipping, discount);
+   659→
+   660→  // ── Invoice type labels ──────────────────────────────────────────────
+   661→  const typeLabels: Record<EgyptEtaInvoiceType, { ar: string; en: string }> = {
+   662→    standard: { ar: "فاتورة ضريبية", en: "standard" },
+   663→    simplified: { ar: "إيصال إلكتروني", en: "simplified" },
+   664→    export: { ar: "فاتورة تصدير", en: "export" },
+   665→  };
+   666→
+   667→  return {
+   668→    uuid,
+   669→    invoiceNumber: (invoice.invoiceNumber as string) || "",
+   670→    invoiceType,
+   671→    invoiceTypeAr: typeLabels[invoiceType].ar,
+   672→    invoiceTypeEn: typeLabels[invoiceType].en,
+   673→    etaRegulation: EGYPT_ETA_REGULATION,
+   674→
+   675→    issueDateGregorian: issueDate,
+   676→    issueDateHijri: issueHijri,
+   677→    issueDateDual: issueDual,
+   678→    dueDateGregorian: dueDate,
+   679→    dueDateHijri: dueHijri,
+   680→    dueDateDual: dueDual,
+   681→
+   682→    currency: EGYPT_ETA_CURRENCY,
+   683→    currencyDecimalPlaces: dp,
+   684→
+   685→    sellerNameAr,
+   686→    sellerNameEn,
+   687→    sellerAddressAr,
+   688→    sellerAddressEn,
+   689→    sellerTaxRegistrationNumber: sellerTrn,
+   690→    sellerCommercialRegistration:
+   691→      (invoice.commercialRegistration as string) ||
+   692→      (company.commercialRegistration as string) ||
+   693→      null,
+   694→    sellerCountryCode: "EG",
+   695→
+   696→    buyerNameAr,
+   697→    buyerNameEn,
+   698→    buyerAddressAr,
+   699→    buyerAddressEn,
+   700→    buyerTaxRegistrationNumber: buyerTrn,
+   701→    buyerCountryCode,
+   702→
+   703→    lineItems: etaLineItems,
+   704→
+   705→    subtotal: num(totals.subtotal, dp).toFixed(dp),
+   706→    taxRate: vatRate.toFixed(dp),
+   707→    taxAmount: num(totals.taxAmount, dp).toFixed(dp),
+   708→    total: num(totals.total, dp).toFixed(dp),
+   709→    shipping: num(totals.shipping, dp).toFixed(dp),
+   710→    discount: num(totals.discount, dp).toFixed(dp),
+   711→    paid: num(invoice.paid, dp).toFixed(dp),
+   712→
+   713→    notesAr: (invoice.notesAr as string) || null,
+   714→    notesEn: (invoice.notes as string) || null,
+   715→
+   716→    eInvoiceAuthority: EGYPT_ETA_AUTHORITY,
+   717→    previousInvoiceHash: (invoice.previousInvoiceHash as string) || "",
+   718→    invoiceHash: "",
+   719→    paymentMethod: (invoice.paymentMethod as string) || null,
+   720→    isExport: invoiceType === "export",
+   721→    digitalReceipt: invoiceType === "simplified",
+   722→  };
+   723→}
+   724→
+   725→// ── Submission ──────────────────────────────────────────────────────────
+   726→
+   727→/**
+   728→ * submitEgyptEtaInvoice — Submits an invoice payload to the ETA portal.
+   729→ *
+   730→ * Placeholder: ETA API requires taxpayer registration first.
+   731→ * Stores EInvoice record with authorityType="eta_egypt".
+   732→ *
+   733→ * @param payload - The ETA invoice payload to submit
+   734→ * @returns Submission result with ETA reference and status
+   735→ */
+   736→export async function submitEgyptEtaInvoice(
+   737→  payload: EgyptEtaInvoicePayload,
+   738→): Promise<EgyptEtaSubmissionResult> {
+   739→  const invoiceType = payload.invoiceType;
+   740→
+   741→  logger.info("[egypt-eta] Submitting invoice to ETA portal", {
+   742→    invoiceNumber: payload.invoiceNumber,
+   743→    invoiceType,
+   744→    companySlug: payload.eInvoiceAuthority,
+   745→  });
+   746→
+   747→  // ── ETA API requires registration — placeholder implementation ───────
+   748→  // In production, this would call the actual ETA portal endpoints:
+   749→  //   - Standard invoices: POST /invoiceRequests
+   750→  //   - Simplified receipts: POST /receiptrequests
+   751→  //   - Export invoices: POST /exportInvoiceRequests
+   752→  //
+   753→  // The ETA portal requires:
+   754→  //   1. Taxpayer registration on the ETA portal
+   755→  //   2. API access token (OAuth2)
+   756→  //   3. Valid TRN for both seller and buyer (for B2B)
+   757→  //   4. Correct invoice format per ETA specification
+   758→
+   759→  try {
+   760→    // Placeholder: create EInvoice record in database
+   761→    // In production, replace with actual ETA API call
+   762→    const eInvoice = await db.eInvoice.create({
+   763→      data: {
+   764→        authorityType: EGYPT_ETA_AUTHORITY,
+   765→        submissionStatus: "pending", // Will be updated when ETA portal responds
+   766→        uuid: payload.uuid,
+   767→        rawXml: JSON.stringify(payload),
+   768→        companySlug: payload.sellerNameEn, // Temporary — should use actual companySlug
+   769→        invoiceId: 0, // Placeholder — should link to actual invoice
+   770→      },
+   771→    });
+   772→
+   773→    logger.info("[egypt-eta] EInvoice record created (placeholder)", {
+   774→      eInvoiceId: eInvoice.id,
+   775→      invoiceNumber: payload.invoiceNumber,
+   776→      authorityType: EGYPT_ETA_AUTHORITY,
+   777→      note: "ETA portal submission is placeholder — requires taxpayer registration",
+   778→    });
+   779→
+   780→    return {
+   781→      ok: true,
+   782→      eInvoiceId: eInvoice.id,
+   783→      submissionStatus: "pending",
+   784→      etaSubmissionId: `ETA-PLACEHOLDER-${eInvoice.id}`,
+   785→    };
+   786→  } catch (err) {
+   787→    const errorMsg = err instanceof Error ? err.message : String(err);
+   788→    logger.error("[egypt-eta] Failed to create EInvoice record", {
+   789→      error: errorMsg,
+   790→      invoiceNumber: payload.invoiceNumber,
+   791→    });
+   792→
+   793→    return {
+   794→      ok: false,
+   795→      submissionStatus: "rejected",
+   796→      error: errorMsg,
+   797→      rejectionReason: "Failed to create EInvoice record — ETA portal submission placeholder",
+   798→    };
+   799→  }
+   800→}
+   801→
+   802→// ── Status Check ────────────────────────────────────────────────────────
+   803→
+   804→/**
+   805→ * checkEgyptEtaInvoiceStatus — Checks submission status from local DB.
+   806→ *
+   807→ * @param eInvoiceId - The EInvoice record ID
+   808→ * @returns Status info from the EInvoice table
+   809→ */
+   810→export async function checkEgyptEtaInvoiceStatus(
+   811→  eInvoiceId: number,
+   812→): Promise<{
+   813→  status: string;
+   814→  submissionId?: string;
+   815→  rejectionReason?: string;
+   816→  submittedAt?: Date;
+   817→  approvedAt?: Date;
+   818→}> {
+   819→  try {
+   820→    const eInvoice = await db.eInvoice.findUnique({
+   821→      where: { id: eInvoiceId },
+   822→    });
+   823→
+   824→    if (!eInvoice) {
+   825→      logger.warn("[egypt-eta] EInvoice not found", { eInvoiceId });
+   826→      return { status: "not_found" };
+   827→    }
+   828→
+   829→    return {
+   830→      status: eInvoice.submissionStatus,
+   831→      submissionId: eInvoice.uuid ?? undefined,
+   832→      rejectionReason: eInvoice.rejectionReason ?? undefined,
+   833→      submittedAt: eInvoice.submittedAt ?? undefined,
+   834→      approvedAt: eInvoice.approvedAt ?? undefined,
+   835→    };
+   836→  } catch (err) {
+   837→    logger.error("[egypt-eta] Failed to check EInvoice status", {
+   838→      eInvoiceId,
+   839→      error: err instanceof Error ? err.message : String(err),
+   840→    });
+   841→    return { status: "error" };
+   842→  }
+   843→}
+   844→
+   845→// ── Auto-Populate ──────────────────────────────────────────────────────
+   846→
+   847→/**
+   848→ * autoPopulateEgyptEtaFields — Auto-populates ETA-specific fields for an invoice.
+   849→ *
+   850→ * Populates:
+   851→ * - UUID for ETA identification
+   852→ * - Hijri dates (optional for Egypt, but recommended)
+   853→ * - Seller TRN from company settings
+   854→ * - Arabic + English seller fields from company
+   855→ * - EGP currency enforcement
+   856→ * - 2-decimal precision
+   857→ * - 14% VAT rate for standard/simplified, 0% for export
+   858→ * - Invoice type classification
+   859→ * - E-invoice authority
+   860→ * - PIH placeholder
+   861→ */
+   862→export function autoPopulateEgyptEtaFields(
+   863→  invoiceData: Record<string, unknown>,
+   864→  company: Record<string, unknown>,
+   865→): Record<string, unknown> {
+   866→  const result = { ...invoiceData };
+   867→  const dp = EGYPT_ETA_DECIMAL_PLACES;
+   868→
+   869→  // ── UUID ─────────────────────────────────────────────────────────────
+   870→  if (!result.uuid) {
+   871→    result.uuid = generateEgyptEtaUuid();
+   872→  }
+   873→
+   874→  // ── Hijri dates (optional but recommended) ──────────────────────────
+   875→  if (result.issueDate && !result.hijriIssueDate) {
+   876→    result.hijriIssueDate = formatHijri(result.issueDate as string);
+   877→  }
+   878→  if (result.dueDate && !result.hijriDueDate) {
+   879→    result.hijriDueDate = formatHijri(result.dueDate as string);
+   880→  }
+   881→  if (result.issueDate && !result.issueDateDual) {
+   882→    result.issueDateDual = formatDualDate(result.issueDate as string);
+   883→  }
+   884→  if (result.dueDate && !result.dueDateDual) {
+   885→    result.dueDateDual = formatDualDate(result.dueDate as string);
+   886→  }
+   887→
+   888→  // ── Seller TRN ───────────────────────────────────────────────────────
+   889→  if (!result.sellerTaxRegistrationNumber && !result.vatNumber) {
+   890→    result.sellerTaxRegistrationNumber =
+   891→      company.vatNumber || company.taxRegistrationNumber || "";
+   892→  }
+   893→
+   894→  // ── Seller name (Arabic + English) ──────────────────────────────────
+   895→  if (!result.sellerNameAr) {
+   896→    result.sellerNameAr = company.nameAr || "";
+   897→  }
+   898→  if (!result.sellerNameEn) {
+   899→    result.sellerNameEn = company.name || "";
+   900→  }
+   901→
+   902→  // ── Seller address (Arabic + English) ────────────────────────────────
+   903→  if (!result.sellerAddressAr) {
+   904→    result.sellerAddressAr = company.addressAr || company.address || "";
+   905→  }
+   906→  if (!result.sellerAddressEn) {
+   907→    result.sellerAddressEn = company.address || "";
+   908→  }
+   909→
+   910→  // ── Currency ─────────────────────────────────────────────────────────
+   911→  result.currency = EGYPT_ETA_CURRENCY;
+   912→  result.currencyDecimalPlaces = dp;
+   913→
+   914→  // ── Invoice type ─────────────────────────────────────────────────────
+   915→  const invoiceType = determineEgyptEtaInvoiceType(result);
+   916→  result.invoiceTypeEn = invoiceType;
+   917→
+   918→  const typeLabelsAr: Record<EgyptEtaInvoiceType, string> = {
+   919→    standard: "فاتورة ضريبية",
+   920→    simplified: "إيصال إلكتروني",
+   921→    export: "فاتورة تصدير",
+   922→  };
+   923→  result.invoiceTypeAr = typeLabelsAr[invoiceType];
+   924→
+   925→  // ── VAT rate ─────────────────────────────────────────────────────────
+   926→  if (invoiceType === "export") {
+   927→    result.taxRate = "0.00";
+   928→  } else if (!result.taxRate) {
+   929→    result.taxRate = EGYPT_ETA_VAT_RATE.toFixed(dp);
+   930→  }
+   931→
+   932→  // ── 2-decimal precision on monetary fields ───────────────────────────
+   933→  const monetaryFields = ["subtotal", "taxAmount", "total", "shipping", "discount", "paid"];
+   934→  for (const field of monetaryFields) {
+   935→    if (result[field] !== undefined && result[field] !== null) {
+   936→      result[field] = num(result[field], dp).toFixed(dp);
+   937→    }
+   938→  }
+   939→
+   940→  // ── E-invoice authority ──────────────────────────────────────────────
+   941→  result.eInvoiceAuthority = EGYPT_ETA_AUTHORITY;
+   942→
+   943→  // ── PIH placeholder ──────────────────────────────────────────────────
+   944→  if (!result.previousInvoiceHash) {
+   945→    result.previousInvoiceHash = "";
+   946→  }
+   947→
+   948→  // ── Export flag ──────────────────────────────────────────────────────
+   949→  result.isExport = invoiceType === "export";
+   950→
+   951→  // ── Digital receipt flag ─────────────────────────────────────────────
+   952→  result.digitalReceipt = invoiceType === "simplified";
+   953→
+   954→  logger.debug("[egypt-eta] Auto-populated ETA fields", {
+   955→    uuid: result.uuid,
+   956→    invoiceType: result.invoiceTypeEn,
+   957→    currency: result.currency,
+   958→    taxRate: result.taxRate,
+   959→  });
+   960→
+   961→  return result;
+   962→}
+   963→
