@@ -256,12 +256,60 @@ export async function blacklistToken(jti: string, remainingTtlSeconds: number): 
  *
  * SEC-C1 FIX (Cycle 1): this is now the canonical verifier used by
  * `resolveAuth` so that blacklisted access tokens are rejected immediately.
+ *
+ * SEC-H4 FIX (Cycle 3): when `SESSION_REGISTRY_ENFORCED=true`, also consult
+ * the SessionRegistry table. A token whose JTI is not in the registry (or
+ * whose registry entry has expired) is rejected. This catches tokens that
+ * were issued before the registry was populated, tokens whose registry entry
+ * was deleted by an admin (force-logout), and tokens that exceed the per-user
+ * concurrent session limit (the oldest entry is evicted by registerSession).
+ *
+ * The check is opt-in because enforcing it on a deployment where the registry
+ * was never populated would immediately invalidate every active session.
+ * Enable AFTER rolling out registerSession-on-issue and waiting for the
+ * natural 30-min access-token TTL to expire (so all old tokens are gone).
+ *
+ * Fail-open: if the DB lookup throws, the token is accepted (matches the
+ * Valkey blacklist behavior — availability over strictness for transient
+ * infra issues).
  */
 export async function verifyTokenWithBlacklist(token: string): Promise<AuthPayload | null> {
   const payload = verifyToken(token);
   if (!payload) return null;
   if (payload.jti && await isTokenBlacklisted(payload.jti)) return null;
+  // SEC-H4 FIX (Cycle 3): SessionRegistry enforcement (opt-in).
+  if (payload.jti && isSessionRegistryEnforced()) {
+    try {
+      const { isSessionValid } = await import("@/lib/passwordPolicy");
+      const valid = await isSessionValid(payload.jti);
+      if (!valid) return null;
+    } catch {
+      // Fail-open on DB errors — same philosophy as the Valkey blacklist.
+    }
+  }
   return payload;
+}
+
+/**
+ * SEC-H4 FIX (Cycle 3): helper to check whether SessionRegistry enforcement
+ * is enabled. Defaults to OFF to preserve backward compatibility with the
+ * existing production deployment (4 companies / 13 employees / 6K invoices)
+ * where the registry was never populated by issueSession.
+ *
+ * Rollout plan:
+ *   1. Deploy this code with SESSION_REGISTRY_ENFORCED unset (or = "false").
+ *      registerSession will start populating the registry on every login +
+ *      refresh, but enforcement is OFF so existing sessions keep working.
+ *   2. Wait 30 minutes (one access-token TTL) so all active access tokens
+ *      have been re-issued with a registry entry.
+ *   3. Set SESSION_REGISTRY_ENFORCED=true. From this point on, tokens
+ *      without a registry entry (i.e. tokens issued before step 1) are
+ *      rejected. Users with old tokens will be silently re-authed via
+ *      the refresh-token path, which issues a new access token WITH a
+ *      registry entry — transparent to the user.
+ */
+function isSessionRegistryEnforced(): boolean {
+  return process.env.SESSION_REGISTRY_ENFORCED === "true";
 }
 
 /**
@@ -280,6 +328,9 @@ export async function verifyTokenWithBlacklist(token: string): Promise<AuthPaylo
  *
  * Pairs with `User.tokenVersion++` which invalidates the refresh token;
  * together they fully terminate the session.
+ *
+ * SEC-H4 FIX (Cycle 3): also deletes the SessionRegistry entry for the JTI
+ * so the session is immediately invalid even if Valkey is unavailable.
  */
 export async function revokeAccessSession(req: NextRequest): Promise<void> {
   const access = getAccessToken(req);
@@ -299,18 +350,43 @@ export async function revokeAccessSession(req: NextRequest): Promise<void> {
   const exp = typeof decoded.exp === "number" ? decoded.exp : 0;
   const now = Math.floor(Date.now() / 1000);
   const remaining = exp - now;
-  if (remaining <= 0) return; // already expired — nothing to blacklist
-  // Cap the blacklist TTL at the natural access-token TTL so stale entries
-  // don't accumulate if the exp claim is somehow wrong.
-  const ttl = Math.min(remaining, ACCESS_TTL);
-  await blacklistToken(jti, ttl);
+  if (remaining > 0) {
+    // Cap the blacklist TTL at the natural access-token TTL so stale entries
+    // don't accumulate if the exp claim is somehow wrong.
+    const ttl = Math.min(remaining, ACCESS_TTL);
+    await blacklistToken(jti, ttl);
+  }
+  // SEC-H4 FIX (Cycle 3): delete the SessionRegistry entry so enforcement
+  // (when enabled) rejects the token even without consulting Valkey.
+  // Best-effort: a failure here doesn't break logout.
+  try {
+    const { revokeSession } = await import("@/lib/passwordPolicy");
+    await revokeSession(jti);
+  } catch {
+    // Best-effort — Valkey blacklist already handles the immediate case.
+  }
 }
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────
+//
+// LOW-003 FIX (Cycle 3): COOKIE_SECURE env override. By default, `secure`
+// is true only in production. Dev environments that test secure-only cookie
+// behavior over HTTPS (e.g. behind a reverse proxy, or testing OAuth
+// callbacks that require Secure cookies) can set COOKIE_SECURE=true to
+// force the flag on even in dev. Conversely, an unusual staging setup
+// running on plain HTTP might set COOKIE_SECURE=false to make cookies
+// accessible. The default (NODE_ENV === "production") is correct for
+// 99% of deployments — only override if you know what you're doing.
+function resolveCookieSecure(): boolean {
+  const override = process.env.COOKIE_SECURE;
+  if (override === "true") return true;
+  if (override === "false") return false;
+  return process.env.NODE_ENV === "production";
+}
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: resolveCookieSecure(),
   sameSite: "lax" as const,
   path: "/",
   maxAge: ACCESS_TTL,
@@ -318,13 +394,37 @@ const COOKIE_OPTS = {
 
 const REFRESH_COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: resolveCookieSecure(),
   sameSite: "lax" as const,
   path: "/",
   maxAge: REFRESH_TTL,
 };
 
-export async function issueSession(response: NextResponse, user: SessionUser): Promise<void> {
+/**
+ * SEC-H4 FIX (Cycle 3): issueSession now registers the new access token's
+ * JTI in the SessionRegistry. This populates the table so that when
+ * SESSION_REGISTRY_ENFORCED=true is flipped on, the enforcement check
+ * in verifyTokenWithBlacklist can find the entry.
+ *
+ * The registration is best-effort: if the DB write fails (e.g. transient
+ * connection error, or the SessionRegistry table doesn't exist yet), the
+ * session is still issued. This preserves the Cycle 1 behavior for any
+ * deployment that hasn't yet run the migration to add the SessionRegistry
+ * table.
+ *
+ * We also pass the request IP and User-Agent so the registry entry carries
+ * forensic context (useful for the admin "active sessions" UI and for
+ * audit logs when a session is force-revoked).
+ *
+ * Note: this function is called from login + refresh + tests. The optional
+ * `req` parameter is used to extract IP/UA; if absent (e.g. from tests),
+ * the registry entry is created with null IP/UA.
+ */
+export async function issueSession(
+  response: NextResponse,
+  user: SessionUser,
+  req?: NextRequest,
+): Promise<void> {
   const payload: AuthPayload = {
     uid: user.uid,
     email: user.email,
@@ -333,10 +433,36 @@ export async function issueSession(response: NextResponse, user: SessionUser): P
     permissions: user.permissions,
     tv: user.tokenVersion,
   };
-  response.cookies.set(ACCESS_COOKIE, signToken(payload), COOKIE_OPTS);
-  response.cookies.set(REFRESH_COOKIE, signRefreshToken(user.uid, user.tokenVersion), REFRESH_COOKIE_OPTS);
+  const accessToken = signToken(payload);
+  const refreshToken = signRefreshToken(user.uid, user.tokenVersion);
+  response.cookies.set(ACCESS_COOKIE, accessToken, COOKIE_OPTS);
+  response.cookies.set(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTS);
   // SEC-010: Issue CSRF cookie on login so the client can immediately make mutating requests.
   response.cookies.set(CSRF_COOKIE, generateCsrfToken(), CSRF_COOKIE_OPTS);
+
+  // SEC-H4 FIX (Cycle 3): register the access token's JTI in the
+  // SessionRegistry. Best-effort — failures don't break login.
+  try {
+    const decoded = jwt.decode(accessToken) as jwt.JwtPayload | null;
+    if (decoded?.jti) {
+      const { registerSession } = await import("@/lib/passwordPolicy");
+      const ipAddress = req?.headers?.get("x-real-ip") ||
+        req?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        undefined;
+      const userAgent = req?.headers?.get("user-agent") || undefined;
+      await registerSession({
+        userUid: user.uid,
+        jti: decoded.jti,
+        ipAddress,
+        userAgent,
+        ttlSeconds: ACCESS_TTL,
+      });
+    }
+  } catch {
+    // Best-effort — login still succeeds if the registry write fails.
+    // This preserves backward compat with deployments that haven't yet
+    // added the SessionRegistry table.
+  }
 }
 
 export async function clearSession(response: NextResponse): Promise<void> {

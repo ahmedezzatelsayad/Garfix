@@ -228,11 +228,73 @@ jobs:
           path: license-report.txt
           retention-days: 30
 
-  # ── Job 5: Security Summary ────────────────────────────────────────────
+  # ── Job 5: Container Image Vulnerability Scan ───────────────────────────
+  # CONT-001 FIX (Cycle 3): scan the production Docker image for known
+  # vulnerabilities using Trivy. Fails on CRITICAL or HIGH findings so
+  # vulnerable images can't be deployed. The scan runs after a successful
+  # build of all branches that produce an image (main + PRs).
+  container-scan:
+    name: Container Image Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only run if the Dockerfile exists (always true for this repo) and the
+    # build job would have run. We don't formally depend on the build job
+    # because GitHub Actions doesn't have a "build" job in this workflow —
+    # the image is built fresh here just for scanning.
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: garfix-scan:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: garfix-scan:latest
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: "trivy-container-scan"
+
+      - name: Upload Trivy scan results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-container-scan-results
+          path: trivy-results.sarif
+          retention-days: 30
+
+  # ── Job 6: Security Summary ────────────────────────────────────────────
   security-summary:
     name: Security Scan Summary
     runs-on: ubuntu-latest
-    needs: [dependency-audit, codeql, secret-scan, license-check]
+    needs: [dependency-audit, codeql, secret-scan, license-check, container-scan]
     if: always()
 
     steps:
@@ -246,10 +308,11 @@ jobs:
           echo "CodeQL Analysis:   ${{ needs.codeql.result }}"
           echo "Secret Scan:       ${{ needs.secret-scan.result }}"
           echo "License Check:     ${{ needs.license-check.result }}"
+          echo "Container Scan:    ${{ needs.container-scan.result }}"
           echo ""
 
           # Fail if any security check failed
-          RESULTS="${{ needs.dependency-audit.result }}${{ needs.codeql.result }}${{ needs.secret-scan.result }}${{ needs.license-check.result }}"
+          RESULTS="${{ needs.dependency-audit.result }}${{ needs.codeql.result }}${{ needs.secret-scan.result }}${{ needs.license-check.result }}${{ needs.container-scan.result }}"
           if echo "$RESULTS" | grep -q "failure"; then
             echo "❌ Security scan FAILED — review findings"
             exit 1

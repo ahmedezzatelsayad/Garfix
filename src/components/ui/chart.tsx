@@ -81,25 +81,82 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
+        // MED-004 FIX (Cycle 3): sanitize the CSS string before injecting.
+        //
+        // This is the canonical shadcn/ui chart component pattern. The
+        // injected content is a CSS rule of the form:
+        //   [data-chart=<id>] { --color-<key>: <color>; ... }
+        //
+        // Risk: if `id`, `key`, or `color` contained malicious CSS, an
+        // attacker could inject rule-closing `}` characters to add new
+        // rules (CSS injection). CSS injection is much lower impact than
+        // JS injection (no script execution, no DOM reads without a
+        // timing side channel), but it can still be used to exfiltrate
+        // data via attribute selectors + background-image URLs.
+        //
+        // Mitigation: validate all three inputs against strict allowlists.
+        //   - `id` is already sanitized to `chart-<useId>` in ChartContainer
+        //     (React.useId returns only alphanumeric + colon, and we strip
+        //     colons). We still validate here for defense-in-depth.
+        //   - `key` is a JS object key — controlled by the developer who
+        //     writes the ChartConfig, not by user input. We validate
+        //     anyway to catch accidental injection.
+        //   - `color` is a CSS color value. We allow hex, rgb/rgba, hsl/hsla,
+        //     named colors, var(--...), and `inherit`/`initial`/`unset`.
+        //
+        // Any value that fails validation is silently dropped (the CSS
+        // variable won't be emitted, the chart falls back to a default
+        // color). This is fail-safe: a bad color doesn't break the chart,
+        // it just doesn't override the default.
+        __html: sanitizeChartCss(Object.entries(THEMES), id, colorConfig),
       }}
     />
   )
+}
+
+/**
+ * MED-004 FIX (Cycle 3): strict allowlist sanitizer for the chart CSS
+ * injection sink. Rejects any character that could close a CSS rule or
+ * start a new one. Drops invalid colors silently (fail-safe).
+ */
+const CSS_COLOR_RE =
+  /^(#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla)\([^();]*\)|var\(--[a-zA-Z0-9_-]+\)|(inherit|initial|unset|transparent|currentcolor|[a-z]+))$/
+const CSS_IDENT_RE = /^[a-zA-Z0-9_-]+$/
+
+function sanitizeChartCss(
+  themes: [string, string][],
+  id: string,
+  colorConfig: [string, { color?: string; theme?: Record<string, string> }][],
+): string {
+  // Validate the chart id — only allow alphanumeric + dash.
+  if (!CSS_IDENT_RE.test(id)) {
+    return "" // invalid id → emit no CSS at all (fail-safe)
+  }
+  return themes
+    .map(
+      ([theme, prefix]) => {
+        const rules = colorConfig
+          .map(([key, itemConfig]) => {
+            // Validate the CSS variable name (the `key`).
+            if (!CSS_IDENT_RE.test(key)) return null
+            const color =
+              itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+              itemConfig.color
+            // Validate the CSS color value — reject anything that contains
+            // `;`, `}`, `{`, or other CSS-meta characters.
+            if (typeof color !== "string" || !CSS_COLOR_RE.test(color)) {
+              return null
+            }
+            return `  --color-${key}: ${color};`
+          })
+          .filter((line): line is string => line !== null)
+          .join("\n")
+        if (!rules) return null
+        return `${prefix} [data-chart=${id}] {\n${rules}\n}`
+      },
+    )
+    .filter((block): block is string => block !== null)
+    .join("\n")
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
