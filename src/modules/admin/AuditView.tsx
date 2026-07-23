@@ -1,8 +1,10 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { authedFetch } from "@/context/AuthContext";
 import { History } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AuditLog {
   id: number;
@@ -40,46 +42,46 @@ export function AuditView() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
-  const th: React.CSSProperties = { textAlign: "right", padding: "10px 12px", fontSize: "11px", color: "var(--muted-foreground)", fontWeight: 700 };
-  const td: React.CSSProperties = { padding: "10px 12px", fontSize: "13px" };
+  const thClass = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+  const tdClass = "py-2.5 px-3 text-[13px]";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4">
       <div>
-        <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}><History size={20} /> سجل التدقيق</h1>
-        <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>{logs.length} سجل</p>
+        <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><History size={20} /> سجل التدقيق</h1>
+        <p className="text-sm text-muted-foreground">{logs.length} سجل</p>
       </div>
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-        <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", cursor: "pointer" }}>
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} className="py-2 px-3 rounded-[8px] bg-card border border-border text-foreground font-inherit text-xs cursor-pointer">
           <option value="">كل الإجراءات</option>
           {ACTION_FILTERS.filter(Boolean).map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
-        <input placeholder="فلترة بالشركة (slug)" value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", outline: "none", flex: 1, minWidth: "180px" }} dir="ltr" />
+        <input placeholder="فلترة بالشركة (slug)" value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)} className="py-2 px-3 rounded-[8px] bg-card border border-border text-foreground font-inherit text-xs outline-none flex-1 min-w-[180px]" dir="ltr" />
       </div>
 
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        {loading ? <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div> : logs.length === 0 ? (
-          <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>لا توجد سجلات</div>
+      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+        {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : logs.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">لا توجد سجلات</div>
         ) : (
-          <div style={{ overflowX: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)" }}>
-                <th style={th}>الوقت</th><th style={th}>المستخدم</th><th style={th}>الإجراء</th>
-                <th style={th}>الكيان</th><th style={th}>المعرّف</th><th style={th}>الشركة</th>
+          <div className="overflow-x-auto garfix-scroll">
+            <table className="w-full border-collapse">
+              <thead><tr className="bg-muted">
+                <th className={thClass}>الوقت</th><th className={thClass}>المستخدم</th><th className={thClass}>الإجراء</th>
+                <th className={thClass}>الكيان</th><th className={thClass}>المعرّف</th><th className={thClass}>الشركة</th>
               </tr></thead>
               <tbody>
                 {logs.map((l) => (
-                  <tr key={l.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={td}>{new Date(l.createdAt).toLocaleString("ar-EG")}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{l.userEmail}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>
-                      <span style={{ padding: "2px 8px", borderRadius: "10px", background: "var(--accent)", color: "var(--accent-foreground)", fontSize: "11px" }}>{l.action}</span>
+                  <tr key={l.id} className="border-b border-border">
+                    <td className={tdClass}>{new Date(l.createdAt).toLocaleString("ar-EG")}</td>
+                    <td className={cn(tdClass, "[direction:ltr] text-end")}>{l.userEmail}</td>
+                    <td className={cn(tdClass, "font-bold")}>
+                      <span className="py-0.5 px-2 rounded-[10px] bg-accent text-accent-foreground text-[11px] font-bold">{l.action}</span>
                     </td>
-                    <td style={td}>{l.entity}</td>
-                    <td style={{ ...td, fontFamily: "monospace" }}>{l.entityId || "—"}</td>
-                    <td style={{ ...td, fontFamily: "monospace" }}>{l.companySlug || "—"}</td>
+                    <td className={tdClass}>{l.entity}</td>
+                    <td className={cn(tdClass, "font-mono")}>{l.entityId || "—"}</td>
+                    <td className={cn(tdClass, "font-mono")}>{l.companySlug || "—"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -248,10 +248,10 @@ export function WebhookManagementView() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "success": return <CheckCircle2 size={14} style={{ color: "#22c55e" }} />;
-      case "failed": return <XCircle size={14} style={{ color: "#ef4444" }} />;
-      case "pending": return <Clock size={14} style={{ color: "#f59e0b" }} />;
-      case "retried": return <AlertTriangle size={14} style={{ color: "#a855f7" }} />;
+      case "success": return <CheckCircle2 size={14} className="text-green-500" />;
+      case "failed": return <XCircle size={14} className="text-red-500" />;
+      case "pending": return <Clock size={14} className="text-yellow-500" />;
+      case "retried": return <AlertTriangle size={14} className="text-purple-500" />;
       default: return null;
     }
   };
@@ -268,73 +268,46 @@ export function WebhookManagementView() {
 
   // ── Styles ─────────────────────────────────────────────────────────────────
 
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: "8px 16px",
-    borderRadius: "8px",
-    fontSize: "13px",
-    fontWeight: active ? 700 : 500,
-    background: active ? "var(--accent)" : "transparent",
-    color: active ? "var(--accent-foreground)" : "var(--muted-foreground)",
-    cursor: "pointer",
-    border: "none",
-    transition: "all 0.2s",
-  });
+  const tabClasses = (active: boolean): string =>
+    `px-4 py-2 rounded-lg text-sm ${active ? "font-bold bg-[var(--accent)] text-[var(--accent-foreground)]" : "font-medium bg-transparent text-[var(--muted-foreground)]"} cursor-pointer border-0 transition-all duration-200`;
 
-  const thStyle: React.CSSProperties = {
-    textAlign: "right",
-    padding: "10px 12px",
-    fontSize: "11px",
-    color: "var(--muted-foreground)",
-    fontWeight: 700,
-  };
+  const thClasses = "text-right py-2.5 px-3 text-xs text-[var(--muted-foreground)] font-bold";
 
-  const tdStyle: React.CSSProperties = {
-    padding: "10px 12px",
-    fontSize: "13px",
-  };
+  const tdClasses = "py-2.5 px-3 text-sm";
 
-  const badgeStyle = (color: string): React.CSSProperties => ({
-    padding: "2px 8px",
-    borderRadius: "10px",
-    background: color,
-    color: "white",
-    fontSize: "11px",
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "4px",
-  });
+  const badgeClasses = (color: string): string =>
+    `px-2 py-0.5 rounded-[10px] bg-[${color}] text-white text-xs font-semibold inline-flex items-center gap-1`;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h1 className="text-2xl font-extrabold flex items-center gap-2">
           <Webhook size={20} /> إدارة Webhooks
         </h1>
-        <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>
+        <p className="text-sm text-[var(--muted-foreground)]">
           ربط الأحداث مع خدمات خارجية عبر نقاط ربط Webhook
         </p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "8px", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
-        <button style={tabStyle(tab === "endpoints")} onClick={() => setTab("endpoints")}>
-          <ExternalLink size={14} style={{ display: "inline", marginLeft: "4px" }} /> نقاط الربط ({endpoints.length})
+      <div className="flex gap-2 border-b border-[var(--border)] pb-2">
+        <button className={tabClasses(tab === "endpoints")} onClick={() => setTab("endpoints")}>
+          <ExternalLink size={14} className="inline ml-1" /> نقاط الربط ({endpoints.length})
         </button>
-        <button style={tabStyle(tab === "deliveries")} onClick={() => setTab("deliveries")}>
-          <Activity size={14} style={{ display: "inline", marginLeft: "4px" }} /> سجل التوصيل
+        <button className={tabClasses(tab === "deliveries")} onClick={() => setTab("deliveries")}>
+          <Activity size={14} className="inline ml-1" /> سجل التوصيل
         </button>
-        <button style={tabStyle(tab === "events")} onClick={() => setTab("events")}>
-          <Send size={14} style={{ display: "inline", marginLeft: "4px" }} /> الأحداث
+        <button className={tabClasses(tab === "events")} onClick={() => setTab("events")}>
+          <Send size={14} className="inline ml-1" /> الأحداث
         </button>
       </div>
 
       {/* Error */}
       {error && (
-        <div style={{ padding: "12px", borderRadius: "8px", background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", fontSize: "13px" }}>
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
           {error}
         </div>
       )}
@@ -344,23 +317,23 @@ export function WebhookManagementView() {
         <>
           {/* Stats bar */}
           {stats && (
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>معدل النجاح</span>
+            <div className="flex gap-3 flex-wrap">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-[var(--muted-foreground)]">معدل النجاح</span>
                 <br />
-                <strong style={{ fontSize: "18px", color: stats.successRate >= 80 ? "#22c55e" : stats.successRate >= 50 ? "#f59e0b" : "#ef4444" }}>
+                <strong className={`text-lg ${stats.successRate >= 80 ? "text-green-500" : stats.successRate >= 50 ? "text-yellow-500" : "text-red-500"}`}>
                   {stats.successRate}%
                 </strong>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>متوسط التوصيل</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-[var(--muted-foreground)]">متوسط التوصيل</span>
                 <br />
-                <strong style={{ fontSize: "18px" }}>{stats.avgLatencyMs}ms</strong>
+                <strong className="text-lg">{stats.avgLatencyMs}ms</strong>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>إجمالي التوصيلات</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-[var(--muted-foreground)]">إجمالي التوصيلات</span>
                 <br />
-                <strong style={{ fontSize: "18px" }}>{stats.total}</strong>
+                <strong className="text-lg">{stats.total}</strong>
               </div>
             </div>
           )}
@@ -368,29 +341,29 @@ export function WebhookManagementView() {
           {/* Add button */}
           <button
             onClick={() => { setShowForm(true); setEditingId(null); setFormUrl(""); setFormEvents([]); setFormActive(true); }}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "8px", background: "var(--accent)", color: "var(--accent-foreground)", cursor: "pointer", border: "none", fontSize: "13px", fontWeight: 600 }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold"
           >
             <Plus size={14} /> إضافة نقطة ربط
           </button>
 
           {/* Add/Edit form */}
           {showForm && (
-            <div style={{ padding: "16px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "12px" }}>
+            <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+              <h3 className="text-base font-bold mb-3">
                 {editingId ? "تعديل نقطة ربط" : "إضافة نقطة ربط جديدة"}
               </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div className="flex flex-col gap-3">
                 <input
                   placeholder="URL (https://...)"
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
-                  style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "13px", direction: "ltr" }}
+                  className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-sm"
                   dir="ltr"
                 />
                 <div>
-                  <label style={{ fontSize: "12px", color: "var(--muted-foreground)", marginBottom: "4px" }}>الأحداث المشترك بها</label>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
-                    {events.length === 0 && <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>اضغط تبويب "الأحداث" لعرض الأحداث المتاحة</span>}
+                  <label className="text-xs text-[var(--muted-foreground)] mb-1">الأحداث المشترك بها</label>
+                  <div className="flex gap-2 flex-wrap mt-1">
+                    {events.length === 0 && <span className="text-xs text-[var(--muted-foreground)]">اضغط تبويب "الأحداث" لعرض الأحداث المتاحة</span>}
                     {events.filter((e) => e.id !== "*").map((evt) => (
                       <button
                         key={evt.id}
@@ -399,42 +372,34 @@ export function WebhookManagementView() {
                             prev.includes(evt.id) ? prev.filter((x) => x !== evt.id) : [...prev, evt.id]
                           );
                         }}
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: "8px",
-                          fontSize: "11px",
-                          border: "1px solid var(--border)",
-                          background: formEvents.includes(evt.id) ? "var(--accent)" : "var(--background)",
-                          color: formEvents.includes(evt.id) ? "var(--accent-foreground)" : "var(--foreground)",
-                          cursor: "pointer",
-                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs border border-[var(--border)] cursor-pointer ${formEvents.includes(evt.id) ? "bg-[var(--accent)] text-[var(--accent-foreground)]" : "bg-[var(--background)] text-[var(--foreground)]"}`}
                       >
                         {evt.labelAr} ({evt.id})
                       </button>
                     ))}
                   </div>
                   {formEvents.length > 0 && (
-                    <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--muted-foreground)" }}>
+                    <div className="mt-2 text-xs text-[var(--muted-foreground)]">
                       مشترك في {formEvents.length} حدث
                     </div>
                   )}
                 </div>
                 {editingId && (
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                  <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={formActive} onChange={(e) => setFormActive(e.target.checked)} />
                     نشط
                   </label>
                 )}
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div className="flex gap-2">
                   <button
                     onClick={handleSaveEndpoint}
-                    style={{ padding: "8px 16px", borderRadius: "8px", background: "var(--accent)", color: "var(--accent-foreground)", cursor: "pointer", border: "none", fontSize: "13px", fontWeight: 600 }}
+                    className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold"
                   >
                     {editingId ? "تحديث" : "إضافة"}
                   </button>
                   <button
                     onClick={() => { setShowForm(false); setEditingId(null); }}
-                    style={{ padding: "8px 16px", borderRadius: "8px", background: "var(--muted)", color: "var(--muted-foreground)", cursor: "pointer", border: "1px solid var(--border)", fontSize: "13px" }}
+                    className="px-4 py-2 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] cursor-pointer border border-[var(--border)] text-sm"
                   >
                     إلغاء
                   </button>
@@ -444,58 +409,58 @@ export function WebhookManagementView() {
           )}
 
           {/* Endpoint list */}
-          <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
+          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden">
             {loading ? (
-              <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>
+              <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : endpoints.length === 0 ? (
-              <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+              <div className="p-12 text-center text-[var(--muted-foreground)]">
                 لا توجد نقاط ربط. اضغط "إضافة نقطة ربط" لإنشاء واحدة.
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="overflow-x-auto garfix-scroll">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr style={{ background: "var(--muted)" }}>
-                      <th style={thStyle}>URL</th>
-                      <th style={thStyle}>الأحداث</th>
-                      <th style={thStyle}>الحالة</th>
-                      <th style={thStyle}>تاريخ الإنشاء</th>
-                      <th style={thStyle}>إجراءات</th>
+                    <tr className="bg-[var(--muted)]">
+                      <th className={thClasses}>URL</th>
+                      <th className={thClasses}>الأحداث</th>
+                      <th className={thClasses}>الحالة</th>
+                      <th className={thClasses}>تاريخ الإنشاء</th>
+                      <th className={thClasses}>إجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
                     {endpoints.map((ep) => {
                       const parsedEvents: string[] = (() => { try { return JSON.parse(ep.events); } catch { return []; } })();
                       return (
-                        <tr key={ep.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                          <td style={{ ...tdStyle, direction: "ltr", fontFamily: "monospace", fontSize: "12px" }}>
+                        <tr key={ep.id} className="border-b border-[var(--border)]">
+                          <td className="py-2.5 px-3 font-mono text-xs dir-ltr" dir="ltr">
                             {ep.url}
                           </td>
-                          <td style={tdStyle}>
-                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                          <td className={tdClasses}>
+                            <div className="flex gap-1 flex-wrap">
                               {parsedEvents.map((evt) => (
-                                <span key={evt} style={{ padding: "2px 6px", borderRadius: "6px", background: "var(--accent)", color: "var(--accent-foreground)", fontSize: "10px" }}>
+                                <span key={evt} className="px-1.5 py-0.5 rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px]">
                                   {evt}
                                 </span>
                               ))}
                             </div>
                           </td>
-                          <td style={tdStyle}>
+                          <td className={tdClasses}>
                             {ep.isActive ? (
-                              <span style={badgeStyle("#22c55e")}>نشط</span>
+                              <span className={badgeClasses("#22c55e")}>نشط</span>
                             ) : (
-                              <span style={badgeStyle("#ef4444")}>معطل</span>
+                              <span className={badgeClasses("#ef4444")}>معطل</span>
                             )}
                           </td>
-                          <td style={{ ...tdStyle, fontSize: "12px" }}>
+                          <td className="py-2.5 px-3 text-xs">
                             {new Date(ep.createdAt).toLocaleString("ar-EG")}
                           </td>
-                          <td style={tdStyle}>
-                            <div style={{ display: "flex", gap: "6px" }}>
-                              <button onClick={() => handleEditEndpoint(ep)} title="تعديل" style={{ padding: "4px 8px", borderRadius: "6px", cursor: "pointer", background: "var(--muted)", border: "1px solid var(--border)", fontSize: "12px" }}>
+                          <td className={tdClasses}>
+                            <div className="flex gap-1.5">
+                              <button onClick={() => handleEditEndpoint(ep)} title="تعديل" className="px-2 py-1 rounded-md cursor-pointer bg-[var(--muted)] border border-[var(--border)] text-xs">
                                 ✏️
                               </button>
-                              <button onClick={() => handleDeleteEndpoint(ep.id)} title="حذف" style={{ padding: "4px 8px", borderRadius: "6px", cursor: "pointer", background: "#fef2f2", border: "1px solid #fecaca", fontSize: "12px", color: "#991b1b" }}>
+                              <button onClick={() => handleDeleteEndpoint(ep.id)} title="حذف" className="px-2 py-1 rounded-md cursor-pointer bg-red-50 border border-red-200 text-xs text-red-800">
                                 🗑️
                               </button>
                             </div>
@@ -516,44 +481,44 @@ export function WebhookManagementView() {
         <>
           {/* Stats */}
           {stats && (
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "#22c55e" }}>✅ نجاح: {stats.succeeded}</span>
+            <div className="flex gap-3 flex-wrap">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-green-500">✅ نجاح: {stats.succeeded}</span>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "#ef4444" }}>❌ فشل: {stats.failed}</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-red-500">❌ فشل: {stats.failed}</span>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "#f59e0b" }}>⏳ قيد الانتظار: {stats.pending}</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-yellow-500">⏳ قيد الانتظار: {stats.pending}</span>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>🔄 إعادة: {stats.retried}</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-[var(--muted-foreground)]">🔄 إعادة: {stats.retried}</span>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>⏱️ متوسط: {stats.avgLatencyMs}ms</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-[var(--muted-foreground)]">⏱️ متوسط: {stats.avgLatencyMs}ms</span>
               </div>
-              <div style={{ padding: "12px 16px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)", fontSize: "12px" }}>
-                <span style={{ color: "var(--muted-foreground)" }}>📊 معدل النجاح: {stats.successRate}%</span>
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+                <span className="text-[var(--muted-foreground)]">📊 معدل النجاح: {stats.successRate}%</span>
               </div>
             </div>
           )}
 
           {/* Filters */}
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", cursor: "pointer" }}>
+          <div className="flex gap-3 flex-wrap">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-xs cursor-pointer">
               <option value="">كل الحالات</option>
               <option value="success">نجاح</option>
               <option value="failed">فشل</option>
               <option value="pending">قيد الانتظار</option>
               <option value="retried">إعادة محاولة</option>
             </select>
-            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", cursor: "pointer" }}>
+            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-xs cursor-pointer">
               <option value="">كل الأحداث</option>
               {events.filter((e) => e.id !== "*").map((evt) => (
                 <option key={evt.id} value={evt.id}>{evt.labelAr} ({evt.id})</option>
               ))}
             </select>
-            <select value={endpointFilter} onChange={(e) => setEndpointFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", cursor: "pointer" }}>
+            <select value={endpointFilter} onChange={(e) => setEndpointFilter(e.target.value)} className="px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-xs cursor-pointer">
               <option value="">كل نقاط الربط</option>
               {endpoints.map((ep) => (
                 <option key={ep.id} value={ep.id}>{ep.url}</option>
@@ -562,65 +527,65 @@ export function WebhookManagementView() {
           </div>
 
           {/* Delivery table */}
-          <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
+          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden">
             {loading ? (
-              <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>
+              <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : deliveries.length === 0 ? (
-              <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>لا توجد توصيلات</div>
+              <div className="p-12 text-center text-[var(--muted-foreground)]">لا توجد توصيلات</div>
             ) : (
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="overflow-x-auto garfix-scroll">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr style={{ background: "var(--muted)" }}>
-                      <th style={thStyle}>الحالة</th>
-                      <th style={thStyle}>الحدث</th>
-                      <th style={thStyle}>نقطة الربط</th>
-                      <th style={thStyle}>HTTP</th>
-                      <th style={thStyle}>المحاولات</th>
-                      <th style={thStyle}>الوقت</th>
-                      <th style={thStyle}>إجراءات</th>
+                    <tr className="bg-[var(--muted)]">
+                      <th className={thClasses}>الحالة</th>
+                      <th className={thClasses}>الحدث</th>
+                      <th className={thClasses}>نقطة الربط</th>
+                      <th className={thClasses}>HTTP</th>
+                      <th className={thClasses}>المحاولات</th>
+                      <th className={thClasses}>الوقت</th>
+                      <th className={thClasses}>إجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
                     {deliveries.map((d) => (
-                      <tr key={d.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={tdStyle}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <tr key={d.id} className="border-b border-[var(--border)]">
+                        <td className={tdClasses}>
+                          <span className="inline-flex items-center gap-1">
                             {statusIcon(d.status)} {statusLabel(d.status)}
                           </span>
                         </td>
-                        <td style={{ ...tdStyle, fontSize: "12px" }}>
-                          <span style={{ padding: "2px 6px", borderRadius: "6px", background: "var(--accent)", color: "var(--accent-foreground)", fontSize: "10px" }}>
+                        <td className="py-2.5 px-3 text-xs">
+                          <span className="px-1.5 py-0.5 rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px]">
                             {d.eventType}
                           </span>
                         </td>
-                        <td style={{ ...tdStyle, direction: "ltr", fontFamily: "monospace", fontSize: "12px" }}>
+                        <td className="py-2.5 px-3 font-mono text-xs" dir="ltr">
                           {d.endpoint?.url || d.endpointId}
                         </td>
-                        <td style={tdStyle}>
+                        <td className={tdClasses}>
                           {d.statusCode ? (
-                            <span style={{ color: d.statusCode < 300 ? "#22c55e" : "#ef4444", fontWeight: 700 }}>
+                            <span className={`font-bold ${d.statusCode < 300 ? "text-green-500" : "text-red-500"}`}>
                               {d.statusCode}
                             </span>
                           ) : "—"}
                         </td>
-                        <td style={tdStyle}>
+                        <td className={tdClasses}>
                           {d.attempts}/{d.maxAttempts}
                         </td>
-                        <td style={{ ...tdStyle, fontSize: "12px" }}>
+                        <td className="py-2.5 px-3 text-xs">
                           {new Date(d.createdAt).toLocaleString("ar-EG")}
                           {d.deliveredAt && (
-                            <span style={{ color: "var(--muted-foreground)", fontSize: "10px" }}>
+                            <span className="text-[var(--muted-foreground)] text-[10px]">
                               <br />توصيل: {new Date(d.deliveredAt).toLocaleString("ar-EG")}
                             </span>
                           )}
                         </td>
-                        <td style={tdStyle}>
+                        <td className={tdClasses}>
                           {(d.status === "failed" || d.status === "retried") && (
                             <button
                               onClick={() => handleRetry(d.id)}
                               title="إعادة محاولة"
-                              style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", background: "#eff6ff", border: "1px solid #bfdbfe", fontSize: "11px", color: "#1d4ed8" }}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer bg-blue-50 border border-blue-200 text-xs text-blue-700"
                             >
                               <RefreshCw size={12} /> إعادة
                             </button>
@@ -640,15 +605,15 @@ export function WebhookManagementView() {
       {tab === "events" && (
         <>
           {/* Test webhook */}
-          <div style={{ padding: "16px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+            <h3 className="text-base font-bold mb-3 flex items-center gap-2">
               <Send size={16} /> اختبار Webhook
             </h3>
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div className="flex gap-3 flex-wrap">
               <select
                 value={testEndpointId}
                 onChange={(e) => setTestEndpointId(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", flex: 1, minWidth: "200px" }}
+                className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-xs flex-1 min-w-[200px]"
               >
                 <option value="">اختر نقطة ربط</option>
                 {endpoints.map((ep) => (
@@ -658,7 +623,7 @@ export function WebhookManagementView() {
               <select
                 value={testEventType}
                 onChange={(e) => setTestEventType(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "12px", flex: 1, minWidth: "200px" }}
+                className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-xs flex-1 min-w-[200px]"
               >
                 {events.filter((e) => e.id !== "*").map((evt) => (
                   <option key={evt.id} value={evt.id}>{evt.labelAr} — {evt.id}</option>
@@ -666,41 +631,41 @@ export function WebhookManagementView() {
               </select>
               <button
                 onClick={handleTestEvent}
-                style={{ padding: "8px 16px", borderRadius: "8px", background: "var(--accent)", color: "var(--accent-foreground)", cursor: "pointer", border: "none", fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}
+                className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold flex items-center gap-1.5"
               >
                 <Send size={14} /> إرسال تجريبي
               </button>
             </div>
             {testResult && (
-              <div style={{ marginTop: "12px", padding: "8px 12px", borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", fontSize: "13px" }}>
+              <div className="mt-3 px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-sm">
                 {testResult}
               </div>
             )}
           </div>
 
           {/* Event types list */}
-          <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
+          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden">
             {loading ? (
-              <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>
+              <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : (
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="overflow-x-auto garfix-scroll">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr style={{ background: "var(--muted)" }}>
-                      <th style={thStyle}>المعرّف</th>
-                      <th style={thStyle}>الاسم</th>
-                      <th style={thStyle}>الوصف</th>
-                      <th style={thStyle}>المجموعة</th>
+                    <tr className="bg-[var(--muted)]">
+                      <th className={thClasses}>المعرّف</th>
+                      <th className={thClasses}>الاسم</th>
+                      <th className={thClasses}>الوصف</th>
+                      <th className={thClasses}>المجموعة</th>
                     </tr>
                   </thead>
                   <tbody>
                     {events.map((evt) => (
-                      <tr key={evt.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "12px" }}>{evt.id}</td>
-                        <td style={{ ...tdStyle, fontWeight: 600 }}>{evt.labelAr}</td>
-                        <td style={{ ...tdStyle, fontSize: "12px", color: "var(--muted-foreground)" }}>{evt.description}</td>
-                        <td style={tdStyle}>
-                          <span style={{ padding: "2px 6px", borderRadius: "6px", background: "var(--accent)", color: "var(--accent-foreground)", fontSize: "10px" }}>
+                      <tr key={evt.id} className="border-b border-[var(--border)]">
+                        <td className="py-2.5 px-3 font-mono text-xs">{evt.id}</td>
+                        <td className="py-2.5 px-3 font-semibold">{evt.labelAr}</td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--muted-foreground)]">{evt.description}</td>
+                        <td className={tdClasses}>
+                          <span className="px-1.5 py-0.5 rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px]">
                             {evt.group}
                           </span>
                         </td>

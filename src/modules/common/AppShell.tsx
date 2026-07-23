@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, lazy } from "react";
@@ -93,7 +94,7 @@ export default function AppShell() {
   return (
     <CommandPaletteProvider>
       <div
-        className="flex min-h-dvh bg-[#F9FAFB] text-foreground"
+        className="flex flex-col sm:flex-row min-h-dvh bg-[#F9FAFB] text-foreground"
         dir="rtl"
       >
         <Sidebar
@@ -122,7 +123,7 @@ export default function AppShell() {
           On desktop (md+) the sidebar is a fixed rail on the right (RTL) so the main
           content needs margin-end: 260px to not sit under it.
         */}
-        <div className="flex flex-1 flex-col min-w-0 md:me-[260px] garfix-scroll">
+        <div className="flex flex-1 flex-col min-w-0 sm:me-[200px] md:me-[260px] garfix-scroll">
           <Topbar
             user={user}
             activeCompany={activeCompany}
@@ -130,11 +131,11 @@ export default function AppShell() {
             theme={theme}
             toggleTheme={toggleTheme}
           />
-          <main className="flex-1 p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)]">
+          <main className="flex-1 p-2 sm:p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)]">
             <ErrorBoundary>
             <Suspense
               fallback={
-                <div className="p-8 md:p-12 text-center text-muted-foreground">
+                <div className="p-4 sm:p-8 md:p-12 text-center text-muted-foreground">
                   جارٍ التحميل…
                 </div>
               }

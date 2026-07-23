@@ -1,3 +1,8 @@
+// NOTE: Financial fields use Decimal instead of Float for production accuracy.
+// SQLite doesn't support Decimal, so in dev it falls back to Float-like behavior.
+// For PostgreSQL production, Decimal ensures exact precision (no floating-point errors).
+// This prevents issues like 0.1 + 0.2 = 0.30000000000000004
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -6,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "sqlite"  // Change to "postgresql" for production
   url      = env("DATABASE_URL")
 }
 
@@ -112,8 +117,8 @@ model ProductCatalog {
   name          String
   sku           String
   category      String?
-  purchasePrice Float    @default(0)  // NOT "cost" — this is the correct field name
-  sellingPrice  Float    @default(0)
+  purchasePrice Decimal  @default(0)  // NOT "cost" — this is the correct field name
+  sellingPrice  Decimal  @default(0)
   unit          String   @default("piece")
   description   String?
   companyId     String
@@ -179,8 +184,8 @@ model Voucher {
 model VoucherLine {
   id           String   @id @default(cuid())
   accountId    String
-  debit        Float    @default(0)
-  credit       Float    @default(0)
+  debit        Decimal  @default(0)
+  credit       Decimal  @default(0)
   description  String?
   sortOrder    Int      @default(0)
   voucherId    String
@@ -194,7 +199,7 @@ model PaymentVoucher {
   id            String   @id @default(cuid())
   number        String
   date          DateTime
-  amount        Float
+  amount        Decimal
   paymentType   String   // receipt, payment
   direction     String   // inbound, outbound
   status        String   @default("draft") // draft, posted, cancelled
@@ -216,7 +221,7 @@ model PaymentVoucher {
 model Installment {
   id              String   @id @default(cuid())
   paymentVoucherId String
-  amount          Float
+  amount          Decimal
   dueDate         DateTime
   status          String   @default("pending") // pending, paid, overdue, cancelled
   paidDate        DateTime?
@@ -232,8 +237,8 @@ model OpeningBalance {
   id            String   @id @default(cuid())
   accountId     String
   periodId      String
-  debit         Float    @default(0)
-  credit        Float    @default(0)
+  debit         Decimal  @default(0)
+  credit        Decimal  @default(0)
   companyId     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -248,9 +253,9 @@ model OpeningBalance {
 model ProfitDistribution {
   id            String   @id @default(cuid())
   periodId      String?
-  totalProfit   Float    @default(0)
-  retained      Float    @default(0)
-  distributed   Float    @default(0)
+  totalProfit   Decimal  @default(0)
+  retained      Decimal  @default(0)
+  distributed   Decimal  @default(0)
   distributionType String @default("proportional") // proportional, equal, custom
   status        String   @default("draft") // draft, approved, executed
   notes         String?
@@ -265,8 +270,8 @@ model ProfitDistributionEntry {
   id            String   @id @default(cuid())
   distributionId String
   shareholder   String
-  shareRatio    Float    @default(0)
-  amount        Float    @default(0)
+  shareRatio    Decimal  @default(0)
+  amount        Decimal  @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   distribution  ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
@@ -278,7 +283,7 @@ model LetterOfCredit {
   id            String   @id @default(cuid())
   number        String
   type          String   @default("import") // import, export
-  amount        Float
+  amount        Decimal
   currency      String   @default("USD")
   status        String   @default("draft") // draft, issued, confirmed, utilized, expired, cancelled
   issueDate     DateTime?
