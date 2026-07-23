@@ -16,7 +16,7 @@
  * (supports all RESP commands including pub/sub, SCAN, etc.)
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, spyOn, afterAll } from "bun:test";
 
 // ─── Mocks to isolate from Prisma / cross-test contamination ────────────
 // Other test files mock @/lib/db globally via bun:test's mock.module().
@@ -801,3 +801,5 @@ describe("Performance Benchmarks — Measured", () => {
     unsub();
   });
 });
+
+afterAll(() => { mock.restore(); });

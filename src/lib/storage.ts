@@ -14,7 +14,10 @@ import { randomUUID } from "node:crypto";
 import { logger } from "./logger";
 
 // EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path
-const STORAGE_DIR = process.env.STORAGE_DIR || path.join(process.cwd(), "storage");
+// P0 NFT FIX: path.join(process.cwd(), ...) causes NFT to trace the entire project
+// because cwd() is dynamic. Using /*turbopackIgnore: true*/ tells Turbopack/Webpack
+// to NOT trace this path at build time — storage is a runtime-only filesystem concern.
+const STORAGE_DIR = process.env.STORAGE_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "storage");
 
 /** MIME type allowlist — only these types may be saved to storage. */
 const ALLOWED_MIME_TYPES = new Set([

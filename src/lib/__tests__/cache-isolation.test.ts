@@ -8,7 +8,7 @@
  * and multi-tenant isolation with company-prefixed keys.
  */
 
-import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -472,3 +472,5 @@ describe("Multi-tenant isolation", () => {
     expect(keys.length).toBe(3);
   });
 });
+
+afterAll(() => { mock.restore(); });

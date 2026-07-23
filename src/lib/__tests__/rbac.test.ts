@@ -8,7 +8,7 @@
  * validatePermissionChange, audit trail, backward compatibility.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -583,3 +583,5 @@ describe("flatToResourcePerms — backward compatibility", () => {
     expect(customerPerms.length).toBeGreaterThan(0);
   });
 });
+
+afterAll(() => { mock.restore(); });

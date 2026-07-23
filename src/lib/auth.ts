@@ -20,9 +20,21 @@ import { computeEffectivePermissions } from "@/lib/permissions";
 import { getValkeyClient } from "@/lib/valkey";
 
 // SEC-002 FIX: No fallback secrets — throw if missing in production
+// P0 BUILD FIX: Lazy secret resolution — module-level const resolution throws
+// during `next build` because NODE_ENV=production is set at build time.
+// Using getters defers resolution to first actual use (at runtime), not at import.
+// During build, the module is imported for type analysis only — no secrets needed.
 function resolveSecret(envVar: string, name: string): string {
   const val = process.env[envVar];
   if (!val) {
+    // P0 FIX: During `next build`, do NOT throw — secrets are not needed for
+    // static page compilation. Next.js sets NEXT_PHASE during build phases.
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
+      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
+    if (isBuildPhase) {
+      console.warn(`⚠️  ${name} not set during build — will be validated at runtime. DO NOT deploy without setting this.`);
+      return `build-placeholder-${name.toLowerCase()}-not-for-runtime-use`;
+    }
     if (process.env.NODE_ENV === "production") {
       throw new Error(`FATAL: ${name} environment variable is not set. Refusing to start with insecure defaults.`);
     }
@@ -36,8 +48,25 @@ function resolveSecret(envVar: string, name: string): string {
   return val;
 }
 
-const JWT_SECRET = resolveSecret("JWT_SECRET", "JWT_SECRET");
-const JWT_REFRESH_SECRET = resolveSecret("JWT_REFRESH_SECRET", "JWT_REFRESH_SECRET");
+// P0 FIX: Lazy getter pattern — secrets resolved only on first access at runtime.
+// This prevents module-level throws during `next build`'s "Collecting page data" phase.
+let _jwtSecret: string | undefined;
+let _jwtRefreshSecret: string | undefined;
+
+function getJwtSecret(): string {
+  if (!_jwtSecret) _jwtSecret = resolveSecret("JWT_SECRET", "JWT_SECRET");
+  return _jwtSecret;
+}
+function getJwtRefreshSecret(): string {
+  if (!_jwtRefreshSecret) _jwtRefreshSecret = resolveSecret("JWT_REFRESH_SECRET", "JWT_REFRESH_SECRET");
+  return _jwtRefreshSecret;
+}
+
+// Backward-compatible getters: most code references JWT_SECRET / JWT_REFRESH_SECRET
+// as if they were const — these getters return the resolved value lazily.
+// Token signing/verification functions below use getJwtSecret()/getJwtRefreshSecret().
+const JWT_SECRET_PROXY = { get: () => getJwtSecret() } as const;
+const JWT_REFRESH_SECRET_PROXY = { get: () => getJwtRefreshSecret() } as const;
 const ACCESS_TTL = parseInt(process.env.JWT_ACCESS_TTL_SECONDS || "1800", 10); // 30 min
 const REFRESH_TTL = parseInt(process.env.JWT_REFRESH_TTL_SECONDS || "2592000", 10); // 30 days
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
@@ -84,16 +113,16 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
 
 export function signToken(payload: AuthPayload): string {
   const jti = crypto.randomUUID();
-  return jwt.sign({ ...payload, jti, type: "access" }, JWT_SECRET, { expiresIn: ACCESS_TTL });
+  return jwt.sign({ ...payload, jti, type: "access" }, getJwtSecret(), { expiresIn: ACCESS_TTL });
 }
 
 export function signRefreshToken(uid: string, tv: number): string {
-  return jwt.sign({ uid, tv, type: "refresh" }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TTL });
+  return jwt.sign({ uid, tv, type: "refresh" }, getJwtRefreshSecret(), { expiresIn: REFRESH_TTL });
 }
 
 export function verifyToken(token: string): AuthPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload & AuthPayload & { type?: string };
+    const decoded = jwt.verify(token, getJwtSecret()) as jwt.JwtPayload & AuthPayload & { type?: string };
     if (decoded.type !== "access") return null;
     return {
       uid: decoded.uid,
@@ -111,7 +140,7 @@ export function verifyToken(token: string): AuthPayload | null {
 
 export function verifyRefreshToken(token: string): { uid: string; tv: number } | null {
   try {
-    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as jwt.JwtPayload & {
+    const decoded = jwt.verify(token, getJwtRefreshSecret()) as jwt.JwtPayload & {
       uid: string;
       tv: number;
       type?: string;

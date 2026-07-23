@@ -22,7 +22,7 @@
  *  - Leading "ال" (definite article) is stripped
  *  - Ta-marbuta ة → ha ه normalization
  */
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import { normalizeArabic, matchProduct, DEFAULT_AUTO_MATCH_THRESHOLD, invalidateKillSwitchCache } from "@/lib/productMatcher";
 import type { MatchInput } from "@/lib/productMatcher";
 
@@ -392,3 +392,5 @@ describe("matchProduct", () => {
     expect(lastAuditCreateArgs[0].data.action).toBe("ai-queued-for-review");
   });
 });
+
+afterAll(() => { mock.restore(); });

@@ -4,7 +4,7 @@
  * Tests calculateSavedCost, getCascadeBreakdown, getPlatformSavings.
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
 
 // ─── Mock setup ─────────────────────────────────────────────────────────
 
@@ -377,3 +377,5 @@ describe("getPlatformSavings", () => {
     expect(r.periodEnd).toBe(pe);
   });
 });
+
+afterAll(() => { mock.restore(); });

@@ -21,7 +21,7 @@
  * warnings visible in the test output come from that one-time module
  * initialization.
  */
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
 
 // ─── Mocks to isolate from cross-test contamination ──────────────────────
 // Other test files mock @/lib/db globally via bun:test's mock.module().
@@ -330,3 +330,5 @@ describe("getQuery", () => {
     expect(Object.keys(q).length).toBe(0);
   });
 });
+
+afterAll(() => { mock.restore(); });

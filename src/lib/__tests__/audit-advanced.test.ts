@@ -7,7 +7,7 @@
  * tamperAudit integration (appendToChain, verifyChain).
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -470,3 +470,5 @@ describe("tamperAudit — getChainStats", () => {
     expect(stats).toHaveProperty("tamperedCount");
   });
 });
+
+afterAll(() => { mock.restore(); });

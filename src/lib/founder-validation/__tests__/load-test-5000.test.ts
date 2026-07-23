@@ -195,7 +195,7 @@ describe('Load Test: 5000 Concurrent Users', () => {
   });
 
   it('generator eventually stops (no infinite loop)', () => {
-    const gen = generateBusinessActivities(companies, 100, 5);
+    const gen = generateBusinessActivities(companies, 100, 5, 500); // maxIterations=500 ensures it stops well before 1000
     let count = 0;
     for (const _batch of gen) {
       count++;

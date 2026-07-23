@@ -5,7 +5,7 @@
  * Covers: getSecret, generateSecret, getSecretInventory, validateSecrets, rotateSecret.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
 
 // ── Mock logger ───────────────────────────────────────────────────────────────
 
@@ -273,3 +273,5 @@ describe("Secrets Manager Module", () => {
     });
   });
 });
+
+afterAll(() => { mock.restore(); });

@@ -6,7 +6,7 @@
  * verifyWebhookSignature, getWebhookStats, and edge cases.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import crypto from "node:crypto";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
@@ -655,3 +655,5 @@ describe("Webhooks Module", () => {
     });
   });
 });
+
+afterAll(() => { mock.restore(); });

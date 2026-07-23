@@ -6,7 +6,7 @@
  * rateLimitResponse, getClientIp, clearRateLimit, and edge cases.
  */
 
-import { describe, it, expect, beforeEach, mock, spyOn } from "bun:test";
+import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -435,3 +435,5 @@ describe("Edge cases", () => {
     expect(r.retryAfter!).toBeGreaterThan(0);
   });
 });
+
+afterAll(() => { mock.restore(); });
