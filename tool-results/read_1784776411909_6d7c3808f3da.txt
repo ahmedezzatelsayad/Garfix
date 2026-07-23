@@ -1,0 +1,502 @@
+     1→     1→     1→"use client";
+     2→     2→     2→
+     3→     3→     3→import { useEffect, useState, useCallback } from "react";
+     4→     4→     4→import { useBrand } from "@/context/BrandContext";
+     5→     5→     5→import { authedFetch } from "@/context/AuthContext";
+     6→     6→     6→import { toast } from "sonner";
+     7→     7→     7→import {
+     8→     8→     8→  Plus, Calculator, X, Trash2, Scale, FileBarChart,
+     9→     9→     9→  TrendingUp, TrendingDown, Wallet, Download, RotateCcw,
+    10→    10→    10→  LayoutDashboard, Clock, Building, BarChart3, Landmark,
+    11→    11→    11→  ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, XCircle,
+    12→    12→    12→  Calendar, DollarSign, ArrowUpDown,
+    13→    13→    13→} from "lucide-react";
+    14→    14→    14→import { cn } from "@/lib/utils";
+    15→    15→    15→
+    16→    16→    16→interface Account { id: number; code: string; nameAr: string; nameEn?: string; type: string; balance: number; currency: string; }
+    17→    17→    17→interface JournalLine { id: number; accountId: number; debit: number; credit: number; description?: string; }
+    18→    18→    18→interface JournalEntry { id: number; date: string; description?: string; reference?: string; status: string; lines: JournalLine[]; }
+    19→    19→    19→interface TrialRow {
+    20→    20→    20→  id: number; code: string; nameAr: string; type: string;
+    21→    21→    21→  totalDebit: number; totalCredit: number; balance: number;
+    22→    22→    22→}
+    23→    23→    23→interface FiscalPeriod { id: number; name: string; startDate: string; endDate: string; status: string; closedAt?: string; }
+    24→    24→    24→interface CostCenter { id: number; code: string; nameAr: string; parentId?: number | null; type: string; budget?: number; actual?: number; }
+    25→    25→    25→interface AgingBucket { range: string; receivable: number; payable: number; count: number; }
+    26→    26→    26→interface BankAccount { id: number; name: string; bankName: string; accountNumber: string; currency: string; balance: number; iban?: string; }
+    27→    27→    27→
+    28→    28→    28→type Tab = "dashboard" | "accounts" | "journal" | "trial" | "statements" | "fiscal-periods" | "cost-centers" | "aging" | "banking";
+    29→    29→    29→type StatementType = "profit-loss" | "balance-sheet" | "cash-flow";
+    30→    30→    30→
+    31→    31→    31→const PAGE_SIZE = 20;
+    32→    32→    32→
+    33→    33→    33→export function AccountingView() {
+    34→    34→    34→  const { activeCompany } = useBrand();
+    35→    35→    35→  const [tab, setTab] = useState<Tab>("accounts");
+    36→    36→    36→  const [accounts, setAccounts] = useState<Account[]>([]);
+    37→    37→    37→  const [entries, setEntries] = useState<JournalEntry[]>([]);
+    38→    38→    38→  const [trial, setTrial] = useState<{ accounts: TrialRow[]; grandDebit: number; grandCredit: number; isBalanced: boolean } | null>(null);
+    39→    39→    39→  const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriod[]>([]);
+    40→    40→    40→  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+    41→    41→    41→  const [agingData, setAgingData] = useState<AgingBucket[]>([]);
+    42→    42→    42→  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+    43→    43→    43→  const [loading, setLoading] = useState(true);
+    44→    44→    44→  const [showForm, setShowForm] = useState(false);
+    45→    45→    45→  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    46→    46→    46→  const [currentPage, setCurrentPage] = useState(1);
+    47→    47→    47→  const [bulkDeleting, setBulkDeleting] = useState(false);
+    48→    48→    48→  const [reversingId, setReversingId] = useState<number | null>(null);
+    49→    49→    49→  const [reverseConfirm, setReverseConfirm] = useState<JournalEntry | null>(null);
+    50→    50→    50→
+    51→    51→    51→  const load = useCallback(async () => {
+    52→    52→    52→    if (!activeCompany) { setLoading(false); return; }
+    53→    53→    53→    setLoading(true);
+    54→    54→    54→    const slug = `companySlug=${encodeURIComponent(activeCompany.slug)}`;
+    55→    55→    55→    try {
+    56→    56→    56→      const [a, j] = await Promise.all([
+    57→    57→    57→        authedFetch(`/api/accounting/accounts?${slug}`),
+    58→    58→    58→        authedFetch(`/api/accounting/journal-entries?${slug}`),
+    59→    59→    59→      ]);
+    60→    60→    60→      if (!a.ok || !j.ok) {
+    61→    61→    61→        const failed = !a.ok ? a : j;
+    62→    62→    62→        const e = await failed.json().catch(() => ({}));
+    63→    63→    63→        throw new Error((e as Record<string, unknown>)?.error as string || `فشل تحميل البيانات (${failed.status})`);
+    64→    64→    64→      }
+    65→    65→    65→      const [aD, jD] = await Promise.all([a.json(), j.json()]);
+    66→    66→    66→      setAccounts((aD as { accounts?: Account[] }).accounts || []);
+    67→    67→    67→      setEntries((jD as { entries?: JournalEntry[] }).entries || []);
+    68→    68→    68→    } catch (err) {
+    69→    69→    69→      toast.error(err instanceof Error ? err.message : "تعذّر تحميل بيانات المحاسبة");
+    70→    70→    70→    } finally { setLoading(false); }
+    71→    71→    71→  }, [activeCompany]);
+    72→    72→    72→
+    73→    73→    73→  const loadTrial = useCallback(async () => {
+    74→    74→    74→    if (!activeCompany) return;
+    75→    75→    75→    try {
+    76→    76→    76→      const res = await authedFetch(`/api/accounting/trial-balance?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+    77→    77→    77→      if (!res.ok) {
+    78→    78→    78→        const e = await res.json().catch(() => ({}));
+    79→    79→    79→        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل ميزان المراجعة");
+    80→    80→    80→        setTrial(null);
+    81→    81→    81→        return;
+    82→    82→    82→      }
+    83→    83→    83→      setTrial(await res.json());
+    84→    84→    84→    } catch (err) {
+    85→    85→    85→      toast.error(err instanceof Error ? err.message : "تعذّر تحميل ميزان المراجعة");
+    86→    86→    86→      setTrial(null);
+    87→    87→    87→    }
+    88→    88→    88→  }, [activeCompany]);
+    89→    89→    89→
+    90→    90→    90→  const loadFiscalPeriods = useCallback(async () => {
+    91→    91→    91→    if (!activeCompany) return;
+    92→    92→    92→    try {
+    93→    93→    93→      const res = await authedFetch(`/api/accounting/fiscal-periods?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+    94→    94→    94→      if (res.ok) { const d = await res.json(); setFiscalPeriods(d.periods || []); }
+    95→    95→    95→      else { setFiscalPeriods([]); }
+    96→    96→    96→    } catch { setFiscalPeriods([]); }
+    97→    97→    97→  }, [activeCompany]);
+    98→    98→    98→
+    99→    99→    99→  const loadCostCenters = useCallback(async () => {
+   100→   100→   100→    if (!activeCompany) return;
+   101→   101→   101→    try {
+   102→   102→   102→      const res = await authedFetch(`/api/accounting/cost-centers?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   103→   103→   103→      if (res.ok) { const d = await res.json(); setCostCenters(d.costCenters || []); }
+   104→   104→   104→      else { setCostCenters([]); }
+   105→   105→   105→    } catch { setCostCenters([]); }
+   106→   106→   106→  }, [activeCompany]);
+   107→   107→   107→
+   108→   108→   108→  const loadAging = useCallback(async () => {
+   109→   109→   109→    if (!activeCompany) return;
+   110→   110→   110→    try {
+   111→   111→   111→      const res = await authedFetch(`/api/accounting/aging?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   112→   112→   112→      if (res.ok) { const d = await res.json(); setAgingData(d.buckets || []); }
+   113→   113→   113→      else { setAgingData([]); }
+   114→   114→   114→    } catch { setAgingData([]); }
+   115→   115→   115→  }, [activeCompany]);
+   116→   116→   116→
+   117→   117→   117→  const loadBankAccounts = useCallback(async () => {
+   118→   118→   118→    if (!activeCompany) return;
+   119→   119→   119→    try {
+   120→   120→   120→      const res = await authedFetch(`/api/accounting/bank-accounts?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   121→   121→   121→      if (res.ok) { const d = await res.json(); setBankAccounts(d.accounts || []); }
+   122→   122→   122→      else { setBankAccounts([]); }
+   123→   123→   123→    } catch { setBankAccounts([]); }
+   124→   124→   124→  }, [activeCompany]);
+   125→   125→   125→
+   126→   126→   126→  useEffect(() => { load(); }, [load]);
+   127→   127→   127→  useEffect(() => {
+   128→   128→   128→    if (tab === "trial" && activeCompany) loadTrial();
+   129→   129→   129→    if (tab === "fiscal-periods" && activeCompany) loadFiscalPeriods();
+   130→   130→   130→    if (tab === "cost-centers" && activeCompany) loadCostCenters();
+   131→   131→   131→    if (tab === "aging" && activeCompany) loadAging();
+   132→   132→   132→    if (tab === "banking" && activeCompany) loadBankAccounts();
+   133→   133→   133→    if (tab === "dashboard" && activeCompany) { load(); loadAging(); loadBankAccounts(); }
+   134→   134→   134→  }, [tab, activeCompany, loadTrial, loadFiscalPeriods, loadCostCenters, loadAging, loadBankAccounts, load]);
+   135→   135→   135→
+   136→   136→   136→  const switchTab = (t: Tab) => {
+   137→   137→   137→    setTab(t);
+   138→   138→   138→    setShowForm(false);
+   139→   139→   139→    setSelectedIds(new Set());
+   140→   140→   140→    setCurrentPage(1);
+   141→   141→   141→  };
+   142→   142→   142→
+   143→   143→   143→  const itemsForTab = (): Array<{ id: number }> => (tab === "accounts" ? accounts : entries);
+   144→   144→   144→
+   145→   145→   145→  const allItems = itemsForTab();
+   146→   146→   146→  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+   147→   147→   147→  const pageItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+   148→   148→   148→  const safePage = Math.min(currentPage, totalPages);
+   149→   149→   149→
+   150→   150→   150→  const toggleSelectAll = () => {
+   151→   151→   151→    if (selectedIds.size === pageItems.length && pageItems.length > 0) setSelectedIds(new Set());
+   152→   152→   152→    else setSelectedIds(new Set(pageItems.map((i) => i.id)));
+   153→   153→   153→  };
+   154→   154→   154→  const toggleRow = (id: number) => {
+   155→   155→   155→    setSelectedIds((prev) => {
+   156→   156→   156→      const next = new Set(prev);
+   157→   157→   157→      if (next.has(id)) next.delete(id);
+   158→   158→   158→      else next.add(id);
+   159→   159→   159→      return next;
+   160→   160→   160→    });
+   161→   161→   161→  };
+   162→   162→   162→  const handleBulkDelete = async () => {
+   163→   163→   163→    if (selectedIds.size === 0) return;
+   164→   164→   164→    if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
+   165→   165→   165→    const endpoint = tab === "accounts" ? "/api/accounting/accounts" : "/api/accounting/journal-entries";
+   166→   166→   166→    setBulkDeleting(true);
+   167→   167→   167→    let okCount = 0, failCount = 0;
+   168→   168→   168→    for (const id of selectedIds) {
+   169→   169→   169→      try {
+   170→   170→   170→        const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
+   171→   171→   171→        if (res.ok) okCount++;
+   172→   172→   172→        else { failCount++; }
+   173→   173→   173→      } catch { failCount++; }
+   174→   174→   174→    }
+   175→   175→   175→    setBulkDeleting(false);
+   176→   176→   176→    setSelectedIds(new Set());
+   177→   177→   177→    if (okCount > 0) toast.success(`تم حذف ${okCount} عنصر`);
+   178→   178→   178→    if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
+   179→   179→   179→    load();
+   180→   180→   180→  };
+   181→   181→   181→  const handleDelete = async (id: number) => {
+   182→   182→   182→    if (!confirm("حذف هذا العنصر؟")) return;
+   183→   183→   183→    const endpoint = tab === "accounts" ? "/api/accounting/accounts" : "/api/accounting/journal-entries";
+   184→   184→   184→    const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
+   185→   185→   185→    if (res.ok) { toast.success("تم الحذف"); load(); }
+   186→   186→   186→    else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الحذف"); }
+   187→   187→   187→  };
+   188→   188→   188→
+   189→   189→   189→  const handleReverse = async (entry: JournalEntry) => {
+   190→   190→   190→    if (!activeCompany) return;
+   191→   191→   191→    setReverseConfirm(entry);
+   192→   192→   192→  };
+   193→   193→   193→
+   194→   194→   194→  const confirmReverse = async () => {
+   195→   195→   195→    if (!reverseConfirm || !activeCompany) return;
+   196→   196→   196→    const entry = reverseConfirm;
+   197→   197→   197→    setReversingId(entry.id);
+   198→   198→   198→    try {
+   199→   199→   199→      const url = `/api/accounting/journal-entries/${entry.id}/reverse?companySlug=${encodeURIComponent(activeCompany.slug)}`;
+   200→   200→   200→      const res = await authedFetch(url, { method: "POST" });
+   201→   201→   201→      if (!res.ok) {
+   202→   202→   202→        const e = await res.json().catch(() => ({}));
+   203→   203→   203→        throw new Error(e.error || "تعذّر العكس");
+   204→   204→   204→      }
+   205→   205→   205→      const data = await res.json().catch(() => ({}));
+   206→   206→   206→      const reversalId = data?.reversal?.id;
+   207→   207→   207→      toast.success(reversalId ? `تم إنشاء قيد عكسي #${reversalId}` : "تم عكس القيد");
+   208→   208→   208→      setReverseConfirm(null);
+   209→   209→   209→      await load();
+   210→   210→   210→    } catch (err) {
+   211→   211→   211→      toast.error(err instanceof Error ? err.message : "خطأ أثناء العكس");
+   212→   212→   212→    } finally { setReversingId(null); }
+   213→   213→   213→  };
+   214→   214→   214→
+   215→   215→   215→  const pageBtnStyle = (disabled: boolean): string =>
+   216→   216→   216→    disabled
+   217→   217→   217→      ? "py-1.5 px-3 rounded-md bg-transparent text-muted-foreground border border-border text-[12px] font-bold cursor-not-allowed opacity-50"
+   218→   218→   218→      : "py-1.5 px-3 rounded-md bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer";
+   219→   219→   219→
+   220→   220→   220→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+   221→   221→   221→
+   222→   222→   222→  const ACCOUNT_TYPES: Record<string, { label: string; color: string }> = {
+   223→   223→   223→    asset: { label: "أصول", color: "#10b981" },
+   224→   224→   224→    liability: { label: "خصوم", color: "#ef4444" },
+   225→   225→   225→    equity: { label: "حقوق ملكية", color: "#7c3aed" },
+   226→   226→   226→    revenue: { label: "إيرادات", color: "#3b82f6" },
+   227→   227→   227→    expense: { label: "مصروفات", color: "#f59e0b" },
+   228→   228→   228→    contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af" },
+   229→   229→   229→    contra_asset: { label: "مقابل أصول", color: "#9ca3af" },
+   230→   230→   230→  };
+   231→   231→   231→
+   232→   232→   232→  const tabs: Array<{ key: Tab; label: string; icon?: React.ComponentType<{ size?: number }> }> = [
+   233→   233→   233→    { key: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
+   234→   234→   234→    { key: "accounts", label: `الحسابات (${accounts.length})` },
+   235→   235→   235→    { key: "journal", label: `القيود (${entries.length})` },
+   236→   236→   236→    { key: "trial", label: "ميزان المراجعة", icon: Scale },
+   237→   237→   237→    { key: "statements", label: "القوائم المالية", icon: FileBarChart },
+   238→   238→   238→    { key: "fiscal-periods", label: "الفترات المالية", icon: Clock },
+   239→   239→   239→    { key: "cost-centers", label: "مراكز التكلفة", icon: Building },
+   240→   240→   240→    { key: "aging", label: "تقادم الذمم", icon: BarChart3 },
+   241→   241→   241→    { key: "banking", label: "البنوك", icon: Landmark },
+   242→   242→   242→  ];
+   243→   243→   243→
+   244→   244→   244→  // Dashboard metrics
+   245→   245→   245→  const totalRevenue = accounts.filter(a => a.type === "revenue").reduce((s, a) => s + a.balance, 0);
+   246→   246→   246→  const totalExpenses = accounts.filter(a => a.type === "expense").reduce((s, a) => s + a.balance, 0);
+   247→   247→   247→  const totalAssets = accounts.filter(a => a.type === "asset").reduce((s, a) => s + a.balance, 0);
+   248→   248→   248→  const totalLiabilities = accounts.filter(a => a.type === "liability").reduce((s, a) => s + a.balance, 0);
+   249→   249→   249→  const netProfit = totalRevenue - totalExpenses;
+   250→   250→   250→  const totalAR = agingData.reduce((s, b) => s + b.receivable, 0);
+   251→   251→   251→  const totalAP = agingData.reduce((s, b) => s + b.payable, 0);
+   252→   252→   252→  const totalCash = bankAccounts.reduce((s, b) => s + b.balance, 0);
+   253→   253→   253→  const currentPeriod = fiscalPeriods.find(p => p.status === "open");
+   254→   254→   254→
+   255→   255→   255→  return (
+   256→   256→   256→    <div className="flex flex-col gap-4">
+   257→   257→   257→      <div className="flex flex-wrap justify-between items-center gap-3">
+   258→   258→   258→        <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Calculator size={20} /> المحاسبة</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+   259→   259→   259→        {(tab === "accounts" || tab === "journal" || tab === "fiscal-periods" || tab === "cost-centers" || tab === "banking") && (
+   260→   260→   260→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+   261→   261→   261→        )}
+   262→   262→   262→      </div>
+   263→   263→   263→      <div className="flex gap-1.5 flex-wrap">
+   264→   264→   264→        {tabs.map((t) => {
+   265→   265→   265→          const Icon = t.icon;
+   266→   266→   266→          return (
+   267→   267→   267→            <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
+   268→   268→   268→              "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5",
+   269→   269→   269→              tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   270→   270→   270→            )}>
+   271→   271→   271→              {Icon && <Icon size={14} />}
+   272→   272→   272→              {t.label}
+   273→   273→   273→            </button>
+   274→   274→   274→          );
+   275→   275→   275→        })}
+   276→   276→   276→      </div>
+   277→   277→   277→
+   278→   278→   278→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "dashboard" ? (
+   279→   279→   279→        <FinancialDashboard
+   280→   280→   280→          totalRevenue={totalRevenue}
+   281→   281→   281→          totalExpenses={totalExpenses}
+   282→   282→   282→          netProfit={netProfit}
+   283→   283→   283→          totalAssets={totalAssets}
+   284→   284→   284→          totalLiabilities={totalLiabilities}
+   285→   285→   285→          totalAR={totalAR}
+   286→   286→   286→          totalAP={totalAP}
+   287→   287→   287→          totalCash={totalCash}
+   288→   288→   288→          currentPeriod={currentPeriod}
+   289→   289→   289→          entriesCount={entries.length}
+   290→   290→   290→          accountsCount={accounts.length}
+   291→   291→   291→        />
+   292→   292→   292→      ) : tab === "trial" ? (
+   293→   293→   293→        <TrialBalanceTable data={trial} loading={loading} />
+   294→   294→   294→      ) : tab === "statements" ? (
+   295→   295→   295→        <FinancialStatements company={activeCompany} />
+   296→   296→   296→      ) : tab === "fiscal-periods" ? (
+   297→   297→   297→        showForm ? <FiscalPeriodForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadFiscalPeriods(); }} /> : (
+   298→   298→   298→          <FiscalPeriodsTable periods={fiscalPeriods} company={activeCompany} onRefresh={loadFiscalPeriods} />
+   299→   299→   299→        )
+   300→   300→   300→      ) : tab === "cost-centers" ? (
+   301→   301→   301→        showForm ? <CostCenterForm company={activeCompany} costCenters={costCenters} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadCostCenters(); }} /> : (
+   302→   302→   302→          <CostCentersTable costCenters={costCenters} />
+   303→   303→   303→        )
+   304→   304→   304→      ) : tab === "aging" ? (
+   305→   305→   305→        <AgingReport data={agingData} totalAR={totalAR} totalAP={totalAP} />
+   306→   306→   306→      ) : tab === "banking" ? (
+   307→   307→   307→        showForm ? <BankAccountForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadBankAccounts(); }} /> : (
+   308→   308→   308→          <BankAccountsList accounts={bankAccounts} company={activeCompany} onRefresh={loadBankAccounts} />
+   309→   309→   309→        )
+   310→   310→   310→      ) : showForm ? (
+   311→   311→   311→        tab === "accounts" ? (
+   312→   312→   312→          <AccountForm company={activeCompany} accounts={accounts} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />
+   313→   313→   313→        ) : (
+   314→   314→   314→          <JournalForm company={activeCompany} accounts={accounts} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />
+   315→   315→   315→        )
+   316→   316→   316→      ) : (
+   317→   317→   317→        <>
+   318→   318→   318→          {selectedIds.size > 0 && (
+   319→   319→   319→            <div className="py-2.5 px-4 bg-destructive text-white rounded-[10px] flex flex-wrap justify-between items-center gap-2">
+   320→   320→   320→              <span className="font-bold text-[13px]">{selectedIds.size} عنصر محدد</span>
+   321→   321→   321→              <div className="flex gap-2">
+   322→   322→   322→                <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-md py-1.5 px-3.5 text-[12px] font-bold cursor-pointer disabled:cursor-not-allowed">إلغاء التحديد</button>
+   323→   323→   323→                <button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-md py-1.5 px-3.5 text-[12px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
+   324→   324→   324→              </div>
+   325→   325→   325→            </div>
+   326→   326→   326→          )}
+   327→   327→   327→
+   328→   328→   328→          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   329→   329→   329→            {allItems.length === 0 ? <Empty label={tab === "accounts" ? "حسابات" : "قيود يومية"} /> : (
+   330→   330→   330→              <>
+   331→   331→   331→                <div className="overflow-x-auto garfix-scroll">
+   332→   332→   332→                  {tab === "accounts" ? (
+   333→   333→   333→                    <table className="w-full border-collapse">
+   334→   334→   334→                      <thead><tr className="border-b border-border bg-muted">
+   335→   335→   335→                        <th className={thCheck}><input type="checkbox" checked={selectedIds.size === pageItems.length && pageItems.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   336→   336→   336→                        <th className={thStyle}>الكود</th><th className={thStyle}>الاسم</th><th className={thStyle}>النوع</th>
+   337→   337→   337→                        <th className={thStyle}>الرصيد</th><th className={thStyle}>العملة</th><th className={thStyle}>إجراء</th>
+   338→   338→   338→                      </tr></thead>
+   339→   339→   339→                      <tbody>
+   340→   340→   340→                        {(pageItems as Account[]).map((a) => {
+   341→   341→   341→                          const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999" };
+   342→   342→   342→                          const checked = selectedIds.has(a.id);
+   343→   343→   343→                          return (
+   344→   344→   344→                            <tr key={a.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   345→   345→   345→                              <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(a.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${a.nameAr}`} /></td>
+   346→   346→   346→                              <td className={cn(tdStyle, "font-mono")}>{a.code}</td>
+   347→   347→   347→                              <td className={cn(tdStyle, "font-bold")}>{a.nameAr}</td>
+   348→   348→   348→                              <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${t.color}20`, color: t.color }}>{t.label}</span></td>
+   349→   349→   349→                              <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{a.balance.toLocaleString("ar-EG")}</td>
+   350→   350→   350→                              <td className={tdStyle}>{a.currency}</td>
+   351→   351→   351→                              <td className={tdStyle}><button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   352→   352→   352→                            </tr>
+   353→   353→   353→                          );
+   354→   354→   354→                        })}
+   355→   355→   355→                      </tbody>
+   356→   356→   356→                    </table>
+   357→   357→   357→                  ) : (
+   358→   358→   358→                    <table className="w-full border-collapse">
+   359→   359→   359→                      <thead><tr className="border-b border-border bg-muted">
+   360→   360→   360→                        <th className={thCheck}><input type="checkbox" checked={selectedIds.size === pageItems.length && pageItems.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   361→   361→   361→                        <th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th>
+   362→   362→   362→                        <th className={thStyle}>المرجع</th><th className={thStyle}>الحالة</th><th className={thStyle}>البنود</th><th className={thStyle}>إجراء</th>
+   363→   363→   363→                      </tr></thead>
+   364→   364→   364→                      <tbody>
+   365→   365→   365→                        {(pageItems as JournalEntry[]).map((e) => {
+   366→   366→   366→                          const checked = selectedIds.has(e.id);
+   367→   367→   367→                          const canReverse = e.status === "posted";
+   368→   368→   368→                          return (
+   369→   369→   369→                            <tr key={e.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   370→   370→   370→                              <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(e.id)} className="cursor-pointer w-4 h-4" aria-label="تحديد قيد" /></td>
+   371→   371→   371→                              <td className={tdStyle}>{e.date}</td>
+   372→   372→   372→                              <td className={cn(tdStyle, "font-bold")}>{e.description || "—"}</td>
+   373→   373→   373→                              <td className={cn(tdStyle, "font-mono")}>{e.reference || "—"}</td>
+   374→   374→   374→                              <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: e.status === "posted" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: e.status === "posted" ? "#10b981" : "#f59e0b" }}>{e.status === "posted" ? "مُرحّل" : e.status === "draft" ? "مسودة" : "معكوس"}</span></td>
+   375→   375→   375→                              <td className={tdStyle}>{e.lines?.length || 0}</td>
+   376→   376→   376→                              <td className={tdStyle}>
+   377→   377→   377→                                <div className="flex items-center gap-1.5">
+   378→   378→   378→                                  {tab === "journal" && (
+   379→   379→   379→                                    <button onClick={() => handleReverse(e)} disabled={!canReverse || reversingId === e.id} title={canReverse ? "عكس القيد" : "لا يمكن العكس"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md border border-border transition-colors", canReverse ? "hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-600 cursor-pointer" : "opacity-30 cursor-not-allowed")}>
+   380→   380→   380→                                      <RotateCcw size={13} className={reversingId === e.id ? "animate-spin" : ""} />
+   381→   381→   381→                                    </button>
+   382→   382→   382→                                  )}
+   383→   383→   383→                                  <button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+   384→   384→   384→                                </div>
+   385→   385→   385→                              </td>
+   386→   386→   386→                            </tr>
+   387→   387→   387→                          );
+   388→   388→   388→                        })}
+   389→   389→   389→                      </tbody>
+   390→   390→   390→                    </table>
+   391→   391→   391→                  )}
+   392→   392→   392→                </div>
+   393→   393→   393→                <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
+   394→   394→   394→                  <span className="text-[12px] text-muted-foreground">صفحة {safePage} من {totalPages} ({allItems.length} عنصر)</span>
+   395→   395→   395→                  <div className="flex items-center gap-1.5">
+   396→   396→   396→                    <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={pageBtnStyle(safePage === 1)}>السابق</button>
+   397→   397→   397→                    <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={pageBtnStyle(safePage === totalPages)}>التالي</button>
+   398→   398→   398→                  </div>
+   399→   399→   399→                </div>
+   400→   400→   400→              </>
+   401→   401→   401→            )}
+   402→   402→   402→          </div>
+   403→   403→   403→        </>
+   404→   404→   404→      )}
+   405→   405→   405→
+   406→   406→   406→      {/* Reverse confirmation dialog */}
+   407→   407→   407→      {reverseConfirm && (
+   408→   408→   408→        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => reversingId === null && setReverseConfirm(null)}>
+   409→   409→   409→          <div className="bg-card border border-border rounded-[14px] shadow-xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
+   410→   410→   410→            <div className="flex items-start gap-3 mb-3">
+   411→   411→   411→              <div className="w-10 h-10 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0"><RotateCcw size={18} /></div>
+   412→   412→   412→              <div className="flex-1">
+   413→   413→   413→                <h3 className="font-bold text-base">عكس القيد #{reverseConfirm.id}</h3>
+   414→   414→   414→                <p className="text-xs text-muted-foreground mt-0.5">{reverseConfirm.description || "بدون وصف"} • {reverseConfirm.date} • {reverseConfirm.lines?.length || 0} بند</p>
+   415→   415→   415→              </div>
+   416→   416→   416→            </div>
+   417→   417→   417→            <div className="bg-muted rounded-md p-3 text-xs leading-relaxed mb-4">
+   418→   418→   418→              سيتم إنشاء <strong>قيد عكسي جديد</strong> بنفس البنود ولكن مع <strong>تبديل المدين/الدائن</strong>، وترحيله فورًا.
+   419→   419→   419→              <br /><span className="text-amber-600 font-semibold mt-1 block">⚠️ هذا إجراء مالي حساس — لا يمكن التراجع عنه.</span>
+   420→   420→   420→            </div>
+   421→   421→   421→            <div className="flex gap-2 justify-end">
+   422→   422→   422→              <button onClick={() => setReverseConfirm(null)} disabled={reversingId !== null} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer disabled:opacity-50">إلغاء</button>
+   423→   423→   423→              <button onClick={confirmReverse} disabled={reversingId !== null} className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"><RotateCcw size={14} className={reversingId !== null ? "animate-spin" : ""} />{reversingId !== null ? "جارٍ العكس…" : "تأكيد العكس"}</button>
+   424→   424→   424→            </div>
+   425→   425→   425→          </div>
+   426→   426→   426→        </div>
+   427→   427→   427→      )}
+   428→   428→   428→    </div>
+   429→   429→   429→  );
+   430→   430→   430→}
+   431→   431→   431→
+   432→   432→   432→/* ─── Financial Dashboard ────────────────────────────────────────────────── */
+   433→   433→   433→function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAssets, totalLiabilities, totalAR, totalAP, totalCash, currentPeriod, entriesCount, accountsCount }: {
+   434→   434→   434→  totalRevenue: number; totalExpenses: number; netProfit: number; totalAssets: number;
+   435→   435→   435→  totalLiabilities: number; totalAR: number; totalAP: number; totalCash: number;
+   436→   436→   436→  currentPeriod?: FiscalPeriod; entriesCount: number; accountsCount: number;
+   437→   437→   437→}) {
+   438→   438→   438→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   439→   439→   439→  const metrics = [
+   440→   440→   440→    { label: "الإيرادات", value: totalRevenue, color: "#10b981", icon: <TrendingUp size={18} /> },
+   441→   441→   441→    { label: "المصروفات", value: totalExpenses, color: "#f59e0b", icon: <TrendingDown size={18} /> },
+   442→   442→   442→    { label: "صافي الربح", value: netProfit, color: netProfit >= 0 ? "#10b981" : "#ef4444", icon: <DollarSign size={18} /> },
+   443→   443→   443→    { label: "إجمالي الأصول", value: totalAssets, color: "#3b82f6", icon: <Scale size={18} /> },
+   444→   444→   444→    { label: "الخصوم", value: totalLiabilities, color: "#ef4444", icon: <TrendingDown size={18} /> },
+   445→   445→   445→    { label: "النقدية", value: totalCash, color: "#10b981", icon: <Wallet size={18} /> },
+   446→   446→   446→    { label: "الذمم المدينة", value: totalAR, color: "#7c3aed", icon: <ArrowUpDown size={18} /> },
+   447→   447→   447→    { label: "الذمم الدائنة", value: totalAP, color: "#f59e0b", icon: <ArrowUpDown size={18} /> },
+   448→   448→   448→  ];
+   449→   449→   449→  return (
+   450→   450→   450→    <div className="flex flex-col gap-4">
+   451→   451→   451→      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   452→   452→   452→        {metrics.map((m) => (
+   453→   453→   453→          <DashboardCard key={m.label} label={m.label} value={fmt(m.value)} color={m.color} icon={m.icon} />
+   454→   454→   454→        ))}
+   455→   455→   455→      </div>
+   456→   456→   456→      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+   457→   457→   457→        <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
+   458→   458→   458→          <h3 className="font-bold text-[14px] flex items-center gap-2"><Clock size={16} /> الفترة المالية الحالية</h3>
+   459→   459→   459→          {currentPeriod ? (
+   460→   460→   460→            <div className="flex flex-col gap-1.5">
+   461→   461→   461→              <div className="text-[13px] font-bold">{currentPeriod.name}</div>
+   462→   462→   462→              <div className="text-[12px] text-muted-foreground">{currentPeriod.startDate} ← {currentPeriod.endDate}</div>
+   463→   463→   463→              <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: currentPeriod.status === "open" ? "rgba(16,185,129,0.15)" : currentPeriod.status === "closed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: currentPeriod.status === "open" ? "#10b981" : currentPeriod.status === "closed" ? "#ef4444" : "#f59e0b" }}>{currentPeriod.status === "open" ? "مفتوحة" : currentPeriod.status === "closed" ? "مقفلة" : "مؤقتة"}</span>
+   464→   464→   464→            </div>
+   465→   465→   465→          ) : (
+   466→   466→   466→            <div className="text-[12px] text-muted-foreground">لا توجد فترة مالية مفتوحة</div>
+   467→   467→   467→          )}
+   468→   468→   468→        </div>
+   469→   469→   469→        <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
+   470→   470→   470→          <h3 className="font-bold text-[14px] flex items-center gap-2"><Calculator size={16} /> ملخص</h3>
+   471→   471→   471→          <div className="flex flex-col gap-1.5 text-[13px]">
+   472→   472→   472→            <div className="flex justify-between"><span className="text-muted-foreground">الحسابات</span><span className="font-bold">{accountsCount}</span></div>
+   473→   473→   473→            <div className="flex justify-between"><span className="text-muted-foreground">القيود</span><span className="font-bold">{entriesCount}</span></div>
+   474→   474→   474→            <div className="flex justify-between"><span className="text-muted-foreground">هامش الربح</span><span className="font-bold" style={{ color: totalRevenue > 0 ? (netProfit / totalRevenue * 100 >= 10 ? "#10b981" : "#f59e0b") : "#ef4444" }}>{totalRevenue > 0 ? `${(netProfit / totalRevenue * 100).toFixed(1)}%` : "—"}</span></div>
+   475→   475→   475→          </div>
+   476→   476→   476→        </div>
+   477→   477→   477→      </div>
+   478→   478→   478→    </div>
+   479→   479→   479→  );
+   480→   480→   480→}
+   481→   481→   481→
+   482→   482→   482→function DashboardCard({ label, value, color, icon }: { label: string; value: string; color: string; icon: React.ReactNode }) {
+   483→   483→   483→  return (
+   484→   484→   484→    <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   485→   485→   485→      <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0" style={{ background: `${color}20`, color }}>{icon}</div>
+   486→   486→   486→      <div className="flex-1 min-w-0">
+   487→   487→   487→        <div className="text-[11px] text-muted-foreground">{label}</div>
+   488→   488→   488→        <div className="text-lg font-extrabold [direction:ltr] text-end truncate">{value}</div>
+   489→   489→   489→      </div>
+   490→   490→   490→    </div>
+   491→   491→   491→  );
+   492→   492→   492→}
+   493→   493→   493→
+   494→   494→   494→/* ─── Fiscal Periods ──────────────────────────────────────────────────────── */
+   495→   495→   495→function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPeriod[]; company: { slug: string }; onRefresh: () => void }) {
+   496→   496→   496→  const [closingId, setClosingId] = useState<number | null>(null);
+   497→   497→   497→  const [openingId, setOpeningId] = useState<number | null>(null);
+   498→   498→   498→
+   499→   499→   499→  const handleClose = async (p: FiscalPeriod) => {
+   500→   500→   500→    if (!confirm(`قفل الفترة "${p.name}"؟ لا يمكن التراجع.`)) return;
+
+[showing lines 1-500 of 1251; use offset=501 with limit to continue reading]
