@@ -12,6 +12,16 @@
     └── finops-charts.tsx  # رسوم بيانية مالية
 ```
 
+## API Routes
+
+لوحة المؤسس تتصل بالمسارات التالية لجلب البيانات:
+
+| المسار | الوصف |
+|--------|-------|
+| `/api/founder-panel/ai-fabric` | بيانات مراقبة AI Fabric |
+| `/api/founder-panel/mission-control` | بيانات صحة النظام |
+| `/api/founder-panel/finops` | بيانات العمليات المالية |
+
 ## الصفحات
 
 ### `/founder-panel/ai-fabric` — مراقبة AI Fabric
@@ -37,7 +47,7 @@
 | `page.tsx` | لوحة العمليات المالية: إيرادات، مصروفات، ربح |
 | `finops-charts.tsx` | رسوم بيانية مالية (Revenue, Cost, Margin) |
 
-## المصادقة
+## المصادنة
 
 جميع صفحات `founder-panel` محمية ومتاحة فقط للمستخدمين بصلاحية `FOUNDER`:
 
