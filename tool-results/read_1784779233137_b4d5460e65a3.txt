@@ -1,0 +1,632 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { authedFetch } from "@/context/AuthContext";
+     6→import { toast } from "sonner";
+     7→import {
+     8→  Plus, X, FileText, Receipt, ShoppingCart, Scale,
+     9→  Users, DollarSign, Calendar, CheckCircle2, XCircle,
+    10→  Printer, ArrowRight, CreditCard, BookOpen, Percent,
+    11→  HandCoins,
+    12→} from "lucide-react";
+    13→import { cn } from "@/lib/utils";
+    14→
+    15→/* ─── Interfaces ──────────────────────────────────────────────────────────── */
+    16→interface Voucher {
+    17→  id: number; voucherType: string; date: string; amount: number;
+    18→  currency: string; payee: string; payer: string; status: string;
+    19→  amountTextAr?: string;
+    20→}
+    21→interface Quotation {
+    22→  id: number; clientName: string; date: string; validUntil: string;
+    23→  lineItems: LineItem[]; totalAmount: number; status: string;
+    24→}
+    25→interface PurchaseOrder {
+    26→  id: number; supplierName: string; date: string; expectedDelivery: string;
+    27→  lineItems: LineItem[]; totalAmount: number; status: string;
+    28→}
+    29→interface LineItem { id?: number; description: string; quantity: number; unitPrice: number; total: number; }
+    30→interface OpeningBalance { id: number; accountId: number; accountCode: string; accountNameAr: string; amount: number; posted: boolean; }
+    31→interface Commission { id: number; salesperson: string; totalSales: number; commissionAmount: number; posted: boolean; }
+    32→interface ProfitDistribution { id: number; partnerName: string; ownershipPercent: number; profitShare: number; posted: boolean; }
+    33→
+    34→type Tab = "vouchers" | "quotations" | "purchase-orders" | "opening-balances" | "commissions" | "profit-distribution";
+    35→
+    36→/* ─── Shared Styles ─────────────────────────────────────────────────────────── */
+    37→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+    38→const tdStyle = "py-2.5 px-3 text-[13px]";
+    39→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+    40→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    41→const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer";
+    42→
+    43→function Empty({ label }: { label: string }) {
+    44→  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
+    45→}
+    46→
+    47→/* ─── Main Component ────────────────────────────────────────────────────────── */
+    48→export function VouchersDetailView() {
+    49→  const { activeCompany } = useBrand();
+    50→  const [tab, setTab] = useState<Tab>("vouchers");
+    51→  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+    52→  const [quotations, setQuotations] = useState<Quotation[]>([]);
+    53→  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+    54→  const [openingBalances, setOpeningBalances] = useState<OpeningBalance[]>([]);
+    55→  const [commissions, setCommissions] = useState<Commission[]>([]);
+    56→  const [profitDistributions, setProfitDistributions] = useState<ProfitDistribution[]>([]);
+    57→  const [loading, setLoading] = useState(true);
+    58→  const [showForm, setShowForm] = useState(false);
+    59→
+    60→  /* Voucher form */
+    61→  const [vType, setVType] = useState("receipt");
+    62→  const [vDate, setVDate] = useState("");
+    63→  const [vAmount, setVAmount] = useState("");
+    64→  const [vCurrency, setVCurrency] = useState("KWD");
+    65→  const [vPayee, setVPayee] = useState("");
+    66→  const [vPayer, setVPayer] = useState("");
+    67→
+    68→  /* Quotation form */
+    69→  const [qClient, setQClient] = useState("");
+    70→  const [qDate, setQDate] = useState("");
+    71→  const [qValidUntil, setQValidUntil] = useState("");
+    72→  const [qLineItems, setQLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    73→
+    74→  /* PO form */
+    75→  const [poSupplier, setPoSupplier] = useState("");
+    76→  const [poDate, setPoDate] = useState("");
+    77→  const [poDelivery, setPoDelivery] = useState("");
+    78→  const [poLineItems, setPoLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    79→
+    80→  /* Opening Balance form */
+    81→  const [obAccountId, setObAccountId] = useState("");
+    82→  const [obAmount, setObAmount] = useState("");
+    83→
+    84→  /* Commission dates */
+    85→  const [commFrom, setCommFrom] = useState("");
+    86→  const [commTo, setCommTo] = useState("");
+    87→
+    88→  const slug = activeCompany ? `companySlug=${encodeURIComponent(activeCompany.slug)}` : "";
+    89→
+    90→  /* ── Loaders ──────────────────────────────────────────────────────────────── */
+    91→  const loadVouchers = useCallback(async () => {
+    92→    if (!activeCompany) { setLoading(false); return; }
+    93→    setLoading(true);
+    94→    try {
+    95→      const res = await authedFetch(`/api/accounting/vouchers?${slug}`);
+    96→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل السندات"); }
+    97→      const d = await res.json(); setVouchers(d.vouchers || []);
+    98→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل السندات"); setVouchers([]); }
+    99→    finally { setLoading(false); }
+   100→  }, [activeCompany, slug]);
+   101→
+   102→  const loadQuotations = useCallback(async () => {
+   103→    if (!activeCompany) return; setLoading(true);
+   104→    try {
+   105→      const res = await authedFetch(`/api/accounting/quotations?${slug}`);
+   106→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل عروض الأسعار"); }
+   107→      const d = await res.json(); setQuotations(d.quotations || []);
+   108→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل عروض الأسعار"); setQuotations([]); }
+   109→    finally { setLoading(false); }
+   110→  }, [activeCompany, slug]);
+   111→
+   112→  const loadPOs = useCallback(async () => {
+   113→    if (!activeCompany) return; setLoading(true);
+   114→    try {
+   115→      const res = await authedFetch(`/api/accounting/purchase-orders?${slug}`);
+   116→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل أوامر الشراء"); }
+   117→      const d = await res.json(); setPurchaseOrders(d.purchaseOrders || []);
+   118→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل أوامر الشراء"); setPurchaseOrders([]); }
+   119→    finally { setLoading(false); }
+   120→  }, [activeCompany, slug]);
+   121→
+   122→  const loadOBs = useCallback(async () => {
+   123→    if (!activeCompany) return; setLoading(true);
+   124→    try {
+   125→      const res = await authedFetch(`/api/accounting/opening-balances?${slug}`);
+   126→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل أرصدة افتتاحية"); }
+   127→      const d = await res.json(); setOpeningBalances(d.openingBalances || []);
+   128→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل أرصدة افتتاحية"); setOpeningBalances([]); }
+   129→    finally { setLoading(false); }
+   130→  }, [activeCompany, slug]);
+   131→
+   132→  const loadCommissions = useCallback(async () => {
+   133→    if (!activeCompany) return; setLoading(true);
+   134→    try {
+   135→      const res = await authedFetch(`/api/accounting/commissions?${slug}&from=${commFrom}&to=${commTo}`);
+   136→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل العمولات"); }
+   137→      const d = await res.json(); setCommissions(d.commissions || []);
+   138→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل العمولات"); setCommissions([]); }
+   139→    finally { setLoading(false); }
+   140→  }, [activeCompany, slug, commFrom, commTo]);
+   141→
+   142→  const loadProfitDist = useCallback(async () => {
+   143→    if (!activeCompany) return; setLoading(true);
+   144→    try {
+   145→      const res = await authedFetch(`/api/accounting/profit-distribution?${slug}`);
+   146→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل توزيع الأرباح"); }
+   147→      const d = await res.json(); setProfitDistributions(d.distributions || []);
+   148→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل توزيع الأرباح"); setProfitDistributions([]); }
+   149→    finally { setLoading(false); }
+   150→  }, [activeCompany, slug]);
+   151→
+   152→  useEffect(() => {
+   153→    const loaders: Record<Tab, () => void> = {
+   154→      vouchers: loadVouchers, quotations: loadQuotations,
+   155→      "purchase-orders": loadPOs, "opening-balances": loadOBs,
+   156→      commissions: loadCommissions, "profit-distribution": loadProfitDist,
+   157→    };
+   158→    if (activeCompany) loaders[tab]();
+   159→  }, [tab, activeCompany, loadVouchers, loadQuotations, loadPOs, loadOBs, loadCommissions, loadProfitDist]);
+   160→
+   161→  const switchTab = (t: Tab) => { setTab(t); setShowForm(false); };
+   162→
+   163→  /* ── Line Items helper ───────────────────────────────────────────────────── */
+   164→  const updateLineItem = (items: LineItem[], idx: number, field: keyof LineItem, value: string | number): LineItem[] => {
+   165→    const updated = [...items];
+   166→    const item = { ...updated[idx] };
+   167→    if (field === "description") item.description = String(value);
+   168→    else if (field === "quantity") item.quantity = Number(value);
+   169→    else if (field === "unitPrice") item.unitPrice = Number(value);
+   170→    else if (field === "total") item.total = Number(value);
+   171→    item.total = item.quantity * item.unitPrice;
+   172→    updated[idx] = item;
+   173→    return updated;
+   174→  };
+   175→
+   176→  /* ── Create Voucher ─────────────────────────────────────────────────────── */
+   177→  const handleCreateVoucher = async () => {
+   178→    if (!activeCompany || !vAmount || !vDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   179→    try {
+   180→      const res = await authedFetch("/api/accounting/vouchers", {
+   181→        method: "POST", headers: { "Content-Type": "application/json" },
+   182→        body: JSON.stringify({ companySlug: activeCompany.slug, voucherType: vType, date: vDate, amount: parseFloat(vAmount), currency: vCurrency, payee: vPayee, payer: vPayer }),
+   183→      });
+   184→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء السند"); }
+   185→      toast.success("تم إنشاء السند"); setShowForm(false); resetVoucherForm(); loadVouchers();
+   186→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء السند"); }
+   187→  };
+   188→  const resetVoucherForm = () => { setVType("receipt"); setVDate(""); setVAmount(""); setVCurrency("KWD"); setVPayee(""); setVPayer(""); };
+   189→
+   190→  /* ── Approve / Cancel Voucher ────────────────────────────────────────────── */
+   191→  const handleApproveVoucher = async (id: number) => {
+   192→    if (!activeCompany) return;
+   193→    try {
+   194→      const res = await authedFetch(`/api/accounting/vouchers/${id}/approve?${slug}`, { method: "POST" });
+   195→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل اعتماد السند"); }
+   196→      toast.success("تم اعتماد السند"); loadVouchers();
+   197→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر اعتماد السند"); }
+   198→  };
+   199→  const handleCancelVoucher = async (id: number) => {
+   200→    if (!activeCompany) return;
+   201→    try {
+   202→      const res = await authedFetch(`/api/accounting/vouchers/${id}/cancel?${slug}`, { method: "POST" });
+   203→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إلغاء السند"); }
+   204→      toast.success("تم إلغاء السند"); loadVouchers();
+   205→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إلغاء السند"); }
+   206→  };
+   207→
+   208→  /* ── Create Quotation ────────────────────────────────────────────────────── */
+   209→  const handleCreateQuotation = async () => {
+   210→    if (!activeCompany || !qClient || !qDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   211→    try {
+   212→      const res = await authedFetch("/api/accounting/quotations", {
+   213→        method: "POST", headers: { "Content-Type": "application/json" },
+   214→        body: JSON.stringify({ companySlug: activeCompany.slug, clientName: qClient, date: qDate, validUntil: qValidUntil, lineItems: qLineItems }),
+   215→      });
+   216→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء عرض السعر"); }
+   217→      toast.success("تم إنشاء عرض السعر"); setShowForm(false); loadQuotations();
+   218→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء عرض السعر"); }
+   219→  };
+   220→
+   221→  /* ── Convert Quotation to Invoice ─────────────────────────────────────────── */
+   222→  const handleConvertToInvoice = async (id: number) => {
+   223→    if (!activeCompany) return;
+   224→    try {
+   225→      const res = await authedFetch(`/api/accounting/quotations/${id}/convert-to-invoice?${slug}`, { method: "POST" });
+   226→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل التحويل"); }
+   227→      toast.success("تم التحويل إلى فاتورة"); loadQuotations();
+   228→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر التحويل إلى فاتورة"); }
+   229→  };
+   230→
+   231→  /* ── Create PO ────────────────────────────────────────────────────────────── */
+   232→  const handleCreatePO = async () => {
+   233→    if (!activeCompany || !poSupplier || !poDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   234→    try {
+   235→      const res = await authedFetch("/api/accounting/purchase-orders", {
+   236→        method: "POST", headers: { "Content-Type": "application/json" },
+   237→        body: JSON.stringify({ companySlug: activeCompany.slug, supplierName: poSupplier, date: poDate, expectedDelivery: poDelivery, lineItems: poLineItems }),
+   238→      });
+   239→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء أمر الشراء"); }
+   240→      toast.success("تم إنشاء أمر الشراء"); setShowForm(false); loadPOs();
+   241→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء أمر الشراء"); }
+   242→  };
+   243→
+   244→  /* ── Create Opening Balance ──────────────────────────────────────────────── */
+   245→  const handleCreateOB = async () => {
+   246→    if (!activeCompany || !obAccountId || !obAmount) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   247→    try {
+   248→      const res = await authedFetch("/api/accounting/opening-balances", {
+   249→        method: "POST", headers: { "Content-Type": "application/json" },
+   250→        body: JSON.stringify({ companySlug: activeCompany.slug, accountId: parseInt(obAccountId), amount: parseFloat(obAmount) }),
+   251→      });
+   252→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء رصيد افتتاحي"); }
+   253→      toast.success("تم إنشاء الرصيد الافتتاحي"); setShowForm(false); setObAccountId(""); setObAmount(""); loadOBs();
+   254→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء الرصيد الافتتاحي"); }
+   255→  };
+   256→
+   257→  /* ── Post all opening balances ────────────────────────────────────────────── */
+   258→  const handlePostAllOB = async () => {
+   259→    if (!activeCompany) return;
+   260→    if (!confirm("ترحيل جميع الأرصدة الافتتاحية؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+   261→    try {
+   262→      const res = await authedFetch(`/api/accounting/opening-balances/post?${slug}`, { method: "POST" });
+   263→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل ترحيل الأرصدة"); }
+   264→      toast.success("تم ترحيل جميع الأرصدة الافتتاحية"); loadOBs();
+   265→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر ترحيل الأرصدة الافتتاحية"); }
+   266→  };
+   267→
+   268→  /* ── Post Commission as JE ────────────────────────────────────────────────── */
+   269→  const handlePostCommission = async (id: number) => {
+   270→    if (!activeCompany) return;
+   271→    try {
+   272→      const res = await authedFetch(`/api/accounting/commissions/${id}/post-as-journal-entry?${slug}`, { method: "POST" });
+   273→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل ترحيل العمولة"); }
+   274→      toast.success("تم ترحيل العمولة كقيد يومية"); loadCommissions();
+   275→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر ترحيل العمولة"); }
+   276→  };
+   277→
+   278→  /* ── Post Profit Distribution as JE ───────────────────────────────────────── */
+   279→  const handlePostProfitDist = async (id: number) => {
+   280→    if (!activeCompany) return;
+   281→    try {
+   282→      const res = await authedFetch(`/api/accounting/profit-distribution/${id}/post-as-journal-entry?${slug}`, { method: "POST" });
+   283→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل ترحيل التوزيع"); }
+   284→      toast.success("تم ترحيل التوزيع كقيد يومية"); loadProfitDist();
+   285→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر ترحيل توزيع الأرباح"); }
+   286→  };
+   287→
+   288→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+   289→
+   290→  const tabs: Array<{ key: Tab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+   291→    { key: "vouchers", label: "سندات", icon: Receipt },
+   292→    { key: "quotations", label: "عروض أسعار", icon: FileText },
+   293→    { key: "purchase-orders", label: "أوامر الشراء", icon: ShoppingCart },
+   294→    { key: "opening-balances", label: "أرصدة افتتاحية", icon: BookOpen },
+   295→    { key: "commissions", label: "عمولات", icon: Percent },
+   296→    { key: "profit-distribution", label: "توزيع أرباح", icon: HandCoins },
+   297→  ];
+   298→
+   299→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   300→
+   301→  return (
+   302→    <div className="flex flex-col gap-4">
+   303→      {/* Header */}
+   304→      <div className="flex flex-wrap justify-between items-center gap-3">
+   305→        <div>
+   306→          <h1 className="text-2xl font-extrabold flex items-center gap-2"><Receipt size={20} /> السندات والتفاصيل</h1>
+   307→          <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
+   308→        </div>
+   309→        {!showForm && (
+   310→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+   311→        )}
+   312→      </div>
+   313→
+   314→      {/* Tabs */}
+   315→      <div className="flex gap-1.5 flex-wrap">
+   316→        {tabs.map((t) => { const Icon = t.icon; return (
+   317→          <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
+   318→            "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5",
+   319→            tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   320→          )}>{Icon && <Icon size={14} />} {t.label}</button>
+   321→        ); })}
+   322→      </div>
+   323→
+   324→      {/* Commissions date filter */}
+   325→      {tab === "commissions" && !showForm && (
+   326→        <div className="flex gap-3 items-end bg-card rounded-[10px] border border-border p-3">
+   327→          <div><label className={labelStyle}>من</label><input value={commFrom} onChange={(e) => setCommFrom(e.target.value)} className={cn(inputStyle, "w-36")} type="date" /></div>
+   328→          <div><label className={labelStyle}>إلى</label><input value={commTo} onChange={(e) => setCommTo(e.target.value)} className={cn(inputStyle, "w-36")} type="date" /></div>
+   329→        </div>
+   330→      )}
+   331→
+   332→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : (() => {
+   333→        /* ── Vouchers Tab ─────────────────────────────────────────────────────── */
+   334→        if (tab === "vouchers") {
+   335→          if (showForm) return (
+   336→            <div className="bg-card rounded-[14px] border border-border p-5">
+   337→              <div className="flex items-center justify-between mb-4">
+   338→                <h2 className="text-base font-bold">سند جديد</h2>
+   339→                <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   340→              </div>
+   341→              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   342→                <div><label className={labelStyle}>نوع السند *</label>
+   343→                  <select value={vType} onChange={(e) => setVType(e.target.value)} className={selectStyle}>
+   344→                    <option value="receipt">سند قبض</option><option value="payment">سند دفع</option>
+   345→                  </select>
+   346→                </div>
+   347→                <div><label className={labelStyle}>التاريخ *</label><input value={vDate} onChange={(e) => setVDate(e.target.value)} className={inputStyle} type="date" /></div>
+   348→                <div><label className={labelStyle}>المبلغ *</label><input value={vAmount} onChange={(e) => setVAmount(e.target.value)} className={inputStyle} type="number" placeholder="0.000" /></div>
+   349→                <div><label className={labelStyle}>العملة</label>
+   350→                  <select value={vCurrency} onChange={(e) => setVCurrency(e.target.value)} className={selectStyle}>
+   351→                    <option value="KWD">KWD</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="SAR">SAR</option>
+   352→                  </select>
+   353→                </div>
+   354→                <div><label className={labelStyle}>المستفيد</label><input value={vPayee} onChange={(e) => setVPayee(e.target.value)} className={inputStyle} placeholder="اسم المستفيد" /></div>
+   355→                <div><label className={labelStyle}>الدافع</label><input value={vPayer} onChange={(e) => setVPayer(e.target.value)} className={inputStyle} placeholder="اسم الدافع" /></div>
+   356→              </div>
+   357→              <div className="flex gap-2 justify-end mt-5">
+   358→                <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   359→                <button onClick={handleCreateVoucher} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><Receipt size={14} /> إنشاء</button>
+   360→              </div>
+   361→            </div>
+   362→          );
+   363→          if (vouchers.length === 0) return <Empty label="سندات" />;
+   364→          return (
+   365→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   366→              <div className="overflow-x-auto garfix-scroll">
+   367→                <table className="w-full border-collapse">
+   368→                  <thead><tr className="border-b border-border bg-muted">
+   369→                    <th className={thStyle}>النوع</th><th className={thStyle}>التاريخ</th>
+   370→                    <th className={thStyle}>المبلغ</th><th className={thStyle}>العملة</th>
+   371→                    <th className={thStyle}>المستفيد</th><th className={thStyle}>الدافع</th>
+   372→                    <th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   373→                  </tr></thead>
+   374→                  <tbody>
+   375→                    {vouchers.map((v) => {
+   376→                      const statusMap: Record<string, { label: string; color: string }> = {
+   377→                        draft: { label: "مسودة", color: "#f59e0b" }, approved: { label: "معتمد", color: "#10b981" }, cancelled: { label: "ملغى", color: "#ef4444" },
+   378→                      };
+   379→                      const st = statusMap[v.status] || { label: v.status, color: "#999" };
+   380→                      return (
+   381→                        <tr key={v.id} className="border-b border-border">
+   382→                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: v.voucherType === "receipt" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: v.voucherType === "receipt" ? "#10b981" : "#ef4444" }}>{v.voucherType === "receipt" ? "قبض" : "دفع"}</span></td>
+   383→                          <td className={tdStyle}>{v.date}</td>
+   384→                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(v.amount)}</td>
+   385→                          <td className={tdStyle}>{v.currency}</td>
+   386→                          <td className={tdStyle}>{v.payee || "—"}</td>
+   387→                          <td className={tdStyle}>{v.payer || "—"}</td>
+   388→                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }}>{st.label}</span></td>
+   389→                          <td className={tdStyle}>
+   390→                            <div className="flex items-center gap-1">
+   391→                              {v.status === "draft" && (<>
+   392→                                <button onClick={() => handleApproveVoucher(v.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>
+   393→                                <button onClick={() => handleCancelVoucher(v.id)} title="إلغاء" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-red-500/10"><XCircle size={13} className="text-red-500" /></button>
+   394→                              </>)}
+   395→                              <button title="طباعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-muted"><Printer size={13} /></button>
+   396→                            </div>
+   397→                          </td>
+   398→                        </tr>
+   399→                      );
+   400→                    })}
+   401→                  </tbody>
+   402→                </table>
+   403→              </div>
+   404→              <div className="py-3 px-4 border-t border-border text-[12px] text-muted-foreground">{vouchers.length} سند</div>
+   405→            </div>
+   406→          );
+   407→        }
+   408→
+   409→        /* ── Quotations Tab ───────────────────────────────────────────────────── */
+   410→        if (tab === "quotations") {
+   411→          if (showForm) return (
+   412→            <div className="bg-card rounded-[14px] border border-border p-5">
+   413→              <div className="flex items-center justify-between mb-4">
+   414→                <h2 className="text-base font-bold">عرض سعر جديد</h2>
+   415→                <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   416→              </div>
+   417→              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+   418→                <div><label className={labelStyle}>العميل *</label><input value={qClient} onChange={(e) => setQClient(e.target.value)} className={inputStyle} /></div>
+   419→                <div><label className={labelStyle}>التاريخ *</label><input value={qDate} onChange={(e) => setQDate(e.target.value)} className={inputStyle} type="date" /></div>
+   420→                <div><label className={labelStyle}>صالح حتى</label><input value={qValidUntil} onChange={(e) => setQValidUntil(e.target.value)} className={inputStyle} type="date" /></div>
+   421→              </div>
+   422→              {/* Line items */}
+   423→              <div className="mb-3"><label className={labelStyle}>بنود عرض السعر</label></div>
+   424→              {qLineItems.map((li, idx) => (
+   425→                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-end">
+   426→                  <input value={li.description} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
+   427→                  <input value={li.quantity} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
+   428→                  <input value={li.unitPrice} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
+   429→                  <div className="text-[13px] font-bold text-end py-2">{fmt(li.total)}</div>
+   430→                </div>
+   431→              ))}
+   432→              <button onClick={() => setQLineItems([...qLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
+   433→              <div className="flex gap-2 justify-end mt-5">
+   434→                <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   435→                <button onClick={handleCreateQuotation} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><FileText size={14} /> إنشاء</button>
+   436→              </div>
+   437→            </div>
+   438→          );
+   439→          if (quotations.length === 0) return <Empty label="عروض أسعار" />;
+   440→          return (
+   441→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   442→              <div className="overflow-x-auto garfix-scroll">
+   443→                <table className="w-full border-collapse">
+   444→                  <thead><tr className="border-b border-border bg-muted">
+   445→                    <th className={thStyle}>العميل</th><th className={thStyle}>التاريخ</th><th className={thStyle}>صالح حتى</th>
+   446→                    <th className={thStyle}>المبلغ</th><th className={thStyle}>البنود</th><th className={thStyle}>إجراء</th>
+   447→                  </tr></thead>
+   448→                  <tbody>
+   449→                    {quotations.map((q) => (
+   450→                      <tr key={q.id} className="border-b border-border">
+   451→                        <td className={cn(tdStyle, "font-bold")}>{q.clientName}</td>
+   452→                        <td className={tdStyle}>{q.date}</td><td className={tdStyle}>{q.validUntil}</td>
+   453→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(q.totalAmount)}</td>
+   454→                        <td className={tdStyle}>{q.lineItems?.length || 0}</td>
+   455→                        <td className={tdStyle}>
+   456→                          <button onClick={() => handleConvertToInvoice(q.id)} title="تحويل إلى فاتورة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><ArrowRight size={13} className="text-emerald-600" /></button>
+   457→                        </td>
+   458→                      </tr>
+   459→                    ))}
+   460→                  </tbody>
+   461→                </table>
+   462→              </div>
+   463→            </div>
+   464→          );
+   465→        }
+   466→
+   467→        /* ── Purchase Orders Tab ──────────────────────────────────────────────── */
+   468→        if (tab === "purchase-orders") {
+   469→          if (showForm) return (
+   470→            <div className="bg-card rounded-[14px] border border-border p-5">
+   471→              <div className="flex items-center justify-between mb-4">
+   472→                <h2 className="text-base font-bold">أمر شراء جديد</h2>
+   473→                <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   474→              </div>
+   475→              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+   476→                <div><label className={labelStyle}>المورد *</label><input value={poSupplier} onChange={(e) => setPoSupplier(e.target.value)} className={inputStyle} /></div>
+   477→                <div><label className={labelStyle}>التاريخ *</label><input value={poDate} onChange={(e) => setPoDate(e.target.value)} className={inputStyle} type="date" /></div>
+   478→                <div><label className={labelStyle}>التسليم المتوقع</label><input value={poDelivery} onChange={(e) => setPoDelivery(e.target.value)} className={inputStyle} type="date" /></div>
+   479→              </div>
+   480→              {poLineItems.map((li, idx) => (
+   481→                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-end">
+   482→                  <input value={li.description} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
+   483→                  <input value={li.quantity} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
+   484→                  <input value={li.unitPrice} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
+   485→                  <div className="text-[13px] font-bold text-end py-2">{fmt(li.total)}</div>
+   486→                </div>
+   487→              ))}
+   488→              <button onClick={() => setPoLineItems([...poLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
+   489→              <div className="flex gap-2 justify-end mt-5">
+   490→                <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   491→                <button onClick={handleCreatePO} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><ShoppingCart size={14} /> إنشاء</button>
+   492→              </div>
+   493→            </div>
+   494→          );
+   495→          if (purchaseOrders.length === 0) return <Empty label="أوامر شراء" />;
+   496→          return (
+   497→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   498→              <div className="overflow-x-auto garfix-scroll">
+   499→                <table className="w-full border-collapse">
+   500→                  <thead><tr className="border-b border-border bg-muted">
+   501→                    <th className={thStyle}>المورد</th><th className={thStyle}>التاريخ</th><th className={thStyle}>التسليم</th>
+   502→                    <th className={thStyle}>المبلغ</th><th className={thStyle}>البنود</th>
+   503→                  </tr></thead>
+   504→                  <tbody>
+   505→                    {purchaseOrders.map((po) => (
+   506→                      <tr key={po.id} className="border-b border-border">
+   507→                        <td className={cn(tdStyle, "font-bold")}>{po.supplierName}</td>
+   508→                        <td className={tdStyle}>{po.date}</td><td className={tdStyle}>{po.expectedDelivery}</td>
+   509→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(po.totalAmount)}</td>
+   510→                        <td className={tdStyle}>{po.lineItems?.length || 0}</td>
+   511→                      </tr>
+   512→                    ))}
+   513→                  </tbody>
+   514→                </table>
+   515→              </div>
+   516→            </div>
+   517→          );
+   518→        }
+   519→
+   520→        /* ── Opening Balances Tab ─────────────────────────────────────────────── */
+   521→        if (tab === "opening-balances") {
+   522→          if (showForm) return (
+   523→            <div className="bg-card rounded-[14px] border border-border p-5">
+   524→              <div className="flex items-center justify-between mb-4">
+   525→                <h2 className="text-base font-bold">رصيد افتتاحي جديد</h2>
+   526→                <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   527→              </div>
+   528→              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   529→                <div><label className={labelStyle}>رقم الحساب *</label><input value={obAccountId} onChange={(e) => setObAccountId(e.target.value)} className={inputStyle} type="number" placeholder="1" /></div>
+   530→                <div><label className={labelStyle}>المبلغ *</label><input value={obAmount} onChange={(e) => setObAmount(e.target.value)} className={inputStyle} type="number" placeholder="0.000" /></div>
+   531→              </div>
+   532→              <div className="flex gap-2 justify-end mt-5">
+   533→                <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   534→                <button onClick={handleCreateOB} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><BookOpen size={14} /> إنشاء</button>
+   535→              </div>
+   536→            </div>
+   537→          );
+   538→          if (openingBalances.length === 0) return <Empty label="أرصدة افتتاحية" />;
+   539→          return (
+   540→            <div className="flex flex-col gap-3">
+   541→              <div className="flex justify-end">
+   542→                <button onClick={handlePostAllOB} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5"><CheckCircle2 size={14} /> ترحيل جميع الأرصدة</button>
+   543→              </div>
+   544→              <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   545→                <div className="overflow-x-auto garfix-scroll">
+   546→                  <table className="w-full border-collapse">
+   547→                    <thead><tr className="border-b border-border bg-muted">
+   548→                      <th className={thStyle}>كود الحساب</th><th className={thStyle}>اسم الحساب</th>
+   549→                      <th className={thStyle}>المبلغ</th><th className={thStyle}>الحالة</th>
+   550→                    </tr></thead>
+   551→                    <tbody>
+   552→                      {openingBalances.map((ob) => (
+   553→                        <tr key={ob.id} className="border-b border-border">
+   554→                          <td className={cn(tdStyle, "font-mono font-bold")}>{ob.accountCode}</td>
+   555→                          <td className={tdStyle}>{ob.accountNameAr}</td>
+   556→                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(ob.amount)}</td>
+   557→                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: ob.posted ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: ob.posted ? "#10b981" : "#f59e0b" }}>{ob.posted ? "مُرحّل" : "مسودة"}</span></td>
+   558→                        </tr>
+   559→                      ))}
+   560→                    </tbody>
+   561→                  </table>
+   562→                </div>
+   563→              </div>
+   564→            </div>
+   565→          );
+   566→        }
+   567→
+   568→        /* ── Commissions Tab ───────────────────────────────────────────────────── */
+   569→        if (tab === "commissions") {
+   570→          if (commissions.length === 0) return <Empty label="عمولات" />;
+   571→          return (
+   572→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   573→              <div className="overflow-x-auto garfix-scroll">
+   574→                <table className="w-full border-collapse">
+   575→                  <thead><tr className="border-b border-border bg-muted">
+   576→                    <th className={thStyle}>المندوب</th><th className={thStyle}>إجمالي المبيعات</th>
+   577→                    <th className={thStyle}>العمولة</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   578→                  </tr></thead>
+   579→                  <tbody>
+   580→                    {commissions.map((c) => (
+   581→                      <tr key={c.id} className="border-b border-border">
+   582→                        <td className={cn(tdStyle, "font-bold")}>{c.salesperson}</td>
+   583→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(c.totalSales)}</td>
+   584→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(c.commissionAmount)}</td>
+   585→                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: c.posted ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: c.posted ? "#10b981" : "#f59e0b" }}>{c.posted ? "مُرحّل" : "مسودة"}</span></td>
+   586→                        <td className={tdStyle}>
+   587→                          {!c.posted && <button onClick={() => handlePostCommission(c.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
+   588→                        </td>
+   589→                      </tr>
+   590→                    ))}
+   591→                  </tbody>
+   592→                </table>
+   593→              </div>
+   594→            </div>
+   595→          );
+   596→        }
+   597→
+   598→        /* ── Profit Distribution Tab ──────────────────────────────────────────── */
+   599→        if (tab === "profit-distribution") {
+   600→          if (profitDistributions.length === 0) return <Empty label="توزيعات أرباح" />;
+   601→          return (
+   602→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   603→              <div className="overflow-x-auto garfix-scroll">
+   604→                <table className="w-full border-collapse">
+   605→                  <thead><tr className="border-b border-border bg-muted">
+   606→                    <th className={thStyle}>الشريك</th><th className={thStyle}>نسبة الملكية %</th>
+   607→                    <th className={thStyle}>حصة الأرباح</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   608→                  </tr></thead>
+   609→                  <tbody>
+   610→                    {profitDistributions.map((pd) => (
+   611→                      <tr key={pd.id} className="border-b border-border">
+   612→                        <td className={cn(tdStyle, "font-bold")}>{pd.partnerName}</td>
+   613→                        <td className={cn(tdStyle, "[direction:ltr] text-end")}>{pd.ownershipPercent}%</td>
+   614→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(pd.profitShare)}</td>
+   615→                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: pd.posted ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: pd.posted ? "#10b981" : "#f59e0b" }}>{pd.posted ? "مُرحّل" : "مسودة"}</span></td>
+   616→                        <td className={tdStyle}>
+   617→                          {!pd.posted && <button onClick={() => handlePostProfitDist(pd.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
+   618→                        </td>
+   619→                      </tr>
+   620→                    ))}
+   621→                  </tbody>
+   622→                </table>
+   623→              </div>
+   624→            </div>
+   625→          );
+   626→        }
+   627→        return null;
+   628→      })()}
+   629→    </div>
+   630→  );
+   631→}
+   632→

@@ -1,0 +1,743 @@
+     1→     1→/**
+     2→     2→ * local-payment-rails.ts — Local Payment Rails engine (Phase 11).
+     3→     3→ *
+     4→     4→ * Extends MyFatoorah and Paymob for local payment methods per country:
+     5→     5→ *   KW: KNET, MyFatoorah (credit cards), KPay
+     6→     6→ *   SA: mada, STC Pay, Apple Pay via MyFatoorah
+     7→     7→ *   AE: UAE Switch, Direct Debit
+     8→     8→ *   BH: BenefitPay
+     9→     9→ *   OM: OmanNet
+    10→    10→ *   QA: QPay
+    11→    11→ *   EG: Meeza, Fawry, Paymob wallet
+    12→    12→ *
+    13→    13→ * All monetary values as String, uses num() for arithmetic.
+    14→    14→ */
+    15→    15→import { db } from "@/lib/db";
+    16→    16→import { num, toNum } from "@/lib/money";
+    17→    17→import { logger } from "@/lib/logger";
+    18→    18→import { getIntegrationConfig } from "@/lib/integrations/registry";
+    19→    19→import { initiatePaymobPayment } from "@/lib/integrations/paymob";
+    20→    20→
+    21→    21→// ─── Payment Methods Configuration ───────────────────────────────────────
+    22→    22→
+    23→    23→export interface LocalPaymentMethod {
+    24→    24→  methodId: string;
+    25→    25→  methodName: string;
+    26→    26→  nameAr: string;
+    27→    27→  type: "debit_card" | "credit_card" | "digital_wallet" | "bank_transfer" | "mobile_wallet";
+    28→    28→  fees: number; // percentage or flat fee
+    29→    29→  isAvailable: boolean;
+    30→    30→  provider: "myfatoorah" | "paymob" | "direct";
+    31→    31→}
+    32→    32→
+    33→    33→const COUNTRY_METHODS: Record<string, LocalPaymentMethod[]> = {
+    34→    34→  KW: [
+    35→    35→    { methodId: "knet", methodName: "KNET", nameAr: "كي نت", type: "debit_card", fees: 1.5, isAvailable: true, provider: "myfatoorah" },
+    36→    36→    { methodId: "myfatoorah_card", methodName: "Credit Card (MyFatoorah)", nameAr: "بطاقة ائتمان (MyFatoorah)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    37→    37→    { methodId: "kpay", methodName: "KPay", nameAr: "كي باي", type: "digital_wallet", fees: 1.0, isAvailable: true, provider: "myfatoorah" },
+    38→    38→  ],
+    39→    39→  SA: [
+    40→    40→    { methodId: "mada", methodName: "mada", nameAr: "مدى", type: "debit_card", fees: 1.5, isAvailable: true, provider: "myfatoorah" },
+    41→    41→    { methodId: "stc_pay", methodName: "STC Pay", nameAr: "ستك_PAY", type: "digital_wallet", fees: 1.0, isAvailable: true, provider: "myfatoorah" },
+    42→    42→    { methodId: "apple_pay_sa", methodName: "Apple Pay", nameAr: "آبل_PAY", type: "digital_wallet", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    43→    43→    { methodId: "myfatoorah_card_sa", methodName: "Credit Card (MyFatoorah)", nameAr: "بطاقة ائتمان (MyFatoorah)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    44→    44→  ],
+    45→    45→  AE: [
+    46→    46→    { methodId: "uae_switch", methodName: "UAE Switch", nameAr: "سويش الإمارات", type: "debit_card", fees: 1.5, isAvailable: true, provider: "myfatoorah" },
+    47→    47→    { methodId: "direct_debit_ae", methodName: "Direct Debit", nameAr: "تحويل مباشر", type: "bank_transfer", fees: 1.0, isAvailable: true, provider: "myfatoorah" },
+    48→    48→    { methodId: "myfatoorah_card_ae", methodName: "Credit Card (MyFatoorah)", nameAr: "بطاقة ائتمان (MyFatoorah)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    49→    49→  ],
+    50→    50→  BH: [
+    51→    51→    { methodId: "benefitpay", methodName: "BenefitPay", nameAr: "بنفيت_PAY", type: "digital_wallet", fees: 1.0, isAvailable: true, provider: "myfatoorah" },
+    52→    52→    { methodId: "myfatoorah_card_bh", methodName: "Credit Card (MyFatoorah)", nameAr: "بطاقة ائتمان (MyFatoorah)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    53→    53→  ],
+    54→    54→  OM: [
+    55→    55→    { methodId: "omannet", methodName: "OmanNet", nameAr: "عمان نت", type: "debit_card", fees: 1.5, isAvailable: true, provider: "myfatoorah" },
+    56→    56→    { methodId: "myfatoorah_card_om", methodName: "Credit Card (MyFatoorah)", nameAr: "بطاقة ائتمان (MyFatoorah)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    57→    57→  ],
+    58→    58→  QA: [
+    59→    59→    { methodId: "qpay", methodName: "QPay", nameAr: "كي_PAY", type: "digital_wallet", fees: 1.0, isAvailable: true, provider: "myfatoorah" },
+    60→    60→    { methodId: "myfatoorah_card_qa", methodName: "Credit Card (MyFatoorah)", nameAr: "بطاقة ائتمان (MyFatoorah)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "myfatoorah" },
+    61→    61→  ],
+    62→    62→  EG: [
+    63→    63→    { methodId: "meeza", methodName: "Meeza", nameAr: "ميزة", type: "debit_card", fees: 1.5, isAvailable: true, provider: "paymob" },
+    64→    64→    { methodId: "fawry", methodName: "Fawry", nameAr: "فوري", type: "bank_transfer", fees: 2.0, isAvailable: true, provider: "paymob" },
+    65→    65→    { methodId: "paymob_wallet", methodName: "Paymob Wallet", nameAr: "محفظة Paymob", type: "mobile_wallet", fees: 1.0, isAvailable: true, provider: "paymob" },
+    66→    66→    { methodId: "paymob_card", methodName: "Visa/Mastercard (Paymob)", nameAr: "فيزا/Mastercard (Paymob)", type: "credit_card", fees: 2.5, isAvailable: true, provider: "paymob" },
+    67→    67→    { methodId: "paymob_bank_installment", methodName: "Bank Installment", nameAr: "قسط بنكي", type: "bank_transfer", fees: 3.0, isAvailable: true, provider: "paymob" },
+    68→    68→  ],
+    69→    69→};
+    70→    70→
+    71→    71→/**
+    72→    72→ * Get available payment methods for a country and amount.
+    73→    73→ * Checks provider availability (MyFatoorah / Paymob config).
+    74→    74→ */
+    75→    75→export async function getAvailablePaymentMethods(
+    76→    76→  companySlug: string,
+    77→    77→  country: string,
+    78→    78→  amount: number,
+    79→    79→): Promise<{ ok: boolean; methods?: LocalPaymentMethod[]; error?: string }> {
+    80→    80→  try {
+    81→    81→    const countryCode = country.toUpperCase();
+    82→    82→    const baseMethods = COUNTRY_METHODS[countryCode];
+    83→    83→
+    84→    84→    if (!baseMethods) {
+    85→    85→      return { ok: false, error: `لا توجد طرق دفع محلية مدعومة للبلد ${country}` };
+    86→    86→    }
+    87→    87→
+    88→    88→    // Check provider availability
+    89→    89→    const mfConfig = await getIntegrationConfig("myfatoorah");
+    90→    90→    const paymobConfig = await getIntegrationConfig("paymob");
+    91→    91→
+    92→    92→    const methods = baseMethods.map((m) => {
+    93→    93→      let isAvailable = m.isAvailable;
+    94→    94→
+    95→    95→      // Check if provider is configured
+    96→    96→      if (m.provider === "myfatoorah" && (!mfConfig?.api_key || !mfConfig?.base_url)) {
+    97→    97→        isAvailable = false;
+    98→    98→      }
+    99→    99→      if (m.provider === "paymob" && (!paymobConfig?.api_key || !paymobConfig?.base_url)) {
+   100→   100→        isAvailable = false;
+   101→   101→      }
+   102→   102→
+   103→   103→      // Calculate actual fee for the given amount
+   104→   104→      const actualFees = m.type === "credit_card"
+   105→   105→        ? amount * (m.fees / 100)
+   106→   106→        : m.fees; // flat fee for others (simplified)
+   107→   107→
+   108→   108→      return {
+   109→   109→        ...m,
+   110→   110→        fees: num(actualFees, 3),
+   111→   111→        isAvailable,
+   112→   112→      };
+   113→   113→    });
+   114→   114→
+   115→   115→    return { ok: true, methods };
+   116→   116→  } catch (err) {
+   117→   117→    const msg = err instanceof Error ? err.message : String(err);
+   118→   118→    logger.error("[local-payment-rails] getAvailablePaymentMethods failed", { err: msg });
+   119→   119→    return { ok: false, error: msg };
+   120→   120→  }
+   121→   121→}
+   122→   122→
+   123→   123→// ─── Initiate Local Payment ───────────────────────────────────────────────
+   124→   124→
+   125→   125→/**
+   126→   126→ * Initiate a local payment — route to appropriate provider.
+   127→   127→ * Creates a PaymentTransaction record.
+   128→   128→ * Returns checkout URL or direct debit instructions.
+   129→   129→ */
+   130→   130→export async function initiateLocalPayment(
+   131→   131→  companySlug: string,
+   132→   132→  paymentMethodId: string,
+   133→   133→  amount: string,
+   134→   134→  currency: string,
+   135→   135→  invoiceId: number | null,
+   136→   136→  userEmail: string,
+   137→   137→): Promise<{ ok: boolean; transaction?: Record<string, unknown>; checkoutUrl?: string; error?: string }> {
+   138→   138→  try {
+   139→   139→    const amt = num(amount, 3);
+   140→   140→    if (amt <= 0) {
+   141→   141→      return { ok: false, error: "مبلغ الدفع يجب أن يكون أكبر من صفر" };
+   142→   142→    }
+   143→   143→
+   144→   144→    // Find the method
+   145→   145→    const company = await db.company.findUnique({
+   146→   146→      where: { slug: companySlug },
+   147→   147→      select: { country: true },
+   148→   148→    });
+   149→   149→    const country = company?.country || "KW";
+   150→   150→    const countryCode = country.toUpperCase();
+   151→   151→    const allMethods = COUNTRY_METHODS[countryCode] || [];
+   152→   152→    const method = allMethods.find((m) => m.methodId === paymentMethodId);
+   153→   153→
+   154→   154→    if (!method) {
+   155→   155→      return { ok: false, error: `طريقة الدفع ${paymentMethodId} غير مدعومة في ${countryCode}` };
+   156→   156→    }
+   157→   157→
+   158→   158→    // Route to appropriate provider
+   159→   159→    let providerPaymentId: string | null = null;
+   160→   160→    let checkoutUrl: string | null = null;
+   161→   161→    let providerOrderId: string | null = null;
+   162→   162→
+   163→   163→    if (method.provider === "myfatoorah") {
+   164→   164→      const result = await initiateMyFatoorahLocalPayment(
+   165→   165→        companySlug, method.methodId, amount, currency, userEmail, invoiceId
+   166→   166→      );
+   167→   167→      if (!result.ok) {
+   168→   168→        return { ok: false, error: result.error };
+   169→   169→      }
+   170→   170→      providerPaymentId = result.providerPaymentId ?? null;
+   171→   171→      checkoutUrl = result.checkoutUrl ?? null;
+   172→   172→      providerOrderId = result.providerOrderId ?? null;
+   173→   173→    } else if (method.provider === "paymob") {
+   174→   174→      const result = await initiatePaymobLocalPayment(
+   175→   175→        companySlug, method.methodId, amount, currency, userEmail, invoiceId
+   176→   176→      );
+   177→   177→      if (!result.ok) {
+   178→   178→        return { ok: false, error: result.error };
+   179→   179→      }
+   180→   180→      providerPaymentId = result.providerPaymentId ?? null;
+   181→   181→      checkoutUrl = result.checkoutUrl ?? null;
+   182→   182→      providerOrderId = result.providerOrderId ?? null;
+   183→   183→    } else {
+   184→   184→      // Direct provider (internal bank transfer, etc.)
+   185→   185→      checkoutUrl = null;
+   186→   186→    }
+   187→   187→
+   188→   188→    // Create PaymentTransaction record
+   189→   189→    const txn = await db.paymentTransaction.create({
+   190→   190→      data: {
+   191→   191→        companySlug,
+   192→   192→        plan: "invoice_payment",
+   193→   193→        method: method.methodId,
+   194→   194→        provider: method.provider,
+   195→   195→        amount: toNum(amt),
+   196→   196→        currency,
+   197→   197→        status: "pending",
+   198→   198→        providerPaymentId,
+   199→   199→        providerOrderId,
+   200→   200→        checkoutUrl,
+   201→   201→        createdBy: userEmail,
+   202→   202→        metadata: JSON.stringify({
+   203→   203→          invoiceId,
+   204→   204→          paymentMethodId,
+   205→   205→          methodType: method.type,
+   206→   206→          methodName: method.methodName,
+   207→   207→        }),
+   208→   208→      },
+   209→   209→    });
+   210→   210→
+   211→   211→    logger.info("[local-payment-rails] payment initiated", {
+   212→   212→      companySlug,
+   213→   213→      txnId: txn.id,
+   214→   214→      method: method.methodId,
+   215→   215→      amount,
+   216→   216→      invoiceId,
+   217→   217→    });
+   218→   218→
+   219→   219→    return {
+   220→   220→      ok: true,
+   221→   221→      transaction: {
+   222→   222→        id: txn.id,
+   223→   223→        method: txn.method,
+   224→   224→        provider: txn.provider,
+   225→   225→        amount: num(txn.amount, 3),
+   226→   226→        currency: txn.currency,
+   227→   227→        status: txn.status,
+   228→   228→        checkoutUrl: txn.checkoutUrl,
+   229→   229→        createdAt: txn.createdAt,
+   230→   230→      },
+   231→   231→      checkoutUrl: checkoutUrl || undefined,
+   232→   232→    };
+   233→   233→  } catch (err) {
+   234→   234→    const msg = err instanceof Error ? err.message : String(err);
+   235→   235→    logger.error("[local-payment-rails] initiateLocalPayment failed", { err: msg });
+   236→   236→    return { ok: false, error: msg };
+   237→   237→  }
+   238→   238→}
+   239→   239→
+   240→   240→/**
+   241→   241→ * Initiate payment via MyFatoorah for Gulf countries.
+   242→   242→ */
+   243→   243→async function initiateMyFatoorahLocalPayment(
+   244→   244→  companySlug: string,
+   245→   245→  methodId: string,
+   246→   246→  amount: string,
+   247→   247→  currency: string,
+   248→   248→  userEmail: string,
+   249→   249→  invoiceId: number | null,
+   250→   250→): Promise<{
+   251→   251→  ok: boolean;
+   252→   252→  providerPaymentId?: string | null;
+   253→   253→  checkoutUrl?: string | null;
+   254→   254→  providerOrderId?: string | null;
+   255→   255→  error?: string;
+   256→   256→}> {
+   257→   257→  const cfg = await getIntegrationConfig("myfatoorah");
+   258→   258→  if (!cfg?.api_key || !cfg?.base_url) {
+   259→   259→    return { ok: false, error: "MyFatoorah غير مُهيّأة — يرجى إعداد بيانات الاعتماد أولاً" };
+   260→   260→  }
+   261→   261→
+   262→   262→  const baseUrl = cfg.base_url.replace(/\/+$/, "");
+   263→   263→
+   264→   264→  // MyFatoorah InitiatePayment to get available payment methods
+   265→   265→  try {
+   266→   266→    const amt = num(amount, 3);
+   267→   267→    const amtCents = Math.round(amt * (currency === "KWD" || currency === "BHD" || currency === "OMR" ? 1000 : 100));
+   268→   268→
+   269→   269→    // 1. Create invoice session
+   270→   270→    const initiateRes = await fetch(`${baseUrl}/api/v2/InitiatePayment`, {
+   271→   271→      method: "POST",
+   272→   272→      headers: {
+   273→   273→        Authorization: `Bearer ${cfg.api_key}`,
+   274→   274→        "Content-Type": "application/json",
+   275→   275→      },
+   276→   276→      body: JSON.stringify({
+   277→   277→        InvoiceAmount: amt,
+   278→   278→        CurrencyIso: currency,
+   279→   279→      }),
+   280→   280→    });
+   281→   281→
+   282→   282→    const initiateData = await initiateRes.json() as {
+   283→   283→      Data?: { PaymentMethods?: Array<{ PaymentMethodId: number; PaymentMethodAr: string; PaymentMethodEn: string; IsDirectPayment: boolean }> };
+   284→   284→      Message?: string;
+   285→   285→    };
+   286→   286→
+   287→   287→    if (!initiateRes.ok) {
+   288→   288→      return { ok: false, error: `فشل MyFatoorah InitiatePayment: ${initiateData?.Message || initiateRes.status}` };
+   289→   289→    }
+   290→   290→
+   291→   291→    // Find the matching payment method ID
+   292→   292→    const paymentMethods = initiateData.Data?.PaymentMethods || [];
+   293→   293→    let mfPaymentMethodId: number | null = null;
+   294→   294→
+   295→   295→    // Map our methodId to MyFatoorah PaymentMethodId
+   296→   296→    const methodMapping: Record<string, string> = {
+   297→   297→      knet: "KNET",
+   298→   298→      mada: "mada",
+   299→   299→      myfatoorah_card: "Visa / Mastercard",
+   300→   300→      apple_pay_sa: "Apple Pay",
+   301→   301→      stc_pay: "STC Pay",
+   302→   302→      kpay: "KFast",
+   303→   303→      uae_switch: "UAE Switch",
+   304→   304→      benefitpay: "BenefitPay",
+   305→   305→      omannet: "OmanNet",
+   306→   306→      qpay: "QPay",
+   307→   307→    };
+   308→   308→
+   309→   309→    const targetName = methodMapping[methodId] || methodId;
+   310→   310→    for (const pm of paymentMethods) {
+   311→   311→      if (
+   312→   312→        pm.PaymentMethodEn?.toLowerCase().includes(targetName.toLowerCase()) ||
+   313→   313→        pm.PaymentMethodAr?.includes(targetName)
+   314→   314→      ) {
+   315→   315→        mfPaymentMethodId = pm.PaymentMethodId;
+   316→   316→        break;
+   317→   317→      }
+   318→   318→    }
+   319→   319→
+   320→   320→    if (!mfPaymentMethodId && paymentMethods.length > 0) {
+   321→   321→      // Fallback: use first available method
+   322→   322→      mfPaymentMethodId = paymentMethods[0].PaymentMethodId;
+   323→   323→    }
+   324→   324→
+   325→   325→    // 2. Execute payment
+   326→   326→    const executeRes = await fetch(`${baseUrl}/api/v2/ExecutePayment`, {
+   327→   327→      method: "POST",
+   328→   328→      headers: {
+   329→   329→        Authorization: `Bearer ${cfg.api_key}`,
+   330→   330→        "Content-Type": "application/json",
+   331→   331→      },
+   332→   332→      body: JSON.stringify({
+   333→   333→        InvoiceValue: amt,
+   334→   334→        PaymentMethodId: mfPaymentMethodId,
+   335→   335→        CurrencyIso: currency,
+   336→   336→        CustomerName: companySlug,
+   337→   337→        CustomerEmail: userEmail,
+   338→   338→        CustomerReference: `garfix-${companySlug}-${Date.now()}`,
+   339→   339→        DisplayCustomerInfo: false,
+   340→   340→      }),
+   341→   341→    });
+   342→   342→
+   343→   343→    const executeData = await executeRes.json() as {
+   344→   344→      Data?: { InvoiceId?: number; InvoiceURL?: string };
+   345→   345→      Message?: string;
+   346→   346→    };
+   347→   347→
+   348→   348→    if (!executeRes.ok) {
+   349→   349→      return { ok: false, error: `فشل MyFatoorah ExecutePayment: ${executeData?.Message || executeRes.status}` };
+   350→   350→    }
+   351→   351→
+   352→   352→    return {
+   353→   353→      ok: true,
+   354→   354→      providerPaymentId: String(executeData.Data?.InvoiceId || ""),
+   355→   355→      checkoutUrl: executeData.Data?.InvoiceURL || null,
+   356→   356→      providerOrderId: String(executeData.Data?.InvoiceId || ""),
+   357→   357→    };
+   358→   358→  } catch (err) {
+   359→   359→    const msg = err instanceof Error ? err.message : String(err);
+   360→   360→    logger.error("[local-payment-rails] MyFatoorah initiation failed", { err: msg });
+   361→   361→    return { ok: false, error: `خطأ في الاتصال بـ MyFatoorah: ${msg}` };
+   362→   362→  }
+   363→   363→}
+   364→   364→
+   365→   365→/**
+   366→   366→ * Initiate payment via Paymob for Egypt.
+   367→   367→ */
+   368→   368→async function initiatePaymobLocalPayment(
+   369→   369→  companySlug: string,
+   370→   370→  methodId: string,
+   371→   371→  amount: string,
+   372→   372→  currency: string,
+   373→   373→  userEmail: string,
+   374→   374→  invoiceId: number | null,
+   375→   375→): Promise<{
+   376→   376→  ok: boolean;
+   377→   377→  providerPaymentId?: string | null;
+   378→   378→  checkoutUrl?: string | null;
+   379→   379→  providerOrderId?: string | null;
+   380→   380→  error?: string;
+   381→   381→}> {
+   382→   382→  const cfg = await getIntegrationConfig("paymob");
+   383→   383→  if (!cfg?.api_key || !cfg?.base_url) {
+   384→   384→    return { ok: false, error: "Paymob غير مُهيّأة — يرجى إعداد بيانات الاعتماد أولاً" };
+   385→   385→  }
+   386→   386→
+   387→   387→  // Map methodId to Paymob integration IDs
+   388→   388→  const integrationIdMap: Record<string, number> = {
+   389→   389→    meeza: 4305, // Default Paymob integration
+   390→   390→    fawry: 4305,
+   391→   391→    paymob_wallet: 4305,
+   392→   392→    paymob_card: 4305,
+   393→   393→    paymob_bank_installment: 4305,
+   394→   394→  };
+   395→   395→
+   396→   396→  const integrationId = integrationIdMap[methodId] || parseInt(cfg.integration_id || "4305", 10);
+   397→   397→
+   398→   398→  const result = await initiatePaymobPayment({
+   399→   399→    baseUrl: cfg.base_url.replace(/\/+$/, ""),
+   400→   400→    apiKey: cfg.api_key,
+   401→   401→    amount: num(amount, 3),
+   402→   402→    currency,
+   403→   403→    integrationId,
+   404→   404→    companySlug,
+   405→   405→    userEmail,
+   406→   406→    planName: "invoice_payment",
+   407→   407→    billingPeriod: "monthly",
+   408→   408→  });
+   409→   409→
+   410→   410→  if (!result.ok) {
+   411→   411→    return { ok: false, error: result.error };
+   412→   412→  }
+   413→   413→
+   414→   414→  return {
+   415→   415→    ok: true,
+   416→   416→    providerPaymentId: String(result.orderId || ""),
+   417→   417→    checkoutUrl: result.checkoutUrl,
+   418→   418→    providerOrderId: String(result.orderId || ""),
+   419→   419→  };
+   420→   420→}
+   421→   421→
+   422→   422→// ─── Verify Payment ───────────────────────────────────────────────────────
+   423→   423→
+   424→   424→/**
+   425→   425→ * Verify a payment transaction with the provider.
+   426→   426→ * Update PaymentTransaction and create invoice payment JE if paid.
+   427→   427→ */
+   428→   428→export async function verifyPayment(
+   429→   429→  companySlug: string,
+   430→   430→  transactionId: number,
+   431→   431→  userEmail: string,
+   432→   432→): Promise<{ ok: boolean; status?: string; error?: string }> {
+   433→   433→  try {
+   434→   434→    const txn = await db.paymentTransaction.findFirst({
+   435→   435→      where: { id: transactionId, companySlug, deletedAt: null },
+   436→   436→    });
+   437→   437→
+   438→   438→    if (!txn) {
+   439→   439→      return { ok: false, error: "معاملة الدفع غير موجودة" };
+   440→   440→    }
+   441→   441→
+   442→   442→    if (txn.status === "paid") {
+   443→   443→      return { ok: true, status: "paid" };
+   444→   444→    }
+   445→   445→
+   446→   446→    // Check payment status with provider
+   447→   447→    let providerStatus: string = txn.status;
+   448→   448→
+   449→   449→    if (txn.provider === "myfatoorah") {
+   450→   450→      const result = await verifyMyFatoorahPayment(txn.providerPaymentId);
+   451→   451→      if (result.ok) {
+   452→   452→        providerStatus = result.status || txn.status;
+   453→   453→      }
+   454→   454→    } else if (txn.provider === "paymob") {
+   455→   455→      const result = await verifyPaymobPayment(txn.providerOrderId);
+   456→   456→      if (result.ok) {
+   457→   457→        providerStatus = result.status || txn.status;
+   458→   458→      }
+   459→   459→    }
+   460→   460→
+   461→   461→    // Update transaction
+   462→   462→    const newStatus = providerStatus === "paid" ? "paid"
+   463→   463→      : providerStatus === "failed" ? "failed"
+   464→   464→      : txn.status;
+   465→   465→
+   466→   466→    await db.paymentTransaction.update({
+   467→   467→      where: { id: transactionId },
+   468→   468→      data: {
+   469→   469→        status: newStatus,
+   470→   470→        updatedAt: new Date(),
+   471→   471→      },
+   472→   472→    });
+   473→   473→
+   474→   474→    // If paid, create invoice payment JE
+   475→   475→    if (newStatus === "paid") {
+   476→   476→      const existingMeta = (() => { try { return JSON.parse(txn.metadata || '{}'); } catch { return {}; } })();
+   477→   477→      const invoiceId = existingMeta.invoiceId as number | null;
+   478→   478→
+   479→   479→      if (invoiceId) {
+   480→   480→        await createInvoicePaymentJE(companySlug, invoiceId, txn.amount, txn.currency, userEmail);
+   481→   481→      }
+   482→   482→    }
+   483→   483→
+   484→   484→    logger.info("[local-payment-rails] payment verified", {
+   485→   485→      companySlug,
+   486→   486→      transactionId,
+   487→   487→      previousStatus: txn.status,
+   488→   488→      newStatus,
+   489→   489→      provider: txn.provider,
+   490→   490→    });
+   491→   491→
+   492→   492→    return { ok: true, status: newStatus };
+   493→   493→  } catch (err) {
+   494→   494→    const msg = err instanceof Error ? err.message : String(err);
+   495→   495→    logger.error("[local-payment-rails] verifyPayment failed", { err: msg });
+   496→   496→    return { ok: false, error: msg };
+   497→   497→  }
+   498→   498→}
+   499→   499→
+   500→   500→/**
+   501→   501→ * Verify payment with MyFatoorah.
+   502→   502→ */
+   503→   503→async function verifyMyFatoorahPayment(
+   504→   504→  providerPaymentId: string | null,
+   505→   505→): Promise<{ ok: boolean; status?: string; error?: string }> {
+   506→   506→  if (!providerPaymentId) {
+   507→   507→    return { ok: false, error: "لا يوجد معرف دفع MyFatoorah" };
+   508→   508→  }
+   509→   509→
+   510→   510→  const cfg = await getIntegrationConfig("myfatoorah");
+   511→   511→  if (!cfg?.api_key || !cfg?.base_url) {
+   512→   512→    return { ok: false, error: "MyFatoorah غير مُهيّأة" };
+   513→   513→  }
+   514→   514→
+   515→   515→  try {
+   516→   516→    const baseUrl = cfg.base_url.replace(/\/+$/, "");
+   517→   517→    const res = await fetch(`${baseUrl}/api/v2/GetPaymentStatus`, {
+   518→   518→      method: "POST",
+   519→   519→      headers: {
+   520→   520→        Authorization: `Bearer ${cfg.api_key}`,
+   521→   521→        "Content-Type": "application/json",
+   522→   522→      },
+   523→   523→      body: JSON.stringify({
+   524→   524→        KeyType: "InvoiceId",
+   525→   525→        Key: providerPaymentId,
+   526→   526→      }),
+   527→   527→    });
+   528→   528→
+   529→   529→    const data = await res.json() as {
+   530→   530→      Data?: { InvoiceStatus?: string; InvoiceTransactions?: Array<{ TransactionStatus?: string }> };
+   531→   531→      Message?: string;
+   532→   532→    };
+   533→   533→
+   534→   534→    if (!res.ok) {
+   535→   535→      return { ok: false, error: data?.Message || `فشل التحقق من MyFatoorah: ${res.status}` };
+   536→   536→    }
+   537→   537→
+   538→   538→    const invoiceStatus = (data.Data?.InvoiceStatus || "").toLowerCase();
+   539→   539→    const status = invoiceStatus === "paid" ? "paid"
+   540→   540→      : invoiceStatus === "failed" || invoiceStatus === "cancelled" ? "failed"
+   541→   541→      : "pending";
+   542→   542→
+   543→   543→    return { ok: true, status };
+   544→   544→  } catch (err) {
+   545→   545→    const msg = err instanceof Error ? err.message : String(err);
+   546→   546→    return { ok: false, error: `خطأ في الاتصال بـ MyFatoorah: ${msg}` };
+   547→   547→  }
+   548→   548→}
+   549→   549→
+   550→   550→/**
+   551→   551→ * Verify payment with Paymob.
+   552→   552→ */
+   553→   553→async function verifyPaymobPayment(
+   554→   554→  providerOrderId: string | null,
+   555→   555→): Promise<{ ok: boolean; status?: string; error?: string }> {
+   556→   556→  if (!providerOrderId) {
+   557→   557→    return { ok: false, error: "لا يوجد معرف طلب Paymob" };
+   558→   558→  }
+   559→   559→
+   560→   560→  const cfg = await getIntegrationConfig("paymob");
+   561→   561→  if (!cfg?.api_key || !cfg?.base_url) {
+   562→   562→    return { ok: false, error: "Paymob غير مُهيّأة" };
+   563→   563→  }
+   564→   564→
+   565→   565→  try {
+   566→   566→    // Get auth token first
+   567→   567→    const baseUrl = cfg.base_url.replace(/\/+$/, "");
+   568→   568→    const authRes = await fetch(`${baseUrl}/api/auth/tokens`, {
+   569→   569→      method: "POST",
+   570→   570→      headers: { "Content-Type": "application/json" },
+   571→   571→      body: JSON.stringify({ api_key: cfg.api_key }),
+   572→   572→    });
+   573→   573→    const authData = await authRes.json() as { token?: string };
+   574→   574→    if (!authRes.ok || !authData.token) {
+   575→   575→      return { ok: false, error: "فشل المصادقة على Paymob" };
+   576→   576→    }
+   577→   577→
+   578→   578→    // Check order/payment status
+   579→   579→    const res = await fetch(`${baseUrl}/api/ecommerce/orders/${providerOrderId}`, {
+   580→   580→      method: "GET",
+   581→   581→      headers: {
+   582→   582→        Authorization: `Bearer ${authData.token}`,
+   583→   583→      },
+   584→   584→    });
+   585→   585→
+   586→   586→    const data = await res.json() as {
+   587→   587→      id?: number;
+   588→   588→      delivery_needed?: boolean;
+   589→   589→      amount_cents?: number;
+   590→   590→      shipping_data?: unknown;
+   591→   591→      transactions?: Array<{ success?: boolean; pending?: boolean }>;
+   592→   592→    };
+   593→   593→
+   594→   594→    if (!res.ok) {
+   595→   595→      return { ok: false, error: `فشل التحقق من Paymob: ${res.status}` };
+   596→   596→    }
+   597→   597→
+   598→   598→    // Check if any transaction is successful
+   599→   599→    const transactions = data.transactions || [];
+   600→   600→    const hasSuccess = transactions.some((t) => t.success === true);
+   601→   601→    const allPending = transactions.every((t) => t.pending === true);
+   602→   602→
+   603→   603→    const status = hasSuccess ? "paid"
+   604→   604→      : allPending ? "pending"
+   605→   605→      : "failed";
+   606→   606→
+   607→   607→    return { ok: true, status };
+   608→   608→  } catch (err) {
+   609→   609→    const msg = err instanceof Error ? err.message : String(err);
+   610→   610→    return { ok: false, error: `خطأ في الاتصال بـ Paymob: ${msg}` };
+   611→   611→  }
+   612→   612→}
+   613→   613→
+   614→   614→/**
+   615→   615→ * Create a JE for an invoice payment.
+   616→   616→ * Debit: Cash/Bank, Credit: Accounts Receivable
+   617→   617→ */
+   618→   618→async function createInvoicePaymentJE(
+   619→   619→  companySlug: string,
+   620→   620→  invoiceId: number,
+   621→   621→  amount: string,
+   622→   622→  currency: string,
+   623→   623→  userEmail: string,
+   624→   624→): Promise<void> {
+   625→   625→  try {
+   626→   626→    const amt = num(amount, 3);
+   627→   627→
+   628→   628→    // Find cash/bank account (asset)
+   629→   629→    const cashAccount = await db.account.findFirst({
+   630→   630→      where: {
+   631→   631→        companySlug,
+   632→   632→        type: "asset",
+   633→   633→        isActive: true,
+   634→   634→        OR: [
+   635→   635→          { code: { startsWith: "1-1" } },
+   636→   636→          { nameAr: { contains: "نقد" } },
+   637→   637→          { nameAr: { contains: "بنك" } },
+   638→   638→        ],
+   639→   639→      },
+   640→   640→      orderBy: { code: "asc" },
+   641→   641→    });
+   642→   642→
+   643→   643→    // Find receivable account (asset)
+   644→   644→    const receivableAccount = await db.account.findFirst({
+   645→   645→      where: {
+   646→   646→        companySlug,
+   647→   647→        type: "asset",
+   648→   648→        isActive: true,
+   649→   649→        OR: [
+   650→   650→          { code: { startsWith: "1-2" } },
+   651→   651→          { nameAr: { contains: "مدين" } },
+   652→   652→          { nameAr: { contains: "ذمم" } },
+   653→   653→        ],
+   654→   654→      },
+   655→   655→      orderBy: { code: "asc" },
+   656→   656→    });
+   657→   657→
+   658→   658→    if (!cashAccount || !receivableAccount) {
+   659→   659→      logger.warn("[local-payment-rails] could not find cash/receivable accounts for JE", {
+   660→   660→        companySlug,
+   661→   661→        invoiceId,
+   662→   662→      });
+   663→   663→      return;
+   664→   664→    }
+   665→   665→
+   666→   666→    await db.$transaction(async (tx) => {
+   667→   667→      const je = await tx.journalEntry.create({
+   668→   668→        data: {
+   669→   669→          companySlug,
+   670→   670→          date: new Date().toISOString().slice(0, 10),
+   671→   671→          description: `سداد فاتورة #${invoiceId}`,
+   672→   672→          reference: `Payment-${invoiceId}`,
+   673→   673→          status: "posted",
+   674→   674→          sourceType: "invoice_payment",
+   675→   675→          sourceId: invoiceId,
+   676→   676→          createdBy: userEmail,
+   677→   677→          lines: {
+   678→   678→            create: [
+   679→   679→              {
+   680→   680→                accountId: cashAccount.id,
+   681→   681→                debit: amt.toFixed(3),
+   682→   682→                credit: "0.000",
+   683→   683→                description: `تحصيل فاتورة #${invoiceId}`,
+   684→   684→              },
+   685→   685→              {
+   686→   686→                accountId: receivableAccount.id,
+   687→   687→                debit: "0.000",
+   688→   688→                credit: amt.toFixed(3),
+   689→   689→                description: `سداد ذمم مدينة — فاتورة #${invoiceId}`,
+   690→   690→              },
+   691→   691→            ],
+   692→   692→          },
+   693→   693→        },
+   694→   694→        include: { lines: true },
+   695→   695→      });
+   696→   696→
+   697→   697→      // Update account balances
+   698→   698→      const isDebitNormalCash = cashAccount.type === "asset" || cashAccount.type === "expense";
+   699→   699→      const deltaCash = isDebitNormalCash ? amt : -amt;
+   700→   700→      await tx.account.update({
+   701→   701→        where: { id: cashAccount.id },
+   702→   702→        data: { balance: (num(cashAccount.balance, 3) + deltaCash).toFixed(3) },
+   703→   703→      });
+   704→   704→
+   705→   705→      const isDebitNormalRecv = receivableAccount.type === "asset" || receivableAccount.type === "expense";
+   706→   706→      const deltaRecv = isDebitNormalRecv ? -amt : amt;
+   707→   707→      await tx.account.update({
+   708→   708→        where: { id: receivableAccount.id },
+   709→   709→        data: { balance: (num(receivableAccount.balance, 3) + deltaRecv).toFixed(3) },
+   710→   710→      });
+   711→   711→
+   712→   712→      // Update invoice paid amount
+   713→   713→      const invoice = await tx.invoice.findUnique({
+   714→   714→        where: { id: invoiceId },
+   715→   715→        select: { paid: true, total: true },
+   716→   716→      });
+   717→   717→
+   718→   718→      if (invoice) {
+   719→   719→        const newPaid = num(invoice.paid, 3) + amt;
+   720→   720→        const total = num(invoice.total, 3);
+   721→   721→        const newStatus = newPaid >= total - 0.001 ? "paid" : "partial";
+   722→   722→        await tx.invoice.update({
+   723→   723→          where: { id: invoiceId },
+   724→   724→          data: {
+   725→   725→            paid: newPaid.toFixed(3),
+   726→   726→            status: newStatus,
+   727→   727→          },
+   728→   728→        });
+   729→   729→      }
+   730→   730→
+   731→   731→      logger.info("[local-payment-rails] invoice payment JE created", {
+   732→   732→        companySlug,
+   733→   733→        jeId: je.id,
+   734→   734→        invoiceId,
+   735→   735→        amount: amt.toFixed(3),
+   736→   736→      });
+   737→   737→    });
+   738→   738→  } catch (err) {
+   739→   739→    const msg = err instanceof Error ? err.message : String(err);
+   740→   740→    logger.error("[local-payment-rails] createInvoicePaymentJE failed", { err: msg });
+   741→   741→  }
+   742→   742→}
+   743→   743→

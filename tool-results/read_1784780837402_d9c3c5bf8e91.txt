@@ -1,0 +1,834 @@
+     1→     1→/**
+     2→     2→ * auto-journal.ts — Auto-JE bridges that create journal entries automatically
+     3→     3→ * when operational events happen (invoice creation, payment, expense, payroll, etc.).
+     4→     4→ *
+     5→     5→ * Phase 1 (Double-Entry Enhancements) of the GarfiX ERP accounting module.
+     6→     6→ * ALL monetary values as String (no Float), use num() from money.ts with 3 decimal scale.
+     7→     7→ * ALL mutations MUST log audit via logAudit.
+     8→     8→ * ALL functions use db.$transaction for atomicity (JE + lines + balance updates).
+     9→     9→ */
+    10→    10→import { db } from "@/lib/db";
+    11→    11→import { num, addNums, subNums, toNum } from "@/lib/money";
+    12→    12→import { logAudit } from "@/lib/audit";
+    13→    13→import { logger } from "@/lib/logger";
+    14→    14→
+    15→    15→// ── Types ──────────────────────────────────────────────────────────────────────
+    16→    16→
+    17→    17→/** Source types for auto-generated journal entries. */
+    18→    18→export type AutoJESourceType =
+    19→    19→  | "invoice_create"
+    20→    20→  | "invoice_payment"
+    21→    21→  | "invoice_cancel"
+    22→    22→  | "expense_create"
+    23→    23→  | "salary_payment"
+    24→    24→  | "purchase_create"
+    25→    25→  | "purchase_payment"
+    26→    26→  | "depreciation"
+    27→    27→  | "voucher_receipt"
+    28→    28→  | "voucher_payment"
+    29→    29→  | "bank_deposit"
+    30→    30→  | "bank_withdrawal"
+    31→    31→  | "bank_fee"
+    32→    32→  | "bank_transfer"
+    33→    33→  | "reversal"
+    34→    34→  | "opening_balance"
+    35→    35→  | "vat_return"
+    36→    36→  | "fx_revaluation"
+    37→    37→  | "asset_disposal"
+    38→    38→  | "lc_utilization"
+    39→    39→  | "inter_company";
+    40→    40→
+    41→    41→export interface InvoiceData {
+    42→    42→  id: number;
+    43→    43→  companySlug: string;
+    44→    44→  total: string;
+    45→    45→  subtotal: string;
+    46→    46→  taxAmount: string;
+    47→    47→  taxRate: string;
+    48→    48→  status: string;
+    49→    49→  paid: string;
+    50→    50→  clientId?: number | null;
+    51→    51→  issueDate: string;
+    52→    52→}
+    53→    53→
+    54→    54→export interface ExpenseData {
+    55→    55→  companySlug: string;
+    56→    56→  amount: string;
+    57→    57→  category: string; // maps to expense account code
+    58→    58→  description?: string;
+    59→    59→  date: string;
+    60→    60→  paidVia: "cash" | "bank" | "payable"; // determines credit side
+    61→    61→  id?: number;
+    62→    62→}
+    63→    63→
+    64→    64→export interface SalaryData {
+    65→    65→  id: number;
+    66→    66→  companySlug: string;
+    67→    67→  employeeId: number;
+    68→    68→  month: string;
+    69→    69→  baseSalary: string;
+    70→    70→  allowances: string;
+    71→    71→  deductions: string;
+    72→    72→  bonus: string;
+    73→    73→  netSalary: string;
+    74→    74→  isPaid: boolean;
+    75→    75→}
+    76→    76→
+    77→    77→export interface EmployeeData {
+    78→    78→  id: number;
+    79→    79→  name: string;
+    80→    80→  companySlug: string;
+    81→    81→  baseSalary: string;
+    82→    82→  currency: string;
+    83→    83→  bankAccount?: string | null;
+    84→    84→}
+    85→    85→
+    86→    86→export interface PurchaseInvoiceData {
+    87→    87→  id: number;
+    88→    88→  companySlug: string;
+    89→    89→  totalAmount: string;
+    90→    90→  supplierId?: number | null;
+    91→    91→  date: string;
+    92→    92→  vatAmount?: string;
+    93→    93→  vatReceivable?: boolean;
+    94→    94→}
+    95→    95→
+    96→    96→export interface VATReturnData {
+    97→    97→  companySlug: string;
+    98→    98→  vatDue: string;
+    99→    99→  period: string;
+   100→   100→  date: string;
+   101→   101→  id?: number;
+   102→   102→}
+   103→   103→
+   104→   104→export interface AssetDisposalData {
+   105→   105→  id: number;
+   106→   106→  companySlug: string;
+   107→   107→  acquisitionCost: string;
+   108→   108→  accumulatedDepreciation: string;
+   109→   109→  disposalAmount: string;
+   110→   110→  disposalDate?: string;
+   111→   111→  glAccountId?: number | null;
+   112→   112→  depreciationAccountId?: number | null;
+   113→   113→}
+   114→   114→
+   115→   115→// ── Helpers ──────────────────────────────────────────────────────────────────────
+   116→   116→
+   117→   117→/**
+   118→   118→ * Look up an Account by its code for the given companySlug.
+   119→   119→ * Throws if not found.
+   120→   120→ */
+   121→   121→async function getAccountByCode(
+   122→   122→  tx: typeof db | Parameters<Parameters<typeof db.$transaction>[0]>[0],
+   123→   123→  companySlug: string,
+   124→   124→  code: string,
+   125→   125→): Promise<{ id: number; type: string; balance: string }> {
+   126→   126→  const acc = await tx.account.findFirst({
+   127→   127→    where: { companySlug, code },
+   128→   128→  });
+   129→   129→  if (!acc) {
+   130→   130→    throw new Error(`Account code "${code}" not found for company "${companySlug}"`);
+   131→   131→  }
+   132→   132→  return acc;
+   133→   133→}
+   134→   134→
+   135→   135→/**
+   136→   136→ * Update account balances for a set of journal lines (within a transaction).
+   137→   137→ * Uses the isDebitNormal check exactly like the existing journal-entries POST route.
+   138→   138→ */
+   139→   139→async function updateAccountBalances(
+   140→   140→  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+   141→   141→  lines: { accountId: number; debit: string; credit: string }[],
+   142→   142→  companySlug: string,
+   143→   143→): Promise<void> {
+   144→   144→  const accountIds = [...new Set(lines.map((l) => l.accountId))];
+   145→   145→  const accounts = await tx.account.findMany({
+   146→   146→    where: { id: { in: accountIds }, companySlug },
+   147→   147→  });
+   148→   148→  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+   149→   149→
+   150→   150→  const deltas = new Map<number, number>();
+   151→   151→  for (const line of lines) {
+   152→   152→    const acc = accountMap.get(line.accountId);
+   153→   153→    if (!acc) continue;
+   154→   154→    const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+   155→   155→    const delta = isDebitNormal
+   156→   156→      ? num(line.debit, 3) - num(line.credit, 3)
+   157→   157→      : num(line.credit, 3) - num(line.debit, 3);
+   158→   158→    deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+   159→   159→  }
+   160→   160→
+   161→   161→  for (const [accountId, delta] of deltas) {
+   162→   162→    const acc = accountMap.get(accountId)!;
+   163→   163→    const currentBalance = num(acc.balance, 3);
+   164→   164→    await tx.account.update({
+   165→   165→      where: { id: accountId },
+   166→   166→      data: { balance: (currentBalance + delta).toFixed(3) },
+   167→   167→    });
+   168→   168→  }
+   169→   169→}
+   170→   170→
+   171→   171→/**
+   172→   172→ * Build a standard JE line entry.
+   173→   173→ */
+   174→   174→function makeLine(
+   175→   175→  accountId: number,
+   176→   176→  debit: number,
+   177→   177→  credit: number,
+   178→   178→  description?: string,
+   179→   179→): { accountId: number; debit: string; credit: string; description: string | null } {
+   180→   180→  return {
+   181→   181→    accountId,
+   182→   182→    debit: num(debit, 3).toFixed(3),
+   183→   183→    credit: num(credit, 3).toFixed(3),
+   184→   184→    description: description || null,
+   185→   185→  };
+   186→   186→}
+   187→   187→
+   188→   188→// ── Auto-JE Functions ────────────────────────────────────────────────────────────
+   189→   189→
+   190→   190→/**
+   191→   191→ * createInvoiceJE — When an invoice is created (sent/paid):
+   192→   192→ *   Debit: Accounts Receivable (code 1100) or Cash (1000/1010) if paid
+   193→   193→ *   Credit: Sales Revenue (code 4000)
+   194→   194→ *   Credit: VAT Payable (code 2100) if tax > 0
+   195→   195→ *   sourceType: "invoice_create", sourceId: invoice.id
+   196→   196→ */
+   197→   197→export async function createInvoiceJE(
+   198→   198→  invoice: InvoiceData,
+   199→   199→  companySlug: string,
+   200→   200→  countryCode: string | null,
+   201→   201→  userEmail: string,
+   202→   202→  userUid: string,
+   203→   203→): Promise<{ id: number; [key: string]: unknown }> {
+   204→   204→  const totalAmount = num(invoice.total, 3);
+   205→   205→  const subtotalAmount = num(invoice.subtotal, 3);
+   206→   206→  const taxAmount = num(invoice.taxAmount, 3);
+   207→   207→  const paidAmount = num(invoice.paid, 3);
+   208→   208→  const isPaid = invoice.status === "paid" || paidAmount >= totalAmount;
+   209→   209→
+   210→   210→  const arAccount = await getAccountByCode(db, companySlug, "1100");
+   211→   211→  const salesAccount = await getAccountByCode(db, companySlug, "4000");
+   212→   212→
+   213→   213→  // Determine the debit account: AR if unpaid, Cash/Bank if paid
+   214→   214→  let debitAccountId: number;
+   215→   215→  let debitAccountType: string;
+   216→   216→  if (isPaid) {
+   217→   217→    // Paid invoice: debit Cash/Bank
+   218→   218→    const cashAccount = await getAccountByCode(db, companySlug, "1010");
+   219→   219→    debitAccountId = cashAccount.id;
+   220→   220→    debitAccountType = cashAccount.type;
+   221→   221→  } else if (paidAmount > 0) {
+   222→   222→    // Partially paid: split between AR and Cash
+   223→   223→    // We still debit full amount to AR; the payment will create a separate JE
+   224→   224→    debitAccountId = arAccount.id;
+   225→   225→    debitAccountType = arAccount.type;
+   226→   226→  } else {
+   227→   227→    // Unpaid: debit AR
+   228→   228→    debitAccountId = arAccount.id;
+   229→   229→    debitAccountType = arAccount.type;
+   230→   230→  }
+   231→   231→
+   232→   232→  const lines: { accountId: number; debit: string; credit: string; description: string | null }[] = [];
+   233→   233→
+   234→   234→  // Debit: AR or Cash
+   235→   235→  lines.push(makeLine(debitAccountId, totalAmount, 0, `Invoice #${invoice.id}`));
+   236→   236→
+   237→   237→  // Credit: Sales Revenue
+   238→   238→  lines.push(makeLine(salesAccount.id, 0, subtotalAmount, `Sales — Invoice #${invoice.id}`));
+   239→   239→
+   240→   240→  // Credit: VAT Payable (if tax > 0)
+   241→   241→  if (taxAmount > 0.001) {
+   242→   242→    const vatPayableAccount = await getAccountByCode(db, companySlug, "2100");
+   243→   243→    lines.push(makeLine(vatPayableAccount.id, 0, taxAmount, `VAT — Invoice #${invoice.id}`));
+   244→   244→  }
+   245→   245→
+   246→   246→  // Validate balanced entry
+   247→   247→  const totalDebit = lines.reduce((s, l) => s + num(l.debit, 3), 0);
+   248→   248→  const totalCredit = lines.reduce((s, l) => s + num(l.credit, 3), 0);
+   249→   249→  if (Math.abs(totalDebit - totalCredit) > 0.001) {
+   250→   250→    throw new Error(`Invoice JE not balanced: debit=${totalDebit.toFixed(3)}, credit=${totalCredit.toFixed(3)}`);
+   251→   251→  }
+   252→   252→
+   253→   253→  const entry = await db.$transaction(async (tx) => {
+   254→   254→    const created = await tx.journalEntry.create({
+   255→   255→      data: {
+   256→   256→        companySlug,
+   257→   257→        date: invoice.issueDate,
+   258→   258→        description: `Invoice #${invoice.id} — ${isPaid ? "paid" : "receivable"}`,
+   259→   259→        status: "posted",
+   260→   260→        sourceType: "invoice_create",
+   261→   261→        sourceId: invoice.id,
+   262→   262→        createdBy: userEmail,
+   263→   263→        lines: { create: lines },
+   264→   264→      },
+   265→   265→      include: { lines: true },
+   266→   266→    });
+   267→   267→
+   268→   268→    // Update account balances (posted status)
+   269→   269→    await updateAccountBalances(tx, lines, companySlug);
+   270→   270→
+   271→   271→    return created;
+   272→   272→  });
+   273→   273→
+   274→   274→  await logAudit({
+   275→   275→    userEmail,
+   276→   276→    userUid,
+   277→   277→    action: "auto_je_create",
+   278→   278→    entity: "journal_entry",
+   279→   279→    entityId: entry.id,
+   280→   280→    companySlug,
+   281→   281→    details: { sourceType: "invoice_create", sourceId: invoice.id, totalDebit, totalCredit },
+   282→   282→  });
+   283→   283→
+   284→   284→  return entry;
+   285→   285→}
+   286→   286→
+   287→   287→/**
+   288→   288→ * createInvoicePaymentJE — When payment received for an invoice:
+   289→   289→ *   Debit: Cash/Bank (code 1010 or 1000)
+   290→   290→ *   Credit: Accounts Receivable (code 1100)
+   291→   291→ *   sourceType: "invoice_payment", sourceId: invoice.id
+   292→   292→ */
+   293→   293→export async function createInvoicePaymentJE(
+   294→   294→  invoice: InvoiceData,
+   295→   295→  paymentAmount: string | number,
+   296→   296→  companySlug: string,
+   297→   297→  countryCode: string | null,
+   298→   298→  userEmail: string,
+   299→   299→  userUid: string,
+   300→   300→): Promise<{ id: number; [key: string]: unknown }> {
+   301→   301→  const paymentAmt = num(paymentAmount, 3);
+   302→   302→
+   303→   303→  const cashAccount = await getAccountByCode(db, companySlug, "1010");
+   304→   304→  const arAccount = await getAccountByCode(db, companySlug, "1100");
+   305→   305→
+   306→   306→  const lines = [
+   307→   307→    makeLine(cashAccount.id, paymentAmt, 0, `Payment received — Invoice #${invoice.id}`),
+   308→   308→    makeLine(arAccount.id, 0, paymentAmt, `AR reduction — Invoice #${invoice.id}`),
+   309→   309→  ];
+   310→   310→
+   311→   311→  const entry = await db.$transaction(async (tx) => {
+   312→   312→    const created = await tx.journalEntry.create({
+   313→   313→      data: {
+   314→   314→        companySlug,
+   315→   315→        date: new Date().toISOString().slice(0, 10),
+   316→   316→        description: `Payment received for Invoice #${invoice.id}`,
+   317→   317→        status: "posted",
+   318→   318→        sourceType: "invoice_payment",
+   319→   319→        sourceId: invoice.id,
+   320→   320→        createdBy: userEmail,
+   321→   321→        lines: { create: lines },
+   322→   322→      },
+   323→   323→      include: { lines: true },
+   324→   324→    });
+   325→   325→
+   326→   326→    await updateAccountBalances(tx, lines, companySlug);
+   327→   327→
+   328→   328→    return created;
+   329→   329→  });
+   330→   330→
+   331→   331→  await logAudit({
+   332→   332→    userEmail,
+   333→   333→    userUid,
+   334→   334→    action: "auto_je_create",
+   335→   335→    entity: "journal_entry",
+   336→   336→    entityId: entry.id,
+   337→   337→    companySlug,
+   338→   338→    details: { sourceType: "invoice_payment", sourceId: invoice.id, paymentAmount: paymentAmt.toFixed(3) },
+   339→   339→  });
+   340→   340→
+   341→   341→  return entry;
+   342→   342→}
+   343→   343→
+   344→   344→/**
+   345→   345→ * createInvoiceCancelJE — Reverse the original invoice JE by swapping debit/credit:
+   346→   346→ *   sourceType: "invoice_cancel", sourceId: invoice.id
+   347→   347→ */
+   348→   348→export async function createInvoiceCancelJE(
+   349→   349→  invoice: InvoiceData,
+   350→   350→  companySlug: string,
+   351→   351→  countryCode: string | null,
+   352→   352→  userEmail: string,
+   353→   353→  userUid: string,
+   354→   354→): Promise<{ id: number; [key: string]: unknown }> {
+   355→   355→  // Find the original invoice JE
+   356→   356→  const originalJE = await db.journalEntry.findFirst({
+   357→   357→    where: {
+   358→   358→      companySlug,
+   359→   359→      sourceType: "invoice_create",
+   360→   360→      sourceId: invoice.id,
+   361→   361→      status: "posted",
+   362→   362→    },
+   363→   363→    include: { lines: true },
+   364→   364→  });
+   365→   365→
+   366→   366→  if (!originalJE) {
+   367→   367→    throw new Error(`No original JE found for invoice #${invoice.id} to cancel`);
+   368→   368→  }
+   369→   369→
+   370→   370→  // Swap debit/credit on every line
+   371→   371→  const swappedLines = originalJE.lines.map((l) => ({
+   372→   372→    accountId: l.accountId,
+   373→   373→    debit: num(l.credit, 3).toFixed(3),
+   374→   374→    credit: num(l.debit, 3).toFixed(3),
+   375→   375→    description: l.description || null,
+   376→   376→  }));
+   377→   377→
+   378→   378→  const entry = await db.$transaction(async (tx) => {
+   379→   379→    // Create reversal entry
+   380→   380→    const created = await tx.journalEntry.create({
+   381→   381→      data: {
+   382→   382→        companySlug,
+   383→   383→        date: new Date().toISOString().slice(0, 10),
+   384→   384→        description: `Cancel Invoice #${invoice.id} — reversal of JE #${originalJE.id}`,
+   385→   385→        status: "posted",
+   386→   386→        sourceType: "invoice_cancel",
+   387→   387→        sourceId: invoice.id,
+   388→   388→        createdBy: userEmail,
+   389→   389→        lines: { create: swappedLines },
+   390→   390→      },
+   391→   391→      include: { lines: true },
+   392→   392→    });
+   393→   393→
+   394→   394→    // Update account balances for the reversal
+   395→   395→    await updateAccountBalances(tx, swappedLines, companySlug);
+   396→   396→
+   397→   397→    // Mark original JE as reversed
+   398→   398→    await tx.journalEntry.update({
+   399→   399→      where: { id: originalJE.id },
+   400→   400→      data: { status: "reversed" },
+   401→   401→    });
+   402→   402→
+   403→   403→    return created;
+   404→   404→  });
+   405→   405→
+   406→   406→  await logAudit({
+   407→   407→    userEmail,
+   408→   408→    userUid,
+   409→   409→    action: "auto_je_cancel",
+   410→   410→    entity: "journal_entry",
+   411→   411→    entityId: entry.id,
+   412→   412→    companySlug,
+   413→   413→    details: { sourceType: "invoice_cancel", sourceId: invoice.id, originalJEId: originalJE.id },
+   414→   414→  });
+   415→   415→
+   416→   416→  return entry;
+   417→   417→}
+   418→   418→
+   419→   419→/**
+   420→   420→ * createExpenseJE — For expenses:
+   421→   421→ *   Debit: Expense account (based on category)
+   422→   422→ *   Credit: Cash/Bank (1010) or Accounts Payable (2000)
+   423→   423→ *   sourceType: "expense_create"
+   424→   424→ */
+   425→   425→export async function createExpenseJE(
+   426→   426→  expenseData: ExpenseData,
+   427→   427→  companySlug: string,
+   428→   428→  countryCode: string | null,
+   429→   429→  userEmail: string,
+   430→   430→  userUid: string,
+   431→   431→): Promise<{ id: number; [key: string]: unknown }> {
+   432→   432→  const amount = num(expenseData.amount, 3);
+   433→   433→
+   434→   434→  // Map expense category to account code
+   435→   435→  const categoryCodeMap: Record<string, string> = {
+   436→   436→    rent: "5200",
+   437→   437→    utilities: "5210",
+   438→   438→    office_supplies: "5220",
+   439→   439→    marketing: "5300",
+   440→   440→    travel: "5400",
+   441→   441→    maintenance: "5250",
+   442→   442→    insurance: "5600",
+   443→   443→    professional_services: "5500",
+   444→   444→    depreciation: "5700",
+   445→   445→    other: "5900",
+   446→   446→  };
+   447→   447→  const expenseCode = categoryCodeMap[expenseData.category] || "5900";
+   448→   448→
+   449→   449→  const expenseAccount = await getAccountByCode(db, companySlug, expenseCode);
+   450→   450→  let creditAccountId: number;
+   451→   451→  let creditDescription: string;
+   452→   452→
+   453→   453→  if (expenseData.paidVia === "cash" || expenseData.paidVia === "bank") {
+   454→   454→    const cashAccount = await getAccountByCode(db, companySlug, "1010");
+   455→   455→    creditAccountId = cashAccount.id;
+   456→   456→    creditDescription = `Cash/Bank — Expense: ${expenseData.category}`;
+   457→   457→  } else {
+   458→   458→    const apAccount = await getAccountByCode(db, companySlug, "2000");
+   459→   459→    creditAccountId = apAccount.id;
+   460→   460→    creditDescription = `Accounts Payable — Expense: ${expenseData.category}`;
+   461→   461→  }
+   462→   462→
+   463→   463→  const lines = [
+   464→   464→    makeLine(expenseAccount.id, amount, 0, `Expense: ${expenseData.category} — ${expenseData.description || ""}`),
+   465→   465→    makeLine(creditAccountId, 0, amount, creditDescription),
+   466→   466→  ];
+   467→   467→
+   468→   468→  const entry = await db.$transaction(async (tx) => {
+   469→   469→    const created = await tx.journalEntry.create({
+   470→   470→      data: {
+   471→   471→        companySlug,
+   472→   472→        date: expenseData.date,
+   473→   473→        description: expenseData.description || `Expense: ${expenseData.category}`,
+   474→   474→        status: "posted",
+   475→   475→        sourceType: "expense_create",
+   476→   476→        sourceId: expenseData.id || null,
+   477→   477→        createdBy: userEmail,
+   478→   478→        lines: { create: lines },
+   479→   479→      },
+   480→   480→      include: { lines: true },
+   481→   481→    });
+   482→   482→
+   483→   483→    await updateAccountBalances(tx, lines, companySlug);
+   484→   484→
+   485→   485→    return created;
+   486→   486→  });
+   487→   487→
+   488→   488→  await logAudit({
+   489→   489→    userEmail,
+   490→   490→    userUid,
+   491→   491→    action: "auto_je_create",
+   492→   492→    entity: "journal_entry",
+   493→   493→    entityId: entry.id,
+   494→   494→    companySlug,
+   495→   495→    details: { sourceType: "expense_create", category: expenseData.category, amount: amount.toFixed(3) },
+   496→   496→  });
+   497→   497→
+   498→   498→  return entry;
+   499→   499→}
+   500→   500→
+   501→   501→/**
+   502→   502→ * createSalaryPaymentJE — Payroll journal entry:
+   503→   503→ *   Debit: Salaries & Wages (code 5100)
+   504→   504→ *   Debit: Social Insurance Expense (code 5120)
+   505→   505→ *   Credit: Cash/Bank (code 1010)
+   506→   506→ *   Credit: Social Insurance Payable (code 2110)
+   507→   507→ *   Credit: Gratuity Provision (code 2120)
+   508→   508→ *   sourceType: "salary_payment", sourceId: salary.id
+   509→   509→ */
+   510→   510→export async function createSalaryPaymentJE(
+   511→   511→  salary: SalaryData,
+   512→   512→  employee: EmployeeData,
+   513→   513→  companySlug: string,
+   514→   514→  countryCode: string | null,
+   515→   515→  userEmail: string,
+   516→   516→  userUid: string,
+   517→   517→): Promise<{ id: number; [key: string]: unknown }> {
+   518→   518→  const baseSalary = num(salary.baseSalary, 3);
+   519→   519→  const allowances = num(salary.allowances, 3);
+   520→   520→  const deductions = num(salary.deductions, 3);
+   521→   521→  const bonus = num(salary.bonus, 3);
+   522→   522→  const netSalary = num(salary.netSalary, 3);
+   523→   523→
+   524→   524→  // Gulf-specific: social insurance ~9.5% employer share, gratuity provision
+   525→   525→  const socialInsuranceRate = 0.095; // typical Gulf rate
+   526→   526→  const socialInsuranceExpense = num(baseSalary * socialInsuranceRate, 3);
+   527→   527→  const socialInsurancePayable = socialInsuranceExpense; // same amount — employer portion payable to authority
+   528→   528→  const gratuityProvision = num(baseSalary * 0.05, 3); // typical Gulf end-of-service provision
+   529→   529→
+   530→   530→  const salariesAccount = await getAccountByCode(db, companySlug, "5100");
+   531→   531→  const socialInsuranceExpAccount = await getAccountByCode(db, companySlug, "5120");
+   532→   532→  const cashAccount = await getAccountByCode(db, companySlug, "1010");
+   533→   533→  const socialInsurancePayableAccount = await getAccountByCode(db, companySlug, "2110");
+   534→   534→  const gratuityProvisionAccount = await getAccountByCode(db, companySlug, "2120");
+   535→   535→
+   536→   536→  // Total gross salary expense = base + allowances + bonus + social insurance expense
+   537→   537→  const grossExpense = addNums(baseSalary, allowances, bonus, socialInsuranceExpense);
+   538→   538→
+   539→   539→  const lines = [
+   540→   540→    // Debit: Salaries & Wages (base + allowances + bonus)
+   541→   541→    makeLine(salariesAccount.id, num(addNums(baseSalary, allowances, bonus), 3), 0, `Salary — ${employee.name} — ${salary.month}`),
+   542→   542→    // Debit: Social Insurance Expense (employer share)
+   543→   543→    makeLine(socialInsuranceExpAccount.id, socialInsuranceExpense, 0, `Social Insurance (employer) — ${employee.name} — ${salary.month}`),
+   544→   544→    // Credit: Cash/Bank (net salary paid to employee)
+   545→   545→    makeLine(cashAccount.id, 0, netSalary, `Net salary paid — ${employee.name} — ${salary.month}`),
+   546→   546→    // Credit: Social Insurance Payable (employer share payable to authority)
+   547→   547→    makeLine(socialInsurancePayableAccount.id, 0, socialInsurancePayable, `Social Insurance payable — ${employee.name} — ${salary.month}`),
+   548→   548→    // Credit: Gratuity Provision (end-of-service benefit)
+   549→   549→    makeLine(gratuityProvisionAccount.id, 0, gratuityProvision, `Gratuity provision — ${employee.name} — ${salary.month}`),
+   550→   550→  ];
+   551→   551→
+   552→   552→  // Validate balanced
+   553→   553→  const totalDebit = lines.reduce((s, l) => s + num(l.debit, 3), 0);
+   554→   554→  const totalCredit = lines.reduce((s, l) => s + num(l.credit, 3), 0);
+   555→   555→  if (Math.abs(totalDebit - totalCredit) > 0.001) {
+   556→   556→    // Adjust: add a rounding line if necessary
+   557→   557→    const rounding = num(totalDebit - totalCredit, 3);
+   558→   558→    if (Math.abs(rounding) <= 0.01) {
+   559→   559→      // Small rounding difference — adjust cash line
+   560→   560→      const cashLine = lines.find((l) => l.accountId === cashAccount.id)!;
+   561→   561→      const newCredit = num(cashLine.credit, 3) + rounding;
+   562→   562→      cashLine.credit = num(newCredit, 3).toFixed(3);
+   563→   563→    }
+   564→   564→  }
+   565→   565→
+   566→   566→  const entry = await db.$transaction(async (tx) => {
+   567→   567→    const created = await tx.journalEntry.create({
+   568→   568→      data: {
+   569→   569→        companySlug,
+   570→   570→        date: salary.month + "-01", // first day of salary month
+   571→   571→        description: `Salary payment — ${employee.name} — ${salary.month}`,
+   572→   572→        status: "posted",
+   573→   573→        sourceType: "salary_payment",
+   574→   574→        sourceId: salary.id,
+   575→   575→        createdBy: userEmail,
+   576→   576→        lines: { create: lines },
+   577→   577→      },
+   578→   578→      include: { lines: true },
+   579→   579→    });
+   580→   580→
+   581→   581→    await updateAccountBalances(tx, lines, companySlug);
+   582→   582→
+   583→   583→    return created;
+   584→   584→  });
+   585→   585→
+   586→   586→  await logAudit({
+   587→   587→    userEmail,
+   588→   588→    userUid,
+   589→   589→    action: "auto_je_create",
+   590→   590→    entity: "journal_entry",
+   591→   591→    entityId: entry.id,
+   592→   592→    companySlug,
+   593→   593→    details: { sourceType: "salary_payment", sourceId: salary.id, employeeId: employee.id, month: salary.month },
+   594→   594→  });
+   595→   595→
+   596→   596→  return entry;
+   597→   597→}
+   598→   598→
+   599→   599→/**
+   600→   600→ * createPurchaseJE — Purchase invoice journal entry:
+   601→   601→ *   Debit: Purchases/COGS (code 5000 or category-based)
+   602→   602→ *   Debit: VAT Receivable (code 2105) if applicable
+   603→   603→ *   Credit: Accounts Payable (code 2000)
+   604→   604→ *   sourceType: "purchase_create", sourceId: purchaseInvoice.id
+   605→   605→ */
+   606→   606→export async function createPurchaseJE(
+   607→   607→  purchaseInvoice: PurchaseInvoiceData,
+   608→   608→  companySlug: string,
+   609→   609→  countryCode: string | null,
+   610→   610→  userEmail: string,
+   611→   611→  userUid: string,
+   612→   612→): Promise<{ id: number; [key: string]: unknown }> {
+   613→   613→  const totalAmount = num(purchaseInvoice.totalAmount, 3);
+   614→   614→  const vatAmount = num(purchaseInvoice.vatAmount || "0", 3);
+   615→   615→  const netAmount = num(subNums(totalAmount, vatAmount), 3);
+   616→   616→
+   617→   617→  const purchasesAccount = await getAccountByCode(db, companySlug, "5000");
+   618→   618→  const apAccount = await getAccountByCode(db, companySlug, "2000");
+   619→   619→
+   620→   620→  const lines = [
+   621→   621→    // Debit: Purchases/COGS
+   622→   622→    makeLine(purchasesAccount.id, netAmount, 0, `Purchase — PI #${purchaseInvoice.id}`),
+   623→   623→    // Credit: Accounts Payable
+   624→   624→    makeLine(apAccount.id, 0, totalAmount, `AP — Purchase PI #${purchaseInvoice.id}`),
+   625→   625→  ];
+   626→   626→
+   627→   627→  // Debit: VAT Receivable (if applicable)
+   628→   628→  if (vatAmount > 0.001 && purchaseInvoice.vatReceivable) {
+   629→   629→    const vatReceivableAccount = await getAccountByCode(db, companySlug, "2105");
+   630→   630→    lines.push(makeLine(vatReceivableAccount.id, vatAmount, 0, `VAT Receivable — PI #${purchaseInvoice.id}`));
+   631→   631→    // Adjust the AP credit to include VAT
+   632→   632→    // Actually: AP credit = net + VAT = total, so the entry is:
+   633→   633→    //   Debit: Purchases netAmount
+   634→   634→    //   Debit: VAT Receivable vatAmount
+   635→   635→    //   Credit: AP totalAmount
+   636→   636→    // This is already correct because totalAmount = netAmount + vatAmount
+   637→   637→  }
+   638→   638→
+   639→   639→  // Validate balanced
+   640→   640→  const totalDebit = lines.reduce((s, l) => s + num(l.debit, 3), 0);
+   641→   641→  const totalCredit = lines.reduce((s, l) => s + num(l.credit, 3), 0);
+   642→   642→  if (Math.abs(totalDebit - totalCredit) > 0.001) {
+   643→   643→    throw new Error(`Purchase JE not balanced: debit=${totalDebit.toFixed(3)}, credit=${totalCredit.toFixed(3)}`);
+   644→   644→  }
+   645→   645→
+   646→   646→  const entry = await db.$transaction(async (tx) => {
+   647→   647→    const created = await tx.journalEntry.create({
+   648→   648→      data: {
+   649→   649→        companySlug,
+   650→   650→        date: purchaseInvoice.date,
+   651→   651→        description: `Purchase invoice — PI #${purchaseInvoice.id}`,
+   652→   652→        status: "posted",
+   653→   653→        sourceType: "purchase_create",
+   654→   654→        sourceId: purchaseInvoice.id,
+   655→   655→        createdBy: userEmail,
+   656→   656→        lines: { create: lines },
+   657→   657→      },
+   658→   658→      include: { lines: true },
+   659→   659→    });
+   660→   660→
+   661→   661→    await updateAccountBalances(tx, lines, companySlug);
+   662→   662→
+   663→   663→    return created;
+   664→   664→  });
+   665→   665→
+   666→   666→  await logAudit({
+   667→   667→    userEmail,
+   668→   668→    userUid,
+   669→   669→    action: "auto_je_create",
+   670→   670→    entity: "journal_entry",
+   671→   671→    entityId: entry.id,
+   672→   672→    companySlug,
+   673→   673→    details: { sourceType: "purchase_create", sourceId: purchaseInvoice.id, totalAmount: totalAmount.toFixed(3) },
+   674→   674→  });
+   675→   675→
+   676→   676→  return entry;
+   677→   677→}
+   678→   678→
+   679→   679→/**
+   680→   680→ * createVATReturnJE — VAT return payment:
+   681→   681→ *   Debit: VAT Payable (code 2100)
+   682→   682→ *   Credit: Cash/Bank (code 1010)
+   683→   683→ *   sourceType: "vat_return"
+   684→   684→ */
+   685→   685→export async function createVATReturnJE(
+   686→   686→  vatData: VATReturnData,
+   687→   687→  companySlug: string,
+   688→   688→  countryCode: string | null,
+   689→   689→  userEmail: string,
+   690→   690→  userUid: string,
+   691→   691→): Promise<{ id: number; [key: string]: unknown }> {
+   692→   692→  const vatDue = num(vatData.vatDue, 3);
+   693→   693→
+   694→   694→  const vatPayableAccount = await getAccountByCode(db, companySlug, "2100");
+   695→   695→  const cashAccount = await getAccountByCode(db, companySlug, "1010");
+   696→   696→
+   697→   697→  const lines = [
+   698→   698→    makeLine(vatPayableAccount.id, vatDue, 0, `VAT return payment — ${vatData.period}`),
+   699→   699→    makeLine(cashAccount.id, 0, vatDue, `Cash/Bank — VAT return ${vatData.period}`),
+   700→   700→  ];
+   701→   701→
+   702→   702→  const entry = await db.$transaction(async (tx) => {
+   703→   703→    const created = await tx.journalEntry.create({
+   704→   704→      data: {
+   705→   705→        companySlug,
+   706→   706→        date: vatData.date,
+   707→   707→        description: `VAT return — ${vatData.period}`,
+   708→   708→        status: "posted",
+   709→   709→        sourceType: "vat_return",
+   710→   710→        sourceId: vatData.id || null,
+   711→   711→        createdBy: userEmail,
+   712→   712→        lines: { create: lines },
+   713→   713→      },
+   714→   714→      include: { lines: true },
+   715→   715→    });
+   716→   716→
+   717→   717→    await updateAccountBalances(tx, lines, companySlug);
+   718→   718→
+   719→   719→    return created;
+   720→   720→  });
+   721→   721→
+   722→   722→  await logAudit({
+   723→   723→    userEmail,
+   724→   724→    userUid,
+   725→   725→    action: "auto_je_create",
+   726→   726→    entity: "journal_entry",
+   727→   727→    entityId: entry.id,
+   728→   728→    companySlug,
+   729→   729→    details: { sourceType: "vat_return", period: vatData.period, vatDue: vatDue.toFixed(3) },
+   730→   730→  });
+   731→   731→
+   732→   732→  return entry;
+   733→   733→}
+   734→   734→
+   735→   735→/**
+   736→   736→ * createAssetDisposalJE — Asset disposal:
+   737→   737→ *   Debit: Cash/Bank (disposal proceeds) — code 1010
+   738→   738→ *   Debit: Accumulated Depreciation — use asset's depreciationAccountId or code 1601
+   739→   739→ *   Credit: Fixed Asset (original cost) — use asset's glAccountId or code 1500
+   740→   740→ *   Credit/Possibly Debit: Gain/Loss on disposal — code 5800 (loss) or 4800 (gain)
+   741→   741→ *   sourceType: "asset_disposal", sourceId: asset.id
+   742→   742→ */
+   743→   743→export async function createAssetDisposalJE(
+   744→   744→  asset: AssetDisposalData,
+   745→   745→  disposalAmount: string | number,
+   746→   746→  companySlug: string,
+   747→   747→  userEmail: string,
+   748→   748→  userUid: string,
+   749→   749→): Promise<{ id: number; [key: string]: unknown }> {
+   750→   750→  const disposalAmt = num(disposalAmount, 3);
+   751→   751→  const originalCost = num(asset.acquisitionCost, 3);
+   752→   752→  const accDepreciation = num(asset.accumulatedDepreciation, 3);
+   753→   753→  const bookValue = num(originalCost - accDepreciation, 3);
+   754→   754→
+   755→   755→  // Gain/Loss = disposal amount - book value
+   756→   756→  const gainOrLoss = num(disposalAmt - bookValue, 3);
+   757→   757→  const isGain = gainOrLoss > 0;
+   758→   758→  const gainLossAmount = Math.abs(gainOrLoss);
+   759→   759→
+   760→   760→  const cashAccount = await getAccountByCode(db, companySlug, "1010");
+   761→   761→  const fixedAssetAccount = asset.glAccountId
+   762→   762→    ? await db.account.findUnique({ where: { id: asset.glAccountId } })
+   763→   763→    : await getAccountByCode(db, companySlug, "1500");
+   764→   764→  if (!fixedAssetAccount) throw new Error("Fixed Asset GL account not found");
+   765→   765→
+   766→   766→  const accDepAccount = asset.depreciationAccountId
+   767→   767→    ? await db.account.findUnique({ where: { id: asset.depreciationAccountId } })
+   768→   768→    : await getAccountByCode(db, companySlug, "1601");
+   769→   769→  if (!accDepAccount) throw new Error("Accumulated Depreciation account not found");
+   770→   770→
+   771→   771→  const gainLossAccount = isGain
+   772→   772→    ? await getAccountByCode(db, companySlug, "4800") // Gain on disposal → revenue
+   773→   773→    : await getAccountByCode(db, companySlug, "5800"); // Loss on disposal → expense
+   774→   774→
+   775→   775→  const lines = [
+   776→   776→    // Debit: Cash/Bank (disposal proceeds)
+   777→   777→    makeLine(cashAccount.id, disposalAmt, 0, `Asset disposal proceeds — Asset #${asset.id}`),
+   778→   778→    // Debit: Accumulated Depreciation (remove accumulated depreciation)
+   779→   779→    makeLine(accDepAccount.id, accDepreciation, 0, `Remove accumulated depreciation — Asset #${asset.id}`),
+   780→   780→    // Credit: Fixed Asset (remove original cost)
+   781→   781→    makeLine(fixedAssetAccount.id, 0, originalCost, `Remove fixed asset — Asset #${asset.id}`),
+   782→   782→  ];
+   783→   783→
+   784→   784→  // Gain or Loss on disposal
+   785→   785→  if (gainLossAmount > 0.001) {
+   786→   786→    if (isGain) {
+   787→   787→      // Gain: credit gain account
+   788→   788→      lines.push(makeLine(gainLossAccount.id, 0, gainLossAmount, `Gain on asset disposal — Asset #${asset.id}`));
+   789→   789→    } else {
+   790→   790→      // Loss: debit loss account
+   791→   791→      lines.push(makeLine(gainLossAccount.id, gainLossAmount, 0, `Loss on asset disposal — Asset #${asset.id}`));
+   792→   792→    }
+   793→   793→  }
+   794→   794→
+   795→   795→  // Validate balanced
+   796→   796→  const totalDebit = lines.reduce((s, l) => s + num(l.debit, 3), 0);
+   797→   797→  const totalCredit = lines.reduce((s, l) => s + num(l.credit, 3), 0);
+   798→   798→  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+   799→   799→    throw new Error(`Asset disposal JE not balanced: debit=${totalDebit.toFixed(3)}, credit=${totalCredit.toFixed(3)}`);
+   800→   800→  }
+   801→   801→
+   802→   802→  const entry = await db.$transaction(async (tx) => {
+   803→   803→    const created = await tx.journalEntry.create({
+   804→   804→      data: {
+   805→   805→        companySlug,
+   806→   806→        date: asset.disposalDate || new Date().toISOString().slice(0, 10),
+   807→   807→        description: `Asset disposal — Asset #${asset.id}`,
+   808→   808→        status: "posted",
+   809→   809→        sourceType: "asset_disposal",
+   810→   810→        sourceId: asset.id,
+   811→   811→        createdBy: userEmail,
+   812→   812→        lines: { create: lines },
+   813→   813→      },
+   814→   814→      include: { lines: true },
+   815→   815→    });
+   816→   816→
+   817→   817→    await updateAccountBalances(tx, lines, companySlug);
+   818→   818→
+   819→   819→    return created;
+   820→   820→  });
+   821→   821→
+   822→   822→  await logAudit({
+   823→   823→    userEmail,
+   824→   824→    userUid,
+   825→   825→    action: "auto_je_create",
+   826→   826→    entity: "journal_entry",
+   827→   827→    entityId: entry.id,
+   828→   828→    companySlug,
+   829→   829→    details: { sourceType: "asset_disposal", sourceId: asset.id, disposalAmount: disposalAmt.toFixed(3), gainOrLoss: gainOrLoss.toFixed(3) },
+   830→   830→  });
+   831→   831→
+   832→   832→  return entry;
+   833→   833→}
+   834→   834→
