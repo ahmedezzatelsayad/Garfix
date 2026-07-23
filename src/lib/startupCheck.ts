@@ -50,9 +50,9 @@ const RECOMMENDED = [
   "SMTP_FROM",
 ];
 
-// SEC-C3 / SEC-M4 FIX: Blocklist of known placeholder / leaked secret values
-// that must NEVER be accepted in production. If any env var matches one of
-// these, the server refuses to boot.
+// SEC-C3 / SEC-M4 FIX (Cycle 1): Blocklist of known placeholder / leaked
+// secret values that must NEVER be accepted in production. If any env var
+// matches one of these, the server refuses to boot.
 //
 // These values come from the originally-committed `.env` file — they are
 // effectively public. Anyone running production with one of these values is
@@ -84,6 +84,47 @@ function isPlaceholderValue(value: string): boolean {
   if (lower.startsWith("garfix-refresh-secret")) return true;
   if (lower.startsWith("garfix-payments-encryption")) return true;
   if (lower.startsWith("garfix-dev-secret")) return true;
+  return false;
+}
+
+// ── CRITICAL-002 FIX (Cycle 2): Strength-based secret validation ─────────
+// A blocklist only catches secrets we already know are bad. An attacker can
+// use any low-entropy string the blocklist doesn't know about (e.g.
+// `garfix-prod-jwt-2024!!`). The strength check below catches any secret
+// that is too short, too repetitive, or matches a "looks like a placeholder"
+// regex — defense-in-depth on top of the blocklist.
+//
+// Production-only. Dev uses the deterministic fallback in auth.ts which is
+// clearly marked and not production-grade.
+const WEAK_SECRET_PATTERNS: readonly RegExp[] = [
+  /garfix/i,
+  /^dev-only-/i,
+  /change[-_]?me/i,
+  /secret[-_]?key/i,
+  /password/i,
+  /placeholder/i,
+  /example/i,
+  /12345/,
+  /^test[-_]/i,
+  /^ci[-_]/i,
+  /[-_]+$/, // trailing dashes/underscores (common in hand-typed placeholders)
+];
+
+/**
+ * Returns true if `value` is too weak to be a production secret.
+ * Checks: minimum length, pattern blocklist, and Shannon-style entropy.
+ */
+export function isSecretWeak(value: string, opts: { minLength?: number } = {}): boolean {
+  const minLength = opts.minLength ?? 32;
+  if (typeof value !== "string" || value.length < minLength) return true;
+  if (WEAK_SECRET_PATTERNS.some((re) => re.test(value))) return true;
+  // Entropy heuristic: unique-character ratio. A 32-char string with only
+  // 8 unique characters is almost certainly a hand-typed placeholder like
+  // `garfix-build-secret-key-32-chars-long!!`.
+  const unique = new Set(value).size;
+  if (unique < value.length / 3) return true;
+  // Reject secrets that are just one repeated character / very low variety.
+  if (unique < 4) return true;
   return false;
 }
 
@@ -140,6 +181,41 @@ export function runStartupChecks(): StartupCheckResult {
       fatal.push(
         "DATABASE_URL still uses the leaked placeholder password 'garfix_strong_pass_change_me'. " +
           "Rotate the database user's password and update DATABASE_URL / DATABASE_DIRECT_URL.",
+      );
+    }
+
+    // CRITICAL-002 FIX (Cycle 2): strength-based secret validation.
+    // Even if a secret is NOT in the blocklist above, reject it if it's
+    // too short, too repetitive, or matches a "looks like a placeholder"
+    // pattern. This catches e.g. `garfix-prod-jwt-2024!!` which would
+    // sail past the blocklist but is trivially guessable.
+    //
+    // JWT secrets: minimum 32 chars (OWASP), high entropy.
+    // PAYMENTS_ENC_KEY: minimum 32 chars (AES-256-GCM key requirement).
+    const SECRET_STRENGTH_CHECKS: Array<{ name: string; minLength: number }> = [
+      { name: "JWT_SECRET", minLength: 32 },
+      { name: "JWT_REFRESH_SECRET", minLength: 32 },
+      { name: "PAYMENTS_ENC_KEY", minLength: 32 },
+    ];
+    for (const { name, minLength } of SECRET_STRENGTH_CHECKS) {
+      const value = process.env[name];
+      if (!value) continue; // missing-secret errors handled above
+      if (isSecretWeak(value, { minLength })) {
+        fatal.push(
+          `${name} appears weak (too short, low entropy, or matches a placeholder pattern). ` +
+            `Generate a fresh secret with: openssl rand -hex 64 (for JWT_*) or openssl rand -base64 32 (for PAYMENTS_ENC_KEY).`,
+        );
+      }
+    }
+    // Defense-in-depth: JWT_SECRET and JWT_REFRESH_SECRET MUST differ.
+    if (
+      process.env.JWT_SECRET &&
+      process.env.JWT_REFRESH_SECRET &&
+      process.env.JWT_SECRET === process.env.JWT_REFRESH_SECRET
+    ) {
+      fatal.push(
+        "JWT_SECRET and JWT_REFRESH_SECRET must be DIFFERENT values. " +
+          "Using the same secret means compromising one token type compromises both.",
       );
     }
   }

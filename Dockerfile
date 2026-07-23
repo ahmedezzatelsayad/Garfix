@@ -46,14 +46,30 @@ RUN bun run build
 # ── Stage 3: Production ─────────────────────────────────────────────────
 # Use Node.js for runtime — Next.js standalone server.js requires Node.js APIs
 # (Bun 1.3.x has native module compatibility issues with Next.js standalone)
+#
+# MED-006 (Cycle 2 NOTE): base images are pinned by TAG, not by digest.
+#   Pinning by digest would prevent supply-chain attacks via upstream image
+#   tampering, but it also prevents automatic security patching of the base
+#   OS. For now we keep tag-pinning (auto-receives patch bumps within the
+#   major) and rely on Trivy image scanning in CI (to be added in a future
+#   cycle) to catch vulnerabilities in the base image. To migrate to digest
+#   pinning, compute the digest with:
+#     docker pull node:22-alpine && \
+#     docker inspect --format='{{index .RepoDigests 0}}' node:22-alpine
+#   and replace `FROM node:22-alpine` with `FROM node:22-alpine@sha256:<digest>`.
 FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Alpine doesn't include addgroup/adduser by default — install shadow + curl
-RUN apk add --no-cache shadow curl
+# HIGH-006 FIX (Cycle 2): remove `curl` from the production image.
+#   `curl` is a common attacker tool for lateral movement and data
+#   exfiltration once RCE is achieved. We install only `shadow` (for
+#   addgroup/adduser, which alpine doesn't ship by default). The
+#   HEALTHCHECK below is rewritten to use Node's built-in `fetch` instead
+#   of curl.
+RUN apk add --no-cache shadow
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -77,8 +93,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Healthcheck: /api/health (existing endpoint)
+# HIGH-006 FIX (Cycle 2): replace curl-based HEALTHCHECK with a Node-based
+#   one. Node 22 has a built-in global `fetch` so no extra dependencies are
+#   needed. The check is identical in semantics: GET /api/health, exit 0 on
+#   2xx, exit 1 otherwise.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]
