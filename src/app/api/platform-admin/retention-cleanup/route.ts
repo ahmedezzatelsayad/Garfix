@@ -141,7 +141,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   };
 
   // ── Per-company retention-aware cleanup ─────────────────────────────────
-  const perCompanyResult = await cleanupWithPerCompanyRetention(confirmYears, dryRun);
+  const perCompanyResult = await cleanupWithPerCompanyRetention(confirmYears ?? null, dryRun);
 
   if (dryRun) {
     return NextResponse.json({
