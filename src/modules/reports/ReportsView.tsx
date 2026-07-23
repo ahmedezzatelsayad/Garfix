@@ -180,16 +180,12 @@ export function ReportsView() {
                   key={rt.key}
                   type="button"
                   onClick={() => setType(rt.key)}
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "flex-start",
-                    padding: "12px 14px", borderRadius: "10px",
-                    background: active ? "var(--primary)" : "var(--background)",
-                    color: active ? "var(--primary-foreground)" : "var(--foreground)",
-                    border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
-                    cursor: "pointer", fontFamily: "inherit", textAlign: "right",
-                    transition: "all 0.15s",
-                  }}
-                  className="max-md:min-h-[44px]"
+                  className={cn(
+                    "flex flex-col items-start py-3 px-3.5 rounded-[10px] cursor-pointer font-inherit text-right transition-all duration-150 border max-md:min-h-[44px]",
+                    active
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
+                      : "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+                  )}
                 >
                   <div className={cn("flex items-center gap-1.5 font-extrabold text-[13px]")}>
                     {rt.icon}
@@ -310,19 +306,15 @@ function SummaryCards({ data, currency }: { data: ReportResponse; currency: stri
           className="p-3 md:p-4 rounded-[14px] bg-card border border-border flex flex-col gap-2 relative overflow-hidden"
         >
           <div
-            style={{
-              position: "absolute", top: "-16px", left: "-16px",
-              width: "64px", height: "64px", borderRadius: "50%",
-              background: c.color, opacity: 0.08,
-            }}
+            className="absolute -top-4 -left-4 w-16 h-16 rounded-full opacity-[0.08]"
+            style={{ background: c.color }} /* TAILWINDBREAK: dynamic summary card color */
           />
           <div className="flex items-center gap-2">
             <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{
-                width: "32px", height: "32px", borderRadius: "8px",
                 background: `${c.color}20`, color: c.color,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
+              }} /* TAILWINDBREAK: dynamic summary card color */
             >
               {c.icon}
             </div>

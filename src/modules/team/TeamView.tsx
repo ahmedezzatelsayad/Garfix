@@ -221,12 +221,8 @@ export function TeamView() {
                       <td className={tdStyle}>
                         <div className="flex items-center gap-2">
                           <div
-                            style={{
-                              width: 32, height: 32, borderRadius: "50%",
-                              background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))`,
-                              color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                              fontWeight: 700, fontSize: 13, flexShrink: 0,
-                            }}
+                            className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }} /* TAILWINDBREAK: dynamic background */
                           >
                             {m.displayName.charAt(0).toUpperCase()}
                           </div>
@@ -248,12 +244,8 @@ export function TeamView() {
                       </td>
                       <td className={tdStyle}>
                         <span
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 4,
-                            padding: "3px 10px", borderRadius: "999px",
-                            background: `${roleColor(m.role)}22`, color: roleColor(m.role),
-                            fontSize: 11, fontWeight: 700,
-                          }}
+                          className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                          style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }} /* TAILWINDBREAK: dynamic color */
                         >
                           {ROLE_LABEL[m.role] || m.role}
                         </span>
@@ -290,12 +282,8 @@ export function TeamView() {
                     <label className="flex items-center gap-2 min-h-[44px]">
                       <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
                       <div
-                        style={{
-                          width: 32, height: 32, borderRadius: "50%",
-                          background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))`,
-                          color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                          fontWeight: 700, fontSize: 13, flexShrink: 0,
-                        }}
+                        className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }} /* TAILWINDBREAK: dynamic background */
                       >
                         {m.displayName.charAt(0).toUpperCase()}
                       </div>
@@ -321,12 +309,8 @@ export function TeamView() {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] text-muted-foreground">الدور:</span>
                       <span
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          padding: "3px 10px", borderRadius: "999px",
-                          background: `${roleColor(m.role)}22`, color: roleColor(m.role),
-                          fontSize: 11, fontWeight: 700,
-                        }}
+                        className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                        style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }} /* TAILWINDBREAK: dynamic color */
                       >
                         {ROLE_LABEL[m.role] || m.role}
                       </span>
@@ -465,16 +449,12 @@ function InviteDialog({
                 <button
                   key={r.value}
                   onClick={() => setRole(r.value)}
+                  className="max-md:min-h-[44px] py-2.5 px-3 rounded-[10px] font-inherit text-xs font-bold cursor-pointer text-right flex flex-col items-start gap-0.5"
                   style={{
-                    padding: "10px 12px", borderRadius: "10px",
                     background: role === r.value ? `${r.color}22` : "var(--background)",
                     border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}`,
                     color: role === r.value ? r.color : "var(--foreground)",
-                    fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-                    cursor: "pointer", textAlign: "right",
-                    display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px",
-                  }}
-                  className="max-md:min-h-[44px]"
+                  }} /* TAILWINDBREAK: dynamic colors */
                 >
                   <span>{r.label}</span>
                   <span className="text-[10px] font-normal opacity-80">{r.desc}</span>
@@ -553,15 +533,12 @@ function EditDialog({
                 <button
                   key={r.value}
                   onClick={() => setRole(r.value)}
+                  className="max-md:min-h-[44px] py-2 px-2.5 rounded-lg font-inherit text-[11px] font-bold cursor-pointer text-right"
                   style={{
-                    padding: "8px 10px", borderRadius: "8px",
                     background: role === r.value ? `${r.color}22` : "var(--background)",
                     border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}`,
                     color: role === r.value ? r.color : "var(--foreground)",
-                    fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
-                    cursor: "pointer", textAlign: "right",
-                  }}
-                  className="max-md:min-h-[44px]"
+                  }} /* TAILWINDBREAK: dynamic colors */
                 >
                   {r.label}
                 </button>
@@ -622,35 +599,23 @@ function PermEditor({
                   <button
                     key={p.key}
                     onClick={() => onToggle(p.key)}
+                    className="max-md:min-h-[44px] flex items-center gap-2 py-2 px-2.5 rounded-lg font-inherit text-xs cursor-pointer text-right text-[var(--foreground)]"
                     style={{
-                      display: "flex", alignItems: "center", gap: "8px",
-                      padding: "8px 10px", borderRadius: "8px",
                       background: on ? "var(--primary)15" : "var(--card)",
                       border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
-                      color: "var(--foreground)",
-                      fontFamily: "inherit", fontSize: "12px",
-                      cursor: "pointer", textAlign: "right",
                       opacity: locked ? 0.65 : 1,
-                    }}
+                    }} /* TAILWINDBREAK: dynamic background, border, opacity */
                     title={locked ? "صلاحية إدارية — تمنح تلقائياً للمدير فقط" : p.label}
-                    className="max-md:min-h-[44px]"
                   >
                     <span className="text-sm">{p.icon}</span>
                     <span className="flex-1">{p.label}</span>
                     <span
-                      style={{
-                        width: 32, height: 18, borderRadius: "999px",
-                        background: on ? "var(--primary)" : "var(--muted)",
-                        position: "relative", transition: "background 0.15s", flexShrink: 0,
-                      }}
+                      className="w-8 h-[18px] rounded-full relative shrink-0 transition-[background] duration-[150ms]"
+                      style={{ background: on ? "var(--primary)" : "var(--muted)" }} /* TAILWINDBREAK: dynamic background */
                     >
                       <span
-                        style={{
-                          position: "absolute", top: 2,
-                          left: on ? 2 : 16,
-                          width: 14, height: 14, borderRadius: "50%",
-                          background: "#fff", transition: "left 0.15s",
-                        }}
+                        className="absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-[150ms]"
+                        style={{ left: on ? 2 : 16 }} /* TAILWINDBREAK: dynamic position */
                       />
                     </span>
                   </button>

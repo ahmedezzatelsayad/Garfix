@@ -152,24 +152,24 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Banknote size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الأساسي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBase)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(59,130,246,0.20)", color: "#3b82f6" }}><Users size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><Users size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">البدلات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAllowances)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(245,158,11,0.20)", color: "#f59e0b" }}><AlertTriangle size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-amber-500/20 text-amber-500"><AlertTriangle size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">التأمينات الاجتماعية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalSocialInsurance)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}><Calculator size={18} /></div>
-          <div><div className="text-[11px] text-muted-foreground">الاستقطاعات</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: "#ef4444" }}>{fmt(totalDeductions)}</div></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><Calculator size={18} /></div>
+          <div><div className="text-[11px] text-muted-foreground">الاستقطاعات</div><div className="text-lg font-extrabold [direction:ltr] text-end" className="text-red-500">{fmt(totalDeductions)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: totalNet >= 0 ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.20)", color: totalNet >= 0 ? "#10b981" : "#ef4444" }}><CheckCircle2 size={18} /></div>
-          <div><div className="text-[11px] text-muted-foreground">صافي الرواتب</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: totalNet >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalNet)}</div></div>
+          <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalNet >= 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
+          <div><div className="text-[11px] text-muted-foreground">صافي الرواتب</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalNet)}</div></div>
         </div>
       </div>
 
@@ -193,12 +193,12 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
                   <tr key={s.id} className="border-b border-border">
                     <td className={cn(tdStyle, "font-bold")}>{s.employeeName}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(s.baseSalary)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: "#3b82f6" }}>{fmt(s.allowances)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: "#f59e0b" }}>{fmt(s.socialInsurance)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: "#ef4444" }}>{fmt(s.deductions)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: s.netSalary >= 0 ? "#10b981" : "#ef4444" }}>{fmt(s.netSalary)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-blue-500">{fmt(s.allowances)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-amber-500">{fmt(s.socialInsurance)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-red-500">{fmt(s.deductions)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", s.netSalary >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(s.netSalary)}</td>
                     <td className={tdStyle}>{s.currency}</td>
-                    <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: s.status === "paid" ? "rgba(16,185,129,0.15)" : s.status === "pending" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)", color: s.status === "paid" ? "#10b981" : s.status === "pending" ? "#f59e0b" : "#ef4444" }}>{s.status === "paid" ? "مسدّد" : s.status === "pending" ? "معلّق" : "متأخر"}</span></td>
+                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", s.status === "paid" ? "bg-emerald-500/15 text-emerald-500" : s.status === "pending" ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500")}>{s.status === "paid" ? "مسدّد" : s.status === "pending" ? "معلّق" : "متأخر"}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -206,10 +206,10 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
                 <tr className="border-t-2 border-border bg-muted font-extrabold">
                   <td className={cn(tdStyle, "font-extrabold")}>الإجمالي ({salaries.length} موظف)</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(totalBase)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#3b82f6" }}>{fmt(totalAllowances)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#f59e0b" }}>{fmt(totalSocialInsurance)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#ef4444" }}>{fmt(totalDeductions)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: totalNet >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalNet)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-blue-500">{fmt(totalAllowances)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-amber-500">{fmt(totalSocialInsurance)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold text-red-500")}>{fmt(totalDeductions)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalNet)}</td>
                   <td className={cn(tdStyle, "font-extrabold")} colSpan={2}></td>
                 </tr>
               </tfoot>
@@ -275,9 +275,8 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
   }
 
   const statusBadge = (status: string) => {
-    if (status === "submitted") return { bg: "rgba(16,185,129,0.15)", fg: "#10b981", label: "مُرسل" };
-    if (status === "generated") return { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", label: "مُنشأ" };
-    return { bg: "rgba(239,68,68,0.15)", fg: "#ef4444", label: "خطأ" };
+    if (status === "submitted") return { badge: "bg-emerald-500/15 text-emerald-500", label: "مُرسل" };
+    return { badge: "bg-red-500/15 text-red-500", label: "خطأ" };
   };
 
   const totalByCountry = (country: string) => (filesByCountry[country] || []).reduce((s, f) => s + f.totalAmount, 0);
@@ -306,15 +305,15 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><FileText size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الملفات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{wpsFiles.length}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Banknote size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي المبالغ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAll)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(59,130,246,0.20)", color: "#3b82f6" }}><Users size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><Users size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">عدد الموظفين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{totalEmployees}</div></div>
         </div>
       </div>
@@ -326,12 +325,12 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
         if (files.length === 0 && country !== activeCountry) return null;
         return (
           <div key={country} className="bg-card rounded-[14px] border border-border overflow-hidden">
-            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center" style={{ background: "rgba(124,58,237,0.10)", color: "#7c3aed" }}>
+            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center" className="bg-violet-500/10 text-violet-500">
               <span className="flex items-center gap-2">
-                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}>{country}</span>
+                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" className="bg-violet-500/20 text-violet-500">{country}</span>
                 {countryLabels[country]}
               </span>
-              <span className="[direction:ltr] text-end text-[13px]" style={{ color: countryTotal >= 0 ? "#10b981" : "#ef4444" }}>{fmt(countryTotal)}</span>
+              <span className={cn("[direction:ltr] text-end text-[13px]", countryTotal >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(countryTotal)}</span>
             </div>
             {files.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-[13px]">
@@ -357,7 +356,7 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
                           <td className={tdStyle}>{f.employeeCount}</td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(f.totalAmount)}</td>
                           <td className={tdStyle} dir="ltr">{f.generatedAt || f.submittedAt || "—"}</td>
-                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: sb.bg, color: sb.fg }}>{sb.label}</span></td>
+                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", sb.badge)}>{sb.label}</span></td>
                           <td className={tdStyle}>
                             <div className="flex items-center gap-1">
                               {f.status === "generated" && <button onClick={() => handleSubmit(f.id)} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer inline-flex items-center gap-1"><Send size={10} /> إرسال</button>}

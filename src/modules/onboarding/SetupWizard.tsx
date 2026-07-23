@@ -370,7 +370,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                         : slugAvailability.state === "taken" ? "#ef4444"
                         : slugAvailability.state === "invalid" ? "#f59e0b"
                         : "rgba(255,255,255,0.1)",
-                    }}
+                    }} /* TAILWINDBREAK: dynamic conditional border color for slug availability */
                   />
                   {/* Onboarding P2 — inline slug-availability feedback */}
                   <div className="text-[10px] mt-1 min-h-[14px] flex items-center gap-1">
@@ -608,19 +608,18 @@ function ToggleRow({ icon, label, desc, value, onChange }: {
         <div className="text-[11px] text-white/50">{desc}</div>
       </div>
       <div
+        className="relative w-10 h-[22px] rounded-[11px]"
         style={{
-          width: "40px", height: "22px", borderRadius: "11px",
           background: value ? "#7c3aed" : "rgba(255,255,255,0.15)",
-          position: "relative", transition: "background .2s",
-        }}
+          transition: "background .2s",
+        }} /* TAILWINDBREAK: dynamic conditional toggle background + transition */
       >
         <div
+          className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white"
           style={{
-            position: "absolute", top: "2px",
             right: value ? "2px" : "20px",
-            width: "18px", height: "18px", borderRadius: "50%",
-            background: "#fff", transition: "right .2s",
-          }}
+            transition: "right .2s",
+          }} /* TAILWINDBREAK: dynamic conditional toggle dot position + transition */
         />
       </div>
     </div>

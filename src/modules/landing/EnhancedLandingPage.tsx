@@ -281,8 +281,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
     >
       <canvas
         ref={cvsRef}
-        className="absolute top-0 start-0 w-full h-dvh pointer-events-none opacity-70 z-0"
-        style={{ willChange: "transform", imageRendering: "auto" }}
+        className="absolute top-0 start-0 w-full h-dvh pointer-events-none opacity-70 z-0 [will-change:transform]"
       />
       <style>{`
         @keyframes garfix-fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

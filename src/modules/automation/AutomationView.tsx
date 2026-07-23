@@ -207,7 +207,7 @@ export function AutomationView() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div
                       className="shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center text-lg"
-                      style={{ background: trigger.bg }}
+                      style={{ background: trigger.bg }} /* TAILWINDBREAK: dynamic trigger bg color */
                     >
                       {trigger.icon}
                     </div>
@@ -216,16 +216,16 @@ export function AutomationView() {
                         <h3 className="font-bold text-base truncate">{rule.name}</h3>
                         <span
                           className="text-[11px] font-bold py-0.5 px-2 rounded-full"
-                          style={{ background: trigger.bg, color: trigger.color }}
+                          style={{ background: trigger.bg, color: trigger.color }} /* TAILWINDBREAK: dynamic trigger colors */
                         >
                           {trigger.label}
                         </span>
                         {rule.isActive ? (
-                          <span className="text-[10px] font-bold py-0.5 px-2 rounded-full" style={{ background: "#10b98122", color: "#10b981" }}>
+                          <span className="text-[10px] font-bold py-0.5 px-2 rounded-full bg-emerald-500/15 text-emerald-500">
                             ● نشطة
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold py-0.5 px-2 rounded-full" style={{ background: "#9ca3af22", color: "#9ca3af" }}>
+                          <span className="text-[10px] font-bold py-0.5 px-2 rounded-full bg-gray-400/15 text-gray-400">
                             ○ متوقفة
                           </span>
                         )}

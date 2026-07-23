@@ -145,7 +145,7 @@ function ValuationView({ items, totalValue, company, onRefresh }: {
         <button onClick={handleFilter} className="py-2 px-4 rounded-sm bg-primary text-primary-foreground border-none text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5"><Calendar size={14} /> تطبيق</button>
       </div>
       <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><DollarSign size={18} /></div>
+        <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
         <div><div className="text-[11px] text-muted-foreground">إجمالي قيمة المخزون</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalValue)}</div></div>
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
@@ -162,14 +162,14 @@ function ValuationView({ items, totalValue, company, onRefresh }: {
                   <td className={cn(tdStyle, "font-bold")}>{v.productName}</td>
                   <td className={tdStyle}>{v.quantity}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(v.unitCost)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(v.totalValue)}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" style={{ background: "rgba(124,58,237,0.15)", color: "#7c3aed" }}>{COSTING_METHODS[v.costingMethod] || v.costingMethod}</span></td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-emerald-500">{fmt(v.totalValue)}</td>
+                  <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" className="bg-violet-500/15 text-violet-500">{COSTING_METHODS[v.costingMethod] || v.costingMethod}</span></td>
                 </tr>
               ))}</tbody>
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted font-extrabold">
                   <td className={cn(tdStyle, "font-extrabold")} colSpan={4}>الإجمالي ({items.length} صنف)</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#10b981" }}>{fmt(totalValue)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-emerald-500">{fmt(totalValue)}</td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -233,10 +233,10 @@ function COGSView({ result, setResult, company, valuation }: {
           <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">الصنف</div><div className="text-[14px] font-bold">{result.itemCode} — {result.itemName}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">الكمية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{result.quantitySold}</div></div>
-            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">تكلفة الوحدة</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: "#f59e0b" }}>{fmt(result.cogsPerUnit)}</div></div>
-            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">إجمالي COGS</div><div className="text-xl font-extrabold [direction:ltr] text-end" style={{ color: "#ef4444" }}>{fmt(result.totalCOGS)}</div></div>
+            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">تكلفة الوحدة</div><div className="text-lg font-extrabold [direction:ltr] text-end" className="text-amber-500">{fmt(result.cogsPerUnit)}</div></div>
+            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">إجمالي COGS</div><div className="text-xl font-extrabold [direction:ltr] text-end" className="text-red-500">{fmt(result.totalCOGS)}</div></div>
           </div>
-          <div className="text-[12px] text-muted-foreground">طريقة التكلفة: <span className="font-bold" style={{ color: "#7c3aed" }}>{COSTING_METHODS[result.method] || result.method}</span></div>
+          <div className="text-[12px] text-muted-foreground">طريقة التكلفة: <span className="font-bold" className="text-violet-500">{COSTING_METHODS[result.method] || result.method}</span></div>
         </div>
       )}
     </div>
@@ -262,10 +262,10 @@ function LandedCostView({ items }: { items: LandedCostItem[] }) {
             <tbody>{items.map(l => (
               <tr key={l.id} className="border-b border-border">
                 <td className={cn(tdStyle, "font-mono")}>{l.purchaseInvoiceId}</td>
-                <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>{costTypeLabels[l.costType] || l.costType}</span></td>
-                <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#ef4444" }}>{fmt(l.totalCost)}</td>
+                <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" className="bg-amber-500/15 text-amber-500">{costTypeLabels[l.costType] || l.costType}</span></td>
+                <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-red-500">{fmt(l.totalCost)}</td>
                 <td className={tdStyle}>{allocLabels[l.allocationMethod] || l.allocationMethod}</td>
-                <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: l.status === "allocated" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: l.status === "allocated" ? "#10b981" : "#f59e0b" }}>{l.status === "allocated" ? "مخصص" : "قيد المعالجة"}</span></td>
+                <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", l.status === "allocated" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{l.status === "allocated" ? "مخصص" : "قيد المعالجة"}</span></td>
                 <td className={tdStyle} dir="ltr">{l.createdAt}</td>
               </tr>
             ))}</tbody>

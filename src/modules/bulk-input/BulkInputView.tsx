@@ -469,11 +469,13 @@ export function BulkInputView() {
           </div>
           {/* 🧠 brain mode toggle */}
           <div
-            className="mt-3 py-2.5 px-3 rounded-[10px] flex items-center justify-between gap-2.5 border"
+            className={cn(
+              "mt-3 py-2.5 px-3 rounded-[10px] flex items-center justify-between gap-2.5 border",
+              brainMode ? "border-[var(--primary)]" : "border-[var(--border)]"
+            )}
             style={{
               background: brainMode ? "color-mix(in srgb, var(--primary) 8%, var(--card))" : "var(--muted)",
-              borderColor: brainMode ? "var(--primary)" : "var(--border)",
-            }}
+            }} /* TAILWINDBREAK: CSS color-mix function for dynamic brain mode background */
           >
             <label className="flex items-center gap-2 text-[12px] cursor-pointer font-bold">
               <Brain size={16} color="var(--primary)" />
@@ -488,12 +490,16 @@ export function BulkInputView() {
               onClick={() => setBrainMode((v) => !v)}
               role="switch"
               aria-checked={brainMode}
-              className="w-11 h-6 rounded-lg border-none cursor-pointer relative shrink-0 transition-colors duration-150"
-              style={{ background: brainMode ? "var(--primary)" : "var(--border)" }}
+              className={cn(
+                "w-11 h-6 rounded-lg border-none cursor-pointer relative shrink-0 transition-colors duration-150",
+                brainMode ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+              )}
             >
               <span
-                className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-[left] duration-150"
-                style={{ left: brainMode ? "22px" : "2px" }}
+                className={cn(
+                  "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-[left] duration-150",
+                  brainMode ? "left-[22px]" : "left-[2px]"
+                )}
               />
             </button>
           </div>

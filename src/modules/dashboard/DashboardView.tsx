@@ -232,7 +232,7 @@ export function DashboardView() {
                         <td className="py-2.5 px-2">
                           <span
                             className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold"
-                            style={{ background: `${st.color}20`, color: st.color }}
+                            style={{ background: `${st.color}20`, color: st.color }} /* TAILWINDBREAK: dynamic status color */
                           >
                             {st.label}
                           </span>
@@ -257,7 +257,7 @@ export function DashboardView() {
                       <span className="font-bold font-mono text-[13px] break-all">{inv.invoiceNumber}</span>
                       <span
                         className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold shrink-0"
-                        style={{ background: `${st.color}20`, color: st.color }}
+                        style={{ background: `${st.color}20`, color: st.color }} /* TAILWINDBREAK: dynamic status color */
                       >
                         {st.label}
                       </span>
@@ -286,12 +286,12 @@ function KpiCard({ icon, label, value, color }: { icon: React.ReactNode; label: 
       {/* Decorative color blob — dynamic color, kept inline */}
       <div
         className="absolute -top-5 -start-5 w-20 h-20 rounded-full opacity-[0.08]"
-        style={{ background: color }}
+        style={{ background: color }} /* TAILWINDBREAK: dynamic KPI color */
       />
       <div className="flex items-center gap-2">
         <div
           className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
-          style={{ background: `${color}20`, color }}
+          style={{ background: `${color}20`, color }} /* TAILWINDBREAK: dynamic KPI color */
         >
           {icon}
         </div>

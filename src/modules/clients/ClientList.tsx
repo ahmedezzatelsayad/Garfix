@@ -262,7 +262,7 @@ export function ClientList({ companySlug, onSelectClient, onAddNew, onEdit, onIm
           </div>
 
           {/* Mobile compact list — 2-line items, tap to open detail. */}
-          <div className="md:hidden flex flex-col divide-y divide-border" style={{ paddingBottom: "var(--ai-bubble-safe-area)" }}>
+          <div className="md:hidden flex flex-col divide-y divide-border pb-[var(--ai-bubble-safe-area)]">
             {currentPageClients.map((c) => {
               const checked = selectedIds.has(c.id);
               return (

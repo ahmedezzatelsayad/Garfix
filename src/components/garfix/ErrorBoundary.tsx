@@ -38,42 +38,20 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div
           dir="rtl"
-          style={{
-            minHeight: "60vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "16px",
-            padding: "48px",
-            textAlign: "center",
-          }}
+          className="min-h-[60vh] flex flex-col items-center justify-center gap-4 p-12 text-center"
         >
-          <AlertCircle size={48} style={{ color: "var(--destructive)" }} />
+          <AlertCircle size={48} className="text-[var(--destructive)]" />
           <div>
-            <h2 style={{ fontSize: "20px", fontWeight: 800, marginBottom: "8px" }}>
+            <h2 className="text-xl font-extrabold mb-2">
               حدث خطأ غير متوقع
             </h2>
-            <p style={{ fontSize: "13px", color: "var(--muted-foreground)", maxWidth: "400px" }}>
+            <p className="text-[13px] text-[var(--muted-foreground)] max-w-[400px]">
               {this.state.error?.message || "يرجى تحديث الصفحة أو المحاولة مرة أخرى"}
             </p>
           </div>
           <button
             onClick={() => window.location.reload()}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "10px 20px",
-              borderRadius: "10px",
-              background: "var(--primary)",
-              color: "var(--primary-foreground)",
-              border: "none",
-              fontFamily: "inherit",
-              fontSize: "13px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
+            className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[13px] font-bold cursor-pointer"
           >
             <RefreshCw size={14} />
             تحديث الصفحة

@@ -17,23 +17,12 @@ export function LoadingSkeleton({ rows = 5, cols = 4 }: LoadingSkeletonProps) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          style={{
-            display: "flex",
-            gap: "12px",
-            padding: "12px 0",
-            borderBottom: "1px solid var(--border)",
-          }}
+          className="flex gap-3 py-3 border-b border-border"
         >
           {Array.from({ length: cols }).map((_, j) => (
             <div
               key={j}
-              className="animate-pulse"
-              style={{
-                flex: 1,
-                height: "16px",
-                borderRadius: "4px",
-                background: "var(--muted)",
-              }}
+              className="animate-pulse flex-1 h-4 rounded bg-muted"
             />
           ))}
         </div>

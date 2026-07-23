@@ -296,31 +296,24 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 color="#10b981"
               />
               <div
+                className="mt-1 p-3 rounded-[10px] flex justify-between items-center"
                 style={{
-                  marginTop: 4,
-                  padding: 12,
-                  borderRadius: 10,
                   background: outstanding > 0
                     ? (fullyPaid ? "#10b98122" : "#ef444422")
                     : "#10b98122",
                   border: `1px solid ${outstanding > 0 && !fullyPaid ? "#ef4444" : "#10b981"}`,
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}
+                }} /* TAILWINDBREAK: dynamic colors */
               >
                 <div className="flex items-center gap-2">
                   {fullyPaid
-                    ? <CheckCircle2 size={16} style={{ color: "#10b981" }} />
-                    : <AlertTriangle size={16} style={{ color: "#ef4444" }} />}
+                    ? <CheckCircle2 size={16} className="text-[#10b981]" />
+                    : <AlertTriangle size={16} className="text-[#ef4444]" />}
                   <span className="text-xs font-bold text-foreground">
                     {fullyPaid ? "مدفوع بالكامل" : "المبلغ المستحق"}
                   </span>
                 </div>
                 <span
-                  style={{
-                    fontSize: 16, fontWeight: 800,
-                    color: fullyPaid ? "#10b981" : "#ef4444",
-                    direction: "ltr",
-                  }}
+                  className={cn("text-base font-extrabold [direction:ltr]", fullyPaid ? "text-[#10b981]" : "text-[#ef4444]")}
                 >
                   {fmtMoney(outstanding)}
                 </span>
@@ -331,12 +324,8 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                   {Object.entries(summary.byStatus).map(([status, count]) => {
                     const meta = STATUS_LABELS[status] || { label: status, color: "#6b7280", bg: "#6b728022" };
                     return (
-                      <span key={status} style={{
-                        display: "inline-flex", alignItems: "center", gap: 4,
-                        padding: "3px 10px", borderRadius: "999px",
-                        background: meta.bg, color: meta.color,
-                        fontSize: 11, fontWeight: 700,
-                      }}>
+                      <span key={status} className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                        style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
                         {meta.label} × {count}
                       </span>
                     );
@@ -395,12 +384,8 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                       <td className={tdStyle}>{fmtDate(inv.issueDate)}</td>
                       <td className={tdStyle}>{fmtDate(inv.dueDate)}</td>
                       <td className={tdStyle}>
-                        <span style={{
-                          display: "inline-flex", alignItems: "center",
-                          padding: "3px 10px", borderRadius: "999px",
-                          background: meta.bg, color: meta.color,
-                          fontSize: 11, fontWeight: 700,
-                        }}>
+                        <span className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                          style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
                           {meta.label}
                         </span>
                       </td>
@@ -411,12 +396,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                         {inv.paid > 0 ? fmtMoney(inv.paid) : "—"}
                       </td>
                       <td
-                        style={{
-                          padding: "10px 12px", verticalAlign: "middle",
-                          direction: "ltr", textAlign: "right",
-                          fontWeight: 700,
-                          color: inv.outstanding > 0 ? "#ef4444" : "#10b981",
-                        }}
+                        className={cn("px-3 py-2.5 align-middle [direction:ltr] text-end font-bold", inv.outstanding > 0 ? "text-[#ef4444]" : "text-[#10b981]")}
                       >
                         {fmtMoney(inv.outstanding)}
                       </td>
@@ -435,11 +415,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                       {fmtMoney(summary?.totalPaid || 0)}
                     </td>
                     <td
-                      style={{
-                        padding: "10px 12px", verticalAlign: "middle",
-                        direction: "ltr", textAlign: "right", fontWeight: 800,
-                        color: (summary?.outstanding || 0) > 0 ? "#ef4444" : "#10b981",
-                      }}
+                      className={cn("px-3 py-2.5 align-middle [direction:ltr] text-end font-extrabold", (summary?.outstanding || 0) > 0 ? "text-[#ef4444]" : "text-[#10b981]")}
                     >
                       {fmtMoney(summary?.outstanding || 0)}
                     </td>
@@ -456,12 +432,8 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <div key={inv.id} className="p-3 flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-[13px]" dir="ltr">{inv.invoiceNumber}</span>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center",
-                      padding: "3px 10px", borderRadius: "999px",
-                      background: meta.bg, color: meta.color,
-                      fontSize: 11, fontWeight: 700,
-                    }}>
+                    <span className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+                      style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
                       {meta.label}
                     </span>
                   </div>
@@ -470,7 +442,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                     <div><span className="text-muted-foreground text-[11px]">الاستحقاق: </span>{fmtDate(inv.dueDate)}</div>
                     <div><span className="text-muted-foreground text-[11px]">الإجمالي: </span><span className="font-semibold" dir="ltr">{fmtMoney(inv.total)}</span></div>
                     <div><span className="text-muted-foreground text-[11px]">المدفوع: </span><span className="text-[#10b981]" dir="ltr">{inv.paid > 0 ? fmtMoney(inv.paid) : "—"}</span></div>
-                    <div className="col-span-2"><span className="text-muted-foreground text-[11px]">المستحق: </span><span className="font-bold" style={{ color: inv.outstanding > 0 ? "#ef4444" : "#10b981" }} dir="ltr">{fmtMoney(inv.outstanding)}</span></div>
+                    <div className="col-span-2"><span className="text-muted-foreground text-[11px]">المستحق: </span><span className={cn("font-bold", inv.outstanding > 0 ? "text-[#ef4444]" : "text-[#10b981]")} dir="ltr">{fmtMoney(inv.outstanding)}</span></div>
                   </div>
                 </div>
               );
@@ -479,7 +451,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               <div className="p-3 bg-muted flex flex-wrap justify-between gap-2 text-[12px] font-extrabold">
                 <span>الإجمالي:</span>
                 <span className="text-[#10b981]" dir="ltr">مدفوع {fmtMoney(summary?.totalPaid || 0)}</span>
-                <span style={{ color: (summary?.outstanding || 0) > 0 ? "#ef4444" : "#10b981" }} dir="ltr">مستحق {fmtMoney(summary?.outstanding || 0)}</span>
+                <span className={cn((summary?.outstanding || 0) > 0 ? "text-[#ef4444]" : "text-[#10b981]")} dir="ltr">مستحق {fmtMoney(summary?.outstanding || 0)}</span>
               </div>
             )}
           </div>
@@ -607,10 +579,10 @@ function SummaryRow({
   return (
     <div className="flex items-center justify-between p-2 px-2.5 rounded-sm bg-muted border border-border">
       <div className="flex items-center gap-2">
-        <span style={{ color }}>{icon}</span>
+        <span style={{ color }} /* TAILWINDBREAK: dynamic color */>{icon}</span>
         <span className="text-xs text-muted-foreground font-semibold">{label}</span>
       </div>
-      <span style={{ fontSize: 14, fontWeight: 800, color, direction: "ltr" }}>{value}</span>
+      <span className="text-sm font-extrabold [direction:ltr]" style={{ color }} /* TAILWINDBREAK: dynamic color */>{value}</span>
     </div>
   );
 }

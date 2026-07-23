@@ -401,10 +401,7 @@ export function AICopilotBubble() {
         onClick={() => setOpen(!open)}
         aria-label="مساعد Garfix AI"
         title="مساعد Garfix AI"
-        className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(124,58,237,0.5)] animate-[garfix-agent-pulse_3s_infinite]"
-        style={{
-          background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 60%, #c4b5fd 100%)",
-        }}
+        className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(124,58,237,0.5)] animate-[garfix-agent-pulse_3s_infinite] bg-[linear-gradient(135deg,#7c3aed_0%,#a78bfa_60%,#c4b5fd_100%)]"
       >
         {open ? <X size={26} /> : <img src="/logo.svg" alt="" className="w-[30px] h-[30px] rounded-md" />}
         {/* Small "online" indicator dot */}
@@ -417,7 +414,7 @@ export function AICopilotBubble() {
       {open && (
         <div
           dir="rtl"
-          style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+          style={{ fontFamily: "var(--font-cairo), sans-serif" }} /* TAILWINDBREAK: CSS variable font-family with fallback */
           className={cn(
             "garfix-ai-panel flex flex-col overflow-hidden z-[200] animate-[garfix-fade-up_0.25s_ease-out]",
             fullscreen
@@ -555,7 +552,7 @@ export function AICopilotBubble() {
                     )}
                     style={isAgent ? {
                       background: "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(167,139,250,0.08))",
-                    } : undefined}
+                    } : undefined} /* TAILWINDBREAK: conditional gradient with rgba values */
                   >
                     {isAgent && (
                       <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-violet-600 mb-1.5 tracking-[0.3px]">
@@ -725,7 +722,7 @@ export function AICopilotBubble() {
                   style={{
                     border: `1px solid ${a.color}40`,
                     color: a.color,
-                  }}
+                  }} /* TAILWINDBREAK: dynamic quick action color */
                   onMouseEnter={(e) => {
                     if (!loading && !executing) {
                       e.currentTarget.style.background = a.color;

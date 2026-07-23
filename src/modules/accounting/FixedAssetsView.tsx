@@ -173,15 +173,15 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><DollarSign size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">تكلفة الاستحواذ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCost)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}><TrendingDown size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إهلاك متراكم</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDep)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><Calculator size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><Calculator size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">صافي القيمة الدفترية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBV)}</div></div>
         </div>
       </div>
@@ -202,9 +202,9 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
                   <td className={tdStyle}>{CATEGORIES.find(c => c.value === a.category)?.label || a.category}</td>
                   <td className={tdStyle} dir="ltr">{a.acquisitionDate}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(a.acquisitionCost)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: "#ef4444" }}>{fmt(a.accumulatedDepreciation)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: a.bookValue > 0 ? "#10b981" : "#9ca3af" }}>{fmt(a.bookValue)}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: a.status === "active" ? "rgba(16,185,129,0.15)" : a.status === "disposed" ? "rgba(239,68,68,0.15)" : "rgba(156,163,175,0.15)", color: a.status === "active" ? "#10b981" : a.status === "disposed" ? "#ef4444" : "#9ca3af" }}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-red-500">{fmt(a.accumulatedDepreciation)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", a.bookValue > 0 ? "text-emerald-500" : "text-gray-400")}>{fmt(a.bookValue)}</td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.status === "active" ? "bg-emerald-500/15 text-emerald-500" : a.status === "disposed" ? "bg-red-500/15 text-red-500" : "bg-gray-400/15 text-gray-400")}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -276,7 +276,7 @@ function AssetForm({ company, onClose, onSaved }: { company: { slug: string; cur
         <div><label className={labelStyle}>حساب الإهلاك</label><input type="number" value={depreciationAccountId ?? ""} onChange={(e) => setDepreciationAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
         <div><label className={labelStyle}>حساب المصروف</label><input type="number" value={expenseAccountId ?? ""} onChange={(e) => setExpenseAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
       </div>
-      {annualDep > 0 && <div className="text-[12px] text-muted-foreground">الإهلاك السنوي (خط مستقيم): <span className="font-bold" style={{ color: "#f59e0b" }}>{fmt(annualDep)}</span></div>}
+      {annualDep > 0 && <div className="text-[12px] text-muted-foreground">الإهلاك السنوي (خط مستقيم): <span className="font-bold" className="text-amber-500">{fmt(annualDep)}</span></div>}
       <div className="flex gap-2.5 justify-end">
         <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
         <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
@@ -327,9 +327,9 @@ function DepreciationView({ entries, company, onRefresh }: { entries: DepEntry[]
                 <tr key={e.id} className="border-b border-border">
                   <td className={cn(tdStyle, "font-bold")}>{e.assetName}</td>
                   <td className={tdStyle} dir="ltr">{e.period}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: "#ef4444" }}>{fmt(e.depreciationAmount)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: e.bookValueAfter > 0 ? "#10b981" : "#9ca3af" }}>{fmt(e.bookValueAfter)}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: e.status === "posted" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: e.status === "posted" ? "#10b981" : "#f59e0b" }}>{e.status === "posted" ? "مُرحّل" : "مسودة"}</span></td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-red-500">{fmt(e.depreciationAmount)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", e.bookValueAfter > 0 ? "text-emerald-500" : "text-gray-400")}>{fmt(e.bookValueAfter)}</td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : "مسودة"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -363,10 +363,10 @@ function DisposalView({ disposals, assets, company, onRefresh }: { disposals: Di
               <tbody>{disposals.map(d => (
                 <tr key={d.id} className="border-b border-border">
                   <td className={cn(tdStyle, "font-bold")}>{d.assetName}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: d.disposalType === "sold" ? "rgba(16,185,129,0.15)" : d.disposalType === "scrapped" ? "rgba(239,68,68,0.15)" : "rgba(124,58,237,0.15)", color: d.disposalType === "sold" ? "#10b981" : d.disposalType === "scrapped" ? "#ef4444" : "#7c3aed" }}>{disposalTypeLabels[d.disposalType] || d.disposalType}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.disposalType === "sold" ? "bg-emerald-500/15 text-emerald-500" : d.disposalType === "scrapped" ? "bg-red-500/15 text-red-500" : "bg-violet-500/15 text-violet-500")}>{disposalTypeLabels[d.disposalType] || d.disposalType}</span></td>
                   <td className={tdStyle} dir="ltr">{d.disposalDate}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(d.disposalAmount)}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: d.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: d.status === "completed" ? "#10b981" : "#f59e0b" }}>{d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -421,7 +421,7 @@ function DisposalForm({ assets, company, onClose, onSaved }: { assets: Asset[]; 
       {selected && (
         <div className="bg-muted rounded-md p-3 text-[12px] flex flex-col gap-1">
           <div>صافي القيمة الدفترية: <span className="font-bold">{fmt(selected.bookValue)}</span></div>
-          <div>ربح/خسارة: <span className="font-bold" style={{ color: disposalAmount - selected.bookValue >= 0 ? "#10b981" : "#ef4444" }}>{fmt(disposalAmount - selected.bookValue)}</span></div>
+          <div>ربح/خسارة: <span className={cn("font-bold", disposalAmount - selected.bookValue >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(disposalAmount - selected.bookValue)}</span></div>
         </div>
       )}
       <div className="flex gap-2.5 justify-end">

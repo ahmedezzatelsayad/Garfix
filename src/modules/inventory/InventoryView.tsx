@@ -413,7 +413,7 @@ function StatusBadge({ status }: { status: "OK" | "Low" | "Out" }) {
   return (
     <span
       className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold inline-flex items-center gap-1"
-      style={{ background: `${config.color}20`, color: config.color }}
+      style={{ background: `${config.color}20`, color: config.color }} /* TAILWINDBREAK: dynamic status color */
     >
       {config.icon} {config.label}
     </span>
@@ -425,7 +425,7 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; lab
     <div className="bg-card rounded-[12px] border border-border py-3.5 px-4 flex items-center gap-3 max-md:min-h-[44px]">
       <div
         className="w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0"
-        style={{ background: `${color}20`, color }}
+        style={{ background: `${color}20`, color }} /* TAILWINDBREAK: dynamic summary card color */
       >{icon}</div>
       <div className="min-w-0">
         <div className="text-[11px] text-muted-foreground truncate">{label}</div>
