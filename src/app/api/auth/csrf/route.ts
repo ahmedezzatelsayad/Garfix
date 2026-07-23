@@ -14,6 +14,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { CSRF_COOKIE, generateCsrfToken, CSRF_COOKIE_OPTS } from "@/lib/cookies";
 
+// Uses `node:crypto` (via generateCsrfToken) — must run on the Node.js runtime.
+export const runtime = "nodejs";
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   // Must be authenticated
   const authResult = await resolveAuth(req);

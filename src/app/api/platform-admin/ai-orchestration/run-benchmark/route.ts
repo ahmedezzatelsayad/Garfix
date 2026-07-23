@@ -15,8 +15,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { getRegistry, recordBenchmarkResult, type AICapability } from "@/lib/ai/modelRegistry";
 import { getAiProviders, callSingleProvider, type AiProviderConfig } from "@/lib/aiProvider";
+
+// Benchmark hits the DB (modelRegistry / recordBenchmarkResult → Prisma) and the
+// Node-only AI provider client. Pin to Node.js runtime so Turbopack does not
+// attempt Edge bundling.
+export const runtime = "nodejs";
+// Long-running benchmark (up to 12 model calls × 60s timeout).
+export const maxDuration = 300;
 
 interface BenchmarkCase {
   capability: AICapability;
