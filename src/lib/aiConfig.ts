@@ -94,8 +94,17 @@ export async function getAiConfig(company: {
   }
 
   const model = (platform["ai.model"] as string) || company.openrouterModel || PLATFORM_DEFAULTS.model;
-  const temperature = (platform["ai.temperature"] as number) ?? PLATFORM_DEFAULTS.temperature;
-  const maxTokens = (platform["ai.max_tokens"] as number) ?? PLATFORM_DEFAULTS.maxTokens;
+  // SEC-M6C4 (Cycle 4): clamp temperature + maxTokens to safe ranges. The
+  // previous implementation read ai.max_tokens straight from PlatformSetting
+  // with no upper bound — a founder (or anyone with DB write access) could
+  // set ai.max_tokens = 100000 and every chat call would request 100k output
+  // tokens, draining the OpenAI/Anthropic quota in a few requests. The chat
+  // route even has a comment noting this used to cause 402 errors.
+  // Allow founders to tune within a safe range; reject runaway values.
+  const rawTemp = (platform["ai.temperature"] as number) ?? PLATFORM_DEFAULTS.temperature;
+  const rawMaxTokens = (platform["ai.max_tokens"] as number) ?? PLATFORM_DEFAULTS.maxTokens;
+  const temperature = Math.min(Math.max(Number(rawTemp) || 0, 0), 2);
+  const maxTokens = Math.min(Math.max(Math.floor(Number(rawMaxTokens) || 800), 100), 4096);
 
   // Disable AI for trial-plan companies without an explicit API key
   const enabled = !!apiKey || company.plan !== "trial";
@@ -112,11 +121,14 @@ export async function getAiConfig(company: {
 /** Get a global (non-company) AI config — used by founder/admin tools. */
 export async function getGlobalAiConfig(): Promise<AiConfig> {
   const platform = await getPlatformSettings();
+  // SEC-M6C4 (Cycle 4): same clamping as getAiConfig to prevent runaway quota spend.
+  const rawTemp = (platform["ai.temperature"] as number) ?? PLATFORM_FALLBACK.temperature;
+  const rawMaxTokens = (platform["ai.max_tokens"] as number) ?? PLATFORM_FALLBACK.maxTokens;
   return {
     apiKey: (platform["ai.global_api_key"] as string) || null,
     model: (platform["ai.model"] as string) || PLATFORM_FALLBACK.model,
-    temperature: (platform["ai.temperature"] as number) ?? PLATFORM_FALLBACK.temperature,
-    maxTokens: (platform["ai.max_tokens"] as number) ?? PLATFORM_FALLBACK.maxTokens,
+    temperature: Math.min(Math.max(Number(rawTemp) || 0, 0), 2),
+    maxTokens: Math.min(Math.max(Math.floor(Number(rawMaxTokens) || 800), 100), 4096),
     enabled: true,
   };
 }

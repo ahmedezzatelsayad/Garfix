@@ -5,9 +5,10 @@
  * The page is now a Client Component that fetches from this endpoint.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
+import { requireFounder } from "@/lib/middleware";
 
 export interface AIFabricData {
   companiesCount: number;
@@ -24,7 +25,12 @@ export interface AIFabricData {
   periodEnd: string;
 }
 
-export async function GET(): Promise<NextResponse<AIFabricData>> {
+export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>> {
+  // SEC-C9 (Cycle 4): close missing-auth — exposed companies count, active workers,
+  // AI latency, platform savings, total revenue, total AI cost to anyone.
+  const authResult = await requireFounder(req);
+  if (authResult instanceof NextResponse) return authResult as NextResponse<AIFabricData>;
+
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);

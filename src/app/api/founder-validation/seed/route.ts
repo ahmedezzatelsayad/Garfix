@@ -12,6 +12,7 @@ import {
   type SyntheticCompany,
   type TelemetryEntry,
 } from "@/lib/founder-validation";
+import { requireFounder } from "@/lib/middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,11 @@ export function getCache() {
 }
 
 export async function POST(request: NextRequest) {
+  // SEC-C13 (Cycle 4): close missing-auth — unauthenticated caller could seed
+  // up to 25,000 synthetic companies into the in-process cache, exhausting Node memory.
+  const authResult = await requireFounder(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const body = await request.json();
     const count = body.count ?? 100;

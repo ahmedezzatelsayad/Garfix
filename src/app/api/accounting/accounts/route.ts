@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -25,6 +25,14 @@ const CreateSchema = z.object({
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // SEC-M1C4 (Cycle 4): close missing-permission — list endpoint checked tenant
+  // scope but NOT finance_access, allowing a viewer/employee with company access
+  // to list the entire chart of accounts including balances. Sibling routes
+  // /api/accounting/bank-accounts and /api/accounting/journal-entries already
+  // enforce finance_access; this brings the accounts list in line with them.
+  if (!hasPermission(result.user, "finance_access")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const sp = req.nextUrl.searchParams;
   const companySlug = sp.get("companySlug") || undefined;
   if (companySlug && !assertCompanyAccess(result.user, companySlug)) {

@@ -11,16 +11,20 @@ import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-const mockAuditLogCreate = mock(() => Promise.resolve({ id: "audit-1" }));
-const mockAdminAuditLogCreate = mock(() => Promise.resolve({ id: "admin-audit-1" }));
+const mockAuditLogCreate = mock(() => Promise.resolve({ id: "audit-1", createdAt: new Date("2026-01-01T00:00:00Z") }));
+const mockAdminAuditLogCreate = mock(() => Promise.resolve({ id: "admin-audit-1", createdAt: new Date("2026-01-01T00:00:00Z") }));
 const mockTamperCreate = mock(() => Promise.resolve({ id: "chain-1" }));
 const mockTamperFindFirst = mock(() => Promise.resolve(null));
 const mockTamperFindMany = mock(() => Promise.resolve([]));
 const mockTamperUpdate = mock(() => Promise.resolve({}));
 const mockTamperUpdateMany = mock(() => Promise.resolve({ count: 0 }));
+const mockTamperCount = mock(() => Promise.resolve(0));
 
-mock.module("@/lib/db", () => ({
-  db: {
+// SEC-A1C4 (Cycle 4): logAudit now calls appendToChain which uses
+// db.$transaction. The mock needs to provide $transaction that invokes the
+// callback with the same db shape (so inner findFirst/create calls work).
+mock.module("@/lib/db", () => {
+  const dbMock = {
     auditLog: {
       create: mockAuditLogCreate,
     },
@@ -33,9 +37,18 @@ mock.module("@/lib/db", () => ({
       findMany: mockTamperFindMany,
       update: mockTamperUpdate,
       updateMany: mockTamperUpdateMany,
+      count: mockTamperCount,
     },
-  },
-}));
+  };
+  // $transaction executes the callback with a tx object that has the same
+  // shape as db (so the inner findFirst/create calls hit the same mocks).
+  return {
+    db: {
+      ...dbMock,
+      $transaction: mock((cb: (tx: typeof dbMock) => Promise<unknown>) => cb(dbMock)),
+    },
+  };
+});
 
 mock.module("@/lib/logger", () => ({
   logger: {

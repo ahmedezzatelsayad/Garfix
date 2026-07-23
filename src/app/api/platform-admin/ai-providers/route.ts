@@ -14,6 +14,7 @@ import { decryptSecret, isEncrypted } from "@/lib/cryptoVault";
 import { db } from "@/lib/db";
 import { logAdminAction } from "@/lib/audit";
 import { withErrorHandler, parseJsonBody, apiError } from "@/lib/api";
+import { validateBaseUrl } from "@/lib/ssrf";
 import { z } from "zod";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -36,8 +37,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       isEnabled: config?.isEnabled ?? (info.type === "z-ai"),
       priority: config?.priority ?? 99,
       hasApiKey: !!config?.apiKey,
-      // Don't return the actual key — just whether it's set
-      apiKeyMasked: config?.apiKey ? `${config.apiKey.slice(0, 6)}...${config.apiKey.slice(-4)}` : null,
+      // SEC-H9C4 (Cycle 4): stop returning decrypted API key bytes. The previous
+      // implementation returned `${apiKey.slice(0,6)}...${apiKey.slice(-4)}` —
+      // for OpenAI keys this leaks the "sk-pro" prefix (confirms key type) plus
+      // 10 chars that dramatically narrow a brute-force search. We now return
+      // only hasApiKey (boolean). The UI should use that to show "key set" /
+      // "no key" status without exposing any key material.
+      apiKeyMasked: config?.apiKey ? `${info.keyPrefix}…` : null,
       baseUrl: config?.baseUrl || null,
     };
   });
@@ -69,6 +75,16 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   if (isEnabled !== undefined) await setProviderEnabled(provider as ProviderType, isEnabled);
   if (priority !== undefined) await setProviderPriority(provider as ProviderType, priority);
   if (baseUrl !== undefined) {
+    // SEC-H10C4 (Cycle 4): validate baseUrl BEFORE persisting. Previously the
+    // URL was written to PlatformSetting raw and only validated later inside
+    // getBaseUrl() at chat-call time — a founder (or DB-tamperer) could persist
+    // an internal URL that would only be rejected at runtime.
+    try {
+      validateBaseUrl(baseUrl);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return apiError(`عنوان base_url غير آمن: ${msg}`, 400);
+    }
     const key = `ai.provider.${provider}.baseUrl`;
     const existing = await db.platformSetting.findUnique({ where: { key } });
     if (existing) await db.platformSetting.update({ where: { key }, data: { value: JSON.stringify(baseUrl) } });

@@ -6,10 +6,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { callOpenRouter } from "@/lib/founder-validation";
+import { requireFounder } from "@/lib/middleware";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // SEC-C15 (Cycle 4): close missing-auth — unauthenticated callers could drain
+  // the platform's OPENROUTER_API_KEY quota on demand.
+  const authResult = await requireFounder(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const body = await request.json();
     const { prompt, model } = body as { prompt?: string; model?: string };

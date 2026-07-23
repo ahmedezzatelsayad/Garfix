@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { calculateSavedCost, getPlatformSavings, getCascadeBreakdown } from "@/lib/ai-fabric/cost-optimizer";
+import { requireFounder } from "@/lib/middleware";
 
 const PERIOD_MAP: Record<string, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
@@ -22,6 +23,12 @@ const PERIOD_MAP: Record<string, number> = {
 };
 
 export async function GET(request: NextRequest) {
+  // SEC-C11 (Cycle 4): close missing-auth — despite the header comment "Access:
+  // Founder Panel only", the handler had zero auth. Returns per-company AI cost
+  // savings breakdowns + platform-wide totals.
+  const authResult = await requireFounder(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const { searchParams } = new URL(request.url);
     const companySlug = searchParams.get("companySlug") || undefined;
