@@ -1,0 +1,623 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * tamperAudit.test.ts — 50 tests for the tamper-evident audit chain module.
+     4→ *
+     5→ * Covers: appendToChain, verifyChain, getChainStats, and edge cases.
+     6→ */
+     7→
+     8→import { describe, it, expect, mock, beforeEach } from "bun:test";
+     9→import crypto from "node:crypto";
+    10→
+    11→// ── Mock definitions ──────────────────────────────────────────────────────────
+    12→
+    13→const mockTECfindFirst = mock(() => Promise.resolve(null));
+    14→const mockTECcreate = mock(() => Promise.resolve({}));
+    15→const mockTECfindMany = mock(() => Promise.resolve([]));
+    16→const mockTECupdateMany = mock(() => Promise.resolve({}));
+    17→const mockTECupdate = mock(() => Promise.resolve({}));
+    18→const mockTECcount = mock(() => Promise.resolve(0));
+    19→
+    20→mock.module("@/lib/db", () => {
+    21→  const dbMock = {
+    22→    user: {
+    23→      findUnique: mock(() => Promise.resolve(null)),
+    24→      findMany: mock(() => Promise.resolve([])),
+    25→      update: mock(() => Promise.resolve({})),
+    26→      create: mock(() => Promise.resolve({})),
+    27→      delete: mock(() => Promise.resolve({})),
+    28→      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    29→      upsert: mock(() => Promise.resolve({})),
+    30→      count: mock(() => Promise.resolve(0)),
+    31→    },
+    32→    auditLog: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), aggregate: mock(() => Promise.resolve({})) },
+    33→    adminAuditLog: { create: mock(() => Promise.resolve({})) },
+    34→    mFASecret: { findUnique: mock(() => Promise.resolve(null)), upsert: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), delete: mock(() => Promise.resolve({})) },
+    35→    sessionRegistry: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), delete: mock(() => Promise.resolve({})), deleteMany: mock(() => Promise.resolve({ count: 0 })), count: mock(() => Promise.resolve(0)) },
+    36→    tamperEvidenceChain: {
+    37→      findFirst: mockTECfindFirst,
+    38→      create: mockTECcreate,
+    39→      findMany: mockTECfindMany,
+    40→      updateMany: mockTECupdateMany,
+    41→      update: mockTECupdate,
+    42→      count: mockTECcount,
+    43→    },
+    44→    webhookEndpoint: { findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), create: mock(() => Promise.resolve({})), count: mock(() => Promise.resolve(0)) },
+    45→    webhookDelivery: { findMany: mock(() => Promise.resolve([])), create: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})) },
+    46→    budgetConfig: { findUnique: mock(() => Promise.resolve(null)) },
+    47→    aIRequestLog: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), aggregate: mock(() => Promise.resolve({})) },
+    48→    aIMemoryEntry: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), update: mock(() => Promise.resolve({})) },
+    49→    cacheEntry: { findUnique: mock(() => Promise.resolve(null)), upsert: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), delete: mock(() => Promise.resolve({})) },
+    50→    ruleCandidate: { findMany: mock(() => Promise.resolve([])) },
+    51→    company: { findMany: mock(() => Promise.resolve([])) },
+    52→    notification: { create: mock(() => Promise.resolve({})) },
+    53→  };
+    54→  // SEC-A11C4 (Cycle 4): appendToChain now uses db.$transaction; the mock
+    55→  // must invoke the callback with a tx object exposing the same shape.
+    56→  return {
+    57→    db: {
+    58→      ...dbMock,
+    59→      $transaction: mock((cb: (tx: typeof dbMock) => Promise<unknown>) => cb(dbMock)),
+    60→    },
+    61→  };
+    62→});
+    63→
+    64→mock.module("@/lib/logger", () => ({
+    65→  logger: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), debug: mock(() => {}) },
+    66→}));
+    67→
+    68→// ── Import after mocks ────────────────────────────────────────────────────────
+    69→
+    70→const { appendToChain, verifyChain, getChainStats } = await import("@/lib/tamperAudit");
+    71→
+    72→// ── Helpers ───────────────────────────────────────────────────────────────────
+    73→
+    74→function computeExpectedHash(contentHash: string, prevHash: string): string {
+    75→  return crypto.createHash("sha256").update(`${contentHash}:${prevHash}`).digest("hex");
+    76→}
+    77→
+    78→function makeAuditContent(overrides: Record<string, unknown> = {}) {
+    79→  return {
+    80→    userEmail: "admin@garfix.com",
+    81→    action: "create",
+    82→    entity: "invoice",
+    83→    entityId: "inv-1",
+    84→    companySlug: "acme",
+    85→    details: null,
+    86→    createdAt: new Date("2025-01-01T00:00:00Z"),
+    87→    ...overrides,
+    88→  };
+    89→}
+    90→
+    91→// ── Tests ─────────────────────────────────────────────────────────────────────
+    92→
+    93→describe("Tamper Audit Module", () => {
+    94→  beforeEach(() => {
+    95→    mockTECfindFirst.mockClear();
+    96→    mockTECcreate.mockClear();
+    97→    mockTECfindMany.mockClear();
+    98→    mockTECupdateMany.mockClear();
+    99→    mockTECupdate.mockClear();
+   100→    mockTECcount.mockClear();
+   101→  });
+   102→
+   103→  // ═══════════════════════════════════════════════════════════════════════════
+   104→  // appendToChain — 15 tests
+   105→  // ═══════════════════════════════════════════════════════════════════════════
+   106→  describe("appendToChain", () => {
+   107→    it("creates first entry with GENESIS prevHash when chain is empty", async () => {
+   108→      mockTECfindFirst.mockResolvedValueOnce(null);
+   109→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   110→      expect(mockTECfindFirst).toHaveBeenCalledWith({ orderBy: { chainOrder: "desc" } });
+   111→      const createCall = mockTECcreate.mock.calls[0][0];
+   112→      expect(createCall.data.prevHash).toBe("GENESIS");
+   113→      expect(createCall.data.chainOrder).toBe(0);
+   114→    });
+   115→
+   116→    it("creates first entry with chainOrder 0", async () => {
+   117→      mockTECfindFirst.mockResolvedValueOnce(null);
+   118→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   119→      const createCall = mockTECcreate.mock.calls[0][0];
+   120→      expect(createCall.data.chainOrder).toBe(0);
+   121→    });
+   122→
+   123→    it("stores entryId correctly", async () => {
+   124→      mockTECfindFirst.mockResolvedValueOnce(null);
+   125→      await appendToChain({ entryId: "audit-xyz", content: makeAuditContent() });
+   126→      const createCall = mockTECcreate.mock.calls[0][0];
+   127→      expect(createCall.data.entryId).toBe("audit-xyz");
+   128→    });
+   129→
+   130→    it("stores companySlug when provided", async () => {
+   131→      mockTECfindFirst.mockResolvedValueOnce(null);
+   132→      await appendToChain({ entryId: "audit-1", content: makeAuditContent(), companySlug: "acme" });
+   133→      const createCall = mockTECcreate.mock.calls[0][0];
+   134→      expect(createCall.data.companySlug).toBe("acme");
+   135→    });
+   136→
+   137→    it("stores null companySlug when not provided", async () => {
+   138→      mockTECfindFirst.mockResolvedValueOnce(null);
+   139→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   140→      const createCall = mockTECcreate.mock.calls[0][0];
+   141→      expect(createCall.data.companySlug).toBeNull();
+   142→    });
+   143→
+   144→    it("subsequent entry chains to previous contentHash", async () => {
+   145→      const prevContentHash = crypto.createHash("sha256").update("prev-content").digest("hex");
+   146→      mockTECfindFirst.mockResolvedValueOnce({ contentHash: prevContentHash, chainOrder: 5 });
+   147→      await appendToChain({ entryId: "audit-2", content: makeAuditContent() });
+   148→      const createCall = mockTECcreate.mock.calls[0][0];
+   149→      expect(createCall.data.prevHash).toBe(prevContentHash);
+   150→    });
+   151→
+   152→    it("subsequent entry has chainOrder incremented by 1", async () => {
+   153→      mockTECfindFirst.mockResolvedValueOnce({ contentHash: "hash-1", chainOrder: 5 });
+   154→      await appendToChain({ entryId: "audit-2", content: makeAuditContent() });
+   155→      const createCall = mockTECcreate.mock.calls[0][0];
+   156→      expect(createCall.data.chainOrder).toBe(6);
+   157→    });
+   158→
+   159→    it("stores a computed contentHash (SHA-256 of content:prevHash)", async () => {
+   160→      mockTECfindFirst.mockResolvedValueOnce(null);
+   161→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   162→      const createCall = mockTECcreate.mock.calls[0][0];
+   163→      expect(createCall.data.contentHash).toMatch(/^[a-f0-9]{64}$/);
+   164→    });
+   165→
+   166→    it("contentHash is deterministic for same content and prevHash", async () => {
+   167→      const content = makeAuditContent();
+   168→      mockTECfindFirst.mockResolvedValueOnce(null);
+   169→      await appendToChain({ entryId: "audit-1a", content });
+   170→      const hash1 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   171→
+   172→      mockTECfindFirst.mockResolvedValueOnce(null);
+   173→      mockTECcreate.mockClear();
+   174→      await appendToChain({ entryId: "audit-1b", content });
+   175→      const hash2 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   176→
+   177→      expect(hash1).toBe(hash2);
+   178→    });
+   179→
+   180→    it("contentHash changes when content changes", async () => {
+   181→      mockTECfindFirst.mockResolvedValueOnce(null);
+   182→      await appendToChain({ entryId: "audit-1", content: makeAuditContent({ action: "create" }) });
+   183→      const hash1 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   184→
+   185→      mockTECfindFirst.mockResolvedValueOnce(null);
+   186→      mockTECcreate.mockClear();
+   187→      await appendToChain({ entryId: "audit-2", content: makeAuditContent({ action: "delete" }) });
+   188→      const hash2 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   189→
+   190→      expect(hash1).not.toBe(hash2);
+   191→    });
+   192→
+   193→    it("contentHash changes when prevHash changes", async () => {
+   194→      const content = makeAuditContent();
+   195→      mockTECfindFirst.mockResolvedValueOnce(null);
+   196→      await appendToChain({ entryId: "audit-1", content });
+   197→      const hash1 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   198→
+   199→      mockTECfindFirst.mockResolvedValueOnce({ contentHash: "different-prev-hash", chainOrder: 0 });
+   200→      mockTECcreate.mockClear();
+   201→      await appendToChain({ entryId: "audit-2", content });
+   202→      const hash2 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   203→
+   204→      expect(hash1).not.toBe(hash2);
+   205→    });
+   206→
+   207→    it("fetches last entry ordered by chainOrder desc", async () => {
+   208→      mockTECfindFirst.mockResolvedValueOnce(null);
+   209→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   210→      expect(mockTECfindFirst).toHaveBeenCalledWith({ orderBy: { chainOrder: "desc" } });
+   211→    });
+   212→
+   213→    it("calls create exactly once per append", async () => {
+   214→      mockTECfindFirst.mockResolvedValueOnce(null);
+   215→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   216→      expect(mockTECcreate).toHaveBeenCalledTimes(1);
+   217→    });
+   218→
+   219→    it("handles DB error gracefully without throwing", async () => {
+   220→      mockTECfindFirst.mockRejectedValueOnce(new Error("DB connection lost"));
+   221→      await expect(appendToChain({ entryId: "audit-1", content: makeAuditContent() })).resolves.toBeUndefined();
+   222→    });
+   223→
+   224→    it("handles create error gracefully without throwing", async () => {
+   225→      mockTECfindFirst.mockResolvedValueOnce(null);
+   226→      mockTECcreate.mockRejectedValueOnce(new Error("Insert failed"));
+   227→      await expect(appendToChain({ entryId: "audit-1", content: makeAuditContent() })).resolves.toBeUndefined();
+   228→    });
+   229→  });
+   230→
+   231→  // ═══════════════════════════════════════════════════════════════════════════
+   232→  // verifyChain — 15 tests
+   233→  // ═══════════════════════════════════════════════════════════════════════════
+   234→  describe("verifyChain", () => {
+   235→    it("returns valid=true for empty chain", async () => {
+   236→      mockTECfindMany.mockResolvedValueOnce([]);
+   237→      const result = await verifyChain();
+   238→      expect(result.valid).toBe(true);
+   239→      expect(result.totalEntries).toBe(0);
+   240→    });
+   241→
+   242→    it("returns valid=true for single entry with GENESIS prevHash", async () => {
+   243→      const contentHash = computeExpectedHash("content-h1", "GENESIS");
+   244→      mockTECfindMany.mockResolvedValueOnce([{
+   245→        id: "chain-1", entryId: "audit-1", contentHash, prevHash: "GENESIS", chainOrder: 0,
+   246→      }]);
+   247→      const result = await verifyChain();
+   248→      expect(result.valid).toBe(true);
+   249→      expect(result.totalEntries).toBe(1);
+   250→    });
+   251→
+   252→    it("returns valid=true for valid two-entry chain", async () => {
+   253→      const h1 = computeExpectedHash("content-h1", "GENESIS");
+   254→      const h2 = computeExpectedHash("content-h2", h1);
+   255→      mockTECfindMany.mockResolvedValueOnce([
+   256→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   257→        { id: "chain-2", entryId: "audit-2", contentHash: h2, prevHash: h1, chainOrder: 1 },
+   258→      ]);
+   259→      const result = await verifyChain();
+   260→      expect(result.valid).toBe(true);
+   261→      expect(result.totalEntries).toBe(2);
+   262→    });
+   263→
+   264→    it("returns valid=true for valid three-entry chain", async () => {
+   265→      const h1 = computeExpectedHash("c1", "GENESIS");
+   266→      const h2 = computeExpectedHash("c2", h1);
+   267→      const h3 = computeExpectedHash("c3", h2);
+   268→      mockTECfindMany.mockResolvedValueOnce([
+   269→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   270→        { id: "chain-2", entryId: "audit-2", contentHash: h2, prevHash: h1, chainOrder: 1 },
+   271→        { id: "chain-3", entryId: "audit-3", contentHash: h3, prevHash: h2, chainOrder: 2 },
+   272→      ]);
+   273→      const result = await verifyChain();
+   274→      expect(result.valid).toBe(true);
+   275→      expect(result.totalEntries).toBe(3);
+   276→    });
+   277→
+   278→    it("detects broken chain when prevHash is wrong", async () => {
+   279→      const h1 = computeExpectedHash("c1", "GENESIS");
+   280→      const h3 = computeExpectedHash("c3", "wrong-hash");
+   281→      mockTECfindMany.mockResolvedValueOnce([
+   282→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   283→        { id: "chain-3", entryId: "audit-3", contentHash: h3, prevHash: "wrong-hash", chainOrder: 1 },
+   284→      ]);
+   285→      const result = await verifyChain();
+   286→      expect(result.valid).toBe(false);
+   287→      expect(result.breakAt).toBeDefined();
+   288→      expect(result.breakAt!.entryId).toBe("audit-3");
+   289→      expect(result.breakAt!.chainOrder).toBe(1);
+   290→      expect(result.breakAt!.reason).toContain("prevHash mismatch");
+   291→    });
+   292→
+   293→    it("detects broken chain when first entry prevHash is not GENESIS", async () => {
+   294→      mockTECfindMany.mockResolvedValueOnce([
+   295→        { id: "chain-1", entryId: "audit-1", contentHash: "somehash", prevHash: "NOT-GENESIS", chainOrder: 0 },
+   296→      ]);
+   297→      const result = await verifyChain();
+   298→      expect(result.valid).toBe(false);
+   299→      expect(result.breakAt!.entryId).toBe("audit-1");
+   300→    });
+   301→
+   302→    it("marks entry as invalid (isValid=false) when tampered", async () => {
+   303→      mockTECfindMany.mockResolvedValueOnce([
+   304→        { id: "chain-1", entryId: "audit-1", contentHash: "hash", prevHash: "WRONG", chainOrder: 0 },
+   305→      ]);
+   306→      await verifyChain();
+   307→      expect(mockTECupdate).toHaveBeenCalledWith({
+   308→        where: { id: "chain-1" },
+   309→        data: { isValid: false, verifiedAt: expect.any(Date) },
+   310→      });
+   311→    });
+   312→
+   313→    it("marks all entries as verified (isValid=true) for valid chain", async () => {
+   314→      const h1 = computeExpectedHash("c1", "GENESIS");
+   315→      mockTECfindMany.mockResolvedValueOnce([
+   316→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   317→      ]);
+   318→      await verifyChain();
+   319→      // SEC-A13C4 (Cycle 4): verifyChain no longer overwrites isValid=true
+   320→      // on already-tampered rows. It only updates verifiedAt on rows that are
+   321→      // already isValid=true (preserving tamper flags).
+   322→      expect(mockTECupdateMany).toHaveBeenCalledWith({
+   323→        where: { isValid: true },
+   324→        data: { verifiedAt: expect.any(Date) },
+   325→      });
+   326→    });
+   327→
+   328→    it("does not call updateMany when chain is broken", async () => {
+   329→      mockTECfindMany.mockResolvedValueOnce([
+   330→        { id: "chain-1", entryId: "audit-1", contentHash: "hash", prevHash: "WRONG", chainOrder: 0 },
+   331→      ]);
+   332→      await verifyChain();
+   333→      expect(mockTECupdateMany).not.toHaveBeenCalled();
+   334→    });
+   335→
+   336→    it("queries entries ordered by chainOrder asc", async () => {
+   337→      mockTECfindMany.mockResolvedValueOnce([]);
+   338→      await verifyChain();
+   339→      expect(mockTECfindMany).toHaveBeenCalledWith({ orderBy: { chainOrder: "asc" }, where: {} });
+   340→    });
+   341→
+   342→    it("filters by companySlug when provided", async () => {
+   343→      mockTECfindMany.mockResolvedValueOnce([]);
+   344→      await verifyChain("acme");
+   345→      expect(mockTECfindMany).toHaveBeenCalledWith({ orderBy: { chainOrder: "asc" }, where: { companySlug: "acme" } });
+   346→    });
+   347→
+   348→    it("partial company-scope verification only sees entries for that company", async () => {
+   349→      const h1 = computeExpectedHash("c1", "GENESIS");
+   350→      mockTECfindMany.mockResolvedValueOnce([
+   351→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   352→      ]);
+   353→      const result = await verifyChain("acme");
+   354→      expect(result.valid).toBe(true);
+   355→      expect(result.totalEntries).toBe(1);
+   356→      // SEC-A13C4 (Cycle 4): only updates rows where isValid=true (preserves tamper flags).
+   357→      expect(mockTECupdateMany).toHaveBeenCalledWith({
+   358→        where: { companySlug: "acme", isValid: true },
+   359→        data: { verifiedAt: expect.any(Date) },
+   360→      });
+   361→    });
+   362→
+   363→    it("reports correct totalEntries for broken chain", async () => {
+   364→      const h1 = computeExpectedHash("c1", "GENESIS");
+   365→      mockTECfindMany.mockResolvedValueOnce([
+   366→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   367→        { id: "chain-2", entryId: "audit-2", contentHash: "h2", prevHash: "wrong", chainOrder: 1 },
+   368→        { id: "chain-3", entryId: "audit-3", contentHash: "h3", prevHash: "h2", chainOrder: 2 },
+   369→      ]);
+   370→      const result = await verifyChain();
+   371→      expect(result.totalEntries).toBe(3);
+   372→      expect(result.valid).toBe(false);
+   373→    });
+   374→
+   375→    it("breakAt reason includes expected and actual hash prefixes", async () => {
+   376→      const h1 = computeExpectedHash("c1", "GENESIS");
+   377→      mockTECfindMany.mockResolvedValueOnce([
+   378→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   379→        { id: "chain-2", entryId: "audit-2", contentHash: "h2", prevHash: "tampered", chainOrder: 1 },
+   380→      ]);
+   381→      const result = await verifyChain();
+   382→      expect(result.breakAt!.reason).toContain(h1.substring(0, 12));
+   383→      expect(result.breakAt!.reason).toContain("tampered".substring(0, 12));
+   384→    });
+   385→
+   386→    it("returns valid for 10-entry chain built correctly", async () => {
+   387→      const entries: any[] = [];
+   388→      let prevHash = "GENESIS";
+   389→      for (let i = 0; i < 10; i++) {
+   390→        const contentHash = computeExpectedHash(`content-${i}`, prevHash);
+   391→        entries.push({
+   392→          id: `chain-${i}`, entryId: `audit-${i}`, contentHash, prevHash, chainOrder: i,
+   393→        });
+   394→        prevHash = contentHash;
+   395→      }
+   396→      mockTECfindMany.mockResolvedValueOnce(entries);
+   397→      const result = await verifyChain();
+   398→      expect(result.valid).toBe(true);
+   399→      expect(result.totalEntries).toBe(10);
+   400→    });
+   401→  });
+   402→
+   403→  // ═══════════════════════════════════════════════════════════════════════════
+   404→  // getChainStats — 10 tests
+   405→  // ═══════════════════════════════════════════════════════════════════════════
+   406→  describe("getChainStats", () => {
+   407→    it("returns all zeros when no entries exist", async () => {
+   408→      mockTECcount
+   409→        .mockResolvedValueOnce(0)  // total
+   410→        .mockResolvedValueOnce(0)  // verified
+   411→        .mockResolvedValueOnce(0); // tampered
+   412→      const stats = await getChainStats();
+   413→      expect(stats).toEqual({ totalEntries: 0, verifiedCount: 0, unverifiedCount: 0, tamperedCount: 0 });
+   414→    });
+   415→
+   416→    it("returns correct total entries", async () => {
+   417→      mockTECcount
+   418→        .mockResolvedValueOnce(100)
+   419→        .mockResolvedValueOnce(50)
+   420→        .mockResolvedValueOnce(10);
+   421→      const stats = await getChainStats();
+   422→      expect(stats.totalEntries).toBe(100);
+   423→    });
+   424→
+   425→    it("returns correct verified count", async () => {
+   426→      mockTECcount
+   427→        .mockResolvedValueOnce(100)
+   428→        .mockResolvedValueOnce(75)
+   429→        .mockResolvedValueOnce(5);
+   430→      const stats = await getChainStats();
+   431→      expect(stats.verifiedCount).toBe(75);
+   432→    });
+   433→
+   434→    it("returns correct tampered count", async () => {
+   435→      mockTECcount
+   436→        .mockResolvedValueOnce(100)
+   437→        .mockResolvedValueOnce(50)
+   438→        .mockResolvedValueOnce(20);
+   439→      const stats = await getChainStats();
+   440→      expect(stats.tamperedCount).toBe(20);
+   441→    });
+   442→
+   443→    it("calculates unverified count as total - verified - tampered", async () => {
+   444→      mockTECcount
+   445→        .mockResolvedValueOnce(100)
+   446→        .mockResolvedValueOnce(50)
+   447→        .mockResolvedValueOnce(20);
+   448→      const stats = await getChainStats();
+   449→      expect(stats.unverifiedCount).toBe(30); // 100 - 50 - 20
+   450→    });
+   451→
+   452→    it("handles all entries verified", async () => {
+   453→      mockTECcount
+   454→        .mockResolvedValueOnce(50)
+   455→        .mockResolvedValueOnce(50)
+   456→        .mockResolvedValueOnce(0);
+   457→      const stats = await getChainStats();
+   458→      expect(stats.unverifiedCount).toBe(0);
+   459→      expect(stats.verifiedCount).toBe(50);
+   460→    });
+   461→
+   462→    it("handles all entries tampered", async () => {
+   463→      mockTECcount
+   464→        .mockResolvedValueOnce(30)
+   465→        .mockResolvedValueOnce(0)
+   466→        .mockResolvedValueOnce(30);
+   467→      const stats = await getChainStats();
+   468→      expect(stats.unverifiedCount).toBe(0);
+   469→      expect(stats.tamperedCount).toBe(30);
+   470→    });
+   471→
+   472→    it("calls count three times (total, verified, tampered)", async () => {
+   473→      mockTECcount
+   474→        .mockResolvedValueOnce(10)
+   475→        .mockResolvedValueOnce(5)
+   476→        .mockResolvedValueOnce(2);
+   477→      await getChainStats();
+   478→      expect(mockTECcount).toHaveBeenCalledTimes(3);
+   479→    });
+   480→
+   481→    it("verified count query includes isValid=true and verifiedAt not null", async () => {
+   482→      mockTECcount
+   483→        .mockResolvedValueOnce(10)
+   484→        .mockResolvedValueOnce(5)
+   485→        .mockResolvedValueOnce(2);
+   486→      await getChainStats();
+   487→      expect(mockTECcount.mock.calls[1][0]).toEqual({
+   488→        where: { isValid: true, verifiedAt: { not: null } },
+   489→      });
+   490→    });
+   491→
+   492→    it("tampered count query includes isValid=false", async () => {
+   493→      mockTECcount
+   494→        .mockResolvedValueOnce(10)
+   495→        .mockResolvedValueOnce(5)
+   496→        .mockResolvedValueOnce(2);
+   497→      await getChainStats();
+   498→      expect(mockTECcount.mock.calls[2][0]).toEqual({
+   499→        where: { isValid: false },
+   500→      });
+   501→    });
+   502→  });
+   503→
+   504→  // ═══════════════════════════════════════════════════════════════════════════
+   505→  // Edge cases — 10 tests
+   506→  // ═══════════════════════════════════════════════════════════════════════════
+   507→  describe("Edge cases", () => {
+   508→    it("consecutive appends increment chainOrder correctly", async () => {
+   509→      // First append
+   510→      mockTECfindFirst.mockResolvedValueOnce(null);
+   511→      await appendToChain({ entryId: "audit-1", content: makeAuditContent() });
+   512→      expect(mockTECcreate.mock.calls[0][0].data.chainOrder).toBe(0);
+   513→
+   514→      // Second append
+   515→      const prevHash = mockTECcreate.mock.calls[0][0].data.contentHash;
+   516→      mockTECfindFirst.mockResolvedValueOnce({ contentHash: prevHash, chainOrder: 0 });
+   517→      await appendToChain({ entryId: "audit-2", content: makeAuditContent() });
+   518→      expect(mockTECcreate.mock.calls[1][0].data.chainOrder).toBe(1);
+   519→
+   520→      // Third append
+   521→      const prevHash2 = mockTECcreate.mock.calls[1][0].data.contentHash;
+   522→      mockTECfindFirst.mockResolvedValueOnce({ contentHash: prevHash2, chainOrder: 1 });
+   523→      await appendToChain({ entryId: "audit-3", content: makeAuditContent() });
+   524→      expect(mockTECcreate.mock.calls[2][0].data.chainOrder).toBe(2);
+   525→    });
+   526→
+   527→    it("company isolation: append with companySlug creates company-scoped entry", async () => {
+   528→      mockTECfindFirst.mockResolvedValueOnce(null);
+   529→      await appendToChain({ entryId: "audit-1", content: makeAuditContent(), companySlug: "company-a" });
+   530→      expect(mockTECcreate.mock.calls[0][0].data.companySlug).toBe("company-a");
+   531→    });
+   532→
+   533→    it("very long chain (100 entries) verifies correctly", async () => {
+   534→      const entries: any[] = [];
+   535→      let prevHash = "GENESIS";
+   536→      for (let i = 0; i < 100; i++) {
+   537→        const contentHash = computeExpectedHash(`content-${i}`, prevHash);
+   538→        entries.push({
+   539→          id: `chain-${i}`, entryId: `audit-${i}`, contentHash, prevHash, chainOrder: i,
+   540→        });
+   541→        prevHash = contentHash;
+   542→      }
+   543→      mockTECfindMany.mockResolvedValueOnce(entries);
+   544→      const result = await verifyChain();
+   545→      expect(result.valid).toBe(true);
+   546→      expect(result.totalEntries).toBe(100);
+   547→    });
+   548→
+   549→    it("hash collision resistance: different content produces different hashes", async () => {
+   550→      mockTECfindFirst.mockResolvedValueOnce(null);
+   551→      await appendToChain({ entryId: "audit-1", content: makeAuditContent({ action: "create" }) });
+   552→      const hash1 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   553→
+   554→      mockTECfindFirst.mockResolvedValueOnce(null);
+   555→      mockTECcreate.mockClear();
+   556→      await appendToChain({ entryId: "audit-2", content: makeAuditContent({ action: "delete" }) });
+   557→      const hash2 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   558→
+   559→      expect(hash1).not.toBe(hash2);
+   560→    });
+   561→
+   562→    it("chain breaks at the exact tampered entry, not earlier", async () => {
+   563→      const h1 = computeExpectedHash("c1", "GENESIS");
+   564→      const h2 = computeExpectedHash("c2", h1);
+   565→      const h4 = computeExpectedHash("c4", "WRONG");
+   566→      mockTECfindMany.mockResolvedValueOnce([
+   567→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   568→        { id: "chain-2", entryId: "audit-2", contentHash: h2, prevHash: h1, chainOrder: 1 },
+   569→        { id: "chain-4", entryId: "audit-4", contentHash: h4, prevHash: "WRONG", chainOrder: 2 },
+   570→      ]);
+   571→      const result = await verifyChain();
+   572→      expect(result.breakAt!.chainOrder).toBe(2);
+   573→      expect(result.breakAt!.entryId).toBe("audit-4");
+   574→    });
+   575→
+   576→    it("getChainStats returns unverified=0 when all are verified or tampered", async () => {
+   577→      mockTECcount
+   578→        .mockResolvedValueOnce(80)
+   579→        .mockResolvedValueOnce(60)
+   580→        .mockResolvedValueOnce(20);
+   581→      const stats = await getChainStats();
+   582→      expect(stats.unverifiedCount).toBe(0);
+   583→    });
+   584→
+   585→    it("verifyChain with company filter does not mark entries from other companies", async () => {
+   586→      const h1 = computeExpectedHash("c1", "GENESIS");
+   587→      mockTECfindMany.mockResolvedValueOnce([
+   588→        { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
+   589→      ]);
+   590→      await verifyChain("acme");
+   591→      // SEC-A13C4 (Cycle 4): only updates rows where isValid=true (preserves tamper flags).
+   592→      expect(mockTECupdateMany).toHaveBeenCalledWith({
+   593→        where: { companySlug: "acme", isValid: true },
+   594→        data: { verifiedAt: expect.any(Date) },
+   595→      });
+   596→    });
+   597→
+   598→    it("appendToChain with null companySlug stores null", async () => {
+   599→      mockTECfindFirst.mockResolvedValueOnce(null);
+   600→      await appendToChain({ entryId: "audit-1", content: makeAuditContent(), companySlug: null });
+   601→      expect(mockTECcreate.mock.calls[0][0].data.companySlug).toBeNull();
+   602→    });
+   603→
+   604→    it("verifyChain handles undefined companySlug (global scope)", async () => {
+   605→      mockTECfindMany.mockResolvedValueOnce([]);
+   606→      await verifyChain(undefined);
+   607→      expect(mockTECfindMany).toHaveBeenCalledWith({ orderBy: { chainOrder: "asc" }, where: {} });
+   608→    });
+   609→
+   610→    it("different createdAt timestamps produce different contentHashes", async () => {
+   611→      mockTECfindFirst.mockResolvedValueOnce(null);
+   612→      await appendToChain({ entryId: "audit-1", content: makeAuditContent({ createdAt: new Date("2025-01-01") }) });
+   613→      const hash1 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   614→
+   615→      mockTECfindFirst.mockResolvedValueOnce(null);
+   616→      mockTECcreate.mockClear();
+   617→      await appendToChain({ entryId: "audit-2", content: makeAuditContent({ createdAt: new Date("2025-12-31") }) });
+   618→      const hash2 = mockTECcreate.mock.calls[0][0].data.contentHash;
+   619→
+   620→      expect(hash1).not.toBe(hash2);
+   621→    });
+   622→  });
+   623→});
