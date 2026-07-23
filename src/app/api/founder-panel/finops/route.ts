@@ -4,10 +4,11 @@
  * Extracts all Prisma queries from the finops page.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { getPlatformProfit } from "@/lib/ai-fabric/profit-engine";
+import { requireFounder } from "@/lib/middleware";
 
 const PLAN_REVENUE_MONTHLY_USD: Record<string, number> = {
   trial: 0,
@@ -76,7 +77,11 @@ export interface FinOpsData {
   daysInMonth: number;
 }
 
-export async function GET(): Promise<NextResponse<FinOpsData>> {
+export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData>> {
+  // SEC-C10 (Cycle 4): close missing-auth — exposed platform P&L (revenue, AI cost,
+  // infra cost, profit %, cost per company, cost per invoice, cost per AI call).
+  const authResult = await requireFounder(req);
+  if (authResult instanceof NextResponse) return authResult as NextResponse<FinOpsData>;
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);

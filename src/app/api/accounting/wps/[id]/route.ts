@@ -29,6 +29,12 @@ export async function GET(
 
     if (!wpsFile) return apiError("WPS file not found", 404);
 
+    // SEC-C7 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
+    // guard that PATCH already enforced. WPS files contain government-compliance
+    // salary data and must be tenant-scoped.
+    const access = await requirePermissionForCompany(req, "finance_access", wpsFile.companySlug);
+    if ("error" in access) return access.error;
+
     // Return the full file content for download
     return apiOk({
       ...wpsFile,

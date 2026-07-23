@@ -74,6 +74,50 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     return apiError("لا يمكن تغيير دور المؤسس", 403);
   }
 
+  // SEC-H2C4 (Cycle 4): close mass-assignment / cross-tenant privilege escalation
+  // on PATCH. Previously a tenant admin could:
+  //   (a) PATCH any user in the platform (not just members of their own companies)
+  //       — fixed by requiring the target user to share at least one company with
+  //       the caller (unless caller is founder)
+  //   (b) Add arbitrary companies to a user's `companies` array, escalating
+  //       themselves across tenants — fixed by requiring every new slug to be in
+  //       the caller's own companies list
+  //   (c) Promote a user to admin role — fixed by requiring founder for that
+  //       specific transition
+  if (!isFounderEmail(caller.email)) {
+    // (a) Target must share ≥1 company with caller (or be the caller themselves)
+    if (!isSelf) {
+      const targetCompanies = parseJsonField<string[]>(existing.companies, []);
+      const callerCompanies = new Set(caller.companies || []);
+      const sharesCompany = targetCompanies.some((slug) => callerCompanies.has(slug));
+      if (!sharesCompany) {
+        await logAudit({
+          userEmail: caller.email, userUid: caller.uid,
+          action: "update_denied", entity: "user", entityId: uid,
+          details: { reason: "cross_tenant_user_edit", targetEmail: existing.email },
+        });
+        return apiError("لا يمكنك تعديل مستخدم لا يشاركك أي شركة", 403);
+      }
+    }
+    // (b) Caller cannot assign companies they don't manage
+    if (data.companies !== undefined) {
+      const callerCompanies = new Set(caller.companies || []);
+      const illegal = data.companies.filter((slug) => !callerCompanies.has(slug));
+      if (illegal.length > 0) {
+        await logAudit({
+          userEmail: caller.email, userUid: caller.uid,
+          action: "update_denied", entity: "user", entityId: uid,
+          details: { reason: "cross_tenant_company_assignment", attemptedSlugs: illegal },
+        });
+        return apiError("لا يمكنك إضافة المستخدم إلى شركة لا تديرها", 403);
+      }
+    }
+    // (c) Only founder can promote to admin role
+    if (data.role === "admin" && existing.role !== "admin") {
+      return apiError("لا يمكن للمدير العادي ترقية مستخدم إلى دور المدير — تواصل مع المؤسس", 403);
+    }
+  }
+
   const updated = await db.user.update({ where: { uid }, data: updateData });
 
   // Audit-log role transitions to/from admin (sensitive privilege change)

@@ -45,6 +45,12 @@ export async function GET(
 
     if (!account) return apiError("Bank account not found", 404);
 
+    // SEC-C4 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
+    // guard that PATCH/DELETE already enforced. Any unauthenticated user with a
+    // sequential id could read any tenant's bank account number + IBAN + balance.
+    const access = await requirePermissionForCompany(req, "finance_access", account.companySlug);
+    if ("error" in access) return access.error;
+
     return apiOk({
       ...account,
       balance: num(account.balance, 3).toFixed(3),

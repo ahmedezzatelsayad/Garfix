@@ -22,6 +22,7 @@ import {
   type SyntheticCompany,
   type TelemetryEntry,
 } from "@/lib/founder-validation";
+import { requireFounder } from "@/lib/middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,11 @@ let cachedSeed: number | null = null;
 // GET /api/founder-validation?companies=10&realAI=false&duration=1
 // ---------------------------------------------------------------------------
 export async function GET(request: NextRequest) {
+  // SEC-C12 (Cycle 4): close missing-auth — GET runs the full validation suite
+  // with caller-controlled config (?companies=25000&realAI=true) → DoS + OpenRouter spend.
+  const authResult = await requireFounder(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const { searchParams } = request.nextUrl;
     const companiesParam = Number(searchParams.get("companies")) || 10;
@@ -114,6 +120,11 @@ export async function GET(request: NextRequest) {
 // Mirrors the dedicated sub-routes so callers can use either URL shape.
 // ---------------------------------------------------------------------------
 export async function POST(request: NextRequest) {
+  // SEC-C12 (Cycle 4): close missing-auth — POST dispatches seed/report/ai-test
+  // actions. Seed with count=25000 → memory exhaustion. ai-test → OpenRouter spend.
+  const authResult = await requireFounder(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const body = await request.json();
     const { action } = body;

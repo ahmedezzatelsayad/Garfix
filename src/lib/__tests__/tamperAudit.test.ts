@@ -17,8 +17,8 @@ const mockTECupdateMany = mock(() => Promise.resolve({}));
 const mockTECupdate = mock(() => Promise.resolve({}));
 const mockTECcount = mock(() => Promise.resolve(0));
 
-mock.module("@/lib/db", () => ({
-  db: {
+mock.module("@/lib/db", () => {
+  const dbMock = {
     user: {
       findUnique: mock(() => Promise.resolve(null)),
       findMany: mock(() => Promise.resolve([])),
@@ -50,8 +50,16 @@ mock.module("@/lib/db", () => ({
     ruleCandidate: { findMany: mock(() => Promise.resolve([])) },
     company: { findMany: mock(() => Promise.resolve([])) },
     notification: { create: mock(() => Promise.resolve({})) },
-  },
-}));
+  };
+  // SEC-A11C4 (Cycle 4): appendToChain now uses db.$transaction; the mock
+  // must invoke the callback with a tx object exposing the same shape.
+  return {
+    db: {
+      ...dbMock,
+      $transaction: mock((cb: (tx: typeof dbMock) => Promise<unknown>) => cb(dbMock)),
+    },
+  };
+});
 
 mock.module("@/lib/logger", () => ({
   logger: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), debug: mock(() => {}) },
@@ -308,9 +316,12 @@ describe("Tamper Audit Module", () => {
         { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
       ]);
       await verifyChain();
+      // SEC-A13C4 (Cycle 4): verifyChain no longer overwrites isValid=true
+      // on already-tampered rows. It only updates verifiedAt on rows that are
+      // already isValid=true (preserving tamper flags).
       expect(mockTECupdateMany).toHaveBeenCalledWith({
-        where: {},
-        data: { isValid: true, verifiedAt: expect.any(Date) },
+        where: { isValid: true },
+        data: { verifiedAt: expect.any(Date) },
       });
     });
 
@@ -342,9 +353,10 @@ describe("Tamper Audit Module", () => {
       const result = await verifyChain("acme");
       expect(result.valid).toBe(true);
       expect(result.totalEntries).toBe(1);
+      // SEC-A13C4 (Cycle 4): only updates rows where isValid=true (preserves tamper flags).
       expect(mockTECupdateMany).toHaveBeenCalledWith({
-        where: { companySlug: "acme" },
-        data: { isValid: true, verifiedAt: expect.any(Date) },
+        where: { companySlug: "acme", isValid: true },
+        data: { verifiedAt: expect.any(Date) },
       });
     });
 
@@ -576,9 +588,10 @@ describe("Tamper Audit Module", () => {
         { id: "chain-1", entryId: "audit-1", contentHash: h1, prevHash: "GENESIS", chainOrder: 0 },
       ]);
       await verifyChain("acme");
+      // SEC-A13C4 (Cycle 4): only updates rows where isValid=true (preserves tamper flags).
       expect(mockTECupdateMany).toHaveBeenCalledWith({
-        where: { companySlug: "acme" },
-        data: { isValid: true, verifiedAt: expect.any(Date) },
+        where: { companySlug: "acme", isValid: true },
+        data: { verifiedAt: expect.any(Date) },
       });
     });
 

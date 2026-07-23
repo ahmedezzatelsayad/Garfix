@@ -53,6 +53,11 @@ export async function GET(
 
     if (!asset) return apiError("Fixed asset not found", 404);
 
+    // SEC-C5 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
+    // guard that PATCH/Dispose already enforced.
+    const access = await requirePermissionForCompany(req, "finance_access", asset.companySlug);
+    if ("error" in access) return access.error;
+
     return apiOk({
       ...asset,
       acquisitionCost: num(asset.acquisitionCost, 3).toFixed(3),

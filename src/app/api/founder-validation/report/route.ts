@@ -7,10 +7,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFounderReport } from "@/lib/founder-validation";
 import { getCache } from "../seed/route";
+import { requireFounder } from "@/lib/middleware";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // SEC-C14 (Cycle 4): close missing-auth — exposes platform metrics shape and
+  // bypasses the intended founder-only gating.
+  const authResult = await requireFounder(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
     const { cachedCompanies, cachedTelemetry, cachedSeed } = getCache();
 

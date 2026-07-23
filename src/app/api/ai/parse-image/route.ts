@@ -21,11 +21,52 @@ import { logAiUsage } from "@/lib/ai/costTracker";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const RequestSchema = z.object({
-  imageBase64: z.string().min(100, "صورة غير صالحة"),
-  mimeType: z.string().default("image/jpeg"),
+  imageBase64: z.string().min(100, "صورة غير صالحة").max(2_000_000, "حجم الصورة كبير جداً (الحد الأقصى ~1.5 ميجابايت)"),
+  mimeType: z.enum(
+    ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    { message: "نوع الصورة غير مدعوم — يُسمح فقط بـ JPEG / PNG / WebP / GIF" },
+  ).default("image/jpeg"),
   companySlug: z.string().optional(),
   autoAddProducts: z.boolean().optional().default(false),
 });
+
+/**
+ * SEC-M3C4 (Cycle 4): magic-byte (file signature) verification for the VLM
+ * image parse endpoint. The Zod enum above already constrains the declared
+ * MIME, but a malicious client could send a polyglot or non-image payload
+ * labelled `image/jpeg`. This function sniffs the first 8 bytes against known
+ * image signatures and rejects mismatches before the bytes are forwarded to
+ * the VLM provider (saving tokens + provider quota).
+ */
+function verifyImageMagicBytes(buf: Buffer, declaredMime: string): boolean {
+  if (buf.length < 12) return false;
+  // JPEG: FF D8 FF
+  if (declaredMime === "image/jpeg") {
+    return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  }
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (declaredMime === "image/png") {
+    return (
+      buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+      buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+    );
+  }
+  // GIF: 47 49 46 38 (87a or 89a)
+  if (declaredMime === "image/gif") {
+    return (
+      buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38 &&
+      (buf[4] === 0x37 || buf[4] === 0x39) && buf[5] === 0x61
+    );
+  }
+  // WebP: RIFF....WEBP
+  if (declaredMime === "image/webp") {
+    return (
+      buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+    );
+  }
+  return false;
+}
 
 interface ParsedItem { name: string; qty: number; unitPrice: number; }
 interface ParsedOrder {
@@ -132,6 +173,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     // Strip data URL prefix if present
     const cleaned = imageBase64.replace(/^data:[^;]+;base64,/, "");
+    const imageBuf = Buffer.from(cleaned, "base64");
+
+    // SEC-M3C4 (Cycle 4): verify magic bytes match the declared MIME type.
+    if (!verifyImageMagicBytes(imageBuf, mimeType)) {
+      logger.warn("[parse-image] magic-byte mismatch — rejecting", {
+        user: user.uid,
+        declaredMime: mimeType,
+        firstBytes: imageBuf.subarray(0, 8).toString("hex"),
+      });
+      return apiError("الصورة غير صالحة — البايتات الأولى لا تطابق النوع المُصرَّح به", 415);
+    }
 
     // P0.2 FIX (AI Effectiveness prompt): measure the AI provider call
     // latency specifically (not the whole handler, which includes base64

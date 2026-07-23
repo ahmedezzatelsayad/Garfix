@@ -33,6 +33,11 @@ export async function GET(
 
     if (!reconciliation) return apiError("Reconciliation not found", 404);
 
+    // SEC-C6 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
+    // guard that PATCH already enforced.
+    const access = await requirePermissionForCompany(req, "finance_access", reconciliation.companySlug);
+    if ("error" in access) return access.error;
+
     return apiOk({
       ...reconciliation,
       statementBalance: num(reconciliation.statementBalance, 3).toFixed(3),

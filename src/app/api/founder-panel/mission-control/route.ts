@@ -33,10 +33,11 @@
  * - Consider adding revalidate=5 for 5-second cache if needed
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { getActiveWorkerCounts } from "@/lib/ai-fabric/worker-scaler";
+import { requireFounder } from "@/lib/middleware";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -81,7 +82,13 @@ export interface MissionControlData {
 
 // ─── GET Handler ────────────────────────────────────────────────────────────
 
-export async function GET(): Promise<NextResponse<MissionControlData>> {
+export async function GET(req: NextRequest): Promise<NextResponse<MissionControlData>> {
+  // SEC-C8 (Cycle 4): close missing-auth — founder-panel route exposed platform-wide
+  // ops metrics (companies online, workers, queue depths, AI calls/sec, savings,
+  // gross margin) to anyone on the internet.
+  const authResult = await requireFounder(req);
+  if (authResult instanceof NextResponse) return authResult as NextResponse<MissionControlData>;
+
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);

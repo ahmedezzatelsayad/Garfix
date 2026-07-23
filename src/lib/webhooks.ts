@@ -12,6 +12,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { logger } from "./logger";
 import { encryptSecret, decryptSecret } from "./cryptoVault";
+import { validateBaseUrl } from "./ssrf";
 
 export interface WebhookPayload {
   event: string;
@@ -26,6 +27,21 @@ export async function registerWebhook(params: {
   url: string;
   events: string[];
 }): Promise<string> {
+  // SEC-H5C4 (Cycle 4): close SSRF — registered webhook URLs are fetched
+  // server-side by processPendingDeliveries(). Without validation a tenant
+  // could register http://169.254.169.254/... (cloud metadata) or
+  // http://localhost:5432/ (internal DB) and the server would fetch it on
+  // every dispatched event, leaking the request body (which contains invoice
+  // data) to internal services. Validate at registration time AND at fetch
+  // time (defense-in-depth against DB tampering).
+  try {
+    validateBaseUrl(params.url);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn("[webhooks] refused to register webhook — URL failed SSRF validation", { err: msg, companySlug: params.companySlug });
+    throw new Error(`عنوان الـ webhook غير صالح: ${msg}`);
+  }
+
   const secret = crypto.randomBytes(32).toString("hex");
   const encryptedSecret = encryptSecret(secret);
 
@@ -118,6 +134,18 @@ export async function processPendingDeliveries(): Promise<{
         .createHmac("sha256", secret)
         .update(JSON.stringify(payload))
         .digest("hex");
+
+      // SEC-H5C4 (Cycle 4): re-validate URL at fetch time too — defends against
+      // a row edited directly in the DB after the initial registerWebhook()
+      // validation. If the URL is unsafe, fail the delivery (and the retry
+      // logic will eventually mark it as failed).
+      try {
+        validateBaseUrl(endpoint.url);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.warn("[webhooks] refused to deliver — URL failed SSRF validation at fetch time", { err: msg, endpointId: endpoint.id });
+        throw new Error(`عنوان الـ webhook غير آمن: ${msg}`);
+      }
 
       const response = await fetch(endpoint.url, {
         method: "POST",

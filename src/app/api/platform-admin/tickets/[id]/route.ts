@@ -26,9 +26,13 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const existing = await db.supportTicket.findUnique({ where: { id } });
   if (!existing) return apiError("Ticket not found", 404);
 
-  // Only the owner, admins, or the founder can touch a ticket
-  const isAdmin = user.role === "admin" || isFounderEmail(user.email);
-  if (!isAdmin && existing.userEmail !== user.email) {
+  // Only the owner or the founder can touch a ticket. Tenant admins (role==="admin")
+  // are scoped to their own companies and must NOT be able to close / reopen /
+  // reprioritize other tenants' private support tickets.
+  // SEC-H3C4 (Cycle 4): close platform-admin bypass — previously any tenant admin
+  // could act on ANY ticket in the platform.
+  const isFounder = isFounderEmail(user.email);
+  if (!isFounder && existing.userEmail !== user.email) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

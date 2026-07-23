@@ -71,6 +71,31 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
+  // SEC-H1C4 (Cycle 4): close mass-assignment / cross-tenant privilege escalation.
+  // A tenant admin could previously create a new user with an arbitrary `companies`
+  // array — granting admin access to any company in the platform, including ones
+  // they don't manage. Now we require that every slug in data.companies is in the
+  // caller's own companies list (founder bypasses).
+  const caller = result.user;
+  const callerIsFounder = isFounderEmail(caller.email);
+  if (!callerIsFounder && data.companies.length > 0) {
+    const callerCompanies = new Set(caller.companies || []);
+    const illegal = data.companies.filter((slug) => !callerCompanies.has(slug));
+    if (illegal.length > 0) {
+      await logAudit({
+        userEmail: caller.email, userUid: caller.uid,
+        action: "create_denied", entity: "user",
+        details: { reason: "cross_tenant_company_assignment", attemptedSlugs: illegal },
+      });
+      return apiError("لا يمكنك إضافة مستخدم إلى شركة لا تديرها", 403);
+    }
+  }
+  // Non-founder admins cannot create new admins/founders — only the founder
+  // can grant admin role. Tenant admins may still create editor/employee/viewer.
+  if (!callerIsFounder && data.role === "admin") {
+    return apiError("لا يمكن للمدير العادي إنشاء حسابات مديرين — تواصل مع المؤسس", 403);
+  }
+
   const existing = await db.user.findUnique({ where: { email: data.email.toLowerCase() } });
   if (existing) return apiError("هذا البريد مسجّل مسبقاً", 409);
 
