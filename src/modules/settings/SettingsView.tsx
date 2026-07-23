@@ -13,16 +13,16 @@ interface SettingsViewProps {
 
 export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
   if (!activeCompany) {
-    return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>اختر شركة أولاً</div>;
+    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4 md:gap-[16px]">
       <div>
-        <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
           <Building2 size={20} /> إعدادات الشركة
         </h1>
-        <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>{activeCompany.nameAr || activeCompany.name}</p>
+        <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
       </div>
       <CompanySettingsForm activeCompany={activeCompany} onUpdated={onUpdated} />
       <TemplateSettingsForm companySlug={activeCompany.slug} />

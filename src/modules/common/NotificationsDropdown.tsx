@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Bell, X, CheckCheck, BellOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Notification {
   id: number;
@@ -150,33 +151,20 @@ export function NotificationsDropdown() {
   }, []);
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="الإشعارات"
         title="الإشعارات"
-        style={{
-          background: "var(--muted)", border: "1px solid var(--border)",
-          width: "36px", height: "36px", borderRadius: "8px",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "var(--muted-foreground)", cursor: "pointer", position: "relative",
-          transition: "background 0.15s",
-        }}
+        className="bg-muted border border-border w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground cursor-pointer relative transition-colors duration-150"
         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "var(--muted)"; }}
       >
         <Bell size={16} />
         {unreadCount > 0 && (
           <span
-            style={{
-              position: "absolute", top: "3px", right: "3px",
-              minWidth: "16px", height: "16px", padding: "0 4px",
-              borderRadius: "8px", background: "#ef4444", color: "#fff",
-              fontSize: "9px", fontWeight: 800,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              border: "2px solid var(--background)",
-            }}
+            className="absolute top-[3px] right-[3px] min-w-[16px] h-4 px-1 rounded-lg bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-background"
           >
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
@@ -185,43 +173,18 @@ export function NotificationsDropdown() {
 
       {open && (
         <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            left: 0,
-            width: "350px",
-            maxHeight: "440px",
-            background: "var(--popover)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.18)",
-            zIndex: 200,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
+          className="absolute top-[calc(100%+8px)] left-0 w-[350px] max-h-[440px] bg-popover border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] z-[200] flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div
-            style={{
-              padding: "12px 14px",
-              borderBottom: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "var(--card)",
-            }}
+            className="py-3 px-3.5 border-b border-border flex items-center justify-between bg-card"
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Bell size={14} style={{ color: "var(--primary)" }} />
-              <span style={{ fontSize: "13px", fontWeight: 800 }}>الإشعارات</span>
+            <div className="flex items-center gap-2">
+              <Bell size={14} className="text-primary" />
+              <span className="text-[13px] font-extrabold">الإشعارات</span>
               {unreadCount > 0 && (
                 <span
-                  style={{
-                    background: "#ef4444", color: "#fff",
-                    fontSize: "10px", fontWeight: 700, padding: "1px 7px",
-                    borderRadius: "10px",
-                  }}
+                  className="bg-red-500 text-white text-[10px] font-bold py-0.5 px-[7px] rounded-[10px]"
                 >
                   {unreadCount} غير مقروء
                 </span>
@@ -231,12 +194,7 @@ export function NotificationsDropdown() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="إغلاق"
-              style={{
-                background: "transparent", border: "none",
-                color: "var(--muted-foreground)", cursor: "pointer",
-                padding: "2px", borderRadius: "4px",
-                display: "flex", alignItems: "center",
-              }}
+              className="bg-transparent border-none text-muted-foreground cursor-pointer p-0.5 rounded flex items-center"
             >
               <X size={14} />
             </button>
@@ -244,26 +202,18 @@ export function NotificationsDropdown() {
 
           {/* List */}
           <div
-            style={{
-              flex: 1, overflowY: "auto",
-              padding: "4px",
-            }}
-            className="garfix-scroll"
+            className="flex-1 overflow-y-auto p-1 garfix-scroll"
           >
             {loading ? (
-              <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>
+              <div className="p-8 text-center text-muted-foreground text-xs">
                 جارٍ التحميل…
               </div>
             ) : notifications.length === 0 ? (
               <div
-                style={{
-                  padding: "40px 16px", textAlign: "center",
-                  color: "var(--muted-foreground)",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: "8px",
-                }}
+                className="py-10 px-4 text-center text-muted-foreground flex flex-col items-center gap-2"
               >
-                <BellOff size={28} style={{ opacity: 0.4 }} />
-                <div style={{ fontSize: "12px" }}>لا توجد إشعارات</div>
+                <BellOff size={28} className="opacity-40" />
+                <div className="text-xs">لا توجد إشعارات</div>
               </div>
             ) : (
               notifications.map((n) => {
@@ -273,61 +223,38 @@ export function NotificationsDropdown() {
                     key={n.id}
                     type="button"
                     onClick={() => handleClickNotification(n)}
-                    style={{
-                      width: "100%",
-                      display: "flex", gap: "10px",
-                      padding: "10px 12px", marginBottom: "2px",
-                      borderRadius: "8px", border: "none",
-                      background: n.isRead ? "transparent" : "var(--accent)",
-                      color: "var(--popover-foreground)",
-                      cursor: "pointer", fontFamily: "inherit",
-                      textAlign: "right",
-                      transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => { if (n.isRead) e.currentTarget.style.background = "var(--muted)"; }}
-                    onMouseLeave={(e) => { if (n.isRead) e.currentTarget.style.background = "transparent"; }}
+                    className={cn("w-full flex gap-2.5 py-2.5 px-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-100 text-popover-foreground", n.isRead ? "bg-transparent" : "bg-accent")}
+                    onMouseEnter={(e) => { if (n.isRead) e.currentTarget.classList.add("bg-muted"); }}
+                    onMouseLeave={(e) => { if (n.isRead) e.currentTarget.classList.remove("bg-muted"); }}
                   >
                     {/* Unread dot */}
-                    <div style={{ flexShrink: 0, paddingTop: "4px" }}>
+                    <div className="shrink-0 pt-1">
                       <span
-                        style={{
-                          display: "block", width: "8px", height: "8px",
-                          borderRadius: "50%",
-                          background: n.isRead ? "transparent" : meta.color,
-                          border: n.isRead ? `1px solid ${meta.color}80` : "none",
-                        }}
+                        className="block w-2 h-2 rounded-full"
+                        style={{ background: n.isRead ? "transparent" : meta.color, border: n.isRead ? `1px solid ${meta.color}80` : "none" }} // TAILWINDBREAK: dynamic notification type color
                       />
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-[3px] flex-wrap">
+                        <span className="text-xs font-extrabold overflow-hidden text-ellipsis">
                           {n.title}
                         </span>
                         <span
-                          style={{
-                            fontSize: "9px", fontWeight: 700,
-                            padding: "1px 6px", borderRadius: "8px",
-                            background: `${meta.color}20`, color: meta.color,
-                            whiteSpace: "nowrap",
-                          }}
+                          className="text-[9px] font-bold py-0.5 px-1.5 rounded-lg whitespace-nowrap"
+                          style={{ background: `${meta.color}20`, color: meta.color }} // TAILWINDBREAK: dynamic notification type color
                         >
                           {meta.label}
                         </span>
                       </div>
                       <div
-                        style={{
-                          fontSize: "11px", color: "var(--muted-foreground)",
-                          lineHeight: 1.5, marginBottom: "4px",
-                          overflow: "hidden", textOverflow: "ellipsis",
-                          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-                        }}
+                        className="text-[11px] text-muted-foreground leading-relaxed mb-1 overflow-hidden text-ellipsis line-clamp-2"
                       >
                         {n.body}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10px", color: "var(--muted-foreground)" }}>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                         <span>{timeAgo(n.createdAt)}</span>
                         {n.link && (
-                          <span style={{ color: "var(--primary)", fontWeight: 700, fontSize: "10px" }}>
+                          <span className="text-primary font-bold text-[10px]">
                             عرض ←
                           </span>
                         )}
@@ -341,25 +268,13 @@ export function NotificationsDropdown() {
 
           {/* Footer — mark all read */}
           <div
-            style={{
-              padding: "8px 10px",
-              borderTop: "1px solid var(--border)",
-              background: "var(--card)",
-            }}
+            className="py-2 px-2.5 border-t border-border bg-card"
           >
             <button
               type="button"
               onClick={markAllRead}
               disabled={markingAll || unreadCount === 0}
-              style={{
-                width: "100%",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                padding: "8px", borderRadius: "8px",
-                background: "transparent", border: "1px solid var(--border)",
-                color: "var(--foreground)", cursor: "pointer", fontFamily: "inherit",
-                fontSize: "12px", fontWeight: 700,
-                opacity: markingAll || unreadCount === 0 ? 0.5 : 1,
-              }}
+              className={cn("w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-transparent border border-border text-foreground cursor-pointer font-inherit text-xs font-bold", markingAll || unreadCount === 0 ? "opacity-50" : "")}
             >
               <CheckCheck size={13} />
               {markingAll ? "جارٍ…" : "تعليم الكل كمقروء"}

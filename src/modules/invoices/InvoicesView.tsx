@@ -89,7 +89,7 @@ export function InvoicesView() {
   };
 
   if (!activeCompany) {
-    return <div className="p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
+    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
   }
 
   if (showForm || editing) {
@@ -239,7 +239,7 @@ export function InvoicesView() {
 
       {/* KPI summary cards */}
       {!loading && invoices.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <KpiCard label="الإجمالي" value={totalRevenue.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} sub={`${paidInvoices.length} مدفوعة`} color="#10b981" icon={<FileText size={15} />} />
           <KpiCard label="مستحقة" value={outstanding.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} sub={`${pendingInvoices.length} قيد الانتظار`} color="#3b82f6" icon={<Clock size={15} />} />
           <KpiCard label="متأخرة" value={overdueInvoices.length.toLocaleString("ar-EG")} sub={overdueInvoices.length > 0 ? "تحتاج متابعة" : "لا يوجد"} color="#ef4444" icon={<AlertTriangle size={15} />} />
@@ -304,9 +304,9 @@ export function InvoicesView() {
       {/* Table */}
       <div className="bg-white rounded-[14px] border border-gray-200 overflow-hidden shadow-card">
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+          <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
         ) : invoices.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
+          <div className="p-8 md:p-12 text-center text-muted-foreground">
             <FileText size={36} className="opacity-30 mb-2" />
             <div>لا توجد فواتير بعد. ابدأ بإنشاء فاتورة جديدة.</div>
           </div>

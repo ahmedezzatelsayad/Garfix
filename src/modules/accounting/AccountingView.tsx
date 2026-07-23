@@ -270,7 +270,7 @@ export function AccountingView() {
       ? "py-1.5 px-3 rounded-md bg-transparent text-muted-foreground border border-border text-[12px] font-bold cursor-not-allowed opacity-50"
       : "py-1.5 px-3 rounded-md bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer";
 
-  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
   const ACCOUNT_TYPES: Record<string, { label: string; color: string }> = {
     asset: { label: "أصول", color: "#10b981" },
@@ -310,7 +310,7 @@ export function AccountingView() {
     <div className="flex flex-col gap-4">
       {/* Module-level header */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Calculator size={20} /> المحاسبة</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+        <div><h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><Calculator size={20} /> المحاسبة</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
       </div>
 
       {/* Module-level navigation tabs (top row, visually distinct) */}

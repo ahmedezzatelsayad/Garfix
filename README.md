@@ -35,7 +35,7 @@ Garfix/
 ├── e2e/                     # Playwright specs (6 files)
 ├── scripts/                 # Seed, bench, CLI tools
 ├── src/
-│   ├── app/api/             # Route handlers (56+ endpoints)
+│   ├── app/api/             # Route handlers (120+ endpoints)
 │   ├── modules/             # 20 domain UI modules
 │   ├── lib/
 │   │   ├── ai-fabric/       # 16-phase AI cascade engine
@@ -108,6 +108,25 @@ bun run scripts/founder-validation-suite.ts
 # أو عبر API
 POST /api/founder-validation
 ```
+
+## API Documentation
+
+The full OpenAPI/Swagger specification is available at:
+
+- **Spec file**: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
+- **Interactive viewer**: `/api-docs` page (visit at `http://localhost:3000/api-docs`)
+
+The OpenAPI spec covers 120+ endpoints across 16 tags:
+Auth, Invoices, Clients, Catalog, Inventory, Accounting, HR, AI, Dashboard,
+Settings, Automation, Webhooks, SaaS, Reports, Health, Companies
+
+Key documentation features:
+- JWT Bearer authentication via HttpOnly cookies
+- Multi-tenant scoping (`companySlug` query param or `X-Company-Slug` header)
+- Arabic field names and descriptions (RTL support)
+- Kuwait Decree 10/2026 e-invoicing compliance fields
+- Permission-based access control documented per endpoint
+- Error response schemas with codes
 
 ## License
 

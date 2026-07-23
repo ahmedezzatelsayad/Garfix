@@ -162,7 +162,6 @@ export function useInvoices() {
   const outstanding = invoices
     .filter((i) => i.status !== "paid" && i.status !== "cancelled")
     .reduce((s, i) => s + (Number(i.total) - Number(i.paid)), 0);
-
   return {
     activeCompany,
     invoices,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { ChevronRight, Mail, Lock, User, Eye, EyeOff, KeyRound, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
  * AuthScreen — login + register + forgot-password + reset-password.
@@ -123,52 +124,32 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
   return (
     <div
       dir="rtl"
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0f0a1e 0%, #1e1147 50%, #2d1b69 100%)",
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-        fontFamily: "var(--font-cairo), sans-serif",
-      }}
+      className="min-h-screen bg-gradient-to-br from-[#0f0a1e] via-[#1e1147] to-[#2d1b69] text-white flex items-center justify-center p-5"
+      style={{ fontFamily: "var(--font-cairo), sans-serif" }} // TAILWINDBREAK: dynamic font family from CSS variable
     >
       <div
-        style={{
-          width: "100%", maxWidth: "440px",
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "20px",
-          padding: "40px 32px",
-          backdropFilter: "blur(12px)",
-        }}
+        className="w-full max-w-[440px] bg-white/4 border border-white/8 rounded-[20px] py-10 px-8 backdrop-blur-xl"
+        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }} // TAILWINDBREAK: rgba values don't map cleanly to Tailwind opacity scale
       >
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "center", marginBottom: "32px" }}>
+        <div className="flex items-center gap-3 justify-center mb-8">
           <div
-            style={{
-              width: "48px", height: "48px", borderRadius: "12px",
-              background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "24px", fontWeight: 900, color: "#fff",
-              boxShadow: "0 8px 24px rgba(124, 58, 237, 0.4)",
-            }}
+            className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] flex items-center justify-center text-2xl font-black text-white shadow-[0_8px_24px_rgba(124,58,237,0.4)]"
           >G</div>
           <div>
-            <div style={{ fontSize: "20px", fontWeight: 900 }}>GARFIX</div>
-            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)", letterSpacing: "2px" }}>EOS v12</div>
+            <div className="text-xl font-black">GARFIX</div>
+            <div className="text-[10px] text-white/50 tracking-[2px]">EOS v12</div>
           </div>
         </div>
 
-        <h1 style={{ fontSize: "26px", fontWeight: 800, textAlign: "center", marginBottom: "6px" }}>
+        <h1 className="text-[26px] font-extrabold text-center mb-1.5">
           {titles[mode].title}
         </h1>
-        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: "28px" }}>
+        <p className="text-[13px] text-white/60 text-center mb-7">
           {titles[mode].sub}
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {mode === "register" && (
             <Field
               icon={<User size={16} />}
@@ -190,7 +171,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
           />
 
           {(mode === "login" || mode === "register" || mode === "reset") && (
-            <div style={{ position: "relative" }}>
+            <div className="relative">
               <Field
                 icon={<Lock size={16} />}
                 type={showPassword ? "text" : "password"}
@@ -204,11 +185,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)",
-                  background: "transparent", border: "none", color: "rgba(255,255,255,0.5)",
-                  cursor: "pointer", padding: "4px", display: "flex", alignItems: "center",
-                }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-transparent border-none text-white/50 cursor-pointer p-1 flex items-center"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -216,7 +193,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
           )}
 
           {mode === "register" && (
-            <div style={{ position: "relative" }}>
+            <div className="relative">
               <Field
                 icon={<Lock size={16} />}
                 type={showPassword ? "text" : "password"}
@@ -228,19 +205,19 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
                 minLength={8}
               />
               {confirmPassword.length > 0 && password !== confirmPassword && (
-                <div style={{ fontSize: "11px", color: "#fca5a5", marginTop: "4px", paddingInlineStart: "4px" }}>
+                <div className="text-[11px] text-red-300 mt-1 px-1">
                   كلمتا المرور غير متطابقتين
                 </div>
               )}
               {confirmPassword.length > 0 && password === confirmPassword && (
-                <div style={{ fontSize: "11px", color: "#86efac", marginTop: "4px", paddingInlineStart: "4px" }}>
+                <div className="text-[11px] text-green-300 mt-1 px-1">
                   ✓ متطابقة
                 </div>
               )}
             </div>
           )}
           {mode === "register" && (
-            <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)", paddingInlineStart: "4px" }}>
+            <div className="text-[11px] text-white/45 px-1">
               سياسة كلمة المرور: {PASSWORD_POLICY_HINT}
             </div>
           )}
@@ -258,7 +235,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
             />
           )}
           {mode === "reset" && (
-            <div style={{ position: "relative" }}>
+            <div className="relative">
               <Field
                 icon={<Lock size={16} />}
                 type={showPassword ? "text" : "password"}
@@ -270,7 +247,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
                 minLength={8}
               />
               {confirmPassword.length > 0 && password !== confirmPassword && (
-                <div style={{ fontSize: "11px", color: "#fca5a5", marginTop: "4px", paddingInlineStart: "4px" }}>
+                <div className="text-[11px] text-red-300 mt-1 px-1">
                   كلمتا المرور غير متطابقتين
                 </div>
               )}
@@ -280,15 +257,11 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
           <button
             type="submit"
             disabled={loading}
-            style={{
-              padding: "14px", borderRadius: "10px",
-              background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-              color: "#fff", border: "none", fontFamily: "inherit", fontSize: "15px", fontWeight: 800,
-              cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1,
-              boxShadow: "0 8px 24px rgba(124, 58, 237, 0.4)",
-              transition: "all .2s",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-            }}
+            className={cn(
+              "py-3.5 rounded-[10px] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] text-white border-none font-inherit text-[15px] font-extrabold",
+              "flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(124,58,237,0.4)] transition-all duration-200",
+              loading ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+            )}
           >
             {loading
               ? "جارٍ…"
@@ -306,15 +279,11 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
 
         {/* forgot-password link — only in login mode (Onboarding P0 fix) */}
         {mode === "login" && (
-          <div style={{ marginTop: "12px", textAlign: "left" }}>
+          <div className="mt-3 text-left">
             <button
               type="button"
               onClick={() => { setMode("forgot"); setPassword(""); }}
-              style={{
-                background: "transparent", border: "none", color: "rgba(255,255,255,0.7)",
-                cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 600,
-                textDecoration: "underline", padding: 0,
-              }}
+              className="bg-transparent border-none text-white/70 cursor-pointer font-inherit text-xs font-semibold underline p-0"
             >
               نسيت كلمة المرور؟
             </button>
@@ -323,15 +292,11 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
 
         {/* back-to-login from forgot/reset */}
         {(mode === "forgot" || mode === "reset") && (
-          <div style={{ marginTop: "16px", textAlign: "center", fontSize: "13px", color: "rgba(255,255,255,0.7)" }}>
+          <div className="mt-4 text-center text-[13px] text-white/70">
             <button
               type="button"
               onClick={() => { setMode("login"); setResetCode(""); }}
-              style={{
-                background: "transparent", border: "none", color: "#a78bfa",
-                cursor: "pointer", fontFamily: "inherit", fontSize: "13px", fontWeight: 700,
-                textDecoration: "underline",
-              }}
+              className="bg-transparent border-none text-[#a78bfa] cursor-pointer font-inherit text-[13px] font-bold underline"
             >
               العودة لتسجيل الدخول
             </button>
@@ -340,15 +305,11 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
 
         {/* login <-> register toggle (unchanged behavior) */}
         {(mode === "login" || mode === "register") && (
-          <div style={{ marginTop: "24px", textAlign: "center", fontSize: "13px", color: "rgba(255,255,255,0.7)" }}>
+          <div className="mt-6 text-center text-[13px] text-white/70">
             {mode === "login" ? "ليس لديك حساب؟ " : "لديك حساب بالفعل؟ "}
             <button
               onClick={() => setMode(mode === "login" ? "register" : "login")}
-              style={{
-                background: "transparent", border: "none", color: "#a78bfa",
-                cursor: "pointer", fontFamily: "inherit", fontSize: "13px", fontWeight: 700,
-                textDecoration: "underline",
-              }}
+              className="bg-transparent border-none text-[#a78bfa] cursor-pointer font-inherit text-[13px] font-bold underline"
             >
               {mode === "login" ? "أنشئ حساباً" : "سجّل دخولك"}
             </button>
@@ -357,12 +318,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
 
         <button
           onClick={onBack}
-          style={{
-            marginTop: "20px", width: "100%", padding: "10px",
-            background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-            color: "rgba(255,255,255,0.6)", borderRadius: "8px",
-            fontFamily: "inherit", fontSize: "12px", cursor: "pointer", transition: "all .2s",
-          }}
+          className="mt-5 w-full py-2.5 bg-transparent border border-white/15 text-white/60 rounded-lg font-inherit text-xs cursor-pointer transition-all duration-200"
         >
           العودة للصفحة الرئيسية
         </button>
@@ -384,12 +340,9 @@ function Field({
   minLength?: number;
 }) {
   return (
-    <div style={{ position: "relative" }}>
+    <div className="relative">
       <div
-        style={{
-          position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
-          color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center",
-        }}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 flex items-center"
       >
         {icon}
       </div>
@@ -401,12 +354,7 @@ function Field({
         required={required}
         dir={dir}
         minLength={minLength}
-        style={{
-          width: "100%", padding: "12px 40px", borderRadius: "10px",
-          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-          color: "#fff", fontFamily: "inherit", fontSize: "14px",
-          outline: "none", transition: "all .2s",
-        }}
+        className="w-full py-3 px-10 rounded-[10px] bg-white/6 border border-white/10 text-white font-inherit text-sm outline-none transition-all duration-200"
         onFocus={(e) => { e.target.style.borderColor = "rgba(124, 58, 237, 0.5)"; }}
         onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
       />

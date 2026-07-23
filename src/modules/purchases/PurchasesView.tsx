@@ -91,7 +91,7 @@ export function PurchasesView() {
     } catch { toast.error("تعذّر الحذف"); }
   };
 
-  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
   if (showForm) return <PurchaseForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />;
 
   return (
@@ -112,8 +112,8 @@ export function PurchasesView() {
       )}
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : purchases.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground"><ShoppingCart size={36} className="opacity-30 mb-2" /><div>لا توجد فواتير شراء بعد</div></div>
+        {loading ? <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : purchases.length === 0 ? (
+          <div className="p-8 md:p-12 text-center text-muted-foreground"><ShoppingCart size={36} className="opacity-30 mb-2" /><div>لا توجد فواتير شراء بعد</div></div>
         ) : (
           <>
           {/* Desktop table */}

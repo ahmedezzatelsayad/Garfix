@@ -116,7 +116,7 @@ export function InventoryView() {
     } catch { toast.error("تعذّر الحذف"); }
   };
 
-  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
   const allItems = tab === "warehouses" ? warehouses : items;
   const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
@@ -132,7 +132,7 @@ export function InventoryView() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
             <Boxes size={20} /> إدارة المخزون
           </h1>
           <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
@@ -147,7 +147,7 @@ export function InventoryView() {
 
       {/* Summary cards — stack on mobile, grid on desktop */}
       {tab === "stock" && summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           <SummaryCard icon={<Boxes size={16} />} label="إجمالي الأصناف" value={summary.total} color="var(--primary)" />
           <SummaryCard icon={<CheckCircle2 size={16} />} label="متوفر" value={summary.ok} color="#10b981" />
           <SummaryCard icon={<AlertTriangle size={16} />} label="تحت الحد الأدنى" value={summary.low} color="#f59e0b" />
@@ -175,7 +175,7 @@ export function InventoryView() {
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+        <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
       ) : showForm ? (
         tab === "warehouses" ? (
           <WarehouseForm

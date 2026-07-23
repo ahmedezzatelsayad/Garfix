@@ -405,7 +405,7 @@ export function PlatformAdminPanel() {
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-center text-xs border-t border-border pt-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-center text-xs border-t border-border pt-2">
                         <div>
                           <div className="text-muted-foreground">فواتير</div>
                           <div className="font-bold">{t.stats.invoices}</div>

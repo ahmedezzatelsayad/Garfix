@@ -106,7 +106,7 @@ export function CatalogView() {
     } catch { toast.error("تعذّر الحذف"); }
   };
 
-  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
   if (showForm || editing) return <ProductForm company={activeCompany} editing={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); load(); }} />;
 
   return (
@@ -131,8 +131,8 @@ export function CatalogView() {
       )}
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : products.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground"><Package size={36} className="opacity-30 mb-2" /><div>لا توجد منتجات بعد</div></div>
+        {loading ? <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : products.length === 0 ? (
+          <div className="p-8 md:p-12 text-center text-muted-foreground"><Package size={36} className="opacity-30 mb-2" /><div>لا توجد منتجات بعد</div></div>
         ) : (
           <>
           {/* Desktop table */}

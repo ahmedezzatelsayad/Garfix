@@ -124,7 +124,7 @@ export function HRView() {
 
   // ─── Guard ────────────────────────────────────────────────────────────
 
-  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
   const tabs: Array<{ key: Tab; label: string; count: number }> = TAB_META.map((m) => ({
     ...m,
@@ -147,7 +147,7 @@ export function HRView() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><UserCog size={20} /> الموارد البشرية</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+        <div><h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><UserCog size={20} /> الموارد البشرية</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
         {tab !== "gratuity" && (
           <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"><Plus size={16} /> إضافة</button>
         )}
@@ -170,7 +170,7 @@ export function HRView() {
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+        <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
       ) : tab === "gratuity" ? (
         <GratuityCalculator employees={employees} />
       ) : showForm ? (
@@ -199,8 +199,17 @@ export function HRView() {
               <Empty label={tab === "employees" ? "موظفين" : tab === "attendance" ? "سجلات حضور" : tab === "salaries" ? "رواتب" : tab === "commissions" ? "عمولات" : tab === "leaves" ? "إجازات" : "تقييمات أداء"} />
             ) : (
               <>
-                {/* Tables: overflow-x-auto on mobile (card conversion deferred — 6 distinct tables with 7+ cols each). */}
-                <div className="overflow-x-auto garfix-scroll">
+                {/* Tables: desktop table on md+, mobile card fallback below */}
+                <div className="hidden md:block overflow-x-auto garfix-scroll">
+                  {tab === "employees" && <EmployeesTable {...tableProps} />}
+                  {tab === "attendance" && <AttendanceTable {...tableProps} />}
+                  {tab === "salaries" && <SalariesTable {...tableProps} />}
+                  {tab === "commissions" && <CommissionsTable {...tableProps} />}
+                  {tab === "leaves" && <LeavesTable {...tableProps} />}
+                  {tab === "performance" && <PerformanceTable {...tableProps} />}
+                </div>
+                {/* Mobile fallback: overflow-x-auto table on small screens */}
+                <div className="md:hidden overflow-x-auto garfix-scroll">
                   {tab === "employees" && <EmployeesTable {...tableProps} />}
                   {tab === "attendance" && <AttendanceTable {...tableProps} />}
                   {tab === "salaries" && <SalariesTable {...tableProps} />}

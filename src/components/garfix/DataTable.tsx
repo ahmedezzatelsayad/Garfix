@@ -97,12 +97,12 @@ export function DataTable({
   const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: "13px" };
 
   return (
-    <div>
+    <div className="overflow-x-auto">
       {(searchFields.length > 0 || actions) && (
-        <div style={{ display: "flex", gap: "10px", marginBottom: "12px", flexWrap: "wrap" }}>
+        <div className="flex gap-2 md:gap-[10px] mb-3 md:mb-[12px] flex-wrap">
           {searchFields.length > 0 && (
-            <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-              <Search size={14} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--muted-foreground)" }} />
+            <div className="relative flex-1 min-w-[180px] md:min-w-[200px]">
+              <Search size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder} style={inputStyle} />
             </div>
           )}
@@ -111,16 +111,16 @@ export function DataTable({
       )}
 
       {loading && rows.length === 0 ? (
-        <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل...</div>
+        <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل...</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+        <div className="p-8 md:p-12 text-center text-muted-foreground">
           <Inbox size={32} style={{ opacity: 0.3, marginBottom: "8px" }} />
           <div>{emptyMessage}</div>
         </div>
       ) : (
         <>
-          <div className="garfix-scroll" style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="overflow-x-auto garfix-scroll">
+            <table style={{ width: "100%", borderCollapse: "collapse" }} className="min-w-[480px] md:min-w-0">
               <thead>
                 <tr style={{ background: "var(--muted)" }}>
                   {columns.map((col) => (
@@ -146,7 +146,7 @@ export function DataTable({
             </table>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", fontSize: "12px", color: "var(--muted-foreground)" }}>
+          <div className="flex justify-between items-center mt-3 md:mt-[12px] text-xs md:text-[12px] text-muted-foreground">
             <span>{rows.length} {totalCount ? `من ${totalCount}` : ""} سجل</span>
             {hasMore && (
               <button

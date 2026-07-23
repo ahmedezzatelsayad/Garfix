@@ -130,11 +130,11 @@ export default function AppShell() {
             theme={theme}
             toggleTheme={toggleTheme}
           />
-          <main className="flex-1 p-4 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)]">
+          <main className="flex-1 p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)]">
             <ErrorBoundary>
             <Suspense
               fallback={
-                <div className="p-12 text-center text-muted-foreground">
+                <div className="p-8 md:p-12 text-center text-muted-foreground">
                   جارٍ التحميل…
                 </div>
               }

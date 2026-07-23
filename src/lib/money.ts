@@ -1,8 +1,10 @@
 /**
- * money.ts — Money/Decimal helpers (preserved from v10).
+ * money.ts — Money/Decimal helpers (preserved from v10, updated for P1 Decimal migration).
  *
- * All monetary values are stored as String (SQLite has no native decimal).
- * These helpers parse/format safely without float drift.
+ * All monetary values are now stored as Decimal (Prisma) on PostgreSQL.
+ * Previously they were String (SQLite). These helpers parse/format safely
+ * without float drift. Prisma Decimal values (decimal.js instances) are
+ * handled transparently — String(v) on a Decimal returns its string repr.
  */
 
 export function num(v: unknown, scale = 3): number {

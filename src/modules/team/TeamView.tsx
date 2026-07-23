@@ -145,14 +145,14 @@ export function TeamView() {
   };
 
   if (!activeCompany) {
-    return <div className="p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
+    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
             <Users size={20} /> فريقي
           </h1>
           <p className="text-[13px] text-muted-foreground">
@@ -187,9 +187,9 @@ export function TeamView() {
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+          <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
         ) : members.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
+          <div className="p-8 md:p-12 text-center text-muted-foreground">
             <Users size={36} className="opacity-30 mb-2" />
             <div>لا يوجد أعضاء بعد</div>
           </div>
