@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -18,7 +19,7 @@ type Tab = "payroll" | "wps";
 
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "py-2.5 px-3 text-[13px]";
+const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
@@ -149,7 +150,7 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الأساسي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBase)}</div></div>
@@ -303,7 +304,7 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><FileText size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الملفات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{wpsFiles.length}</div></div>

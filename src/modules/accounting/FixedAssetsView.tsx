@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -46,8 +47,8 @@ const DEP_METHODS = [
 ];
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -170,7 +171,7 @@ export function FixedAssetsView() {
 function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; totalCost: number; totalDep: number; totalBV: number }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><DollarSign size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">تكلفة الاستحواذ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCost)}</div></div>
@@ -254,7 +255,7 @@ function AssetForm({ company, onClose, onSaved }: { company: { slug: string; cur
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold flex items-center gap-2"><Plus size={16} /> أصل ثابت جديد</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>الاسم بالعربية *</label><input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className={inputStyle} /></div>
         <div><label className={labelStyle}>الاسم بالإنجليزية</label><input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className={inputStyle} dir="ltr" /></div>
         <div><label className={labelStyle}>التصنيف</label>
@@ -402,7 +403,7 @@ function DisposalForm({ assets, company, onClose, onSaved }: { assets: Asset[]; 
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold flex items-center gap-2"><Trash2 size={16} /> تسجيل تخلص من أصل</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>الأصل *</label>
           <select value={assetId ?? ""} onChange={(e) => setAssetId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
             <option value="">— اختر —</option>

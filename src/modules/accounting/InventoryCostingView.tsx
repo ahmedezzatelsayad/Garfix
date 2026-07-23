@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -43,8 +44,8 @@ const COSTING_METHODS: Record<string, string> = {
 };
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -210,7 +211,7 @@ function COGSView({ result, setResult, company, valuation }: {
     <div className="flex flex-col gap-4">
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
         <h3 className="text-[15px] font-bold flex items-center gap-2"><Calculator size={16} /> حساب تكلفة البضاعة المباعة</h3>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
           <div><label className={labelStyle}>الصنف *</label>
             <select value={selectedItem ?? ""} onChange={(e) => setSelectedItem(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
               <option value="">— اختر —</option>
@@ -229,7 +230,7 @@ function COGSView({ result, setResult, company, valuation }: {
       {result && (
         <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
           <h3 className="text-[15px] font-bold flex items-center gap-2"><TrendingDown size={16} /> نتائج COGS</h3>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">الصنف</div><div className="text-[14px] font-bold">{result.itemCode} — {result.itemName}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">الكمية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{result.quantitySold}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">تكلفة الوحدة</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: "#f59e0b" }}>{fmt(result.cogsPerUnit)}</div></div>
@@ -299,7 +300,7 @@ function LandedCostForm({ company, onClose, onSaved }: { company: { slug: string
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold flex items-center gap-2"><Plus size={16} /> تكلفة واقعية جديدة</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>فاتورة الشراء *</label><input value={purchaseInvoiceId} onChange={(e) => setPurchaseInvoiceId(e.target.value)} className={inputStyle} dir="ltr" placeholder="INV-001" /></div>
         <div><label className={labelStyle}>نوع التكلفة</label>
           <select value={costType} onChange={(e) => setCostType(e.target.value)} className={inputStyle}>
