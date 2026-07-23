@@ -259,6 +259,16 @@ function restoreFetch() {
   globalThis.fetch = originalFetch;
 }
 
+/**
+ * Create a mock fetch function compatible with Bun's `typeof fetch`
+ * (which includes a static `preconnect` property).
+ */
+function mockFetch(fn: (url: string | URL | Request, init?: RequestInit) => Promise<Response>): typeof fetch {
+  const mocked = fn as unknown as typeof fetch;
+  mocked.preconnect = originalFetch.preconnect;
+  return mocked;
+}
+
 // ─── Tests ─────────────────────────────────────────────────────────────────
 
 describe('paymob', () => {
@@ -491,6 +501,7 @@ describe('paymob', () => {
         base_url: 'https://accept.paymob.com',
         integration_id: '4305',
       });
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => ({
         ok: false,
         status: 401,
@@ -508,6 +519,7 @@ describe('paymob', () => {
         base_url: 'https://accept.paymob.com',
         integration_id: '4305',
       });
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => ({
         ok: true,
         json: async () => ({ token: 'auth_token_123' }),
@@ -526,6 +538,7 @@ describe('paymob', () => {
         base_url: 'https://accept.paymob.com',
         integration_id: '4305',
       });
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => ({
         ok: true,
         json: async () => ({ token: 'auth_token_123' }),
@@ -549,6 +562,7 @@ describe('paymob', () => {
     it('should complete the full payment initiation flow (auth → order → payment key)', async () => {
       // Simulate the 3-step Paymob flow with mock fetch responses
       let callIndex = 0;
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => {
         const urlStr = url.toString();
         callIndex++;
@@ -584,6 +598,7 @@ describe('paymob', () => {
     });
 
     it('should handle auth failure', async () => {
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => ({
         ok: false,
         status: 401,
@@ -608,6 +623,7 @@ describe('paymob', () => {
 
     it('should handle order creation failure', async () => {
       let callIndex = 0;
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => {
         callIndex++;
         if (callIndex === 1) {
@@ -637,6 +653,7 @@ describe('paymob', () => {
 
     it('should handle payment key failure', async () => {
       let callIndex = 0;
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => {
         callIndex++;
         if (callIndex === 1) {
@@ -668,6 +685,7 @@ describe('paymob', () => {
     });
 
     it('should handle network errors', async () => {
+      // @ts-expect-error Bun fetch type includes static preconnect property
       globalThis.fetch = async () => {
         throw new Error('Network timeout');
       };

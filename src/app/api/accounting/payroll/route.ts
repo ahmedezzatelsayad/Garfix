@@ -1,5 +1,6 @@
 /**
  * /api/accounting/payroll
+ * GET  — retrieve existing payroll records for a month
  * POST — calculate payroll for a month
  * Returns: all employees with calculated salary breakdown
  */
@@ -7,7 +8,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
-import { calculateNetSalary } from "@/lib/accounting/payroll-wps";
+import { calculateNetSalary, calculateSocialInsurance } from "@/lib/accounting/payroll-wps";
 import { getCountryConfig } from "@/lib/gulfConfig";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -16,6 +17,77 @@ import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 const PayrollSchema = z.object({
   companySlug: z.string().min(1),
   month: z.string().min(1), // YYYY-MM
+});
+
+const GetPayrollSchema = z.object({
+  companySlug: z.string().min(1),
+  month: z.string().min(1), // YYYY-MM
+});
+
+// ── GET: Retrieve existing salary records for a month ───────────────────
+
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const sp = req.nextUrl.searchParams;
+  const parsed = GetPayrollSchema.safeParse({
+    companySlug: sp.get("companySlug") || "",
+    month: sp.get("month") || "",
+  });
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+  const data = parsed.data;
+
+  // Validate month format
+  const monthRegex = /^\d{4}-\d{2}$/;
+  if (!monthRegex.test(data.month)) {
+    return apiError("Month must be in YYYY-MM format", 400);
+  }
+
+  const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+  if ("error" in access) return access.error;
+
+  const company = await db.company.findUnique({ where: { slug: data.companySlug } });
+  if (!company) return apiError("Company not found", 404);
+
+  const country = company.country || "KW";
+  const config = getCountryConfig(country);
+  const decimals = config?.currencyDecimalPlaces ?? 3;
+
+  const payroll = await db.salary.findMany({
+    where: { companySlug: data.companySlug, month: data.month },
+    include: { employee: { select: { id: true, name: true, nameEn: true, civilId: true } } },
+    orderBy: { employeeId: "asc" },
+  });
+
+  let totalGross = 0;
+  let totalNet = 0;
+  let totalDeductions = 0;
+  let totalSocialInsurance = 0;
+
+  for (const s of payroll) {
+    const gross = num(s.baseSalary, decimals) + num(s.allowances, decimals) + num(s.bonus, decimals);
+    totalGross += gross;
+    totalNet += num(s.netSalary, decimals);
+    totalDeductions += num(s.deductions, decimals);
+    // Social insurance is computed using the payroll engine
+    const siResult = calculateSocialInsurance({ baseSalary: s.baseSalary, allowances: s.allowances }, country);
+    totalSocialInsurance += num(siResult.employeePortion, decimals);
+  }
+
+  return apiOk({
+    month: data.month,
+    payroll: payroll.map((s) => ({
+      ...s,
+      employeeName: s.employee.name,
+      employeeNameEn: s.employee.nameEn,
+      civilId: s.employee.civilId,
+      grossSalary: num(num(s.baseSalary, decimals) + num(s.allowances, decimals) + num(s.bonus, decimals), decimals).toFixed(decimals),
+    })),
+    totals: {
+      totalGross: num(totalGross, decimals).toFixed(decimals),
+      totalNet: num(totalNet, decimals).toFixed(decimals),
+      totalDeductions: num(totalDeductions, decimals).toFixed(decimals),
+      totalSocialInsurance: num(totalSocialInsurance, decimals).toFixed(decimals),
+    },
+  });
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {

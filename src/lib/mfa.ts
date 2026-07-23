@@ -73,7 +73,7 @@ function generateRecoveryCodes(count: number): string[] {
 
 /** Generate a new TOTP secret for a user. Returns the secret (plaintext) and recovery codes. */
 export async function setupMFA(userUid: string): Promise<{ secret: string; uri: string; recoveryCodes: string[] }> {
-  const secret = verifyTOTPCodeSecret();
+  const secret = generateTOTPSecret();
   const uri = buildTOTPUri(secret, userUid);
   const recoveryCodes = generateRecoveryCodes(RECOVERY_CODE_COUNT);
 

@@ -293,7 +293,7 @@ export function PlatformAdminPanel() {
                   {pieData.length > 0 && pieTotal > 0 ? (
                     <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={pieData.length === 1 ? 0 : 50} outerRadius={80} dataKey="value" label={({ name, percent }: { name: string; percent?: number }) => `${name} ${percent !== undefined ? Math.round(percent * 100) + "%" : ""}`}>
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={pieData.length === 1 ? 0 : 50} outerRadius={80} dataKey="value" label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} ${percent !== undefined ? Math.round(percent * 100) + "%" : ""}`}>
                           {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
                         </Pie>
                         <Legend wrapperStyle={{ fontSize: "11px" }} />

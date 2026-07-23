@@ -15,6 +15,7 @@ import {
   validateEInvoice,
   autoPopulateEInvoiceFields,
 } from "../router";
+import type { EInvoiceAuthority } from "@/lib/gulfConfig";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────
 
@@ -374,7 +375,7 @@ describe("Cross-module consistency", () => {
     ];
     for (const { company, expectedAuthority } of companies) {
       const route = routeEInvoice(baseInvoice, company);
-      expect(route.authority).toBe(expectedAuthority);
+      expect(route.authority).toBe(expectedAuthority as EInvoiceAuthority);
       expect(route.isRequired).toBe(true);
     }
   });

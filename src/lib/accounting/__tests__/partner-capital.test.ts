@@ -44,7 +44,7 @@ function extractOwnershipPercent(nameEn: string | null): number {
  */
 function isCapitalAccount(acc: PartnerAccount): boolean {
   return acc.nameAr.includes("شريك") || acc.nameAr.includes("رأس مال") ||
-    (acc.nameEn && (acc.nameEn.toLowerCase().includes("capital") || acc.nameEn.toLowerCase().includes("partner")));
+    (acc.nameEn !== null && (acc.nameEn.toLowerCase().includes("capital") || acc.nameEn.toLowerCase().includes("partner")));
 }
 
 /**
