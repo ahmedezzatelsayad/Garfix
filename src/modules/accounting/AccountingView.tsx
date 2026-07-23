@@ -1451,7 +1451,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
           </div>
           <div className="flex flex-col gap-2">
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_80px_sm:100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
+              <div key={i} className="grid grid-cols-[1fr_80px_100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
                 <select value={l.accountId ?? ""} onChange={(e) => updateLine(i, "accountId", Number(e.target.value))} className={inputStyle}><option value="">— اختر حساب —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}</select>
                 <input type="number" placeholder="مدين" value={l.debit} onChange={(e) => updateLine(i, "debit", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <input type="number" placeholder="دائن" value={l.credit} onChange={(e) => updateLine(i, "credit", Number(e.target.value))} className={inputStyle} dir="ltr" />
