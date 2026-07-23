@@ -48,33 +48,38 @@ jobs:
           set -e
           echo "Audit exit code: $AUDIT_EXIT"
 
-      - name: Check for critical vulnerabilities
+      - name: Check for critical or high vulnerabilities
         run: |
-          echo "─── Checking for critical vulnerabilities ───"
-          # Only fail on CRITICAL severity — high/moderate are warnings
+          echo "─── Checking for critical / high vulnerabilities ───"
+          # CI-001 FIX (Cycle 2): fail on HIGH as well as CRITICAL.
+          #   The previous threshold only failed on CRITICAL, which let
+          #   HIGH-severity issues (e.g. the Next.js SSRF advisory
+          #   GHSA-89xv-2m56-2m9x) merge into main. HIGH-severity issues
+          #   in a production ERP SaaS handling 6,000 invoices are
+          #   blockers, not warnings. MODERATE remains a warning.
           if grep -qiE "critical" audit-results.txt; then
             echo "❌ CRITICAL vulnerabilities found — review audit-results.txt"
             echo "Failing the pipeline to prevent shipping critically vulnerable code."
             exit 1
           fi
 
-          # Check for high severity — warn but don't fail
           if grep -qiE "high:" audit-results.txt; then
             HIGH_COUNT=$(grep -oiE "high:" audit-results.txt | wc -l)
-            echo "⚠️ $HIGH_COUNT HIGH severity vulnerability(ies) found — review audit-results.txt"
-            echo "High severity issues are warnings, not blockers. Consider fixing them soon."
+            echo "❌ $HIGH_COUNT HIGH severity vulnerability(ies) found — review audit-results.txt"
+            echo "High severity issues are now blockers (Cycle 2 hardening). Fix or pin an override."
+            exit 1
           else
             echo "✅ No high vulnerabilities detected"
           fi
 
-          # Check for moderate — informational only
+          # Check for moderate — informational only (still a warning, not a blocker).
           if grep -qiE "moderate:" audit-results.txt; then
             MOD_COUNT=$(grep -oiE "moderate:" audit-results.txt | wc -l)
             echo "ℹ️ $MOD_COUNT MODERATE severity vulnerability(ies) found — review when convenient"
           fi
 
           echo ""
-          echo "✅ No CRITICAL vulnerabilities detected — pipeline continues"
+          echo "✅ No CRITICAL or HIGH vulnerabilities detected — pipeline continues"
 
       - name: Check for outdated dependencies
         run: |

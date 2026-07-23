@@ -34,9 +34,14 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "X-DNS-Prefetch-Control", value: "on" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          // LOW-001 FIX (Cycle 2): tighten CSP connect-src from `https:` (any
+          // HTTPS endpoint) to an explicit allowlist of the AI providers and
+          // webhook callbacks the app actually uses. Prevents exfiltration of
+          // tokens / data to attacker-controlled HTTPS endpoints via XSS.
+          // Add new providers here ONLY after explicit review.
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'`,
+            value: `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.paymob.com https://api.whatsapp.com https://graph.facebook.com; frame-ancestors 'none'`,
           },
         ],
       },

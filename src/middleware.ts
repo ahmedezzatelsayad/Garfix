@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth, type AuthPayload } from "@/lib/auth";
+import { resolveAuth, persistRotatedRefreshToken, type AuthPayload } from "@/lib/auth";
 import { rateLimitResponse, getClientIp, LIMITS, type RateLimitConfig } from "@/lib/rateLimit";
 import { CSRF_COOKIE, generateCsrfToken, CSRF_COOKIE_OPTS } from "@/lib/cookies";
 
@@ -49,18 +49,48 @@ const GENERAL_API_LIMIT: RateLimitConfig = {
 };
 
 // ── Security headers ────────────────────────────────────────────────────────
+//
+// MED-008 FIX (Cycle 2): X-XSS-Protection set to "0" (was "1; mode=block").
+//   The header is deprecated and modern browsers ignore it. In old browsers
+//   (IE, old Safari) the "1; mode=block" value can introduce vulnerabilities
+//   via the IE XSS auditor. OWASP recommends "0". The real XSS defense is
+//   the Content-Security-Policy header (set in next.config.ts).
+//
+// LOW-002 FIX (Cycle 2): added Cross-Origin-Opener-Policy and
+//   Cross-Origin-Embedder-Policy. These defend against Spectre-class side
+//   channel attacks by isolating the browsing context. COOP=same-origin
+//   ensures attackers can't open the app in a popup they control; COEP=
+//   require-corp prevents loading cross-origin resources without CORP.
+//   Note: COEP=require-corp can break third-party iframes/scripts that
+//   don't send CORP headers — monitor for breakage after deploy.
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
-  "X-XSS-Protection": "1; mode=block",
+  "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "require-corp",
+  "Cross-Origin-Resource-Policy": "same-origin",
 };
 
-function withSecurityHeaders(response: NextResponse): NextResponse {
+function withSecurityHeaders(response: NextResponse, pathname?: string): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
+  }
+  // LOW-004 FIX (Cycle 2): never cache auth responses. A cached 401 could
+  // be served to a different user behind a misconfigured proxy; a cached
+  // 200 with a Set-Cookie could leak session cookies. Applies to all
+  // /api/auth/* paths (login, logout, refresh, register, me, change-password,
+  // forgot-password, reset-password, csrf).
+  if (pathname && pathname.startsWith("/api/auth/")) {
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
   }
   // Generate a unique request ID per invocation
   response.headers.set("X-Request-ID", crypto.randomUUID());
@@ -76,10 +106,10 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // ── 1. Public routes: rate-limit by IP, skip auth ──────────────────────
   if (isPublicRoute(pathname)) {
     const limited = await rateLimitResponse(req, "pub", GENERAL_API_LIMIT, ip);
-    if (limited) return withSecurityHeaders(limited);
+    if (limited) return withSecurityHeaders(limited, pathname);
 
     const response = NextResponse.next();
-    return withSecurityHeaders(response);
+    return withSecurityHeaders(response, pathname);
   }
 
   // ── 2. Protected routes: resolve auth ──────────────────────────────────
@@ -90,7 +120,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       { error: authResult.error || "Unauthorized" },
       { status: authResult.status || 401 },
     );
-    return withSecurityHeaders(response);
+    return withSecurityHeaders(response, pathname);
   }
 
   const user: AuthPayload = authResult.user;
@@ -112,19 +142,25 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
         { error: "رمز حماية CSRF غير صالح أو مفقود" },
         { status: 403 },
       );
-      return withSecurityHeaders(response);
+      return withSecurityHeaders(response, pathname);
     }
   }
 
   // ── 4. Rate limit by uid (authenticated user) ─────────────────────────
   const limited = await rateLimitResponse(req, "api", GENERAL_API_LIMIT, user.uid);
-  if (limited) return withSecurityHeaders(limited);
+  if (limited) return withSecurityHeaders(limited, pathname);
 
   // ── 5. Continue with security headers + user info ──────────────────────
   const response = NextResponse.next();
 
   // Set authenticated user info on a custom header so route handlers can access it
   response.headers.set("x-user-payload", encodeURIComponent(JSON.stringify(user)));
+
+  // HIGH-004 FIX (Cycle 2): if resolveAuth rotated the refresh token (because
+  // it fell back to the refresh path), persist the new refresh cookie. This
+  // makes silent refresh rotation transparent to the frontend — no extra
+  // round-trip to /api/auth/refresh needed for the common case.
+  persistRotatedRefreshToken(response, authResult.rotatedRefreshToken);
 
   // SEC-010: Issue/refresh CSRF cookie on every authenticated response so the
   // client always has a fresh token. If the cookie is already set and not
@@ -135,7 +171,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     response.cookies.set(CSRF_COOKIE, newCsrf, CSRF_COOKIE_OPTS);
   }
 
-  return withSecurityHeaders(response);
+  return withSecurityHeaders(response, pathname);
 }
 
 // ── Matcher ─────────────────────────────────────────────────────────────────

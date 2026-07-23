@@ -16,7 +16,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verifyPassword, issueSession, type SessionUser } from "@/lib/auth";
+import { verifyPasswordAndMaybeRehash, issueSession, type SessionUser } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { buildUserProfile } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -64,8 +64,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
   }
 
-  const ok = await verifyPassword(password, user.passwordHash);
-  if (!ok) {
+  const ok = await verifyPasswordAndMaybeRehash(password, user.passwordHash, user.uid);
+  if (!ok.ok) {
     await logAudit({
       userEmail: normalizedEmail,
       userUid: user.uid,
@@ -74,6 +74,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       details: { ip },
     });
     return apiError("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
+  }
+  // HIGH-005 FIX (Cycle 2): if the stored hash was at a lower bcrypt cost
+  // factor and we just upgraded it, log it so we can monitor migration
+  // progress of the 13 existing production users from cost 10 → cost 12.
+  if (ok.rehashed) {
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "password_rehash_upgraded",
+      entity: "auth",
+      details: { reason: "bcrypt_cost_factor_upgrade" },
+    });
   }
 
   // Success — clear both rate limits (IP and email) so a legitimate user
