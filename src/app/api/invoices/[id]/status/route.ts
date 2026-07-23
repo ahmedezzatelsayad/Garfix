@@ -1,10 +1,12 @@
 /**
  * /api/invoices/[id]/status
- * PATCH — update invoice status (with optimistic-lock)
+ * PATCH — update invoice status (with atomic optimistic-lock)
+ *
+ * C1 FIX: now uses `updateMany` with a version+deletedAt filter for atomic
+ * conflict detection. See /api/invoices/[id]/route.ts for the full rationale.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -26,7 +28,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
   const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!existing) return apiError("Invoice not found", 404);
+  if (!existing || existing.deletedAt) return apiError("Invoice not found", 404);
 
   // Enforce permission + company access
   const access = await requirePermissionForCompany(req, "edit_invoice", existing.companySlug);
@@ -42,13 +44,26 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
       400,
     );
   }
-  if (parsed.data.expectedVersion !== undefined && parsed.data.expectedVersion !== existing.version) {
-    return NextResponse.json({ error: "Conflict", code: "VERSION_CONFLICT" }, { status: 409 });
-  }
-  const invoice = await db.invoice.update({
-    where: { id: existing.id },
-    data: { status: parsed.data.status, version: existing.version + 1 },
+
+  // C1 FIX: atomic conditional update — count=0 means concurrent edit or
+  // concurrent soft-delete, both are 409.
+  const expectedVersion = parsed.data.expectedVersion;
+  const versionFilter = expectedVersion !== undefined ? { version: expectedVersion } : {};
+  const result = await db.invoice.updateMany({
+    where: { id: existing.id, deletedAt: null, ...versionFilter },
+    data: { status: parsed.data.status, version: { increment: 1 } },
   });
+  if (result.count === 0) {
+    return NextResponse.json(
+      { error: "Conflict: invoice was modified or deleted by another request", code: "VERSION_CONFLICT" },
+      { status: 409 },
+    );
+  }
+
+  // Re-fetch canonical post-update state.
+  const invoice = await db.invoice.findUnique({ where: { id: existing.id } });
+  if (!invoice) return apiError("Invoice disappeared after status change", 500);
+
   await logAudit({
     userEmail: user.email,
     userUid: user.uid,

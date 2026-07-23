@@ -58,16 +58,13 @@ const UpdateSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-function serialize(inv: typeof db.invoice extends { findUnique: infer F } ? never : never) {
-  return inv;
-}
-
 export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
+  // H1 FIX: filter out soft-deleted invoices on GET.
   const invoice = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!invoice) return apiError("Invoice not found", 404);
+  if (!invoice || invoice.deletedAt) return apiError("Invoice not found", 404);
   if (!assertCompanyAccess(result.user, invoice.companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -89,7 +86,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
   const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!existing) return apiError("Invoice not found", 404);
+  if (!existing || existing.deletedAt) return apiError("Invoice not found", 404);
   const access = await requirePermissionForCompany(req, "edit_invoice", existing.companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
@@ -99,13 +96,22 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  // Optimistic locking
-  if (data.expectedVersion !== undefined && data.expectedVersion !== existing.version) {
-    return NextResponse.json(
-      { error: "Conflict: invoice was modified by another user", code: "VERSION_CONFLICT" },
-      { status: 409 },
-    );
-  }
+  // ── C1 FIX: Atomic optimistic locking ───────────────────────────────────
+  // Old pattern (read-then-write TOCTOU): two concurrent requests could both
+  // read v=N, both pass `expectedVersion === existing.version`, and both
+  // write v=N+1 — last-writer-wins silently overwrites the other's change.
+  // For a financial system this means lost updates and lost payments.
+  //
+  // New pattern: validate the version atomically via `updateMany` with a
+  // `version = expectedVersion` filter. If count === 0, either the version
+  // changed concurrently OR the row was soft-deleted concurrently — both
+  // are 409 conflicts. The increment itself is atomic.
+  //
+  // When the client does NOT supply expectedVersion we preserve the legacy
+  // "no version check" behavior (still atomic on the increment, just no
+  // conflict detection). Callers SHOULD always send expectedVersion.
+  const expectedVersion = data.expectedVersion;
+  const versionFilter = expectedVersion !== undefined ? { version: expectedVersion } : {};
 
   // Recalc totals if relevant fields changed
   let updateData: Record<string, unknown> = { ...data, expectedVersion: undefined };
@@ -123,7 +129,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     updateData.discount = totals.discount;
     updateData.lineItems = JSON.stringify(items);
   }
-  updateData.version = existing.version + 1;
+  // Drop expectedVersion from data payload — it's a control field, not a column.
+  delete updateData.expectedVersion;
+  updateData.version = { increment: 1 };
 
   // ── Kuwait Decree 10/2026 compliance for updates ──────────────────────
   let kuwaitWarnings: Array<{ field: string; messageAr: string; messageEn: string }> = [];
@@ -154,10 +162,28 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     }
   }
 
-  const invoice = await db.invoice.update({
-    where: { id: existing.id },
+  // C1 FIX: Atomic conditional update — succeeds only if version still matches
+  // AND the row has not been soft-deleted concurrently (H4 FIX).
+  const result = await db.invoice.updateMany({
+    where: { id: existing.id, deletedAt: null, ...versionFilter },
     data: updateData,
   });
+  if (result.count === 0) {
+    // Either the version changed (concurrent edit) or the row was soft-deleted
+    // concurrently. Both are 409 — the client must re-read and retry.
+    return NextResponse.json(
+      { error: "Conflict: invoice was modified or deleted by another request", code: "VERSION_CONFLICT" },
+      { status: 409 },
+    );
+  }
+
+  // Re-fetch the updated row so we return the canonical post-update state
+  // (with the new version and any DB-computed fields).
+  const invoice = await db.invoice.findUnique({ where: { id: existing.id } });
+  if (!invoice) {
+    // Extremely unlikely (we just updated it), but be defensive.
+    return apiError("Invoice disappeared after update", 500);
+  }
 
   await logAudit({
     userEmail: user.email,
