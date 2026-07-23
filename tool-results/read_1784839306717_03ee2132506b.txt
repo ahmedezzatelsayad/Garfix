@@ -1,0 +1,459 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * task1-100-cases.test.ts — 100-case bilingual product matching matrix.
+     4→ *
+     5→ * Source spec: GARFIX TASK B UNIFIED ENGINEERING PROMPT.md section 1.
+     6→ *
+     7→ * The fixture file `garfix_test_invoices.json` referenced by the spec does
+     8→ * NOT exist in this repo (verified via Glob). Per the task instructions,
+     9→ * this file synthesizes 100 cases covering the 10 categories from the spec:
+    10→ *
+    11→ *   Category                  | Count | Expected behavior
+    12→ *   --------------------------|-------|------------------
+    13→ *   exact_match_ar            |  15   | input is an exact Arabic alias → auto-match
+    14→ *   exact_match_en            |  10   | input is an exact English alias → auto-match
+    15→ *   arabic_normalization      |  15   | input is a variant (ال / tashkeel / alef / ta-marbuta / whitespace) → auto-match at 0.95
+    16→ *   fuzzy_typo                |  10   | 1-char typo → auto-match at >= 0.85
+    17→ *   false_positive_trap       |  15   | different product with similar name → matches the CORRECT product (exact match wins)
+    18→ *   new_product               |  10   | completely unrelated input → new-product
+    19→ *   multi_item_invoice        |  10   | invoice with 3-5 items → each item matches
+    20→ *   arabic_indic_numerals     |   5   | ٠-٩ digits → normalize to ASCII → match
+    21→ *   purchase_invoice          |   5   | same as exact_match but for purchase path
+    22→ *   mixed_language            |   5   | invoice with both Arabic + English items
+    23→ *                            --------
+    24→ *                             | 100   |
+    25→ *
+    26→ * MOCK STRATEGY
+    27→ * =============
+    28→ * Same monkey-patching pattern as `collision-recovery-audit.test.ts` + the
+    29→ * B.7e test file: import the real `db`, monkey-patch `db.featureFlag`,
+    30→ * `db.platformSetting`, `db.productAlias`, `db.productMatchAudit` in beforeAll,
+    31→ * restore them in afterAll. We do NOT call `mock.module("@/lib/db")` — that
+    32→ * would leak into `productMatcher.test.ts` (Bun's mock.module is global by
+    33→ * default).
+    34→ *
+    35→ * The matcher's exact-match path calls `db.productAlias.findUnique` (which we
+    36→ * monkey-patch to look up aliases in our in-memory catalog). The fuzzy path
+    37→ * calls `db.productAlias.findMany` (which returns the full catalog). The
+    38→ * audit-create path calls `db.productMatchAudit.create` (no-op).
+    39→ */
+    40→import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+    41→
+    42→import { db } from "@/lib/db";
+    43→import { invalidateKillSwitchCache, matchProduct } from "@/lib/productMatcher";
+    44→import type { MatchInput } from "@/lib/productMatcher";
+    45→
+    46→// ─── Catalog fixture ─────────────────────────────────────────────────────────
+    47→//
+    48→// 32 products, 33 aliases (some products have both an English + Arabic alias).
+    49→// Products 1-17 are the "base" catalog; products 18-32 are the "trap" products
+    50→// used by false_positive_trap cases (same brand, different size/capacity/spec).
+    51→
+    52→interface FakeAlias {
+    53→  alias: string;
+    54→  product: { id: number; name: string; sellingPrice: string };
+    55→}
+    56→
+    57→const CATALOG: FakeAlias[] = [
+    58→  // Base catalog (products 1-17)
+    59→  { alias: "Coca Cola 330ml", product: { id: 1, name: "Coca Cola 330ml", sellingPrice: "2.500" } },
+    60→  { alias: "Pepsi 330ml", product: { id: 2, name: "Pepsi 330ml", sellingPrice: "2.000" } },
+    61→  { alias: "بيبسي 330", product: { id: 2, name: "Pepsi 330ml", sellingPrice: "2.000" } },
+    62→  { alias: "ماء نقي 600مل", product: { id: 3, name: "ماء نقي 600مل", sellingPrice: "1.000" } },
+    63→  { alias: "أرز بسمتي 5كجم", product: { id: 4, name: "أرز بسمتي 5كجم", sellingPrice: "25.000" } },
+    64→  { alias: "Oil Filter Bosch", product: { id: 5, name: "Oil Filter Bosch", sellingPrice: "15.000" } },
+    65→  { alias: "فلتر زيت بوش", product: { id: 5, name: "Oil Filter Bosch", sellingPrice: "15.000" } },
+    66→  { alias: "Air Filter Mann", product: { id: 6, name: "Air Filter Mann", sellingPrice: "18.000" } },
+    67→  { alias: "فلتر هواء مان", product: { id: 6, name: "Air Filter Mann", sellingPrice: "18.000" } },
+    68→  { alias: "Battery Varta 70Ah", product: { id: 7, name: "Battery Varta 70Ah", sellingPrice: "120.000" } },
+    69→  { alias: "بطارية فارتا 70", product: { id: 7, name: "Battery Varta 70Ah", sellingPrice: "120.000" } },
+    70→  { alias: "Tire Michelin 195", product: { id: 8, name: "Tire Michelin 195", sellingPrice: "80.000" } },
+    71→  { alias: "إطار ميشلان 195", product: { id: 8, name: "Tire Michelin 195", sellingPrice: "80.000" } },
+    72→  { alias: "Wiper Blade Bosch", product: { id: 9, name: "Wiper Blade Bosch", sellingPrice: "12.000" } },
+    73→  { alias: "مساحات بوش", product: { id: 9, name: "Wiper Blade Bosch", sellingPrice: "12.000" } },
+    74→  { alias: "Spark Plug NGK", product: { id: 10, name: "Spark Plug NGK", sellingPrice: "8.000" } },
+    75→  { alias: "شمعة احتراق NGK", product: { id: 10, name: "Spark Plug NGK", sellingPrice: "8.000" } },
+    76→  { alias: "Engine Oil Mobil", product: { id: 11, name: "Engine Oil Mobil", sellingPrice: "45.000" } },
+    77→  { alias: "زيت محرك موبيل", product: { id: 11, name: "Engine Oil Mobil", sellingPrice: "45.000" } },
+    78→  { alias: "Brake Fluid DOT4", product: { id: 12, name: "Brake Fluid DOT4", sellingPrice: "20.000" } },
+    79→  { alias: "زيت فرامل دوت 4", product: { id: 12, name: "Brake Fluid DOT4", sellingPrice: "20.000" } },
+    80→  { alias: "Battery Charger", product: { id: 13, name: "Battery Charger", sellingPrice: "60.000" } },
+    81→  { alias: "شاحن بطارية", product: { id: 13, name: "Battery Charger", sellingPrice: "60.000" } },
+    82→  { alias: "Radiator Hose", product: { id: 14, name: "Radiator Hose", sellingPrice: "25.000" } },
+    83→  { alias: "كاوتش راديتر", product: { id: 14, name: "Radiator Hose", sellingPrice: "25.000" } },
+    84→  { alias: "AC Belt", product: { id: 15, name: "AC Belt", sellingPrice: "15.000" } },
+    85→  { alias: "سير مكيف", product: { id: 15, name: "AC Belt", sellingPrice: "15.000" } },
+    86→  { alias: "Wiper Motor", product: { id: 16, name: "Wiper Motor", sellingPrice: "35.000" } },
+    87→  { alias: "موتور مساحات", product: { id: 16, name: "Wiper Motor", sellingPrice: "35.000" } },
+    88→  { alias: "Aluminum Radiator", product: { id: 17, name: "Aluminum Radiator", sellingPrice: "150.000" } },
+    89→  { alias: "راديتر ألمنيوم", product: { id: 17, name: "Aluminum Radiator", sellingPrice: "150.000" } },
+    90→  // Trap products (18-32): same brand, different size/capacity/spec — must
+    91→  // stay separate from the base product they resemble.
+    92→  { alias: "Coca Cola 500ml", product: { id: 18, name: "Coca Cola 500ml", sellingPrice: "3.500" } },
+    93→  { alias: "Coca Cola 1L", product: { id: 19, name: "Coca Cola 1L", sellingPrice: "6.000" } },
+    94→  { alias: "Pepsi 500ml", product: { id: 20, name: "Pepsi 500ml", sellingPrice: "3.000" } },
+    95→  { alias: "Battery Varta 80Ah", product: { id: 21, name: "Battery Varta 80Ah", sellingPrice: "140.000" } },
+    96→  { alias: "Tire Michelin 205", product: { id: 22, name: "Tire Michelin 205", sellingPrice: "95.000" } },
+    97→  { alias: "Engine Oil Mobil 5W30", product: { id: 23, name: "Engine Oil Mobil 5W30", sellingPrice: "50.000" } },
+    98→  { alias: "Brake Fluid DOT3", product: { id: 24, name: "Brake Fluid DOT3", sellingPrice: "18.000" } },
+    99→  { alias: "Oil Filter Bosch Premium", product: { id: 25, name: "Oil Filter Bosch Premium", sellingPrice: "22.000" } },
+   100→  { alias: "Air Filter Mann Premium", product: { id: 26, name: "Air Filter Mann Premium", sellingPrice: "25.000" } },
+   101→  { alias: "Wiper Blade Bosch Rear", product: { id: 27, name: "Wiper Blade Bosch Rear", sellingPrice: "14.000" } },
+   102→  { alias: "Spark Plug NGK Iridium", product: { id: 28, name: "Spark Plug NGK Iridium", sellingPrice: "18.000" } },
+   103→  { alias: "Battery Varta 60Ah", product: { id: 29, name: "Battery Varta 60Ah", sellingPrice: "100.000" } },
+   104→  { alias: "Tire Michelin 185", product: { id: 30, name: "Tire Michelin 185", sellingPrice: "75.000" } },
+   105→  { alias: "Engine Oil Mobil 10W40", product: { id: 31, name: "Engine Oil Mobil 10W40", sellingPrice: "48.000" } },
+   106→  { alias: "Coca Cola Zero 330ml", product: { id: 32, name: "Coca Cola Zero 330ml", sellingPrice: "2.500" } },
+   107→];
+   108→
+   109→// ─── Monkey-patch db properties ──────────────────────────────────────────────
+   110→
+   111→const _orig: Record<string, any> = {};
+   112→
+   113→beforeAll(() => {
+   114→  _orig.featureFlag = (db as any).featureFlag;
+   115→  _orig.platformSetting = (db as any).platformSetting;
+   116→  _orig.productAlias = (db as any).productAlias;
+   117→  _orig.productMatchAudit = (db as any).productMatchAudit;
+   118→
+   119→  (db as any).featureFlag = {
+   120→    findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
+   121→  };
+   122→  (db as any).platformSetting = { findMany: async () => [] };
+   123→
+   124→  (db as any).productAlias = {
+   125→    findUnique: async (args: any) => {
+   126→      const alias = args.where.companySlug_alias.alias;
+   127→      // Exact match is CASE-SENSITIVE in the real Prisma schema (alias is a
+   128→      // text column without a case-insensitive collation by default). To
+   129→      // mirror the production matcher's behavior accurately, we match the
+   130→      // alias exactly (no lowercasing) — this matches what the real
+   131→      // productAlias.findUnique would return.
+   132→      return CATALOG.find(a => a.alias === alias) || null;
+   133→    },
+   134→    findMany: async () => CATALOG,
+   135→  };
+   136→
+   137→  (db as any).productMatchAudit = {
+   138→    create: async () => ({}),
+   139→    findFirst: async () => null,
+   140→  };
+   141→});
+   142→
+   143→afterAll(() => {
+   144→  (db as any).featureFlag = _orig.featureFlag;
+   145→  (db as any).platformSetting = _orig.platformSetting;
+   146→  (db as any).productAlias = _orig.productAlias;
+   147→  (db as any).productMatchAudit = _orig.productMatchAudit;
+   148→});
+   149→
+   150→beforeEach(() => {
+   151→  invalidateKillSwitchCache();
+   152→});
+   153→
+   154→// ─── Helpers ──────────────────────────────────────────────────────────────────
+   155→
+   156→function makeInput(description: string): MatchInput {
+   157→  return {
+   158→    description,
+   159→    qty: 1,
+   160→    price: 1,
+   161→    companySlug: "task1-co",
+   162→    invoiceId: "preview",
+   163→  };
+   164→}
+   165→
+   166→interface Case {
+   167→  category: string;
+   168→  description: string;
+   169→  expectedProductId: number | null;
+   170→  expectedTier: "auto-match" | "suggested" | "new-product";
+   171→}
+   172→
+   173→interface MultiItemCase {
+   174→  category: string;
+   175→  description: string;
+   176→  items: string[];
+   177→  expectedProductIds: (number | null)[];
+   178→}
+   179→
+   180→// ─── 100 cases ───────────────────────────────────────────────────────────────
+   181→
+   182→const SINGLE_ITEM_CASES: Case[] = [
+   183→  // ─── exact_match_ar (15) ──────────────────────────────────────────────
+   184→  { category: "exact_match_ar", description: "بيبسي 330", expectedProductId: 2, expectedTier: "auto-match" },
+   185→  { category: "exact_match_ar", description: "ماء نقي 600مل", expectedProductId: 3, expectedTier: "auto-match" },
+   186→  { category: "exact_match_ar", description: "أرز بسمتي 5كجم", expectedProductId: 4, expectedTier: "auto-match" },
+   187→  { category: "exact_match_ar", description: "فلتر زيت بوش", expectedProductId: 5, expectedTier: "auto-match" },
+   188→  { category: "exact_match_ar", description: "فلتر هواء مان", expectedProductId: 6, expectedTier: "auto-match" },
+   189→  { category: "exact_match_ar", description: "بطارية فارتا 70", expectedProductId: 7, expectedTier: "auto-match" },
+   190→  { category: "exact_match_ar", description: "إطار ميشلان 195", expectedProductId: 8, expectedTier: "auto-match" },
+   191→  { category: "exact_match_ar", description: "مساحات بوش", expectedProductId: 9, expectedTier: "auto-match" },
+   192→  { category: "exact_match_ar", description: "شمعة احتراق NGK", expectedProductId: 10, expectedTier: "auto-match" },
+   193→  { category: "exact_match_ar", description: "زيت محرك موبيل", expectedProductId: 11, expectedTier: "auto-match" },
+   194→  { category: "exact_match_ar", description: "زيت فرامل دوت 4", expectedProductId: 12, expectedTier: "auto-match" },
+   195→  { category: "exact_match_ar", description: "شاحن بطارية", expectedProductId: 13, expectedTier: "auto-match" },
+   196→  { category: "exact_match_ar", description: "كاوتش راديتر", expectedProductId: 14, expectedTier: "auto-match" },
+   197→  { category: "exact_match_ar", description: "سير مكيف", expectedProductId: 15, expectedTier: "auto-match" },
+   198→  { category: "exact_match_ar", description: "موتور مساحات", expectedProductId: 16, expectedTier: "auto-match" },
+   199→
+   200→  // ─── exact_match_en (10) ──────────────────────────────────────────────
+   201→  { category: "exact_match_en", description: "Coca Cola 330ml", expectedProductId: 1, expectedTier: "auto-match" },
+   202→  { category: "exact_match_en", description: "Pepsi 330ml", expectedProductId: 2, expectedTier: "auto-match" },
+   203→  { category: "exact_match_en", description: "Oil Filter Bosch", expectedProductId: 5, expectedTier: "auto-match" },
+   204→  { category: "exact_match_en", description: "Air Filter Mann", expectedProductId: 6, expectedTier: "auto-match" },
+   205→  { category: "exact_match_en", description: "Battery Varta 70Ah", expectedProductId: 7, expectedTier: "auto-match" },
+   206→  { category: "exact_match_en", description: "Tire Michelin 195", expectedProductId: 8, expectedTier: "auto-match" },
+   207→  { category: "exact_match_en", description: "Wiper Blade Bosch", expectedProductId: 9, expectedTier: "auto-match" },
+   208→  { category: "exact_match_en", description: "Spark Plug NGK", expectedProductId: 10, expectedTier: "auto-match" },
+   209→  { category: "exact_match_en", description: "Engine Oil Mobil", expectedProductId: 11, expectedTier: "auto-match" },
+   210→  { category: "exact_match_en", description: "Brake Fluid DOT4", expectedProductId: 12, expectedTier: "auto-match" },
+   211→
+   212→  // ─── arabic_normalization (15) ────────────────────────────────────────
+   213→  // Each input is a variant of a real alias — different case/diacritics/alef
+   214→  // variant/ta-marbuta/whitespace/leading ال. The matcher normalizes both
+   215→  // sides and matches at confidence 0.95.
+   216→  { category: "arabic_normalization", description: "البيبسي 330", expectedProductId: 2, expectedTier: "auto-match" },
+   217→  { category: "arabic_normalization", description: "مَاء نَقِي 600مل", expectedProductId: 3, expectedTier: "auto-match" },
+   218→  { category: "arabic_normalization", description: "ارز بسمتي 5كجم", expectedProductId: 4, expectedTier: "auto-match" },
+   219→  { category: "arabic_normalization", description: "بطاريه فارتا 70", expectedProductId: 7, expectedTier: "auto-match" },
+   220→  { category: "arabic_normalization", description: "اطار ميشلان 195", expectedProductId: 8, expectedTier: "auto-match" },
+   221→  { category: "arabic_normalization", description: "فلتر هَواء مان", expectedProductId: 6, expectedTier: "auto-match" },
+   222→  { category: "arabic_normalization", description: "مساحات  بوش", expectedProductId: 9, expectedTier: "auto-match" },
+   223→  { category: "arabic_normalization", description: "الشمعة احتراق NGK", expectedProductId: 10, expectedTier: "auto-match" },
+   224→  { category: "arabic_normalization", description: "زيت  محرك  موبيل", expectedProductId: 11, expectedTier: "auto-match" },
+   225→  { category: "arabic_normalization", description: "زيت  فرامل دوت 4", expectedProductId: 12, expectedTier: "auto-match" },
+   226→  { category: "arabic_normalization", description: "شاحن بطاريه", expectedProductId: 13, expectedTier: "auto-match" },
+   227→  { category: "arabic_normalization", description: "كاوتش  راديتر", expectedProductId: 14, expectedTier: "auto-match" },
+   228→  { category: "arabic_normalization", description: "السير مكيف", expectedProductId: 15, expectedTier: "auto-match" },
+   229→  { category: "arabic_normalization", description: "موتور  مساحات", expectedProductId: 16, expectedTier: "auto-match" },
+   230→  { category: "arabic_normalization", description: "راديتر المنيوم", expectedProductId: 17, expectedTier: "auto-match" },
+   231→
+   232→  // ─── fuzzy_typo (10) ──────────────────────────────────────────────────
+   233→  // 1-char typo / extra char / missing char — fuzzy match at >= 0.85.
+   234→  { category: "fuzzy_typo", description: "Coca Colo 330ml", expectedProductId: 1, expectedTier: "auto-match" },
+   235→  { category: "fuzzy_typo", description: "Pepsi 330m", expectedProductId: 2, expectedTier: "auto-match" },
+   236→  { category: "fuzzy_typo", description: "Oil Filter Bosh", expectedProductId: 5, expectedTier: "auto-match" },
+   237→  { category: "fuzzy_typo", description: "Air Filter Man", expectedProductId: 6, expectedTier: "auto-match" },
+   238→  { category: "fuzzy_typo", description: "Battery Varta 70A", expectedProductId: 7, expectedTier: "auto-match" },
+   239→  { category: "fuzzy_typo", description: "Tire Michelin 196", expectedProductId: 8, expectedTier: "auto-match" },
+   240→  { category: "fuzzy_typo", description: "Wiper Blade Boschs", expectedProductId: 9, expectedTier: "auto-match" },
+   241→  { category: "fuzzy_typo", description: "Spark Plag NGK", expectedProductId: 10, expectedTier: "auto-match" },
+   242→  { category: "fuzzy_typo", description: "Engine Oil Mobel", expectedProductId: 11, expectedTier: "auto-match" },
+   243→  { category: "fuzzy_typo", description: "Brake Fluid DOT5", expectedProductId: 12, expectedTier: "auto-match" },
+   244→
+   245→  // ─── false_positive_trap (15) ─────────────────────────────────────────
+   246→  // Each input is an EXACT alias for a "trap" product (same brand, different
+   247→  // size/capacity/spec). The catalog contains BOTH the trap product AND its
+   248→  // similar-looking sibling. The matcher must resolve to the EXACT trap product
+   249→  // (NOT the sibling) — exact-match wins over fuzzy.
+   250→  { category: "false_positive_trap", description: "Coca Cola 500ml", expectedProductId: 18, expectedTier: "auto-match" },
+   251→  { category: "false_positive_trap", description: "Coca Cola 1L", expectedProductId: 19, expectedTier: "auto-match" },
+   252→  { category: "false_positive_trap", description: "Pepsi 500ml", expectedProductId: 20, expectedTier: "auto-match" },
+   253→  { category: "false_positive_trap", description: "Battery Varta 80Ah", expectedProductId: 21, expectedTier: "auto-match" },
+   254→  { category: "false_positive_trap", description: "Tire Michelin 205", expectedProductId: 22, expectedTier: "auto-match" },
+   255→  { category: "false_positive_trap", description: "Engine Oil Mobil 5W30", expectedProductId: 23, expectedTier: "auto-match" },
+   256→  { category: "false_positive_trap", description: "Brake Fluid DOT3", expectedProductId: 24, expectedTier: "auto-match" },
+   257→  { category: "false_positive_trap", description: "Oil Filter Bosch Premium", expectedProductId: 25, expectedTier: "auto-match" },
+   258→  { category: "false_positive_trap", description: "Air Filter Mann Premium", expectedProductId: 26, expectedTier: "auto-match" },
+   259→  { category: "false_positive_trap", description: "Wiper Blade Bosch Rear", expectedProductId: 27, expectedTier: "auto-match" },
+   260→  { category: "false_positive_trap", description: "Spark Plug NGK Iridium", expectedProductId: 28, expectedTier: "auto-match" },
+   261→  { category: "false_positive_trap", description: "Battery Varta 60Ah", expectedProductId: 29, expectedTier: "auto-match" },
+   262→  { category: "false_positive_trap", description: "Tire Michelin 185", expectedProductId: 30, expectedTier: "auto-match" },
+   263→  { category: "false_positive_trap", description: "Engine Oil Mobil 10W40", expectedProductId: 31, expectedTier: "auto-match" },
+   264→  { category: "false_positive_trap", description: "Coca Cola Zero 330ml", expectedProductId: 32, expectedTier: "auto-match" },
+   265→
+   266→  // ─── new_product (10) ─────────────────────────────────────────────────
+   267→  // Completely unrelated inputs — must NOT match anything in the catalog.
+   268→  { category: "new_product", description: "Quantum Physics Textbook", expectedProductId: null, expectedTier: "new-product" },
+   269→  { category: "new_product", description: "Hoverboard X1 Pro", expectedProductId: null, expectedTier: "new-product" },
+   270→  { category: "new_product", description: "Kitchen Sink Stainless", expectedProductId: null, expectedTier: "new-product" },
+   271→  { category: "new_product", description: "Office Chair Ergonomic", expectedProductId: null, expectedTier: "new-product" },
+   272→  { category: "new_product", description: "Gaming Mouse RGB", expectedProductId: null, expectedTier: "new-product" },
+   273→  { category: "new_product", description: "Sunglasses Aviator", expectedProductId: null, expectedTier: "new-product" },
+   274→  { category: "new_product", description: "Leather Wallet Brown", expectedProductId: null, expectedTier: "new-product" },
+   275→  { category: "new_product", description: "Perfume Chanel 100ml", expectedProductId: null, expectedTier: "new-product" },
+   276→  { category: "new_product", description: "Coffee Beans 1kg Arabica", expectedProductId: null, expectedTier: "new-product" },
+   277→  { category: "new_product", description: "Yoga Mat Purple Premium", expectedProductId: null, expectedTier: "new-product" },
+   278→
+   279→  // ─── arabic_indic_numerals (5) ────────────────────────────────────────
+   280→  // ٠-٩ digits in input → normalizeArabic converts to ASCII 0-9 → matches.
+   281→  { category: "arabic_indic_numerals", description: "بيبسي ٣٣٠", expectedProductId: 2, expectedTier: "auto-match" },
+   282→  { category: "arabic_indic_numerals", description: "ماء نقي ٦٠٠مل", expectedProductId: 3, expectedTier: "auto-match" },
+   283→  { category: "arabic_indic_numerals", description: "أرز بسمتي ٥كجم", expectedProductId: 4, expectedTier: "auto-match" },
+   284→  { category: "arabic_indic_numerals", description: "بطارية فارتا ٧٠", expectedProductId: 7, expectedTier: "auto-match" },
+   285→  { category: "arabic_indic_numerals", description: "إطار ميشلان ١٩٥", expectedProductId: 8, expectedTier: "auto-match" },
+   286→
+   287→  // ─── purchase_invoice (5) ─────────────────────────────────────────────
+   288→  // Same as exact_match — the matcher is the SAME for sale + purchase paths.
+   289→  // These cases just verify the matcher resolves correctly for inputs that
+   290→  // would typically appear on a purchase invoice (restocking common parts).
+   291→  { category: "purchase_invoice", description: "Oil Filter Bosch", expectedProductId: 5, expectedTier: "auto-match" },
+   292→  { category: "purchase_invoice", description: "Air Filter Mann", expectedProductId: 6, expectedTier: "auto-match" },
+   293→  { category: "purchase_invoice", description: "Battery Varta 70Ah", expectedProductId: 7, expectedTier: "auto-match" },
+   294→  { category: "purchase_invoice", description: "Tire Michelin 195", expectedProductId: 8, expectedTier: "auto-match" },
+   295→  { category: "purchase_invoice", description: "Spark Plug NGK", expectedProductId: 10, expectedTier: "auto-match" },
+   296→];
+   297→
+   298→const MULTI_ITEM_CASES: MultiItemCase[] = [
+   299→  // ─── multi_item_invoice (10) ──────────────────────────────────────────
+   300→  // Each case is an invoice with 3-5 items. Every item must match.
+   301→  {
+   302→    category: "multi_item_invoice",
+   303→    description: "3-item invoice: cola + pepsi + water",
+   304→    items: ["Coca Cola 330ml", "Pepsi 330ml", "ماء نقي 600مل"],
+   305→    expectedProductIds: [1, 2, 3],
+   306→  },
+   307→  {
+   308→    category: "multi_item_invoice",
+   309→    description: "3-item invoice: filters + spark plug",
+   310→    items: ["Oil Filter Bosch", "Air Filter Mann", "Spark Plug NGK"],
+   311→    expectedProductIds: [5, 6, 10],
+   312→  },
+   313→  {
+   314→    category: "multi_item_invoice",
+   315→    description: "3-item Arabic invoice: battery + tire + wiper",
+   316→    items: ["بطارية فارتا 70", "إطار ميشلان 195", "مساحات بوش"],
+   317→    expectedProductIds: [7, 8, 9],
+   318→  },
+   319→  {
+   320→    category: "multi_item_invoice",
+   321→    description: "3-item invoice: oil + brake fluid + charger",
+   322→    items: ["Engine Oil Mobil", "Brake Fluid DOT4", "Battery Charger"],
+   323→    expectedProductIds: [11, 12, 13],
+   324→  },
+   325→  {
+   326→    category: "multi_item_invoice",
+   327→    description: "4-item invoice: cooling parts",
+   328→    items: ["Radiator Hose", "AC Belt", "Wiper Motor", "Aluminum Radiator"],
+   329→    expectedProductIds: [14, 15, 16, 17],
+   330→  },
+   331→  {
+   332→    category: "multi_item_invoice",
+   333→    description: "3-item trap invoice: 500ml variants",
+   334→    items: ["Coca Cola 500ml", "Pepsi 500ml", "Coca Cola 1L"],
+   335→    expectedProductIds: [18, 20, 19],
+   336→  },
+   337→  {
+   338→    category: "multi_item_invoice",
+   339→    description: "2-item premium trap invoice",
+   340→    items: ["Oil Filter Bosch Premium", "Air Filter Mann Premium"],
+   341→    expectedProductIds: [25, 26],
+   342→  },
+   343→  {
+   344→    category: "multi_item_invoice",
+   345→    description: "3-item Arabic staples invoice",
+   346→    items: ["بيبسي 330", "ماء نقي 600مل", "أرز بسمتي 5كجم"],
+   347→    expectedProductIds: [2, 3, 4],
+   348→  },
+   349→  {
+   350→    category: "multi_item_invoice",
+   351→    description: "4-item mixed parts invoice",
+   352→    items: ["Wiper Blade Bosch", "Spark Plug NGK", "Engine Oil Mobil", "Brake Fluid DOT4"],
+   353→    expectedProductIds: [9, 10, 11, 12],
+   354→  },
+   355→  {
+   356→    category: "multi_item_invoice",
+   357→    description: "3-item tire + battery + filter invoice",
+   358→    items: ["Tire Michelin 195", "Battery Varta 70Ah", "Air Filter Mann"],
+   359→    expectedProductIds: [8, 7, 6],
+   360→  },
+   361→
+   362→  // ─── mixed_language (5) ───────────────────────────────────────────────
+   363→  // Invoices with both Arabic + English items in the same invoice.
+   364→  {
+   365→    category: "mixed_language",
+   366→    description: "mixed: English + Arabic beverages",
+   367→    items: ["Coca Cola 330ml", "بيبسي 330", "ماء نقي 600مل"],
+   368→    expectedProductIds: [1, 2, 3],
+   369→  },
+   370→  {
+   371→    category: "mixed_language",
+   372→    description: "mixed: English + Arabic filters",
+   373→    items: ["Oil Filter Bosch", "فلتر هواء مان", "Spark Plug NGK"],
+   374→    expectedProductIds: [5, 6, 10],
+   375→  },
+   376→  {
+   377→    category: "mixed_language",
+   378→    description: "mixed: Arabic battery + English tire + Arabic wiper",
+   379→    items: ["بطارية فارتا 70", "Tire Michelin 195", "مساحات بوش"],
+   380→    expectedProductIds: [7, 8, 9],
+   381→  },
+   382→  {
+   383→    category: "mixed_language",
+   384→    description: "mixed: English oil + Arabic brake fluid + English charger",
+   385→    items: ["Engine Oil Mobil", "زيت فرامل دوت 4", "Battery Charger"],
+   386→    expectedProductIds: [11, 12, 13],
+   387→  },
+   388→  {
+   389→    category: "mixed_language",
+   390→    description: "mixed: Arabic + English filter + battery",
+   391→    items: ["فلتر زيت بوش", "Air Filter Mann", "بطارية فارتا 70"],
+   392→    expectedProductIds: [5, 6, 7],
+   393→  },
+   394→];
+   395→
+   396→// Sanity: 70 single + 15 multi = 85 cases... wait — 70 single + 15 multi = 85.
+   397→// But the spec wants 100 cases. Let me recount:
+   398→//   exact_match_ar (15) + exact_match_en (10) + arabic_normalization (15)
+   399→//   + fuzzy_typo (10) + false_positive_trap (15) + new_product (10)
+   400→//   + arabic_indic_numerals (5) + purchase_invoice (5) = 85 single-item
+   401→//   + multi_item_invoice (10) + mixed_language (5) = 15 multi-item
+   402→//   TOTAL = 100 cases ✓
+   403→//
+   404→// Each multi-item case counts as ONE case in the 100-case matrix (per the
+   405→// spec — multi_item_invoice is a category of invoice, not of item).
+   406→
+   407→// ─── Tests ───────────────────────────────────────────────────────────────────
+   408→
+   409→describe("Task 1 — 100-case product matching matrix", () => {
+   410→  // Single-item cases (85 total) — one it() per category, iterated.
+   411→  describe("single-item cases", () => {
+   412→    // Group by category so failures are easy to triage.
+   413→    const categories = [...new Set(SINGLE_ITEM_CASES.map(c => c.category))];
+   414→
+   415→    for (const cat of categories) {
+   416→      it(`${cat} — ${SINGLE_ITEM_CASES.filter(c => c.category === cat).length} cases all match expected tier + productId`, async () => {
+   417→        const cases = SINGLE_ITEM_CASES.filter(c => c.category === cat);
+   418→        for (const c of cases) {
+   419→          const r = await matchProduct(makeInput(c.description));
+   420→          expect(r.productId).toBe(c.expectedProductId);
+   421→          expect(r.tier).toBe(c.expectedTier);
+   422→          if (c.expectedProductId !== null) {
+   423→            expect(r.isNewProduct).toBe(false);
+   424→          } else {
+   425→            expect(r.isNewProduct).toBe(true);
+   426→          }
+   427→        }
+   428→      });
+   429→    }
+   430→  });
+   431→
+   432→  describe("multi-item invoices", () => {
+   433→    for (let i = 0; i < MULTI_ITEM_CASES.length; i++) {
+   434→      const inv = MULTI_ITEM_CASES[i];
+   435→      it(`${inv.category} #${i + 1}: ${inv.description} (${inv.items.length} items)`, async () => {
+   436→        expect(inv.items.length).toBe(inv.expectedProductIds.length);
+   437→        for (let j = 0; j < inv.items.length; j++) {
+   438→          const r = await matchProduct(makeInput(inv.items[j]));
+   439→          expect(r.productId).toBe(inv.expectedProductIds[j]);
+   440→          if (inv.expectedProductIds[j] !== null) {
+   441→            expect(r.tier).toBe("auto-match");
+   442→          } else {
+   443→            expect(r.tier).toBe("new-product");
+   444→          }
+   445→        }
+   446→      });
+   447→    }
+   448→  });
+   449→
+   450→  // Final sanity check: total case count is exactly 100.
+   451→  it("total case count is exactly 100 (15+10+15+10+15+10+10+5+5 + 10+5 multi)", () => {
+   452→    const single = SINGLE_ITEM_CASES.length;
+   453→    const multi = MULTI_ITEM_CASES.length;
+   454→    expect(single).toBe(85);
+   455→    expect(multi).toBe(15);
+   456→    expect(single + multi).toBe(100);
+   457→  });
+   458→});
+   459→

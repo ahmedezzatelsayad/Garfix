@@ -1,0 +1,657 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * webhooks.test.ts — 50 tests for the webhook delivery system.
+     4→ *
+     5→ * Covers: registerWebhook, dispatchWebhook, processPendingDeliveries,
+     6→ * verifyWebhookSignature, getWebhookStats, and edge cases.
+     7→ */
+     8→
+     9→import { describe, it, expect, mock, beforeEach } from "bun:test";
+    10→import crypto from "node:crypto";
+    11→
+    12→// ── Mock definitions ──────────────────────────────────────────────────────────
+    13→
+    14→const mockWHEndpointCreate = mock(() => Promise.resolve({ id: "ep-1" }));
+    15→const mockWHEndpointFindMany = mock(() => Promise.resolve([]));
+    16→const mockWHEndpointFindUnique = mock(() => Promise.resolve(null));
+    17→const mockWHEndpointCount = mock(() => Promise.resolve(0));
+    18→const mockWHDeliveryFindMany = mock(() => Promise.resolve([]));
+    19→const mockWHDeliveryCreate = mock(() => Promise.resolve({ id: "del-1" }));
+    20→const mockWHDeliveryUpdate = mock(() => Promise.resolve({}));
+    21→
+    22→// We need to mock fetch for processPendingDeliveries
+    23→const mockFetch = mock(() =>
+    24→  Promise.resolve({ ok: true, status: 200 } as Response)
+    25→);
+    26→
+    27→mock.module("@/lib/db", () => ({
+    28→  db: {
+    29→    user: {
+    30→      findUnique: mock(() => Promise.resolve(null)),
+    31→      findMany: mock(() => Promise.resolve([])),
+    32→      update: mock(() => Promise.resolve({})),
+    33→      create: mock(() => Promise.resolve({})),
+    34→      delete: mock(() => Promise.resolve({})),
+    35→      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    36→      upsert: mock(() => Promise.resolve({})),
+    37→      count: mock(() => Promise.resolve(0)),
+    38→    },
+    39→    auditLog: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), aggregate: mock(() => Promise.resolve({})) },
+    40→    adminAuditLog: { create: mock(() => Promise.resolve({})) },
+    41→    mFASecret: { findUnique: mock(() => Promise.resolve(null)), upsert: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), delete: mock(() => Promise.resolve({})) },
+    42→    sessionRegistry: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), delete: mock(() => Promise.resolve({})), deleteMany: mock(() => Promise.resolve({ count: 0 })), count: mock(() => Promise.resolve(0)) },
+    43→    tamperEvidenceChain: { findFirst: mock(() => Promise.resolve(null)), create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), updateMany: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), count: mock(() => Promise.resolve(0)) },
+    44→    webhookEndpoint: {
+    45→      findMany: mockWHEndpointFindMany,
+    46→      findUnique: mockWHEndpointFindUnique,
+    47→      create: mockWHEndpointCreate,
+    48→      count: mockWHEndpointCount,
+    49→    },
+    50→    webhookDelivery: {
+    51→      findMany: mockWHDeliveryFindMany,
+    52→      create: mockWHDeliveryCreate,
+    53→      update: mockWHDeliveryUpdate,
+    54→    },
+    55→    budgetConfig: { findUnique: mock(() => Promise.resolve(null)) },
+    56→    aIRequestLog: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), aggregate: mock(() => Promise.resolve({})) },
+    57→    aIMemoryEntry: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), update: mock(() => Promise.resolve({})) },
+    58→    cacheEntry: { findUnique: mock(() => Promise.resolve(null)), upsert: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), delete: mock(() => Promise.resolve({})) },
+    59→    ruleCandidate: { findMany: mock(() => Promise.resolve([])) },
+    60→    company: { findMany: mock(() => Promise.resolve([])) },
+    61→    notification: { create: mock(() => Promise.resolve({})) },
+    62→  },
+    63→}));
+    64→
+    65→mock.module("@/lib/logger", () => ({
+    66→  logger: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), debug: mock(() => {}) },
+    67→}));
+    68→
+    69→// Mock global fetch
+    70→(globalThis as any).fetch = mockFetch;
+    71→
+    72→// ── Import after mocks ────────────────────────────────────────────────────────
+    73→
+    74→const {
+    75→  registerWebhook,
+    76→  dispatchWebhook,
+    77→  processPendingDeliveries,
+    78→  verifyWebhookSignature,
+    79→  getWebhookStats,
+    80→} = await import("@/lib/webhooks");
+    81→const { encryptSecret, decryptSecret } = await import("@/lib/cryptoVault");
+    82→
+    83→// ── Helpers ───────────────────────────────────────────────────────────────────
+    84→
+    85→function makeEndpoint(overrides: Record<string, unknown> = {}) {
+    86→  return {
+    87→    id: "ep-1",
+    88→    companySlug: "acme",
+    89→    url: "https://example.com/webhook",
+    90→    events: JSON.stringify(["invoice.created"]),
+    91→    secret: encryptSecret("wh-secret-123"),
+    92→    isActive: true,
+    93→    ...overrides,
+    94→  };
+    95→}
+    96→
+    97→// ── Tests ─────────────────────────────────────────────────────────────────────
+    98→
+    99→describe("Webhooks Module", () => {
+   100→  beforeEach(() => {
+   101→    mockWHEndpointCreate.mockClear();
+   102→    mockWHEndpointFindMany.mockClear();
+   103→    mockWHEndpointFindUnique.mockClear();
+   104→    mockWHEndpointCount.mockClear();
+   105→    mockWHDeliveryFindMany.mockClear();
+   106→    mockWHDeliveryCreate.mockClear();
+   107→    mockWHDeliveryUpdate.mockClear();
+   108→    mockFetch.mockClear();
+   109→    mockFetch.mockResolvedValue({ ok: true, status: 200 } as Response);
+   110→  });
+   111→
+   112→  // ═══════════════════════════════════════════════════════════════════════════
+   113→  // registerWebhook — 10 tests
+   114→  // ═══════════════════════════════════════════════════════════════════════════
+   115→  describe("registerWebhook", () => {
+   116→    it("creates an endpoint and returns its id", async () => {
+   117→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-new" });
+   118→      const id = await registerWebhook({
+   119→        companySlug: "acme",
+   120→        url: "https://example.com/hook",
+   121→        events: ["invoice.created"],
+   122→      });
+   123→      expect(id).toBe("ep-new");
+   124→    });
+   125→
+   126→    it("calls db.webhookEndpoint.create", async () => {
+   127→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   128→      await registerWebhook({
+   129→        companySlug: "acme",
+   130→        url: "https://example.com/hook",
+   131→        events: ["invoice.created"],
+   132→      });
+   133→      expect(mockWHEndpointCreate).toHaveBeenCalledTimes(1);
+   134→    });
+   135→
+   136→    it("passes companySlug correctly", async () => {
+   137→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   138→      await registerWebhook({ companySlug: "myco", url: "https://x.com", events: [] });
+   139→      expect(mockWHEndpointCreate.mock.calls[0][0].data.companySlug).toBe("myco");
+   140→    });
+   141→
+   142→    it("passes URL correctly", async () => {
+   143→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   144→      await registerWebhook({ companySlug: "acme", url: "https://x.com/hook", events: [] });
+   145→      expect(mockWHEndpointCreate.mock.calls[0][0].data.url).toBe("https://x.com/hook");
+   146→    });
+   147→
+   148→    it("stores events as JSON string", async () => {
+   149→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   150→      await registerWebhook({
+   151→        companySlug: "acme",
+   152→        url: "https://x.com",
+   153→        events: ["invoice.created", "invoice.paid"],
+   154→      });
+   155→      expect(mockWHEndpointCreate.mock.calls[0][0].data.events).toBe(
+   156→        JSON.stringify(["invoice.created", "invoice.paid"])
+   157→      );
+   158→    });
+   159→
+   160→    it("encrypts the signing secret", async () => {
+   161→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   162→      await registerWebhook({ companySlug: "acme", url: "https://x.com", events: [] });
+   163→      const storedSecret = mockWHEndpointCreate.mock.calls[0][0].data.secret;
+   164→      // Should be encrypted (base64.base64.base64 format)
+   165→      expect(storedSecret).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
+   166→    });
+   167→
+   168→    it("secret can be decrypted back", async () => {
+   169→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   170→      await registerWebhook({ companySlug: "acme", url: "https://x.com", events: [] });
+   171→      const storedSecret = mockWHEndpointCreate.mock.calls[0][0].data.secret;
+   172→      const decrypted = decryptSecret(storedSecret);
+   173→      // Should be a 64-char hex string (32 bytes random → hex)
+   174→      expect(decrypted).toMatch(/^[a-f0-9]{64}$/);
+   175→    });
+   176→
+   177→    it("handles multiple events", async () => {
+   178→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   179→      await registerWebhook({
+   180→        companySlug: "acme",
+   181→        url: "https://x.com",
+   182→        events: ["a", "b", "c", "d"],
+   183→      });
+   184→      const events = JSON.parse(mockWHEndpointCreate.mock.calls[0][0].data.events);
+   185→      expect(events).toHaveLength(4);
+   186→    });
+   187→
+   188→    it("handles empty events array", async () => {
+   189→      mockWHEndpointCreate.mockResolvedValueOnce({ id: "ep-1" });
+   190→      await registerWebhook({ companySlug: "acme", url: "https://x.com", events: [] });
+   191→      expect(JSON.parse(mockWHEndpointCreate.mock.calls[0][0].data.events)).toEqual([]);
+   192→    });
+   193→
+   194→    it("generates different secrets on each registration", async () => {
+   195→      mockWHEndpointCreate.mockResolvedValue({ id: "ep-1" });
+   196→      await registerWebhook({ companySlug: "acme", url: "https://x.com", events: [] });
+   197→      await registerWebhook({ companySlug: "acme", url: "https://x.com", events: [] });
+   198→      const s1 = decryptSecret(mockWHEndpointCreate.mock.calls[0][0].data.secret);
+   199→      const s2 = decryptSecret(mockWHEndpointCreate.mock.calls[1][0].data.secret);
+   200→      expect(s1).not.toBe(s2);
+   201→    });
+   202→  });
+   203→
+   204→  // ═══════════════════════════════════════════════════════════════════════════
+   205→  // dispatchWebhook — 10 tests
+   206→  // ═══════════════════════════════════════════════════════════════════════════
+   207→  describe("dispatchWebhook", () => {
+   208→    const payload = {
+   209→      event: "invoice.created",
+   210→      companySlug: "acme",
+   211→      timestamp: "2025-01-01T00:00:00Z",
+   212→      data: { id: "inv-1" },
+   213→    };
+   214→
+   215→    it("returns 0 when no endpoints exist", async () => {
+   216→      mockWHEndpointFindMany.mockResolvedValueOnce([]);
+   217→      const count = await dispatchWebhook(payload);
+   218→      expect(count).toBe(0);
+   219→    });
+   220→
+   221→    it("dispatches to matching endpoint", async () => {
+   222→      mockWHEndpointFindMany.mockResolvedValueOnce([makeEndpoint()]);
+   223→      const count = await dispatchWebhook(payload);
+   224→      expect(count).toBe(1);
+   225→    });
+   226→
+   227→    it("creates a delivery record for matched event", async () => {
+   228→      mockWHEndpointFindMany.mockResolvedValueOnce([makeEndpoint()]);
+   229→      await dispatchWebhook(payload);
+   230→      expect(mockWHDeliveryCreate).toHaveBeenCalledTimes(1);
+   231→      expect(mockWHDeliveryCreate.mock.calls[0][0].data.eventType).toBe("invoice.created");
+   232→    });
+   233→
+   234→    it("sets delivery status to pending", async () => {
+   235→      mockWHEndpointFindMany.mockResolvedValueOnce([makeEndpoint()]);
+   236→      await dispatchWebhook(payload);
+   237→      expect(mockWHDeliveryCreate.mock.calls[0][0].data.status).toBe("pending");
+   238→    });
+   239→
+   240→    it("stores payload as JSON string", async () => {
+   241→      mockWHEndpointFindMany.mockResolvedValueOnce([makeEndpoint()]);
+   242→      await dispatchWebhook(payload);
+   243→      const storedPayload = mockWHDeliveryCreate.mock.calls[0][0].data.payload;
+   244→      expect(JSON.parse(storedPayload)).toEqual(payload);
+   245→    });
+   246→
+   247→    it("skips endpoint when event does not match", async () => {
+   248→      mockWHEndpointFindMany.mockResolvedValueOnce([
+   249→        makeEndpoint({ events: JSON.stringify(["invoice.paid"]) }),
+   250→      ]);
+   251→      const count = await dispatchWebhook(payload);
+   252→      expect(count).toBe(0);
+   253→      expect(mockWHDeliveryCreate).not.toHaveBeenCalled();
+   254→    });
+   255→
+   256→    it("wildcard '*' matches any event", async () => {
+   257→      mockWHEndpointFindMany.mockResolvedValueOnce([
+   258→        makeEndpoint({ events: JSON.stringify(["*"]) }),
+   259→      ]);
+   260→      const count = await dispatchWebhook(payload);
+   261→      expect(count).toBe(1);
+   262→    });
+   263→
+   264→    it("dispatches to multiple matching endpoints", async () => {
+   265→      mockWHEndpointFindMany.mockResolvedValueOnce([
+   266→        makeEndpoint({ id: "ep-1" }),
+   267→        makeEndpoint({ id: "ep-2", events: JSON.stringify(["*"]) }),
+   268→      ]);
+   269→      const count = await dispatchWebhook(payload);
+   270→      expect(count).toBe(2);
+   271→      expect(mockWHDeliveryCreate).toHaveBeenCalledTimes(2);
+   272→    });
+   273→
+   274→    it("queries endpoints by companySlug and isActive", async () => {
+   275→      mockWHEndpointFindMany.mockResolvedValueOnce([]);
+   276→      await dispatchWebhook(payload);
+   277→      expect(mockWHEndpointFindMany).toHaveBeenCalledWith({
+   278→        where: { companySlug: "acme", isActive: true },
+   279→      });
+   280→    });
+   281→
+   282→    it("query filters by isActive=true (inactive endpoints excluded)", async () => {
+   283→      mockWHEndpointFindMany.mockResolvedValueOnce([]);
+   284→      await dispatchWebhook({
+   285→        event: "invoice.created",
+   286→        companySlug: "acme",
+   287→        timestamp: "2025-01-01",
+   288→        data: {},
+   289→      });
+   290→      // The DB query itself filters out inactive endpoints
+   291→      expect(mockWHEndpointFindMany).toHaveBeenCalledWith({
+   292→        where: { companySlug: "acme", isActive: true },
+   293→      });
+   294→    });
+   295→  });
+   296→
+   297→  // ═══════════════════════════════════════════════════════════════════════════
+   298→  // processPendingDeliveries — 10 tests
+   299→  // ═══════════════════════════════════════════════════════════════════════════
+   300→  describe("processPendingDeliveries", () => {
+   301→    const baseDelivery = {
+   302→      id: "del-1",
+   303→      endpointId: "ep-1",
+   304→      eventType: "invoice.created",
+   305→      payload: JSON.stringify({
+   306→        event: "invoice.created",
+   307→        companySlug: "acme",
+   308→        timestamp: "2025-01-01",
+   309→        data: { id: "inv-1" },
+   310→      }),
+   311→      attempts: 0,
+   312→      maxAttempts: 3,
+   313→      status: "pending",
+   314→      nextRetryAt: new Date(),
+   315→    };
+   316→
+   317→    it("returns 0 processed when no pending deliveries", async () => {
+   318→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   319→      const result = await processPendingDeliveries();
+   320→      expect(result.processed).toBe(0);
+   321→      expect(result.succeeded).toBe(0);
+   322→      expect(result.failed).toBe(0);
+   323→    });
+   324→
+   325→    it("successfully delivers and marks as success", async () => {
+   326→      mockWHDeliveryFindMany.mockResolvedValueOnce([baseDelivery]);
+   327→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   328→      mockFetch.mockResolvedValueOnce({ ok: true, status: 200 } as Response);
+   329→      const result = await processPendingDeliveries();
+   330→      expect(result.succeeded).toBe(1);
+   331→      expect(result.failed).toBe(0);
+   332→      expect(mockWHDeliveryUpdate).toHaveBeenCalledWith({
+   333→        where: { id: "del-1" },
+   334→        data: expect.objectContaining({ status: "success" }),
+   335→      });
+   336→    });
+   337→
+   338→    it("marks as failed when endpoint not found", async () => {
+   339→      mockWHDeliveryFindMany.mockResolvedValueOnce([baseDelivery]);
+   340→      mockWHEndpointFindUnique.mockResolvedValueOnce(null);
+   341→      const result = await processPendingDeliveries();
+   342→      expect(result.failed).toBe(1);
+   343→      expect(mockWHDeliveryUpdate).toHaveBeenCalledWith({
+   344→        where: { id: "del-1" },
+   345→        data: { status: "failed" },
+   346→      });
+   347→    });
+   348→
+   349→    it("retries on failure with backoff", async () => {
+   350→      mockWHDeliveryFindMany.mockResolvedValueOnce([
+   351→        { ...baseDelivery, attempts: 0 },
+   352→      ]);
+   353→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   354→      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+   355→      const result = await processPendingDeliveries();
+   356→      expect(result.failed).toBe(0); // Not permanently failed yet
+   357→      expect(result.succeeded).toBe(0);
+   358→      expect(mockWHDeliveryUpdate).toHaveBeenCalledWith({
+   359→        where: { id: "del-1" },
+   360→        data: expect.objectContaining({
+   361→          status: "retried",
+   362→          attempts: 1,
+   363→        }),
+   364→      });
+   365→    });
+   366→
+   367→    it("marks as permanently failed after max attempts", async () => {
+   368→      mockWHDeliveryFindMany.mockResolvedValueOnce([
+   369→        { ...baseDelivery, attempts: 2 }, // Will become 3 = maxAttempts
+   370→      ]);
+   371→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   372→      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+   373→      const result = await processPendingDeliveries();
+   374→      expect(result.failed).toBe(1);
+   375→      expect(mockWHDeliveryUpdate).toHaveBeenCalledWith({
+   376→        where: { id: "del-1" },
+   377→        data: expect.objectContaining({ status: "failed", attempts: 3 }),
+   378→      });
+   379→    });
+   380→
+   381→    it("sets backoff delay: 5^1 * 1000 = 5s for first retry", async () => {
+   382→      mockWHDeliveryFindMany.mockResolvedValueOnce([
+   383→        { ...baseDelivery, attempts: 0 },
+   384→      ]);
+   385→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   386→      mockFetch.mockRejectedValueOnce(new Error("fail"));
+   387→      await processPendingDeliveries();
+   388→      const updateData = mockWHDeliveryUpdate.mock.calls[0][0].data;
+   389→      const delay = (updateData.nextRetryAt as Date).getTime() - Date.now();
+   390→      // Should be approximately 5000ms (5^1 * 1000)
+   391→      expect(delay).toBeGreaterThan(4000);
+   392→      expect(delay).toBeLessThan(10000);
+   393→    });
+   394→
+   395→    it("sends correct headers including signature", async () => {
+   396→      mockWHDeliveryFindMany.mockResolvedValueOnce([baseDelivery]);
+   397→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   398→      await processPendingDeliveries();
+   399→      expect(mockFetch).toHaveBeenCalledWith(
+   400→        "https://example.com/webhook",
+   401→        expect.objectContaining({
+   402→          method: "POST",
+   403→          headers: expect.objectContaining({
+   404→            "Content-Type": "application/json",
+   405→            "X-Garfix-Signature": expect.stringMatching(/^sha256=[a-f0-9]+$/),
+   406→            "X-Garfix-Event": "invoice.created",
+   407→            "X-Garfix-Delivery": "del-1",
+   408→          }),
+   409→        })
+   410→      );
+   411→    });
+   412→
+   413→    it("handles HTTP error response (non-2xx)", async () => {
+   414→      mockWHDeliveryFindMany.mockResolvedValueOnce([baseDelivery]);
+   415→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   416→      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+   417→      const result = await processPendingDeliveries();
+   418→      expect(result.succeeded).toBe(0);
+   419→      expect(result.failed).toBe(0); // First failure → retry
+   420→    });
+   421→
+   422→    it("processes multiple pending deliveries", async () => {
+   423→      mockWHDeliveryFindMany.mockResolvedValueOnce([
+   424→        { ...baseDelivery, id: "del-1" },
+   425→        { ...baseDelivery, id: "del-2" },
+   426→      ]);
+   427→      mockWHEndpointFindUnique.mockResolvedValue(makeEndpoint());
+   428→      mockFetch.mockResolvedValue({ ok: true, status: 200 } as Response);
+   429→      const result = await processPendingDeliveries();
+   430→      expect(result.processed).toBe(2);
+   431→      expect(result.succeeded).toBe(2);
+   432→    });
+   433→
+   434→    it("queries pending deliveries with nextRetryAt <= now", async () => {
+   435→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   436→      await processPendingDeliveries();
+   437→      expect(mockWHDeliveryFindMany).toHaveBeenCalledWith({
+   438→        where: expect.objectContaining({
+   439→          status: "pending",
+   440→          nextRetryAt: { lte: expect.any(Date) },
+   441→        }),
+   442→        take: 50,
+   443→      });
+   444→    });
+   445→  });
+   446→
+   447→  // ═══════════════════════════════════════════════════════════════════════════
+   448→  // verifyWebhookSignature — 10 tests
+   449→  // ═══════════════════════════════════════════════════════════════════════════
+   450→  describe("verifyWebhookSignature", () => {
+   451→    const secret = "my-webhook-secret";
+   452→    const payload = '{"event":"test"}';
+   453→
+   454→    it("returns true for correct signature", () => {
+   455→      const sig = verifyWebhookSignature(payload, "sha256=abc", secret);
+   456→      // We need the actual correct signature
+   457→      // using imported crypto;
+   458→      const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+   459→      expect(verifyWebhookSignature(payload, `sha256=${expected}`, secret)).toBe(true);
+   460→    });
+   461→
+   462→    it("returns false for incorrect signature", () => {
+   463→      expect(verifyWebhookSignature(payload, "sha256=wrongvalue", secret)).toBe(false);
+   464→    });
+   465→
+   466→    it("returns false when signature prefix is wrong", () => {
+   467→      // using imported crypto;
+   468→      const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+   469→      expect(verifyWebhookSignature(payload, `wrongprefix=${expected}`, secret)).toBe(false);
+   470→    });
+   471→
+   472→    it("returns false for empty signature", () => {
+   473→      expect(verifyWebhookSignature(payload, "", secret)).toBe(false);
+   474→    });
+   475→
+   476→    it("returns false for different payload with same signature", () => {
+   477→      // using imported crypto;
+   478→      const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+   479→      expect(verifyWebhookSignature('{"event":"different"}', `sha256=${sig}`, secret)).toBe(false);
+   480→    });
+   481→
+   482→    it("returns false for different secret", () => {
+   483→      // using imported crypto;
+   484→      const sig = crypto.createHmac("sha256", "wrong-secret").update(payload).digest("hex");
+   485→      expect(verifyWebhookSignature(payload, `sha256=${sig}`, secret)).toBe(false);
+   486→    });
+   487→
+   488→    it("works with complex JSON payloads", () => {
+   489→      const complexPayload = JSON.stringify({
+   490→        event: "invoice.created",
+   491→        data: { id: "inv-1", amount: 100.50, items: ["a", "b"] },
+   492→        nested: { deeply: { value: true } },
+   493→      });
+   494→      // using imported crypto;
+   495→      const expected = crypto.createHmac("sha256", secret).update(complexPayload).digest("hex");
+   496→      expect(verifyWebhookSignature(complexPayload, `sha256=${expected}`, secret)).toBe(true);
+   497→    });
+   498→
+   499→    it("works with empty payload", () => {
+   500→      // using imported crypto;
+   501→      const expected = crypto.createHmac("sha256", secret).update("").digest("hex");
+   502→      expect(verifyWebhookSignature("", `sha256=${expected}`, secret)).toBe(true);
+   503→    });
+   504→
+   505→    it("signature is deterministic for same input", () => {
+   506→      // using imported crypto;
+   507→      const sig1 = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+   508→      const sig2 = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+   509→      expect(sig1).toBe(sig2);
+   510→      expect(verifyWebhookSignature(payload, `sha256=${sig1}`, secret)).toBe(true);
+   511→      expect(verifyWebhookSignature(payload, `sha256=${sig2}`, secret)).toBe(true);
+   512→    });
+   513→
+   514→    it("returns false for signature without sha256= prefix", () => {
+   515→      // using imported crypto;
+   516→      const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+   517→      expect(verifyWebhookSignature(payload, expected, secret)).toBe(false);
+   518→    });
+   519→  });
+   520→
+   521→  // ═══════════════════════════════════════════════════════════════════════════
+   522→  // getWebhookStats — 5 tests
+   523→  // ═══════════════════════════════════════════════════════════════════════════
+   524→  describe("getWebhookStats", () => {
+   525→    it("returns activeEndpoints count", async () => {
+   526→      mockWHEndpointCount.mockResolvedValueOnce(3);
+   527→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   528→      const stats = await getWebhookStats("acme");
+   529→      expect(stats.activeEndpoints).toBe(3);
+   530→    });
+   531→
+   532→    it("returns recent deliveries", async () => {
+   533→      const deliveries = [
+   534→        { id: "del-1", eventType: "invoice.created", status: "success" },
+   535→        { id: "del-2", eventType: "invoice.paid", status: "failed" },
+   536→      ];
+   537→      mockWHEndpointCount.mockResolvedValueOnce(1);
+   538→      mockWHDeliveryFindMany.mockResolvedValueOnce(deliveries);
+   539→      const stats = await getWebhookStats("acme");
+   540→      expect(stats.recentDeliveries).toHaveLength(2);
+   541→    });
+   542→
+   543→    it("counts only active endpoints for company", async () => {
+   544→      mockWHEndpointCount.mockResolvedValueOnce(5);
+   545→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   546→      await getWebhookStats("myco");
+   547→      expect(mockWHEndpointCount).toHaveBeenCalledWith({
+   548→        where: { companySlug: "myco", isActive: true },
+   549→      });
+   550→    });
+   551→
+   552→    it("fetches at most 10 recent deliveries", async () => {
+   553→      mockWHEndpointCount.mockResolvedValueOnce(0);
+   554→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   555→      await getWebhookStats("acme");
+   556→      expect(mockWHDeliveryFindMany).toHaveBeenCalledWith(
+   557→        expect.objectContaining({ take: 10 })
+   558→      );
+   559→    });
+   560→
+   561→    it("orders recent deliveries by createdAt desc", async () => {
+   562→      mockWHEndpointCount.mockResolvedValueOnce(0);
+   563→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   564→      await getWebhookStats("acme");
+   565→      expect(mockWHDeliveryFindMany).toHaveBeenCalledWith(
+   566→        expect.objectContaining({
+   567→          orderBy: { createdAt: "desc" },
+   568→        })
+   569→      );
+   570→    });
+   571→  });
+   572→
+   573→  // ═══════════════════════════════════════════════════════════════════════════
+   574→  // Edge cases — 5 tests
+   575→  // ═══════════════════════════════════════════════════════════════════════════
+   576→  describe("Edge cases", () => {
+   577→    it("dispatchWebhook handles endpoint with malformed events JSON gracefully", async () => {
+   578→      mockWHEndpointFindMany.mockResolvedValueOnce([
+   579→        makeEndpoint({ events: "not-json" }),
+   580→      ]);
+   581→      // Should not throw, just skip
+   582→      const count = await dispatchWebhook({
+   583→        event: "invoice.created",
+   584→        companySlug: "acme",
+   585→        timestamp: "2025-01-01",
+   586→        data: {},
+   587→      });
+   588→      expect(count).toBe(0);
+   589→    });
+   590→
+   591→    it("processPendingDeliveries handles missing endpoint gracefully", async () => {
+   592→      mockWHDeliveryFindMany.mockResolvedValueOnce([
+   593→        {
+   594→          id: "del-1",
+   595→          endpointId: "ep-ghost",
+   596→          eventType: "invoice.created",
+   597→          payload: "{}",
+   598→          attempts: 0,
+   599→          maxAttempts: 3,
+   600→          status: "pending",
+   601→          nextRetryAt: new Date(),
+   602→        },
+   603→      ]);
+   604→      mockWHEndpointFindUnique.mockResolvedValueOnce(null);
+   605→      const result = await processPendingDeliveries();
+   606→      expect(result.failed).toBe(1);
+   607→    });
+   608→
+   609→    it("timeout during fetch triggers retry", async () => {
+   610→      const timeoutError = new DOMException("The operation was aborted", "AbortError");
+   611→      mockWHDeliveryFindMany.mockResolvedValueOnce([
+   612→        {
+   613→          id: "del-1",
+   614→          endpointId: "ep-1",
+   615→          eventType: "invoice.created",
+   616→          payload: "{}",
+   617→          attempts: 0,
+   618→          maxAttempts: 3,
+   619→          status: "pending",
+   620→          nextRetryAt: new Date(),
+   621→        },
+   622→      ]);
+   623→      mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());
+   624→      mockFetch.mockRejectedValueOnce(timeoutError);
+   625→      const result = await processPendingDeliveries();
+   626→      expect(result.failed).toBe(0);
+   627→      expect(result.succeeded).toBe(0);
+   628→      // Should be retried
+   629→      expect(mockWHDeliveryUpdate).toHaveBeenCalledWith({
+   630→        where: { id: "del-1" },
+   631→        data: expect.objectContaining({ status: "retried", attempts: 1 }),
+   632→      });
+   633→    });
+   634→
+   635→    it("dispatchWebhook with no matching events across multiple endpoints", async () => {
+   636→      mockWHEndpointFindMany.mockResolvedValueOnce([
+   637→        makeEndpoint({ id: "ep-1", events: JSON.stringify(["order.created"]) }),
+   638→        makeEndpoint({ id: "ep-2", events: JSON.stringify(["order.updated"]) }),
+   639→      ]);
+   640→      const count = await dispatchWebhook({
+   641→        event: "invoice.created",
+   642→        companySlug: "acme",
+   643→        timestamp: "2025-01-01",
+   644→        data: {},
+   645→      });
+   646→      expect(count).toBe(0);
+   647→    });
+   648→
+   649→    it("getWebhookStats for company with no endpoints", async () => {
+   650→      mockWHEndpointCount.mockResolvedValueOnce(0);
+   651→      mockWHDeliveryFindMany.mockResolvedValueOnce([]);
+   652→      const stats = await getWebhookStats("empty-co");
+   653→      expect(stats.activeEndpoints).toBe(0);
+   654→      expect(stats.recentDeliveries).toHaveLength(0);
+   655→    });
+   656→  });
+   657→});
