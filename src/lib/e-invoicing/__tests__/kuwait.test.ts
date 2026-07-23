@@ -478,7 +478,7 @@ describe("Retention enforcement", () => {
       createdAt: new Date("2025-06-01"),
     };
     const result = checkInvoiceRetention(recentlyDeleted, kuwaitCompany);
-    expect(result.reasonAr).toContain("10.000"); // 10,000 KWD fine reference
+    expect(result.reasonAr).toContain("١٠٬٠٠٠"); // 10,000 KWD in Arabic-Indic digits
   });
 
   it("should check financial record retention generically", () => {

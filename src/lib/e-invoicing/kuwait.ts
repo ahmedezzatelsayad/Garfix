@@ -350,11 +350,18 @@ export function validateKuwaitInvoice(
  * classify as "standard" (B2B). Otherwise, "simplified" (B2C).
  */
 export function determineInvoiceType(invoice: Record<string, unknown>): KuwaitInvoiceType {
-  // If already set, use it
-  if (invoice.invoiceTypeEn === "standard" || invoice.invoiceTypeAr === "فاتورة ضريبية") {
+  // If invoiceTypeEn is explicitly set, use it (it takes priority over Arabic type)
+  if (invoice.invoiceTypeEn === "standard") {
     return "standard";
   }
-  if (invoice.invoiceTypeEn === "simplified" || invoice.invoiceTypeAr === "فاتورة مبسطة") {
+  if (invoice.invoiceTypeEn === "simplified") {
+    return "simplified";
+  }
+  // If Arabic type is set, use it
+  if (invoice.invoiceTypeAr === "فاتورة ضريبية") {
+    return "standard";
+  }
+  if (invoice.invoiceTypeAr === "فاتورة مبسطة") {
     return "simplified";
   }
   // Auto-classify: if buyer has tax registration or clientId (business), it's B2B
@@ -667,6 +674,11 @@ export function autoPopulateKuwaitFields(
   company: Record<string, unknown>,
 ): Record<string, unknown> {
   const result = { ...invoiceData };
+
+  // ── 0. Auto-populate UUID ──────────────────────────────────────────────
+  if (!invoiceData.uuid) {
+    result.uuid = crypto.randomUUID();
+  }
 
   // ── 1. Auto-populate Hijri dates ──────────────────────────────────────
   if (invoiceData.issueDate && !invoiceData.hijriIssueDate) {

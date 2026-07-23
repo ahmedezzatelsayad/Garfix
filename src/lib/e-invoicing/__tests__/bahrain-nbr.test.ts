@@ -162,7 +162,8 @@ describe("validateBahrainNbrInvoice", () => {
 
   it("should fail when seller VAT TRN is missing", () => {
     const company = { ...bahrainCompany, vatNumber: undefined };
-    const result = validateBahrainNbrInvoice(validBahrainInvoice, company);
+    const invoice = { ...validBahrainInvoice, vatNumber: undefined };
+    const result = validateBahrainNbrInvoice(invoice, company);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.field === "vatNumber")).toBe(true);
     expect(result.errors.some((e) => e.messageAr.includes("هيئة الإيرادات الوطنية"))).toBe(true);
@@ -266,7 +267,7 @@ describe("validateBahrainNbrInvoice", () => {
     const result = validateBahrainNbrInvoice(validBahrainInvoice, bahrainCompany);
     expect(result.warnings.some((w) => w.field === "recordRetention")).toBe(true);
     expect(result.warnings.some((w) => w.messageAr.includes("5 سنوات"))).toBe(true);
-    expect(result.warnings.some((w) => w.messageAr.includes("10.000 دينار بحريني"))).toBe(true);
+    expect(result.warnings.some((w) => w.messageAr.includes("10,000 دينار بحريني"))).toBe(true);
   });
 
   it("should include NBR portal framework development warning", () => {

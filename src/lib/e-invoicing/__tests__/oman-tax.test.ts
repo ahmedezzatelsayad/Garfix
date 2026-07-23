@@ -162,7 +162,8 @@ describe("validateOmanTaxInvoice", () => {
 
   it("should fail when seller VAT TRN is missing", () => {
     const company = { ...omanCompany, vatNumber: undefined };
-    const result = validateOmanTaxInvoice(validOmanInvoice, company);
+    const invoice = { ...validOmanInvoice, vatNumber: undefined };
+    const result = validateOmanTaxInvoice(invoice, company);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.field === "vatNumber")).toBe(true);
     expect(result.errors.some((e) => e.messageAr.includes("هيئة الضرائب العُمانية"))).toBe(true);
