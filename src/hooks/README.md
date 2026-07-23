@@ -6,9 +6,10 @@
 
 ```
 hooks/
-├── api-client.ts        # HTTP client مع auth headers
+├── api-client.ts        # HTTP client مع auth headers و CSRF token
 ├── query-keys.ts        # مفاتيح React Query مُنسّقة
 ├── use-mobile.ts        # كشف الجهاز المحمول
+├── use-pwa.ts           # كشف حالة تثبيت PWA
 ├── use-toast.ts         # إدارة إشعارات Toast
 └── queries/             # React Query hooks حسب النطاق
     ├── index.ts         # تصدير مركزي
@@ -29,9 +30,10 @@ hooks/
 
 | الملف | الوظيفة |
 |-------|---------|
-| `api-client.ts` | HTTP client يُضيف تلقائياً JWT token و company slug لكل طلب |
+| `api-client.ts` | HTTP client يُضيف تلقائياً JWT token و company slug لكل طلب، ويُرفق رمز CSRF token في headers لطلبات POST/PUT/DELETE لحماية من هجمات Cross-Site Request Forgery |
 | `query-keys.ts` | تعريفات مفاتيح React Query لضمان cache coherence |
 | `use-mobile.ts` | Hook يُرجع `true` إذا كان العرض < 768px |
+| `use-pwa.ts` | Hook لكشف حالة تثبيت تطبيق الويب التقدمي (PWA) — يُرجع `isInstalled`, `canInstall`, `installPrompt`, و `install()` لطلب تثبيت التطبيق |
 | `use-toast.ts` | Hook لإدارة إشعارات Toast |
 
 ## `queries/` — Hooks حسب النطاق
@@ -65,3 +67,4 @@ const { data, isLoading } = useClients();
 - كل hook يتبع نمط `use{Resource}` للاستعلام و `useCreate{Resource}` / `useUpdate{Resource}` للمutations
 - المفاتيح تُعرّف في `query-keys.ts` وتُستخدم عبر `queryKeyFactory`
 - الـ mutations تُبطل الـ cache تلقائياً عند النجاح (`invalidateQueries`)
+- الـ API client يُرفق CSRF token تلقائياً في headers لطلبات الكتابة (POST/PUT/DELETE) لضمان حماية الطلبات المعدّلة
