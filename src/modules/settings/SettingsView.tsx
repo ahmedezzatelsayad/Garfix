@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useBrand, type CompanyInfo } from "@/context/BrandContext";
@@ -17,9 +18,9 @@ export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-[16px]">
+    <div className="flex flex-col gap-3 sm:gap-4 md:gap-4">
       <div>
-        <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold flex items-center gap-2">
           <Building2 size={20} /> إعدادات الشركة
         </h1>
         <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>

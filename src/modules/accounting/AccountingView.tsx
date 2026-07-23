@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, lazy } from "react";
@@ -618,7 +619,7 @@ function FinancialDashboardApiView() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         {kpiCards.map((kpi) => (
           <DashboardCard
             key={kpi.label}
@@ -643,7 +644,7 @@ function FinancialDashboardApiView() {
       {/* Trends summary */}
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-2">
         <h3 className="font-bold text-[14px] flex items-center gap-2"><LayoutDashboard size={16} /> التغيرات عن الفترة السابقة</h3>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 text-[13px]">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 text-[12px] sm:text-[13px]">
           <div className="flex justify-between"><span className="text-muted-foreground">الإيرادات</span><span className="font-bold" style={{ color: metrics.trends.revenueChange !== null ? (metrics.trends.revenueChange >= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.revenueChange)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">المصروفات</span><span className="font-bold" style={{ color: metrics.trends.expenseChange !== null ? (metrics.trends.expenseChange <= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.expenseChange)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">صافي الربح</span><span className="font-bold" style={{ color: metrics.trends.profitChange !== null ? (metrics.trends.profitChange >= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.profitChange)}</span></div>
@@ -673,12 +674,12 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
   ];
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         {metrics.map((m) => (
           <DashboardCard key={m.label} label={m.label} value={fmt(m.value)} color={m.color} icon={m.icon} />
         ))}
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
           <h3 className="font-bold text-[14px] flex items-center gap-2"><Clock size={16} /> الفترة المالية الحالية</h3>
           {currentPeriod ? (
@@ -807,7 +808,7 @@ function FiscalPeriodForm({ company, onClose, onSaved }: { company: { slug: stri
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold">فترة مالية جديدة</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>الاسم *</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} placeholder="مثال: 2025-Q1" /></div>
         <div><label className={labelStyle}>تاريخ البداية *</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
         <div><label className={labelStyle}>تاريخ النهاية *</label><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
@@ -879,7 +880,7 @@ function CostCenterForm({ company, costCenters, onClose, onSaved }: { company: {
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold">مركز تكلفة جديد</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>الكود *</label><input value={code} onChange={(e) => setCode(e.target.value)} className={inputStyle} dir="ltr" /></div>
         <div><label className={labelStyle}>الاسم (عربي) *</label><input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className={inputStyle} /></div>
         <div><label className={labelStyle}>النوع</label>
@@ -914,7 +915,7 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
         <button onClick={() => setMode("receivable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", mode === "receivable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم مدينة (مستحقات)</button>
         <button onClick={() => setMode("payable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", mode === "payable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم دائنة (التزامات)</button>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <DashboardCard label={mode === "receivable" ? "إجمالي الذمم المدينة" : "إجمالي الذمم الدائنة"} value={fmt(mode === "receivable" ? totalAR : totalAP)} color={mode === "receivable" ? "#7c3aed" : "#f59e0b"} icon={<ArrowUpDown size={18} />} />
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
@@ -1020,7 +1021,7 @@ function BankAccountForm({ company, onClose, onSaved }: { company: { slug: strin
   return (
     <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
       <h3 className="text-[15px] font-bold">حساب بنكي جديد</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
         <div><label className={labelStyle}>اسم الحساب *</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} /></div>
         <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
         <div><label className={labelStyle}>رقم الحساب *</label><input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
@@ -1088,11 +1089,11 @@ function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; gr
 
 /* ─── Shared Styles ─────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "py-2.5 px-3 text-[13px]";
+const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const thCheck = "w-10 text-center py-2.5 px-2 text-[11px] text-muted-foreground font-bold";
 const tdCheck = (checked: boolean): string => `py-2.5 px-2 text-center ${checked ? "bg-accent" : "bg-transparent"}`;
 const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 function Empty({ label }: { label: string }) {
@@ -1236,7 +1237,7 @@ function StatementCard({ label, value, color, icon }: { label: string; value: nu
 function ProfitLossView({ data }: { data: ProfitLossData }) {
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <StatementCard label="إجمالي الإيرادات" value={data.revenue.total} color="#10b981" icon={<TrendingUp size={16} />} />
         <StatementCard label="صافي الإيرادات" value={data.revenue.net} color="#3b82f6" icon={<TrendingUp size={16} />} />
         <StatementCard label="إجمالي المصروفات" value={data.expenses.total} color="#f59e0b" icon={<TrendingDown size={16} />} />
@@ -1269,7 +1270,7 @@ function ProfitLossView({ data }: { data: ProfitLossData }) {
 function BalanceSheetView({ data }: { data: BalanceSheetData }) {
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <StatementCard label="إجمالي الأصول" value={data.assets.total} color="#10b981" icon={<TrendingUp size={16} />} />
         <StatementCard label="إجمالي الخصوم" value={data.liabilities.total} color="#f59e0b" icon={<TrendingDown size={16} />} />
         <StatementCard label="حقوق الملكية" value={data.equity.total} color="#7c3aed" icon={<Scale size={16} />} />
@@ -1279,7 +1280,7 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
         <span className="text-[12px] text-muted-foreground">كما في: {data.asOf}</span>
         <span className="py-[3px] px-2.5 rounded-lg text-[11px] font-bold" style={{ background: data.isBalanced ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: data.isBalanced ? "#10b981" : "#ef4444" }}>{data.isBalanced ? "متوازنة ✓" : "غير متوازنة ✗"}</span>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
         <BalanceSheetSection title="الأصول" accounts={data.assets.accounts} total={data.assets.total} color="#10b981" />
         <BalanceSheetSection title="الخصوم" accounts={data.liabilities.accounts} total={data.liabilities.total} color="#f59e0b" />
         <BalanceSheetSection title="حقوق الملكية" accounts={data.equity.accounts} total={data.equity.total} color="#7c3aed" />
@@ -1309,7 +1310,7 @@ function BalanceSheetSection({ title, accounts, total, color }: { title: string;
 function CashFlowView({ data }: { data: CashFlowData }) {
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <StatementCard label="صافي العمليات" value={data.operating.net} color={data.operating.net >= 0 ? "#10b981" : "#ef4444"} icon={<Wallet size={16} />} />
         <StatementCard label="صافي الاستثمار" value={data.investing.net} color={data.investing.net >= 0 ? "#10b981" : "#ef4444"} icon={<TrendingDown size={16} />} />
         <StatementCard label="صافي التمويل" value={data.financing.net} color={data.financing.net >= 0 ? "#10b981" : "#ef4444"} icon={<TrendingUp size={16} />} />
@@ -1373,7 +1374,7 @@ function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug:
     <div className="flex flex-col gap-4">
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
         <h3 className="text-[15px] font-bold">حساب جديد</h3>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
           <div><label className={labelStyle}>الكود *</label><input value={code} onChange={(e) => setCode(e.target.value)} className={inputStyle} dir="ltr" /></div>
           <div><label className={labelStyle}>الاسم (عربي) *</label><input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className={inputStyle} /></div>
           <div><label className={labelStyle}>الاسم (إنجليزي)</label><input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className={inputStyle} dir="ltr" /></div>
@@ -1435,7 +1436,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
     <div className="flex flex-col gap-4">
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
         <h3 className="text-[15px] font-bold">قيد يومية جديد</h3>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
           <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
           <div><label className={labelStyle}>المرجع</label><input value={reference} onChange={(e) => setReference(e.target.value)} className={inputStyle} dir="ltr" /></div>
           <div><label className={labelStyle}>الحالة</label>
@@ -1450,7 +1451,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
           </div>
           <div className="flex flex-col gap-2">
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_100px_100px_32px] gap-2 items-center">
+              <div key={i} className="grid grid-cols-[1fr_80px_sm:100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
                 <select value={l.accountId ?? ""} onChange={(e) => updateLine(i, "accountId", Number(e.target.value))} className={inputStyle}><option value="">— اختر حساب —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}</select>
                 <input type="number" placeholder="مدين" value={l.debit} onChange={(e) => updateLine(i, "debit", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <input type="number" placeholder="دائن" value={l.credit} onChange={(e) => updateLine(i, "credit", Number(e.target.value))} className={inputStyle} dir="ltr" />

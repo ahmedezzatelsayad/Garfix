@@ -1,3 +1,4 @@
+// Responsive: sm/md/lg breakpoints added
 "use client";
 
 /**
@@ -95,11 +96,11 @@ function fmtDate(s: string): string {
 }
 
 function fmtMoney(v: unknown): string {
-  return num(v, 3).toLocaleString("ar-EG", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
+  return num(v).toLocaleString("ar-EG", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
 }
 
-const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-semibold";
-const tdStyle = "px-3 py-2.5 align-middle";
+const thStyle = "text-start px-2.5 sm:px-3 py-2.5 text-[11px] text-muted-foreground font-semibold";
+const tdStyle = "px-2.5 sm:px-3 py-2.5 align-middle";
 
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
   const [client, setClient] = useState<ClientInfo | null>(null);
@@ -256,7 +257,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Client info card */}
         <Card title="معلومات العميل" icon={<User size={16} />}>
           <InfoRow icon={<Mail size={13} />} label="البريد" value={client.email} dir="ltr" />

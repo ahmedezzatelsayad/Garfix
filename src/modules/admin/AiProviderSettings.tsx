@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   CheckCircle2, XCircle, Loader2, Eye, EyeOff, Save, Zap, KeyRound,
 } from "lucide-react";
@@ -50,6 +51,9 @@ function makeInitialCardState(p: ProviderInfo): CardState {
     dirty: false,
   };
 }
+
+const labelCls = "block text-[11px] font-bold text-muted-foreground mb-1";
+const inputCls = "w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground font-[inherit] text-xs outline-none";
 
 export function AiProviderSettings() {
   const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
@@ -168,8 +172,8 @@ export function AiProviderSettings() {
 
   if (loading) {
     return (
-      <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
-        <Loader2 size={24} className="animate-spin" style={{ margin: "0 auto 12px", display: "block" }} />
+      <div className="p-12 text-center text-muted-foreground">
+        <Loader2 size={24} className="animate-spin block mx-auto mb-3" />
         جارٍ تحميل إعدادات مزودي الذكاء الاصطناعي…
       </div>
     );
@@ -177,31 +181,25 @@ export function AiProviderSettings() {
 
   if (!providers || providers.length === 0) {
     return (
-      <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)" }}>
+      <div className="p-8 text-center text-muted-foreground">
         تعذّر تحميل المزودين. تحقّق من صلاحيات المؤسس.
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)" }}>
-        <img src="/logo.svg" alt="" style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "14px", fontWeight: 800 }}>إعدادات مزودي الذكاء الاصطناعي</div>
-          <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-card border border-border">
+        <img src="/logo.svg" alt="" className="w-5 h-5 rounded shrink-0" />
+        <div className="flex-1">
+          <div className="text-sm font-extrabold">إعدادات مزودي الذكاء الاصطناعي</div>
+          <div className="text-xs text-muted-foreground">
             اضبط المزودين بترتيب الأولوية — عند فشل المزود الأساسي ينتقل النظام تلقائياً للتالي.
           </div>
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
-          gap: "16px",
-        }}
-      >
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
         {providers.map((p) => {
           const c = cards[p.type];
           if (!c) return null;
@@ -210,47 +208,34 @@ export function AiProviderSettings() {
           return (
             <div
               key={p.type}
-              style={{
-                background: "var(--card)",
-                borderRadius: "14px",
-                border: `1px solid ${p.isEnabled ? "rgba(124,58,237,0.35)" : "var(--border)"}`,
-                padding: "18px",
-                display: "flex", flexDirection: "column", gap: "12px",
-                opacity: c.isEnabled ? 1 : 0.85,
-                boxShadow: p.isEnabled ? "0 4px 16px rgba(124,58,237,0.08)" : "none",
-                transition: "all .2s",
-              }}
+              className={cn(
+                "bg-card rounded-[14px] p-[18px] flex flex-col gap-3 transition-all duration-200",
+                p.isEnabled ? "border border-purple-500/35 opacity-100 shadow-[0_4px_16px_rgba(124,58,237,0.08)]" : "border border-border opacity-[0.85] shadow-none"
+              )}
             >
               {/* Header row */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <div className="flex items-start gap-2.5">
                 <div
-                  style={{
-                    width: "40px", height: "40px", borderRadius: "10px",
-                    background: p.isEnabled
-                      ? "linear-gradient(135deg, #7c3aed, #a78bfa)"
-                      : "var(--muted)",
-                    color: p.isEnabled ? "#fff" : "var(--muted-foreground)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0,
-                  }}
+                  className={cn(
+                    "w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0",
+                    p.isEnabled ? "bg-gradient-to-br from-violet-600 to-violet-400 text-white" : "bg-muted text-muted-foreground"
+                  )}
                 >
-                  <img src="/logo.svg" alt="" style={{ width: 20, height: 20, borderRadius: 4 }} />
+                  <img src="/logo.svg" alt="" className="w-5 h-5 rounded" />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "14px", fontWeight: 800 }}>{p.name}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-extrabold">{p.name}</span>
                     {/* Status dot */}
                     <span
                       title={p.isEnabled ? "مفعّل" : "معطّل"}
-                      style={{
-                        width: "9px", height: "9px", borderRadius: "50%",
-                        background: p.isEnabled ? "#22c55e" : "#9ca3af",
-                        boxShadow: p.isEnabled ? "0 0 6px #22c55e" : "none",
-                        display: "inline-block",
-                      }}
+                      className={cn(
+                        "w-[9px] h-[9px] rounded-full inline-block",
+                        p.isEnabled ? "bg-green-500 shadow-[0_0_6px_#22c55e]" : "bg-gray-400 shadow-none"
+                      )}
                     />
                   </div>
-                  <div style={{ fontSize: "11px", color: "var(--muted-foreground)", marginTop: "2px", lineHeight: 1.5 }}>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-[1.5]">
                     {p.description}
                   </div>
                 </div>
@@ -260,48 +245,39 @@ export function AiProviderSettings() {
                   aria-checked={c.isEnabled}
                   aria-label={`تفعيل ${p.name}`}
                   onClick={() => updateCard(p.type, { isEnabled: !c.isEnabled })}
-                  style={{
-                    width: "44px", height: "24px", borderRadius: "999px",
-                    background: c.isEnabled ? "#22c55e" : "var(--muted)",
-                    border: "1px solid var(--border)",
-                    position: "relative", cursor: "pointer", flexShrink: 0,
-                    transition: "background .15s",
-                  }}
+                  className={cn(
+                    "w-11 h-6 rounded-full border border-border relative shrink-0 transition-[background] duration-150 cursor-pointer",
+                    c.isEnabled ? "bg-green-500" : "bg-muted"
+                  )}
                 >
                   <span
-                    style={{
-                      position: "absolute", top: "2px",
-                      left: c.isEnabled ? "22px" : "2px",
-                      width: "18px", height: "18px", borderRadius: "50%",
-                      background: "#fff",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                      transition: "left .15s",
-                    }}
+                    className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-[left] duration-150"
+                    style={{ left: c.isEnabled ? "22px" : "2px" }}
                   />
                 </button>
               </div>
 
               {/* Model field */}
               <div>
-                <label style={labelStyle}>الموديل (Model)</label>
+                <label className={labelCls}>الموديل (Model)</label>
                 <input
                   value={c.model}
                   onChange={(e) => updateCard(p.type, { model: e.target.value })}
                   placeholder={p.defaultModel || "model-name"}
-                  style={inputStyle}
+                  className={inputCls}
                 />
               </div>
 
               {/* Base URL for custom only */}
               {isCustom && (
                 <div>
-                  <label style={labelStyle}>Base URL (OpenAI-compatible)</label>
+                  <label className={labelCls}>Base URL (OpenAI-compatible)</label>
                   <input
                     value={c.baseUrl}
                     onChange={(e) => updateCard(p.type, { baseUrl: e.target.value })}
                     placeholder="https://my-llm.example.com/v1"
                     dir="ltr"
-                    style={{ ...inputStyle, textAlign: "left" }}
+                    className={cn(inputCls, "text-left")}
                   />
                 </div>
               )}
@@ -309,36 +285,31 @@ export function AiProviderSettings() {
               {/* API key field (masked) */}
               {needsKey && (
                 <div>
-                  <label style={labelStyle}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                  <label className={labelCls}>
+                    <span className="inline-flex items-center gap-1.5">
                       <KeyRound size={11} /> مفتاح API
                     </span>
                   </label>
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div className="flex gap-1.5">
                     <input
                       type={c.showKey ? "text" : "password"}
                       value={c.apiKey}
                       onChange={(e) => updateCard(p.type, { apiKey: e.target.value })}
                       placeholder={p.hasApiKey ? (p.apiKeyMasked || "••••••••") : (p.keyPrefix ? `يبدأ بـ ${p.keyPrefix}…` : "أدخل المفتاح")}
                       dir="ltr"
-                      style={{ ...inputStyle, textAlign: "left", flex: 1 }}
+                      className={cn(inputCls, "text-left flex-1")}
                     />
                     <button
                       type="button"
                       onClick={() => updateCard(p.type, { showKey: !c.showKey })}
                       title={c.showKey ? "إخفاء" : "إظهار"}
-                      style={{
-                        width: "36px", borderRadius: "8px",
-                        background: "var(--muted)", border: "1px solid var(--border)",
-                        color: "var(--muted-foreground)", cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
+                      className="w-9 rounded-lg bg-muted border border-border text-muted-foreground cursor-pointer flex items-center justify-center"
                     >
                       {c.showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                   {p.hasApiKey && !c.apiKey && (
-                    <div style={{ fontSize: "10px", color: "var(--muted-foreground)", marginTop: "4px" }}>
+                    <div className="text-[10px] text-muted-foreground mt-1">
                       مفتاح محفوظ ({p.apiKeyMasked}). اترك الحقل فارغاً للاحتفاظ به، أو اكتب مفتاحاً جديداً للاستبدال.
                     </div>
                   )}
@@ -346,41 +317,32 @@ export function AiProviderSettings() {
               )}
 
               {/* Priority field */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label style={labelStyle}>الأولوية (1 = أساسي)</label>
+                  <label className={labelCls}>الأولوية (1 = أساسي)</label>
                   <input
                     type="number" min={1} max={9}
                     value={c.priority}
                     onChange={(e) => updateCard(p.type, { priority: e.target.value })}
                     placeholder="99"
-                    style={inputStyle}
+                    className={inputCls}
                   />
                 </div>
                 {/* Test result */}
                 <div>
-                  <label style={labelStyle}>حالة الاتصال</label>
+                  <label className={labelCls}>حالة الاتصال</label>
                   <div
-                    style={{
-                      ...inputStyle,
-                      display: "flex", alignItems: "center", gap: "6px",
-                      padding: "8px 10px",
-                      background:
-                        c.testState === "success" ? "rgba(34,197,94,0.1)"
-                        : c.testState === "fail" ? "rgba(239,68,68,0.1)"
-                        : "var(--background)",
-                      borderColor:
-                        c.testState === "success" ? "rgba(34,197,94,0.4)"
-                        : c.testState === "fail" ? "rgba(239,68,68,0.4)"
-                        : "var(--border)",
-                      color: "var(--foreground)",
-                      fontSize: "11px",
-                    }}
+                    className={cn(
+                      "w-full px-2.5 py-2 rounded-lg font-[inherit] text-[11px] outline-none flex items-center gap-1.5 text-foreground",
+                      c.testState === "success" ? "bg-green-500/10 border border-green-500/40" : "",
+                      c.testState === "fail" ? "bg-red-500/10 border border-red-500/40" : "",
+                      (c.testState === "idle" || c.testState === "testing") ? "bg-background border border-border" : ""
+                    )}
                   >
                     {c.testState === "testing" && <Loader2 size={12} className="animate-spin" />}
                     {c.testState === "success" && <CheckCircle2 size={12} color="#22c55e" />}
                     {c.testState === "fail" && <XCircle size={12} color="#ef4444" />}
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                       {c.testState === "idle" && "لم يُختبر بعد"}
                       {c.testState === "testing" && "جارٍ الاختبار…"}
                       {c.testState === "success" && (c.testMessage || "نجح")}
@@ -391,19 +353,14 @@ export function AiProviderSettings() {
               </div>
 
               {/* Action buttons */}
-              <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+              <div className="flex gap-2 mt-1">
                 <button
                   onClick={() => test(p)}
                   disabled={c.testState === "testing"}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "6px",
-                    padding: "9px 14px", borderRadius: "9px",
-                    background: "var(--muted)", color: "var(--foreground)",
-                    border: "1px solid var(--border)",
-                    fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-                    cursor: c.testState === "testing" ? "not-allowed" : "pointer",
-                    opacity: c.testState === "testing" ? 0.6 : 1,
-                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[9px] bg-muted text-foreground border border-border font-[inherit] text-xs font-bold",
+                    c.testState === "testing" ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                  )}
                 >
                   {c.testState === "testing" ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
                   اختبار اتصال
@@ -411,17 +368,11 @@ export function AiProviderSettings() {
                 <button
                   onClick={() => save(p)}
                   disabled={c.saving || !c.dirty}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "6px",
-                    padding: "9px 14px", borderRadius: "9px", flex: 1,
-                    background: c.dirty ? "linear-gradient(135deg, #7c3aed, #a78bfa)" : "var(--muted)",
-                    color: c.dirty ? "#fff" : "var(--muted-foreground)",
-                    border: c.dirty ? "none" : "1px solid var(--border)",
-                    fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-                    cursor: c.saving || !c.dirty ? "not-allowed" : "pointer",
-                    opacity: c.saving ? 0.7 : 1,
-                    boxShadow: c.dirty ? "0 4px 12px rgba(124,58,237,0.25)" : "none",
-                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[9px] flex-1 font-[inherit] text-xs font-bold transition-all duration-200",
+                    c.dirty ? "bg-gradient-to-br from-violet-600 to-violet-400 text-white border-none shadow-[0_4px_12px_rgba(124,58,237,0.25)]" : "bg-muted text-muted-foreground border border-border shadow-none",
+                    c.saving ? "opacity-70 cursor-not-allowed" : (c.dirty ? "cursor-pointer" : "cursor-not-allowed")
+                  )}
                 >
                   {c.saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                   حفظ
@@ -434,25 +385,5 @@ export function AiProviderSettings() {
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "var(--muted-foreground)",
-  marginBottom: "4px",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 12px",
-  borderRadius: "8px",
-  background: "var(--background)",
-  border: "1px solid var(--border)",
-  color: "var(--foreground)",
-  fontFamily: "inherit",
-  fontSize: "12px",
-  outline: "none",
-};
 
 export default AiProviderSettings;
