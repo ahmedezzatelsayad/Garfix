@@ -364,6 +364,18 @@ describe("verifyTokenWithBlacklist", () => {
 // ─── resolveAuth ───────────────────────────────────────────────────────────
 
 describe("resolveAuth", () => {
+  beforeEach(() => {
+    // SEC-C1 FIX (Cycle 1) test-hygiene: prior describe blocks
+    // (isTokenBlacklisted, verifyTokenWithBlacklist) set mockExists to
+    // return 1 to simulate a blacklisted token. Without this reset,
+    // resolveAuth — which now consults the blacklist via
+    // verifyTokenWithBlacklist — would inherit the blacklisted state and
+    // reject every access token. This is a test-only leak; production
+    // code reads the real Valkey value on every call.
+    mockExists.mockResolvedValue(0);
+    mockSet.mockResolvedValue("OK");
+  });
+
   it("returns user for valid access token", async () => {
     const payload = {
       uid: "usr_ra",
@@ -380,6 +392,34 @@ describe("resolveAuth", () => {
     const result = await resolveAuth(req as any);
     expect(result.ok).toBe(true);
     expect(result.user!.uid).toBe("usr_ra");
+  });
+
+  // SEC-C1 FIX (Cycle 1) regression test: a blacklisted access token MUST be
+  // rejected by resolveAuth even if the JWT signature is still valid. Before
+  // this cycle, resolveAuth used the sync verifyToken() which could not
+  // consult the Valkey blacklist — so a force-logged-out user kept access
+  // for the full 30-min access-token TTL.
+  it("rejects a blacklisted access token (SEC-C1)", async () => {
+    const payload = {
+      uid: "usr_black",
+      email: "black@test.com",
+      role: "admin",
+      companies: ["co-a"],
+      permissions: {},
+      tv: 1,
+    };
+    const token = signToken(payload);
+    const req = new MockNextRequest({
+      cookies: new Map([[ACCESS_COOKIE, token]]),
+    });
+    // Simulate the JTI being on the blacklist (e.g. after admin force-logout
+    // or after the user changed their password).
+    mockExists.mockResolvedValue(1);
+    const result = await resolveAuth(req as any);
+    // With a blacklisted access token AND no refresh cookie, the user must
+    // be denied.
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(401);
   });
 
   it("returns 401 when no cookies", async () => {
