@@ -1,0 +1,537 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { authedFetch } from "@/context/AuthContext";
+     6→import { toast } from "sonner";
+     7→import {
+     8→  Landmark, Plus, X, Upload, ArrowRightLeft, CheckCircle2,
+     9→  FileText, Download, Trash2, RefreshCw, AlertTriangle,
+    10→} from "lucide-react";
+    11→import { cn } from "@/lib/utils";
+    12→
+    13→/* ─── Interfaces ───────────────────────────────────────────────────────────── */
+    14→interface BankAccount { id: number; name: string; bankName: string; accountName: string; accountNumber: string; iban?: string; currency: string; accountType?: string; balance: number; glAccountId?: number; }
+    15→interface ReconciliationItem { id: number; date: string; description: string; bankAmount: number; bookAmount: number; difference: number; status: string; }
+    16→interface Transfer { id: number; fromAccount: string; toAccount: string; amount: number; currency: string; date: string; description?: string; status: string; reference: string; }
+    17→
+    18→type Tab = "accounts" | "reconciliation" | "import" | "transfer";
+    19→
+    20→/* ─── Shared Styles ────────────────────────────────────────────────────────── */
+    21→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+    22→const tdStyle = "py-2.5 px-3 text-[13px]";
+    23→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+    24→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    25→function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
+    26→function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
+    27→
+    28→/* ─── Main Component ───────────────────────────────────────────────────────── */
+    29→export function BankingView() {
+    30→  const { activeCompany } = useBrand();
+    31→  const [tab, setTab] = useState<Tab>("accounts");
+    32→  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+    33→  const [reconciliation, setReconciliation] = useState<ReconciliationItem[]>([]);
+    34→  const [transfers, setTransfers] = useState<Transfer[]>([]);
+    35→  const [loading, setLoading] = useState(false);
+    36→  const [showForm, setShowForm] = useState(false);
+    37→
+    38→  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
+    39→
+    40→  const loadAccounts = useCallback(async () => {
+    41→    if (!activeCompany) return;
+    42→    setLoading(true);
+    43→    try {
+    44→      const res = await authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`);
+    45→      if (res.ok) { const d = await res.json(); setBankAccounts(d.accounts || []); }
+    46→      else setBankAccounts([]);
+    47→    } catch { setBankAccounts([]); }
+    48→    finally { setLoading(false); }
+    49→  }, [activeCompany, slug]);
+    50→
+    51→  const loadTransfers = useCallback(async () => {
+    52→    if (!activeCompany) return;
+    53→    setLoading(true);
+    54→    try {
+    55→      const res = await authedFetch(`/api/accounting/bank-transfer?companySlug=${slug}`);
+    56→      if (res.ok) { const d = await res.json(); setTransfers(d.transfers || []); }
+    57→      else setTransfers([]);
+    58→    } catch { setTransfers([]); }
+    59→    finally { setLoading(false); }
+    60→  }, [activeCompany, slug]);
+    61→
+    62→  useEffect(() => {
+    63→    // eslint-disable-next-line react-hooks/set-state-in-effect
+    64→    if (tab === "accounts") loadAccounts();
+    65→    if (tab === "transfer") loadTransfers();
+    66→  }, [tab, loadAccounts, loadTransfers]);
+    67→
+    68→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+    69→
+    70→  const tabs: Array<{ key: Tab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    71→    { key: "accounts", label: "الحسابات البنكية", icon: Landmark },
+    72→    { key: "reconciliation", label: "المطابقة البنكية", icon: CheckCircle2 },
+    73→    { key: "import", label: "استيراد CSV", icon: Upload },
+    74→    { key: "transfer", label: "التحويلات", icon: ArrowRightLeft },
+    75→  ];
+    76→
+    77→  const totalCash = bankAccounts.reduce((s, ba) => s + ba.balance, 0);
+    78→
+    79→  return (
+    80→    <div className="flex flex-col gap-4">
+    81→      <div className="flex flex-wrap justify-between items-center gap-3">
+    82→        <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Landmark size={20} /> البنوك</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+    83→        {(tab === "accounts" || tab === "transfer") && !showForm && (
+    84→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+    85→        )}
+    86→      </div>
+    87→      <div className="flex gap-1.5 flex-wrap">
+    88→        {tabs.map((t) => { const Icon = t.icon; return (
+    89→          <button key={t.key} onClick={() => { setTab(t.key); setShowForm(false); }} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5", tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
+    90→            <Icon size={14} /> {t.label}
+    91→          </button>
+    92→        ); })}
+    93→      </div>
+    94→
+    95→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "accounts" ? (
+    96→        showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAccounts(); }} /> : (
+    97→          <div className="flex flex-col gap-4">
+    98→            <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+    99→              <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   100→                <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Landmark size={18} /></div>
+   101→                <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: totalCash >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalCash)}</div></div>
+   102→              </div>
+   103→              <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   104→                <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><FileText size={18} /></div>
+   105→                <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
+   106→              </div>
+   107→            </div>
+   108→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   109→              {bankAccounts.length === 0 ? <Empty label="حسابات بنكية" /> : (
+   110→                <div className="overflow-x-auto garfix-scroll">
+   111→                  <table className="w-full border-collapse">
+   112→                    <thead><tr className="border-b border-border bg-muted">
+   113→                      <th className={thStyle}>البنك</th><th className={thStyle}>اسم الحساب</th><th className={thStyle}>رقم الحساب</th>
+   114→                      <th className={thStyle}>IBAN</th><th className={thStyle}>العملة</th><th className={thStyle}>النوع</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
+   115→                    </tr></thead>
+   116→                    <tbody>
+   117→                      {bankAccounts.map((ba) => (
+   118→                        <tr key={ba.id} className="border-b border-border">
+   119→                          <td className={cn(tdStyle, "font-bold")}><Landmark size={14} className="inline me-1 opacity-50" />{ba.bankName}</td>
+   120→                          <td className={tdStyle}>{ba.accountName || ba.name}</td>
+   121→                          <td className={cn(tdStyle, "font-mono")} dir="ltr">{ba.accountNumber}</td>
+   122→                          <td className={cn(tdStyle, "font-mono text-[11px]")} dir="ltr">{ba.iban || "—"}</td>
+   123→                          <td className={tdStyle}>{ba.currency}</td>
+   124→                          <td className={tdStyle}>{ba.accountType || "—"}</td>
+   125→                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: ba.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(ba.balance)}</td>
+   126→                        </tr>
+   127→                      ))}
+   128→                    </tbody>
+   129→                    <tfoot>
+   130→                      <tr className="border-t-2 border-border bg-muted font-extrabold">
+   131→                        <td className={cn(tdStyle, "font-extrabold")} colSpan={6}>إجمالي النقدية</td>
+   132→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: totalCash >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalCash)}</td>
+   133→                      </tr>
+   134→                    </tfoot>
+   135→                  </table>
+   136→                </div>
+   137→              )}
+   138→            </div>
+   139→          </div>
+   140→        )
+   141→      ) : tab === "reconciliation" ? (
+   142→        <ReconciliationView company={activeCompany} />
+   143→      ) : tab === "import" ? (
+   144→        <CSVImportView company={activeCompany} />
+   145→      ) : tab === "transfer" ? (
+   146→        showForm ? <TransferFormView accounts={bankAccounts} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadTransfers(); }} /> : (
+   147→          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   148→            {transfers.length === 0 ? <Empty label="تحويلات" /> : (
+   149→              <div className="overflow-x-auto garfix-scroll">
+   150→                <table className="w-full border-collapse">
+   151→                  <thead><tr className="border-b border-border bg-muted">
+   152→                    <th className={thStyle}>المرجع</th><th className={thStyle}>من حساب</th><th className={thStyle}>إلى حساب</th>
+   153→                    <th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>العملة</th><th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th><th className={thStyle}>الحالة</th>
+   154→                  </tr></thead>
+   155→                  <tbody>
+   156→                    {transfers.map((t) => (
+   157→                      <tr key={t.id} className="border-b border-border">
+   158→                        <td className={cn(tdStyle, "font-mono")}>{t.reference}</td>
+   159→                        <td className={tdStyle}>{t.fromAccount}</td>
+   160→                        <td className={tdStyle}>{t.toAccount}</td>
+   161→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(t.amount)}</td>
+   162→                        <td className={tdStyle}>{t.currency}</td>
+   163→                        <td className={tdStyle} dir="ltr">{t.date}</td>
+   164→                        <td className={tdStyle}>{t.description || "—"}</td>
+   165→                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: t.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: t.status === "completed" ? "#10b981" : "#f59e0b" }}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+   166→                      </tr>
+   167→                    ))}
+   168→                  </tbody>
+   169→                </table>
+   170→              </div>
+   171→            )}
+   172→          </div>
+   173→        )
+   174→      ) : null}
+   175→    </div>
+   176→  );
+   177→}
+   178→
+   179→/* ─── Bank Account Form ────────────────────────────────────────────────────── */
+   180→function BankAccountFormView({ company, onClose, onSaved }: { company: { slug: string; currency?: string }; onClose: () => void; onSaved: () => void }) {
+   181→  const [bankName, setBankName] = useState("");
+   182→  const [accountName, setAccountName] = useState("");
+   183→  const [accountNumber, setAccountNumber] = useState("");
+   184→  const [iban, setIban] = useState("");
+   185→  const [currency, setCurrency] = useState(company.currency || "KWD");
+   186→  const [accountType, setAccountType] = useState("checking");
+   187→  const [glAccountId, setGlAccountId] = useState<number | null>(null);
+   188→  const [balance, setBalance] = useState(0);
+   189→  const [saving, setSaving] = useState(false);
+   190→  const [glAccounts, setGlAccounts] = useState<Array<{ id: number; code: string; nameAr: string }>>([]);
+   191→
+   192→  useEffect(() => {
+   193→    authedFetch(`/api/accounting/accounts?companySlug=${encodeURIComponent(company.slug)}`)
+   194→      .then(r => r.ok ? r.json() : { accounts: [] })
+   195→      .then(d => setGlAccounts(d.accounts || []))
+   196→      .catch(() => setGlAccounts([]));
+   197→  }, [company.slug]);
+   198→
+   199→  const submit = async () => {
+   200→    if (!bankName || !accountName || !accountNumber) { toast.error("البنك واسم الحساب ورقم الحساب مطلوبة"); return; }
+   201→    setSaving(true);
+   202→    try {
+   203→      const res = await authedFetch("/api/accounting/bank-accounts", {
+   204→        method: "POST", headers: { "Content-Type": "application/json" },
+   205→        body: JSON.stringify({ name: accountName, bankName, accountName, accountNumber, iban, currency, accountType, glAccountId, balance, companySlug: company.slug }),
+   206→      });
+   207→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+   208→      toast.success("تم إنشاء الحساب البنكي"); onSaved();
+   209→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   210→    finally { setSaving(false); }
+   211→  };
+   212→
+   213→  return (
+   214→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   215→      <h3 className="text-[15px] font-bold flex items-center gap-2"><Landmark size={16} /> حساب بنكي جديد</h3>
+   216→      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   217→        <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
+   218→        <div><label className={labelStyle}>اسم الحساب *</label><input value={accountName} onChange={(e) => setAccountName(e.target.value)} className={inputStyle} /></div>
+   219→        <div><label className={labelStyle}>رقم الحساب *</label><input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   220→        <div><label className={labelStyle}>IBAN</label><input value={iban} onChange={(e) => setIban(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   221→        <div><label className={labelStyle}>العملة</label>
+   222→          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputStyle}>
+   223→            <option value="KWD">KWD</option><option value="SAR">SAR</option><option value="AED">AED</option><option value="USD">USD</option><option value="EUR">EUR</option>
+   224→          </select>
+   225→        </div>
+   226→        <div><label className={labelStyle}>نوع الحساب</label>
+   227→          <select value={accountType} onChange={(e) => setAccountType(e.target.value)} className={inputStyle}>
+   228→            <option value="checking">جاري</option><option value="savings">توفير</option><option value="overdraft">سحب على المكشوف</option><option value="loan">قرض</option>
+   229→          </select>
+   230→        </div>
+   231→        <div><label className={labelStyle}>الحساب المالي (GL)</label>
+   232→          <select value={glAccountId ?? ""} onChange={(e) => setGlAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   233→            <option value="">— اختر —</option>
+   234→            {glAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}
+   235→          </select>
+   236→        </div>
+   237→        <div><label className={labelStyle}>الرصيد الافتتاحي</label><input type="number" value={balance} onChange={(e) => setBalance(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   238→      </div>
+   239→      <div className="flex gap-2.5 justify-end">
+   240→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   241→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   242→      </div>
+   243→    </div>
+   244→  );
+   245→}
+   246→
+   247→/* ─── Reconciliation ─────────────────────────────────────────────────────────── */
+   248→function ReconciliationView({ company }: { company: { slug: string } }) {
+   249→  const [items, setItems] = useState<ReconciliationItem[]>([]);
+   250→  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+   251→  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+   252→  const [loading, setLoading] = useState(false);
+   253→  const [actionId, setActionId] = useState<number | null>(null);
+   254→  const [completing, setCompleting] = useState(false);
+   255→
+   256→  const slug = encodeURIComponent(company.slug);
+   257→
+   258→  useEffect(() => {
+   259→    authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`)
+   260→      .then(r => r.ok ? r.json() : { accounts: [] })
+   261→      .then(d => setBankAccounts(d.accounts || []))
+   262→      .catch(() => setBankAccounts([]));
+   263→  }, [slug]);
+   264→
+   265→  const loadItems = useCallback(async () => {
+   266→    if (!selectedAccountId) { setItems([]); return; }
+   267→    setLoading(true);
+   268→    try {
+   269→      const res = await authedFetch(`/api/accounting/bank-reconciliation?companySlug=${slug}&bankAccountId=${selectedAccountId}`);
+   270→      if (res.ok) { const d = await res.json(); setItems(d.items || []); }
+   271→      else setItems([]);
+   272→    } catch { setItems([]); }
+   273→    finally { setLoading(false); }
+   274→  }, [selectedAccountId, slug]);
+   275→
+   276→  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+   277→    loadItems(); }, [loadItems]);
+   278→
+   279→  const totalBank = items.reduce((s, i) => s + i.bankAmount, 0);
+   280→  const totalBook = items.reduce((s, i) => s + i.bookAmount, 0);
+   281→  const totalDiff = totalBank - totalBook;
+   282→  const matchedCount = items.filter(i => i.status === "matched").length;
+   283→  const unmatchedCount = items.filter(i => i.status !== "matched").length;
+   284→
+   285→  const handleMatch = async (id: number) => {
+   286→    setActionId(id);
+   287→    try {
+   288→      const res = await authedFetch(`/api/accounting/bank-reconciliation/${id}/match?companySlug=${slug}&bankAccountId=${selectedAccountId}`, { method: "POST" });
+   289→      if (res.ok) { toast.success("تم المطابقة"); loadItems(); }
+   290→      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر المطابقة"); }
+   291→    } catch { toast.error("خطأ"); }
+   292→    finally { setActionId(null); }
+   293→  };
+   294→
+   295→  const handleComplete = async () => {
+   296→    if (!selectedAccountId) return;
+   297→    if (unmatchedCount > 0 && !confirm(`هناك ${unmatchedCount} عنصر غير مطابق. إتمام المطابقة؟`)) return;
+   298→    setCompleting(true);
+   299→    try {
+   300→      const res = await authedFetch(`/api/accounting/bank-reconciliation/complete?companySlug=${slug}&bankAccountId=${selectedAccountId}`, { method: "POST" });
+   301→      if (res.ok) { toast.success("تم إتمام المطابقة البنكية"); loadItems(); }
+   302→      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إتمام المطابقة"); }
+   303→    } catch { toast.error("خطأ"); }
+   304→    finally { setCompleting(false); }
+   305→  };
+   306→
+   307→  return (
+   308→    <div className="flex flex-col gap-4">
+   309→      <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
+   310→        <div className="flex items-center gap-1.5">
+   311→          <label className="text-[11px] font-bold text-muted-foreground">الحساب البنكي</label>
+   312→          <select value={selectedAccountId ?? ""} onChange={(e) => setSelectedAccountId(e.target.value ? Number(e.target.value) : null)} className={cn(inputStyle, "w-auto min-w-[200px]")}>
+   313→            <option value="">— اختر حساب —</option>
+   314→            {bankAccounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber}</option>)}
+   315→          </select>
+   316→        </div>
+   317→        <button onClick={loadItems} disabled={!selectedAccountId || loading} className="py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   318→          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? "جارٍ…" : "عرض"}
+   319→        </button>
+   320→        {selectedAccountId && unmatchedCount === 0 && items.length > 0 && (
+   321→          <button onClick={handleComplete} disabled={completing} className="py-2 px-4 rounded-sm bg-emerald-600 text-white border-none text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   322→            <CheckCircle2 size={12} /> {completing ? "جارٍ…" : "إتمام المطابقة"}
+   323→          </button>
+   324→        )}
+   325→      </div>
+   326→
+   327→      {selectedAccountId && items.length > 0 && (
+   328→        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   329→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   330→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Landmark size={18} /></div>
+   331→            <div><div className="text-[11px] text-muted-foreground">إجمالي البنك</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBank)}</div></div>
+   332→          </div>
+   333→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   334→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(59,130,246,0.20)", color: "#3b82f6" }}><FileText size={18} /></div>
+   335→            <div><div className="text-[11px] text-muted-foreground">إجمالي الكتب</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBook)}</div></div>
+   336→          </div>
+   337→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   338→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: totalDiff === 0 ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.20)", color: totalDiff === 0 ? "#10b981" : "#ef4444" }}>
+   339→              {totalDiff === 0 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+   340→            </div>
+   341→            <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: totalDiff === 0 ? "#10b981" : "#ef4444" }}>{fmt(totalDiff)}</div></div>
+   342→          </div>
+   343→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   344→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><CheckCircle2 size={18} /></div>
+   345→            <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span style={{ color: "#10b981" }}>{matchedCount}</span> / <span style={{ color: "#f59e0b" }}>{unmatchedCount}</span></div></div>
+   346→          </div>
+   347→        </div>
+   348→      )}
+   349→
+   350→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   351→        {!selectedAccountId ? <div className="p-12 text-center text-muted-foreground">اختر حساب بنكي لعرض عناصر المطابقة</div> : items.length === 0 ? <Empty label="عناصر المطابقة" /> : (
+   352→          <div className="overflow-x-auto garfix-scroll">
+   353→            <table className="w-full border-collapse">
+   354→              <thead><tr className="border-b border-border bg-muted">
+   355→                <th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th>
+   356→                <th className={cn(thStyle, "text-end")}>البنك</th><th className={cn(thStyle, "text-end")}>الكتب</th><th className={cn(thStyle, "text-end")}>الفرق</th>
+   357→                <th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   358→              </tr></thead>
+   359→              <tbody>
+   360→                {items.map((item) => (
+   361→                  <tr key={item.id} className={cn("border-b border-border", item.status === "matched" ? "bg-emerald-500/5" : "bg-transparent")}>
+   362→                    <td className={tdStyle} dir="ltr">{item.date}</td>
+   363→                    <td className={cn(tdStyle, "font-bold")}>{item.description}</td>
+   364→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bankAmount)}</td>
+   365→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bookAmount)}</td>
+   366→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: item.difference === 0 ? "#10b981" : "#ef4444" }}>{fmt(item.difference)}</td>
+   367→                    <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: item.status === "matched" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: item.status === "matched" ? "#10b981" : "#f59e0b" }}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
+   368→                    <td className={tdStyle}>{item.status !== "matched" && <button onClick={() => handleMatch(item.id)} disabled={actionId === item.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{actionId === item.id ? "جارٍ…" : "مطابقة"}</button>}</td>
+   369→                  </tr>
+   370→                ))}
+   371→              </tbody>
+   372→            </table>
+   373→          </div>
+   374→        )}
+   375→      </div>
+   376→    </div>
+   377→  );
+   378→}
+   379→
+   380→/* ─── CSV Import ────────────────────────────────────────────────────────────── */
+   381→function CSVImportView({ company }: { company: { slug: string } }) {
+   382→  const [accountId, setAccountId] = useState<number | null>(null);
+   383→  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+   384→  const [csvContent, setCsvContent] = useState("");
+   385→  const [importing, setImporting] = useState(false);
+   386→  const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
+   387→
+   388→  const slug = encodeURIComponent(company.slug);
+   389→
+   390→  useEffect(() => {
+   391→    authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`)
+   392→      .then(r => r.ok ? r.json() : { accounts: [] })
+   393→      .then(d => setAccounts(d.accounts || []))
+   394→      .catch(() => setAccounts([]));
+   395→  }, [slug]);
+   396→
+   397→  const handleImport = async () => {
+   398→    if (!accountId) { toast.error("اختر حساب بنكي"); return; }
+   399→    if (!csvContent.trim()) { toast.error("أدخل محتوى CSV"); return; }
+   400→    setImporting(true); setResult(null);
+   401→    try {
+   402→      const res = await authedFetch("/api/accounting/bank-import", {
+   403→        method: "POST", headers: { "Content-Type": "application/json" },
+   404→        body: JSON.stringify({ accountId, csvContent, companySlug: company.slug }),
+   405→      });
+   406→      if (res.ok) { const d = await res.json(); setResult(d); toast.success(`تم استيراد ${d.imported} حركة`); setCsvContent(""); }
+   407→      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الاستيراد"); }
+   408→    } catch { toast.error("خطأ في الاتصال"); }
+   409→    finally { setImporting(false); }
+   410→  };
+   411→
+   412→  const sampleCSV = `Date,Description,Amount
+   413→2025-01-15,Customer Payment,5000
+   414→2025-01-16,Supplier Invoice,-1200
+   415→2025-01-18,Bank Charges,-50`;
+   416→
+   417→  return (
+   418→    <div className="flex flex-col gap-4">
+   419→      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   420→        <h3 className="text-[15px] font-bold flex items-center gap-2"><Upload size={16} /> استيراد كشف بنكي CSV</h3>
+   421→        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   422→          <div><label className={labelStyle}>الحساب البنكي *</label>
+   423→            <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   424→              <option value="">— اختر حساب —</option>
+   425→              {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber}</option>)}
+   426→            </select>
+   427→          </div>
+   428→        </div>
+   429→        <div>
+   430→          <label className={labelStyle}>محتوى CSV *</label>
+   431→          <textarea
+   432→            value={csvContent}
+   433→            onChange={(e) => setCsvContent(e.target.value)}
+   434→            rows={8}
+   435→            className={cn(inputStyle, "min-h-[160px] resize-y font-mono text-[12px]")}
+   436→            dir="ltr"
+   437→            placeholder={sampleCSV}
+   438→          />
+   439→        </div>
+   440→        <div className="bg-muted rounded-md p-3 text-[12px] text-muted-foreground leading-relaxed">
+   441→          تنسيق CSV المطلوب: <strong dir="ltr">Date, Description, Amount</strong> — الحقول مفصولة بفواصل، المبلغ يمكن أن يكون سالب للمسحوبات.
+   442→          <br />يمكنك لصق محتوى الكشف البنكي مباشرة أو نسخه من ملف CSV.
+   443→        </div>
+   444→        <button onClick={handleImport} disabled={importing || !accountId || !csvContent.trim()} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   445→          <Upload size={14} /> {importing ? "جارٍ الاستيراد…" : "استيراد"}
+   446→        </button>
+   447→      </div>
+   448→      {result && (
+   449→        <div className="bg-card rounded-[14px] border border-border p-5">
+   450→          <h4 className="font-bold text-[14px] mb-3">نتيجة الاستيراد</h4>
+   451→          <div className="flex gap-3 mb-3">
+   452→            <div className="py-2 px-4 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[13px] font-bold">مستورد: {result.imported}</div>
+   453→            <div className="py-2 px-4 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 text-[13px] font-bold">متجاوز: {result.skipped}</div>
+   454→          </div>
+   455→          {result.errors.length > 0 && (
+   456→            <div className="bg-red-500/5 rounded-md p-3 text-[12px] max-h-48 overflow-y-auto garfix-scroll">
+   457→              <div className="font-bold text-red-600 mb-1">أخطاء ({result.errors.length}):</div>
+   458→              {result.errors.map((e, i) => <div key={i} className="text-muted-foreground">{e}</div>)}
+   459→            </div>
+   460→          )}
+   461→        </div>
+   462→      )}
+   463→    </div>
+   464→  );
+   465→}
+   466→
+   467→/* ─── Transfer Form ────────────────────────────────────────────────────────── */
+   468→function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: BankAccount[]; company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   469→  const [fromAccountId, setFromAccountId] = useState<number | null>(null);
+   470→  const [toAccountId, setToAccountId] = useState<number | null>(null);
+   471→  const [amount, setAmount] = useState(0);
+   472→  const [currency, setCurrency] = useState("KWD");
+   473→  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+   474→  const [description, setDescription] = useState("");
+   475→  const [saving, setSaving] = useState(false);
+   476→
+   477→  const fromAccount = accounts.find(a => a.id === fromAccountId);
+   478→  const toAccount = accounts.find(a => a.id === toAccountId);
+   479→
+   480→  // Auto-set currency when selecting source account
+   481→  useEffect(() => {
+   482→    // eslint-disable-next-line react-hooks/set-state-in-effect
+   483→    if (fromAccount) setCurrency(fromAccount.currency);
+   484→  }, [fromAccount]);
+   485→
+   486→  const submit = async () => {
+   487→    if (!fromAccountId || !toAccountId || amount <= 0) { toast.error("اختر الحسابات والمبلغ"); return; }
+   488→    if (fromAccountId === toAccountId) { toast.error("لا يمكن التحويل إلى نفس الحساب"); return; }
+   489→    setSaving(true);
+   490→    try {
+   491→      const res = await authedFetch("/api/accounting/bank-transfer", {
+   492→        method: "POST", headers: { "Content-Type": "application/json" },
+   493→        body: JSON.stringify({ fromAccountId, toAccountId, amount, currency, date, description, companySlug: company.slug }),
+   494→      });
+   495→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+   496→      toast.success("تم إنشاء التحويل"); onSaved();
+   497→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   498→    finally { setSaving(false); }
+   499→  };
+   500→
+   501→  return (
+   502→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   503→      <h3 className="text-[15px] font-bold flex items-center gap-2"><ArrowRightLeft size={16} /> تحويل جديد</h3>
+   504→      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   505→        <div><label className={labelStyle}>من حساب *</label>
+   506→          <select value={fromAccountId ?? ""} onChange={(e) => setFromAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   507→            <option value="">— اختر —</option>
+   508→            {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
+   509→          </select>
+   510→          {fromAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className="font-bold" style={{ color: fromAccount.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(fromAccount.balance)} {fromAccount.currency}</span></div>}
+   511→        </div>
+   512→        <div><label className={labelStyle}>إلى حساب *</label>
+   513→          <select value={toAccountId ?? ""} onChange={(e) => setToAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   514→            <option value="">— اختر —</option>
+   515→            {accounts.filter(a => a.id !== fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
+   516→          </select>
+   517→          {toAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className="font-bold" style={{ color: toAccount.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(toAccount.balance)} {toAccount.currency}</span></div>}
+   518→        </div>
+   519→        <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" min={0} /></div>
+   520→        <div><label className={labelStyle}>العملة</label>
+   521→          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputStyle}>
+   522→            <option value="KWD">KWD</option><option value="SAR">SAR</option><option value="AED">AED</option><option value="USD">USD</option><option value="EUR">EUR</option>
+   523→          </select>
+   524→        </div>
+   525→        <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   526→        <div><label className={labelStyle}>الوصف</label><input value={description} onChange={(e) => setDescription(e.target.value)} className={inputStyle} placeholder="وصف التحويل" /></div>
+   527→      </div>
+   528→      <div className="flex gap-2.5 justify-end">
+   529→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   530→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   531→      </div>
+   532→    </div>
+   533→  );
+   534→}
+   535→
+   536→export default BankingView;
+   537→
