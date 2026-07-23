@@ -1,0 +1,736 @@
+     1→     1→/**
+     2→     2→ * egypt-eta.test.ts — Tests for Egypt ETA e-invoicing compliance module.
+     3→     3→ *
+     4→     4→ * Covers:
+     5→     5→ * - Invoice validation (dual language, TRN, EGP 2 decimals, 14% VAT, export)
+     6→     6→ * - Invoice type classification (standard/simplified/export)
+     7→     7→ * - Payload generation with dual language, EGP amounts, 14% VAT
+     8→     8→ * - Auto-population of ETA-specific fields
+     9→     9→ * - Validation middleware integration
+    10→    10→ * - UUID generation
+    11→    11→ * - Constants validation
+    12→    12→ */
+    13→    13→
+    14→    14→import { describe, it, expect } from "vitest";
+    15→    15→import {
+    16→    16→  validateEgyptEtaInvoice,
+    17→    17→  generateEgyptEtaInvoicePayload,
+    18→    18→  determineEgyptEtaInvoiceType,
+    19→    19→  autoPopulateEgyptEtaFields,
+    20→    20→  generateEgyptEtaUuid,
+    21→    21→  EGYPT_ETA_CURRENCY,
+    22→    22→  EGYPT_ETA_DECIMAL_PLACES,
+    23→    23→  EGYPT_ETA_VAT_RATE,
+    24→    24→  EGYPT_ETA_AUTHORITY,
+    25→    25→  EGYPT_ETA_REGULATION,
+    26→    26→  EGYPT_ETA_MAX_FINE_EGP,
+    27→    27→} from "../egypt-eta";
+    28→    28→import {
+    29→    29→  egyptEtaInvoiceValidationMiddleware,
+    30→    30→  applyEgyptEtaCompliance,
+    31→    31→  formatEgyptEtaErrorsForResponse,
+    32→    32→} from "../egypt-eta-validation";
+    33→    33→import { formatHijri, formatDualDate } from "../../hijri";
+    34→    34→import { num } from "../../money";
+    35→    35→
+    36→    36→// ── Test fixtures ──────────────────────────────────────────────────────────
+    37→    37→
+    38→    38→const egyptCompany = {
+    39→    39→  id: 1,
+    40→    40→  slug: "egypt-trading",
+    41→    41→  name: "Egypt Trading Co.",
+    42→    42→  nameAr: "شركة التجارة المصرية",
+    43→    43→  country: "EG",
+    44→    44→  currency: "EGP",
+    45→    45→  vatNumber: "TRN-EG-300123456",
+    46→    46→  address: "شارع النيل، القاهرة، مصر",
+    47→    47→  addressAr: "شارع النيل، القاهرة، مصر",
+    48→    48→  commercialRegistration: "CR-EG-2023-001",
+    49→    49→  defaultTaxRate: "14",
+    50→    50→  recordRetentionYears: 5,
+    51→    51→};
+    52→    52→
+    53→    53→const egyptCompanyMinimal = {
+    54→    54→  id: 2,
+    55→    55→  slug: "egypt-minimal",
+    56→    56→  name: "Egypt Minimal",
+    57→    57→  nameAr: "مصر minimal",
+    58→    58→  country: "EG",
+    59→    59→  vatNumber: "TRN-EG-100000001",
+    60→    60→  address: "Cairo, Egypt",
+    61→    61→  addressAr: "القاهرة، مصر",
+    62→    62→  defaultTaxRate: "14",
+    63→    63→};
+    64→    64→
+    65→    65→const nonEgyptCompany = {
+    66→    66→  id: 3,
+    67→    67→  slug: "saudi-trading",
+    68→    68→  name: "Saudi Trading Co.",
+    69→    69→  nameAr: "شركة التجارة السعودية",
+    70→    70→  country: "SA",
+    71→    71→  currency: "SAR",
+    72→    72→  vatNumber: "VAT-SA-12345",
+    73→    73→  address: "الرياض، السعودية",
+    74→    74→  defaultTaxRate: "15",
+    75→    75→};
+    76→    76→
+    77→    77→const validEgyptInvoice = {
+    78→    78→  invoiceNumber: "INV-2022-001",
+    79→    79→  issueDate: "2022-01-15",
+    80→    80→  dueDate: "2022-02-15",
+    81→    81→  clientName: "Ahmad Al-Nile",
+    82→    82→  clientNameAr: "أحمد النيل",
+    83→    83→  sellerNameAr: "شركة التجارة المصرية",
+    84→    84→  sellerNameEn: "Egypt Trading Co.",
+    85→    85→  sellerAddressAr: "شارع النيل، القاهرة، مصر",
+    86→    86→  sellerAddressEn: "Nile Street, Cairo, Egypt",
+    87→    87→  sellerTaxRegistrationNumber: "TRN-EG-300123456",
+    88→    88→  currency: "EGP",
+    89→    89→  currencyDecimalPlaces: 2,
+    90→    90→  invoiceTypeEn: "simplified",
+    91→    91→  invoiceTypeAr: "إيصال إلكتروني",
+    92→    92→  taxRate: "14.00",
+    93→    93→  subtotal: "500.00",
+    94→    94→  taxAmount: "70.00",
+    95→    95→  total: "570.00",
+    96→    96→  shipping: "0.00",
+    97→    97→  discount: "0.00",
+    98→    98→  paid: "0.00",
+    99→    99→  lineItems: JSON.stringify([
+   100→   100→    { description: "Design Service", qty: 1, price: 500, total: 500 },
+   101→   101→  ]),
+   102→   102→  notes: "Thank you",
+   103→   103→  notesAr: "شكراً لكم",
+   104→   104→};
+   105→   105→
+   106→   106→const validEgyptB2bInvoice = {
+   107→   107→  ...validEgyptInvoice,
+   108→   108→  invoiceTypeEn: "standard",
+   109→   109→  invoiceTypeAr: "فاتورة ضريبية",
+   110→   110→  buyerNameAr: "أحمد النيل",
+   111→   111→  buyerNameEn: "Ahmad Al-Nile",
+   112→   112→  buyerAddressAr: "شارع النيل، القاهرة",
+   113→   113→  buyerAddressEn: "Nile Street, Cairo",
+   114→   114→  buyerTaxRegistrationNumber: "TRN-EG-300987654",
+   115→   115→  clientId: 5,
+   116→   116→};
+   117→   117→
+   118→   118→const validEgyptExportInvoice = {
+   119→   119→  ...validEgyptInvoice,
+   120→   120→  invoiceTypeEn: "export",
+   121→   121→  invoiceTypeAr: "فاتورة تصدير",
+   122→   122→  isExport: true,
+   123→   123→  buyerNameAr: "شركة التصدير الدولية",
+   124→   124→  buyerNameEn: "International Export Co.",
+   125→   125→  taxRate: "0.00",
+   126→   126→  taxAmount: "0.00",
+   127→   127→  total: "500.00",
+   128→   128→};
+   129→   129→
+   130→   130→// ── UUID Generation Tests ──────────────────────────────────────────────────
+   131→   131→
+   132→   132→describe("generateEgyptEtaUuid", () => {
+   133→   133→  it("should generate a valid UUID v4 format", () => {
+   134→   134→    const uuid = generateEgyptEtaUuid();
+   135→   135→    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+   136→   136→  });
+   137→   137→
+   138→   138→  it("should generate unique UUIDs", () => {
+   139→   139→    const uuid1 = generateEgyptEtaUuid();
+   140→   140→    const uuid2 = generateEgyptEtaUuid();
+   141→   141→    expect(uuid1).not.toBe(uuid2);
+   142→   142→  });
+   143→   143→
+   144→   144→  it("should generate UUIDs of correct length", () => {
+   145→   145→    const uuid = generateEgyptEtaUuid();
+   146→   146→    expect(uuid.length).toBe(36);
+   147→   147→  });
+   148→   148→});
+   149→   149→
+   150→   150→// ── Invoice Type Classification Tests ──────────────────────────────────────
+   151→   151→
+   152→   152→describe("determineEgyptEtaInvoiceType", () => {
+   153→   153→  it("should classify as simplified (B2C) by default", () => {
+   154→   154→    const result = determineEgyptEtaInvoiceType({});
+   155→   155→    expect(result).toBe("simplified");
+   156→   156→  });
+   157→   157→
+   158→   158→  it("should classify as standard (B2B) when clientId is present", () => {
+   159→   159→    const result = determineEgyptEtaInvoiceType({ clientId: 5 });
+   160→   160→    expect(result).toBe("standard");
+   161→   161→  });
+   162→   162→
+   163→   163→  it("should classify as standard (B2B) when buyerVatNumber is present", () => {
+   164→   164→    const result = determineEgyptEtaInvoiceType({ buyerVatNumber: "TRN-123" });
+   165→   165→    expect(result).toBe("standard");
+   166→   166→  });
+   167→   167→
+   168→   168→  it("should classify as standard (B2B) when buyerTaxRegistrationNumber is present", () => {
+   169→   169→    const result = determineEgyptEtaInvoiceType({ buyerTaxRegistrationNumber: "TRN-456" });
+   170→   170→    expect(result).toBe("standard");
+   171→   171→  });
+   172→   172→
+   173→   173→  it("should classify as export when isExport is true", () => {
+   174→   174→    const result = determineEgyptEtaInvoiceType({ isExport: true });
+   175→   175→    expect(result).toBe("export");
+   176→   176→  });
+   177→   177→
+   178→   178→  it("should respect explicit invoiceTypeEn=standard", () => {
+   179→   179→    const result = determineEgyptEtaInvoiceType({ invoiceTypeEn: "standard" });
+   180→   180→    expect(result).toBe("standard");
+   181→   181→  });
+   182→   182→
+   183→   183→  it("should respect explicit invoiceTypeEn=simplified", () => {
+   184→   184→    const result = determineEgyptEtaInvoiceType({ invoiceTypeEn: "simplified" });
+   185→   185→    expect(result).toBe("simplified");
+   186→   186→  });
+   187→   187→
+   188→   188→  it("should respect explicit invoiceTypeEn=export", () => {
+   189→   189→    const result = determineEgyptEtaInvoiceType({ invoiceTypeEn: "export" });
+   190→   190→    expect(result).toBe("export");
+   191→   191→  });
+   192→   192→
+   193→   193→  it("should respect Arabic invoice type فاتورة ضريبية", () => {
+   194→   194→    const result = determineEgyptEtaInvoiceType({ invoiceTypeAr: "فاتورة ضريبية" });
+   195→   195→    expect(result).toBe("standard");
+   196→   196→  });
+   197→   197→
+   198→   198→  it("should respect Arabic invoice type إيصال إلكتروني", () => {
+   199→   199→    const result = determineEgyptEtaInvoiceType({ invoiceTypeAr: "إيصال إلكتروني" });
+   200→   200→    expect(result).toBe("simplified");
+   201→   201→  });
+   202→   202→
+   203→   203→  it("should respect Arabic invoice type فاتورة تصدير", () => {
+   204→   204→    const result = determineEgyptEtaInvoiceType({ invoiceTypeAr: "فاتورة تصدير" });
+   205→   205→    expect(result).toBe("export");
+   206→   206→  });
+   207→   207→});
+   208→   208→
+   209→   209→// ── Validation Tests ──────────────────────────────────────────────────────
+   210→   210→
+   211→   211→describe("validateEgyptEtaInvoice", () => {
+   212→   212→  it("should return valid for a compliant Egypt simplified invoice", () => {
+   213→   213→    const result = validateEgyptEtaInvoice(validEgyptInvoice, egyptCompany);
+   214→   214→    expect(result.valid).toBe(true);
+   215→   215→    expect(result.errors.length).toBe(0);
+   216→   216→  });
+   217→   217→
+   218→   218→  it("should pass validation for non-Egypt companies", () => {
+   219→   219→    const result = validateEgyptEtaInvoice({}, nonEgyptCompany);
+   220→   220→    expect(result.valid).toBe(true);
+   221→   221→    expect(result.errors.length).toBe(0);
+   222→   222→  });
+   223→   223→
+   224→   224→  it("should fail when seller TRN is missing", () => {
+   225→   225→    const company = { ...egyptCompany, vatNumber: undefined };
+   226→   226→    const invoice = { ...validEgyptInvoice, sellerTaxRegistrationNumber: undefined };
+   227→   227→    const result = validateEgyptEtaInvoice(invoice, company);
+   228→   228→    expect(result.valid).toBe(false);
+   229→   229→    expect(result.errors.some((e) => e.field === "sellerTaxRegistrationNumber")).toBe(true);
+   230→   230→    expect(result.errors.some((e) => e.messageAr.includes("مصلحة الضرائب"))).toBe(true);
+   231→   231→  });
+   232→   232→
+   233→   233→  it("should fail when seller Arabic name is missing", () => {
+   234→   234→    const company = { ...egyptCompany, nameAr: undefined };
+   235→   235→    const invoice = { ...validEgyptInvoice, sellerNameAr: undefined };
+   236→   236→    const result = validateEgyptEtaInvoice(invoice, company);
+   237→   237→    expect(result.valid).toBe(false);
+   238→   238→    expect(result.errors.some((e) => e.field === "sellerNameAr")).toBe(true);
+   239→   239→  });
+   240→   240→
+   241→   241→  it("should fail when seller English name is missing", () => {
+   242→   242→    const company = { ...egyptCompany, name: undefined };
+   243→   243→    const invoice = { ...validEgyptInvoice, sellerNameEn: undefined };
+   244→   244→    const result = validateEgyptEtaInvoice(invoice, company);
+   245→   245→    expect(result.valid).toBe(false);
+   246→   246→    expect(result.errors.some((e) => e.field === "sellerNameEn")).toBe(true);
+   247→   247→  });
+   248→   248→
+   249→   249→  it("should fail when seller Arabic address is missing", () => {
+   250→   250→    const company = { ...egyptCompany, addressAr: undefined, address: undefined };
+   251→   251→    const invoice = { ...validEgyptInvoice, sellerAddressAr: undefined };
+   252→   252→    const result = validateEgyptEtaInvoice(invoice, company);
+   253→   253→    expect(result.valid).toBe(false);
+   254→   254→    expect(result.errors.some((e) => e.field === "sellerAddressAr")).toBe(true);
+   255→   255→  });
+   256→   256→
+   257→   257→  it("should fail when seller English address is missing", () => {
+   258→   258→    const company = { ...egyptCompany, address: undefined };
+   259→   259→    const invoice = { ...validEgyptInvoice, sellerAddressEn: undefined };
+   260→   260→    const result = validateEgyptEtaInvoice(invoice, company);
+   261→   261→    expect(result.valid).toBe(false);
+   262→   262→    expect(result.errors.some((e) => e.field === "sellerAddressEn")).toBe(true);
+   263→   263→  });
+   264→   264→
+   265→   265→  it("should require buyer TRN for standard (B2B) invoices", () => {
+   266→   266→    const invoice = {
+   267→   267→      ...validEgyptInvoice,
+   268→   268→      invoiceTypeEn: "standard",
+   269→   269→      buyerNameAr: "أحمد النيل",
+   270→   270→      buyerNameEn: "Ahmad Al-Nile",
+   271→   271→      buyerAddressAr: "القاهرة",
+   272→   272→      buyerAddressEn: "Cairo",
+   273→   273→    };
+   274→   274→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   275→   275→    expect(result.valid).toBe(false);
+   276→   276→    expect(result.errors.some((e) => e.field === "buyerTaxRegistrationNumber")).toBe(true);
+   277→   277→  });
+   278→   278→
+   279→   279→  it("should require buyer Arabic name for B2B invoices", () => {
+   280→   280→    const invoice = {
+   281→   281→      ...validEgyptInvoice,
+   282→   282→      invoiceTypeEn: "standard",
+   283→   283→      buyerNameEn: "Ahmad",
+   284→   284→      buyerTaxRegistrationNumber: "TRN-123",
+   285→   285→      buyerAddressAr: "القاهرة",
+   286→   286→      buyerAddressEn: "Cairo",
+   287→   287→    };
+   288→   288→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   289→   289→    expect(result.valid).toBe(false);
+   290→   290→    expect(result.errors.some((e) => e.field === "buyerNameAr")).toBe(true);
+   291→   291→  });
+   292→   292→
+   293→   293→  it("should not require buyer TRN for simplified (B2C) invoices", () => {
+   294→   294→    const result = validateEgyptEtaInvoice(validEgyptInvoice, egyptCompany);
+   295→   295→    expect(result.errors.some((e) => e.field === "buyerTaxRegistrationNumber")).toBe(false);
+   296→   296→  });
+   297→   297→
+   298→   298→  it("should fail when currency is not EGP", () => {
+   299→   299→    const invoice = { ...validEgyptInvoice, currency: "USD" };
+   300→   300→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   301→   301→    expect(result.valid).toBe(false);
+   302→   302→    expect(result.errors.some((e) => e.field === "currency")).toBe(true);
+   303→   303→    expect(result.errors.some((e) => e.messageAr.includes("جنيه مصري"))).toBe(true);
+   304→   304→  });
+   305→   305→
+   306→   306→  it("should fail when decimal places are not 2", () => {
+   307→   307→    const invoice = { ...validEgyptInvoice, currencyDecimalPlaces: 3 };
+   308→   308→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   309→   309→    expect(result.valid).toBe(false);
+   310→   310→    expect(result.errors.some((e) => e.field === "currencyDecimalPlaces")).toBe(true);
+   311→   311→  });
+   312→   312→
+   313→   313→  it("should fail when VAT rate is not 14% for standard invoices", () => {
+   314→   314→    const invoice = { ...validEgyptInvoice, taxRate: "5.00" };
+   315→   315→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   316→   316→    expect(result.valid).toBe(false);
+   317→   317→    expect(result.errors.some((e) => e.field === "taxRate")).toBe(true);
+   318→   318→    expect(result.errors.some((e) => e.messageAr.includes("14%"))).toBe(true);
+   319→   319→  });
+   320→   320→
+   321→   321→  it("should allow 0% VAT rate (for exempt items)", () => {
+   322→   322→    const invoice = { ...validEgyptInvoice, taxRate: "0.00" };
+   323→   323→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   324→   324→    // 0% is allowed — it's exempt, not an error
+   325→   325→    expect(result.errors.some((e) => e.field === "taxRate")).toBe(false);
+   326→   326→  });
+   327→   327→
+   328→   328→  it("should require 0% VAT for export invoices", () => {
+   329→   329→    const invoice = {
+   330→   330→      ...validEgyptInvoice,
+   331→   331→      invoiceTypeEn: "export",
+   332→   332→      isExport: true,
+   333→   333→      buyerNameAr: "شركة التصدير",
+   334→   334→      taxRate: "14.00",
+   335→   335→    };
+   336→   336→    const result = validateEgyptEtaInvoice(invoice, egyptCompany);
+   337→   337→    expect(result.valid).toBe(false);
+   338→   338→    expect(result.errors.some((e) => e.field === "taxRate")).toBe(true);
+   339→   339→    expect(result.errors.some((e) => e.messageAr.includes("تصدير"))).toBe(true);
+   340→   340→  });
+   341→   341→
+   342→   342→  it("should pass validation for export invoice with 0% VAT", () => {
+   343→   343→    const result = validateEgyptEtaInvoice(validEgyptExportInvoice, egyptCompany);
+   344→   344→    expect(result.errors.some((e) => e.field === "taxRate")).toBe(false);
+   345→   345→  });
+   346→   346→
+   347→   347→  it("should include retention warning for Egyptian invoices", () => {
+   348→   348→    const result = validateEgyptEtaInvoice(validEgyptInvoice, egyptCompany);
+   349→   349→    expect(result.warnings.some((w) => w.field === "recordRetention")).toBe(true);
+   350→   350→    expect(result.warnings.some((w) => w.messageAr.includes("5 سنوات"))).toBe(true);
+   351→   351→    expect(result.warnings.some((w) => w.messageAr.includes("500,000"))).toBe(true);
+   352→   352→  });
+   353→   353→
+   354→   354→  it("should include ETA portal registration warning", () => {
+   355→   355→    const result = validateEgyptEtaInvoice(validEgyptInvoice, egyptCompany);
+   356→   356→    expect(result.warnings.some((w) => w.field === "etaPortalRegistration")).toBe(true);
+   357→   357→    expect(result.warnings.some((w) => w.messageAr.includes("بوابة مصلحة الضرائب"))).toBe(true);
+   358→   358→  });
+   359→   359→
+   360→   360→  it("should include digital receipt warning for B2C invoices", () => {
+   361→   361→    const result = validateEgyptEtaInvoice(validEgyptInvoice, egyptCompany);
+   362→   362→    expect(result.warnings.some((w) => w.field === "digitalReceipt")).toBe(true);
+   363→   363→    expect(result.warnings.some((w) => w.messageAr.includes("إيصال إلكتروني"))).toBe(true);
+   364→   364→  });
+   365→   365→});
+   366→   366→
+   367→   367→// ── Payload Generation Tests ───────────────────────────────────────────────
+   368→   368→
+   369→   369→describe("generateEgyptEtaInvoicePayload", () => {
+   370→   370→  it("should generate a complete ETA invoice payload", () => {
+   371→   371→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   372→   372→    expect(payload.invoiceNumber).toBe("INV-2022-001");
+   373→   373→    expect(payload.currency).toBe(EGYPT_ETA_CURRENCY);
+   374→   374→    expect(payload.currencyDecimalPlaces).toBe(EGYPT_ETA_DECIMAL_PLACES);
+   375→   375→    expect(payload.eInvoiceAuthority).toBe(EGYPT_ETA_AUTHORITY);
+   376→   376→  });
+   377→   377→
+   378→   378→  it("should include dual language seller fields", () => {
+   379→   379→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   380→   380→    expect(payload.sellerNameAr).toBe("شركة التجارة المصرية");
+   381→   381→    expect(payload.sellerNameEn).toBe("Egypt Trading Co.");
+   382→   382→    expect(payload.sellerAddressAr).toBeTruthy();
+   383→   383→    expect(payload.sellerAddressEn).toBeTruthy();
+   384→   384→  });
+   385→   385→
+   386→   386→  it("should include seller TRN", () => {
+   387→   387→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   388→   388→    expect(payload.sellerTaxRegistrationNumber).toBe("TRN-EG-300123456");
+   389→   389→  });
+   390→   390→
+   391→   391→  it("should include both Gregorian and Hijri dates", () => {
+   392→   392→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   393→   393→    expect(payload.issueDateGregorian).toBe("2022-01-15");
+   394→   394→    expect(payload.issueDateHijri).toBeTruthy();
+   395→   395→    expect(payload.issueDateDual).toBeTruthy();
+   396→   396→  });
+   397→   397→
+   398→   398→  it("should format amounts with EGP 2-decimal precision", () => {
+   399→   399→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   400→   400→    expect(payload.subtotal).toMatch(/^\d+\.\d{2}$/);
+   401→   401→    expect(payload.total).toMatch(/^\d+\.\d{2}$/);
+   402→   402→    expect(payload.taxAmount).toMatch(/^\d+\.\d{2}$/);
+   403→   403→  });
+   404→   404→
+   405→   405→  it("should set 14% VAT rate for standard/simplified invoices", () => {
+   406→   406→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   407→   407→    expect(payload.taxRate).toBe("14.00");
+   408→   408→  });
+   409→   409→
+   410→   410→  it("should set 0% VAT rate for export invoices", () => {
+   411→   411→    const payload = generateEgyptEtaInvoicePayload(validEgyptExportInvoice, egyptCompany);
+   412→   412→    expect(payload.taxRate).toBe("0.00");
+   413→   413→    expect(payload.isExport).toBe(true);
+   414→   414→  });
+   415→   415→
+   416→   416→  it("should set invoice type labels correctly for simplified", () => {
+   417→   417→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   418→   418→    expect(payload.invoiceType).toBe("simplified");
+   419→   419→    expect(payload.invoiceTypeAr).toBe("إيصال إلكتروني");
+   420→   420→    expect(payload.invoiceTypeEn).toBe("simplified");
+   421→   421→    expect(payload.digitalReceipt).toBe(true);
+   422→   422→  });
+   423→   423→
+   424→   424→  it("should set invoice type labels correctly for standard", () => {
+   425→   425→    const payload = generateEgyptEtaInvoicePayload(validEgyptB2bInvoice, egyptCompany);
+   426→   426→    expect(payload.invoiceType).toBe("standard");
+   427→   427→    expect(payload.invoiceTypeAr).toBe("فاتورة ضريبية");
+   428→   428→    expect(payload.invoiceTypeEn).toBe("standard");
+   429→   429→  });
+   430→   430→
+   431→   431→  it("should set invoice type labels correctly for export", () => {
+   432→   432→    const payload = generateEgyptEtaInvoicePayload(validEgyptExportInvoice, egyptCompany);
+   433→   433→    expect(payload.invoiceType).toBe("export");
+   434→   434→    expect(payload.invoiceTypeAr).toBe("فاتورة تصدير");
+   435→   435→    expect(payload.invoiceTypeEn).toBe("export");
+   436→   436→    expect(payload.isExport).toBe(true);
+   437→   437→  });
+   438→   438→
+   439→   439→  it("should set EG as seller country code", () => {
+   440→   440→    const payload = generateEgyptEtaInvoicePayload(validEgyptInvoice, egyptCompany);
+   441→   441→    expect(payload.sellerCountryCode).toBe("EG");
+   442→   442→  });
+   443→   443→});
+   444→   444→
+   445→   445→// ── Auto-population Tests ──────────────────────────────────────────────────
+   446→   446→
+   447→   447→describe("autoPopulateEgyptEtaFields", () => {
+   448→   448→  it("should auto-populate UUID", () => {
+   449→   449→    const invoiceData = { issueDate: "2022-01-15", dueDate: "2022-02-15" };
+   450→   450→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   451→   451→    expect(result.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+   452→   452→  });
+   453→   453→
+   454→   454→  it("should not overwrite existing UUID", () => {
+   455→   455→    const invoiceData = { issueDate: "2022-01-15", uuid: "existing-uuid" };
+   456→   456→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   457→   457→    expect(result.uuid).toBe("existing-uuid");
+   458→   458→  });
+   459→   459→
+   460→   460→  it("should auto-populate Hijri dates from Gregorian dates", () => {
+   461→   461→    const invoiceData = { issueDate: "2022-01-15", dueDate: "2022-02-15" };
+   462→   462→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   463→   463→    expect(result.hijriIssueDate).toBeTruthy();
+   464→   464→    expect(result.hijriDueDate).toBeTruthy();
+   465→   465→    expect(result.hijriIssueDate).toBe(formatHijri("2022-01-15"));
+   466→   466→  });
+   467→   467→
+   468→   468→  it("should auto-populate seller TRN from company", () => {
+   469→   469→    const invoiceData = { issueDate: "2022-01-15" };
+   470→   470→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   471→   471→    expect(result.sellerTaxRegistrationNumber).toBe("TRN-EG-300123456");
+   472→   472→  });
+   473→   473→
+   474→   474→  it("should auto-populate Arabic seller name from company", () => {
+   475→   475→    const invoiceData = { issueDate: "2022-01-15" };
+   476→   476→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   477→   477→    expect(result.sellerNameAr).toBe("شركة التجارة المصرية");
+   478→   478→  });
+   479→   479→
+   480→   480→  it("should auto-populate English seller name from company", () => {
+   481→   481→    const invoiceData = { issueDate: "2022-01-15" };
+   482→   482→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   483→   483→    expect(result.sellerNameEn).toBe("Egypt Trading Co.");
+   484→   484→  });
+   485→   485→
+   486→   486→  it("should auto-populate invoice type as simplified for B2C", () => {
+   487→   487→    const invoiceData = { issueDate: "2022-01-15" };
+   488→   488→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   489→   489→    expect(result.invoiceTypeEn).toBe("simplified");
+   490→   490→    expect(result.invoiceTypeAr).toBe("إيصال إلكتروني");
+   491→   491→    expect(result.digitalReceipt).toBe(true);
+   492→   492→  });
+   493→   493→
+   494→   494→  it("should auto-populate invoice type as standard for B2B", () => {
+   495→   495→    const invoiceData = { issueDate: "2022-01-15", clientId: 5 };
+   496→   496→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   497→   497→    expect(result.invoiceTypeEn).toBe("standard");
+   498→   498→    expect(result.invoiceTypeAr).toBe("فاتورة ضريبية");
+   499→   499→  });
+   500→   500→
+   501→   501→  it("should enforce EGP currency", () => {
+   502→   502→    const invoiceData = { issueDate: "2022-01-15", currency: "USD" };
+   503→   503→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   504→   504→    expect(result.currency).toBe("EGP");
+   505→   505→  });
+   506→   506→
+   507→   507→  it("should enforce 2 decimal places", () => {
+   508→   508→    const invoiceData = { issueDate: "2022-01-15" };
+   509→   509→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   510→   510→    expect(result.currencyDecimalPlaces).toBe(2);
+   511→   511→  });
+   512→   512→
+   513→   513→  it("should enforce 2-decimal precision on monetary fields", () => {
+   514→   514→    const invoiceData = {
+   515→   515→      issueDate: "2022-01-15",
+   516→   516→      subtotal: "500",
+   517→   517→      total: "570",
+   518→   518→      taxAmount: "70",
+   519→   519→    };
+   520→   520→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   521→   521→    expect(result.subtotal).toBe("500.00");
+   522→   522→    expect(result.total).toBe("570.00");
+   523→   523→    expect(result.taxAmount).toBe("70.00");
+   524→   524→  });
+   525→   525→
+   526→   526→  it("should enforce 14% VAT rate for non-export invoices", () => {
+   527→   527→    const invoiceData = { issueDate: "2022-01-15" };
+   528→   528→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   529→   529→    expect(result.taxRate).toBe("14.00");
+   530→   530→  });
+   531→   531→
+   532→   532→  it("should enforce 0% VAT rate for export invoices", () => {
+   533→   533→    const invoiceData = { issueDate: "2022-01-15", invoiceTypeEn: "export" };
+   534→   534→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   535→   535→    expect(result.taxRate).toBe("0.00");
+   536→   536→    expect(result.isExport).toBe(true);
+   537→   537→  });
+   538→   538→
+   539→   539→  it("should set e-invoice authority", () => {
+   540→   540→    const invoiceData = { issueDate: "2022-01-15" };
+   541→   541→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   542→   542→    expect(result.eInvoiceAuthority).toBe("eta_egypt");
+   543→   543→  });
+   544→   544→
+   545→   545→  it("should set PIH placeholder", () => {
+   546→   546→    const invoiceData = { issueDate: "2022-01-15" };
+   547→   547→    const result = autoPopulateEgyptEtaFields(invoiceData, egyptCompany);
+   548→   548→    expect(result.previousInvoiceHash).toBe("");
+   549→   549→  });
+   550→   550→});
+   551→   551→
+   552→   552→// ── Validation Middleware Tests ────────────────────────────────────────────
+   553→   553→
+   554→   554→describe("egyptEtaInvoiceValidationMiddleware", () => {
+   555→   555→  it("should pass through non-Egypt companies without validation", () => {
+   556→   556→    const result = egyptEtaInvoiceValidationMiddleware({}, nonEgyptCompany);
+   557→   557→    expect(result.valid).toBe(true);
+   558→   558→    expect(result.blockingErrors.length).toBe(0);
+   559→   559→    expect(result.warnings.length).toBe(0);
+   560→   560→  });
+   561→   561→
+   562→   562→  it("should block Egyptian invoice when seller TRN is missing", () => {
+   563→   563→    const company = { ...egyptCompany, vatNumber: undefined };
+   564→   564→    const invoice = { ...validEgyptInvoice, sellerTaxRegistrationNumber: undefined };
+   565→   565→    const result = egyptEtaInvoiceValidationMiddleware(invoice, company);
+   566→   566→    expect(result.valid).toBe(false);
+   567→   567→    expect(result.blockingErrors.some((e) => e.field === "sellerTaxRegistrationNumber")).toBe(true);
+   568→   568→  });
+   569→   569→
+   570→   570→  it("should override non-EGP currency for Egyptian companies", () => {
+   571→   571→    const invoiceData = {
+   572→   572→      invoiceNumber: "INV-001",
+   573→   573→      issueDate: "2022-01-15",
+   574→   574→      dueDate: "2022-02-15",
+   575→   575→      currency: "USD",
+   576→   576→      taxRate: "14.00",
+   577→   577→      sellerNameAr: "شركة التجارة المصرية",
+   578→   578→      sellerNameEn: "Egypt Trading Co.",
+   579→   579→      sellerAddressAr: "القاهرة",
+   580→   580→      sellerAddressEn: "Cairo",
+   581→   581→      sellerTaxRegistrationNumber: "TRN-EG-123",
+   582→   582→    };
+   583→   583→    const result = egyptEtaInvoiceValidationMiddleware(invoiceData, egyptCompany);
+   584→   584→    expect(result.enrichedData.currency).toBe("EGP");
+   585→   585→    expect(result.enrichedData.currencyDecimalPlaces).toBe(2);
+   586→   586→  });
+   587→   587→
+   588→   588→  it("should enforce 14% VAT rate for Egyptian companies", () => {
+   589→   589→    const invoiceData = {
+   590→   590→      invoiceNumber: "INV-001",
+   591→   591→      issueDate: "2022-01-15",
+   592→   592→      dueDate: "2022-02-15",
+   593→   593→      taxRate: "5",
+   594→   594→      sellerNameAr: "شركة التجارة المصرية",
+   595→   595→      sellerNameEn: "Egypt Trading Co.",
+   596→   596→      sellerAddressAr: "القاهرة",
+   597→   597→      sellerAddressEn: "Cairo",
+   598→   598→      sellerTaxRegistrationNumber: "TRN-EG-123",
+   599→   599→    };
+   600→   600→    const result = egyptEtaInvoiceValidationMiddleware(invoiceData, egyptCompany);
+   601→   601→    expect(result.enrichedData.taxRate).toBe("14.00");
+   602→   602→  });
+   603→   603→
+   604→   604→  it("should enforce 0% VAT for export invoices", () => {
+   605→   605→    const invoiceData = {
+   606→   606→      invoiceNumber: "INV-001",
+   607→   607→      issueDate: "2022-01-15",
+   608→   608→      dueDate: "2022-02-15",
+   609→   609→      taxRate: "14",
+   610→   610→      invoiceTypeEn: "export",
+   611→   611→      isExport: true,
+   612→   612→      sellerNameAr: "شركة التجارة المصرية",
+   613→   613→      sellerNameEn: "Egypt Trading Co.",
+   614→   614→      sellerAddressAr: "القاهرة",
+   615→   615→      sellerAddressEn: "Cairo",
+   616→   616→      sellerTaxRegistrationNumber: "TRN-EG-123",
+   617→   617→      buyerNameAr: "شركة التصدير",
+   618→   618→    };
+   619→   619→    const result = egyptEtaInvoiceValidationMiddleware(invoiceData, egyptCompany);
+   620→   620→    expect(result.enrichedData.taxRate).toBe("0.00");
+   621→   621→  });
+   622→   622→
+   623→   623→  it("should auto-populate ETA fields during middleware processing", () => {
+   624→   624→    const invoiceData = {
+   625→   625→      invoiceNumber: "INV-001",
+   626→   626→      issueDate: "2022-01-15",
+   627→   627→      dueDate: "2022-02-15",
+   628→   628→    };
+   629→   629→    const result = egyptEtaInvoiceValidationMiddleware(invoiceData, egyptCompany);
+   630→   630→    expect(result.enrichedData.uuid).toBeTruthy();
+   631→   631→    expect(result.enrichedData.eInvoiceAuthority).toBe("eta_egypt");
+   632→   632→    expect(result.enrichedData.currency).toBe("EGP");
+   633→   633→  });
+   634→   634→});
+   635→   635→
+   636→   636→// ── applyEgyptEtaCompliance identity test ──────────────────────────────────
+   637→   637→
+   638→   638→describe("applyEgyptEtaCompliance", () => {
+   639→   639→  it("should return same result as middleware", () => {
+   640→   640→    const invoiceData = { invoiceNumber: "INV-001", issueDate: "2022-01-15" };
+   641→   641→    const middlewareResult = egyptEtaInvoiceValidationMiddleware(invoiceData, egyptCompany);
+   642→   642→    const applyResult = applyEgyptEtaCompliance(invoiceData, egyptCompany);
+   643→   643→    expect(applyResult.valid).toBe(middlewareResult.valid);
+   644→   644→    expect(applyResult.enrichedData.uuid).toBe(middlewareResult.enrichedData.uuid);
+   645→   645→  });
+   646→   646→});
+   647→   647→
+   648→   648→// ── Format Errors Tests ────────────────────────────────────────────────────
+   649→   649→
+   650→   650→describe("formatEgyptEtaErrorsForResponse", () => {
+   651→   651→  it("should return empty error when no blocking errors", () => {
+   652→   652→    const result = formatEgyptEtaErrorsForResponse({
+   653→   653→      valid: true,
+   654→   654→      enrichedData: {},
+   655→   655→      blockingErrors: [],
+   656→   656→      warnings: [],
+   657→   657→    });
+   658→   658→    expect(result.error).toBe("");
+   659→   659→    expect(result.details).toEqual({});
+   660→   660→  });
+   661→   661→
+   662→   662→  it("should format Arabic error messages for API response", () => {
+   663→   663→    const result = formatEgyptEtaErrorsForResponse({
+   664→   664→      valid: false,
+   665→   665→      enrichedData: {},
+   666→   666→      blockingErrors: [
+   667→   667→        { field: "sellerTaxRegistrationNumber", messageAr: "الرقم الضريبي للبائع مطلوب — مصلحة الضرائب المصرية", messageEn: "Seller TRN required — ETA Egypt" },
+   668→   668→      ],
+   669→   669→      warnings: [],
+   670→   670→    });
+   671→   671→    expect(result.error).toContain("مصلحة الضرائب");
+   672→   672→    expect(result.details.regulation).toBe("eta_egypt");
+   673→   673→  });
+   674→   674→
+   675→   675→  it("should include errorsAr and errorsEn arrays in details", () => {
+   676→   676→    const result = formatEgyptEtaErrorsForResponse({
+   677→   677→      valid: false,
+   678→   678→      enrichedData: {},
+   679→   679→      blockingErrors: [
+   680→   680→        { field: "vatNumber", messageAr: "الرقم الضريبي مطلوب", messageEn: "TRN required" },
+   681→   681→        { field: "currency", messageAr: "يجب أن تكون العملة جنيه مصري", messageEn: "Currency must be EGP" },
+   682→   682→      ],
+   683→   683→      warnings: [],
+   684→   684→    });
+   685→   685→    expect((result.details as Record<string, unknown>).errorsAr).toBeTruthy();
+   686→   686→    expect((result.details as Record<string, unknown>).errorsEn).toBeTruthy();
+   687→   687→  });
+   688→   688→});
+   689→   689→
+   690→   690→// ── Constants Validation Tests ──────────────────────────────────────────────
+   691→   691→
+   692→   692→describe("Egypt ETA constants", () => {
+   693→   693→  it("should have correct authority", () => {
+   694→   694→    expect(EGYPT_ETA_AUTHORITY).toBe("eta_egypt");
+   695→   695→  });
+   696→   696→
+   697→   697→  it("should have correct currency", () => {
+   698→   698→    expect(EGYPT_ETA_CURRENCY).toBe("EGP");
+   699→   699→  });
+   700→   700→
+   701→   701→  it("should have correct decimal places", () => {
+   702→   702→    expect(EGYPT_ETA_DECIMAL_PLACES).toBe(2);
+   703→   703→  });
+   704→   704→
+   705→   705→  it("should have correct VAT rate", () => {
+   706→   706→    expect(EGYPT_ETA_VAT_RATE).toBe(14);
+   707→   707→  });
+   708→   708→
+   709→   709→  it("should have correct regulation name", () => {
+   710→   710→    expect(EGYPT_ETA_REGULATION).toBe("ETA Egypt e-invoicing");
+   711→   711→  });
+   712→   712→
+   713→   713→  it("should have correct max fine", () => {
+   714→   714→    expect(EGYPT_ETA_MAX_FINE_EGP).toBe(500000);
+   715→   715→  });
+   716→   716→});
+   717→   717→
+   718→   718→// ── Money/EGP 2-decimal integration tests ──────────────────────────────────
+   719→   719→
+   720→   720→describe("Money/EGP 2-decimal integration", () => {
+   721→   721→  it("should format EGP with 2 decimal places", () => {
+   722→   722→    const formatted = num(100, 2).toFixed(2);
+   723→   723→    expect(formatted).toBe("100.00");
+   724→   724→  });
+   725→   725→
+   726→   726→  it("should handle EGP amounts with existing decimals", () => {
+   727→   727→    const formatted = num(100.50, 2).toFixed(2);
+   728→   728→    expect(formatted).toBe("100.50");
+   729→   729→  });
+   730→   730→
+   731→   731→  it("should handle small EGP amounts correctly", () => {
+   732→   732→    const formatted = num(0.01, 2).toFixed(2);
+   733→   733→    expect(formatted).toBe("0.01");
+   734→   734→  });
+   735→   735→});
+   736→   736→

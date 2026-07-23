@@ -1,0 +1,819 @@
+     1→     1→/**
+     2→     2→ * zatca.test.ts — Tests for Saudi ZATCA Phase 2 e-invoicing compliance module.
+     3→     3→ *
+     4→     4→ * Covers:
+     5→     5→ * - UBL XML generation (structure validation)
+     6→     6→ * - Invoice hash computation (SHA-256)
+     7→     7→ * - UUID generation (ZATCA spec format)
+     8→     8→ * - Validation (Arabic mandatory, VAT TRN, SAR, 15% VAT, B2B/B2C)
+     9→     9→ * - Auto-population of ZATCA-specific fields
+    10→    10→ * - Simplified vs Standard invoice classification
+    11→    11→ * - Digital signing (ECDSA placeholder)
+    12→    12→ * - Middleware integration
+    13→    13→ */
+    14→    14→
+    15→    15→import { describe, it, expect } from "vitest";
+    16→    16→import {
+    17→    17→  validateZatcaInvoice,
+    18→    18→  generateZatcaUblXml,
+    19→    19→  computeInvoiceHash,
+    20→    20→  generateZatcaUuid,
+    21→    21→  signZatcaInvoice,
+    22→    22→  determineZatcaInvoiceType,
+    23→    23→  autoPopulateZatcaFields,
+    24→    24→  ZATCA_CURRENCY,
+    25→    25→  ZATCA_DECIMAL_PLACES,
+    26→    26→  ZATCA_VAT_RATE,
+    27→    27→  ZATCA_AUTHORITY,
+    28→    28→  ZATCA_REGULATION,
+    29→    29→  ZATCA_MAX_FINE_SAR,
+    30→    30→} from "../zatca";
+    31→    31→import {
+    32→    32→  zatcaInvoiceValidationMiddleware,
+    33→    33→  applyZatcaCompliance,
+    34→    34→  formatZatcaErrorsForResponse,
+    35→    35→} from "../zatca-validation";
+    36→    36→import { formatHijri, formatDualDate } from "../../hijri";
+    37→    37→import { num } from "../../money";
+    38→    38→
+    39→    39→// ── Test fixtures ──────────────────────────────────────────────────────────
+    40→    40→
+    41→    41→const saudiCompany = {
+    42→    42→  id: 1,
+    43→    43→  slug: "saudi-trading",
+    44→    44→  name: "Saudi Trading Co.",
+    45→    45→  nameAr: "شركة التجارة السعودية",
+    46→    46→  country: "SA",
+    47→    47→  currency: "SAR",
+    48→    48→  vatNumber: "310000000100003", // ZATCA TRN format (15 digits)
+    49→    49→  address: "الرياض، المملكة العربية السعودية",
+    50→    50→  defaultTaxRate: "15",
+    51→    51→  commercialRegistration: "CR-SA-2023-001",
+    52→    52→  recordRetentionYears: 6,
+    53→    53→};
+    54→    54→
+    55→    55→const nonSaudiCompany = {
+    56→    56→  id: 2,
+    57→    57→  slug: "kuwait-trading",
+    58→    58→  name: "Kuwait Trading Co.",
+    59→    59→  nameAr: "شركة التجارة الكويتية",
+    60→    60→  country: "KW",
+    61→    61→  currency: "KWD",
+    62→    62→  vatNumber: null,
+    63→    63→  address: "شارع فهد السالم، الكويت",
+    64→    64→  defaultTaxRate: "0",
+    65→    65→};
+    66→    66→
+    67→    67→const validSaudiStandardInvoice = {
+    68→    68→  invoiceNumber: "INV-SA-2026-001",
+    69→    69→  clientName: "Saudi Business Corp.",
+    70→    70→  clientNameAr: "الشركة السعودية للأعمال",
+    71→    71→  clientAddress: "جدة، السعودية",
+    72→    72→  buyerNameAr: "الشركة السعودية للأعمال",
+    73→    73→  buyerAddressAr: "جدة، السعودية",
+    74→    74→  buyerVatTrn: "310000000200003",
+    75→    75→  issueDate: "2026-01-15",
+    76→    76→  dueDate: "2026-02-15",
+    77→    77→  hijriIssueDate: formatHijri("2026-01-15"),
+    78→    78→  hijriDueDate: formatHijri("2026-02-15"),
+    79→    79→  invoiceTypeAr: "فاتورة ضريبية",
+    80→    80→  invoiceTypeEn: "standard",
+    81→    81→  currency: "SAR",
+    82→    82→  currencyDecimalPlaces: 2,
+    83→    83→  taxRate: "15",
+    84→    84→  sellerNameAr: "شركة التجارة السعودية",
+    85→    85→  sellerAddressAr: "الرياض، المملكة العربية السعودية",
+    86→    86→  sellerVatTrn: "310000000100003",
+    87→    87→  lineItems: JSON.stringify([
+    88→    88→    { description: "خدمة استشارية", qty: 1, price: 1000, total: 1000 },
+    89→    89→    { description: "خدمة تصميم", qty: 2, price: 500, total: 1000 },
+    90→    90→  ]),
+    91→    91→  lineItemsAr: JSON.stringify([
+    92→    92→    { descriptionAr: "خدمة استشارية", descriptionEn: "Consulting Service", qty: "1.00", price: "1000.00", total: "1000.00" },
+    93→    93→    { descriptionAr: "خدمة تصميم", descriptionEn: "Design Service", qty: "2.00", price: "500.00", total: "1000.00" },
+    94→    94→  ]),
+    95→    95→  subtotal: "2000",
+    96→    96→  taxAmount: "300",
+    97→    97→  total: "2300",
+    98→    98→  shipping: "0",
+    99→    99→  discount: "0",
+   100→   100→  paid: "0",
+   101→   101→  notes: "Thank you for your business",
+   102→   102→  notesAr: "شكراً لتعاملكم معنا",
+   103→   103→  uuid: generateZatcaUuid(),
+   104→   104→  previousInvoiceHash: "NWZlY2ViNjZmZmM4NmYzNDQ0MWY0ZGQzNzU0Y2QwOWE0MmM2YzY2OGZkMWU0YWQ0NWQ3YzA4ZjY0ZjU4NDk0Nw==",
+   105→   105→};
+   106→   106→
+   107→   107→const validSaudiSimplifiedInvoice = {
+   108→   108→  invoiceNumber: "INV-SA-2026-002",
+   109→   109→  clientName: "Ahmad Al-Salem",
+   110→   110→  issueDate: "2026-01-15",
+   111→   111→  dueDate: "2026-01-15",
+   112→   112→  invoiceTypeAr: "فاتورة مبسطة",
+   113→   113→  invoiceTypeEn: "simplified",
+   114→   114→  currency: "SAR",
+   115→   115→  currencyDecimalPlaces: 2,
+   116→   116→  taxRate: "15",
+   117→   117→  sellerNameAr: "شركة التجارة السعودية",
+   118→   118→  sellerAddressAr: "الرياض، المملكة العربية السعودية",
+   119→   119→  sellerVatTrn: "310000000100003",
+   120→   120→  lineItems: JSON.stringify([
+   121→   121→    { description: "مشروبات", qty: 3, price: 10, total: 30 },
+   122→   122→  ]),
+   123→   123→  lineItemsAr: JSON.stringify([
+   124→   124→    { descriptionAr: "مشروبات", descriptionEn: "Beverages", qty: "3.00", price: "10.00", total: "30.00" },
+   125→   125→  ]),
+   126→   126→  subtotal: "30",
+   127→   127→  taxAmount: "4.50",
+   128→   128→  total: "34.50",
+   129→   129→  shipping: "0",
+   130→   130→  discount: "0",
+   131→   131→  paid: "0",
+   132→   132→};
+   133→   133→
+   134→   134→// ── UUID Generation Tests ──────────────────────────────────────────────────
+   135→   135→
+   136→   136→describe("generateZatcaUuid", () => {
+   137→   137→  it("should generate a valid UUID v4 format", () => {
+   138→   138→    const uuid = generateZatcaUuid();
+   139→   139→    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+   140→   140→  });
+   141→   141→
+   142→   142→  it("should generate unique UUIDs each time", () => {
+   143→   143→    const uuids = Array.from({ length: 100 }, () => generateZatcaUuid());
+   144→   144→    const uniqueUuids = new Set(uuids);
+   145→   145→    expect(uniqueUuids.size).toBe(100);
+   146→   146→  });
+   147→   147→
+   148→   148→  it("should return a string of correct length", () => {
+   149→   149→    const uuid = generateZatcaUuid();
+   150→   150→    expect(uuid.length).toBe(36); // Standard UUID v4 format: 8-4-4-4-12 + 4 hyphens
+   151→   151→  });
+   152→   152→});
+   153→   153→
+   154→   154→// ── Invoice Hash Computation Tests ──────────────────────────────────────────
+   155→   155→
+   156→   156→describe("computeInvoiceHash", () => {
+   157→   157→  it("should return a 64-character hex string (SHA-256)", () => {
+   158→   158→    const xml = "<Invoice>test content</Invoice>";
+   159→   159→    const hash = computeInvoiceHash(xml);
+   160→   160→    expect(hash.length).toBe(64);
+   161→   161→    expect(hash).toMatch(/^[0-9a-f]{64}$/i);
+   162→   162→  });
+   163→   163→
+   164→   164→  it("should produce consistent hashes for the same input", () => {
+   165→   165→    const xml = "<Invoice>consistent content</Invoice>";
+   166→   166→    const hash1 = computeInvoiceHash(xml);
+   167→   167→    const hash2 = computeInvoiceHash(xml);
+   168→   168→    expect(hash1).toBe(hash2);
+   169→   169→  });
+   170→   170→
+   171→   171→  it("should produce different hashes for different inputs", () => {
+   172→   172→    const xml1 = "<Invoice>content A</Invoice>";
+   173→   173→    const xml2 = "<Invoice>content B</Invoice>";
+   174→   174→    const hash1 = computeInvoiceHash(xml1);
+   175→   175→    const hash2 = computeInvoiceHash(xml2);
+   176→   176→    expect(hash1).not.toBe(hash2);
+   177→   177→  });
+   178→   178→
+   179→   179→  it("should handle empty string input", () => {
+   180→   180→    const hash = computeInvoiceHash("");
+   181→   181→    expect(hash.length).toBe(64);
+   182→   182→  });
+   183→   183→
+   184→   184→  it("should handle long XML content", () => {
+   185→   185→    const xml = "<Invoice>" + "x".repeat(10000) + "</Invoice>";
+   186→   186→    const hash = computeInvoiceHash(xml);
+   187→   187→    expect(hash.length).toBe(64);
+   188→   188→  });
+   189→   189→});
+   190→   190→
+   191→   191→// ── Invoice Type Classification Tests ──────────────────────────────────────
+   192→   192→
+   193→   193→describe("determineZatcaInvoiceType", () => {
+   194→   194→  it("should classify as standard for B2B invoices with clientId", () => {
+   195→   195→    const result = determineZatcaInvoiceType({ clientId: 5 });
+   196→   196→    expect(result).toBe("standard");
+   197→   197→  });
+   198→   198→
+   199→   199→  it("should classify as simplified for B2C invoices without clientId", () => {
+   200→   200→    const result = determineZatcaInvoiceType({});
+   201→   201→    expect(result).toBe("simplified");
+   202→   202→  });
+   203→   203→
+   204→   204→  it("should classify as standard when buyerVatTrn is present", () => {
+   205→   205→    const result = determineZatcaInvoiceType({ buyerVatTrn: "310000000200003" });
+   206→   206→    expect(result).toBe("standard");
+   207→   207→  });
+   208→   208→
+   209→   209→  it("should respect explicit invoiceTypeEn setting", () => {
+   210→   210→    expect(determineZatcaInvoiceType({ invoiceTypeEn: "standard" })).toBe("standard");
+   211→   211→    expect(determineZatcaInvoiceType({ invoiceTypeEn: "simplified" })).toBe("simplified");
+   212→   212→  });
+   213→   213→
+   214→   214→  it("should respect Arabic invoice type classification", () => {
+   215→   215→    expect(determineZatcaInvoiceType({ invoiceTypeAr: "فاتورة ضريبية" })).toBe("standard");
+   216→   216→    expect(determineZatcaInvoiceType({ invoiceTypeAr: "فاتورة مبسطة" })).toBe("simplified");
+   217→   217→  });
+   218→   218→
+   219→   219→  it("should classify as standard when buyerVatNumber is present", () => {
+   220→   220→    const result = determineZatcaInvoiceType({ buyerVatNumber: "310000000200003" });
+   221→   221→    expect(result).toBe("standard");
+   222→   222→  });
+   223→   223→});
+   224→   224→
+   225→   225→// ── Validation Tests ───────────────────────────────────────────────────────
+   226→   226→
+   227→   227→describe("validateZatcaInvoice", () => {
+   228→   228→  it("should return valid for a compliant Saudi standard invoice", () => {
+   229→   229→    const result = validateZatcaInvoice(validSaudiStandardInvoice, saudiCompany);
+   230→   230→    expect(result.valid).toBe(true);
+   231→   231→    expect(result.errors.length).toBe(0);
+   232→   232→  });
+   233→   233→
+   234→   234→  it("should return valid for a compliant Saudi simplified invoice", () => {
+   235→   235→    const result = validateZatcaInvoice(validSaudiSimplifiedInvoice, saudiCompany);
+   236→   236→    expect(result.valid).toBe(true);
+   237→   237→    expect(result.errors.length).toBe(0);
+   238→   238→  });
+   239→   239→
+   240→   240→  it("should pass validation for non-Saudi companies", () => {
+   241→   241→    const result = validateZatcaInvoice({}, nonSaudiCompany);
+   242→   242→    expect(result.valid).toBe(true);
+   243→   243→    expect(result.errors.length).toBe(0);
+   244→   244→  });
+   245→   245→
+   246→   246→  it("should fail validation when VAT TRN is missing", () => {
+   247→   247→    const invoice = { ...validSaudiStandardInvoice, sellerVatTrn: undefined };
+   248→   248→    const company = { ...saudiCompany, vatNumber: undefined };
+   249→   249→    const result = validateZatcaInvoice(invoice, company);
+   250→   250→    expect(result.valid).toBe(false);
+   251→   251→    expect(result.errors.some((e) => e.field === "vatTrn")).toBe(true);
+   252→   252→    expect(result.errors.some((e) => e.messageAr.includes("التسجيل الضريبي"))).toBe(true);
+   253→   253→  });
+   254→   254→
+   255→   255→  it("should fail validation when Arabic seller name is missing", () => {
+   256→   256→    const invoice = { ...validSaudiStandardInvoice, sellerNameAr: undefined };
+   257→   257→    const company = { ...saudiCompany, nameAr: undefined };
+   258→   258→    const result = validateZatcaInvoice(invoice, company);
+   259→   259→    expect(result.valid).toBe(false);
+   260→   260→    expect(result.errors.some((e) => e.field === "sellerNameAr")).toBe(true);
+   261→   261→    expect(result.errors.some((e) => e.messageAr.includes("البائع"))).toBe(true);
+   262→   262→  });
+   263→   263→
+   264→   264→  it("should fail validation when Arabic buyer name is missing for standard (B2B) invoices", () => {
+   265→   265→    const invoice = { ...validSaudiStandardInvoice, buyerNameAr: undefined, clientName: undefined };
+   266→   266→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   267→   267→    expect(result.valid).toBe(false);
+   268→   268→    expect(result.errors.some((e) => e.field === "buyerNameAr")).toBe(true);
+   269→   269→  });
+   270→   270→
+   271→   271→  it("should not require Arabic buyer name for simplified (B2C) invoices", () => {
+   272→   272→    const invoice = { ...validSaudiSimplifiedInvoice, buyerNameAr: undefined, clientName: undefined };
+   273→   273→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   274→   274→    const buyerNameError = result.errors.find((e) => e.field === "buyerNameAr");
+   275→   275→    expect(buyerNameError).toBeUndefined();
+   276→   276→  });
+   277→   277→
+   278→   278→  it("should require buyer VAT TRN for standard (B2B) invoices", () => {
+   279→   279→    const invoice = { ...validSaudiStandardInvoice, buyerVatTrn: undefined, buyerVatNumber: undefined };
+   280→   280→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   281→   281→    expect(result.valid).toBe(false);
+   282→   282→    expect(result.errors.some((e) => e.field === "buyerVatTrn")).toBe(true);
+   283→   283→  });
+   284→   284→
+   285→   285→  it("should fail validation when currency is not SAR", () => {
+   286→   286→    const invoice = { ...validSaudiStandardInvoice, currency: "USD" };
+   287→   287→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   288→   288→    expect(result.valid).toBe(false);
+   289→   289→    expect(result.errors.some((e) => e.field === "currency")).toBe(true);
+   290→   290→    expect(result.errors.some((e) => e.messageAr.includes("ريال سعودي"))).toBe(true);
+   291→   291→  });
+   292→   292→
+   293→   293→  it("should fail validation when decimal places are not 2", () => {
+   294→   294→    const invoice = { ...validSaudiStandardInvoice, currencyDecimalPlaces: 3 };
+   295→   295→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   296→   296→    expect(result.valid).toBe(false);
+   297→   297→    expect(result.errors.some((e) => e.field === "currencyDecimalPlaces")).toBe(true);
+   298→   298→  });
+   299→   299→
+   300→   300→  it("should fail validation when VAT rate is not 15%", () => {
+   301→   301→    const invoice = { ...validSaudiStandardInvoice, taxRate: "5" };
+   302→   302→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   303→   303→    expect(result.valid).toBe(false);
+   304→   304→    expect(result.errors.some((e) => e.field === "vatRate")).toBe(true);
+   305→   305→    expect(result.errors.some((e) => e.messageAr.includes("15%"))).toBe(true);
+   306→   306→  });
+   307→   307→
+   308→   308→  it("should detect B2B/B2C classification mismatch", () => {
+   309→   309→    // Simplified invoice with buyer VAT TRN → should be standard
+   310→   310→    const invoice = {
+   311→   311→      ...validSaudiSimplifiedInvoice,
+   312→   312→      buyerVatTrn: "310000000200003",
+   313→   313→      invoiceTypeEn: "simplified",
+   314→   314→      invoiceTypeAr: "فاتورة مبسطة",
+   315→   315→    };
+   316→   316→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   317→   317→    expect(result.valid).toBe(false);
+   318→   318→    expect(result.errors.some((e) => e.field === "invoiceTypeClassification")).toBe(true);
+   319→   319→  });
+   320→   320→
+   321→   321→  it("should include retention warning for Saudi invoices", () => {
+   322→   322→    const result = validateZatcaInvoice(validSaudiStandardInvoice, saudiCompany);
+   323→   323→    expect(result.warnings.some((w) => w.field === "recordRetention")).toBe(true);
+   324→   324→    expect(result.warnings.some((w) => w.messageAr.includes("6 سنوات"))).toBe(true);
+   325→   325→    expect(result.warnings.some((w) => w.messageAr.includes("50,000"))).toBe(true);
+   326→   326→  });
+   327→   327→
+   328→   328→  it("should include UUID warning when no UUID is present", () => {
+   329→   329→    const invoice = { ...validSaudiStandardInvoice, uuid: undefined, eInvoiceUuid: undefined };
+   330→   330→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   331→   331→    expect(result.warnings.some((w) => w.field === "uuid")).toBe(true);
+   332→   332→  });
+   333→   333→
+   334→   334→  it("should include PIH warning when no previous hash is present", () => {
+   335→   335→    const invoice = { ...validSaudiStandardInvoice, previousInvoiceHash: undefined };
+   336→   336→    const result = validateZatcaInvoice(invoice, saudiCompany);
+   337→   337→    expect(result.warnings.some((w) => w.field === "previousInvoiceHash")).toBe(true);
+   338→   338→  });
+   339→   339→});
+   340→   340→
+   341→   341→// ── UBL XML Generation Tests ───────────────────────────────────────────────
+   342→   342→
+   343→   343→describe("generateZatcaUblXml", () => {
+   344→   344→  it("should generate structurally valid UBL 2.1 XML for standard invoice", () => {
+   345→   345→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   346→   346→    expect(result.xml).toBeTruthy();
+   347→   347→    expect(result.xml).toContain("<?xml version=\"1.0\"");
+   348→   348→    expect(result.xml).toContain("<Invoice");
+   349→   349→    expect(result.xml).toContain("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2");
+   350→   350→    expect(result.invoiceHash).toBeTruthy();
+   351→   351→    expect(result.invoiceHash.length).toBe(64);
+   352→   352→    expect(result.uuid).toBeTruthy();
+   353→   353→  });
+   354→   354→
+   355→   355→  it("should generate structurally valid UBL 2.1 XML for simplified invoice", () => {
+   356→   356→    const result = generateZatcaUblXml(validSaudiSimplifiedInvoice, saudiCompany);
+   357→   357→    expect(result.xml).toBeTruthy();
+   358→   358→    expect(result.xml).toContain("<?xml version=\"1.0\"");
+   359→   359→    expect(result.xml).toContain("<Invoice");
+   360→   360→  });
+   361→   361→
+   362→   362→  it("should include UUID in the XML", () => {
+   363→   363→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   364→   364→    expect(result.xml).toContain("<cbc:UUID>");
+   365→   365→    expect(result.xml).toContain(result.uuid);
+   366→   366→  });
+   367→   367→
+   368→   368→  it("should include seller VAT TRN in the XML", () => {
+   369→   369→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   370→   370→    expect(result.xml).toContain("310000000100003");
+   371→   371→    expect(result.xml).toContain("<cbc:CompanyID>");
+   372→   372→  });
+   373→   373→
+   374→   374→  it("should include invoice type code 381 for standard invoices", () => {
+   375→   375→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   376→   376→    expect(result.xml).toContain("<cbc:InvoiceTypeCode");
+   377→   377→    expect(result.xml).toContain("381");
+   378→   378→    expect(result.xml).toContain("فاتورة ضريبية");
+   379→   379→  });
+   380→   380→
+   381→   381→  it("should include invoice type code 388 for simplified invoices", () => {
+   382→   382→    const result = generateZatcaUblXml(validSaudiSimplifiedInvoice, saudiCompany);
+   383→   383→    expect(result.xml).toContain("<cbc:InvoiceTypeCode");
+   384→   384→    expect(result.xml).toContain("388");
+   385→   385→    expect(result.xml).toContain("فاتورة مبسطة");
+   386→   386→  });
+   387→   387→
+   388→   388→  it("should include SAR currency code", () => {
+   389→   389→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   390→   390→    expect(result.xml).toContain("<cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode>");
+   391→   391→    expect(result.xml).toContain("<cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode>");
+   392→   392→  });
+   393→   393→
+   394→   394→  it("should include Arabic seller name", () => {
+   395→   395→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   396→   396→    expect(result.xml).toContain("شركة التجارة السعودية");
+   397→   397→    expect(result.xml).toContain("languageID=\"ar\"");
+   398→   398→  });
+   399→   399→
+   400→   400→  it("should include buyer details for standard (B2B) invoices", () => {
+   401→   401→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   402→   402→    expect(result.xml).toContain("<cac:AccountingCustomerParty>");
+   403→   403→    expect(result.xml).toContain("الشركة السعودية للأعمال");
+   404→   404→    expect(result.xml).toContain("310000000200003");
+   405→   405→  });
+   406→   406→
+   407→   407→  it("should NOT include buyer party for simplified (B2C) invoices", () => {
+   408→   408→    const result = generateZatcaUblXml(validSaudiSimplifiedInvoice, saudiCompany);
+   409→   409→    expect(result.xml).not.toContain("<cac:AccountingCustomerParty>");
+   410→   410→  });
+   411→   411→
+   412→   412→  it("should include 15% VAT rate in tax subtotal", () => {
+   413→   413→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   414→   414→    expect(result.xml).toContain("15.00");
+   415→   415→    expect(result.xml).toContain("<cbc:Percent>15.00</cbc:Percent>");
+   416→   416→    expect(result.xml).toContain("ضريبة القيمة المضافة");
+   417→   417→    expect(result.xml).toContain("Value Added Tax");
+   418→   418→  });
+   419→   419→
+   420→   420→  it("should include line items with tax breakdown", () => {
+   421→   421→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   422→   422→    expect(result.xml).toContain("<cac:InvoiceLine>");
+   423→   423→    expect(result.xml).toContain("<cbc:InvoicedQuantity");
+   424→   424→    expect(result.xml).toContain("<cbc:LineExtensionAmount");
+   425→   425→    expect(result.xml).toContain("<cac:TaxTotal>");
+   426→   426→    expect(result.xml).toContain("<cbc:TaxableAmount");
+   427→   427→  });
+   428→   428→
+   429→   429→  it("should include PIH reference in the XML", () => {
+   430→   430→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   431→   431→    expect(result.xml).toContain("<cbc:ID>PIH</cbc:ID>");
+   432→   432→    expect(result.xml).toContain("<cbc:PreviousInvoiceHash>");
+   433→   433→  });
+   434→   434→
+   435→   435→  it("should include signature placeholder", () => {
+   436→   436→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   437→   437→    expect(result.xml).toContain("<cac:Signature>");
+   438→   438→    expect(result.xml).toContain("#ECDSA-Signature");
+   439→   439→  });
+   440→   440→
+   441→   441→  it("should include legal monetary total", () => {
+   442→   442→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   443→   443→    expect(result.xml).toContain("<cac:LegalMonetaryTotal>");
+   444→   444→    expect(result.xml).toContain("<cbc:LineExtensionAmount");
+   445→   445→    expect(result.xml).toContain("<cbc:TaxExclusiveAmount");
+   446→   446→    expect(result.xml).toContain("<cbc:TaxInclusiveAmount");
+   447→   447→    expect(result.xml).toContain("<cbc:PayableAmount");
+   448→   448→  });
+   449→   449→
+   450→   450→  it("should include ZATCA profile ID", () => {
+   451→   451→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   452→   452→    // Standard invoices use clearance profile
+   453→   453→    expect(result.xml).toContain("clearance:1.0");
+   454→   454→    // Also includes reporting profile (required by ZATCA)
+   455→   455→    expect(result.xml).toContain("reporting:1.0");
+   456→   456→  });
+   457→   457→
+   458→   458→  it("should use reporting profile for simplified invoices", () => {
+   459→   459→    const result = generateZatcaUblXml(validSaudiSimplifiedInvoice, saudiCompany);
+   460→   460→    // Simplified invoices use reporting profile only
+   461→   461→    expect(result.xml).toContain("reporting:1.0");
+   462→   462→  });
+   463→   463→
+   464→   464→  it("should include postal address for seller", () => {
+   465→   465→    const result = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   466→   466→    expect(result.xml).toContain("<cac:PostalAddress>");
+   467→   467→    expect(result.xml).toContain("<cbc:IdentificationCode>SA</cbc:IdentificationCode>");
+   468→   468→    expect(result.xml).toContain("<cac:Country>");
+   469→   469→  });
+   470→   470→});
+   471→   471→
+   472→   472→// ── Digital Signing Tests ───────────────────────────────────────────────────
+   473→   473→
+   474→   474→describe("signZatcaInvoice", () => {
+   475→   475→  it("should return a signed XML with signature embedded", () => {
+   476→   476→    const xmlResult = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   477→   477→    const certificate = "placeholder-certificate-data";
+   478→   478→    const privateKey = "placeholder-private-key-data";
+   479→   479→
+   480→   480→    const result = signZatcaInvoice(xmlResult.xml, certificate, privateKey);
+   481→   481→    expect(result.signedXml).toBeTruthy();
+   482→   482→    expect(result.invoiceHash).toBeTruthy();
+   483→   483→    expect(result.digitalSignature).toBeTruthy();
+   484→   484→    expect(result.certificateHash).toBeTruthy();
+   485→   485→  });
+   486→   486→
+   487→   487→  it("should include certificate hash in the signed XML", () => {
+   488→   488→    const xmlResult = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   489→   489→    const certificate = "placeholder-certificate-data";
+   490→   490→    const privateKey = "placeholder-private-key-data";
+   491→   491→
+   492→   492→    const result = signZatcaInvoice(xmlResult.xml, certificate, privateKey);
+   493→   493→    expect(result.signedXml).toContain("<cbc:CertificateHash>");
+   494→   494→    expect(result.signedXml).toContain(result.certificateHash);
+   495→   495→  });
+   496→   496→
+   497→   497→  it("should include invoice hash reference in signed XML", () => {
+   498→   498→    const xmlResult = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
+   499→   499→    const certificate = "placeholder-certificate-data";
+   500→   500→    const privateKey = "placeholder-private-key-data";
+   501→   501→
+   502→   502→    const result = signZatcaInvoice(xmlResult.xml, certificate, privateKey);
+   503→   503→    expect(result.signedXml).toContain("<cbc:Reference>");
+   504→   504→  });
+   505→   505→
+   506→   506→  it("should produce consistent certificate hash for the same certificate", () => {
+   507→   507→    const xml1 = "<Invoice>test1</Invoice>";
+   508→   508→    const xml2 = "<Invoice>test2</Invoice>";
+   509→   509→    const cert = "same-certificate";
+   510→   510→
+   511→   511→    const result1 = signZatcaInvoice(xml1, cert, "key1");
+   512→   512→    const result2 = signZatcaInvoice(xml2, cert, "key2");
+   513→   513→
+   514→   514→    expect(result1.certificateHash).toBe(result2.certificateHash);
+   515→   515→  });
+   516→   516→
+   517→   517→  it("should produce different signatures for different invoice content", () => {
+   518→   518→    const xml1 = "<Invoice>content A</Invoice>";
+   519→   519→    const xml2 = "<Invoice>content B</Invoice>";
+   520→   520→
+   521→   521→    const result1 = signZatcaInvoice(xml1, "cert", "key");
+   522→   522→    const result2 = signZatcaInvoice(xml2, "cert", "key");
+   523→   523→
+   524→   524→    expect(result1.digitalSignature).not.toBe(result2.digitalSignature);
+   525→   525→  });
+   526→   526→});
+   527→   527→
+   528→   528→// ── Auto-population Tests ──────────────────────────────────────────────────
+   529→   529→
+   530→   530→describe("autoPopulateZatcaFields", () => {
+   531→   531→  it("should auto-populate UUID when missing", () => {
+   532→   532→    const invoiceData = {
+   533→   533→      issueDate: "2026-01-15",
+   534→   534→      dueDate: "2026-02-15",
+   535→   535→      taxRate: "15",
+   536→   536→    };
+   537→   537→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   538→   538→    expect(result.uuid).toBeTruthy();
+   539→   539→    expect(result.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+   540→   540→  });
+   541→   541→
+   542→   542→  it("should preserve existing UUID when already present", () => {
+   543→   543→    const existingUuid = "12345678-1234-4123-8123-123456789abc";
+   544→   544→    const invoiceData = {
+   545→   545→      uuid: existingUuid,
+   546→   546→      issueDate: "2026-01-15",
+   547→   547→    };
+   548→   548→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   549→   549→    expect(result.uuid).toBe(existingUuid);
+   550→   550→  });
+   551→   551→
+   552→   552→  it("should auto-populate Hijri dates from Gregorian dates", () => {
+   553→   553→    const invoiceData = {
+   554→   554→      issueDate: "2026-01-15",
+   555→   555→      dueDate: "2026-02-15",
+   556→   556→    };
+   557→   557→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   558→   558→    expect(result.hijriIssueDate).toBeTruthy();
+   559→   559→    expect(result.hijriDueDate).toBeTruthy();
+   560→   560→    expect(result.hijriIssueDate).toBe(formatHijri("2026-01-15"));
+   561→   561→  });
+   562→   562→
+   563→   563→  it("should auto-populate VAT TRN from company", () => {
+   564→   564→    const invoiceData = { issueDate: "2026-01-15" };
+   565→   565→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   566→   566→    expect(result.sellerVatTrn).toBe("310000000100003");
+   567→   567→  });
+   568→   568→
+   569→   569→  it("should auto-populate Arabic seller name from company", () => {
+   570→   570→    const invoiceData = { issueDate: "2026-01-15" };
+   571→   571→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   572→   572→    expect(result.sellerNameAr).toBe("شركة التجارة السعودية");
+   573→   573→  });
+   574→   574→
+   575→   575→  it("should auto-populate invoice type for B2C when no clientId", () => {
+   576→   576→    const invoiceData = { issueDate: "2026-01-15" };
+   577→   577→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   578→   578→    expect(result.invoiceTypeEn).toBe("simplified");
+   579→   579→    expect(result.invoiceTypeAr).toBe("فاتورة مبسطة");
+   580→   580→  });
+   581→   581→
+   582→   582→  it("should auto-populate invoice type for B2B when clientId is present", () => {
+   583→   583→    const invoiceData = { issueDate: "2026-01-15", clientId: 5 };
+   584→   584→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   585→   585→    expect(result.invoiceTypeEn).toBe("standard");
+   586→   586→    expect(result.invoiceTypeAr).toBe("فاتورة ضريبية");
+   587→   587→  });
+   588→   588→
+   589→   589→  it("should enforce SAR currency", () => {
+   590→   590→    const invoiceData = { issueDate: "2026-01-15", currency: "USD" };
+   591→   591→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   592→   592→    expect(result.currency).toBe(ZATCA_CURRENCY);
+   593→   593→  });
+   594→   594→
+   595→   595→  it("should enforce 2 decimal places", () => {
+   596→   596→    const invoiceData = { issueDate: "2026-01-15" };
+   597→   597→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   598→   598→    expect(result.currencyDecimalPlaces).toBe(ZATCA_DECIMAL_PLACES);
+   599→   599→  });
+   600→   600→
+   601→   601→  it("should enforce 15% VAT rate", () => {
+   602→   602→    const invoiceData = { issueDate: "2026-01-15", taxRate: "5" };
+   603→   603→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   604→   604→    expect(result.taxRate).toBe("15.00");
+   605→   605→  });
+   606→   606→
+   607→   607→  it("should enforce 2-decimal precision on monetary fields", () => {
+   608→   608→    const invoiceData = {
+   609→   609→      issueDate: "2026-01-15",
+   610→   610→      subtotal: "100",
+   611→   611→      total: "115",
+   612→   612→      taxAmount: "15",
+   613→   613→    };
+   614→   614→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   615→   615→    expect(result.subtotal).toBe("100.00");
+   616→   616→    expect(result.total).toBe("115.00");
+   617→   617→    expect(result.taxAmount).toBe("15.00");
+   618→   618→  });
+   619→   619→
+   620→   620→  it("should set e-invoice authority", () => {
+   621→   621→    const invoiceData = { issueDate: "2026-01-15" };
+   622→   622→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   623→   623→    expect(result.eInvoiceAuthority).toBe(ZATCA_AUTHORITY);
+   624→   624→  });
+   625→   625→
+   626→   626→  it("should set PIH placeholder for first invoice", () => {
+   627→   627→    const invoiceData = { issueDate: "2026-01-15" };
+   628→   628→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   629→   629→    expect(result.previousInvoiceHash).toBeTruthy();
+   630→   630→    expect(result.previousInvoiceHash).toBe("NWZlY2ViNjZmZmM4NmYzNDQ0MWY0ZGQzNzU0Y2QwOWE0MmM2YzY2OGZkMWU0YWQ0NWQ3YzA4ZjY0ZjU4NDk0Nw==");
+   631→   631→  });
+   632→   632→
+   633→   633→  it("should preserve existing PIH when already present", () => {
+   634→   634→    const existingPih = "custom-hash-value";
+   635→   635→    const invoiceData = {
+   636→   636→      issueDate: "2026-01-15",
+   637→   637→      previousInvoiceHash: existingPih,
+   638→   638→    };
+   639→   639→    const result = autoPopulateZatcaFields(invoiceData, saudiCompany);
+   640→   640→    expect(result.previousInvoiceHash).toBe(existingPih);
+   641→   641→  });
+   642→   642→});
+   643→   643→
+   644→   644→// ── Validation Middleware Tests ─────────────────────────────────────────────
+   645→   645→
+   646→   646→describe("zatcaInvoiceValidationMiddleware", () => {
+   647→   647→  it("should pass through non-Saudi companies without validation", () => {
+   648→   648→    const result = zatcaInvoiceValidationMiddleware({}, nonSaudiCompany);
+   649→   649→    expect(result.valid).toBe(true);
+   650→   650→    expect(result.blockingErrors.length).toBe(0);
+   651→   651→    expect(result.warnings.length).toBe(0);
+   652→   652→  });
+   653→   653→
+   654→   654→  it("should block Saudi invoice creation when VAT TRN is missing", () => {
+   655→   655→    const companyNoVat = { ...saudiCompany, vatNumber: undefined };
+   656→   656→    const incompleteInvoice = {
+   657→   657→      invoiceNumber: "INV-001",
+   658→   658→      issueDate: "2026-01-15",
+   659→   659→      dueDate: "2026-02-15",
+   660→   660→      taxRate: "15",
+   661→   661→    };
+   662→   662→    const result = zatcaInvoiceValidationMiddleware(incompleteInvoice, companyNoVat);
+   663→   663→    expect(result.valid).toBe(false);
+   664→   664→    expect(result.blockingErrors.some((e) => e.field === "vatTrn")).toBe(true);
+   665→   665→  });
+   666→   666→
+   667→   667→  it("should override non-SAR currency for Saudi companies", () => {
+   668→   668→    const invoiceData = {
+   669→   669→      invoiceNumber: "INV-001",
+   670→   670→      issueDate: "2026-01-15",
+   671→   671→      dueDate: "2026-02-15",
+   672→   672→      clientName: "Ahmad",
+   673→   673→      currency: "USD",
+   674→   674→      sellerVatTrn: "310000000100003",
+   675→   675→      sellerNameAr: "شركة التجارة السعودية",
+   676→   676→      sellerAddressAr: "الرياض",
+   677→   677→      taxRate: "15",
+   678→   678→    };
+   679→   679→    const result = zatcaInvoiceValidationMiddleware(invoiceData, saudiCompany);
+   680→   680→    expect(result.enrichedData.currency).toBe("SAR");
+   681→   681→    expect(result.enrichedData.currencyDecimalPlaces).toBe(2);
+   682→   682→  });
+   683→   683→
+   684→   684→  it("should enforce 15% VAT rate for Saudi companies", () => {
+   685→   685→    const invoiceData = {
+   686→   686→      invoiceNumber: "INV-001",
+   687→   687→      issueDate: "2026-01-15",
+   688→   688→      dueDate: "2026-02-15",
+   689→   689→      taxRate: "5",
+   690→   690→      currency: "SAR",
+   691→   691→    };
+   692→   692→    const result = zatcaInvoiceValidationMiddleware(invoiceData, saudiCompany);
+   693→   693→    expect(result.enrichedData.taxRate).toBe("15.00");
+   694→   694→  });
+   695→   695→});
+   696→   696→
+   697→   697→// ── Format Errors Tests ────────────────────────────────────────────────────
+   698→   698→
+   699→   699→describe("formatZatcaErrorsForResponse", () => {
+   700→   700→  it("should return empty error when no blocking errors", () => {
+   701→   701→    const result = formatZatcaErrorsForResponse({
+   702→   702→      valid: true,
+   703→   703→      enrichedData: {},
+   704→   704→      blockingErrors: [],
+   705→   705→      warnings: [],
+   706→   706→    });
+   707→   707→    expect(result.error).toBe("");
+   708→   708→    expect(result.details).toEqual({});
+   709→   709→  });
+   710→   710→
+   711→   711→  it("should format Arabic error messages for API response", () => {
+   712→   712→    const result = formatZatcaErrorsForResponse({
+   713→   713→      valid: false,
+   714→   714→      enrichedData: {},
+   715→   715→      blockingErrors: [
+   716→   716→        { field: "vatTrn", messageAr: "رقم التسجيل الضريبي مطلوب", messageEn: "VAT TRN required" },
+   717→   717→      ],
+   718→   718→      warnings: [],
+   719→   719→    });
+   720→   720→    expect(result.error).toContain("التسجيل الضريبي");
+   721→   721→    expect(result.details.regulation).toBe("ZATCA Phase 2");
+   722→   722→  });
+   723→   723→
+   724→   724→  it("should include all Arabic and English error details", () => {
+   725→   725→    const result = formatZatcaErrorsForResponse({
+   726→   726→      valid: false,
+   727→   727→      enrichedData: {},
+   728→   728→      blockingErrors: [
+   729→   729→        { field: "vatTrn", messageAr: "رقم التسجيل الضريبي مطلوب", messageEn: "VAT TRN required" },
+   730→   730→        { field: "sellerNameAr", messageAr: "اسم البائع باللغة العربية مطلوب", messageEn: "Arabic seller name required" },
+   731→   731→      ],
+   732→   732→      warnings: [],
+   733→   733→    });
+   734→   734→    expect(result.error).toContain("؛"); // Arabic semicolon separator
+   735→   735→    expect((result.details as Record<string, unknown>).errorsAr).toBeTruthy();
+   736→   736→    expect((result.details as Record<string, unknown>).errorsEn).toBeTruthy();
+   737→   737→  });
+   738→   738→});
+   739→   739→
+   740→   740→// ── Money/SAR 2-decimal Integration Tests ───────────────────────────────────
+   741→   741→
+   742→   742→describe("Money/SAR 2-decimal integration", () => {
+   743→   743→  it("should format SAR with 2 decimal places", () => {
+   744→   744→    const formatted = num(100, 2).toFixed(2);
+   745→   745→    expect(formatted).toBe("100.00");
+   746→   746→  });
+   747→   747→
+   748→   748→  it("should handle SAR amounts with existing decimals", () => {
+   749→   749→    const formatted = num(100.50, 2).toFixed(2);
+   750→   750→    expect(formatted).toBe("100.50");
+   751→   751→  });
+   752→   752→
+   753→   753→  it("should handle small SAR amounts correctly", () => {
+   754→   754→    const formatted = num(0.01, 2).toFixed(2);
+   755→   755→    expect(formatted).toBe("0.01");
+   756→   756→  });
+   757→   757→
+   758→   758→  it("should compute 15% VAT correctly for SAR", () => {
+   759→   759→    const subtotal = 2000;
+   760→   760→    const vatAmount = num(subtotal * 15 / 100, 2).toFixed(2);
+   761→   761→    expect(vatAmount).toBe("300.00");
+   762→   762→  });
+   763→   763→
+   764→   764→  it("should compute 15% VAT on fractional amounts", () => {
+   765→   765→    const subtotal = 33.33;
+   766→   766→    const vatAmount = num(subtotal * 15 / 100, 2).toFixed(2);
+   767→   767→    expect(vatAmount).toBe("5.00"); // 33.33 * 0.15 = 4.9995 → rounded to 5.00
+   768→   768→  });
+   769→   769→});
+   770→   770→
+   771→   771→// ── Hijri Date Integration Tests ───────────────────────────────────────────
+   772→   772→
+   773→   773→describe("Hijri date integration for ZATCA", () => {
+   774→   774→  it("should convert Gregorian to Hijri correctly for Saudi dates", () => {
+   775→   775→    const hijri = formatHijri("2026-01-15");
+   776→   776→    expect(hijri).toBeTruthy();
+   777→   777→    expect(hijri.length).toBeGreaterThan(3);
+   778→   778→  });
+   779→   779→
+   780→   780→  it("should format dual date with both calendars", () => {
+   781→   781→    const dual = formatDualDate("2026-01-15");
+   782→   782→    expect(dual).toBeTruthy();
+   783→   783→    expect(dual.length).toBeGreaterThan(5);
+   784→   784→  });
+   785→   785→
+   786→   786→  it("should handle empty/invalid dates gracefully", () => {
+   787→   787→    const hijri = formatHijri("invalid-date");
+   788→   788→    expect(hijri).toBeFalsy();
+   789→   789→  });
+   790→   790→});
+   791→   791→
+   792→   792→// ── Constants Validation Tests ──────────────────────────────────────────────
+   793→   793→
+   794→   794→describe("ZATCA constants", () => {
+   795→   795→  it("should have correct ZATCA authority", () => {
+   796→   796→    expect(ZATCA_AUTHORITY).toBe("zatca");
+   797→   797→  });
+   798→   798→
+   799→   799→  it("should have correct SAR currency", () => {
+   800→   800→    expect(ZATCA_CURRENCY).toBe("SAR");
+   801→   801→  });
+   802→   802→
+   803→   803→  it("should have correct 2 decimal places", () => {
+   804→   804→    expect(ZATCA_DECIMAL_PLACES).toBe(2);
+   805→   805→  });
+   806→   806→
+   807→   807→  it("should have correct 15% VAT rate", () => {
+   808→   808→    expect(ZATCA_VAT_RATE).toBe(15);
+   809→   809→  });
+   810→   810→
+   811→   811→  it("should have correct regulation reference", () => {
+   812→   812→    expect(ZATCA_REGULATION).toBe("ZATCA Phase 2");
+   813→   813→  });
+   814→   814→
+   815→   815→  it("should have correct max fine", () => {
+   816→   816→    expect(ZATCA_MAX_FINE_SAR).toBe(50000);
+   817→   817→  });
+   818→   818→});
+   819→   819→

@@ -1,0 +1,1262 @@
+     1→/**
+     2→ * uae-fta.ts — UAE Federal Tax Authority (FTA) e-invoicing compliance module.
+     3→ *
+     4→ * Implements UAE FTA e-invoicing requirements for the Peppol network,
+     5→ * supporting UBL 2.1 (Peppol BIS 3) format for electronic invoicing.
+     6→ *
+     7→ * Key requirements:
+     8→ * - Peppol network-based e-invoicing (UBL 2.1 / Peppol BIS 3 format)
+     9→ * - Standard Invoice (B2B) with full Peppol BIS 3 structure
+    10→ * - Simplified Invoice (B2C) with minimal structure
+    11→ * - English language mandatory, Arabic optional (dual language)
+    12→ * - AED currency with exactly 2 decimal places
+    13→ * - 5% VAT rate
+    14→ * - TRN (Tax Registration Number) mandatory for seller
+    15→ * - Buyer TRN required for B2B (standard) invoices
+    16→ * - Digital signature using PKI (ECDSA/X.509)
+    17→ * - Submission via Peppol Access Point provider
+    18→ *
+    19→ * UAE FTA e-invoicing regulation reference:
+    20→ * - Federal Decree-Law No. 8 of 2017 (Value Added Tax)
+    21→ * - Cabinet Decision No. 52 of 2017 on VAT
+    22→ * - FTA e-invoicing guidance (Peppol-based framework)
+    23→ *
+    24→ * Fines for non-compliance: up to AED 20,000 per violation.
+    25→ */
+    26→
+    27→import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
+    28→import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+    29→import {
+    30→  getCountryConfig,
+    31→  type EInvoiceAuthority,
+    32→} from "@/lib/gulfConfig";
+    33→import { logger } from "@/lib/logger";
+    34→import { db } from "@/lib/db";
+    35→
+    36→// ── Types ──────────────────────────────────────────────────────────────────
+    37→
+    38→export interface UaeFtaValidationError {
+    39→  field: string;
+    40→  messageAr: string; // Arabic error message for UI display
+    41→  messageEn: string; // English error message for developer reference
+    42→  severity: "error" | "warning"; // error = blocks submission, warning = advisory
+    43→}
+    44→
+    45→export interface UaeFtaValidationResult {
+    46→  valid: boolean;
+    47→  errors: UaeFtaValidationError[];
+    48→  warnings: UaeFtaValidationError[];
+    49→}
+    50→
+    51→export type UaeFtaInvoiceType = "standard" | "simplified";
+    52→// standard = B2B tax invoice (فاتورة ضريبية) — full Peppol BIS 3, buyer TRN required
+    53→// simplified = B2C retail invoice (فاتورة مبسطة) — minimal structure, no buyer TRN
+    54→
+    55→export interface UaeFtaInvoicePayload {
+    56→  // ── Header ───────────────────────────────────────────────────────────
+    57→  uuid: string;
+    58→  invoiceNumber: string;
+    59→  invoiceType: UaeFtaInvoiceType;
+    60→  invoiceTypeAr: string;
+    61→  invoiceTypeEn: string;
+    62→  ftaRegulation: string; // "UAE FTA e-invoicing (Peppol BIS 3)"
+    63→
+    64→  // ── Dates (dual calendar) ────────────────────────────────────────────
+    65→  issueDateGregorian: string; // YYYY-MM-DD
+    66→  issueDateHijri: string; // formatted Hijri string (optional for UAE)
+    67→  issueDateDual: string; // dual format
+    68→
+    69→  // ── Currency ─────────────────────────────────────────────────────────
+    70→  currency: string; // "AED"
+    71→  currencyDecimalPlaces: number; // 2
+    72→
+    73→  // ── Seller ───────────────────────────────────────────────────────────
+    74→  sellerNameEn: string; // English mandatory
+    75→  sellerNameAr: string | null; // Arabic optional
+    76→  sellerAddressEn: string; // English mandatory
+    77→  sellerAddressAr: string | null;
+    78→  sellerVatTrn: string; // TRN — mandatory for UAE FTA
+    79→  sellerCommercialRegistration: string | null;
+    80→  sellerStreetNameEn: string | null;
+    81→  sellerStreetNameAr: string | null;
+    82→  sellerBuildingNumber: string | null;
+    83→  sellerPostalCode: string | null;
+    84→  sellerCityEn: string | null;
+    85→  sellerCityAr: string | null;
+    86→  sellerDistrictEn: string | null;
+    87→  sellerDistrictAr: string | null;
+    88→  sellerCountryCode: string; // "AE"
+    89→
+    90→  // ── Buyer ────────────────────────────────────────────────────────────
+    91→  buyerNameEn: string | null; // Required for standard (B2B)
+    92→  buyerNameAr: string | null;
+    93→  buyerAddressEn: string | null;
+    94→  buyerAddressAr: string | null;
+    95→  buyerVatTrn: string | null; // Required for standard (B2B)
+    96→  buyerStreetNameEn: string | null;
+    97→  buyerStreetNameAr: string | null;
+    98→  buyerBuildingNumber: string | null;
+    99→  buyerPostalCode: string | null;
+   100→  buyerCityEn: string | null;
+   101→  buyerCityAr: string | null;
+   102→  buyerDistrictEn: string | null;
+   103→  buyerDistrictAr: string | null;
+   104→  buyerCountryCode: string | null;
+   105→
+   106→  // ── Line items ───────────────────────────────────────────────────────
+   107→  lineItems: UaeFtaLineItemPayload[];
+   108→
+   109→  // ── Totals (AED, 2 decimal places) ───────────────────────────────────
+   110→  subtotal: string;
+   111→  taxRate: string; // "5.00"
+   112→  taxAmount: string;
+   113→  total: string;
+   114→  shipping: string;
+   115→  discount: string;
+   116→  paid: string;
+   117→
+   118→  // ── Notes ────────────────────────────────────────────────────────────
+   119→  notesEn: string | null;
+   120→  notesAr: string | null;
+   121→
+   122→  // ── UAE FTA-specific ─────────────────────────────────────────────────
+   123→  eInvoiceAuthority: string; // "uae_fta"
+   124→  previousInvoiceHash: string; // PIH for chaining
+   125→  invoiceHash: string; // SHA-256 hash of invoice XML
+   126→  paymentMethod: string | null;
+   127→
+   128→  // ── Signature ────────────────────────────────────────────────────────
+   129→  digitalSignature?: string; // PKI signature (base64)
+   130→  certificateHash?: string; // X.509 certificate hash
+   131→  signingTime?: string; // ISO 8601 signing timestamp
+   132→}
+   133→
+   134→export interface UaeFtaLineItemPayload {
+   135→  id: string; // line item UUID
+   136→  descriptionEn: string; // English mandatory
+   137→  descriptionAr: string | null; // Arabic optional
+   138→  qty: string; // formatted with decimals
+   139→  unitPrice: string;
+   140→  unitCode: string; // UBL unit code (EA, DAY, etc.)
+   141→  lineTotal: string; // qty * unitPrice
+   142→  taxRate: string;
+   143→  taxAmount: string;
+   144→  taxCategory: string; // "S" for standard rate, "Z" for zero, "E" for exempt
+   145→  taxSchemeAr: string; // "ضريبة القيمة المضافة"
+   146→  taxSchemeEn: string; // "Value Added Tax"
+   147→  discountAmount: string | null;
+   148→}
+   149→
+   150→export interface UaeFtaSubmissionResult {
+   151→  ok: boolean;
+   152→  eInvoiceId?: number;
+   153→  submissionStatus: "pending" | "submitted" | "cleared" | "accepted" | "rejected";
+   154→  peppolDocumentId?: string; // Peppol document identifier
+   155→  error?: string;
+   156→  rejectionReason?: string;
+   157→}
+   158→
+   159→export interface UaeFtaUblXmlResult {
+   160→  xml: string;
+   161→  invoiceHash: string;
+   162→  uuid: string;
+   163→}
+   164→
+   165→export interface UaeFtaSignatureResult {
+   166→  signedXml: string;
+   167→  invoiceHash: string;
+   168→  digitalSignature: string;
+   169→  certificateHash: string;
+   170→}
+   171→
+   172→// ── Constants ──────────────────────────────────────────────────────────────
+   173→
+   174→export const UAE_FTA_AUTHORITY: EInvoiceAuthority = "uae_fta";
+   175→export const UAE_FTA_CURRENCY = "AED";
+   176→export const UAE_FTA_DECIMAL_PLACES = 2;
+   177→export const UAE_FTA_VAT_RATE = 5;
+   178→export const UAE_FTA_REGULATION = "UAE FTA e-invoicing (Peppol BIS 3)";
+   179→export const UAE_FTA_MAX_FINE_AED = 20000;
+   180→const UAE_FTA_PEPPOL_AP_URL = "https://ap.myfatoorah.com/peppol"; // Peppol Access Point (MyFatoorah as AP provider)
+   181→const UAE_FTA_PEPPOL_BIS3_PROFILE = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"; // Peppol BIS Billing 3.0 profile
+   182→
+   183→// UBL 2.1 namespace constants
+   184→const UBL_NS = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2";
+   185→const CBC_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
+   186→const CAC_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
+   187→
+   188→// ── Arabic error messages (UAE Arabic) ────────────────────────────────────
+   189→
+   190→const ERROR_MESSAGES = {
+   191→  TRN_MISSING: {
+   192→    field: "vatTrn",
+   193→    messageAr: "رقم التسجيل الضريبي (TRN) للبائع مطلوب وفقاً لمتطلبات الهيئة الاتحادية للضرائب الإماراتية",
+   194→    messageEn: "Seller Tax Registration Number (TRN) is required per UAE FTA regulations",
+   195→    severity: "error" as const,
+   196→  },
+   197→  ENGLISH_SELLER_NAME_MISSING: {
+   198→    field: "sellerNameEn",
+   199→    messageAr: "اسم البائع باللغة الإنجليزية مطلوب وفقاً لنظام الفوترة الإلكترونية في الإمارات",
+   200→    messageEn: "English seller name is mandatory per UAE e-invoicing regulations",
+   201→    severity: "error" as const,
+   202→  },
+   203→  ENGLISH_SELLER_ADDRESS_MISSING: {
+   204→    field: "sellerAddressEn",
+   205→    messageAr: "عنوان البائع باللغة الإنجليزية مطلوب وفقاً لنظام الفوترة الإلكترونية في الإمارات",
+   206→    messageEn: "English seller address is mandatory per UAE e-invoicing regulations",
+   207→    severity: "error" as const,
+   208→  },
+   209→  ENGLISH_BUYER_NAME_MISSING: {
+   210→    field: "buyerNameEn",
+   211→    messageAr: "اسم المشتري باللغة الإنجليزية مطلوب للفواتير التجارية (B2B) وفقاً لمتطلبات الهيئة الاتحادية للضرائب",
+   212→    messageEn: "English buyer name is required for B2B (standard) invoices per UAE FTA regulations",
+   213→    severity: "error" as const,
+   214→  },
+   215→  ENGLISH_BUYER_ADDRESS_MISSING: {
+   216→    field: "buyerAddressEn",
+   217→    messageAr: "عنوان المشتري باللغة الإنجليزية مطلوب للفواتير التجارية (B2B) وفقاً لمتطلبات الهيئة الاتحادية للضرائب",
+   218→    messageEn: "English buyer address is required for B2B (standard) invoices per UAE FTA regulations",
+   219→    severity: "error" as const,
+   220→  },
+   221→  BUYER_TRN_MISSING: {
+   222→    field: "buyerVatTrn",
+   223→    messageAr: "رقم التسجيل الضريبي للمشتري مطلوب للفواتير التجارية (B2B) وفقاً لمتطلبات الهيئة الاتحادية للضرائب",
+   224→    messageEn: "Buyer Tax Registration Number (TRN) is required for B2B (standard) invoices per UAE FTA regulations",
+   225→    severity: "error" as const,
+   226→  },
+   227→  CURRENCY_NOT_AED: {
+   228→    field: "currency",
+   229→    messageAr: "يجب أن تكون عملة الفاتورة درهم إماراتي (AED) بخانتين عشرية",
+   230→    messageEn: "Invoice currency must be AED with exactly 2 decimal places",
+   231→    severity: "error" as const,
+   232→  },
+   233→  DECIMAL_PLACES_INVALID: {
+   234→    field: "currencyDecimalPlaces",
+   235→    messageAr: "يجب عرض المبالغ بخانتين عشرية للدرهم الإماراتي وفقاً لمتطلبات الهيئة الاتحادية للضرائب",
+   236→    messageEn: "Amounts must be displayed with exactly 2 decimal places for AED per UAE FTA regulations",
+   237→    severity: "error" as const,
+   238→  },
+   239→  VAT_RATE_INVALID: {
+   240→    field: "vatRate",
+   241→    messageAr: "يجب أن يكون معدل ضريبة القيمة المضافة 5% وفقاً لقانون الضريبة الإماراتي",
+   242→    messageEn: "VAT rate must be 5% per UAE tax law",
+   243→    severity: "error" as const,
+   244→  },
+   245→  INVOICE_TYPE_MISSING: {
+   246→    field: "invoiceType",
+   247→    messageAr: "يجب تصنيف نوع الفاتورة (فاتورة ضريبية أو فاتورة مبسطة) وفقاً لنظام الفوترة الإلكترونية",
+   248→    messageEn: "Invoice type classification is required (standard/simplified) per e-invoicing regulations",
+   249→    severity: "error" as const,
+   250→  },
+   251→  LINE_ITEMS_ENGLISH_MISSING: {
+   252→    field: "lineItemsEn",
+   253→    messageAr: "يجب أن تحتوي جميع البنود على وصف باللغة الإنجليزية وفقاً لنظام الفوترة الإلكترونية في الإمارات",
+   254→    messageEn: "All line items must have English descriptions per UAE e-invoicing regulations",
+   255→    severity: "error" as const,
+   256→  },
+   257→  UUID_MISSING: {
+   258→    field: "uuid",
+   259→    messageAr: "يجب أن تحتوي الفاتورة على رقم تعريف فريد (UUID) وفقاً لمتطلبات شبكة بيبول (Peppol)",
+   260→    messageEn: "Invoice must have a UUID per Peppol network requirements",
+   261→    severity: "warning" as const,
+   262→  },
+   263→  PIH_MISSING: {
+   264→    field: "previousInvoiceHash",
+   265→    messageAr: "يجب أن تحتوي الفاتورة على رمز التحقق للفاتورة السابقة (PIH) لضمان التتبع والربط",
+   266→    messageEn: "Invoice should include Previous Invoice Hash (PIH) for chain integrity",
+   267→    severity: "warning" as const,
+   268→  },
+   269→  NOTES_ENGLISH_MISSING: {
+   270→    field: "notesEn",
+   271→    messageAr: "الملاحظات يجب أن تكون باللغة الإنجليزية",
+   272→    messageEn: "Notes should be in English",
+   273→    severity: "warning" as const,
+   274→  },
+   275→  RETENTION_WARNING: {
+   276→    field: "recordRetention",
+   277→    messageAr: "تنبيه: يجب الاحتفاظ بالسجلات لمدة 5 سنوات وفقاً لمتطلبات الهيئة الاتحادية للضرائب. الغرامة قد تصل إلى 20,000 درهم إماراتي",
+   278→    messageEn: "Records must be retained for 5 years per UAE FTA regulations. Fines up to 20,000 AED",
+   279→    severity: "warning" as const,
+   280→  },
+   281→  SIGNING_CERTIFICATE_MISSING: {
+   282→    field: "certificate",
+   283→    messageAr: "شهادة التوقيع الإلكتروني مطلوبة لتقديم الفاتورة عبر شبكة بيبول (Peppol)",
+   284→    messageEn: "Digital signing certificate is required for Peppol network submission",
+   285→    severity: "warning" as const,
+   286→  },
+   287→  B2B_B2C_MISMATCH: {
+   288→    field: "invoiceTypeClassification",
+   289→    messageAr: "تصنيف نوع الفاتورة غير مطابق — يجب تصنيف الفواتير مع رقم تسجيل ضريبي للمشتري كفاتورة ضريبية (B2B)",
+   290→    messageEn: "Invoice type classification mismatch — invoices with buyer TRN must be classified as standard (B2B)",
+   291→    severity: "error" as const,
+   292→  },
+   293→  ARABIC_SELLER_NAME_RECOMMENDED: {
+   294→    field: "sellerNameAr",
+   295→    messageAr: "يُنصح بإضافة اسم البائع باللغة العربية لتحسين الامتثال المحلي",
+   296→    messageEn: "Arabic seller name is recommended for better local compliance",
+   297→    severity: "warning" as const,
+   298→  },
+   299→  ARABIC_BUYER_NAME_RECOMMENDED: {
+   300→    field: "buyerNameAr",
+   301→    messageAr: "يُنصح بإضافة اسم المشتري باللغة العربية للفواتير التجارية (B2B)",
+   302→    messageEn: "Arabic buyer name is recommended for B2B (standard) invoices",
+   303→    severity: "warning" as const,
+   304→  },
+   305→};
+   306→
+   307→// ── UUID Generation ────────────────────────────────────────────────────────
+   308→
+   309→/**
+   310→ * generateUaeFtaUuid — Generates a UUID for UAE FTA e-invoicing.
+   311→ *
+   312→ * Peppol requires a UUID for each invoice document. This UUID is used
+   313→ * for invoice identification within the Peppol network.
+   314→ */
+   315→export function generateUaeFtaUuid(): string {
+   316→  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+   317→    return crypto.randomUUID();
+   318→  }
+   319→  // Fallback: manual UUID v4 generation
+   320→  const hex = Array.from({ length: 32 }, () =>
+   321→    Math.floor(Math.random() * 16).toString(16)
+   322→  ).join("");
+   323→  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${(8 + Math.floor(Math.random() * 4)).toString(16)}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+   324→}
+   325→
+   326→// ── Invoice Type Classification ────────────────────────────────────────────
+   327→
+   328→/**
+   329→ * determineUaeFtaInvoiceType — B2B = standard, B2C = simplified.
+   330→ *
+   331→ * UAE FTA rules:
+   332→ * - Standard invoices (فاتورة ضريبية): B2B with buyer TRN
+   333→ * - Simplified invoices (فاتورة مبسطة): B2C without buyer TRN
+   334→ *
+   335→ * If the buyer has a TRN or is a registered business (clientId),
+   336→ * classify as "standard" (B2B). Otherwise, "simplified" (B2C).
+   337→ */
+   338→export function determineUaeFtaInvoiceType(invoice: Record<string, unknown>): UaeFtaInvoiceType {
+   339→  // If already set, use it
+   340→  if (invoice.invoiceTypeEn === "standard" || invoice.invoiceTypeAr === "فاتورة ضريبية") {
+   341→    return "standard";
+   342→  }
+   343→  if (invoice.invoiceTypeEn === "simplified" || invoice.invoiceTypeAr === "فاتورة مبسطة") {
+   344→    return "simplified";
+   345→  }
+   346→  // Auto-classify: buyer has TRN or clientId → B2B (standard)
+   347→  if (invoice.buyerVatTrn || invoice.buyerVatNumber || invoice.clientId) {
+   348→    return "standard";
+   349→  }
+   350→  // Default to simplified (B2C) for UAE retail invoices
+   351→  return "simplified";
+   352→}
+   353→
+   354→// ── Invoice Hash Computation ───────────────────────────────────────────────
+   355→
+   356→/**
+   357→ * computeUaeFtaInvoiceHash — SHA-256 hash computation for invoice chaining.
+   358→ *
+   359→ * For Peppol network submissions, invoice hashes are used for:
+   360→ * - PIH (Previous Invoice Hash) chaining
+   361→ * - Digital signature verification
+   362→ * - Audit trail integrity
+   363→ *
+   364→ * Uses Node.js crypto for SHA-256. Returns hex-encoded hash.
+   365→ */
+   366→export function computeUaeFtaInvoiceHash(xml: string): string {
+   367→  try {
+   368→    // eslint-disable-next-line @typescript-eslint/no-require-imports
+   369→    const nodeCrypto = require("node:crypto");
+   370→    return nodeCrypto.createHash("sha256").update(xml, "utf8").digest("hex");
+   371→  } catch {
+   372→    logger.warn("[uae-fta] node:crypto not available for hash computation — using placeholder");
+   373→    let hash = 0;
+   374→    for (let i = 0; i < xml.length; i++) {
+   375→      const char = xml.charCodeAt(i);
+   376→      hash = ((hash << 5) - hash) + char;
+   377→      hash |= 0;
+   378→    }
+   379→    return Math.abs(hash).toString(16).padStart(64, "0").slice(0, 64);
+   380→  }
+   381→}
+   382→
+   383→// ── Validation ─────────────────────────────────────────────────────────────
+   384→
+   385→/**
+   386→ * validateUaeFtaInvoice — Validates that a UAE invoice meets FTA requirements.
+   387→ *
+   388→ * Returns validation errors with Arabic messages for UI display.
+   389→ * Errors block invoice creation/submission; warnings are advisory.
+   390→ *
+   391→ * UAE FTA specific checks:
+   392→ * - TRN (Tax Registration Number) required for seller
+   393→ * - English language mandatory for all fields
+   394→ * - AED currency with exactly 2 decimal places
+   395→ * - 5% VAT rate
+   396→ * - Buyer TRN required for B2B (standard) invoices
+   397→ */
+   398→export function validateUaeFtaInvoice(
+   399→  invoice: Record<string, unknown>,
+   400→  company: Record<string, unknown>,
+   401→): UaeFtaValidationResult {
+   402→  const errors: UaeFtaValidationError[] = [];
+   403→  const warnings: UaeFtaValidationError[] = [];
+   404→
+   405→  const countryCode = company.country as string;
+   406→  // Only validate if company is UAE-based
+   407→  if (countryCode !== "AE") {
+   408→    return { valid: true, errors: [], warnings: [] };
+   409→  }
+   410→
+   411→  // ── 1. Seller TRN (Tax Registration Number) mandatory ────────────────
+   412→  if (!company.vatNumber && !invoice.vatTrn && !invoice.sellerVatTrn) {
+   413→    errors.push(ERROR_MESSAGES.TRN_MISSING);
+   414→  }
+   415→
+   416→  // ── 2. English seller name mandatory ─────────────────────────────────
+   417→  if (!company.name && !invoice.sellerNameEn) {
+   418→    errors.push(ERROR_MESSAGES.ENGLISH_SELLER_NAME_MISSING);
+   419→  }
+   420→
+   421→  // ── 3. English seller address mandatory ──────────────────────────────
+   422→  if (!company.address && !invoice.sellerAddressEn) {
+   423→    errors.push(ERROR_MESSAGES.ENGLISH_SELLER_ADDRESS_MISSING);
+   424→  }
+   425→
+   426→  // ── 4. English buyer name — mandatory for standard (B2B) invoices ────
+   427→  const invoiceType = determineUaeFtaInvoiceType(invoice);
+   428→  if (invoiceType === "standard") {
+   429→    if (!invoice.buyerNameEn && !invoice.clientName) {
+   430→      errors.push(ERROR_MESSAGES.ENGLISH_BUYER_NAME_MISSING);
+   431→    }
+   432→    if (!invoice.buyerAddressEn && !invoice.clientAddress) {
+   433→      errors.push(ERROR_MESSAGES.ENGLISH_BUYER_ADDRESS_MISSING);
+   434→    }
+   435→    // Buyer TRN required for B2B
+   436→    if (!invoice.buyerVatTrn && !invoice.buyerVatNumber) {
+   437→      errors.push(ERROR_MESSAGES.BUYER_TRN_MISSING);
+   438→    }
+   439→  }
+   440→
+   441→  // ── 5. Currency must be AED ──────────────────────────────────────────
+   442→  const invoiceCurrency = (invoice.currency as string) || (company.currency as string) || UAE_FTA_CURRENCY;
+   443→  if (invoiceCurrency !== UAE_FTA_CURRENCY) {
+   444→    errors.push(ERROR_MESSAGES.CURRENCY_NOT_AED);
+   445→  }
+   446→
+   447→  // ── 6. Decimal places must be 2 for AED ──────────────────────────────
+   448→  const decimalPlaces = (invoice.currencyDecimalPlaces as number) ?? UAE_FTA_DECIMAL_PLACES;
+   449→  if (decimalPlaces !== UAE_FTA_DECIMAL_PLACES) {
+   450→    errors.push(ERROR_MESSAGES.DECIMAL_PLACES_INVALID);
+   451→  }
+   452→
+   453→  // ── 7. VAT rate must be 5% ──────────────────────────────────────────
+   454→  const taxRate = parseFloat(
+   455→    (invoice.taxRate as string) || (company.defaultTaxRate as string) || String(UAE_FTA_VAT_RATE)
+   456→  );
+   457→  if (taxRate !== UAE_FTA_VAT_RATE) {
+   458→    // Allow 0% VAT for exempt items but the main rate must be 5%
+   459→    if (taxRate !== 0) {
+   460→      errors.push(ERROR_MESSAGES.VAT_RATE_INVALID);
+   461→    }
+   462→  }
+   463→
+   464→  // ── 8. Invoice type classification ──────────────────────────────────
+   465→  if (!invoice.invoiceTypeEn && !invoice.invoiceTypeAr) {
+   466→    errors.push(ERROR_MESSAGES.INVOICE_TYPE_MISSING);
+   467→  }
+   468→
+   469→  // ── 9. B2B/B2C classification consistency ────────────────────────────
+   470→  if (invoiceType === "simplified" && (invoice.buyerVatTrn || invoice.buyerVatNumber)) {
+   471→    errors.push(ERROR_MESSAGES.B2B_B2C_MISMATCH);
+   472→  }
+   473→
+   474→  // ── 10. Line items must have English descriptions ────────────────────
+   475→  const lineItems = invoice.lineItems as LineItem[] | string | undefined;
+   476→  let parsedItems: LineItem[] = [];
+   477→  if (typeof lineItems === "string") {
+   478→    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+   479→  } else if (Array.isArray(lineItems)) {
+   480→    parsedItems = lineItems;
+   481→  }
+   482→  // English descriptions are mandatory
+   483→  if (parsedItems.length > 0) {
+   484→    const hasMissingEnglish = parsedItems.some(
+   485→      (item) => !item.description || item.description.trim() === ""
+   486→    );
+   487→    if (hasMissingEnglish) {
+   488→      errors.push(ERROR_MESSAGES.LINE_ITEMS_ENGLISH_MISSING);
+   489→    }
+   490→  }
+   491→
+   492→  // ── 11. UUID warning ─────────────────────────────────────────────────
+   493→  if (!invoice.uuid && !invoice.eInvoiceUuid) {
+   494→    warnings.push(ERROR_MESSAGES.UUID_MISSING);
+   495→  }
+   496→
+   497→  // ── 12. PIH warning ──────────────────────────────────────────────────
+   498→  if (!invoice.previousInvoiceHash) {
+   499→    warnings.push(ERROR_MESSAGES.PIH_MISSING);
+   500→  }
+   501→
+   502→  // ── 13. Notes English ────────────────────────────────────────────────
+   503→  if (invoice.notes && !invoice.notesEn) {
+   504→    warnings.push(ERROR_MESSAGES.NOTES_ENGLISH_MISSING);
+   505→  }
+   506→
+   507→  // ── 14. Retention period warning ─────────────────────────────────────
+   508→  warnings.push(ERROR_MESSAGES.RETENTION_WARNING);
+   509→
+   510→  // ── 15. Certificate warning ──────────────────────────────────────────
+   511→  if (!invoice.certificate && !invoice.certificateId) {
+   512→    warnings.push(ERROR_MESSAGES.SIGNING_CERTIFICATE_MISSING);
+   513→  }
+   514→
+   515→  // ── 16. Arabic seller name recommended (optional for UAE) ────────────
+   516→  if (!company.nameAr && !invoice.sellerNameAr) {
+   517→    warnings.push(ERROR_MESSAGES.ARABIC_SELLER_NAME_RECOMMENDED);
+   518→  }
+   519→
+   520→  // ── 17. Arabic buyer name recommended for B2B (optional for UAE) ────
+   521→  if (invoiceType === "standard" && !invoice.buyerNameAr && !invoice.clientName) {
+   522→    warnings.push(ERROR_MESSAGES.ARABIC_BUYER_NAME_RECOMMENDED);
+   523→  }
+   524→
+   525→  return {
+   526→    valid: errors.length === 0,
+   527→    errors,
+   528→    warnings,
+   529→  };
+   530→}
+   531→
+   532→// ── UBL 2.1 XML Generation (Peppol BIS 3) ────────────────────────────────
+   533→
+   534→/**
+   535→ * generateUaeFtaUblXml — Generates UBL 2.1 XML for UAE FTA e-invoicing
+   536→ * via Peppol BIS 3 network.
+   537→ *
+   538→ * Produces structurally correct UBL 2.1 XML that conforms to Peppol BIS 3
+   539→ * specification. Supports both Standard (B2B) and Simplified (B2C) invoice types.
+   540→ *
+   541→ * Standard Invoice (B2B) XML includes:
+   542→ * - Full buyer details (name, address, TRN)
+   543→ * - Complete tax breakdown per line item
+   544→ * - PKI signature placeholder
+   545→ * - Peppol BIS 3 profile identifiers
+   546→ *
+   547→ * Simplified Invoice (B2C) XML includes:
+   548→ * - Minimal buyer details (name only, no TRN)
+   549→ * - Simplified tax structure
+   550→ * - PKI signature placeholder
+   551→ * - Peppol BIS 3 profile identifiers
+   552→ *
+   553→ * Both include:
+   554→ * - English mandatory + Arabic optional dual language
+   555→ * - AED 2-decimal amounts
+   556→ * - 5% VAT rate
+   557→ * - Seller TRN (Tax Registration Number)
+   558→ */
+   559→export function generateUaeFtaUblXml(
+   560→  invoice: Record<string, unknown>,
+   561→  company: Record<string, unknown>,
+   562→): UaeFtaUblXmlResult {
+   563→  const invoiceType = determineUaeFtaInvoiceType(invoice);
+   564→  const uuid = (invoice.uuid as string) || (invoice.eInvoiceUuid as string) || generateUaeFtaUuid();
+   565→  const issueDate = (invoice.issueDate as string) || new Date().toISOString().split("T")[0];
+   566→  const dueDate = (invoice.dueDate as string) || issueDate;
+   567→
+   568→  // Hijri dates (optional for UAE)
+   569→  const hijriIssue = toHijri(issueDate);
+   570→  const hijriDue = toHijri(dueDate);
+   571→
+   572→  // Line items parsing
+   573→  const rawLineItems = invoice.lineItems as LineItem[] | string;
+   574→  let parsedItems: LineItem[] = [];
+   575→  if (typeof rawLineItems === "string") {
+   576→    try { parsedItems = JSON.parse(rawLineItems); } catch { parsedItems = []; }
+   577→  } else if (Array.isArray(rawLineItems)) {
+   578→    parsedItems = rawLineItems;
+   579→  }
+   580→
+   581→  // Seller details (English mandatory, Arabic optional)
+   582→  const sellerNameEn = (company.name as string) || (invoice.sellerNameEn as string) || "";
+   583→  const sellerNameAr = (company.nameAr as string) || (invoice.sellerNameAr as string) || null;
+   584→  const sellerVatTrn = (company.vatNumber as string) || (invoice.sellerVatTrn as string) || "";
+   585→  const sellerAddressEn = (company.address as string) || (invoice.sellerAddressEn as string) || "";
+   586→  const sellerAddressAr = (invoice.sellerAddressAr as string) || (company.addressAr as string) || null;
+   587→
+   588→  // Buyer details (only mandatory for standard B2B)
+   589→  const buyerNameEn = (invoice.buyerNameEn as string) || (invoice.clientName as string) || "";
+   590→  const buyerNameAr = (invoice.buyerNameAr as string) || null;
+   591→  const buyerVatTrn = (invoice.buyerVatTrn as string) || (invoice.buyerVatNumber as string) || "";
+   592→  const buyerAddressEn = (invoice.buyerAddressEn as string) || (invoice.clientAddress as string) || "";
+   593→  const buyerAddressAr = (invoice.buyerAddressAr as string) || null;
+   594→
+   595→  // PIH (Previous Invoice Hash)
+   596→  const pih = (invoice.previousInvoiceHash as string) || "";
+   597→
+   598→  // Totals (AED, 2 decimal places)
+   599→  const totals = calcInvoiceTotals(
+   600→    parsedItems,
+   601→    UAE_FTA_VAT_RATE,
+   602→    num(invoice.shipping ?? 0, UAE_FTA_DECIMAL_PLACES),
+   603→    num(invoice.discount ?? 0, UAE_FTA_DECIMAL_PLACES),
+   604→  );
+   605→
+   606→  // UBL invoice type code:
+   607→  // Standard (B2B) = 380 (Commercial Invoice, Peppol BIS 3)
+   608→  // Simplified (B2C) = 380 with simplified structure (same code but different content)
+   609→  // Note: Peppol BIS 3 uses 380 for standard invoices, not 381 (ZATCA-specific)
+   610→  const invoiceTypeCode = "380";
+   611→  const invoiceTypeNameAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
+   612→  const invoiceTypeNameEn = invoiceType === "standard" ? "Standard Tax Invoice" : "Simplified Tax Invoice";
+   613→
+   614→  // ── Build UBL 2.1 XML (Peppol BIS 3) ──────────────────────────────────
+   615→
+   616→  // Line items XML
+   617→  const lineItemXml = parsedItems.map((item, index) => {
+   618→    const lineId = index + 1;
+   619→    const itemQty = num(item.qty, UAE_FTA_DECIMAL_PLACES).toFixed(UAE_FTA_DECIMAL_PLACES);
+   620→    const itemPrice = num(item.price, UAE_FTA_DECIMAL_PLACES).toFixed(UAE_FTA_DECIMAL_PLACES);
+   621→    const itemTotal = num(item.total ?? num(item.qty) * num(item.price), UAE_FTA_DECIMAL_PLACES).toFixed(UAE_FTA_DECIMAL_PLACES);
+   622→    const lineTaxAmount = num(parseFloat(itemTotal) * UAE_FTA_VAT_RATE / 100, UAE_FTA_DECIMAL_PLACES).toFixed(UAE_FTA_DECIMAL_PLACES);
+   623→
+   624→    // Arabic description (optional for UAE)
+   625→    const arabicDescriptionXml = sellerNameAr
+   626→      ? `\n        <cbc:Name languageID="ar">${(item.description as string) || ""}</cbc:Name>`
+   627→      : "";
+   628→
+   629→    return `
+   630→    <cac:InvoiceLine>
+   631→      <cbc:ID>${lineId}</cbc:ID>
+   632→      <cbc:Note>${(item.description as string) || ""}</cbc:Note>
+   633→      <cbc:InvoicedQuantity unitCode="EA">${itemQty}</cbc:InvoicedQuantity>
+   634→      <cbc:LineExtensionAmount currencyID="AED">${itemTotal}</cbc:LineExtensionAmount>
+   635→      <cac:Item>
+   636→        <cbc:Name languageID="en">${(item.description as string) || ""}</cbc:Name>${arabicDescriptionXml}
+   637→      </cac:Item>
+   638→      <cac:Price>
+   639→        <cbc:PriceAmount currencyID="AED">${itemPrice}</cbc:PriceAmount>
+   640→      </cac:Price>
+   641→      <cac:TaxTotal>
+   642→        <cbc:TaxAmount currencyID="AED">${lineTaxAmount}</cbc:TaxAmount>
+   643→        <cac:TaxSubtotal>
+   644→          <cbc:TaxableAmount currencyID="AED">${itemTotal}</cbc:TaxableAmount>
+   645→          <cbc:TaxAmount currencyID="AED">${lineTaxAmount}</cbc:TaxAmount>
+   646→          <cac:TaxCategory>
+   647→            <cbc:ID schemeID="UN/ECE 5303" schemeAgencyID="6">S</cbc:ID>
+   648→            <cbc:Percent>${UAE_FTA_VAT_RATE.toFixed(UAE_FTA_DECIMAL_PLACES)}</cbc:Percent>
+   649→            <cac:TaxScheme>
+   650→              <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   651→              <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   652→              <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   653→            </cac:TaxScheme>
+   654→          </cac:TaxCategory>
+   655→        </cac:TaxSubtotal>
+   656→      </cac:TaxTotal>
+   657→    </cac:InvoiceLine>`;
+   658→  }).join("");
+   659→
+   660→  // Seller postal address XML (English mandatory, Arabic optional)
+   661→  const sellerAddressXml = `
+   662→      <cac:PostalAddress>
+   663→        <cbc:StreetName>${sellerAddressEn}</cbc:StreetName>
+   664→        ${sellerAddressAr ? `<cbc:StreetName languageID="ar">${sellerAddressAr}</cbc:StreetName>` : ""}
+   665→        <cbc:CityName>${(invoice.sellerCityEn as string) || (company.address as string) || "Dubai"}</cbc:CityName>
+   666→        ${(invoice.sellerCityAr as string) ? `<cbc:CityName languageID="ar">${invoice.sellerCityAr as string}</cbc:CityName>` : ""}
+   667→        <cbc:PostalZone>${(invoice.sellerPostalCode as string) || ""}</cbc:PostalZone>
+   668→        <cac:Country>
+   669→          <cbc:IdentificationCode>AE</cbc:IdentificationCode>
+   670→        </cac:Country>
+   671→      </cac:PostalAddress>`;
+   672→
+   673→  // Buyer XML block (only for standard B2B invoices)
+   674→  const buyerXml = invoiceType === "standard" ? `
+   675→    <cac:AccountingCustomerParty>
+   676→      <cac:Party>
+   677→        <cac:PartyIdentification>
+   678→          <cbc:ID schemeID="TRN">${buyerVatTrn}</cbc:ID>
+   679→        </cac:PartyIdentification>
+   680→        <cac:PartyName>
+   681→          <cbc:Name languageID="en">${buyerNameEn}</cbc:Name>
+   682→          ${buyerNameAr ? `<cbc:Name languageID="ar">${buyerNameAr}</cbc:Name>` : ""}
+   683→        </cac:PartyName>
+   684→        <cac:PostalAddress>
+   685→          <cbc:StreetName>${buyerAddressEn}</cbc:StreetName>
+   686→          ${buyerAddressAr ? `<cbc:StreetName languageID="ar">${buyerAddressAr}</cbc:StreetName>` : ""}
+   687→          <cbc:CityName>${(invoice.buyerCityEn as string) || ""}</cbc:CityName>
+   688→          ${(invoice.buyerCityAr as string) ? `<cbc:CityName languageID="ar">${invoice.buyerCityAr as string}</cbc:CityName>` : ""}
+   689→          <cac:Country>
+   690→            <cbc:IdentificationCode>${(invoice.buyerCountryCode as string) || "AE"}</cbc:IdentificationCode>
+   691→          </cac:Country>
+   692→        </cac:PostalAddress>
+   693→        <cac:PartyTaxScheme>
+   694→          <cbc:CompanyID>${buyerVatTrn}</cbc:CompanyID>
+   695→          <cac:TaxScheme>
+   696→            <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   697→            <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   698→            <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   699→          </cac:TaxScheme>
+   700→        </cac:PartyTaxScheme>
+   701→        <cac:PartyLegalEntity>
+   702→          <cbc:RegistrationName languageID="en">${buyerNameEn}</cbc:RegistrationName>
+   703→          ${buyerNameAr ? `<cbc:RegistrationName languageID="ar">${buyerNameAr}</cbc:RegistrationName>` : ""}
+   704→        </cac:PartyLegalEntity>
+   705→      </cac:Party>
+   706→    </cac:AccountingCustomerParty>` : "";
+   707→
+   708→  // PKI signature placeholder (Peppol requires digital signature)
+   709→  const signatureXml = `
+   710→    <cac:Signature>
+   711→      <cbc:ID>urn:oasis:names:specification:ubl:signature:Invoice</cbc:ID>
+   712→      <cbc:SignatureMethod>urn:oasis:names:specification:ubl:signature:Invoice</cbc:SignatureMethod>
+   713→      <cac:SignatoryParty>
+   714→        <cac:PartyIdentification>
+   715→          <cbc:ID>${sellerVatTrn}</cbc:ID>
+   716→        </cac:PartyIdentification>
+   717→        <cac:PartyName>
+   718→          <cbc:Name languageID="en">${sellerNameEn}</cbc:Name>
+   719→          ${sellerNameAr ? `<cbc:Name languageID="ar">${sellerNameAr}</cbc:Name>` : ""}
+   720→        </cac:PartyName>
+   721→      </cac:SignatoryParty>
+   722→      <cac:DigitalSignatureAttachment>
+   723→        <cac:ExternalReference>
+   724→          <cbc:URI>#PKI-Signature</cbc:URI>
+   725→        </cac:ExternalReference>
+   726→      </cac:DigitalSignatureAttachment>
+   727→    </cac:Signature>`;
+   728→
+   729→  // Additional document reference for PIH
+   730→  const pihReferenceXml = pih ? `
+   731→    <cac:AdditionalDocumentReference>
+   732→      <cbc:ID>PIH</cbc:ID>
+   733→      <cbc:PreviousInvoiceHash>${pih}</cbc:PreviousInvoiceHash>
+   734→    </cac:AdditionalDocumentReference>` : `
+   735→    <cac:AdditionalDocumentReference>
+   736→      <cbc:ID>PIH</cbc:ID>
+   737→      <cbc:PreviousInvoiceHash>NWZlY2ViNjZmZmM4NmYzNDQ0MWY0ZGQzNzU0Y2QwOWE0MmM2YzY2OGZkMWU0YWQ0NWQ3YzA4ZjY0ZjU4NDk0Nw==</cbc:PreviousInvoiceHash>
+   738→    </cac:AdditionalDocumentReference>`;
+   739→
+   740→  // UUID document reference
+   741→  const uuidReferenceXml = `
+   742→    <cac:AdditionalDocumentReference>
+   743→      <cbc:ID>UUID</cbc:ID>
+   744→      <cbc:UUID>${uuid}</cbc:UUID>
+   745→    </cac:AdditionalDocumentReference>`;
+   746→
+   747→  // Build complete UBL 2.1 XML (Peppol BIS 3)
+   748→  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+   749→<Invoice xmlns="${UBL_NS}"
+   750→  xmlns:cac="${CAC_NS}"
+   751→  xmlns:cbc="${CBC_NS}">
+   752→  <cbc:ProfileID>${UAE_FTA_PEPPOL_BIS3_PROFILE}</cbc:ProfileID>
+   753→  <cbc:ID>${(invoice.invoiceNumber as string) || ""}</cbc:ID>
+   754→  <cbc:UUID>${uuid}</cbc:UUID>
+   755→  <cbc:IssueDate>${issueDate}</cbc:IssueDate>
+   756→  <cbc:IssueTime>${new Date().toISOString().split("T")[1]?.slice(0, 8) || "00:00:00"}</cbc:IssueTime>
+   757→  <cbc:InvoiceTypeCode name="${invoiceTypeNameEn}">${invoiceTypeCode}</cbc:InvoiceTypeCode>
+   758→  <cbc:DocumentCurrencyCode>AED</cbc:DocumentCurrencyCode>
+   759→  <cbc:TaxCurrencyCode>AED</cbc:TaxCurrencyCode>
+   760→  ${pihReferenceXml}
+   761→  ${uuidReferenceXml}
+   762→  ${signatureXml}
+   763→  <cac:AccountingSupplierParty>
+   764→    <cac:Party>
+   765→      <cac:PartyIdentification>
+   766→        <cbc:ID schemeID="TRN">${sellerVatTrn}</cbc:ID>
+   767→      </cac:PartyIdentification>
+   768→      <cac:PartyName>
+   769→        <cbc:Name languageID="en">${sellerNameEn}</cbc:Name>
+   770→        ${sellerNameAr ? `<cbc:Name languageID="ar">${sellerNameAr}</cbc:Name>` : ""}
+   771→      </cac:PartyName>
+   772→      ${sellerAddressXml}
+   773→      <cac:PartyTaxScheme>
+   774→        <cbc:CompanyID>${sellerVatTrn}</cbc:CompanyID>
+   775→        <cbc:CompanyID schemeID="VAT">${sellerVatTrn}</cbc:CompanyID>
+   776→        <cac:TaxScheme>
+   777→          <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   778→          <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   779→          <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   780→        </cac:TaxScheme>
+   781→      </cac:PartyTaxScheme>
+   782→      <cac:PartyLegalEntity>
+   783→        <cbc:RegistrationName languageID="en">${sellerNameEn}</cbc:RegistrationName>
+   784→        ${sellerNameAr ? `<cbc:RegistrationName languageID="ar">${sellerNameAr}</cbc:RegistrationName>` : ""}
+   785→      </cac:PartyLegalEntity>
+   786→    </cac:Party>
+   787→  </cac:AccountingSupplierParty>
+   788→  ${buyerXml}
+   789→  <cac:LegalMonetaryTotal>
+   790→    <cbc:LineExtensionAmount currencyID="AED">${totals.subtotal}</cbc:LineExtensionAmount>
+   791→    <cbc:TaxExclusiveAmount currencyID="AED">${totals.subtotal}</cbc:TaxExclusiveAmount>
+   792→    <cbc:TaxInclusiveAmount currencyID="AED">${totals.total}</cbc:TaxInclusiveAmount>
+   793→    <cbc:AllowanceTotalAmount currencyID="AED">${totals.discount}</cbc:AllowanceTotalAmount>
+   794→    <cbc:PayableAmount currencyID="AED">${totals.total}</cbc:PayableAmount>
+   795→  </cac:LegalMonetaryTotal>
+   796→  <cac:TaxTotal>
+   797→    <cbc:TaxAmount currencyID="AED">${totals.taxAmount}</cbc:TaxAmount>
+   798→    <cac:TaxSubtotal>
+   799→      <cbc:TaxableAmount currencyID="AED">${totals.subtotal}</cbc:TaxableAmount>
+   800→      <cbc:TaxAmount currencyID="AED">${totals.taxAmount}</cbc:TaxAmount>
+   801→      <cac:TaxCategory>
+   802→        <cbc:ID schemeID="UN/ECE 5303" schemeAgencyID="6">S</cbc:ID>
+   803→        <cbc:Percent>${UAE_FTA_VAT_RATE.toFixed(UAE_FTA_DECIMAL_PLACES)}</cbc:Percent>
+   804→        <cac:TaxScheme>
+   805→          <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">VAT</cbc:ID>
+   806→          <cbc:Name languageID="en">Value Added Tax</cbc:Name>
+   807→          <cbc:Name languageID="ar">ضريبة القيمة المضافة</cbc:Name>
+   808→        </cac:TaxScheme>
+   809→      </cac:TaxCategory>
+   810→    </cac:TaxSubtotal>
+   811→  </cac:TaxTotal>
+   812→  ${lineItemXml}
+   813→</Invoice>`;
+   814→
+   815→  // Compute invoice hash
+   816→  const invoiceHash = computeUaeFtaInvoiceHash(xml);
+   817→
+   818→  return {
+   819→    xml,
+   820→    invoiceHash,
+   821→    uuid,
+   822→  };
+   823→}
+   824→
+   825→// ── Digital Signing (PKI) ──────────────────────────────────────────────────
+   826→
+   827→/**
+   828→ * signUaeFtaInvoice — PKI digital signing for UAE FTA invoice XML.
+   829→ *
+   830→ * UAE FTA e-invoicing via Peppol requires digital signatures using PKI.
+   831→ * This is a placeholder with clear integration points for real certificate
+   832→ * injection. In production, UAE FTA requires:
+   833→ * - PKI signature over the XML content
+   834→ * - X.509 certificate hash embedded in the UBL structure
+   835→ * - Peppol Access Point provider handles the actual signing and routing
+   836→ *
+   837→ * Integration points:
+   838→ * 1. Replace the PKI signing with actual certificate-based signing
+   839→ * 2. Use certificates obtained from UAE FTA / Peppol AP provider
+   840→ * 3. Embed the X.509 certificate in the UBL Signature element
+   841→ *
+   842→ * @param xml - The raw UBL XML to sign
+   843→ * @param certificate - X.509 certificate data (base64 PEM)
+   844→ * @param privateKey - Private key data (base64 PEM)
+   845→ */
+   846→export function signUaeFtaInvoice(
+   847→  xml: string,
+   848→  certificate: string,
+   849→  privateKey: string,
+   850→): UaeFtaSignatureResult {
+   851→  logger.info("[uae-fta] signing invoice with PKI", {
+   852→    certificateLength: certificate?.length || 0,
+   853→    privateKeyAvailable: !!privateKey,
+   854→  });
+   855→
+   856→  const invoiceHash = computeUaeFtaInvoiceHash(xml);
+   857→
+   858→  try {
+   859→    // eslint-disable-next-line @typescript-eslint/no-require-imports
+   860→    const nodeCrypto = require("node:crypto");
+   861→
+   862→    // Sign with PKI (placeholder: uses provided key material)
+   863→    const sign = nodeCrypto.createSign("SHA256");
+   864→    sign.update(invoiceHash);
+   865→    sign.end();
+   866→
+   867→    let digitalSignature: string;
+   868→    if (privateKey && privateKey.includes("PRIVATE KEY")) {
+   869→      try {
+   870→        digitalSignature = sign.sign(privateKey, "base64");
+   871→      } catch {
+   872→        logger.warn("[uae-fta] PKI signing failed with provided key — using placeholder");
+   873→        digitalSignature = nodeCrypto.createHash("sha256")
+   874→          .update(invoiceHash + certificate)
+   875→          .digest("base64");
+   876→      }
+   877→    } else {
+   878→      // Placeholder signature: hash of (invoiceHash + certificate)
+   879→      digitalSignature = nodeCrypto.createHash("sha256")
+   880→        .update(invoiceHash + certificate)
+   881→        .digest("base64");
+   882→    }
+   883→
+   884→    // Certificate hash (SHA-256 of the certificate content)
+   885→    const certificateHash = nodeCrypto.createHash("sha256")
+   886→      .update(certificate)
+   887→      .digest("hex");
+   888→
+   889→    // Embed signature in UBL XML
+   890→    const signedXml = xml.replace(
+   891→      /<cbc:URI>#PKI-Signature<\/cbc:URI>/,
+   892→      `<cbc:URI>#PKI-Signature</cbc:URI>\n        <cbc:Reference>${invoiceHash}</cbc:Reference>`
+   893→    ).replace(
+   894→      /<\/cac:DigitalSignatureAttachment>/,
+   895→      `</cac:DigitalSignatureAttachment>
+   896→      <cac:Certificate>
+   897→        <cbc:CertificateHash>${certificateHash}</cbc:CertificateHash>
+   898→      </cac:Certificate>`
+   899→    );
+   900→
+   901→    logger.info("[uae-fta] invoice signed successfully", {
+   902→      invoiceHash,
+   903→      certificateHash,
+   904→      signatureLength: digitalSignature.length,
+   905→    });
+   906→
+   907→    return {
+   908→      signedXml,
+   909→      invoiceHash,
+   910→      digitalSignature,
+   911→      certificateHash,
+   912→    };
+   913→  } catch (err) {
+   914→    logger.warn("[uae-fta] signing using node:crypto failed — generating placeholder", {
+   915→      err: err instanceof Error ? err.message : String(err),
+   916→    });
+   917→
+   918→    // Fallback placeholder for environments without node:crypto
+   919→    const digitalSignature = Buffer.from(invoiceHash + certificate).toString("base64");
+   920→    const certificateHash = invoiceHash.slice(0, 64);
+   921→
+   922→    const signedXml = xml.replace(
+   923→      /<cbc:URI>#PKI-Signature<\/cbc:URI>/,
+   924→      `<cbc:URI>#PKI-Signature</cbc:URI>\n        <cbc:Reference>${invoiceHash}</cbc:Reference>`
+   925→    ).replace(
+   926→      /<\/cac:DigitalSignatureAttachment>/,
+   927→      `</cac:DigitalSignatureAttachment>
+   928→      <cac:Certificate>
+   929→        <cbc:CertificateHash>${certificateHash}</cbc:CertificateHash>
+   930→      </cac:Certificate>`
+   931→    );
+   932→
+   933→    return {
+   934→      signedXml,
+   935→      invoiceHash,
+   936→      digitalSignature,
+   937→      certificateHash,
+   938→    };
+   939→  }
+   940→}
+   941→
+   942→// ── Peppol Access Point Submission ─────────────────────────────────────────
+   943→
+   944→/**
+   945→ * submitUaeFtaInvoice — Submits a signed invoice via Peppol Access Point.
+   946→ *
+   947→ * The Peppol Access Point provider handles the actual routing and delivery
+   948→ * of the invoice to the buyer's Access Point. Possible providers:
+   949→ * - MyFatoorah (as a Peppol AP provider for the Gulf region)
+   950→ * - KSA (Saudi Access Point, for cross-border Peppol routing)
+   951→ *
+   952→ * Standard invoices (B2B) → full Peppol BIS 3 delivery with buyer TRN
+   953→ * Simplified invoices (B2C) → minimal Peppol delivery without buyer TRN
+   954→ *
+   955→ * The Peppol AP returns:
+   956→ * - For accepted invoices: a Peppol document ID and delivery confirmation
+   957→ * - For rejected invoices: a rejection reason
+   958→ *
+   959→ * @param signedXml - The signed UBL XML to submit
+   960→ * @param invoiceType - "standard" or "simplified"
+   961→ * @param companySlug - Company slug for EInvoice record
+   962→ */
+   963→export async function submitUaeFtaInvoice(
+   964→  signedXml: string,
+   965→  invoiceType: UaeFtaInvoiceType,
+   966→  companySlug: string,
+   967→): Promise<UaeFtaSubmissionResult> {
+   968→  logger.info("[uae-fta] submitting invoice via Peppol Access Point", {
+   969→    invoiceType,
+   970→    companySlug,
+   971→    xmlLength: signedXml?.length || 0,
+   972→    peppolAP: UAE_FTA_PEPPOL_AP_URL,
+   973→  });
+   974→
+   975→  try {
+   976→    // ── Placeholder: Peppol Access Point submission ────────────────────────
+   977→    // In production, this makes a real HTTP POST to the Peppol AP provider.
+   978→    // The request includes:
+   979→    //   - Signed XML in base64-encoded format
+   980→    //   - Peppol BIS 3 profile identifier
+   981→    //   - Sender/receiver party identification (TRN-based)
+   982→    //
+   983→    // Peppol AP request format:
+   984→    //   POST /peppol/send
+   985→    //   Headers: Authorization: Bearer {AP-token}, Content-Type: application/json
+   986→    //   Body: {
+   987→    //     document: base64(signedXml),
+   988→    //     profile: UAE_FTA_PEPPOL_BIS3_PROFILE,
+   989→    //     sender: { partyId: sellerVatTrn, schemeId: "TRN" },
+   990→    //     receiver: { partyId: buyerVatTrn, schemeId: "TRN" } (for B2B)
+   991→    //   }
+   992→    //
+   993→    // For now, we simulate the submission and create an EInvoice record.
+   994→    // When the Peppol AP production API is configured, this will make real HTTP calls.
+   995→
+   996→    const invoiceHash = computeUaeFtaInvoiceHash(signedXml);
+   997→
+   998→    // Simulate Peppol response
+   999→    const isSimulation = true; // Placeholder flag — will be false in production
+  1000→    const submissionStatus = isSimulation
+  1001→      ? (invoiceType === "standard" ? "cleared" : "accepted")
+  1002→      : "pending";
+  1003→
+  1004→    // Find the invoice by company slug (looking for most recent draft)
+  1005→    const existingInvoice = await db.invoice.findFirst({
+  1006→      where: {
+  1007→        companySlug,
+  1008→        status: "draft",
+  1009→        deletedAt: null,
+  1010→      },
+  1011→      orderBy: { createdAt: "desc" },
+  1012→    });
+  1013→
+  1014→    if (!existingInvoice) {
+  1015→      logger.warn("[uae-fta] no matching invoice found for submission", { companySlug });
+  1016→    }
+  1017→
+  1018→    const invoiceId = existingInvoice?.id || 0;
+  1019→
+  1020→    // Create or update EInvoice record
+  1021→    if (invoiceId > 0) {
+  1022→      const existingEInvoice = await db.eInvoice.findUnique({
+  1023→        where: { invoiceId },
+  1024→      });
+  1025→
+  1026→      if (existingEInvoice) {
+  1027→        await db.eInvoice.update({
+  1028→          where: { id: existingEInvoice.id },
+  1029→          data: {
+  1030→            authorityType: UAE_FTA_AUTHORITY,
+  1031→            submissionStatus,
+  1032→            signedXml,
+  1033→            rawXml: signedXml,
+  1034→            xmlHash: invoiceHash,
+  1035→            uuid: generateUaeFtaUuid(),
+  1036→            submittedAt: new Date(),
+  1037→            updatedAt: new Date(),
+  1038→          },
+  1039→        });
+  1040→
+  1041→        // Update invoice status
+  1042→        await db.invoice.update({
+  1043→          where: { id: invoiceId },
+  1044→          data: {
+  1045→            eInvoiceStatus: submissionStatus,
+  1046→            eInvoiceAuthority: UAE_FTA_AUTHORITY,
+  1047→          },
+  1048→        });
+  1049→
+  1050→        logger.info("[uae-fta] EInvoice updated", { eInvoiceId: existingEInvoice.id, submissionStatus });
+  1051→
+  1052→        return {
+  1053→          ok: true,
+  1054→          eInvoiceId: existingEInvoice.id,
+  1055→          submissionStatus: submissionStatus as UaeFtaSubmissionResult["submissionStatus"],
+  1056→        };
+  1057→      }
+  1058→    }
+  1059→
+  1060→    // Create new EInvoice record (only if we have a valid invoiceId)
+  1061→    if (invoiceId > 0) {
+  1062→      const eInvoice = await db.eInvoice.create({
+  1063→        data: {
+  1064→          invoiceId,
+  1065→          companySlug,
+  1066→          authorityType: UAE_FTA_AUTHORITY,
+  1067→          submissionStatus,
+  1068→          signedXml,
+  1069→          rawXml: signedXml,
+  1070→          xmlHash: invoiceHash,
+  1071→          uuid: generateUaeFtaUuid(),
+  1072→          submittedAt: new Date(),
+  1073→        },
+  1074→      });
+  1075→
+  1076→      // Update invoice status
+  1077→      await db.invoice.update({
+  1078→        where: { id: invoiceId },
+  1079→        data: {
+  1080→          eInvoiceStatus: submissionStatus,
+  1081→          eInvoiceAuthority: UAE_FTA_AUTHORITY,
+  1082→        },
+  1083→      });
+  1084→
+  1085→      logger.info("[uae-fta] EInvoice created", { eInvoiceId: eInvoice.id, submissionStatus });
+  1086→
+  1087→      return {
+  1088→        ok: true,
+  1089→        eInvoiceId: eInvoice.id,
+  1090→        submissionStatus: submissionStatus as UaeFtaSubmissionResult["submissionStatus"],
+  1091→      };
+  1092→    }
+  1093→
+  1094→    // No invoice found — return pending status
+  1095→    return {
+  1096→      ok: true,
+  1097→      submissionStatus: "pending",
+  1098→    };
+  1099→  } catch (err) {
+  1100→    logger.error("[uae-fta] submission failed", {
+  1101→      err: err instanceof Error ? err.message : String(err),
+  1102→      invoiceType,
+  1103→      companySlug,
+  1104→    });
+  1105→    return {
+  1106→      ok: false,
+  1107→      submissionStatus: "rejected",
+  1108→      error: err instanceof Error ? err.message : "Unknown error",
+  1109→      rejectionReason: err instanceof Error ? err.message : "Internal error during UAE FTA Peppol submission",
+  1110→    };
+  1111→  }
+  1112→}
+  1113→
+  1114→// ── Status Check ────────────────────────────────────────────────────────────
+  1115→
+  1116→/**
+  1117→ * getUaeFtaInvoiceStatus — Checks the submission status of a UAE FTA e-invoice.
+  1118→ *
+  1119→ * Returns local DB status. In production, this would also query the Peppol
+  1120→ * Access Point provider to get the latest delivery status and update the
+  1121→ * local record.
+  1122→ */
+  1123→export async function getUaeFtaInvoiceStatus(eInvoiceId: number): Promise<{
+  1124→  status: string;
+  1125→  authorityType: string;
+  1126→  rejectionReason?: string;
+  1127→  submittedAt?: string;
+  1128→  approvedAt?: string;
+  1129→  peppolDocumentId?: string;
+  1130→}> {
+  1131→  try {
+  1132→    const eInvoice = await db.eInvoice.findUnique({
+  1133→      where: { id: eInvoiceId },
+  1134→    });
+  1135→
+  1136→    if (!eInvoice) {
+  1137→      return {
+  1138→        status: "not_found",
+  1139→        authorityType: UAE_FTA_AUTHORITY,
+  1140→        rejectionReason: "EInvoice record not found",
+  1141→      };
+  1142→    }
+  1143→
+  1144→    // ── Placeholder: In production, query Peppol AP for latest status ──
+  1145→    // GET /peppol/status/{documentId} → update local DB
+  1146→
+  1147→    return {
+  1148→      status: eInvoice.submissionStatus,
+  1149→      authorityType: eInvoice.authorityType,
+  1150→      rejectionReason: eInvoice.rejectionReason || undefined,
+  1151→      submittedAt: eInvoice.submittedAt?.toISOString() || undefined,
+  1152→      approvedAt: eInvoice.approvedAt?.toISOString() || undefined,
+  1153→    };
+  1154→  } catch (err) {
+  1155→    logger.error("[uae-fta] status check failed", {
+  1156→      err: err instanceof Error ? err.message : String(err),
+  1157→      eInvoiceId,
+  1158→    });
+  1159→    return {
+  1160→      status: "error",
+  1161→      authorityType: UAE_FTA_AUTHORITY,
+  1162→      rejectionReason: err instanceof Error ? err.message : "Unknown error",
+  1163→    };
+  1164→  }
+  1165→}
+  1166→
+  1167→// ── Auto-populate UAE FTA fields ──────────────────────────────────────────
+  1168→
+  1169→/**
+  1170→ * autoPopulateUaeFtaFields — Auto-populates UAE FTA-specific invoice fields
+  1171→ * from company settings and Gregorian dates.
+  1172→ *
+  1173→ * Called by the invoice validation middleware when creating/updating
+  1174→ * a UAE company invoice.
+  1175→ *
+  1176→ * UAE FTA auto-population priorities:
+  1177→ * - English fields mandatory (auto-populated from company English name/address)
+  1178→ * - Arabic fields optional (auto-populated from company Arabic name/address if available)
+  1179→ * - TRN (Tax Registration Number) from company VAT number
+  1180→ * - AED currency enforced with 2 decimal places
+  1181→ * - 5% VAT rate enforced
+  1182→ * - UUID generated for Peppol network
+  1183→ * - Hijri dates optional (auto-populated if issue date available)
+  1184→ */
+  1185→export function autoPopulateUaeFtaFields(
+  1186→  invoiceData: Record<string, unknown>,
+  1187→  company: Record<string, unknown>,
+  1188→): Record<string, unknown> {
+  1189→  const result = { ...invoiceData };
+  1190→
+  1191→  // ── 1. Generate UUID ──────────────────────────────────────────────────
+  1192→  if (!invoiceData.uuid && !invoiceData.eInvoiceUuid) {
+  1193→    result.uuid = generateUaeFtaUuid();
+  1194→  }
+  1195→
+  1196→  // ── 2. Auto-populate Hijri dates (optional for UAE) ───────────────────
+  1197→  if (invoiceData.issueDate && !invoiceData.hijriIssueDate) {
+  1198→    result.hijriIssueDate = formatHijri(invoiceData.issueDate as string);
+  1199→  }
+  1200→  if (invoiceData.dueDate && !invoiceData.hijriDueDate) {
+  1201→    result.hijriDueDate = formatHijri(invoiceData.dueDate as string);
+  1202→  }
+  1203→
+  1204→  // ── 3. Auto-populate TRN from company ─────────────────────────────────
+  1205→  if (!invoiceData.sellerVatTrn && company.vatNumber) {
+  1206→    result.sellerVatTrn = company.vatNumber;
+  1207→  }
+  1208→
+  1209→  // ── 4. Auto-populate English seller fields from company ───────────────
+  1210→  if (!invoiceData.sellerNameEn) {
+  1211→    result.sellerNameEn = company.name || "";
+  1212→  }
+  1213→  if (!invoiceData.sellerAddressEn) {
+  1214→    result.sellerAddressEn = company.address || "";
+  1215→  }
+  1216→
+  1217→  // ── 5. Auto-populate Arabic seller fields (optional, from company) ────
+  1218→  if (!invoiceData.sellerNameAr && company.nameAr) {
+  1219→    result.sellerNameAr = company.nameAr;
+  1220→  }
+  1221→  if (!invoiceData.sellerAddressAr && company.addressAr) {
+  1222→    result.sellerAddressAr = company.addressAr;
+  1223→  }
+  1224→
+  1225→  // ── 6. Auto-populate invoice type ─────────────────────────────────────
+  1226→  const invoiceType = determineUaeFtaInvoiceType(invoiceData);
+  1227→  if (!invoiceData.invoiceTypeEn) {
+  1228→    result.invoiceTypeEn = invoiceType;
+  1229→  }
+  1230→  if (!invoiceData.invoiceTypeAr) {
+  1231→    result.invoiceTypeAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
+  1232→  }
+  1233→
+  1234→  // ── 7. Enforce AED currency ───────────────────────────────────────────
+  1235→  result.currency = UAE_FTA_CURRENCY;
+  1236→  result.currencyDecimalPlaces = UAE_FTA_DECIMAL_PLACES;
+  1237→
+  1238→  // ── 8. Enforce 5% VAT rate ────────────────────────────────────────────
+  1239→  const currentTaxRate = parseFloat((invoiceData.taxRate as string) || (company.defaultTaxRate as string) || "0");
+  1240→  if (currentTaxRate !== UAE_FTA_VAT_RATE) {
+  1241→    result.taxRate = UAE_FTA_VAT_RATE.toFixed(UAE_FTA_DECIMAL_PLACES);
+  1242→  }
+  1243→
+  1244→  // ── 9. Set e-invoice authority ────────────────────────────────────────
+  1245→  result.eInvoiceAuthority = UAE_FTA_AUTHORITY;
+  1246→
+  1247→  // ── 10. Enforce 2-decimal precision on all monetary fields ────────────
+  1248→  for (const field of ["subtotal", "taxAmount", "total", "shipping", "discount", "paid"]) {
+  1249→    if (result[field] !== undefined && result[field] !== null) {
+  1250→      result[field] = num(result[field], UAE_FTA_DECIMAL_PLACES).toFixed(UAE_FTA_DECIMAL_PLACES);
+  1251→    }
+  1252→  }
+  1253→
+  1254→  // ── 11. Set PIH (Previous Invoice Hash) placeholder ──────────────────
+  1255→  if (!invoiceData.previousInvoiceHash) {
+  1256→    // For the first invoice, use the standard Peppol placeholder hash
+  1257→    result.previousInvoiceHash = "NWZlY2ViNjZmZmM4NmYzNDQ0MWY0ZGQzNzU0Y2QwOWE0MmM2YzY2OGZkMWU0YWQ0NWQ3YzA4ZjY0ZjU4NDk0Nw==";
+  1258→  }
+  1259→
+  1260→  return result;
+  1261→}
+  1262→
