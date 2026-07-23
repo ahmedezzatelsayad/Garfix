@@ -903,3 +903,60 @@ export async function calculateFxRevaluation(
     return { ok: false, error: msg };
   }
 }
+
+// ─── Trade Finance Dashboard ────────────────────────────────────────────────
+
+/** Alias for dashboard route — aggregated trade finance dashboard data. */
+export async function getTradeFinanceDashboard(companySlug: string) {
+  try {
+    // Count active LCs
+    const activeLCs = await db.letterOfCredit.count({
+      where: { companySlug, status: { in: ["issued", "amended", "utilized"] } },
+    });
+
+    // Total LC amounts outstanding
+    const lcRecords = await db.letterOfCredit.findMany({
+      where: { companySlug, status: { in: ["issued", "amended", "utilized"] } },
+      select: { amount: true },
+    });
+    const totalLcOutstanding = lcRecords.reduce(
+      (sum, lc) => sum + num(lc.amount, 3), 0
+    );
+
+    // Landed costs pending allocation
+    const pendingLandedCosts = await db.landedCostAllocation.count({
+      where: { companySlug, status: "pending" },
+    });
+
+    // FX revaluation summary (latest)
+    const latestFxReval = await db.fxRevaluation.findFirst({
+      where: { companySlug },
+      orderBy: { createdAt: "desc" },
+      select: {
+        unrealizedGain: true,
+        unrealizedLoss: true,
+        realizedGain: true,
+        realizedLoss: true,
+      },
+    });
+
+    return {
+      ok: true,
+      activeLCs,
+      totalLcOutstanding: totalLcOutstanding.toFixed(3),
+      pendingLandedCosts,
+      fxRevaluation: latestFxReval
+        ? {
+            unrealizedGain: num(latestFxReval.unrealizedGain, 3).toFixed(3),
+            unrealizedLoss: num(latestFxReval.unrealizedLoss, 3).toFixed(3),
+            realizedGain: num(latestFxReval.realizedGain, 3).toFixed(3),
+            realizedLoss: num(latestFxReval.realizedLoss, 3).toFixed(3),
+          }
+        : null,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error("[trade-finance] getTradeFinanceDashboard failed", { err: msg });
+    return { ok: false, error: msg };
+  }
+}

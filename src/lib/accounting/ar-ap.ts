@@ -531,6 +531,18 @@ export async function getSupplierStatement(
   };
 }
 
+// ── Dashboard Aliases ────────────────────────────────────────────────────────────
+
+/** Alias for dashboard route — AR summary via aging report (receivable direction). */
+export async function getARSummary(companySlug: string) {
+  return calculateAging(companySlug, "receivable");
+}
+
+/** Alias for dashboard route — AP summary via aging report (payable direction). */
+export async function getAPSummary(companySlug: string) {
+  return calculateAging(companySlug, "payable");
+}
+
 // ── Installment Scheduling ──────────────────────────────────────────────────────────
 
 /**

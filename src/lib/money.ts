@@ -1,83 +1,80 @@
 /**
- * Money utilities for the GarfiX accounting module.
- * Provides safe numeric operations for financial calculations.
+ * money.ts — Money/Decimal helpers (preserved from v10).
+ *
+ * All monetary values are stored as String (SQLite has no native decimal).
+ * These helpers parse/format safely without float drift.
  */
 
-/**
- * Convert a value to a safe number for financial calculations.
- * Handles null, undefined, NaN, and string inputs.
- * Returns 0 for any invalid input.
- */
-export function num(value: unknown): number {
-  if (value === null || value === undefined) return 0
-  if (typeof value === 'number') {
-    if (isNaN(value)) return 0
-    return value
+export function num(v: unknown, scale = 3): number {
+  if (v === null || v === undefined || v === "") return 0;
+  const n = typeof v === "number" ? v : parseFloat(String(v));
+  if (!isFinite(n) || isNaN(n)) return 0;
+  const f = Math.pow(10, scale);
+  return Math.round(n * f) / f;
+}
+
+export function fmtMoney(v: unknown, currency = "KWD", locale = "ar-EG"): string {
+  const n = num(v, 3);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 3,
+    }).format(n);
+  } catch {
+    return `${n.toFixed(3)} ${currency}`;
   }
-  if (typeof value === 'string') {
-    const parsed = parseFloat(value)
-    if (isNaN(parsed)) return 0
-    return parsed
-  }
-  // Handle Prisma Decimal or other numeric-like objects
-  if (typeof value === 'object' && value !== null && 'toString' in value) {
-    const parsed = parseFloat(String(value))
-    if (isNaN(parsed)) return 0
-    return parsed
-  }
-  return 0
 }
 
-/**
- * Safely add two financial values.
- */
-export function add(a: unknown, b: unknown): number {
-  return num(a) + num(b)
+export function fmtNum(v: unknown, decimals = 2): string {
+  const n = num(v, decimals);
+  return n.toLocaleString("ar-EG", { maximumFractionDigits: decimals });
 }
 
-/**
- * Safely subtract two financial values.
- */
-export function subtract(a: unknown, b: unknown): number {
-  return num(a) - num(b)
+export function toNum(v: unknown): string {
+  return num(v, 3).toFixed(3);
 }
 
-/**
- * Safely multiply two financial values.
- */
-export function multiply(a: unknown, b: unknown): number {
-  return num(a) * num(b)
+export function addNums(...vals: unknown[]): string {
+  const sum = vals.reduce<number>((acc, v) => acc + num(v, 3), 0);
+  return sum.toFixed(3);
 }
 
-/**
- * Safely divide two financial values. Returns 0 if divisor is 0.
- */
-export function divide(a: unknown, b: unknown): number {
-  const divisor = num(b)
-  if (divisor === 0) return 0
-  return num(a) / divisor
+export function subNums(a: unknown, b: unknown): string {
+  return (num(a, 3) - num(b, 3)).toFixed(3);
 }
 
-/**
- * Round a number to the specified decimal places (default 2 for currency).
- */
-export function round(value: unknown, decimals: number = 2): number {
-  const n = num(value)
-  const factor = Math.pow(10, decimals)
-  return Math.round(n * factor) / factor
+export function mulNums(a: unknown, b: unknown): string {
+  return (num(a, 3) * num(b, 3)).toFixed(3);
 }
 
-/**
- * Format a number as a currency string.
- */
-export function formatCurrency(value: unknown, currency: string = 'USD', decimals: number = 2): string {
-  const n = round(value, decimals)
-  return `${currency} ${n.toFixed(decimals)}`
+/** Calculate invoice totals from line items + tax/shipping/discount. */
+export interface LineItem {
+  description: string;
+  qty: number;
+  price: number;
+  total?: number;
 }
 
-/**
- * Sum an array of values safely.
- */
-export function sum(values: unknown[]): number {
-  return values.reduce((acc, v) => acc + num(v), 0)
+export function calcInvoiceTotals(
+  items: LineItem[],
+  taxRate: number,
+  shipping: number,
+  discount: number,
+) {
+  const subtotal = items.reduce<number>(
+    (sum, it) => sum + num(it.total ?? num(it.qty) * num(it.price), 3),
+    0,
+  );
+  const discounted = Math.max(0, subtotal - num(discount));
+  const taxAmount = (discounted * num(taxRate)) / 100;
+  const total = discounted + taxAmount + num(shipping);
+  return {
+    subtotal: subtotal.toFixed(3),
+    taxRate: num(taxRate).toFixed(2),
+    taxAmount: taxAmount.toFixed(3),
+    total: total.toFixed(3),
+    shipping: num(shipping).toFixed(3),
+    discount: num(discount).toFixed(3),
+  };
 }
