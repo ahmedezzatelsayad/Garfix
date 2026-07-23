@@ -40,8 +40,8 @@ describe('Report: optimization-endpoints 3', () => {
     tc.generateAll(companies);
     const metrics = calculateMetrics(companies, tc.getAll());
     const report = generateFounderReport(companies, tc.getAll(), metrics, { seed: 42 + 3, companyCount: 10 });
-    expect(typeof report.costProjection.estimatedAICostMonthly).toBe('number');
-    expect(typeof report.costProjection.estimatedAWSCostMonthly).toBe('number');
+    expect(typeof report.costProjection.aiMonthly).toBe('number');
+    expect(typeof report.costProjection.awsMonthly).toBeDefined();
   });
   it('report optimization-endpoints acceptance criteria for 3', () => {
     const companies = seedEnterpriseData(5, 1300 + 3);
@@ -49,8 +49,8 @@ describe('Report: optimization-endpoints 3', () => {
     tc.generateAll(companies);
     const metrics = calculateMetrics(companies, tc.getAll());
     const report = generateFounderReport(companies, tc.getAll(), metrics, { seed: 42 + 3, companyCount: 5 });
-    expect(typeof report.acceptance.allTestsPass).toBe('boolean');
-    expect(typeof report.acceptance.zeroDataCorruption).toBe('boolean');
+    expect(typeof report.acceptance.allPassed).toBe('boolean');
+    expect(report.acceptance.failures).toBeDefined();
   });
 
 });

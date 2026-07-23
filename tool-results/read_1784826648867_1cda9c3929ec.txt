@@ -1,0 +1,903 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * invoices-crud.test.ts — Tests for the invoice REST route handlers.
+     4→ *
+     5→ * Covers:
+     6→ *   POST   /api/invoices            (create)
+     7→ *   GET    /api/invoices            (list)
+     8→ *   GET    /api/invoices/[id]       (single)
+     9→ *   PATCH  /api/invoices/[id]       (update with optimistic lock)
+    10→ *   DELETE /api/invoices/[id]       (soft delete)
+    11→ *
+    12→ * Strategy:
+    13→ *  - Mock @/lib/auth, @/lib/middleware, @/lib/audit, @/lib/usageMeter via
+    14→ *    mock.module — these modules are only imported by the invoice route
+    15→ *    handlers (no other test file imports them), so the mocks don't leak.
+    16→ *  - Do NOT mock @/lib/inventorySync or @/lib/db via mock.module. Bun's
+    17→ *    mock.module is global across test files by default; mocking those
+    18→ *    modules would leak into collision-recovery-audit.test.ts (which needs
+    19→ *    the real syncInventoryOnSale) and productMatcher.test.ts (which needs
+    20→ *    the real matchProduct via its own @/lib/db mock). Instead, we
+    21→ *    monkey-patch the shared `db` object's properties (invoice, auditLog,
+    22→ *    company, $transaction, featureFlag, platformSetting) in beforeAll and
+    23→ *    restore them in afterAll.
+    24→ *  - The real syncInventoryOnSale is exercised on the POST happy path via
+    25→ *    db.$transaction, which passes a rich fake `tx` that supports the sync
+    26→ *    function's full call surface (warehouse, productAlias, productCatalog,
+    27→ *    inventoryItem, stockMovement, productMatchAudit).
+    28→ *  - Each test sets the mutable state (authUser, existingInvoice, etc.) it
+    29→ *    needs, then constructs a fake `NextRequest` via `new NextRequest(url,
+    30→ *    { method, body, headers })` and invokes the exported handler directly.
+    31→ *  - For dynamic [id] routes we pass `{ params: Promise.resolve({ id }) }`
+    32→ *    because the route signature is
+    33→ *    `(req: NextRequest, { params }: { params: Promise<{ id: string }> })`.
+    34→ *
+    35→ * The mocks intentionally replicate the behavior of the real auth/tenant
+    36→ * helpers (assertCompanyAccess uses user.companies.includes(slug), admins
+    37→ * bypass, etc.) so the security-critical assertions (cross-tenant 403)
+    38→ * exercise the same logic the production code relies on.
+    39→ */
+    40→import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
+    41→import { NextRequest, NextResponse } from "next/server";
+    42→
+    43→// ─── Mutable per-test state ──────────────────────────────────────────────────
+    44→
+    45→let authUser: any = null;
+    46→let permissionGranted = true;
+    47→let existingInvoice: any = null;
+    48→let invoiceById: any = null;
+    49→let invoiceList: any[] = [];
+    50→let trialOk = true;
+    51→let quotaOk = true;
+    52→let lastFindManyArgs: any = null;
+    53→let lastUpdateArgs: any = null;
+    54→// C1 FIX: track updateMany args (used by PATCH /payment /status /invoices/[id])
+    55→let lastUpdateManyArgs: any = null;
+    56→// C1 FIX: per-test override — when set, the next updateMany call returns
+    57→// count=0 (simulating a concurrent edit that bumped the version). Used by
+    58→// the atomic-lock regression test to verify the 409 path.
+    59→let nextUpdateManyCount: number | null = null;
+    60→// H5 FIX: idempotency key mock store (composite key → record)
+    61→let idempotencyStore: Map<string, any> = new Map();
+    62→let lastIdempotencyUpsertArgs: any = null;
+    63→
+    64→// ─── Mock function handles for db.invoice ────────────────────────────────────
+    65→//
+    66→// These are created at module scope so beforeEach can clear their call
+    67→// history. They read from the mutable state above (existingInvoice,
+    68→// invoiceById, etc.) at call time.
+    69→
+    70→const invoiceFindUnique = mock(async (args: any) => {
+    71→  if (args.where && args.where.id !== undefined) return invoiceById;
+    72→  return existingInvoice;
+    73→});
+    74→const invoiceFindMany = mock(async (args: any) => {
+    75→  lastFindManyArgs = args;
+    76→  return invoiceList;
+    77→});
+    78→const invoiceCreate = mock(async (args: any) => ({ id: 1, version: 0, ...args.data }));
+    79→const invoiceUpdate = mock(async (args: any) => {
+    80→  lastUpdateArgs = args;
+    81→  return { id: args.where?.id ?? 0, ...args.data };
+    82→});
+    83→const invoiceUpdateMany = mock(async (args: any) => {
+    84→  lastUpdateManyArgs = args;
+    85→  // If the test forced count=0 (simulating a concurrent edit conflict), honor it.
+    86→  if (nextUpdateManyCount !== null) {
+    87→    const c = nextUpdateManyCount;
+    88→    nextUpdateManyCount = null;
+    89→    return { count: c };
+    90→  }
+    91→  // Simulate the atomic version check: if the where clause includes a version
+    92→  // filter that doesn't match the current invoiceById.version, return count=0.
+    93→  if (
+    94→    args.where &&
+    95→    args.where.version !== undefined &&
+    96→    invoiceById &&
+    97→    args.where.version !== invoiceById.version
+    98→  ) {
+    99→    return { count: 0 };
+   100→  }
+   101→  // Simulate the atomic soft-delete check: if the row is soft-deleted, return 0.
+   102→  if (invoiceById && invoiceById.deletedAt && args.where && args.where.deletedAt === null) {
+   103→    return { count: 0 };
+   104→  }
+   105→  return { count: 1 };
+   106→});
+   107→const invoiceCount = mock(async () => 0);
+   108→
+   109→// H5 FIX: IdempotencyKey mock — backed by an in-memory Map keyed on
+   110→// `${companySlug}|${endpoint}|${key}`. findUnique + upsert both consult it.
+   111→const idempotencyFindUnique = mock(async (args: any) => {
+   112→  const w = args.where?.companySlug_endpoint_key;
+   113→  if (!w) return null;
+   114→  const k = `${w.companySlug}|${w.endpoint}|${w.key}`;
+   115→  return idempotencyStore.get(k) ?? null;
+   116→});
+   117→const idempotencyUpsert = mock(async (args: any) => {
+   118→  lastIdempotencyUpsertArgs = args;
+   119→  const w = args.where?.companySlug_endpoint_key;
+   120→  if (!w) return null;
+   121→  const k = `${w.companySlug}|${w.endpoint}|${w.key}`;
+   122→  const existing = idempotencyStore.get(k);
+   123→  const record = {
+   124→    companySlug: w.companySlug,
+   125→    endpoint: w.endpoint,
+   126→    key: w.key,
+   127→    requestHash: args.create?.requestHash ?? existing?.requestHash ?? "",
+   128→    responseJson: args.update?.responseJson ?? args.create?.responseJson ?? existing?.responseJson ?? null,
+   129→    status: args.update?.status ?? args.create?.status ?? existing?.status ?? 200,
+   130→    createdAt: existing?.createdAt ?? new Date(),
+   131→  };
+   132→  idempotencyStore.set(k, record);
+   133→  return record;
+   134→});
+   135→
+   136→// ─── Rich fake tx for db.$transaction ─────────────────────────────────────────
+   137→//
+   138→// The POST happy path wraps syncInventoryOnSale in db.$transaction. The
+   139→// callback receives this fake tx. It supports the full call surface of
+   140→// syncInventoryOnSale + matchProduct:
+   141→//   - warehouse.findFirst → a warehouse
+   142→//   - productAlias.findUnique → an alias for "Item A" (so matchProduct returns
+   143→//     an exact match and buildResult logs a normal "auto-match" audit entry)
+   144→//   - productCatalog.findUnique → the product
+   145→//   - inventoryItem.findUnique → an invItem with sufficient qty
+   146→//   - inventoryItem.update / stockMovement.create / productMatchAudit.create → no-ops
+   147→//
+   148→// This makes syncInventoryOnSale return { warnings: [], inventoryUpdated: 1 }
+   149→// so the route's response includes reviewQueueWarnings: [].
+   150→
+   151→const RICH_TX = {
+   152→  warehouse: { findFirst: async () => ({ id: 1, name: "Main Warehouse", companySlug: "test-co" }) },
+   153→  productAlias: {
+   154→    findUnique: async () => ({
+   155→      alias: "Item A",
+   156→      product: { id: 100, name: "Item A", sellingPrice: "1.500", companySlug: "test-co" },
+   157→    }),
+   158→    findMany: async () => [],
+   159→    create: async () => ({}),
+   160→  },
+   161→  productCatalog: {
+   162→    findUnique: async () => ({ id: 100, name: "Item A", sellingPrice: "1.500", companySlug: "test-co" }),
+   163→    create: async () => ({}),
+   164→  },
+   165→  productMatchAudit: { create: async () => ({}) },
+   166→  inventoryItem: {
+   167→    findUnique: async () => ({ id: 50, quantity: "100.000" }),
+   168→    update: async () => ({}),
+   169→    create: async () => ({}),
+   170→  },
+   171→  stockMovement: { create: async () => ({}) },
+   172→};
+   173→
+   174→// ─── Register mock.module for non-conflicting modules ────────────────────────
+   175→//
+   176→// These modules are only imported by the invoice route handlers. No other
+   177→// test file imports them, so mocking them via mock.module is safe (the
+   178→// mocks don't leak into other test files' code paths).
+   179→
+   180→mock.module("@/lib/auth", () => ({
+   181→  resolveAuth: mock(async () =>
+   182→    authUser
+   183→      ? { ok: true, user: authUser }
+   184→      : { ok: false, error: "Unauthorized", status: 401 },
+   185→  ),
+   186→  assertCompanyAccess: mock((_user: any, slug: string) => {
+   187→    if (!slug) return true;
+   188→    if (authUser?.role === "admin" || authUser?.email === "founder@garfix.app") return true;
+   189→    return Array.isArray(authUser?.companies) && authUser.companies.includes(slug);
+   190→  }),
+   191→  hasUnrestrictedScope: mock(
+   192→    () => authUser?.role === "admin" || authUser?.email === "founder@garfix.app",
+   193→  ),
+   194→  ACCESS_COOKIE: "inv_token",
+   195→  REFRESH_COOKIE: "inv_refresh",
+   196→}));
+   197→
+   198→mock.module("@/lib/middleware", () => ({
+   199→  requirePermissionForCompany: mock(async (_req: any, _perm: string, slug: string) => {
+   200→    if (!authUser) {
+   201→      return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+   202→    }
+   203→    if (!permissionGranted) {
+   204→      return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+   205→    }
+   206→    if (
+   207→      authUser.role !== "admin" &&
+   208→      authUser.email !== "founder@garfix.app" &&
+   209→      !(Array.isArray(authUser.companies) && authUser.companies.includes(slug))
+   210→    ) {
+   211→      return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+   212→    }
+   213→    return { user: authUser };
+   214→  }),
+   215→  requirePermission: mock(async () => ({ user: authUser })),
+   216→  hasPermission: mock(() => permissionGranted),
+   217→}));
+   218→
+   219→mock.module("@/lib/audit", () => ({
+   220→  logAudit: mock(async () => {}),
+   221→  logAdminAction: mock(async () => {}),
+   222→}));
+   223→
+   224→mock.module("@/lib/usageMeter", () => ({
+   225→  checkTrialExpiry: mock(async () => ({ ok: trialOk })),
+   226→  checkInvoiceQuota: mock(async () => ({ ok: quotaOk })),
+   227→  checkUserQuota: mock(async () => ({ ok: true })),
+   228→  checkCompanyQuota: mock(async () => ({ ok: true })),
+   229→}));
+   230→
+   231→// ─── Import db + route handlers ──────────────────────────────────────────────
+   232→//
+   233→// We import db so we can monkey-patch its properties. We do NOT use
+   234→// mock.module for @/lib/db — that would replace the db export globally and
+   235→// break productMatcher.test.ts (whose dbMock supplies the productAlias
+   236→// fixture data its tests depend on) or collision-recovery-audit.test.ts
+   237→// (which needs the real matchProduct, whose getTenantConfig reads
+   238→// db.featureFlag).
+   239→//
+   240→// Because we import { db } and the route handlers also import { db }, they
+   241→// share the same object reference. Monkey-patching db.invoice etc. in
+   242→// beforeAll makes the route handlers see our mocks.
+   243→
+   244→import { db } from "@/lib/db";
+   245→import { GET as listGET, POST as invoicesPOST } from "@/app/api/invoices/route";
+   246→import {
+   247→  GET as singleGET,
+   248→  PATCH as invoicesPATCH,
+   249→  DELETE as invoicesDELETE,
+   250→} from "@/app/api/invoices/[id]/route";
+   251→
+   252→// ─── Monkey-patch db properties ───────────────────────────────────────────────
+   253→//
+   254→// Save originals so we can restore them in afterAll (other test files, e.g.
+   255→// productMatcher.test.ts, may rely on the original db properties).
+   256→
+   257→const _orig: Record<string, any> = {};
+   258→
+   259→beforeAll(() => {
+   260→  _orig.invoice = (db as any).invoice;
+   261→  _orig.auditLog = (db as any).auditLog;
+   262→  _orig.company = (db as any).company;
+   263→  _orig.featureFlag = (db as any).featureFlag;
+   264→  _orig.platformSetting = (db as any).platformSetting;
+   265→  _orig.$transaction = (db as any).$transaction;
+   266→  _orig.idempotencyKey = (db as any).idempotencyKey;
+   267→
+   268→  (db as any).invoice = {
+   269→    findUnique: invoiceFindUnique,
+   270→    findMany: invoiceFindMany,
+   271→    create: invoiceCreate,
+   272→    update: invoiceUpdate,
+   273→    updateMany: invoiceUpdateMany,
+   274→    count: invoiceCount,
+   275→  };
+   276→  (db as any).auditLog = { create: mock(async () => ({})) };
+   277→  (db as any).company = {
+   278→    findUnique: mock(async () => ({
+   279→      plan: "trial",
+   280→      trialEndsAt: null,
+   281→      subscriptionStatus: "active",
+   282→    })),
+   283→  };
+   284→  (db as any).featureFlag = {
+   285→    findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
+   286→  };
+   287→  (db as any).platformSetting = { findMany: async () => [] };
+   288→  (db as any).$transaction = async (fn: any) => fn(RICH_TX);
+   289→  // H5 FIX: idempotencyKey mock for payment idempotency tests
+   290→  (db as any).idempotencyKey = {
+   291→    findUnique: idempotencyFindUnique,
+   292→    upsert: idempotencyUpsert,
+   293→  };
+   294→});
+   295→
+   296→afterAll(() => {
+   297→  (db as any).invoice = _orig.invoice;
+   298→  (db as any).auditLog = _orig.auditLog;
+   299→  (db as any).company = _orig.company;
+   300→  (db as any).featureFlag = _orig.featureFlag;
+   301→  (db as any).platformSetting = _orig.platformSetting;
+   302→  (db as any).$transaction = _orig.$transaction;
+   303→  (db as any).idempotencyKey = _orig.idempotencyKey;
+   304→});
+   305→
+   306→// ─── Test fixtures ────────────────────────────────────────────────────────────
+   307→
+   308→const ADMIN_USER = {
+   309→  uid: "u1",
+   310→  email: "founder@garfix.app",
+   311→  role: "admin",
+   312→  companies: ["test-co"],
+   313→  permissions: {},
+   314→};
+   315→
+   316→const TENANT_USER = {
+   317→  uid: "u2",
+   318→  email: "alice@test.com",
+   319→  role: "staff",
+   320→  companies: ["test-co"],
+   321→  permissions: { create_invoice: 1, edit_invoice: 1, delete_invoice: 1 },
+   322→};
+   323→
+   324→const VALID_BODY = {
+   325→  companySlug: "test-co",
+   326→  invoiceNumber: "INV-001",
+   327→  clientName: "Alice",
+   328→  issueDate: "2024-01-01",
+   329→  dueDate: "2024-01-15",
+   330→  lineItems: [{ description: "Item A", qty: 2, price: 1.5 }],
+   331→};
+   332→
+   333→function makePostRequest(body: any): NextRequest {
+   334→  return new NextRequest("https://example.com/api/invoices", {
+   335→    method: "POST",
+   336→    body: JSON.stringify(body),
+   337→    headers: { "content-type": "application/json" },
+   338→  });
+   339→}
+   340→function makeGetRequest(url: string): NextRequest {
+   341→  return new NextRequest(url, { method: "GET" });
+   342→}
+   343→function makePatchRequest(id: string, body: any): NextRequest {
+   344→  return new NextRequest(`https://example.com/api/invoices/${id}`, {
+   345→    method: "PATCH",
+   346→    body: JSON.stringify(body),
+   347→    headers: { "content-type": "application/json" },
+   348→  });
+   349→}
+   350→function makeDeleteRequest(id: string): NextRequest {
+   351→  return new NextRequest(`https://example.com/api/invoices/${id}`, { method: "DELETE" });
+   352→}
+   353→function makeIdCtx(id: string) {
+   354→  return { params: Promise.resolve({ id }) };
+   355→}
+   356→
+   357→function baseInvoice(overrides: Record<string, any> = {}) {
+   358→  return {
+   359→    id: 1,
+   360→    companySlug: "test-co",
+   361→    invoiceNumber: "INV-1",
+   362→    lineItems: JSON.stringify([{ description: "A", qty: 1, price: 2 }]),
+   363→    subtotal: "2.000",
+   364→    taxRate: "0",
+   365→    taxAmount: "0.000",
+   366→    total: "2.000",
+   367→    shipping: "0.000",
+   368→    paid: "0.000",
+   369→    discount: "0.000",
+   370→    version: 0,
+   371→    deletedAt: null,
+   372→    // PRE-EXISTING FIX: checkInvoiceRetention() in the DELETE route reads
+   373→    // `invoice.createdAt` and calls `new Date(...)` on it. Without this
+   374→    // field the route throws "Invalid Date" and the test gets a 500 instead
+   375→    // of 200. Add it to the base fixture so all tests have a valid date.
+   376→    createdAt: new Date("2024-01-01T00:00:00Z"),
+   377→    updatedAt: new Date("2024-01-01T00:00:00Z"),
+   378→    issueDate: "2024-01-01",
+   379→    dueDate: "2024-01-15",
+   380→    ...overrides,
+   381→  };
+   382→}
+   383→
+   384→// ─── Reset state before each test ─────────────────────────────────────────────
+   385→
+   386→beforeEach(() => {
+   387→  authUser = ADMIN_USER;
+   388→  permissionGranted = true;
+   389→  existingInvoice = null;
+   390→  invoiceById = null;
+   391→  invoiceList = [];
+   392→  trialOk = true;
+   393→  quotaOk = true;
+   394→  lastFindManyArgs = null;
+   395→  lastUpdateArgs = null;
+   396→  lastUpdateManyArgs = null;
+   397→  nextUpdateManyCount = null;
+   398→  lastIdempotencyUpsertArgs = null;
+   399→  idempotencyStore = new Map();
+   400→  invoiceFindUnique.mockClear();
+   401→  invoiceFindMany.mockClear();
+   402→  invoiceCreate.mockClear();
+   403→  invoiceUpdate.mockClear();
+   404→  invoiceUpdateMany.mockClear();
+   405→  invoiceCount.mockClear();
+   406→  idempotencyFindUnique.mockClear();
+   407→  idempotencyUpsert.mockClear();
+   408→});
+   409→
+   410→// ─── POST /api/invoices ───────────────────────────────────────────────────────
+   411→
+   412→describe("POST /api/invoices", () => {
+   413→  it("1. happy path → 200 with { ok, invoice, reviewQueueWarnings }", async () => {
+   414→    const res = await invoicesPOST(makePostRequest(VALID_BODY));
+   415→    expect(res.status).toBe(200);
+   416→    const body = await res.json();
+   417→    expect(body.ok).toBe(true);
+   418→    expect(body.invoice).toBeDefined();
+   419→    expect(body.invoice.invoiceNumber).toBe("INV-001");
+   420→    expect(body.invoice.companySlug).toBe("test-co");
+   421→    expect(Array.isArray(body.reviewQueueWarnings)).toBe(true);
+   422→    expect(body.reviewQueueWarnings.length).toBe(0);
+   423→  });
+   424→
+   425→  it("2. 403 forbidden — user lacks company access", async () => {
+   426→    authUser = {
+   427→      uid: "u3",
+   428→      email: "stranger@test.com",
+   429→      role: "staff",
+   430→      companies: [],
+   431→      permissions: { create_invoice: 1 },
+   432→    };
+   433→    const res = await invoicesPOST(makePostRequest(VALID_BODY));
+   434→    expect(res.status).toBe(403);
+   435→    const body = await res.json();
+   436→    expect(body.error).toBeDefined();
+   437→  });
+   438→
+   439→  it("3. 409 duplicate invoice number — same companySlug_invoiceNumber exists", async () => {
+   440→    existingInvoice = baseInvoice({
+   441→      id: 99,
+   442→      invoiceNumber: "INV-001",
+   443→      companySlug: "test-co",
+   444→    });
+   445→    const res = await invoicesPOST(makePostRequest(VALID_BODY));
+   446→    expect(res.status).toBe(409);
+   447→    const body = await res.json();
+   448→    expect(body.error).toBeDefined();
+   449→  });
+   450→
+   451→  it("4. 400 invalid input — missing required fields", async () => {
+   452→    const badBody = { companySlug: "test-co" };
+   453→    const res = await invoicesPOST(makePostRequest(badBody));
+   454→    expect(res.status).toBe(400);
+   455→    const body = await res.json();
+   456→    expect(body.error).toBeDefined();
+   457→  });
+   458→});
+   459→
+   460→// ─── GET /api/invoices (list) ─────────────────────────────────────────────────
+   461→
+   462→describe("GET /api/invoices (list)", () => {
+   463→  it("5. happy path → 200 with array of invoices + parsed lineItems JSON", async () => {
+   464→    invoiceList = [
+   465→      baseInvoice({ id: 1, invoiceNumber: "INV-1" }),
+   466→      baseInvoice({
+   467→        id: 2,
+   468→        invoiceNumber: "INV-2",
+   469→        lineItems: JSON.stringify([{ description: "B", qty: 3, price: 4 }]),
+   470→      }),
+   471→    ];
+   472→    const res = await listGET(makeGetRequest("https://example.com/api/invoices?companySlug=test-co"));
+   473→    expect(res.status).toBe(200);
+   474→    const body = await res.json();
+   475→    expect(Array.isArray(body.invoices)).toBe(true);
+   476→    expect(body.invoices.length).toBe(2);
+   477→    // lineItems should be parsed back into an array, not left as a JSON string.
+   478→    expect(Array.isArray(body.invoices[0].lineItems)).toBe(true);
+   479→    expect(body.invoices[0].lineItems[0].description).toBe("A");
+   480→    expect(body.invoices[1].lineItems[0].qty).toBe(3);
+   481→  });
+   482→
+   483→  it("6. filters by status — passes `status` query param into the where clause", async () => {
+   484→    invoiceList = [];
+   485→    const res = await listGET(
+   486→      makeGetRequest("https://example.com/api/invoices?companySlug=test-co&status=paid"),
+   487→    );
+   488→    expect(res.status).toBe(200);
+   489→    expect(lastFindManyArgs).not.toBeNull();
+   490→    expect(lastFindManyArgs.where.status).toBe("paid");
+   491→    expect(lastFindManyArgs.where.companySlug).toBe("test-co");
+   492→  });
+   493→});
+   494→
+   495→// ─── GET /api/invoices/[id] ───────────────────────────────────────────────────
+   496→
+   497→describe("GET /api/invoices/[id]", () => {
+   498→  it("7. happy path → 200 with single invoice", async () => {
+   499→    invoiceById = baseInvoice({ id: 5, invoiceNumber: "INV-5" });
+   500→    const res = await singleGET(
+   501→      makeGetRequest("https://example.com/api/invoices/5"),
+   502→      makeIdCtx("5"),
+   503→    );
+   504→    expect(res.status).toBe(200);
+   505→    const body = await res.json();
+   506→    expect(body.invoice).toBeDefined();
+   507→    expect(body.invoice.id).toBe(5);
+   508→    expect(Array.isArray(body.invoice.lineItems)).toBe(true);
+   509→  });
+   510→
+   511→  it("8. 404 not found", async () => {
+   512→    invoiceById = null;
+   513→    const res = await singleGET(
+   514→      makeGetRequest("https://example.com/api/invoices/999"),
+   515→      makeIdCtx("999"),
+   516→    );
+   517→    expect(res.status).toBe(404);
+   518→    const body = await res.json();
+   519→    expect(body.error).toBeDefined();
+   520→  });
+   521→
+   522→  it("9. 403 cross-tenant — invoice exists but belongs to a different company", async () => {
+   523→    authUser = TENANT_USER; // staff with access only to "test-co"
+   524→    invoiceById = baseInvoice({ id: 7, companySlug: "other-co" });
+   525→    const res = await singleGET(
+   526→      makeGetRequest("https://example.com/api/invoices/7"),
+   527→      makeIdCtx("7"),
+   528→    );
+   529→    expect(res.status).toBe(403);
+   530→    const body = await res.json();
+   531→    expect(body.error).toBeDefined();
+   532→  });
+   533→});
+   534→
+   535→// ─── PATCH /api/invoices/[id] ─────────────────────────────────────────────────
+   536→
+   537→describe("PATCH /api/invoices/[id]", () => {
+   538→  it("10. happy path → updates invoice, increments version (PATCH does NOT accept `status` — security: payments go through /payment endpoint)", async () => {
+   539→    // SECURITY NOTE: the PATCH /api/invoices/[id] route intentionally strips
+   540→    // `status` from its UpdateSchema (see route.ts line 25-31). Status changes
+   541→    // must go through PATCH /api/invoices/[id]/status (operational statuses
+   542→    // only: draft/sent/overdue/cancelled) or PATCH /api/invoices/[id]/payment
+   543→    // (for paid/partial — requires finance_access + updates `paid` amount).
+   544→    // The test below verifies the PATCH route accepts `notes` (a field that IS
+   545→    // in the schema) and increments the version — and that `status` is NOT
+   546→    // propagated to the update payload (defense-in-depth check).
+   547→    //
+   548→    // C1 FIX: the route now uses `updateMany` with `version: { increment: 1 }`
+   549→    // instead of `update` with `version: existing.version + 1`. The mock
+   550→    // returns count=1 (success) since expectedVersion matches the current row.
+   551→    invoiceById = baseInvoice({ id: 10, version: 3, status: "sent" });
+   552→    const res = await invoicesPATCH(
+   553→      makePatchRequest("10", { notes: "updated by test", expectedVersion: 3 }),
+   554→      makeIdCtx("10"),
+   555→    );
+   556→    expect(res.status).toBe(200);
+   557→    const body = await res.json();
+   558→    expect(body.ok).toBe(true);
+   559→    expect(body.invoice).toBeDefined();
+   560→    // Version increment is now expressed atomically via Prisma's `{ increment: 1 }`.
+   561→    expect(lastUpdateManyArgs).not.toBeNull();
+   562→    expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
+   563→    expect(lastUpdateManyArgs.data.notes).toBe("updated by test");
+   564→    // The where clause must include both the version filter AND the
+   565→    // soft-delete filter — that's the atomic optimistic-lock guarantee.
+   566→    expect(lastUpdateManyArgs.where.id).toBe(10);
+   567→    expect(lastUpdateManyArgs.where.version).toBe(3);
+   568→    expect(lastUpdateManyArgs.where.deletedAt).toBeNull();
+   569→  });
+   570→
+   571→  it("10b. PATCH strips `status` from body — security: status changes require /status or /payment endpoint", async () => {
+   572→    // Verify the security comment in route.ts is actually enforced: even if a
+   573→    // caller tries to send `status: "paid"` via the general PATCH endpoint,
+   574→    // zod's safeParse drops it (it's not in UpdateSchema) so the update
+   575→    // payload does NOT include `status`. The invoice keeps its existing status.
+   576→    invoiceById = baseInvoice({ id: 10, version: 3, status: "sent" });
+   577→    const res = await invoicesPATCH(
+   578→      makePatchRequest("10", { status: "paid", notes: "trying to mark paid", expectedVersion: 3 }),
+   579→      makeIdCtx("10"),
+   580→    );
+   581→    expect(res.status).toBe(200);
+   582→    expect(lastUpdateManyArgs).not.toBeNull();
+   583→    expect(lastUpdateManyArgs.data.status).toBeUndefined(); // status NOT propagated
+   584→    expect(lastUpdateManyArgs.data.notes).toBe("trying to mark paid");
+   585→  });
+   586→
+   587→  it("10c. PATCH optimistic-lock conflict — wrong expectedVersion returns 409 (C1 FIX: atomic via updateMany count=0)", async () => {
+   588→    // C1 FIX regression test: previously the version check was a non-atomic
+   589→    // `if (data.expectedVersion !== existing.version)` comparison that was
+   590→    // vulnerable to TOCTOU races. Now the check is atomic — the mock
+   591→    // returns count=0 because args.where.version (3) !== invoiceById.version (5).
+   592→    invoiceById = baseInvoice({ id: 10, version: 5, status: "sent" });
+   593→    const res = await invoicesPATCH(
+   594→      makePatchRequest("10", { notes: "stale edit", expectedVersion: 3 }), // client thinks v3, server has v5
+   595→      makeIdCtx("10"),
+   596→    );
+   597→    expect(res.status).toBe(409);
+   598→    const body = await res.json();
+   599→    expect(body.code).toBe("VERSION_CONFLICT");
+   600→    // The atomic updateMany was called (with the wrong version filter) and
+   601→    // returned count=0 — proving the conflict was detected at the DB layer.
+   602→    expect(lastUpdateManyArgs).not.toBeNull();
+   603→    expect(lastUpdateManyArgs.where.version).toBe(3);
+   604→  });
+   605→
+   606→  it("10d. C1 FIX: concurrent edit detected atomically — updateMany returns count=0 → 409", async () => {
+   607→    // Simulate the race: client read v3, between read and write another
+   608→    // request bumped the row to v4. The atomic updateMany with where.version=3
+   609→    // must return count=0 (the row no longer matches the filter) — the route
+   610→    // must return 409. With the OLD non-atomic code, the route would have
+   611→    // called invoice.update and silently overwritten the concurrent change.
+   612→    invoiceById = baseInvoice({ id: 11, version: 4, status: "sent" }); // server row is now v4
+   613→    nextUpdateManyCount = 0; // force count=0 regardless of version filter
+   614→    const res = await invoicesPATCH(
+   615→      makePatchRequest("11", { notes: "edit based on stale v3", expectedVersion: 3 }),
+   616→      makeIdCtx("11"),
+   617→    );
+   618→    expect(res.status).toBe(409);
+   619→    expect((await res.json()).code).toBe("VERSION_CONFLICT");
+   620→  });
+   621→
+   622→  it("10e. H4 FIX: PATCH on soft-deleted invoice → 404 (not 200 with silent overwrite)", async () => {
+   623→    // The route now checks `existing.deletedAt` up front AND includes
+   624→    // `deletedAt: null` in the updateMany where clause as a defense-in-depth
+   625→    // against concurrent soft-deletes.
+   626→    invoiceById = baseInvoice({ id: 12, version: 1, deletedAt: new Date("2024-01-01") });
+   627→    const res = await invoicesPATCH(
+   628→      makePatchRequest("12", { notes: "edit after delete", expectedVersion: 1 }),
+   629→      makeIdCtx("12"),
+   630→    );
+   631→    expect(res.status).toBe(404);
+   632→  });
+   633→});
+   634→
+   635→// ─── DELETE /api/invoices/[id] ────────────────────────────────────────────────
+   636→
+   637→describe("DELETE /api/invoices/[id]", () => {
+   638→  it("11. soft delete → sets deletedAt, returns 200", async () => {
+   639→    invoiceById = baseInvoice({ id: 11, deletedAt: null });
+   640→    const res = await invoicesDELETE(makeDeleteRequest("11"), makeIdCtx("11"));
+   641→    expect(res.status).toBe(200);
+   642→    const body = await res.json();
+   643→    expect(body.ok).toBe(true);
+   644→    // The handler should have called invoice.update with a deletedAt Date.
+   645→    expect(lastUpdateArgs).not.toBeNull();
+   646→    expect(lastUpdateArgs.data.deletedAt).toBeInstanceOf(Date);
+   647→  });
+   648→
+   649→  it("11b. delete on already-deleted invoice → 400", async () => {
+   650→    invoiceById = baseInvoice({ id: 12, deletedAt: new Date("2024-01-01") });
+   651→    const res = await invoicesDELETE(makeDeleteRequest("12"), makeIdCtx("12"));
+   652→    expect(res.status).toBe(400);
+   653→    const body = await res.json();
+   654→    expect(body.error).toBeDefined();
+   655→  });
+   656→});
+   657→
+   658→// ─── Payment + status transitions ─────────────────────────────────────────────
+   659→//
+   660→// The general PATCH /api/invoices/[id] route INTENTIONALLY does NOT accept
+   661→// `status` (see security comment in route.ts). Status transitions flow through
+   662→// two dedicated endpoints:
+   663→//   - PATCH /api/invoices/[id]/status   — operational statuses only
+   664→//     (draft/sent/overdue/cancelled), requires `edit_invoice`.
+   665→//   - PATCH /api/invoices/[id]/payment  — record a payment, computes
+   666→//     paid/partial status from the cumulative `paid` amount, requires
+   667→//     `finance_access`.
+   668→//
+   669→// These tests verify the payment-status transition rules: unpaid → partial →
+   670→// paid, with the status field derived from the cumulative `paid` amount.
+   671→
+   672→import { PATCH as paymentPATCH } from "@/app/api/invoices/[id]/payment/route";
+   673→import { PATCH as statusPATCH } from "@/app/api/invoices/[id]/status/route";
+   674→
+   675→describe("PATCH /api/invoices/[id]/payment", () => {
+   676→  it("12. partial payment → status flips to 'partial', paid amount accumulates", async () => {
+   677→    invoiceById = baseInvoice({
+   678→      id: 20, version: 1, status: "sent", total: "100.000", paid: "0.000",
+   679→    });
+   680→    const res = await paymentPATCH(
+   681→      makePatchRequest("20", { amount: 30, method: "cash", expectedVersion: 1 }),
+   682→      makeIdCtx("20"),
+   683→    );
+   684→    expect(res.status).toBe(200);
+   685→    const body = await res.json();
+   686→    expect(body.ok).toBe(true);
+   687→    expect(lastUpdateManyArgs.data.paid).toBe("30.000");
+   688→    expect(lastUpdateManyArgs.data.status).toBe("partial");
+   689→    // C1 FIX: version is now `{ increment: 1 }`, not a literal
+   690→    expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
+   691→  });
+   692→
+   693→  it("13. full payment (paid >= total) → status flips to 'paid'", async () => {
+   694→    invoiceById = baseInvoice({
+   695→      id: 21, version: 1, status: "partial", total: "100.000", paid: "60.000",
+   696→    });
+   697→    // Remaining balance 40; pay 40 → total paid = 100 → status "paid".
+   698→    const res = await paymentPATCH(
+   699→      makePatchRequest("21", { amount: 40, method: "card", expectedVersion: 1 }),
+   700→      makeIdCtx("21"),
+   701→    );
+   702→    expect(res.status).toBe(200);
+   703→    expect(lastUpdateManyArgs.data.paid).toBe("100.000");
+   704→    expect(lastUpdateManyArgs.data.status).toBe("paid");
+   705→  });
+   706→
+   707→  it("14. payment on a zero-total invoice → status unchanged (no divide-by-zero trap)", async () => {
+   708→    invoiceById = baseInvoice({
+   709→      id: 22, version: 1, status: "draft", total: "0.000", paid: "0.000",
+   710→    });
+   711→    const res = await paymentPATCH(
+   712→      makePatchRequest("22", { amount: 0, method: "cash", expectedVersion: 1 }),
+   713→      makeIdCtx("22"),
+   714→    );
+   715→    // amount=0 is now rejected up front (H5 adjacent fix — non-positive amounts
+   716→    // could otherwise reduce `paid` on a re-submission). The route returns 400.
+   717→    expect(res.status).toBe(400);
+   718→  });
+   719→
+   720→  it("14b. H5 FIX: negative amount rejected (defense against `paid` reduction)", async () => {
+   721→    invoiceById = baseInvoice({
+   722→      id: 23, version: 1, status: "sent", total: "100.000", paid: "50.000",
+   723→    });
+   724→    const res = await paymentPATCH(
+   725→      makePatchRequest("23", { amount: -50, method: "cash", expectedVersion: 1 }),
+   726→      makeIdCtx("23"),
+   727→    );
+   728→    expect(res.status).toBe(400);
+   729→    expect((await res.json()).error).toMatch(/greater than zero/);
+   730→  });
+   731→
+   732→  it("14c. H4 FIX: payment on soft-deleted invoice → 404 (not silent paid update)", async () => {
+   733→    invoiceById = baseInvoice({
+   734→      id: 24, version: 1, status: "sent", total: "100.000", paid: "0.000",
+   735→      deletedAt: new Date("2024-01-01"),
+   736→    });
+   737→    const res = await paymentPATCH(
+   738→      makePatchRequest("24", { amount: 50, method: "cash", expectedVersion: 1 }),
+   739→      makeIdCtx("24"),
+   740→    );
+   741→    expect(res.status).toBe(404);
+   742→  });
+   743→
+   744→  it("14d. C1 FIX: concurrent payment → 409, no payment lost", async () => {
+   745→    // Two payments race: client A reads paid=0,v=1; client B reads paid=0,v=1.
+   746→    // Client A's updateMany where(v=1) succeeds (count=1, paid=30, v=2).
+   747→    // Client B's updateMany where(v=1) fails (count=0, v is now 2) → 409.
+   748→    // Client B re-reads, retries with expectedVersion=2 → succeeds (paid=60, v=3).
+   749→    // No payment is lost.
+   750→    invoiceById = baseInvoice({
+   751→      id: 25, version: 2, status: "partial", total: "100.000", paid: "30.000", // after A's write
+   752→    });
+   753→    nextUpdateManyCount = 0; // simulate B's where(v=1) finding count=0
+   754→    const res = await paymentPATCH(
+   755→      makePatchRequest("25", { amount: 30, method: "cash", expectedVersion: 1 }),
+   756→      makeIdCtx("25"),
+   757→    );
+   758→    expect(res.status).toBe(409);
+   759→    expect((await res.json()).code).toBe("VERSION_CONFLICT");
+   760→  });
+   761→
+   762→  it("14e. H5 FIX: idempotent payment — same key replays cached response, no double-charge", async () => {
+   763→    // First request: records payment, persists idempotency record.
+   764→    invoiceById = baseInvoice({
+   765→      id: 26, version: 1, status: "sent", total: "100.000", paid: "0.000",
+   766→    });
+   767→    const req1 = makePatchRequest("26", {
+   768→      amount: 25, method: "card", expectedVersion: 1, idempotencyKey: "abc-123-456",
+   769→    });
+   770→    const res1 = await paymentPATCH(req1, makeIdCtx("26"));
+   771→    expect(res1.status).toBe(200);
+   772→    expect(lastUpdateManyArgs).not.toBeNull();
+   773→    expect(lastIdempotencyUpsertArgs).not.toBeNull();
+   774→    expect(lastIdempotencyUpsertArgs.create.endpoint).toBe("invoice-payment");
+   775→    expect(lastIdempotencyUpsertArgs.create.key).toBe("inv-26:abc-123-456");
+   776→
+   777→    // Simulate the DB actually persisting the payment: the next findUnique
+   778→    // (whether from this test or from the second replay request) returns the
+   779→    // post-update state. We update the fixture in place to mirror what the
+   780→    // real DB would return after the updateMany succeeded.
+   781→    invoiceById = {
+   782→      ...invoiceById,
+   783→      version: 2,
+   784→      paid: "25.000",
+   785→      status: "partial",
+   786→    };
+   787→    // Re-store the idempotency record with the post-update invoice state, so
+   788→    // the cached response reflects paid=25 (not the pre-update paid=0 that
+   789→    // was captured before we updated the fixture above).
+   790→    // (In production, the route re-fetches the row AFTER the updateMany
+   791→    // succeeds, so the cached responseJson always has the post-update state.
+   792→    // Our mock findUnique returned the pre-update fixture at the time of the
+   793→    // first call, so we re-populate the cache here to mirror production.)
+   794→    const cachedKey = "test-co|invoice-payment|inv-26:abc-123-456";
+   795→    idempotencyStore.set(cachedKey, {
+   796→      companySlug: "test-co",
+   797→      endpoint: "invoice-payment",
+   798→      key: "inv-26:abc-123-456",
+   799→      requestHash: "26:25:card",
+   800→      responseJson: JSON.stringify({ ok: true, invoice: invoiceById }),
+   801→      status: 200,
+   802→      createdAt: new Date(),
+   803→    });
+   804→
+   805→    // Second request with the SAME idempotencyKey — must return cached body
+   806→    // and NOT call updateMany again.
+   807→    const updateManyCallCountBefore = invoiceUpdateMany.mock.calls.length;
+   808→    const res2 = await paymentPATCH(
+   809→      makePatchRequest("26", {
+   810→        amount: 25, method: "card", expectedVersion: 1, idempotencyKey: "abc-123-456",
+   811→      }),
+   812→      makeIdCtx("26"),
+   813→    );
+   814→    expect(res2.status).toBe(200);
+   815→    const body2 = await res2.json();
+   816→    // Cached body has the original `invoice` (with paid=25), NOT a second
+   817→    // payment that would have made paid=50.
+   818→    expect(body2.invoice).toBeDefined();
+   819→    expect(body2.invoice.paid).toBe("25.000"); // still 25, not 50
+   820→    // And updateMany was NOT called again (idempotent short-circuit).
+   821→    expect(invoiceUpdateMany.mock.calls.length).toBe(updateManyCallCountBefore);
+   822→  });
+   823→
+   824→  it("14f. H5 FIX: different idempotency keys → independent payments (no false cache hit)", async () => {
+   825→    invoiceById = baseInvoice({
+   826→      id: 27, version: 1, status: "sent", total: "100.000", paid: "0.000",
+   827→    });
+   828→    const res1 = await paymentPATCH(
+   829→      makePatchRequest("27", { amount: 25, expectedVersion: 1, idempotencyKey: "key-A-12345" }),
+   830→      makeIdCtx("27"),
+   831→    );
+   832→    expect(res1.status).toBe(200);
+   833→
+   834→    // Bump the version so the second request can succeed (atomic lock).
+   835→    invoiceById = { ...invoiceById, version: 2, paid: "25.000", status: "partial" };
+   836→    const res2 = await paymentPATCH(
+   837→      makePatchRequest("27", { amount: 25, expectedVersion: 2, idempotencyKey: "key-B-12345" }),
+   838→      makeIdCtx("27"),
+   839→    );
+   840→    expect(res2.status).toBe(200);
+   841→    expect(lastUpdateManyArgs.data.paid).toBe("50.000"); // 25 + 25 = 50
+   842→  });
+   843→});
+   844→
+   845→describe("PATCH /api/invoices/[id]/status", () => {
+   846→  it("15. operational status transition: sent → overdue (allowed)", async () => {
+   847→    invoiceById = baseInvoice({ id: 30, version: 1, status: "sent" });
+   848→    const res = await statusPATCH(
+   849→      makePatchRequest("30", { status: "overdue", expectedVersion: 1 }),
+   850→      makeIdCtx("30"),
+   851→    );
+   852→    expect(res.status).toBe(200);
+   853→    expect(lastUpdateManyArgs.data.status).toBe("overdue");
+   854→    expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
+   855→  });
+   856→
+   857→  it("16. SECURITY: status='paid' rejected on /status endpoint — must go through /payment", async () => {
+   858→    // /status route's StatusSchema is z.enum(["draft","sent","overdue","cancelled"])
+   859→    // — `paid` and `partial` are intentionally excluded so a non-finance employee
+   860→    // can't bypass the payment-recording audit trail.
+   861→    invoiceById = baseInvoice({ id: 31, version: 1, status: "sent" });
+   862→    const res = await statusPATCH(
+   863→      makePatchRequest("31", { status: "paid", expectedVersion: 1 }),
+   864→      makeIdCtx("31"),
+   865→    );
+   866→    expect(res.status).toBe(400);
+   867→    const body = await res.json();
+   868→    expect(body.error).toBeDefined();
+   869→  });
+   870→
+   871→  it("16b. H4 FIX: status change on soft-deleted invoice → 404", async () => {
+   872→    invoiceById = baseInvoice({ id: 32, version: 1, status: "sent", deletedAt: new Date() });
+   873→    const res = await statusPATCH(
+   874→      makePatchRequest("32", { status: "overdue", expectedVersion: 1 }),
+   875→      makeIdCtx("32"),
+   876→    );
+   877→    expect(res.status).toBe(404);
+   878→  });
+   879→
+   880→  it("16c. C1 FIX: concurrent status change → 409 atomic", async () => {
+   881→    invoiceById = baseInvoice({ id: 33, version: 5, status: "sent" });
+   882→    const res = await statusPATCH(
+   883→      makePatchRequest("33", { status: "overdue", expectedVersion: 3 }),
+   884→      makeIdCtx("33"),
+   885→    );
+   886→    expect(res.status).toBe(409);
+   887→    expect((await res.json()).code).toBe("VERSION_CONFLICT");
+   888→  });
+   889→});
+   890→
+   891→// ─── H1 FIX: GET must reject soft-deleted invoices ─────────────────────────
+   892→
+   893→describe("GET /api/invoices/[id] — soft-delete enforcement (H1 FIX)", () => {
+   894→  it("17. H1 FIX: GET on soft-deleted invoice → 404 (not silent leak of deleted data)", async () => {
+   895→    invoiceById = baseInvoice({ id: 40, deletedAt: new Date("2024-01-01") });
+   896→    const res = await singleGET(
+   897→      makeGetRequest("https://example.com/api/invoices/40"),
+   898→      makeIdCtx("40"),
+   899→    );
+   900→    expect(res.status).toBe(404);
+   901→  });
+   902→});
+   903→

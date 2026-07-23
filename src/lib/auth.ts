@@ -227,7 +227,10 @@ export interface AuthResult {
 export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   const access = getAccessToken(req);
   if (access) {
-    const payload = verifyToken(access);
+    // SEC-C1 FIX (Cycle 1): use verifyTokenWithBlacklist so that a
+    // force-logged-out or password-changed user is immediately rejected,
+    // even if the JWT signature is still valid for the remaining TTL.
+    const payload = await verifyTokenWithBlacklist(access);
     if (payload) return { ok: true, user: payload };
   }
 

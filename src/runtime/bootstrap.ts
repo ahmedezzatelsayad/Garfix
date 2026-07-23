@@ -52,12 +52,9 @@
 
 import { logger } from "@/lib/logger";
 
-// Worker registration functions (no side effects on import)
-import { registerAIProductMatchWorker } from "@/lib/workers/aiProductMatchWorker";
-import { registerEmailWorker } from "@/lib/workers/emailWorker";
-import { registerWhatsAppWorker } from "@/lib/workers/whatsappWorker";
-import { registerBackupWorker } from "@/lib/workers/backupWorker";
-import { registerSchedulerWorker } from "@/lib/workers/schedulerWorker";
+// Worker registration functions — DYNAMIC imports only
+// These modules use node:fs, node:path, etc. which must NOT be traced
+// during `next build`. They're only needed at runtime startup.
 
 // Queue utilities
 import { recoverPendingJobs } from "@/lib/queues";
@@ -105,6 +102,7 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
 
     // 1a. Email Worker (transactional emails: OTP, welcome, ticket replies)
     try {
+      const { registerEmailWorker } = await import("@/lib/workers/emailWorker");
       registerEmailWorker();
       workersRegistered.push("email");
       logger.info("[bootstrap] ✓ Email worker registered");
@@ -116,6 +114,7 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
 
     // 1b. WhatsApp Worker (WhatsApp Business API messages)
     try {
+      const { registerWhatsAppWorker } = await import("@/lib/workers/whatsappWorker");
       registerWhatsAppWorker();
       workersRegistered.push("whatsapp");
       logger.info("[bootstrap] ✓ WhatsApp worker registered");
@@ -127,6 +126,7 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
 
     // 1c. Backup Worker (automated database backups)
     try {
+      const { registerBackupWorker } = await import("@/lib/workers/backupWorker");
       registerBackupWorker();
       workersRegistered.push("backup");
       logger.info("[bootstrap] ✓ Backup worker registered");
@@ -138,6 +138,7 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
 
     // 1d. AI Product Match Worker (AI-powered invoice line item resolution)
     try {
+      const { registerAIProductMatchWorker } = await import("@/lib/workers/aiProductMatchWorker");
       registerAIProductMatchWorker();
       workersRegistered.push("ai-product-match");
       logger.info("[bootstrap] ✓ AI Product Match worker registered");
@@ -148,8 +149,8 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
     }
 
     // 1e. Scheduler Worker (periodic tasks: scans, cleanup, health checks)
-    // Register LAST so other workers are ready for any jobs it enqueues
     try {
+      const { registerSchedulerWorker } = await import("@/lib/workers/schedulerWorker");
       registerSchedulerWorker();
       workersRegistered.push("scheduler");
       logger.info("[bootstrap] ✓ Scheduler worker registered");

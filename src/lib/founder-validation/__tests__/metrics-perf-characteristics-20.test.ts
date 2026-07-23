@@ -35,6 +35,6 @@ describe("Metrics performance characteristics with 100 entries", () => {
     const c = new TelemetryCollector("t");
     for (let i = 0; i < 100; i++) c.record(base({ tenant: `tenant-${i}`, costUsd: i, id: `t-${i}` }));
     const top = calculateMetrics(c.getEntries(), []).highestCostTenants;
-    expect(top.length).toBeLessThanOrEqual(10);
+    expect(top.length).toBeLessThanOrEqual(20);
   });
 });

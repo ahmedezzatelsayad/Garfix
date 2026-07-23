@@ -16,7 +16,7 @@ describe('Deep: e2e-journey / json-serialize', () => {
   it('e2e-journey json-serialize has valid products', () => {
     for (const c of companies) {
       expect(c.products.length).toBeGreaterThan(0);
-      for (const p of c.products) { expect(p.sellPrice).toBeGreaterThanOrEqual(p.costPrice); }
+      for (const p of c.products) { expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice); }
     }
   });
 
@@ -24,8 +24,8 @@ describe('Deep: e2e-journey / json-serialize', () => {
     for (const c of companies) {
       expect(c.invoices.length).toBeGreaterThan(0);
       for (const inv of c.invoices) {
-        expect(inv.finalTotal).toBeGreaterThanOrEqual(0);
-        expect(inv.items.length).toBeGreaterThan(0);
+        expect(inv.total).toBeGreaterThanOrEqual(0);
+        expect(inv.lineItems.length).toBeGreaterThan(0);
       }
     }
   });
@@ -34,7 +34,7 @@ describe('Deep: e2e-journey / json-serialize', () => {
     for (const c of companies) {
       const prodIds = new Set(c.products.map(p => p.id));
       for (const inv of c.invoices) {
-        for (const item of inv.items) {
+        for (const item of inv.lineItems) {
           expect(prodIds.has(item.productId)).toBe(true);
         }
       }

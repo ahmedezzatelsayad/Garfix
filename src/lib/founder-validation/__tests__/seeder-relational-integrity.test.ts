@@ -165,7 +165,7 @@ describe('Enterprise Seeder — Relational Integrity (10 companies)', () => {
     }
   });
 
-  it('product sellingPrice > costPrice (markup exists)', () => {
+  it('product sellingPrice > purchasePrice (markup exists)', () => {
     for (const c of companies) {
       for (const prod of c.products) {
         const sell = parseFloat(prod.sellingPrice);
@@ -175,7 +175,7 @@ describe('Enterprise Seeder — Relational Integrity (10 companies)', () => {
     }
   });
 
-  it('product wholesalePrice is between costPrice and sellingPrice', () => {
+  it('product wholesalePrice is between purchasePrice and sellingPrice', () => {
     for (const c of companies) {
       for (const prod of c.products) {
         const sell = parseFloat(prod.sellingPrice);

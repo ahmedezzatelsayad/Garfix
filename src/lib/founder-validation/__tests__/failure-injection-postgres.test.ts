@@ -140,9 +140,11 @@ describe('Failure Injection: Postgres (Database)', () => {
     const companies = seedEnterpriseData({ companyCount: 10, seed: 101 });
     const collector = new TelemetryCollector(companies);
     const t1 = collector.generateAll(new SeededRandom(101));
-    const len1 = collector.size;
+    const len1 = t1.length;
     const t2 = collector.generateAll(new SeededRandom(101));
-    expect(collector.size).toBe(len1 + t2.length);
+    // generateAll returns the FULL entries array, not just the new ones.
+    // After two calls with the same seed, collector.size should be 2 × len1.
+    expect(collector.size).toBe(len1 * 2);
   });
 
   it('getEntriesForTenant returns empty for unknown tenant', () => {

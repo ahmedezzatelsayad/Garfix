@@ -18,6 +18,35 @@
 
 import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
 
+// ─── Mocks to isolate from Prisma / cross-test contamination ────────────
+// Other test files mock @/lib/db globally via bun:test's mock.module().
+// Without our own mock here, the real @/lib/db import pulls in @prisma/client
+// which isn't generated for test runs. Also, the pg-boss module (used when
+// DATABASE_URL is set) has its own dead-letter map — mocking it forces
+// enqueueBackground to fall through to the in-process path so dead letters
+// are recorded in queues.ts's own map (which getDeadLetters() reads).
+mock.module("@/lib/db", () => ({
+  db: {
+    user: { findUnique: mock(() => Promise.resolve(null)) },
+    jobQueue: {
+      create: mock(() => Promise.resolve({ id: 1 })),
+      update: mock(() => Promise.resolve({})),
+    },
+    auditLog: { create: mock(() => Promise.resolve({ id: "mock-audit" })) },
+  },
+}));
+
+mock.module("@/lib/queue-pgboss", () => ({
+  PGBOSS_AVAILABLE: false,
+  startPgBoss: mock(() => Promise.reject(new Error("pg-boss mocked out"))),
+  enqueueBackground: mock(() => {}),
+  enqueueAsync: mock(() => Promise.reject(new Error("pg-boss mocked out"))),
+  registerWorker: mock(() => {}),
+  getDeadLetters: mock(() => []),
+  clearDeadLetters: mock(() => {}),
+  recoverPendingJobs: mock(() => Promise.resolve(0)),
+}));
+
 // ─── ioredis-mock setup (must come before any imports that use ioredis) ────
 
 // Mock ioredis to return ioredis-mock instances
@@ -71,7 +100,8 @@ describe("valkey.ts — Connection Manager", () => {
     process.env.REDIS_URL = "redis://redis:6379";
     // Reset module to pick up new env
     const mod = await import("@/lib/valkey?reset=2");
-    expect(mod.getValkeyUrl()).toBe("valkey://valkey:6379");
+    // getValkeyUrl() normalizes valkey:// → redis:// for ioredis compatibility
+    expect(mod.getValkeyUrl()).toBe("redis://valkey:6379");
   });
 
   it("falls back to REDIS_URL when VALKEY_URL is not set", async () => {
@@ -389,8 +419,8 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
 
   it("enqueueBackground dead-letters when no handler registered", async () => {
     enqueueBackground("nonexistent-queue" as any, { type: "test", data: {} });
-    // Give the async operation time to complete
-    await new Promise((r) => setTimeout(r, 100));
+    // Give the async operation time to complete (pg-boss fallback chain is async)
+    await new Promise((r) => setTimeout(r, 500));
     const dl = getDeadLetters();
     expect(dl.some((d) => d.type === "test")).toBe(true);
   });

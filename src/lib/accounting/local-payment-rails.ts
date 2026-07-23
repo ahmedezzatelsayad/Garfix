@@ -4,6 +4,25 @@
  * Provides stubs for: initiateLocalPayment, verifyPayment, getAvailablePaymentMethods
  * These are placeholders until full integration with local payment providers
  * (KNET, Fawry, Sadad, etc.) is implemented.
+ *
+ * ⚠️ STUB WARNING: This module is NOT production-ready.
+ *   Missing features required for production:
+ *   - Signature validation (HMAC/Webhook signatures from providers)
+ *   - Idempotency (duplicate payment protection via idempotency keys)
+ *   - Retry Queue (automatic retry with exponential backoff on failures)
+ *   - Webhook verification (verify incoming webhook authenticity)
+ *   - Audit Trail (immutable log of all payment state transitions)
+ *   - Fraud Detection (basic anomaly scoring + velocity checks)
+ *
+ * Migration plan (v13):
+ *   1. Replace stubs with real provider SDK integrations (KNET, Fawry, Sadad, mPay)
+ *   2. Add signature validation per provider specification
+ *   3. Implement idempotency via PostgreSQL unique constraint on (providerTxId, idempotencyKey)
+ *   4. Route all payments through BullMQ retry queue (3 retries, 5min backoff)
+ *   5. Add webhook endpoint with HMAC-SHA256 verification per provider
+ *   6. Create `payment_audit_log` table with tamper-evidence chain (append-only, SHA-256 linked)
+ *   7. Add fraud scoring: velocity check (max 5 payments/min per tenant), amount anomaly detection
+ *   8. All stub functions marked `@deprecated` — will be removed in v13
  */
 
 // ─── Types ───
