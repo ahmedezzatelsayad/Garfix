@@ -158,17 +158,10 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
 
       {/* Result */}
       {result && !result.eligible && (
-        <div
-          style={{
-            padding: "20px", borderRadius: "14px",
-            background: "rgba(245,158,11,0.08)",
-            border: "1px solid rgba(245,158,11,0.4)",
-            display: "flex", alignItems: "flex-start", gap: "12px",
-          }}
-        >
-          <AlertTriangle size={20} style={{ color: "#f59e0b", flexShrink: 0, marginTop: "2px" }} />
+        <div className="p-5 rounded-[14px] bg-amber-500/10 border border-amber-500/40 flex items-start gap-3">
+          <AlertTriangle size={20} className="text-amber-500 shrink-0 mt-0.5" />
           <div>
-            <div className="text-sm font-extrabold text-[#f59e0b] mb-1">
+            <div className="text-sm font-extrabold text-amber-500 mb-1">
               غير مؤهل لمكافأة نهاية الخدمة
             </div>
             <div className="text-xs text-muted-foreground">
@@ -183,11 +176,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
           {/* Big highlighted amount */}
           <div className="p-6 rounded-[14px] bg-[linear-gradient(135deg,rgba(124,58,237,0.12),rgba(16,185,129,0.10))] border border-border flex flex-col gap-2 relative overflow-hidden">
             <div
-              style={{
-                position: "absolute", top: "-30px", left: "-30px",
-                width: "140px", height: "140px", borderRadius: "50%",
-                background: "var(--primary)", opacity: 0.08,
-              }}
+              className="absolute -top-[30px] -start-[30px] w-[140px] h-[140px] rounded-full bg-[var(--primary)] opacity-[0.08]"
             />
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold">
               <Coins size={14} className="text-primary" />
@@ -304,11 +293,8 @@ function InfoCard({ label, value, icon, color, ltr }: {
     <div className="p-3.5 rounded-lg bg-card border border-border flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5">
         <div
-          style={{
-            width: "26px", height: "26px", borderRadius: "6px",
-            background: `${color}20`, color,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
+          className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center shrink-0"
+          style={{ background: `${color}20`, color }} /* TAILWINDBREAK: dynamic InfoCard color */
         >
           {icon}
         </div>

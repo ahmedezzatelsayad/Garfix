@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authedFetch } from "@/context/AuthContext";
 import { Search, ChevronLeft, Inbox } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface Column<T = Record<string, unknown>> {
   key: string;
@@ -85,16 +86,9 @@ export function DataTable({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search, fetchData]);
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "8px 36px 8px 12px", borderRadius: "8px",
-    background: "var(--background)", border: "1px solid var(--border)",
-    color: "var(--foreground)", fontFamily: "inherit", fontSize: "13px", outline: "none",
-  };
-  const thStyle: React.CSSProperties = {
-    textAlign: "right", padding: "10px 12px", fontSize: "11px",
-    color: "var(--muted-foreground)", fontWeight: 700,
-  };
-  const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: "13px" };
+  const inputClass = "w-full py-2 pr-9 pl-3 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none";
+  const thClass = "text-end px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold";
+  const tdClass = "px-3 py-2.5 text-[13px]";
 
   return (
     <div className="overflow-x-auto">
@@ -103,7 +97,7 @@ export function DataTable({
           {searchFields.length > 0 && (
             <div className="relative flex-1 min-w-[180px] md:min-w-[200px]">
               <Search size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder} style={inputStyle} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder} className={inputClass} />
             </div>
           )}
           {actions}
@@ -114,17 +108,17 @@ export function DataTable({
         <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل...</div>
       ) : rows.length === 0 ? (
         <div className="p-8 md:p-12 text-center text-muted-foreground">
-          <Inbox size={32} style={{ opacity: 0.3, marginBottom: "8px" }} />
+          <Inbox size={32} className="opacity-30 mb-2" />
           <div>{emptyMessage}</div>
         </div>
       ) : (
         <>
           <div className="overflow-x-auto garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }} className="min-w-[480px] md:min-w-0">
+            <table className="w-full border-collapse min-w-[480px] md:min-w-0">
               <thead>
-                <tr style={{ background: "var(--muted)" }}>
+                <tr className="bg-[var(--muted)]">
                   {columns.map((col) => (
-                    <th key={col.key} style={{ ...thStyle, width: col.width }}>{col.label}</th>
+                    <th key={col.key} className={thClass} style={col.width ? { width: col.width } : undefined} /* TAILWINDBREAK: dynamic width */>{col.label}</th>
                   ))}
                 </tr>
               </thead>
@@ -133,10 +127,10 @@ export function DataTable({
                   <tr
                     key={String(row[rowKey] ?? idx)}
                     onClick={() => onRowClick?.(row)}
-                    style={{ borderBottom: "1px solid var(--border)", cursor: onRowClick ? "pointer" : "default" }}
+                    className={cn("border-b border-[var(--border)]", onRowClick ? "cursor-pointer" : "cursor-default")}
                   >
                     {columns.map((col) => (
-                      <td key={col.key} style={tdStyle}>
+                      <td key={col.key} className={tdClass}>
                         {col.render ? col.render(row) : String(row[col.key] ?? "—")}
                       </td>
                     ))}
@@ -152,13 +146,7 @@ export function DataTable({
               <button
                 onClick={fetchData}
                 disabled={loading}
-                style={{
-                  background: "var(--muted)", color: "var(--foreground)",
-                  border: "1px solid var(--border)", borderRadius: "8px",
-                  padding: "6px 14px", fontFamily: "inherit", fontSize: "12px",
-                  fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.6 : 1, display: "inline-flex", alignItems: "center", gap: "4px",
-                }}
+                className="inline-flex items-center gap-1 py-1.5 px-3.5 rounded-lg bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] font-inherit text-xs font-bold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? "..." : "تحميل المزيد"} {!loading && <ChevronLeft size={12} />}
               </button>

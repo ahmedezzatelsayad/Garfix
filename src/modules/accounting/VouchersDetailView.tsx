@@ -379,13 +379,13 @@ export function VouchersDetailView() {
                       const st = statusMap[v.status] || { label: v.status, color: "#999" };
                       return (
                         <tr key={v.id} className="border-b border-border">
-                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: v.voucherType === "receipt" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: v.voucherType === "receipt" ? "#10b981" : "#ef4444" }}>{v.voucherType === "receipt" ? "قبض" : "دفع"}</span></td>
+                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", v.voucherType === "receipt" ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{v.voucherType === "receipt" ? "قبض" : "دفع"}</span></td>
                           <td className={tdStyle}>{v.date}</td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(v.amount)}</td>
                           <td className={tdStyle}>{v.currency}</td>
                           <td className={tdStyle}>{v.payee || "—"}</td>
                           <td className={tdStyle}>{v.payer || "—"}</td>
-                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }}>{st.label}</span></td>
+                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", st.badge)}>{st.label}</span></td>
                           <td className={tdStyle}>
                             <div className="flex items-center gap-1">
                               {v.status === "draft" && (<>
@@ -554,7 +554,7 @@ export function VouchersDetailView() {
                           <td className={cn(tdStyle, "font-mono font-bold")}>{ob.accountCode}</td>
                           <td className={tdStyle}>{ob.accountNameAr}</td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(ob.amount)}</td>
-                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: ob.posted ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: ob.posted ? "#10b981" : "#f59e0b" }}>{ob.posted ? "مُرحّل" : "مسودة"}</span></td>
+                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", ob.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{ob.posted ? "مُرحّل" : "مسودة"}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -581,8 +581,8 @@ export function VouchersDetailView() {
                       <tr key={c.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-bold")}>{c.salesperson}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(c.totalSales)}</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(c.commissionAmount)}</td>
-                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: c.posted ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: c.posted ? "#10b981" : "#f59e0b" }}>{c.posted ? "مُرحّل" : "مسودة"}</span></td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-emerald-500">{fmt(c.commissionAmount)}</td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{c.posted ? "مُرحّل" : "مسودة"}</span></td>
                         <td className={tdStyle}>
                           {!c.posted && <button onClick={() => handlePostCommission(c.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
                         </td>
@@ -611,8 +611,8 @@ export function VouchersDetailView() {
                       <tr key={pd.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-bold")}>{pd.partnerName}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end")}>{pd.ownershipPercent}%</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(pd.profitShare)}</td>
-                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: pd.posted ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: pd.posted ? "#10b981" : "#f59e0b" }}>{pd.posted ? "مُرحّل" : "مسودة"}</span></td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-emerald-500">{fmt(pd.profitShare)}</td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", pd.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{pd.posted ? "مُرحّل" : "مسودة"}</span></td>
                         <td className={tdStyle}>
                           {!pd.posted && <button onClick={() => handlePostProfitDist(pd.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
                         </td>

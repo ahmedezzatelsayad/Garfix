@@ -394,7 +394,7 @@ export default function MissionControlPage() {
                       <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
-                          style={{ width: `${Math.min(pct, 100)}%` }}
+                          style={{ width: `${Math.min(pct, 100)}%` }} /* TAILWINDBREAK: dynamic percentage width */
                         ></div>
                       </div>
                       <span className="text-xs font-mono text-gray-300 w-12 text-right">{pct}%</span>

@@ -238,19 +238,19 @@ export function BudgetsView() {
                 </tr></thead>
                 <tbody>
                   {budgets.map((b) => {
-                    const statusMap: Record<string, { label: string; color: string }> = {
-                      draft: { label: "مسودة", color: "#f59e0b" },
-                      approved: { label: "معتمد", color: "#10b981" },
-                      revised: { label: "قيد المراجعة", color: "#3b82f6" },
+                    const statusMap: Record<string, { label: string; badge: string }> = {
+                      draft: { label: "مسودة", badge: "bg-amber-500/15 text-amber-500" },
+                      approved: { label: "معتمد", badge: "bg-emerald-500/15 text-emerald-500" },
+                      revised: { label: "قيد المراجعة", badge: "bg-blue-500/15 text-blue-500" },
                     };
-                    const st = statusMap[b.status] || { label: b.status, color: "#999" };
+                    const st = statusMap[b.status] || { label: b.status, badge: "bg-gray-500/15 text-gray-500" };
                     return (
                       <tr key={b.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-mono font-bold")}>{b.accountCode}</td>
                         <td className={tdStyle}>{b.accountNameAr}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(b.plannedAmount)}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end")}>{b.actualAmount ? fmt(b.actualAmount) : "—"}</td>
-                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }}>{st.label}</span></td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", st.badge)}>{st.label}</span></td>
                         <td className={tdStyle}>
                           <div className="flex items-center gap-1">
                             {b.status !== "approved" && (
@@ -288,8 +288,8 @@ export function BudgetsView() {
                       <td className={tdStyle}>{r.accountNameAr}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(r.planned)}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(r.actual)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: r.variance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(r.variance)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: r.variancePercent >= 0 ? "#10b981" : "#ef4444" }}>{r.variancePercent.toFixed(1)}%</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.variance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(r.variance)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.variancePercent >= 0 ? "text-emerald-500" : "text-red-500")}>{r.variancePercent.toFixed(1)}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -312,10 +312,10 @@ export function BudgetsView() {
                   {comparisons.map((c) => (
                     <tr key={c.id} className="border-b border-border">
                       <td className={cn(tdStyle, "font-bold")}>{c.periodName}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(c.revenue)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#ef4444" }}>{fmt(c.expenses)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: c.profit >= 0 ? "#10b981" : "#ef4444" }}>{fmt(c.profit)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#3b82f6" }}>{fmt(c.cash)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold text-emerald-500")}>{fmt(c.revenue)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-red-500">{fmt(c.expenses)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", c.profit >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(c.profit)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-blue-500">{fmt(c.cash)}</td>
                     </tr>
                   ))}
                 </tbody>

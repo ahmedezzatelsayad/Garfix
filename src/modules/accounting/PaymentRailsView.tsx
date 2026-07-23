@@ -33,12 +33,12 @@ function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
 }
 
-const METHOD_TYPE_MAP: Record<string, { label: string; color: string }> = {
-  bank_transfer:  { label: "تحويل بنكي",  color: "#3b82f6" },
-  card:           { label: "بطاقة",        color: "#10b981" },
-  digital_wallet: { label: "محفظة رقمية", color: "#7c3aed" },
-  cheque:         { label: "شيك",          color: "#f59e0b" },
-  knet:           { label: "K-NET",        color: "#ef4444" },
+const METHOD_TYPE_MAP: Record<string, { label: string; badge: string }> = {
+  bank_transfer:  { label: "تحويل بنكي",  badge: "bg-blue-500/15 text-blue-500" },
+  card:           { label: "بطاقة",        badge: "bg-emerald-500/15 text-emerald-500" },
+  digital_wallet: { label: "محفظة رقمية", badge: "bg-violet-500/15 text-violet-500" },
+  cheque:         { label: "شيك",          badge: "bg-amber-500/15 text-amber-500" },
+  knet:           { label: "K-NET",        badge: "bg-red-500/15 text-red-500" },
 };
 
 /* ─── Main Component ────────────────────────────────────────────────────────── */
@@ -191,19 +191,19 @@ export function PaymentRailsView() {
                   </tr></thead>
                   <tbody>
                     {methods.map((m) => {
-                      const tp = METHOD_TYPE_MAP[m.type] || { label: m.type, color: "#999" };
+                      const tp = METHOD_TYPE_MAP[m.type] || { label: m.type, badge: "bg-gray-500/15 text-gray-500" };
                       return (
                         <tr key={m.id} className="border-b border-border">
                           <td className={cn(tdStyle, "font-bold")}>{m.name}</td>
                           <td className={tdStyle}>{m.nameAr}</td>
                           <td className={tdStyle}>
-                            <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${tp.color}20`, color: tp.color }}>{tp.label}</span>
+                            <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", tp.badge)}>{tp.label}</span>
                           </td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(m.fees)}</td>
                           <td className={tdStyle}>{m.currency}</td>
                           <td className={tdStyle}>{m.country}</td>
                           <td className={tdStyle}>
-                            <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: m.available ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: m.available ? "#10b981" : "#ef4444" }}>
+                            <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", m.available ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
                               {m.available ? "متاح" : "غير متاح"}
                             </span>
                           </td>
@@ -258,7 +258,7 @@ export function PaymentRailsView() {
                 </div>
                 <div>
                   <p className="text-[11px] text-muted-foreground">الحالة</p>
-                  <p className="text-[14px] font-bold" style={{ color: initResult.status === "pending" ? "#f59e0b" : initResult.status === "completed" ? "#10b981" : "#ef4444" }}>
+                  <p className={cn("text-[14px] font-bold", initResult.status === "pending" ? "text-amber-500" : initResult.status === "completed" ? "text-emerald-500" : "text-red-500")}>
                     {initResult.status === "pending" ? "قيد الانتظار" : initResult.status === "completed" ? "مكتمل" : initResult.status === "failed" ? "فشل" : initResult.status}
                   </p>
                 </div>
@@ -298,17 +298,12 @@ export function PaymentRailsView() {
               <h3 className="text-[14px] font-bold mb-3">نتيجة التحقق</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{
-                    background: verifyResult.status === "completed" ? "rgba(16,185,129,0.15)" : verifyResult.status === "pending" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)",
-                    color: verifyResult.status === "completed" ? "#10b981" : verifyResult.status === "pending" ? "#f59e0b" : "#ef4444",
-                  }}>
+                  <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", verifyResult.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : verifyResult.status === "pending" ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500")}>
                     {verifyResult.status === "completed" ? <CheckCircle2 size={24} /> : verifyResult.status === "pending" ? <Clock size={24} /> : <XCircle size={24} />}
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground">الحالة</p>
-                    <p className="text-[16px] font-bold" style={{
-                      color: verifyResult.status === "completed" ? "#10b981" : verifyResult.status === "pending" ? "#f59e0b" : "#ef4444",
-                    }}>
+                    <p className={cn("text-[16px] font-bold", verifyResult.status === "completed" ? "text-emerald-500" : verifyResult.status === "pending" ? "text-amber-500" : "text-red-500")}>
                       {verifyResult.status === "completed" ? "مكتمل ✓" : verifyResult.status === "pending" ? "قيد الانتظار" : verifyResult.status === "failed" ? "فشل" : verifyResult.status}
                     </p>
                   </div>

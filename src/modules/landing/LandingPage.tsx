@@ -181,8 +181,7 @@ function LegacyLandingPage({ onLogin, onRegister }: LandingPageProps) {
     >
       <canvas
         ref={cvsRef}
-        className="absolute top-0 start-0 w-full h-dvh pointer-events-none opacity-70 z-0"
-        style={{ willChange: "transform", imageRendering: "auto" }}
+        className="absolute top-0 start-0 w-full h-dvh pointer-events-none opacity-70 z-0 [will-change:transform]"
       />
       <style>{`
         @keyframes garfix-fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -253,7 +252,7 @@ function LegacyLandingPage({ onLogin, onRegister }: LandingPageProps) {
             <div
               key={i}
               className="p-5 rounded-[14px] bg-white/[0.04] border border-white/[0.08] [animation:garfix-fade-up_.8s_ease-out_both]"
-              style={{ animationDelay: `${0.4 + i * 0.1}s` }}
+              style={{ animationDelay: `${0.4 + i * 0.1}s` }} /* TAILWINDBREAK: dynamic animation delay from loop index */
             >
               <div className="text-[32px] font-black text-[#fbbf24]">{s.n}</div>
               <div className="text-xs text-white/60 mt-1">{s.label}</div>
@@ -277,7 +276,7 @@ function LegacyLandingPage({ onLogin, onRegister }: LandingPageProps) {
             <div
               key={i}
               className="p-6 rounded-2xl landing-card cursor-default [animation:garfix-fade-up_.6s_ease-out_both]"
-              style={{ animationDelay: `${i * 0.05}s` }}
+              style={{ animationDelay: `${i * 0.05}s` }} /* TAILWINDBREAK: dynamic animation delay from loop index */
             >
               <div className="text-[32px] mb-3">{f.icon}</div>
               <h3 className="text-lg font-extrabold mb-2">{f.title}</h3>

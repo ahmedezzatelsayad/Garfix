@@ -431,7 +431,7 @@ export function AccountingView() {
                                   <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(a.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${a.nameAr}`} /></td>
                                   <td className={cn(tdStyle, "font-mono")}>{a.code}</td>
                                   <td className={cn(tdStyle, "font-bold")}>{a.nameAr}</td>
-                                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${t.color}20`, color: t.color }}>{t.label}</span></td>
+                                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.badge)}>{t.label}</span></td>
                                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{a.balance.toLocaleString("ar-EG")}</td>
                                   <td className={tdStyle}>{a.currency}</td>
                                   <td className={tdStyle}><button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
@@ -457,7 +457,7 @@ export function AccountingView() {
                                   <td className={tdStyle}>{e.date}</td>
                                   <td className={cn(tdStyle, "font-bold")}>{e.description || "—"}</td>
                                   <td className={cn(tdStyle, "font-mono")}>{e.reference || "—"}</td>
-                                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: e.status === "posted" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: e.status === "posted" ? "#10b981" : "#f59e0b" }}>{e.status === "posted" ? "مُرحّل" : e.status === "draft" ? "مسودة" : "معكوس"}</span></td>
+                                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : e.status === "draft" ? "مسودة" : "معكوس"}</span></td>
                                   <td className={tdStyle}>{e.lines?.length || 0}</td>
                                   <td className={tdStyle}>
                                     <div className="flex items-center gap-1.5">
@@ -637,7 +637,7 @@ function FinancialDashboardApiView() {
         <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-2">
           <h3 className="font-bold text-[14px] flex items-center gap-2"><Calendar size={16} /> الفترة المالية</h3>
           <div className="text-[13px] font-bold">{period.from} ← {period.to}</div>
-          <div className="text-[12px] text-muted-foreground">هامش الربح: <span className="font-bold" style={{ color: metrics.revenue > 0 ? (metrics.netProfit / metrics.revenue * 100 >= 10 ? "#10b981" : "#f59e0b") : "#ef4444" }}>{metrics.revenue > 0 ? `${(metrics.netProfit / metrics.revenue * 100).toFixed(1)}%` : "—"}</span></div>
+          <div className="text-[12px] text-muted-foreground">هامش الربح: <span className={cn("font-bold", metrics.revenue > 0 ? (metrics.netProfit / metrics.revenue * 100 >= 10 ? "text-emerald-500" : "text-amber-500") : "text-red-500")}>{metrics.revenue > 0 ? `${(metrics.netProfit / metrics.revenue * 100).toFixed(1)}%` : "—"}</span></div>
         </div>
       )}
 
@@ -645,10 +645,10 @@ function FinancialDashboardApiView() {
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-2">
         <h3 className="font-bold text-[14px] flex items-center gap-2"><LayoutDashboard size={16} /> التغيرات عن الفترة السابقة</h3>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 text-[12px] sm:text-[13px]">
-          <div className="flex justify-between"><span className="text-muted-foreground">الإيرادات</span><span className="font-bold" style={{ color: metrics.trends.revenueChange !== null ? (metrics.trends.revenueChange >= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.revenueChange)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">المصروفات</span><span className="font-bold" style={{ color: metrics.trends.expenseChange !== null ? (metrics.trends.expenseChange <= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.expenseChange)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">صافي الربح</span><span className="font-bold" style={{ color: metrics.trends.profitChange !== null ? (metrics.trends.profitChange >= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.profitChange)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">النقدية</span><span className="font-bold" style={{ color: metrics.trends.cashChange !== null ? (metrics.trends.cashChange >= 0 ? "#10b981" : "#ef4444") : undefined }}>{fmtPct(metrics.trends.cashChange)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">الإيرادات</span><span className={cn("font-bold", metrics.trends.revenueChange !== null ? (metrics.trends.revenueChange >= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.revenueChange)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">المصروفات</span><span className={cn("font-bold", metrics.trends.expenseChange !== null ? (metrics.trends.expenseChange <= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.expenseChange)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">صافي الربح</span><span className={cn("font-bold", metrics.trends.profitChange !== null ? (metrics.trends.profitChange >= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.profitChange)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">النقدية</span><span className={cn("font-bold", metrics.trends.cashChange !== null ? (metrics.trends.cashChange >= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.cashChange)}</span></div>
         </div>
       </div>
     </div>
@@ -686,7 +686,7 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
             <div className="flex flex-col gap-1.5">
               <div className="text-[13px] font-bold">{currentPeriod.name}</div>
               <div className="text-[12px] text-muted-foreground">{currentPeriod.startDate} ← {currentPeriod.endDate}</div>
-              <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: currentPeriod.status === "open" ? "rgba(16,185,129,0.15)" : currentPeriod.status === "closed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: currentPeriod.status === "open" ? "#10b981" : currentPeriod.status === "closed" ? "#ef4444" : "#f59e0b" }}>{currentPeriod.status === "open" ? "مفتوحة" : currentPeriod.status === "closed" ? "مقفلة" : "مؤقتة"}</span>
+              <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", currentPeriod.status === "open" ? "bg-emerald-500/15 text-emerald-500" : currentPeriod.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{currentPeriod.status === "open" ? "مفتوحة" : currentPeriod.status === "closed" ? "مقفلة" : "مؤقتة"}</span>
             </div>
           ) : (
             <div className="text-[12px] text-muted-foreground">لا توجد فترة مالية مفتوحة</div>
@@ -697,7 +697,7 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
           <div className="flex flex-col gap-1.5 text-[13px]">
             <div className="flex justify-between"><span className="text-muted-foreground">الحسابات</span><span className="font-bold">{accountsCount}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">القيود</span><span className="font-bold">{entriesCount}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">هامش الربح</span><span className="font-bold" style={{ color: totalRevenue > 0 ? (netProfit / totalRevenue * 100 >= 10 ? "#10b981" : "#f59e0b") : "#ef4444" }}>{totalRevenue > 0 ? `${(netProfit / totalRevenue * 100).toFixed(1)}%` : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">هامش الربح</span><span className={cn("font-bold", totalRevenue > 0 ? (netProfit / totalRevenue * 100 >= 10 ? "text-emerald-500" : "text-amber-500") : "text-red-500")}>{totalRevenue > 0 ? `${(netProfit / totalRevenue * 100).toFixed(1)}%` : "—"}</span></div>
           </div>
         </div>
       </div>
@@ -708,11 +708,11 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
 function DashboardCard({ label, value, color, icon, trend }: { label: string; value: string; color: string; icon: React.ReactNode; trend?: string }) {
   return (
     <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-sm flex items-center justify-center shrink-0" style={{ background: `${color}20`, color }}>{icon}</div>
+      <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center shrink-0", iconBadge)}>{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="text-[11px] text-muted-foreground">{label}</div>
         <div className="text-lg font-extrabold [direction:ltr] text-end truncate">{value}</div>
-        {trend && <div className="text-[10px] font-bold mt-0.5" style={{ color: trend.startsWith("+") ? "#10b981" : trend.startsWith("-") ? "#ef4444" : "#9ca3af" }}>{trend} vs السابق</div>}
+        {trend && <div className={cn("text-[10px] font-bold mt-0.5", trend.startsWith("+") ? "text-emerald-500" : trend.startsWith("-") ? "text-red-500" : "text-gray-400")}>{trend} vs السابق</div>}
       </div>
     </div>
   );
@@ -746,9 +746,9 @@ function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPe
   };
 
   const statusIcon = (status: string) => {
-    if (status === "open") return <CheckCircle2 size={14} style={{ color: "#10b981" }} />;
-    if (status === "closed") return <XCircle size={14} style={{ color: "#ef4444" }} />;
-    return <AlertTriangle size={14} style={{ color: "#f59e0b" }} />;
+    if (status === "open") return <CheckCircle2 size={14} className="text-emerald-500" />;
+    if (status === "closed") return <XCircle size={14} className="text-red-500" />;
+    return <AlertTriangle size={14} className="text-amber-500" />;
   };
 
   return (
@@ -766,7 +766,7 @@ function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPe
                   <td className={cn(tdStyle, "font-bold flex items-center gap-1.5")}>{statusIcon(p.status)} {p.name}</td>
                   <td className={tdStyle} dir="ltr">{p.startDate}</td>
                   <td className={tdStyle} dir="ltr">{p.endDate}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: p.status === "open" ? "rgba(16,185,129,0.15)" : p.status === "closed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: p.status === "open" ? "#10b981" : p.status === "closed" ? "#ef4444" : "#f59e0b" }}>{p.status === "open" ? "مفتوحة" : p.status === "closed" ? "مقفلة" : "مؤقتة"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", p.status === "open" ? "bg-emerald-500/15 text-emerald-500" : p.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{p.status === "open" ? "مفتوحة" : p.status === "closed" ? "مقفلة" : "مؤقتة"}</span></td>
                   <td className={tdStyle}>{p.closedAt || "—"}</td>
                   <td className={tdStyle}>
                     <div className="flex items-center gap-1.5">
@@ -842,7 +842,7 @@ function CostCentersTable({ costCenters }: { costCenters: CostCenter[] }) {
                     <td className={tdStyle}>{cc.type}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{(cc.budget || 0).toLocaleString("ar-EG")}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{(cc.actual || 0).toLocaleString("ar-EG")}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: diff >= 0 ? "#10b981" : "#ef4444" }}>{diff.toLocaleString("ar-EG")}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", diff >= 0 ? "text-emerald-500" : "text-red-500")}>{diff.toLocaleString("ar-EG")}</td>
                   </tr>
                 );
               })}
@@ -933,7 +933,7 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
                   return (
                     <tr key={i} className="border-b border-border">
                       <td className={cn(tdStyle, "font-bold")}>{b.range}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: val > 0 ? (mode === "receivable" ? "#7c3aed" : "#f59e0b") : "#10b981" }}>{fmt(val)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", val > 0 ? (mode === "receivable" ? "text-violet-500" : "text-amber-500") : "text-emerald-500")}>{fmt(val)}</td>
                       <td className={tdStyle}>{b.count}</td>
                       <td className={cn(tdStyle, "text-end")}>{pct}%</td>
                     </tr>
@@ -943,7 +943,7 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted font-extrabold">
                   <td className={cn(tdStyle, "font-extrabold")}>الإجمالي</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: mode === "receivable" ? "#7c3aed" : "#f59e0b" }}>{fmt(mode === "receivable" ? totalAR : totalAP)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", mode === "receivable" ? "text-violet-500" : "text-amber-500")}>{fmt(mode === "receivable" ? totalAR : totalAP)}</td>
                   <td className={cn(tdStyle, "font-extrabold")}>{data.reduce((s, b) => s + b.count, 0)}</td>
                   <td className={cn(tdStyle, "font-extrabold text-end")}>100%</td>
                 </tr>
@@ -977,14 +977,14 @@ function BankAccountsList({ accounts, company, onRefresh }: { accounts: BankAcco
                   <td className={cn(tdStyle, "font-mono")} dir="ltr">{ba.accountNumber}</td>
                   <td className={cn(tdStyle, "font-mono text-[11px]")} dir="ltr">{ba.iban || "—"}</td>
                   <td className={tdStyle}>{ba.currency}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: ba.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(ba.balance)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", ba.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(ba.balance)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-border bg-muted font-extrabold">
                 <td className={cn(tdStyle, "font-extrabold")} colSpan={5}>إجمالي النقدية</td>
-                <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#10b981" }}>{fmt(accounts.reduce((s, ba) => s + ba.balance, 0))}</td>
+                <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-emerald-500">{fmt(accounts.reduce((s, ba) => s + ba.balance, 0))}</td>
               </tr>
             </tfoot>
           </table>
@@ -1065,7 +1065,7 @@ function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; gr
                 <td className={tdStyle}>{r.type}</td>
                 <td className={cn(tdStyle, "[direction:ltr] text-start")}>{r.totalDebit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
                 <td className={cn(tdStyle, "[direction:ltr] text-start")}>{r.totalCredit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
-                <td className={cn(tdStyle, "[direction:ltr] text-start font-bold text-muted-foreground")} style={{ color: r.balance > 0 ? "#10b981" : r.balance < 0 ? "#ef4444" : undefined }}>{r.balance.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+                <td className={cn(tdStyle, "[direction:ltr] text-start font-bold text-muted-foreground", r.balance > 0 ? "text-emerald-500" : r.balance < 0 ? "text-red-500" : "")}>{r.balance.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
               </tr>
             ))}
           </tbody>
@@ -1075,7 +1075,7 @@ function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; gr
               <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{data.grandDebit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{data.grandCredit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
               <td className={cn(tdStyle, "font-extrabold")}>
-                <span className="inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[11px] font-bold" style={{ background: data.isBalanced ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: data.isBalanced ? "#10b981" : "#ef4444" }}>
+                <span className={cn("inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
                   {data.isBalanced ? "متوازن ✓" : "غير متوازن ✗"}
                 </span>
               </td>
@@ -1228,7 +1228,7 @@ function fmt(n: number): string { return n.toLocaleString("ar-EG", { maximumFrac
 function StatementCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
   return (
     <div className="bg-card rounded-lg border border-border py-3.5 px-4 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-sm flex items-center justify-center" style={{ background: `${color}20`, color }}>{icon}</div>
+      <div className={cn("w-9 h-9 rounded-sm flex items-center justify-center", iconBadge)}>{icon}</div>
       <div><div className="text-[11px] text-muted-foreground">{label}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(value)}</div></div>
     </div>
   );
@@ -1245,7 +1245,7 @@ function ProfitLossView({ data }: { data: ProfitLossData }) {
       </div>
       <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
         <span className="text-[12px] text-muted-foreground">الفترة: {data.dateRange.from} ← {data.dateRange.to}</span>
-        <span className="text-[13px] font-bold">هامش الربح: <span style={{ color: parseFloat(data.margin) >= 10 ? "#10b981" : parseFloat(data.margin) >= 0 ? "#f59e0b" : "#ef4444" }}>{data.margin}</span></span>
+        <span className="text-[13px] font-bold">هامش الربح: <span className={cn(parseFloat(data.margin) >= 10 ? "text-emerald-500" : parseFloat(data.margin) >= 0 ? "text-amber-500" : "text-red-500")}>{data.margin}</span></span>
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         <div className="overflow-x-auto garfix-scroll">
@@ -1255,11 +1255,11 @@ function ProfitLossView({ data }: { data: ProfitLossData }) {
               {data.accounts.length === 0 ? <tr><td colSpan={4} className={cn(tdStyle, "text-center p-8 text-muted-foreground")}>لا توجد قيود مُرحّلة في هذه الفترة</td></tr> : data.accounts.map((a) => (
                 <tr key={a.code} className="border-b border-border">
                   <td className={cn(tdStyle, "font-mono")}>{a.code}</td><td className={cn(tdStyle, "font-bold")}>{a.nameAr}</td><td className={tdStyle}>{a.type}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-start font-bold")} style={{ color: a.amount >= 0 ? "#10b981" : "#ef4444" }}>{fmt(a.amount)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-start font-bold", a.amount >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(a.amount)}</td>
                 </tr>
               ))}
             </tbody>
-            <tfoot><tr className="border-t-2 border-border bg-muted font-extrabold"><td className={cn(tdStyle, "font-extrabold")} colSpan={3}>صافي الربح</td><td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")} style={{ color: data.netProfit >= 0 ? "#10b981" : "#ef4444" }}>{fmt(data.netProfit)}</td></tr></tfoot>
+            <tfoot><tr className="border-t-2 border-border bg-muted font-extrabold"><td className={cn(tdStyle, "font-extrabold")} colSpan={3}>صافي الربح</td><td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold", data.netProfit >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(data.netProfit)}</td></tr></tfoot>
           </table>
         </div>
       </div>
@@ -1278,7 +1278,7 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
       </div>
       <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
         <span className="text-[12px] text-muted-foreground">كما في: {data.asOf}</span>
-        <span className="py-[3px] px-2.5 rounded-lg text-[11px] font-bold" style={{ background: data.isBalanced ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: data.isBalanced ? "#10b981" : "#ef4444" }}>{data.isBalanced ? "متوازنة ✓" : "غير متوازنة ✗"}</span>
+        <span className={cn("py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{data.isBalanced ? "متوازنة ✓" : "غير متوازنة ✗"}</span>
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
         <BalanceSheetSection title="الأصول" accounts={data.assets.accounts} total={data.assets.total} color="#10b981" />
@@ -1292,15 +1292,15 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
 function BalanceSheetSection({ title, accounts, total, color }: { title: string; accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number; color: string }) {
   return (
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-      <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[13px]" style={{ background: `${color}10`, color }}>{title}</div>
+      <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px]", sectionBadge)}>{title}</div>
       <div className="overflow-x-auto garfix-scroll">
         <table className="w-full border-collapse">
           <tbody>
             {accounts.length === 0 ? <tr><td className={cn(tdStyle, "text-center p-5 text-muted-foreground")}>لا توجد حسابات</td></tr> : accounts.map((a) => (
-              <tr key={a.code} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{a.code}</td><td className={cn(tdStyle, "font-semibold")}>{a.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold")} style={{ color }}>{fmt(a.balance)}</td></tr>
+              <tr key={a.code} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{a.code}</td><td className={cn(tdStyle, "font-semibold")}>{a.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold", sectionText)}>{fmt(a.balance)}</td></tr>
             ))}
           </tbody>
-          <tfoot><tr className="border-t-2 border-border bg-muted font-extrabold"><td className={cn(tdStyle, "font-extrabold")} colSpan={2}>الإجمالي</td><td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")} style={{ color }}>{fmt(total)}</td></tr></tfoot>
+          <tfoot><tr className="border-t-2 border-border bg-muted font-extrabold"><td className={cn(tdStyle, "font-extrabold")} colSpan={2}>الإجمالي</td><td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold", sectionText)}>{fmt(total)}</td></tr></tfoot>
         </table>
       </div>
     </div>
@@ -1318,7 +1318,7 @@ function CashFlowView({ data }: { data: CashFlowData }) {
       </div>
       <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
         <span className="text-[12px] text-muted-foreground">الفترة: {data.dateRange.from} ← {data.dateRange.to}</span>
-        <span className="text-[13px] font-bold">التغير في النقد: <span className="[direction:ltr]" style={{ color: data.cashChange >= 0 ? "#10b981" : "#ef4444" }}>{fmt(data.cashChange)}</span></span>
+        <span className="text-[13px] font-bold">التغير في النقد: <span className={cn("[direction:ltr]", data.cashChange >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(data.cashChange)}</span></span>
       </div>
       <CashFlowSection title="الأنشطة التشغيلية" details={data.operating.details} net={data.operating.net} color="#10b981" />
       <CashFlowSection title="الأنشطة الاستثمارية" details={data.investing.details} net={data.investing.net} color="#3b82f6" />
@@ -1330,14 +1330,14 @@ function CashFlowView({ data }: { data: CashFlowData }) {
 function CashFlowSection({ title, details, net, color }: { title: string; details: Array<{ code: string; nameAr: string; amount: number }>; net: number; color: string }) {
   return (
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-      <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[13px] flex justify-between" style={{ background: `${color}10`, color }}>
-        <span>{title}</span><span className="[direction:ltr]" style={{ color: net >= 0 ? "#10b981" : "#ef4444" }}>{fmt(net)}</span>
+      <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px] flex justify-between", sectionBadge)}>
+        <span>{title}</span><span className={cn("[direction:ltr]", net >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(net)}</span>
       </div>
       <div className="overflow-x-auto garfix-scroll">
         <table className="w-full border-collapse">
           <tbody>
             {details.length === 0 ? <tr><td className={cn(tdStyle, "text-center p-5 text-muted-foreground")}>لا توجد حركات</td></tr> : details.map((d, i) => (
-              <tr key={`${d.code}-${i}`} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{d.code}</td><td className={cn(tdStyle, "font-semibold")}>{d.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold")} style={{ color: d.amount >= 0 ? "#10b981" : "#ef4444" }}>{fmt(d.amount)}</td></tr>
+              <tr key={`${d.code}-${i}`} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{d.code}</td><td className={cn(tdStyle, "font-semibold")}>{d.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold", d.amount >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(d.amount)}</td></tr>
             ))}
           </tbody>
         </table>
@@ -1459,10 +1459,10 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-3 py-2 px-3 rounded-sm text-[12px] font-bold" style={{ background: isBalanced ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)" }}>
+          <div className={cn("flex justify-between mt-3 py-2 px-3 rounded-sm text-[12px] font-bold", isBalanced ? "bg-emerald-500/10" : "bg-red-500/10")}>
             <span>مدين: <span className="[direction:ltr]">{totalDebit.toLocaleString("ar-EG")}</span></span>
             <span>دائن: <span className="[direction:ltr]">{totalCredit.toLocaleString("ar-EG")}</span></span>
-            <span style={{ color: isBalanced ? "#10b981" : "#ef4444" }}>{isBalanced ? "متوازن ✓" : "غير متوازن ✗"}</span>
+            <span className={cn(isBalanced ? "text-emerald-500" : "text-red-500")}>{isBalanced ? "متوازن ✓" : "غير متوازن ✗"}</span>
           </div>
         </div>
       </div>

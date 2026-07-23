@@ -303,46 +303,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     <div
       dir="rtl"
       onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        background: "rgba(8, 8, 16, 0.55)",
-        backdropFilter: "blur(6px)",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        padding: "8vh 16px 16px",
-      }}
+      className="fixed inset-0 z-[9999] bg-[rgba(8,8,16,0.55)] backdrop-blur-[6px] flex items-start justify-center pt-[8vh] px-4 pb-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "min(640px, 100%)",
-          maxHeight: "70vh",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: "16px",
-          overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "linear-gradient(180deg, #1a1a2e 0%, #16162a 60%, #12121f 100%)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(124,58,237,0.18)",
-          color: "#f5f5fa",
-          fontFamily: "inherit",
-        }}
+        className="w-[min(640px,100%)] max-h-[70vh] flex flex-col rounded-2xl overflow-hidden border border-white/[0.08] bg-[linear-gradient(180deg,#1a1a2e_0%,#16162a_60%,#12121f_100%)] shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(124,58,237,0.18)] text-[#f5f5fa] font-[inherit]"
       >
         {/* Search input */}
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "14px 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(124,58,237,0.06)",
-          }}
+          className="flex items-center gap-[10px] py-[14px] px-4 border-b border-white/[0.06] bg-[rgba(124,58,237,0.06)]"
         >
-          <Search size={18} style={{ color: "#a78bfa", flexShrink: 0 }} />
+          <Search size={18} className="text-[#a78bfa] shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -350,30 +321,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={onKeyDown}
             placeholder="ابحث عن صفحة، إجراء، فاتورة أو عميل… (مثال: فوا)"
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "#f5f5fa",
-              fontSize: "15px",
-              fontFamily: "inherit",
-              direction: "rtl",
-            }}
+            className="flex-1 bg-transparent border-none outline-none text-[#f5f5fa] text-[15px] font-[inherit] [direction:rtl]"
           />
           <button
             onClick={onClose}
             title="إغلاق (Esc)"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "none",
-              color: "#9ca3af",
-              cursor: "pointer",
-              borderRadius: "6px",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-            }}
+            className="bg-white/[0.06] border-none text-[#9ca3af] cursor-pointer rounded-md p-1 flex items-center"
           >
             <X size={14} />
           </button>
@@ -382,23 +335,18 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         {/* Results */}
         <div
           ref={listRef}
-          style={{
-            overflowY: "auto",
-            flex: 1,
-            padding: "6px",
-          }}
-          className="garfix-scroll"
+          className="overflow-y-auto flex-1 p-[6px] garfix-scroll"
         >
           {loading && (
-            <div style={{ padding: "20px", textAlign: "center", fontSize: "13px", color: "#9ca3af" }}>
+            <div className="p-5 text-center text-[13px] text-[#9ca3af]">
               جارٍ البحث…
             </div>
           )}
 
           {!loading && isEmpty && (
-            <div style={{ padding: "32px 20px", textAlign: "center", color: "#9ca3af" }}>
-              <Search size={28} style={{ opacity: 0.4, marginBottom: "8px" }} />
-              <div style={{ fontSize: "13px" }}>
+            <div className="py-8 px-5 text-center text-[#9ca3af]">
+              <Search size={28} className="opacity-40 mb-2" />
+              <div className="text-[13px]">
                 {query.trim().length === 0
                   ? "ابدأ بالكتابة للبحث أو اختر من القائمة"
                   : "لا توجد نتائج مطابقة"}
@@ -410,16 +358,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             const sectionResults = results.filter((r) => r.section === section);
             if (sectionResults.length === 0) return null;
             return (
-              <div key={section} style={{ marginBottom: "4px" }}>
+              <div key={section} className="mb-1">
                 <div
-                  style={{
-                    padding: "8px 12px 4px",
-                    fontSize: "10px",
-                    fontWeight: 800,
-                    color: "#7c3aed",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.6px",
-                  }}
+                  className="pt-2 px-3 pb-1 text-[10px] font-extrabold text-[#7c3aed] uppercase tracking-[0.6px]"
                 >
                   {sectionLabels[section]}
                 </div>
@@ -434,50 +375,21 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       data-idx={idx}
                       onClick={() => r.onSelect()}
                       onMouseEnter={() => setSelectedIndex(idx)}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        padding: "9px 12px",
-                        borderRadius: "10px",
-                        background: isSelected ? "rgba(124,58,237,0.18)" : "transparent",
-                        border: "none",
-                        color: isSelected ? "#f5f5fa" : "#cbd5e1",
-                        fontFamily: "inherit",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        textAlign: "right",
-                        transition: "background 120ms ease",
-                      }}
+                      className={`w-full flex items-center gap-[10px] py-[9px] px-3 rounded-[10px] ${isSelected ? "bg-[rgba(124,58,237,0.18)]" : "bg-transparent"} border-none font-[inherit] text-[13px] cursor-pointer text-right transition-[background_120ms_ease] ${isSelected ? "text-[#f5f5fa]" : "text-[#cbd5e1]"}`}
                     >
-                      <Icon size={15} style={{ color: isSelected ? "#a78bfa" : "#6b7280", flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontWeight: 600,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          direction: r.section === "invoices" ? "ltr" : "rtl",
-                          textAlign: r.section === "invoices" ? "left" : "right",
-                          fontFamily: r.section === "invoices" ? "monospace" : "inherit",
-                        }}>
+                      <Icon size={15} className={`shrink-0 ${isSelected ? "text-[#a78bfa]" : "text-[#6b7280]"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-semibold truncate ${r.section === "invoices" ? "[direction:ltr] text-left font-mono" : "text-right font-[inherit]"}`}>
                           {r.label}
                         </div>
                         {r.sublabel && (
-                          <div style={{
-                            fontSize: "11px",
-                            color: "#9ca3af",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}>
+                          <div className="text-[11px] text-[#9ca3af] truncate">
                             {r.sublabel}
                           </div>
                         )}
                       </div>
                       {isSelected && (
-                        <CornerDownLeft size={13} style={{ color: "#a78bfa", flexShrink: 0 }} />
+                        <CornerDownLeft size={13} className="text-[#a78bfa] shrink-0" />
                       )}
                     </button>
                   );
@@ -489,34 +401,23 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
         {/* Footer hint */}
         <div
-          style={{
-            padding: "8px 14px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(0,0,0,0.2)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontSize: "10px",
-            color: "#6b7280",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
+          className="py-2 px-[14px] border-t border-white/[0.06] bg-[rgba(0,0,0,0.2)] flex items-center justify-between text-[10px] text-[#6b7280] gap-2 flex-wrap"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1">
               <Kbd><ArrowUp size={9} /><ArrowDown size={9} /></Kbd>
               تنقل
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+            <span className="inline-flex items-center gap-1">
               <Kbd>Enter</Kbd>
               اختيار
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+            <span className="inline-flex items-center gap-1">
               <Kbd>Esc</Kbd>
               إغلاق
             </span>
           </div>
-          <span style={{ color: "#7c3aed", fontWeight: 700 }}>GarfiX ⌘K</span>
+          <span className="text-[#7c3aed] font-bold">GarfiX ⌘K</span>
         </div>
       </div>
     </div>
@@ -526,20 +427,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
     <kbd
-      style={{
-        background: "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: "4px",
-        padding: "1px 5px",
-        fontSize: "10px",
-        fontFamily: "monospace",
-        color: "#cbd5e1",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "2px",
-        minWidth: "16px",
-        justifyContent: "center",
-      }}
+      className="bg-white/[0.08] border border-white/[0.12] rounded py-[1px] px-[5px] text-[10px] font-mono text-[#cbd5e1] inline-flex items-center gap-[2px] min-w-[16px] justify-center"
     >
       {children}
     </kbd>

@@ -34,11 +34,11 @@ function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
 }
 
-const LC_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  issued:    { label: "مصدرة",       color: "#3b82f6" },
-  amended:   { label: "معدّلة",      color: "#f59e0b" },
-  utilized:  { label: "مستخدمة",     color: "#10b981" },
-  expired:   { label: "منتهية",      color: "#ef4444" },
+const LC_STATUS_MAP: Record<string, { label: string; badge: string }> = {
+  issued:    { label: "مصدرة",       badge: "bg-blue-500/15 text-blue-500" },
+  amended:   { label: "معدّلة",      badge: "bg-amber-500/15 text-amber-500" },
+  utilized:  { label: "مستخدمة",     badge: "bg-emerald-500/15 text-emerald-500" },
+  expired:   { label: "منتهية",      badge: "bg-red-500/15 text-red-500" },
 };
 
 /* ─── Main Component ────────────────────────────────────────────────────────── */
@@ -222,7 +222,7 @@ export function TradeFinanceView() {
                 </tr></thead>
                 <tbody>
                   {lcs.map((lc) => {
-                    const st = LC_STATUS_MAP[lc.status] || { label: lc.status, color: "#999" };
+                    const st = LC_STATUS_MAP[lc.status] || { label: lc.status, badge: "bg-gray-500/15 text-gray-500" };
                     return (
                       <tr key={lc.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-mono font-bold")}>{lc.lcNumber}</td>
@@ -233,7 +233,7 @@ export function TradeFinanceView() {
                         <td className={tdStyle}>{lc.issueDate}</td>
                         <td className={tdStyle}>{lc.expiryDate}</td>
                         <td className={tdStyle}>
-                          <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }}>{st.label}</span>
+                          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", st.badge)}>{st.label}</span>
                         </td>
                       </tr>
                     );
@@ -295,14 +295,14 @@ export function TradeFinanceView() {
                 const totalUnrealizedGain = fxEntries.reduce((s, f) => s + f.unrealizedGain, 0);
                 const totalUnrealizedLoss = fxEntries.reduce((s, f) => s + f.unrealizedLoss, 0);
                 return [
-                  { label: "أرباح محققة", value: totalRealizedGain, color: "#10b981", icon: <TrendingUp size={16} /> },
-                  { label: "خسائر محققة", value: totalRealizedLoss, color: "#ef4444", icon: <TrendingDown size={16} /> },
-                  { label: "أرباح غير محققة", value: totalUnrealizedGain, color: "#3b82f6", icon: <TrendingUp size={16} /> },
-                  { label: "خسائر غير محققة", value: totalUnrealizedLoss, color: "#f59e0b", icon: <TrendingDown size={16} /> },
+                  { label: "أرباح محققة", value: totalRealizedGain, badgeClass: "bg-emerald-500/20 text-emerald-500", textClass: "text-emerald-500", icon: <TrendingUp size={16} /> },
+                  { label: "خسائر محققة", value: totalRealizedLoss, badgeClass: "bg-red-500/20 text-red-500", textClass: "text-red-500", icon: <TrendingDown size={16} /> },
+                  { label: "أرباح غير محققة", value: totalUnrealizedGain, badgeClass: "bg-blue-500/20 text-blue-500", textClass: "text-blue-500", icon: <TrendingUp size={16} /> },
+                  { label: "خسائر غير محققة", value: totalUnrealizedLoss, badgeClass: "bg-amber-500/20 text-amber-500", textClass: "text-amber-500", icon: <TrendingDown size={16} /> },
                 ].map((m, i) => (
                   <div key={i} className="bg-background rounded-[10px] border border-border p-3 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: `${m.color}20`, color: m.color }}>{m.icon}</div>
-                    <div><p className="text-[11px] text-muted-foreground">{m.label}</p><p className="text-[15px] font-bold" style={{ color: m.color }}>{fmt(m.value)}</p></div>
+                    <div className={cn("w-8 h-8 rounded-md flex items-center justify-center", m.badgeClass)}>{m.icon}</div>
+                    <div><p className="text-[11px] text-muted-foreground">{m.label}</p><p className={cn("text-[15px] font-bold", m.textClass)}>{fmt(m.value)}</p></div>
                   </div>
                 ));
               })()}
@@ -323,11 +323,11 @@ export function TradeFinanceView() {
                       <td className={tdStyle}>{fx.toCurrency}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-mono")}>{fx.rate}</td>
                       <td className={tdStyle}>{fx.period}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#10b981" }}>{fmt(fx.realizedGain)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#ef4444" }}>{fmt(fx.realizedLoss)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#3b82f6" }}>{fmt(fx.unrealizedGain)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: "#f59e0b" }}>{fmt(fx.unrealizedLoss)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: fx.netEffect >= 0 ? "#10b981" : "#ef4444" }}>{fmt(fx.netEffect)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-emerald-500">{fmt(fx.realizedGain)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-red-500">{fmt(fx.realizedLoss)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-blue-500">{fmt(fx.unrealizedGain)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-amber-500">{fmt(fx.unrealizedLoss)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", fx.netEffect >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(fx.netEffect)}</td>
                     </tr>
                   ))}
                 </tbody>

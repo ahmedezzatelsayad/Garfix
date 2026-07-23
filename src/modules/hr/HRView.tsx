@@ -278,7 +278,7 @@ function EmployeesTable({ selectedIds, toggleRow, handleDelete, handleEdit, page
               <td className={tdStyle}>{e.department || "—"}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.baseSalary.toLocaleString("ar-EG")} {e.currency}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.phone || "—"}</td>
-              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: e.isActive ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: e.isActive ? "#10b981" : "#ef4444", fontSize: "11px", fontWeight: 700 }}>{e.isActive ? "نشط" : "موقوف"}</span></td>
+              <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-xl text-[11px] font-bold", e.isActive ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{e.isActive ? "نشط" : "موقوف"}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
                   <button onClick={() => handleEdit({ _tag: "employees", data: e })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
@@ -315,7 +315,7 @@ function AttendanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pag
               <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(a.id)} ariaLabel="تحديد" /></td>
               <td className={cn(tdStyle, "font-bold")}>{empName(employees, a.employeeId)}</td>
               <td className={tdStyle}>{a.date}</td>
-              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
+              <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-xl text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }} /* TAILWINDBREAK: dynamic color */>{st.label}</span></td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkIn || "—"}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkOut || "—"}</td>
               <td className={tdStyle}>
@@ -354,7 +354,7 @@ function SalariesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageI
               <td className={cn(tdStyle, "[direction:ltr] text-end text-[#ef4444]")}>-{s.deductions.toLocaleString("ar-EG")}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>+{s.bonus.toLocaleString("ar-EG")}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{s.netSalary.toLocaleString("ar-EG")}</td>
-              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: s.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: s.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{s.isPaid ? "مدفوع" : "معلّق"}</span></td>
+              <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-xl text-[11px] font-bold", s.isPaid ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{s.isPaid ? "مدفوع" : "معلّق"}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
                   <button onClick={() => handleEdit({ _tag: "salaries", data: s })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
@@ -388,7 +388,7 @@ function CommissionsTable({ selectedIds, toggleRow, handleDelete, handleEdit, pa
               <td className={tdStyle}>{c.type}</td>
               <td className={tdStyle}>{c.description || "—"}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-end font-bold text-[#10b981]")}>{c.amount.toLocaleString("ar-EG")}</td>
-              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: c.isPaid ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: c.isPaid ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{c.isPaid ? "مدفوع" : "معلّق"}</span></td>
+              <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-xl text-[11px] font-bold", c.isPaid ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{c.isPaid ? "مدفوع" : "معلّق"}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
                   <button onClick={() => handleEdit({ _tag: "commissions", data: c })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
@@ -427,7 +427,7 @@ function LeavesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageIte
               <td className={tdStyle}>{l.startDate}</td>
               <td className={tdStyle}>{l.endDate}</td>
               <td className={tdStyle}>{l.days}</td>
-              <td className={tdStyle}><span style={{ padding: "2px 10px", borderRadius: "12px", background: `${st.color}20`, color: st.color, fontSize: "11px", fontWeight: 700 }}>{st.label}</span></td>
+              <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-xl text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }} /* TAILWINDBREAK: dynamic color */>{st.label}</span></td>
               <td className={tdStyle}>
                 <div className={actionsCell}>
                   <button onClick={() => handleEdit({ _tag: "leaves", data: l })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>

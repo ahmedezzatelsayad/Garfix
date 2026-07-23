@@ -362,9 +362,9 @@ export function InvoicesView() {
                       <td className="py-3 px-3">
                         <span
                           className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                          style={{ background: st.bg, color: st.color }}
+                          style={{ background: st.bg, color: st.color }} /* TAILWINDBREAK: dynamic color */
                         >
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} />
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} /* TAILWINDBREAK: dynamic color */ />
                           {st.label}
                         </span>
                       </td>
@@ -396,7 +396,7 @@ export function InvoicesView() {
 
           {/* Mobile compact list — 2-line items, tap to open preview.
               Actions live in the preview panel. Currency shown alongside amount. */}
-          <div className="md:hidden flex flex-col divide-y divide-border" style={{ paddingBottom: "var(--ai-bubble-safe-area)" }}>
+          <div className="md:hidden flex flex-col divide-y divide-border pb-[var(--ai-bubble-safe-area)]">
             {currentPageInvoices.map((inv) => {
               const st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999" };
               const checked = selectedIds.has(inv.id);
@@ -422,7 +422,7 @@ export function InvoicesView() {
                       <span className="font-bold font-mono text-[13px] truncate leading-tight">{inv.invoiceNumber}</span>
                       <span
                         className="inline-block py-0.5 px-2 rounded-[10px] text-[10px] font-bold flex-shrink-0"
-                        style={{ background: st.bg, color: st.color }}
+                        style={{ background: st.bg, color: st.color }} /* TAILWINDBREAK: dynamic color */
                       >
                         {st.label}
                       </span>
@@ -522,13 +522,13 @@ function KpiCard({ label, value, sub, color, icon }: { label: string; value: str
     <div className="bg-white rounded-[14px] border border-gray-200 p-3.5 flex items-center gap-3 hover:shadow-card-hover transition-all shadow-card">
       <div
         className="flex-shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center"
-        style={{ background: `${color}1a`, color }}
+        style={{ background: `${color}1a`, color }} /* TAILWINDBREAK: dynamic color */
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[11px] text-gray-500 font-medium truncate">{label}</div>
-        <div className="text-[16px] font-extrabold leading-tight [direction:ltr] truncate" style={{ color }}>
+        <div className="text-[16px] font-extrabold leading-tight [direction:ltr] truncate" style={{ color }} /* TAILWINDBREAK: dynamic color */>
           {value}
         </div>
         <div className="text-[10px] text-gray-400 truncate">{sub}</div>
@@ -879,8 +879,7 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="invoice-print-area bg-white text-[#111] rounded-lg p-6 md:p-10 max-w-[95vw] md:max-w-[800px] w-full max-h-[90vh] overflow-y-auto [direction:rtl]"
-        style={{ fontFamily: "var(--font-cairo), sans-serif" }}
+        className="invoice-print-area bg-white text-[#111] rounded-lg p-6 md:p-10 max-w-[95vw] md:max-w-[800px] w-full max-h-[90vh] overflow-y-auto [direction:rtl] [font-family:var(--font-cairo),sans-serif]"
       >
         <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-[#7c3aed]">
           <div>

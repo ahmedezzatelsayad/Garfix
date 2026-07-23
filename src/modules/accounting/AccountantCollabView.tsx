@@ -36,10 +36,10 @@ function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
 }
 
-const ACCESS_LEVEL_MAP: Record<string, { label: string; color: string; icon: React.ComponentType<{ size?: number }> }> = {
-  read_only:   { label: "قراءة فقط",      color: "#3b82f6", icon: Eye },
-  limited_edit: { label: "تعديل محدود",   color: "#f59e0b", icon: Pencil },
-  full_edit:    { label: "تعديل كامل",    color: "#ef4444", icon: Lock },
+const ACCESS_LEVEL_MAP: Record<string, { label: string; badge: string; icon: React.ComponentType<{ size?: number }> }> = {
+  read_only:   { label: "قراءة فقط",      badge: "bg-blue-500/20 text-blue-500", icon: Eye },
+  limited_edit: { label: "تعديل محدود",   badge: "bg-amber-500/20 text-amber-500", icon: Pencil },
+  full_edit:    { label: "تعديل كامل",    badge: "bg-red-500/20 text-red-500", icon: Lock },
 };
 
 const EXPORT_TYPE_MAP: Record<string, { label: string; desc: string }> = {
@@ -206,7 +206,7 @@ export function AccountantCollabView() {
                 const Icon = val.icon;
                 return (
                   <div key={key} className={cn("rounded-[10px] border border-border p-3 flex items-center gap-2 cursor-pointer transition-colors", accLevel === key ? "border-primary/50 bg-primary/5" : "")} onClick={() => setAccLevel(key)}>
-                    <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ background: `${val.color}20`, color: val.color }}><Icon size={16} /></div>
+                    <div className={cn("w-8 h-8 rounded-md flex items-center justify-center", val.badge)}><Icon size={16} /></div>
                     <div><p className="text-[13px] font-bold">{val.label}</p>
                       {key === "read_only" && <p className="text-[11px] text-muted-foreground">عرض البيانات فقط</p>}
                       {key === "limited_edit" && <p className="text-[11px] text-muted-foreground">تعديل القيود والحسابات</p>}
@@ -232,18 +232,18 @@ export function AccountantCollabView() {
                 </tr></thead>
                 <tbody>
                   {accessList.map((a) => {
-                    const lv = ACCESS_LEVEL_MAP[a.accessLevel] || { label: a.accessLevel, color: "#999", icon: Eye };
+                    const lv = ACCESS_LEVEL_MAP[a.accessLevel] || { label: a.accessLevel, badge: "bg-gray-500/20 text-gray-500", icon: Eye };
                     const LvIcon = lv.icon;
                     return (
                       <tr key={a.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-bold")}>{a.accountantName}</td>
                         <td className={cn(tdStyle, "font-mono")}>{a.accountantEmail}</td>
                         <td className={tdStyle}>
-                          <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold inline-flex items-center gap-1" style={{ background: `${lv.color}20`, color: lv.color }}><LvIcon size={12} /> {lv.label}</span>
+                          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold inline-flex items-center gap-1", lv.badge)}><LvIcon size={12} /> {lv.label}</span>
                         </td>
                         <td className={tdStyle}>{a.grantedAt}</td>
                         <td className={tdStyle}>
-                          <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: a.active ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: a.active ? "#10b981" : "#ef4444" }}>{a.active ? "نشط" : "معطل"}</span>
+                          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.active ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{a.active ? "نشط" : "معطل"}</span>
                         </td>
                         <td className={tdStyle}>
                           {a.active && (
@@ -315,10 +315,7 @@ export function AccountantCollabView() {
                       <tr key={e.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-bold")}>{e.userName}</td>
                         <td className={tdStyle}>
-                          <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{
-                            background: e.action === "create" ? "rgba(16,185,129,0.15)" : e.action === "update" ? "rgba(59,130,246,0.15)" : e.action === "delete" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
-                            color: e.action === "create" ? "#10b981" : e.action === "update" ? "#3b82f6" : e.action === "delete" ? "#ef4444" : "#f59e0b",
-                          }}>{e.action === "create" ? "إنشاء" : e.action === "update" ? "تعديل" : e.action === "delete" ? "حذف" : e.action === "approve" ? "اعتماد" : e.action === "reverse" ? "عكس" : e.action}</span>
+                          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.action === "create" ? "bg-emerald-500/15 text-emerald-500" : e.action === "update" ? "bg-blue-500/15 text-blue-500" : e.action === "delete" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{e.action === "create" ? "إنشاء" : e.action === "update" ? "تعديل" : e.action === "delete" ? "حذف" : e.action === "approve" ? "اعتماد" : e.action === "reverse" ? "عكس" : e.action}</span>
                         </td>
                         <td className={tdStyle}>{e.entity}{e.entityId ? ` #${e.entityId}` : ""}</td>
                         <td className={cn(tdStyle, "max-w-[150px] overflow-hidden text-ellipsis")} title={e.before || ""}>{e.before ? <span className="text-[11px] text-muted-foreground font-mono">{e.before.substring(0, 50)}…</span> : "—"}</td>

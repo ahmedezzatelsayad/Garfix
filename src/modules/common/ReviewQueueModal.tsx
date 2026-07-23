@@ -232,7 +232,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
                         style={{
                           background: `${tierColor(it.tier)}20`,
                           color: tierColor(it.tier),
-                        }}
+                        }} /* TAILWINDBREAK: dynamic tier color from function */
                       >
                         {(it.confidence * 100).toFixed(0)}%
                       </span>

@@ -216,7 +216,7 @@ function ChartTooltipContent({
                             "--color-bg": indicatorColor,
                             "--color-border": indicatorColor,
                           } as React.CSSProperties
-                        }
+                        } /* TAILWINDBREAK: dynamic CSS custom properties for chart indicator colors */
                       />
                     )
                   )}
@@ -293,7 +293,7 @@ function ChartLegendContent({
                 className="h-2 w-2 shrink-0 rounded-[2px]"
                 style={{
                   backgroundColor: item.color,
-                }}
+                }} /* TAILWINDBREAK: dynamic chart item color from recharts payload */
               />
             )}
             {itemConfig?.label}

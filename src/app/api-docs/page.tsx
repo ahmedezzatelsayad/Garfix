@@ -309,7 +309,7 @@ export default function ApiDocsPage() {
             >
               <span
                 className="inline-block w-2 h-2 rounded-full mr-1"
-                style={{ backgroundColor: TAG_COLORS[tag] || "#999" }}
+                style={{ backgroundColor: TAG_COLORS[tag] || "#999" }} /* TAILWINDBREAK: dynamic tag color from TAG_COLORS map */
               />
               {isRtl
                 ? API_ENDPOINTS.find((e) => e.tag === tag)?.tagAr || tag
@@ -370,7 +370,7 @@ export default function ApiDocsPage() {
                   className="inline-block w-2 h-2 rounded-full"
                   style={{
                     backgroundColor: TAG_COLORS[ep.tag] || "#999",
-                  }}
+                  }} /* TAILWINDBREAK: dynamic tag color from TAG_COLORS map */
                 />
                 {ep.authRequired && (
                   <span className="text-xs text-amber-600 font-medium">

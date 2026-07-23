@@ -251,8 +251,7 @@ export function AiProviderSettings() {
                   )}
                 >
                   <span
-                    className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-[left] duration-150"
-                    style={{ left: c.isEnabled ? "22px" : "2px" }}
+                    className={cn("absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-[left] duration-150", c.isEnabled ? "left-[22px]" : "left-[2px]")}
                   />
                 </button>
               </div>

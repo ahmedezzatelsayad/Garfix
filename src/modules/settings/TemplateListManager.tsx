@@ -208,7 +208,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                       <td className="px-3 py-2.5">{LAYOUT_TYPES.find((l) => l.id === t.layoutType)?.label || t.layoutType}</td>
                       <td className="px-3 py-2.5">
                         <span className="inline-flex items-center gap-1.5">
-                          <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ background: t.primaryColor }} />
+                          <span className="inline-block w-4 h-4 rounded-full border border-border" style={{ background: t.primaryColor }} /* TAILWINDBREAK: dynamic template primary color */ />
                           <span className="font-mono text-[11px]" dir="ltr">{t.primaryColor}</span>
                         </span>
                       </td>
@@ -216,7 +216,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                       <td className="px-3 py-2.5 text-xs">{t.paperSize}</td>
                       <td className="px-3 py-2.5">
                         {t.isDefault ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "#10b98120", color: "#10b981" }}>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500">
                             افتراضي
                           </span>
                         ) : <span className="text-muted-foreground text-xs">—</span>}

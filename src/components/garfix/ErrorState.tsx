@@ -15,36 +15,18 @@ export interface ErrorStateProps {
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div style={{ padding: "48px", textAlign: "center" }}>
+    <div className="p-12 text-center">
       <AlertCircle
         size={36}
-        style={{ color: "var(--destructive)", marginBottom: "12px" }}
+        className="text-[var(--destructive)] mb-3"
       />
-      <div
-        style={{
-          fontSize: "14px",
-          fontWeight: 700,
-          color: "var(--foreground)",
-          marginBottom: "4px",
-        }}
-      >
+      <div className="text-sm font-bold text-[var(--foreground)] mb-1">
         {message}
       </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          style={{
-            marginTop: "12px",
-            padding: "8px 16px",
-            borderRadius: "8px",
-            background: "var(--primary)",
-            color: "var(--primary-foreground)",
-            border: "none",
-            fontFamily: "inherit",
-            fontSize: "12px",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          className="mt-3 py-2 px-4 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer"
         >
           حاول تاني
         </button>

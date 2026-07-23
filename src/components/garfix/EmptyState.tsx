@@ -18,28 +18,15 @@ export interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div
-      style={{
-        padding: "48px",
-        textAlign: "center",
-        color: "var(--muted-foreground)",
-      }}
-    >
-      <div style={{ marginBottom: "12px", opacity: 0.3 }}>
+    <div className="p-12 text-center text-[var(--muted-foreground)]">
+      <div className="mb-3 opacity-30">
         {icon || <Inbox size={36} />}
       </div>
-      <div
-        style={{
-          fontSize: "14px",
-          fontWeight: 700,
-          marginBottom: "4px",
-          color: "var(--foreground)",
-        }}
-      >
+      <div className="text-sm font-bold mb-1 text-[var(--foreground)]">
         {title}
       </div>
-      {description && <div style={{ fontSize: "12px" }}>{description}</div>}
-      {action && <div style={{ marginTop: "16px" }}>{action}</div>}
+      {description && <div className="text-xs">{description}</div>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

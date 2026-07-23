@@ -244,12 +244,12 @@ export function PlatformAdminPanel() {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4">
       <div>
         <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}><Shield size={20} /> لوحة المؤسس</h1>
-        <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>إدارة شاملة للمنصة</p>
+        <p className="text-[13px] text-[var(--muted-foreground)]">إدارة شاملة للمنصة</p>
       </div>
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }} className="garfix-scroll">
+      <div className="garfix-scroll flex gap-1.5 flex-wrap">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: tab === t.key ? "var(--primary)" : "var(--card)", color: tab === t.key ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             {t.icon} {t.label}
@@ -257,23 +257,23 @@ export function PlatformAdminPanel() {
         ))}
       </div>
 
-      {loading ? <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div> : (
+      {loading ? <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div> : (
         <>
           {tab === "stats" && !stats && (
-            <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>تعذّر تحميل الإحصائيات. تحقّق من صلاحيات المؤسس.</div>
+            <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل الإحصائيات. تحقّق من صلاحيات المؤسس.</div>
           )}
           {tab === "stats" && stats && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
                 <KpiCard label="إجمالي المستأجرين" value={stats.tenantsCount} color="#7c3aed" />
                 <KpiCard label="المستخدمون" value={stats.usersCount} color="#10b981" />
                 <KpiCard label="الفواتير" value={stats.invoicesCount} color="#3b82f6" />
                 <KpiCard label="تذاكر مفتوحة" value={stats.ticketsOpen} color="#f59e0b" />
                 <KpiCard label="إجمالي الإيرادات" value={stats.totalRevenue.toLocaleString("ar-EG", { maximumFractionDigits: 0 })} color="#ef4444" />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
-                <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", padding: "20px" }}>
-                  <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "12px" }}>نمو المستأجرين (6 أشهر)</h3>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
+                <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-5">
+                  <h3 className="text-sm font-bold mb-3">نمو المستأجرين (6 أشهر)</h3>
                   {stats.monthlyGrowth && stats.monthlyGrowth.length > 0 ? (
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={stats.monthlyGrowth}>
@@ -285,11 +285,11 @@ export function PlatformAdminPanel() {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>لا توجد بيانات</div>
+                    <div className="h-[220px] flex items-center justify-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات</div>
                   )}
                 </div>
-                <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", padding: "20px" }}>
-                  <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "12px" }}>توزيع الباقات</h3>
+                <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-5">
+                  <h3 className="text-sm font-bold mb-3">توزيع الباقات</h3>
                   {pieData.length > 0 && pieTotal > 0 ? (
                     <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
@@ -301,18 +301,18 @@ export function PlatformAdminPanel() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>لا توجد بيانات</div>
+                    <div className="h-[220px] flex items-center justify-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات</div>
                   )}
                 </div>
               </div>
             </>
           )}
           {tab === "tenants" && (
-            <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               {/* Part 3: Desktop table (hidden on mobile) */}
-              <div className="hidden md:block" style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "var(--muted)" }}>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                  <thead><tr className="bg-[var(--muted)]">
                     <th style={th}>الشركة</th><th style={th}>الباقة</th><th style={th}>الفواتير</th>
                     <th style={th}>المستخدمون</th><th style={th}>العملاء</th><th style={th}>الإيراد</th>
                     <th style={th}>استهلاك الباقة</th>
@@ -321,7 +321,7 @@ export function PlatformAdminPanel() {
                   <tbody>
                     {tenants.length === 0 ? <tr><td colSpan={8} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد مستأجرون</td></tr> :
                       currentPageTenants.map((t) => (
-                        <tr key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <tr className="border-b border-b-[var(--border)]" key={t.id}>
                           <td style={{ ...td, fontWeight: 700 }}>{t.emoji} {t.nameAr || t.name}</td>
                           <td style={td}>{t.plan}</td>
                           <td style={td}>{t.stats.invoices}</td>
@@ -331,7 +331,7 @@ export function PlatformAdminPanel() {
                           <td style={td}>
                             {/* P1.8 fix: usage-vs-plan visualization. */}
                             {t.planLimits ? (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: "120px" }}>
+                              <div className="flex flex-col gap-1 min-w-[120px]">
                                 <UtilizationBar
                                   label="فواتير"
                                   current={t.stats.invoices}
@@ -346,11 +346,11 @@ export function PlatformAdminPanel() {
                                 />
                               </div>
                             ) : (
-                              <span style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>—</span>
+                              <span className="text-[11px] text-[var(--muted-foreground)]">—</span>
                             )}
                           </td>
                           <td style={td}>
-                            <div style={{ display: "flex", gap: "4px" }}>
+                            <div className="flex gap-1">
                               <button
                                 onClick={() => setSelectedTenantSlug(t.slug)}
                                 title="عرض الدعم (Support View)"
@@ -430,9 +430,9 @@ export function PlatformAdminPanel() {
                 )}
               </div>
               {tenants.length > adminPageSize && (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: "8px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>صفحة {tenantsSafePage} من {tenantsTotalPages} ({tenants.length} مستأجر)</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div className="flex justify-between items-center px-4 py-3 border-t border-t-[var(--border)] flex-wrap gap-2">
+                  <span className="text-xs text-[var(--muted-foreground)]">صفحة {tenantsSafePage} من {tenantsTotalPages} ({tenants.length} مستأجر)</span>
+                  <div className="flex items-center gap-1.5">
                     <button onClick={() => setTenantsPage((p) => Math.max(1, p - 1))} disabled={tenantsSafePage === 1} style={adminPageBtnStyle(tenantsSafePage === 1)}>السابق</button>
                     <button onClick={() => setTenantsPage((p) => Math.min(tenantsTotalPages, p + 1))} disabled={tenantsSafePage === tenantsTotalPages} style={adminPageBtnStyle(tenantsSafePage === tenantsTotalPages)}>التالي</button>
                   </div>
@@ -451,21 +451,21 @@ export function PlatformAdminPanel() {
             </div>
           )}
           {tab === "announcements" && (
-            <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ fontSize: "14px", fontWeight: 700 }}>الإعلانات ({announcements.length})</h3>
+            <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center">
+                <h3 className="text-sm font-bold">الإعلانات ({announcements.length})</h3>
                 <button onClick={() => setShowAnnouncementForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}><Plus size={12} /> إعلان جديد</button>
               </div>
               {showAnnouncementForm && <AnnouncementForm onClose={() => setShowAnnouncementForm(false)} onSaved={() => { setShowAnnouncementForm(false); load(); }} />}
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "var(--muted)" }}>
+              <div className="garfix-scroll overflow-x-auto">
+                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                  <thead><tr className="bg-[var(--muted)]">
                     <th style={th}>العنوان</th><th style={th}>النوع</th><th style={th}>الحالة</th><th style={th}>التاريخ</th>
                   </tr></thead>
                   <tbody>
                     {announcements.length === 0 ? <tr><td colSpan={4} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد إعلانات</td></tr> :
                       announcements.map((a) => (
-                        <tr key={a.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <tr className="border-b border-b-[var(--border)]" key={a.id}>
                           <td style={{ ...td, fontWeight: 700 }}>{a.title}</td>
                           <td style={td}>{a.type}</td>
                           <td style={td}><span style={{ padding: "2px 10px", borderRadius: "12px", background: a.isActive ? "rgba(16,185,129,0.15)" : "rgba(156,163,175,0.15)", color: a.isActive ? "#10b981" : "#9ca3af", fontSize: "11px", fontWeight: 700 }}>{a.isActive ? "نشط" : "موقوف"}</span></td>
@@ -479,17 +479,17 @@ export function PlatformAdminPanel() {
             </div>
           )}
           {tab === "tickets" && (
-            <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "var(--muted)" }}>
+            <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+              <div className="garfix-scroll overflow-x-auto">
+                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                  <thead><tr className="bg-[var(--muted)]">
                     <th style={th}>المستخدم</th><th style={th}>الموضوع</th><th style={th}>الأولوية</th>
                     <th style={th}>الحالة</th><th style={th}>التاريخ</th><th style={th}>إجراء</th>
                   </tr></thead>
                   <tbody>
                     {tickets.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد تذاكر</td></tr> :
                       tickets.map((t) => (
-                        <tr key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <tr className="border-b border-b-[var(--border)]" key={t.id}>
                           <td style={td}>{t.userEmail}</td>
                           <td style={{ ...td, fontWeight: 700 }}>{t.subject}</td>
                           <td style={td}>{t.priority}</td>
@@ -521,17 +521,17 @@ export function PlatformAdminPanel() {
             </div>
           )}
           {tab === "audit" && (
-            <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "var(--muted)" }}>
+            <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+              <div className="garfix-scroll overflow-x-auto">
+                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                  <thead><tr className="bg-[var(--muted)]">
                     <th style={th}>الوقت</th><th style={th}>المدير</th><th style={th}>الإجراء</th>
                     <th style={th}>النوع</th><th style={th}>المعرّف</th>
                   </tr></thead>
                   <tbody>
                     {audit.length === 0 ? <tr><td colSpan={5} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد سجلات</td></tr> :
                       currentPageAudit.map((a) => (
-                        <tr key={a.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <tr className="border-b border-b-[var(--border)]" key={a.id}>
                           <td style={td}>{new Date(a.createdAt).toLocaleString("ar-EG")}</td>
                           <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{a.adminEmail}</td>
                           <td style={{ ...td, fontWeight: 700 }}>{a.action}</td>
@@ -544,9 +544,9 @@ export function PlatformAdminPanel() {
                 </table>
               </div>
               {audit.length > adminPageSize && (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: "8px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>صفحة {auditSafePage} من {auditTotalPages} ({audit.length} سجل)</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div className="flex justify-between items-center px-4 py-3 border-t border-t-[var(--border)] flex-wrap gap-2">
+                  <span className="text-xs text-[var(--muted-foreground)]">صفحة {auditSafePage} من {auditTotalPages} ({audit.length} سجل)</span>
+                  <div className="flex items-center gap-1.5">
                     <button onClick={() => setAuditPage((p) => Math.max(1, p - 1))} disabled={auditSafePage === 1} style={adminPageBtnStyle(auditSafePage === 1)}>السابق</button>
                     <button onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))} disabled={auditSafePage === auditTotalPages} style={adminPageBtnStyle(auditSafePage === auditTotalPages)}>التالي</button>
                   </div>
@@ -555,13 +555,13 @@ export function PlatformAdminPanel() {
             </div>
           )}
           {tab === "queue-failures" && (
-            <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+            <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
                 <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-                  <AlertTriangle size={16} style={{ color: "#f59e0b" }} />
+                  <AlertTriangle className="text-amber-500" size={16} />
                   أعطال الطوابير ({queueFailures.length})
                 </h3>
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div className="flex gap-2">
                   <button onClick={loadQueueFailures} style={iconBtn("#3b82f6")}>
                     <Activity size={14} /> تحديث
                   </button>
@@ -581,19 +581,19 @@ export function PlatformAdminPanel() {
                 </div>
               </div>
               {queueFailures.length === 0 ? (
-                <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+                <div className="p-12 text-center text-[var(--muted-foreground)]">
                   ✅ لا توجد أعطال في الطوابير — جميع المهام تتم بنجاح.
                 </div>
               ) : (
-                <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead><tr style={{ background: "var(--muted)" }}>
+                <div className="garfix-scroll overflow-x-auto">
+                  <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                    <thead><tr className="bg-[var(--muted)]">
                       <th style={th}>الطابور</th><th style={th}>النوع</th>
                       <th style={th}>الخطأ</th><th style={th}>الوقت</th><th style={th}>المحاولات</th>
                     </tr></thead>
                     <tbody>
                       {queueFailures.map((f, i) => (
-                        <tr key={f.id || i} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <tr className="border-b border-b-[var(--border)]" key={f.id || i}>
                           <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{f.queue}</td>
                           <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{f.type || "—"}</td>
                           <td style={{ ...td, fontSize: "11px", color: "#fca5a5", direction: "ltr", textAlign: "right" }}>{f.error}</td>
@@ -608,16 +608,16 @@ export function PlatformAdminPanel() {
             </div>
           )}
           {tab === "stock-ledger" && (
-            <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               {/*
                 GATE 4 Task 6 — StockMovement ledger viewer with founder filters.
                 Tenant dropdown supports "__all__" (founder cross-tenant mode),
                 plus product-name + date-range filters wired to the extended
                 /api/inventory/movements endpoint.
               */}
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--muted-foreground)" }}>الشركة:</label>
+              <div className="px-4 py-3 border-b border-b-[var(--border)] flex flex-col gap-2.5">
+                <div className="flex gap-2.5 items-center flex-wrap">
+                  <label className="text-xs font-bold text-[var(--muted-foreground)]">الشركة:</label>
                   <select
                     value={stockLedgerSlug}
                     onChange={(e) => setStockLedgerSlug(e.target.value)}
@@ -643,8 +643,8 @@ export function PlatformAdminPanel() {
                     </button>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)" }}>اسم المنتج:</label>
+                <div className="flex gap-2.5 items-center flex-wrap">
+                  <label className="text-[11px] font-bold text-[var(--muted-foreground)]">اسم المنتج:</label>
                   <input
                     type="text"
                     value={stockLedgerProductName}
@@ -652,14 +652,14 @@ export function PlatformAdminPanel() {
                     placeholder="بحث بالاسم..."
                     style={{ ...inputStyle, maxWidth: "180px" }}
                   />
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)" }}>من:</label>
+                  <label className="text-[11px] font-bold text-[var(--muted-foreground)]">من:</label>
                   <input
                     type="date"
                     value={stockLedgerFrom}
                     onChange={(e) => setStockLedgerFrom(e.target.value)}
                     style={{ ...inputStyle, maxWidth: "150px" }}
                   />
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)" }}>إلى:</label>
+                  <label className="text-[11px] font-bold text-[var(--muted-foreground)]">إلى:</label>
                   <input
                     type="date"
                     value={stockLedgerTo}
@@ -700,17 +700,17 @@ export function PlatformAdminPanel() {
                 </div>
               </div>
               {!stockLedgerSlug ? (
-                <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+                <div className="p-12 text-center text-[var(--muted-foreground)]">
                   اختر شركة (أو «كل الشركات» للمؤسس) لعرض دفتر حركة المخزون (StockMovement ledger).
                 </div>
               ) : stockMovements.length === 0 ? (
-                <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+                <div className="p-12 text-center text-[var(--muted-foreground)]">
                   لا توجد حركات مخزون مطابقة للفلاتر المحددة.
                 </div>
               ) : (
-                <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead><tr style={{ background: "var(--muted)" }}>
+                <div className="garfix-scroll overflow-x-auto">
+                  <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                    <thead><tr className="bg-[var(--muted)]">
                       <th style={th}>الوقت</th>
                       <th style={th}>الشركة</th>
                       <th style={th}>المنتج</th>
@@ -722,13 +722,13 @@ export function PlatformAdminPanel() {
                     </tr></thead>
                     <tbody>
                       {stockMovements.slice(0, 300).map((m) => (
-                        <tr key={m.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <tr className="border-b border-b-[var(--border)]" key={m.id}>
                           <td style={td}>{new Date(m.createdAt).toLocaleString("ar-EG")}</td>
                           <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{m.companySlug}</td>
                           <td style={{ ...td, fontWeight: 700 }}>
                             {m.productName}
                             {m.productCode && (
-                              <span style={{ color: "var(--muted-foreground)", fontFamily: "monospace", fontSize: "10px", marginRight: "4px" }}> ({m.productCode})</span>
+                              <span className="text-[var(--muted-foreground)] font-mono text-[10px] mr-1"> ({m.productCode})</span>
                             )}
                           </td>
                           <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700, color: m.qty < 0 ? "#fca5a5" : "#86efac" }}>{m.qty > 0 ? "+" : ""}{m.qty}</td>
@@ -884,7 +884,7 @@ function iconBtn(color: string): React.CSSProperties {
 
 function KpiCard({ label, value, color }: { label: string; value: number | string; color: string }) {
   return (
-    <div style={{ padding: "16px", borderRadius: "14px", background: "var(--card)", border: "1px solid var(--border)" }}>
+    <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
       <div style={{ fontSize: "11px", color: "var(--muted-foreground)", fontWeight: 600, marginBottom: "6px" }}>{label}</div>
       <div style={{ fontSize: "22px", fontWeight: 900, color }}>{value}</div>
     </div>
@@ -978,16 +978,16 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
           </SheetTitle>
         </SheetHeader>
         {loading ? (
-          <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>
+          <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
         ) : detail ? (
           <>
             {/* Plan management card */}
-            <div style={{ padding: "14px", background: "var(--card)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
-                <Shield size={14} style={{ color: "#7c3aed" }} />
+            <div className="p-3.5 bg-[var(--card)] rounded-xl border border-[var(--border)]">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Shield className="text-violet-600" size={14} />
                 <span style={{ fontSize: "13px", fontWeight: 800 }}>إدارة الباقة</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+              <div className="grid grid-cols-2 gap-2.5 mb-2.5">
                 <div>
                   <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الباقة</label>
                   <select
@@ -1030,7 +1030,7 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div className="grid grid-cols-2 gap-2.5">
               <DetailStat label="الباقة الحالية" value={detail.tenant.plan} />
               <DetailStat label="الحالة" value={detail.tenant.subscriptionStatus} />
               <DetailStat label="الفواتير" value={String(detail.overview.invoicesCount)} />
@@ -1057,11 +1057,11 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
                 افتح طابور المراجعة لهذه الشركة ({detail.overview.reviewQueueCount} عنصر)
               </button>
             )}
-            <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>
+            <div className="text-[11px] text-[var(--muted-foreground)]">
               آخر نشاط: {new Date(detail.overview.lastActivityAt).toLocaleString("ar-EG")}
             </div>
             {detail.overview.lastInvoice && (
-              <div style={{ padding: "12px", background: "var(--muted)", borderRadius: "10px", fontSize: "12px" }}>
+              <div className="p-3 bg-[var(--muted)] rounded-[10px] text-xs">
                 <div style={{ fontWeight: 700, marginBottom: "4px" }}>آخر فاتورة:</div>
                 <div>رقم: {detail.overview.lastInvoice.invoiceNumber}</div>
                 <div>التاريخ: {new Date(detail.overview.lastInvoice.createdAt).toLocaleString("ar-EG")}</div>
@@ -1069,13 +1069,13 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
               </div>
             )}
             {detail.tenant.deletedAt && (
-              <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.1)", borderRadius: "8px", fontSize: "11px", color: "#ef4444" }}>
+              <div className="px-3 py-2 bg-red-500/10 rounded-lg text-[11px] text-red-500">
                 ⚠️ هذه الشركة موقوفة (soft-deleted) بتاريخ {new Date(detail.tenant.deletedAt).toLocaleString("ar-EG")}
               </div>
             )}
           </>
         ) : (
-          <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)" }}>تعذّر التحميل</div>
+          <div className="p-8 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>
         )}
       </SheetContent>
     </Sheet>
@@ -1084,7 +1084,7 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
 
 function DetailStat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div style={{ padding: "10px", background: "var(--card)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+    <div className="p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)]">
       <div style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: "16px", fontWeight: 800, color: color || "var(--foreground)" }}>{value}</div>
     </div>
@@ -1173,14 +1173,14 @@ function TicketDetailDrawer({
             {ticket.subject}
           </SheetTitle>
           <SheetDescription className="text-right text-[11px]" dir="ltr">
-            <span style={{ direction: "ltr" }}>
+            <span className="[direction:ltr]">
               {ticket.userEmail} • {new Date(ticket.createdAt).toLocaleString("ar-EG")} • الأولوية: {ticket.priority}
             </span>
           </SheetDescription>
         </SheetHeader>
 
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)" }}>الحالة:</label>
+        <div className="flex gap-2 items-center">
+          <label className="text-[11px] font-bold text-[var(--muted-foreground)]">الحالة:</label>
           <select value={status} onChange={(e) => changeStatus(e.target.value)} style={{ ...inputStyle, maxWidth: "180px" }}>
             <option value="open">مفتوحة</option>
             <option value="pending">بانتظار المستخدم</option>
@@ -1196,15 +1196,15 @@ function TicketDetailDrawer({
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)" }}>الردود ({localReplies.length}):</div>
+        <div className="flex flex-col gap-2">
+          <div className="text-[11px] font-bold text-[var(--muted-foreground)]">الردود ({localReplies.length}):</div>
           {localReplies.length === 0 ? (
-            <div style={{ fontSize: "12px", color: "var(--muted-foreground)", padding: "8px" }}>لا توجد ردود بعد</div>
+            <div className="text-xs text-[var(--muted-foreground)] p-2">لا توجد ردود بعد</div>
           ) : (
             localReplies.map((r) => (
-              <div key={r.id} style={{ padding: "10px", background: "var(--card)", borderRadius: "8px", border: "1px solid var(--border)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "10px", color: "var(--muted-foreground)" }}>
-                  <span style={{ fontWeight: 700 }}>{r.senderEmail} ({r.senderRole})</span>
+              <div className="p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)]" key={r.id}>
+                <div className="flex justify-between mb-1 text-[10px] text-[var(--muted-foreground)]">
+                  <span className="font-bold">{r.senderEmail} ({r.senderRole})</span>
                   <span>{new Date(r.createdAt).toLocaleString("ar-EG")}</span>
                 </div>
                 <div style={{ fontSize: "12px", lineHeight: 1.5 }}>{r.body}</div>
@@ -1213,7 +1213,7 @@ function TicketDetailDrawer({
           )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+        <div className="flex flex-col gap-2 mt-2">
           <label style={labelStyle}>إضافة رد:</label>
           <Textarea
             value={replyBody}
@@ -1330,8 +1330,8 @@ function AiOrchestrationTab() {
     }
   }, [load]);
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
-  if (!data) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>تعذّر تحميل البيانات</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!data) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
 
   const fmtMs = (ms: number | null): string => {
     if (!ms) return "—";
@@ -1347,14 +1347,14 @@ function AiOrchestrationTab() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4">
       {/* Header + Run Benchmark button */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+      <div className="flex justify-between items-center gap-3 flex-wrap">
         <div>
           <h3 style={{ fontSize: "16px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Network size={18} style={{ color: "#7c3aed" }} /> طبقة تنسيق الذكاء الاصطناعي
+            <Network className="text-violet-600" size={18} /> طبقة تنسيق الذكاء الاصطناعي
           </h3>
-          <p style={{ fontSize: "12px", color: "var(--muted-foreground)", margin: "4px 0 0 0" }}>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
             سجل النماذج + درجة الصحة + التوجيه الذكي + مُحسّن التكلفة — اختيار النموذج آلي بناءً على بيانات الأداء الحية
           </p>
         </div>
@@ -1376,7 +1376,7 @@ function AiOrchestrationTab() {
       </div>
 
       {/* KPI row: optimizer impact */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <KpiCard label="نداءات وُفّرت (Pattern)" value={data.optimizerStats.counts["use-pattern"]} color="#10b981" />
         <KpiCard label="نداءات وُفّرت (Cache)" value={data.optimizerStats.counts["use-cache"]} color="#3b82f6" />
         <KpiCard label="تُوجّه لمجاني" value={data.optimizerStats.counts["route-free"]} color="#7c3aed" />
@@ -1386,18 +1386,18 @@ function AiOrchestrationTab() {
       </div>
 
       {/* Routing matrix — primary model per capability */}
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Gauge size={16} style={{ color: "#7c3aed" }} /> مصفوفة التوجيه (النموذج الأساسي لكل قدرة)
+            <Gauge className="text-violet-600" size={16} /> مصفوفة التوجيه (النموذج الأساسي لكل قدرة)
           </h3>
-          <p style={{ fontSize: "11px", color: "var(--muted-foreground)", margin: "4px 0 0 0" }}>
+          <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
             لكل قدرة، يختار النظام تلقائيًا النموذج الأعلى صحةً والمتاح — لا ربط دائم باسم نموذج
           </p>
         </div>
-        <div style={{ overflowX: "auto" }} className="garfix-scroll">
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr style={{ background: "var(--muted)" }}>
+        <div className="garfix-scroll overflow-x-auto">
+          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <thead><tr className="bg-[var(--muted)]">
               <th style={th}>القدرة</th><th style={th}>النموذج الأساسي</th>
               <th style={th}>المزوّد</th><th style={th}>درجة الصحة</th>
               <th style={th}>الطبقة</th><th style={th}>عدد المرشحين</th>
@@ -1406,10 +1406,10 @@ function AiOrchestrationTab() {
               {data.routingMatrix.map((r) => {
                 const tb = r.primary ? tierBadge(r.primary.tier) : null;
                 return (
-                  <tr key={r.capability} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr className="border-b border-b-[var(--border)]" key={r.capability}>
                     <td style={{ ...td, fontWeight: 700 }}>{capLabel[r.capability] || r.capability}</td>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "12px", direction: "ltr", textAlign: "right" }}>
-                      {r.primary ? r.primary.displayName : <span style={{ color: "var(--muted-foreground)" }}>— لا يوجد مرشح سليم —</span>}
+                      {r.primary ? r.primary.displayName : <span className="text-[var(--muted-foreground)]">— لا يوجد مرشح سليم —</span>}
                     </td>
                     <td style={{ ...td, fontSize: "12px" }}>{r.primary?.provider || "—"}</td>
                     <td style={{ ...td, fontWeight: 700 }}>
@@ -1432,22 +1432,22 @@ function AiOrchestrationTab() {
       </div>
 
       {/* Model Registry table */}
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Network size={16} style={{ color: "#7c3aed" }} /> سجل النماذج ({data.registry.length})
+            <Network className="text-violet-600" size={16} /> سجل النماذج ({data.registry.length})
           </h3>
-          <p style={{ fontSize: "11px", color: "var(--muted-foreground)", margin: "4px 0 0 0" }}>
+          <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
             كل نموذج + قدراته + طبقته + تكلفته + مقاييس الصحة الحية (تُحدّث تلقائيًا بعد كل اختبار)
           </p>
         </div>
         {data.registry.length === 0 ? (
-          <div style={{ padding: "24px", textAlign: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>
-            السجل فارغ — شغّل <code style={{ background: "var(--muted)", padding: "2px 6px", borderRadius: "4px" }}>bun run scripts/seed-model-registry.ts</code> لملئه
+          <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">
+            السجل فارغ — شغّل <code className="bg-[var(--muted)] px-1.5 py-0.5 rounded">bun run scripts/seed-model-registry.ts</code> لملئه
           </div>
         ) : (
-          <div style={{ overflowX: "auto", maxHeight: "420px", overflowY: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ maxHeight: "420px" }} className="garfix-scroll overflow-x-auto overflow-y-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead><tr style={{ background: "var(--muted)", position: "sticky", top: 0, zIndex: 1 }}>
                 <th style={th}>النموذج</th><th style={th}>القدرات</th>
                 <th style={th}>الطبقة</th><th style={th}>درجة الصحة</th>
@@ -1462,12 +1462,12 @@ function AiOrchestrationTab() {
                   const costStr = m.tier === "free" ? "$0" : `$${m.costPer1kIn.toFixed(4)}/${m.costPer1kOut.toFixed(4)}`;
                   const last = m.lastBenchmarkAt ? new Date(m.lastBenchmarkAt).toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—";
                   return (
-                    <tr key={m.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <tr className="border-b border-b-[var(--border)]" key={m.id}>
                       <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right", fontWeight: 700 }}>
                         {m.provider}/{m.model}
                       </td>
                       <td style={td}>
-                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                        <div className="flex gap-1 flex-wrap">
                           {m.capabilities.map((c) => (
                             <span key={c} style={{ background: "var(--muted)", padding: "1px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: 600 }}>{capLabel[c] || c}</span>
                           ))}
@@ -1485,7 +1485,7 @@ function AiOrchestrationTab() {
                       <td style={td}>{m.totalBenchmarks}</td>
                       <td style={{ ...td, fontSize: "11px", color: "var(--muted-foreground)" }}>{last}</td>
                       <td style={td}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div className="flex items-center gap-1.5">
                           {!m.isHealthy && m.isEnabled && (
                             <span style={{ background: "#fee2e2", color: "#dc2626", padding: "1px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: 700 }}>غير صحي</span>
                           )}
@@ -1503,21 +1503,21 @@ function AiOrchestrationTab() {
 
       {/* Recent benchmark results */}
       {data.recentBenchmarks.length > 0 && (
-        <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-b-[var(--border)]">
             <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-              <Activity size={16} style={{ color: "#7c3aed" }} /> آخر نتائج الاختبارات ({data.recentBenchmarks.length})
+              <Activity className="text-violet-600" size={16} /> آخر نتائج الاختبارات ({data.recentBenchmarks.length})
             </h3>
           </div>
-          <div style={{ overflowX: "auto", maxHeight: "260px", overflowY: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ maxHeight: "260px" }} className="garfix-scroll overflow-x-auto overflow-y-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead><tr style={{ background: "var(--muted)", position: "sticky", top: 0, zIndex: 1 }}>
                 <th style={th}>القدرة</th><th style={th}>الحالة</th><th style={th}>الزمن</th>
                 <th style={th}>الرموز</th><th style={th}>الجودة</th><th style={th}>الوقت</th>
               </tr></thead>
               <tbody>
                 {data.recentBenchmarks.slice(0, 20).map((b) => (
-                  <tr key={b.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr className="border-b border-b-[var(--border)]" key={b.id}>
                     <td style={{ ...td, fontWeight: 700 }}>{capLabel[b.capability] || b.capability}</td>
                     <td style={{ ...td, fontWeight: 700, color: b.success ? "#10b981" : "#ef4444" }}>{b.success ? "✓ نجاح" : "✗ فشل"}</td>
                     <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{fmtMs(b.latencyMs)}</td>
@@ -1617,13 +1617,13 @@ function FeatureFlagsTab() {
     }
   };
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center">
         <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <Sparkles size={16} style={{ color: "#7c3aed" }} />
+          <Sparkles className="text-violet-600" size={16} />
           ميزات المنصة ({flags.length})
         </h3>
         <button onClick={() => setShowForm((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
@@ -1631,8 +1631,8 @@ function FeatureFlagsTab() {
         </button>
       </div>
       {showForm && (
-        <div style={{ padding: "16px", borderBottom: "1px solid var(--border)", background: "var(--muted)", display: "flex", flexDirection: "column", gap: "10px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label style={labelStyle}>المفتاح (key)</label>
               <input value={newFlag.key} onChange={(e) => setNewFlag({ ...newFlag, key: e.target.value })} placeholder="ai.invoice-brain" style={inputStyle} dir="ltr" />
@@ -1641,7 +1641,7 @@ function FeatureFlagsTab() {
               <label style={labelStyle}>التسمية (label)</label>
               <input value={newFlag.label} onChange={(e) => setNewFlag({ ...newFlag, label: e.target.value })} placeholder="محرك تعلم الفواتير" style={inputStyle} />
             </div>
-            <div style={{ gridColumn: "1 / -1" }}>
+            <div className="col-span-full">
               <label style={labelStyle}>الوصف</label>
               <input value={newFlag.description} onChange={(e) => setNewFlag({ ...newFlag, description: e.target.value })} style={inputStyle} />
             </div>
@@ -1661,17 +1661,17 @@ function FeatureFlagsTab() {
         </div>
       )}
       {flags.length === 0 ? (
-        <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)" }}>لا توجد ميزات بعد</div>
+        <div className="p-8 text-center text-[var(--muted-foreground)]">لا توجد ميزات بعد</div>
       ) : (
-        <div style={{ overflowX: "auto" }} className="garfix-scroll">
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr style={{ background: "var(--muted)" }}>
+        <div className="garfix-scroll overflow-x-auto">
+          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <thead><tr className="bg-[var(--muted)]">
               <th style={th}>المفتاح</th><th style={th}>التسمية</th><th style={th}>الباقات</th>
               <th style={th}>الحالة</th><th style={th}>إجراءات</th>
             </tr></thead>
             <tbody>
               {flags.map((f) => (
-                <tr key={f.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <tr className="border-b border-b-[var(--border)]" key={f.id}>
                   <td style={{ ...td, fontFamily: "monospace", direction: "ltr", textAlign: "right" }}>{f.key}</td>
                   <td style={{ ...td, fontWeight: 700 }}>{f.label}</td>
                   <td style={td}>{f.plans.length === 0 ? "الكل" : f.plans.join(", ")}</td>
@@ -1681,7 +1681,7 @@ function FeatureFlagsTab() {
                     </span>
                   </td>
                   <td style={td}>
-                    <div style={{ display: "flex", gap: "4px" }}>
+                    <div className="flex gap-1">
                       <button onClick={() => toggle(f.id, f.isActive)} style={iconBtn(f.isActive ? "#f59e0b" : "#10b981")} title={f.isActive ? "إيقاف" : "تفعيل"}>
                         {f.isActive ? <X size={14} /> : <Check size={14} />}
                       </button>
@@ -1745,8 +1745,8 @@ function AiUsageTab() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
-  if (!data) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>تعذّر تحميل البيانات</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!data) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
 
   // P0.3: helper to format ms nicely (e.g. "1.2s" or "340ms")
   const fmtMs = (ms: number | null): string => {
@@ -1756,8 +1756,8 @@ function AiUsageTab() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <KpiCard label="نداءات اليوم" value={data.totals.callsToday} color="#7c3aed" />
         <KpiCard label="إجمالي النداءات" value={data.totals.totalCalls} color="#7c3aed" />
         <KpiCard label="معدل النجاح" value={data.totals.successRate !== null ? `${data.totals.successRate}%` : "—"} color="#10b981" />
@@ -1770,22 +1770,22 @@ function AiUsageTab() {
           This is the "فعالية العقل والوقت المستغرق" view — calls, success rate,
           p50/p95 latency, and cost broken down by endpoint, so the founder can
           see at a glance which AI paths are fast/reliable and which aren't. */}
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Activity size={16} style={{ color: "#7c3aed" }} />
+            <Activity className="text-violet-600" size={16} />
             فعالية وزمن كل Endpoint ({data.perEndpoint.length})
           </h3>
-          <p style={{ fontSize: "11px", color: "var(--muted-foreground)", margin: "4px 0 0 0" }}>
+          <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
             معدل النجاح + توزيع الزمن (p50/p95) لكل مسار ذكاء اصطناعي — هذا هو&quot;فعالية العقل والوقت المستغرق&quot;
           </p>
         </div>
         {data.perEndpoint.length === 0 ? (
-          <div style={{ padding: "24px", textAlign: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>لا توجد بيانات استهلاك AI بعد — استخدم المساعد الذكي أو رفع فاتورة لبدء التسجيل</div>
+          <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات استهلاك AI بعد — استخدم المساعد الذكي أو رفع فاتورة لبدء التسجيل</div>
         ) : (
-          <div style={{ overflowX: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)" }}>
+          <div className="garfix-scroll overflow-x-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+              <thead><tr className="bg-[var(--muted)]">
                 <th style={th}>Endpoint</th><th style={th}>النداءات</th>
                 <th style={th}>معدل النجاح</th><th style={th}>p50</th>
                 <th style={th}>p95</th><th style={th}>min</th>
@@ -1794,7 +1794,7 @@ function AiUsageTab() {
               </tr></thead>
               <tbody>
                 {data.perEndpoint.map((e) => (
-                  <tr key={e.endpoint} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr className="border-b border-b-[var(--border)]" key={e.endpoint}>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right", fontWeight: 700 }}>{e.endpoint}</td>
                     <td style={td}>{e.calls}</td>
                     <td style={{ ...td, fontWeight: 700, color: e.successRate === null ? "var(--muted-foreground)" : (e.successRate >= 95 ? "#10b981" : e.successRate >= 80 ? "#f59e0b" : "#ef4444") }}>
@@ -1814,13 +1814,13 @@ function AiUsageTab() {
         )}
       </div>
 
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", padding: "16px" }}>
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4">
         <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <Activity size={16} style={{ color: "#7c3aed" }} />
+          <Activity className="text-violet-600" size={16} />
           استهلاك آخر ٣٠ يوماً ({data.last30Days.length} يوم)
         </h3>
         {data.last30Days.length === 0 ? (
-          <div style={{ padding: "24px", textAlign: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>لا توجد بيانات</div>
+          <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات</div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.last30Days}>
@@ -1834,7 +1834,7 @@ function AiUsageTab() {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
         <UsageTable title="حسب الشركة" rows={data.perCompany.map((c) => ({ col1: c.companySlug, col2: String(c.calls), col3: `$${c.cost.toFixed(4)}`, col4: String(c.tokens) }))} headers={["الشركة", "النداءات", "التكلفة", "الرموز"]} />
         <UsageTable title="حسب الموديل" rows={data.perModel.map((m) => ({ col1: m.model, col2: String(m.calls), col3: `$${m.cost.toFixed(4)}`, col4: String(m.tokens) }))} headers={["الموديل", "النداءات", "التكلفة", "الرموز"]} />
       </div>
@@ -1844,25 +1844,25 @@ function AiUsageTab() {
         Shows: tenant | month | AI calls | tokens | cost — the exact shape
         requested in the spec. Renders above the recent-errors card.
       */}
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Activity size={16} style={{ color: "#7c3aed" }} />
+            <Activity className="text-violet-600" size={16} />
             استهلاك AI لكل شركة × شهر ({data.perCompanyMonthly.length} صف)
           </h3>
         </div>
         {data.perCompanyMonthly.length === 0 ? (
-          <div style={{ padding: "24px", textAlign: "center", color: "var(--muted-foreground)", fontSize: "12px" }}>لا توجد بيانات استهلاك AI بعد</div>
+          <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات استهلاك AI بعد</div>
         ) : (
-          <div style={{ overflowX: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)" }}>
+          <div className="garfix-scroll overflow-x-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+              <thead><tr className="bg-[var(--muted)]">
                 <th style={th}>الشركة</th><th style={th}>الشهر</th>
                 <th style={th}>نداءات AI</th><th style={th}>الرموز</th><th style={th}>التكلفة</th>
               </tr></thead>
               <tbody>
                 {data.perCompanyMonthly.slice(0, 200).map((row, i) => (
-                  <tr key={`${row.companySlug}-${row.month}-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr className="border-b border-b-[var(--border)]" key={`${row.companySlug}-${row.month}-${i}`}>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{row.companySlug}</td>
                     <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{row.month}</td>
                     <td style={td}>{row.calls}</td>
@@ -1877,21 +1877,21 @@ function AiUsageTab() {
       </div>
 
       {data.recentErrors.length > 0 && (
-        <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-b-[var(--border)]">
             <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#ef4444", display: "flex", alignItems: "center", gap: "8px" }}>
               <AlertTriangle size={16} /> أخطاء حديثة ({data.recentErrors.length})
             </h3>
           </div>
-          <div style={{ overflowX: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)" }}>
+          <div className="garfix-scroll overflow-x-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+              <thead><tr className="bg-[var(--muted)]">
                 <th style={th}>الوقت</th><th style={th}>المزود</th><th style={th}>الموديل</th>
                 <th style={th}>الشركة</th><th style={th}>الخطأ</th>
               </tr></thead>
               <tbody>
                 {data.recentErrors.map((e) => (
-                  <tr key={e.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr className="border-b border-b-[var(--border)]" key={e.id}>
                     <td style={td}>{new Date(e.createdAt).toLocaleString("ar-EG")}</td>
                     <td style={td}>{e.provider}</td>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{e.model}</td>
@@ -1910,21 +1910,21 @@ function AiUsageTab() {
 
 function UsageTable({ title, headers, rows }: { title: string; headers: string[]; rows: Array<{ col1: string; col2: string; col3: string; col4: string }> }) {
   return (
-    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-      <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-3 py-2.5 border-b border-b-[var(--border)]">
         <h4 style={{ fontSize: "12px", fontWeight: 700 }}>{title}</h4>
       </div>
       {rows.length === 0 ? (
-        <div style={{ padding: "16px", textAlign: "center", color: "var(--muted-foreground)", fontSize: "11px" }}>لا توجد بيانات</div>
+        <div className="p-4 text-center text-[var(--muted-foreground)] text-[11px]">لا توجد بيانات</div>
       ) : (
-        <div style={{ overflowX: "auto" }} className="garfix-scroll">
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr style={{ background: "var(--muted)" }}>
+        <div className="garfix-scroll overflow-x-auto">
+          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <thead><tr className="bg-[var(--muted)]">
               {headers.map((h) => <th key={h} style={th}>{h}</th>)}
             </tr></thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+                <tr className="border-b border-b-[var(--border)]" key={i}>
                   <td style={{ ...td, fontWeight: 700, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{r.col1}</td>
                   <td style={td}>{r.col2}</td>
                   <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{r.col3}</td>
@@ -1985,19 +1985,19 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
-  if (!data) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>تعذّر التحميل</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!data) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4">
       {/* Per-tenant breakdown chips */}
       {data.byTenant.length > 0 && (
-        <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", padding: "12px 16px" }}>
+        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] px-4 py-3">
           <h3 style={{ fontSize: "13px", fontWeight: 700, marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <ListChecks size={14} style={{ color: "#7c3aed" }} />
+            <ListChecks className="text-violet-600" size={14} />
             التوزيع حسب الشركة ({data.byTenant.length} شركة)
           </h3>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          <div className="flex flex-wrap gap-1.5">
             {data.byTenant.map((t) => (
               <button
                 key={t.companySlug}
@@ -2017,13 +2017,13 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
         </div>
       )}
 
-      <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
           <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-            <AlertTriangle size={16} style={{ color: "#f59e0b" }} />
+            <AlertTriangle className="text-amber-500" size={16} />
             عناصر بانتظار المراجعة ({data.count})
           </h3>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className="flex gap-2 items-center">
             <button
               type="button"
               onClick={() => onOpenReviewQueue(null)}
@@ -2057,32 +2057,32 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
           </div>
         </div>
         {data.items.length === 0 ? (
-          <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+          <div className="p-12 text-center text-[var(--muted-foreground)]">
             ✅ لا توجد عناصر بانتظار المراجعة — جميع التطابقات تتم بنجاح.
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }} className="garfix-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)" }}>
+          <div className="garfix-scroll overflow-x-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+              <thead><tr className="bg-[var(--muted)]">
                 <th style={th}>الشركة</th><th style={th}>النص المُدخل</th>
                 <th style={th}>المنتج المُطابق</th><th style={th}>الثقة</th>
                 <th style={th}>النوع</th><th style={th}>التاريخ</th><th style={th}>إجراء</th>
               </tr></thead>
               <tbody>
                 {data.items.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr className="border-b border-b-[var(--border)]" key={item.id}>
                     <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{item.companySlug}</td>
                     <td style={{ ...td, maxWidth: "240px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.inputText}>
                       {item.inputText}
                     </td>
                     <td style={td}>
                       {item.productName ? (
-                        <span style={{ fontSize: "11px" }}>
+                        <span className="text-[11px]">
                           {item.productName}
-                          {item.productCode && <span style={{ color: "var(--muted-foreground)", fontFamily: "monospace" }}> ({item.productCode})</span>}
+                          {item.productCode && <span className="text-[var(--muted-foreground)] font-mono"> ({item.productCode})</span>}
                         </span>
                       ) : (
-                        <span style={{ fontSize: "11px", color: "#fca5a5" }}>— لا يطابق —</span>
+                        <span className="text-[11px] text-[#fca5a5]">— لا يطابق —</span>
                       )}
                     </td>
                     <td style={{ ...td, direction: "ltr", textAlign: "right" }}>
@@ -2133,12 +2133,12 @@ function UtilizationBar({ label, current, max, pct }: { label: string; current: 
   const color = pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : "#10b981";
   const displayMax = max >= 999999 ? "∞" : String(max);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--muted-foreground)" }}>
+    <div className="flex flex-col gap-0.5">
+      <div className="flex justify-between text-[10px] text-[var(--muted-foreground)]">
         <span>{label}</span>
-        <span style={{ direction: "ltr" }}>{current} / {displayMax}</span>
+        <span className="[direction:ltr]">{current} / {displayMax}</span>
       </div>
-      <div style={{ height: "4px", borderRadius: "2px", background: "var(--muted)", overflow: "hidden" }}>
+      <div className="h-1 bg-[var(--muted)] overflow-hidden" style={{ borderRadius: "2px" }}>
         <div style={{ height: "100%", width: `${Math.min(100, pct)}%`, background: color, transition: "width .2s" }} />
       </div>
     </div>
@@ -2256,13 +2256,13 @@ function LandingContentTab() {
     }
   };
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
         <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <FileText size={16} style={{ color: "#10b981" }} />
+          <FileText className="text-emerald-500" size={16} />
           محتوى الصفحة الرئيسية ({items.length})
         </h3>
         <button onClick={() => setShowCreate((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
@@ -2271,7 +2271,7 @@ function LandingContentTab() {
       </div>
 
       {showCreate && (
-        <div style={{ padding: "16px", borderBottom: "1px solid var(--border)", background: "var(--muted)", display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
           <div>
             <label style={labelStyle}>المفتاح (مثال: hero.title)</label>
             <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="hero.title" dir="ltr" />
@@ -2287,18 +2287,18 @@ function LandingContentTab() {
       )}
 
       {items.length === 0 ? (
-        <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)" }}>
-          لا يوجد محتوى بعد. أنشئ مفتاحاً جديداً (مثل <code style={{ fontFamily: "monospace" }}>hero.title</code>) ليقرأه صفحة الواجهة.
+        <div className="p-8 text-center text-[var(--muted-foreground)]">
+          لا يوجد محتوى بعد. أنشئ مفتاحاً جديداً (مثل <code className="font-mono">hero.title</code>) ليقرأه صفحة الواجهة.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div className="flex flex-col">
           {items.map((it) => {
             const isJson = typeof it.value === "object" && it.value !== null;
             return (
-              <div key={it.key} style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex flex-col gap-2" key={it.key}>
+                <div className="flex justify-between items-center gap-2.5 flex-wrap">
                   <code style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: 700, direction: "ltr", color: "var(--foreground)" }}>{it.key}</code>
-                  <span style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
+                  <span className="text-[10px] text-[var(--muted-foreground)]">
                     آخر تحديث: {new Date(it.updatedAt).toLocaleString("ar-EG")} {it.updatedBy ? `• ${it.updatedBy}` : ""}
                   </span>
                 </div>
@@ -2310,7 +2310,7 @@ function LandingContentTab() {
                   dir="ltr"
                   style={{ fontFamily: isJson ? "monospace" : "inherit", fontSize: "12px" }}
                 />
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <div className="flex justify-end">
                   <button
                     onClick={() => save(it.key)}
                     disabled={savingKey === it.key}
@@ -2386,33 +2386,33 @@ function IntegrationsTab() {
     }
   };
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   const configuring = integrations.find((i) => i.type === configuringType) || null;
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
         <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <Plug size={16} style={{ color: "#10b981" }} />
+          <Plug className="text-emerald-500" size={16} />
           التكاملات ({integrations.length})
         </h3>
         <button onClick={load} style={iconBtn("#10b981")}><Activity size={14} /> تحديث</button>
       </div>
 
       {integrations.length === 0 ? (
-        <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)" }}>لا توجد تكاملات مسجّلة</div>
+        <div className="p-8 text-center text-[var(--muted-foreground)]">لا توجد تكاملات مسجّلة</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div className="flex flex-col">
           {integrations.map((it) => (
-            <div key={it.type} style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex items-center justify-between gap-3 flex-wrap" key={it.type}>
               <div style={{ display: "flex", flexDirection: "column", gap: "3px", flex: "1 1 240px", minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div className="flex items-center gap-2">
                   <span style={{ fontSize: "13px", fontWeight: 800 }}>{it.name}</span>
-                  <code style={{ fontFamily: "monospace", fontSize: "10px", padding: "1px 6px", borderRadius: "4px", background: "var(--muted)", color: "var(--muted-foreground)" }}>{it.type}</code>
+                  <code className="font-mono text-[10px] rounded bg-[var(--muted)] text-[var(--muted-foreground)]" style={{ padding: "1px 6px" }}>{it.type}</code>
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--muted-foreground)", lineHeight: 1.5 }}>{it.description}</div>
-                <div style={{ fontSize: "10px", color: "var(--muted-foreground)", marginTop: "2px" }}>
+                <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
                   {it.hasCredentials ? (
                     <>
                       <span style={{ color: "#10b981", fontWeight: 700 }}>● مُهيّأ</span>
@@ -2421,10 +2421,10 @@ function IntegrationsTab() {
                   ) : (
                     <span style={{ color: "#9ca3af", fontWeight: 700 }}>○ غير مُهيّأ</span>
                   )}
-                  {!it.isRegistered && <span style={{ color: "#ef4444", marginRight: "8px" }}> • غير مسجّل</span>}
+                  {!it.isRegistered && <span className="text-red-500 mr-2"> • غير مسجّل</span>}
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div className="flex items-center gap-2.5">
                 <Switch
                   checked={it.hasCredentials}
                   onCheckedChange={(checked) => {
@@ -2505,11 +2505,11 @@ function IntegrationConfigDialog({
             أدخل بيانات الاعتماد. تُخزَّن مشفّرة — لا يمكن استرجاعها بعد الحفظ.
           </DialogDescription>
         </DialogHeader>
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div className="flex flex-col gap-3">
           {integration.requiredFields.map((f) => (
             <div key={f.key}>
               <Label htmlFor={`int-${f.key}`} style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)", marginBottom: "4px", display: "block" }}>
-                {f.label} <code style={{ fontFamily: "monospace", fontSize: "10px" }}>{f.key}</code>
+                {f.label} <code className="font-mono text-[10px]">{f.key}</code>
               </Label>
               <Input
                 id={`int-${f.key}`}
@@ -2604,8 +2604,8 @@ function RetentionCleanupTab() {
     }
   };
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
-  if (!preview) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>تعذّر التحميل</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!preview) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>;
 
   const eligibleTotal = Object.values(preview.eligible).reduce((a, b) => a + b, 0);
   const deletedTotal = preview.deleted ? Object.values(preview.deleted).reduce((a, b) => a + b, 0) : 0;
@@ -2619,14 +2619,14 @@ function RetentionCleanupTab() {
   };
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
         <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <Database size={16} style={{ color: "#10b981" }} />
+          <Database className="text-emerald-500" size={16} />
           التنظيف الدوري للسجلات المعزولة
         </h3>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)" }}>سنوات الاحتفاظ:</label>
+        <div className="flex items-center gap-2">
+          <label className="text-[11px] font-bold text-[var(--muted-foreground)]">سنوات الاحتفاظ:</label>
           <select
             value={retentionYears}
             onChange={(e) => setRetentionYears(Number(e.target.value))}
@@ -2638,18 +2638,18 @@ function RetentionCleanupTab() {
         </div>
       </div>
 
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
-        <div style={{ padding: "12px 14px", background: "var(--muted)", borderRadius: "10px", fontSize: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+      <div className="p-4 flex flex-col gap-3.5">
+        <div className="bg-[var(--muted)] rounded-[10px] text-xs flex flex-col gap-1.5" style={{ padding: "12px 14px" }}>
           <div><strong>تاريخ القطع:</strong> {new Date(preview.cutoffDate).toLocaleString("ar-EG")}</div>
           <div><strong>السجلات المعزولة قبل هذا التاريخ ستُحذف نهائياً.</strong></div>
-          <div style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
+          <div className="text-[10px] text-[var(--muted-foreground)]">
             يشمل: فواتير، قيود يومية، حركات دفع، فواتير إلكترونية، فواتير شراء — جميعها بحالة soft-deleted.
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "10px" }}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5">
           {Object.entries(preview.eligible).map(([k, v]) => (
-            <div key={k} style={{ padding: "12px", borderRadius: "10px", background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="p-3 rounded-[10px] bg-[var(--card)] border border-[var(--border)]" key={k}>
               <div style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 700 }}>{labelMap[k] || k}</div>
               <div style={{ fontSize: "20px", fontWeight: 900, color: v > 0 ? "#f59e0b" : "var(--foreground)" }}>{v}</div>
               {preview.deleted && (
@@ -2659,10 +2659,10 @@ function RetentionCleanupTab() {
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-          <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>
+        <div className="flex justify-between items-center flex-wrap gap-2.5">
+          <div className="text-xs text-[var(--muted-foreground)]">
             الإجمالي المؤهّل: <strong style={{ color: eligibleTotal > 0 ? "#f59e0b" : "var(--foreground)" }}>{eligibleTotal}</strong>
-            {preview.deleted && <> • تم حذف: <strong style={{ color: "#10b981" }}>{deletedTotal}</strong></>}
+            {preview.deleted && <> • تم حذف: <strong className="text-emerald-500">{deletedTotal}</strong></>}
           </div>
           <button
             onClick={runCleanup}
@@ -2705,12 +2705,12 @@ function AnnouncementForm({ onClose, onSaved }: { onClose: () => void; onSaved: 
   };
 
   return (
-    <div style={{ padding: "16px", borderBottom: "1px solid var(--border)", background: "var(--muted)", display: "flex", flexDirection: "column", gap: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
+      <div className="flex justify-between items-center">
         <h4 style={{ fontSize: "13px", fontWeight: 700 }}>إعلان جديد</h4>
-        <button onClick={onClose} style={{ background: "transparent", border: "none", color: "var(--muted-foreground)", cursor: "pointer" }}><X size={14} /></button>
+        <button className="bg-transparent border-none text-[var(--muted-foreground)] cursor-pointer" onClick={onClose}><X size={14} /></button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: "10px" }}>
+      <div className="grid grid-cols-[1fr_160px] gap-2.5">
         <div><label style={labelStyle}>العنوان</label><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} /></div>
         <div><label style={labelStyle}>النوع</label>
           <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
@@ -2811,13 +2811,13 @@ function PlansTab() {
     fontSize: "12px", fontFamily: "inherit",
   };
 
-  if (loading) return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>;
+  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-between items-center">
         <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <Gauge size={16} style={{ color: "#7c3aed" }} />
+          <Gauge className="text-violet-600" size={16} />
           كتالوج الباقات ({Object.keys(plans).length} باقة)
         </h3>
         <button
@@ -2844,8 +2844,8 @@ function PlansTab() {
       )}
 
       {Object.entries(plans).map(([key, plan]) => (
-        <div key={key} style={{ padding: "16px", background: "var(--card)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+        <div className="p-4 bg-[var(--card)] rounded-xl border border-[var(--border)]" key={key}>
+          <div className="flex items-center gap-2 mb-3">
             <span style={{
               padding: "2px 10px", borderRadius: "8px", background: "#7c3aed",
               color: "#fff", fontSize: "10px", fontWeight: 800, fontFamily: "monospace",
@@ -2857,7 +2857,7 @@ function PlansTab() {
               <span style={{ padding: "1px 6px", borderRadius: "6px", background: "#10b981", color: "#fff", fontSize: "9px", fontWeight: 700 }}>مميزة</span>
             )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5">
             <div>
               <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الاسم</label>
               <input
@@ -2987,13 +2987,13 @@ function BackupsTab() {
   const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: "13px", borderBottom: "1px solid var(--border)", verticalAlign: "middle" };
 
   return (
-    <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
-      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-b-[var(--border)] flex justify-between items-center gap-3 flex-wrap">
         <div>
           <h3 style={{ fontSize: "15px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
             <HardDriveDownload size={16} className="text-primary" /> النسخ الاحتياطي اليدوي
           </h3>
-          <p style={{ fontSize: "12px", color: "var(--muted-foreground)", marginTop: "4px" }}>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
             إنشاء نسخة SQLite مشفّرة (AES-256-GCM) من قاعدة البيانات الحالية. يتطلب صلاحيات المؤسس.
           </p>
         </div>
@@ -3014,17 +3014,17 @@ function BackupsTab() {
       </div>
 
       {loading ? (
-        <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+        <div className="p-12 text-center text-[var(--muted-foreground)] flex items-center justify-center gap-2">
           <Loader2 size={16} className="animate-spin" /> جارٍ التحميل…
         </div>
       ) : backups.length === 0 ? (
-        <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>
+        <div className="p-12 text-center text-[var(--muted-foreground)]">
           <HardDriveDownload size={36} style={{ opacity: 0.3, marginBottom: "8px" }} />
           <div>لا توجد نسخ احتياطية بعد.</div>
         </div>
       ) : (
-        <div style={{ overflowX: "auto" }} className="garfix-scroll">
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="garfix-scroll overflow-x-auto">
+          <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr>
                 <th style={thStyle}>اسم الملف</th>
@@ -3050,11 +3050,11 @@ function BackupsTab() {
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
           onClick={() => !triggering && setConfirmingTrigger(false)}
         >
-          <div
-            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "14px", boxShadow: "0 20px 50px rgba(0,0,0,0.3)", maxWidth: "440px", width: "100%", padding: "20px" }}
-            onClick={(e) => e.stopPropagation()}
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full p-5"
+ style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.3)", maxWidth: "440px" }}
+ onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
+            <div className="flex items-start gap-3" style={{ marginBottom: "14px" }}>
               <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(124,58,237,0.15)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <HardDriveDownload size={18} />
               </div>
@@ -3065,7 +3065,7 @@ function BackupsTab() {
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setConfirmingTrigger(false)}
                 disabled={triggering}

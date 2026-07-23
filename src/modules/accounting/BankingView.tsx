@@ -98,11 +98,11 @@ export function BankingView() {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Landmark size={18} /></div>
-                <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: totalCash >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalCash)}</div></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+                <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</div></div>
               </div>
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><FileText size={18} /></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
               </div>
             </div>
@@ -123,14 +123,14 @@ export function BankingView() {
                           <td className={cn(tdStyle, "font-mono text-[11px]")} dir="ltr">{ba.iban || "—"}</td>
                           <td className={tdStyle}>{ba.currency}</td>
                           <td className={tdStyle}>{ba.accountType || "—"}</td>
-                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: ba.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(ba.balance)}</td>
+                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", ba.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(ba.balance)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-border bg-muted font-extrabold">
                         <td className={cn(tdStyle, "font-extrabold")} colSpan={6}>إجمالي النقدية</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: totalCash >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalCash)}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -163,7 +163,7 @@ export function BankingView() {
                         <td className={tdStyle}>{t.currency}</td>
                         <td className={tdStyle} dir="ltr">{t.date}</td>
                         <td className={tdStyle}>{t.description || "—"}</td>
-                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: t.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: t.status === "completed" ? "#10b981" : "#f59e0b" }}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -328,22 +328,22 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
       {selectedAccountId && items.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Landmark size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي البنك</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBank)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(59,130,246,0.20)", color: "#3b82f6" }}><FileText size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><FileText size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي الكتب</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBook)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: totalDiff === 0 ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.20)", color: totalDiff === 0 ? "#10b981" : "#ef4444" }}>
+            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalDiff === 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}>
               {totalDiff === 0 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
             </div>
-            <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: totalDiff === 0 ? "#10b981" : "#ef4444" }}>{fmt(totalDiff)}</div></div>
+            <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalDiff)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><CheckCircle2 size={18} /></div>
-            <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span style={{ color: "#10b981" }}>{matchedCount}</span> / <span style={{ color: "#f59e0b" }}>{unmatchedCount}</span></div></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><CheckCircle2 size={18} /></div>
+            <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span className="text-emerald-500">{matchedCount}</span> / <span className="text-amber-500">{unmatchedCount}</span></div></div>
           </div>
         </div>
       )}
@@ -364,8 +364,8 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
                     <td className={cn(tdStyle, "font-bold")}>{item.description}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bankAmount)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bookAmount)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: item.difference === 0 ? "#10b981" : "#ef4444" }}>{fmt(item.difference)}</td>
-                    <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: item.status === "matched" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: item.status === "matched" ? "#10b981" : "#f59e0b" }}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", item.difference === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(item.difference)}</td>
+                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", item.status === "matched" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
                     <td className={tdStyle}>{item.status !== "matched" && <button onClick={() => handleMatch(item.id)} disabled={actionId === item.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{actionId === item.id ? "جارٍ…" : "مطابقة"}</button>}</td>
                   </tr>
                 ))}
@@ -508,14 +508,14 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
             <option value="">— اختر —</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
           </select>
-          {fromAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className="font-bold" style={{ color: fromAccount.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(fromAccount.balance)} {fromAccount.currency}</span></div>}
+          {fromAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className={cn("font-bold", fromAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(fromAccount.balance)} {fromAccount.currency}</span></div>}
         </div>
         <div><label className={labelStyle}>إلى حساب *</label>
           <select value={toAccountId ?? ""} onChange={(e) => setToAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
             <option value="">— اختر —</option>
             {accounts.filter(a => a.id !== fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
           </select>
-          {toAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className="font-bold" style={{ color: toAccount.balance >= 0 ? "#10b981" : "#ef4444" }}>{fmt(toAccount.balance)} {toAccount.currency}</span></div>}
+          {toAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className={cn("font-bold", toAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(toAccount.balance)} {toAccount.currency}</span></div>}
         </div>
         <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" min={0} /></div>
         <div><label className={labelStyle}>العملة</label>
