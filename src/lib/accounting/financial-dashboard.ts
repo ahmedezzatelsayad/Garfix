@@ -207,6 +207,17 @@ export async function getDashboardMetrics(
   }
 }
 
+/** Alias for dashboard route — delegates to getDashboardMetrics. */
+export async function getFinancialDashboard(
+  companySlug: string,
+  periodFrom?: string,
+  periodTo?: string,
+) {
+  const from = periodFrom || new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+  const to = periodTo || new Date().toISOString().slice(0, 10);
+  return getDashboardMetrics(companySlug, from, to);
+}
+
 // ─── Period Comparison ───────────────────────────────────────────────────
 
 export interface PeriodData {

@@ -402,8 +402,10 @@ export interface TelemetryEntry {
 
 export interface MetricsSummary {
   totalRequests: number;
-  providerDistribution: Record<string, number>;
-  modelDistribution: Record<string, number>;
+  totalCompanies: number;
+  totalCostUsd: number;
+  providerDistribution: Record<string, { requests: number; cost: number }>;
+  modelDistribution: Record<string, { requests: number; cost: number }>;
   totalTokenUsage: number;
   totalUsdSpent: number;
   avgCostPerRequest: number;
@@ -709,8 +711,13 @@ export function getDefaultSeederConfig(companyCount: 10 | 100 | 1000 | 5000 | 10
   };
 }
 
-export function seedEnterpriseData(config: Partial<SeederConfig> & { companyCount: SeederConfig['companyCount'] }): SyntheticCompany[] {
-  const fullConfig: SeederConfig = { ...getDefaultSeederConfig(config.companyCount), ...config };
+export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { companyCount: SeederConfig['companyCount'] } | number, seedOrUndefined?: number): SyntheticCompany[] {
+  let fullConfig: SeederConfig;
+  if (typeof configOrCount === 'number') {
+    fullConfig = { ...getDefaultSeederConfig(configOrCount as any), seed: seedOrUndefined ?? 42 };
+  } else {
+    fullConfig = { ...getDefaultSeederConfig(configOrCount.companyCount), ...configOrCount };
+  }
   const rng = new SeededRandom(fullConfig.seed);
   const countries = ['SA', 'AE', 'KW', 'BH', 'OM'] as const;
   const countryCurrencies: Record<string, Currency> = { SA: 'SAR', AE: 'AED', KW: 'KWD', BH: 'BHD', OM: 'OMR' };
@@ -1414,8 +1421,8 @@ export class TelemetryCollector {
   private entries: TelemetryEntry[] = [];
   private companyMap: Map<string, SyntheticCompany>;
 
-  constructor(companies: SyntheticCompany[]) {
-    this.companyMap = new Map(companies.map(c => [c.slug, c]));
+  constructor(companies: SyntheticCompany[] = []) {
+    this.companyMap = new Map((companies ?? []).map(c => [c.slug, c]));
   }
 
   /** Record a single AI request telemetry entry */
@@ -1486,15 +1493,31 @@ export class TelemetryCollector {
   }
 
   /** Generate telemetry for all companies */
-  generateAll(rng?: SeededRandom): TelemetryEntry[] {
-    const rand = rng ?? new SeededRandom(9999);
-    for (const company of Array.from(this.companyMap.values())) {
-      this.generateFromCompany(company, new SeededRandom(rand.int(0, 999999)));
+  generateAll(companiesOrRng?: SyntheticCompany[] | SeededRandom, rngOrUndefined?: SeededRandom): TelemetryEntry[] {
+    // Allow calling generateAll(companies) or generateAll(rng) or generateAll()
+    let companies: SyntheticCompany[];
+    let rng: SeededRandom;
+    if (Array.isArray(companiesOrRng)) {
+      companies = companiesOrRng;
+      // Rebuild companyMap from the passed companies
+      this.companyMap = new Map(companies.map(c => [c.slug, c]));
+      rng = rngOrUndefined ?? new SeededRandom(9999);
+    } else {
+      companies = Array.from(this.companyMap.values());
+      rng = companiesOrRng ?? new SeededRandom(9999);
+    }
+    for (const company of companies) {
+      this.generateFromCompany(company, new SeededRandom(rng.int(0, 999999)));
     }
     return this.entries;
   }
 
   getEntries(): TelemetryEntry[] {
+    return this.entries;
+  }
+
+  /** Alias for getEntries() — used by metrics test helpers */
+  getAll(): TelemetryEntry[] {
     return this.entries;
   }
 
@@ -1515,10 +1538,12 @@ export class TelemetryCollector {
 // SECTION 8: Metrics Calculator
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function calculateMetrics(telemetry: TelemetryEntry[], companies: SyntheticCompany[]): MetricsSummary {
+export function calculateMetrics(companies: SyntheticCompany[], telemetry: TelemetryEntry[]): MetricsSummary {
   if (telemetry.length === 0) {
     return {
       totalRequests: 0,
+      totalCompanies: 0,
+      totalCostUsd: 0,
       providerDistribution: {},
       modelDistribution: {},
       totalTokenUsage: 0,
@@ -1546,14 +1571,21 @@ export function calculateMetrics(telemetry: TelemetryEntry[], companies: Synthet
   const totalUsd = telemetry.reduce((s, e) => s + e.costUsd, 0);
   const totalInvoices = companies.reduce((s, c) => s + c.invoices.length, 0) || 1;
 
-  // Provider distribution
-  const providerDist: Record<string, number> = {};
-  const modelDist: Record<string, number> = {};
+  // Provider distribution (with cost per provider)
+  const providerDist: Record<string, { requests: number; cost: number }> = {};
+  const modelDist: Record<string, { requests: number; cost: number }> = {};
   const tenantCosts: Map<string, { cost: number; requests: number }> = new Map();
 
   for (const e of telemetry) {
-    providerDist[e.provider] = (providerDist[e.provider] || 0) + 1;
-    modelDist[e.model] = (modelDist[e.model] || 0) + 1;
+    const pd = providerDist[e.provider] ?? { requests: 0, cost: 0 };
+    pd.requests += 1;
+    pd.cost += e.costUsd;
+    providerDist[e.provider] = pd;
+
+    const md = modelDist[e.model] ?? { requests: 0, cost: 0 };
+    md.requests += 1;
+    md.cost += e.costUsd;
+    modelDist[e.model] = md;
     const tc = tenantCosts.get(e.tenant) ?? { cost: 0, requests: 0 };
     tc.cost += e.costUsd;
     tc.requests += 1;
@@ -1597,6 +1629,8 @@ export function calculateMetrics(telemetry: TelemetryEntry[], companies: Synthet
 
   return {
     totalRequests,
+    totalCompanies: companies.length,
+    totalCostUsd: totalUsd,
     providerDistribution: providerDist,
     modelDistribution: modelDist,
     totalTokenUsage: totalTokens,
@@ -1632,7 +1666,7 @@ export function generateFounderReport(
   telemetry: TelemetryEntry[],
   seed: number = 42,
 ): FounderReport {
-  const metrics = calculateMetrics(telemetry, companies);
+  const metrics = calculateMetrics(companies, telemetry);
   const totalInvoices = companies.reduce((s, c) => s + c.invoices.length, 0);
   const totalProducts = companies.reduce((s, c) => s + c.products.length, 0);
   const totalClients = companies.reduce((s, c) => s + c.clients.length, 0);
@@ -2117,7 +2151,7 @@ export async function runFounderValidation(
 
   // ── Phase 3: Calculate metrics ──
   console.log('[Founder Validation] Calculating metrics...');
-  const metrics = calculateMetrics(telemetry, companies);
+  const metrics = calculateMetrics(companies, telemetry);
 
   // ── Phase 4: E2E Journey ──
   let e2eResult: E2EJourneyResult | null = null;
