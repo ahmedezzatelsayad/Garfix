@@ -3,6 +3,9 @@
  *
  * NOTE: The token-refresh POST handler moved to `/api/auth/refresh/route.ts`
  * (bug fix: the frontend calls `POST /api/auth/refresh`, not `/api/auth/me`).
+ *
+ * SEC-M2 FIX (Cycle 1): pin to Node.js runtime — Prisma + JWT + (now) Valkey
+ *   blacklist check inside resolveAuth.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -12,6 +15,9 @@ import {
   buildUserProfile,
 } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api";
+
+// SEC-M2 FIX (Cycle 1): pin to Node.js runtime.
+export const runtime = "nodejs";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);

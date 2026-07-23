@@ -140,6 +140,13 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
 // ── Matcher ─────────────────────────────────────────────────────────────────
 
+// SEC-M3 FIX (Cycle 1): pin middleware to Node.js runtime. The middleware
+// imports `@/lib/auth` (jsonwebtoken, bcryptjs) and `@/lib/rateLimit`
+// (ioredis) — both Node-only. On Next.js 16 the default middleware runtime
+// is Edge, which would either fail to bundle these or fail at runtime when
+// `resolveAuth` calls into them. Setting `runtime: "nodejs"` makes the
+// dependency explicit and removes any ambiguity for Turbopack.
 export const config = {
+  runtime: "nodejs",
   matcher: ["/api/:path*"],
 };

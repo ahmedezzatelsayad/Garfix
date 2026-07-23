@@ -2,24 +2,30 @@
  * POST /api/auth/change-password
  *
  * Authenticated password change. Requires current password.
- * Increments tokenVersion to invalidate other sessions (but keeps the current one).
+ * Increments tokenVersion to invalidate all other sessions AND blacklists
+ * the current access token so the user must re-authenticate.
  *
  * Body: { currentPassword, newPassword }
+ *
+ * SEC-H1 FIX (Cycle 1): uses the strong passwordPolicy.ts validator (10+ chars,
+ * upper/lower/digit/symbol, score-based) instead of the weaker inline schema.
+ * SEC-C2 FIX (Cycle 1): blacklists the current access-token JTI.
+ * SEC-L2 FIX (Cycle 1): rejects new password == current password.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveAuth, hashPassword, verifyPassword } from "@/lib/auth";
+import { resolveAuth, hashPassword, verifyPassword, revokeAccessSession } from "@/lib/auth";
+import { validatePassword } from "@/lib/passwordPolicy";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
+// SEC-M2 FIX (Cycle 1): pin to Node.js runtime — Prisma + bcrypt + Valkey.
+export const runtime = "nodejs";
+
 const Schema = z.object({
   currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة"),
-  newPassword: z
-    .string()
-    .min(8, "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل")
-    .regex(/[A-Za-z]/, "كلمة المرور يجب أن تحتوي على حرف واحد على الأقل")
-    .regex(/\d/, "كلمة المرور يجب أن تحتوي على رقم واحد على الأقل"),
+  newPassword: z.string().min(1),
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
@@ -36,6 +42,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
   const { currentPassword, newPassword } = parsed.data;
 
+  // SEC-H1 FIX (Cycle 1): enforce the strong password policy from
+  // passwordPolicy.ts (10+ chars, upper/lower/digit/symbol, score ≥ 40,
+  // common-pattern penalties). The previous inline schema only required
+  // 8 chars + 1 letter + 1 digit, which is below modern ERP minimums.
+  const pwdCheck = validatePassword(newPassword);
+  if (!pwdCheck.valid) {
+    return apiError(pwdCheck.errors[0] || "كلمة المرور غير قوية بما يكفي", 400);
+  }
+
   // Fetch the user's current password hash
   const dbUser = await db.user.findUnique({ where: { uid: user.uid } });
   if (!dbUser) return apiError("المستخدم غير موجود", 404);
@@ -46,7 +61,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("كلمة المرور الحالية غير صحيحة", 401);
   }
 
-  // Set new password + invalidate all other sessions
+  // SEC-L2 FIX (Cycle 1): reject new password == current password.
+  // This prevents a user from "changing" to the same password (which would
+  // silently reset tokenVersion and lock other sessions for no benefit).
+  const sameAsCurrent = await verifyPassword(newPassword, dbUser.passwordHash);
+  if (sameAsCurrent) {
+    return apiError("كلمة المرور الجديدة يجب أن تكون مختلفة عن الحالية", 400);
+  }
+
+  // Set new password + invalidate all sessions (tokenVersion++)
   const newHash = await hashPassword(newPassword);
   await db.user.update({
     where: { uid: user.uid },
@@ -55,6 +78,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       tokenVersion: { increment: 1 },
     },
   });
+
+  // SEC-C2 FIX (Cycle 1): blacklist the current access token so the user
+  // must re-authenticate on this device too. The previous behavior left the
+  // current access token valid for up to 30 minutes — long enough for an
+  // attacker who stole the cookie to keep using it after the legitimate
+  // user noticed the compromise and changed their password.
+  await revokeAccessSession(req);
 
   await logAudit({
     userEmail: user.email,
@@ -65,6 +95,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   return NextResponse.json({
     ok: true,
-    message: "تم تغيير كلمة المرور. قد تحتاج لتسجيل الدخول مرة أخرى على الأجهزة الأخرى.",
+    message: "تم تغيير كلمة المرور. يرجى تسجيل الدخول مرة أخرى.",
   });
 });

@@ -5,6 +5,8 @@
  * handler previously lived on `POST /api/auth/me`. That mismatch caused every
  * silent session refresh to 404, logging users out instead of rotating the
  * token quietly. This route restores the contract the frontend expects.
+ *
+ * SEC-M2 FIX (Cycle 1): pin to Node.js runtime — Prisma + JWT.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -15,6 +17,9 @@ import {
   type SessionUser,
 } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api";
+
+// SEC-M2 FIX (Cycle 1): pin to Node.js runtime.
+export const runtime = "nodejs";
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   // Try refresh from cookie

@@ -159,12 +159,57 @@ export async function blacklistToken(jti: string, remainingTtlSeconds: number): 
 /**
  * Async token verification that also checks the Valkey blacklist.
  * Use this for sensitive operations where revocation must be enforced.
+ *
+ * SEC-C1 FIX (Cycle 1): this is now the canonical verifier used by
+ * `resolveAuth` so that blacklisted access tokens are rejected immediately.
  */
 export async function verifyTokenWithBlacklist(token: string): Promise<AuthPayload | null> {
   const payload = verifyToken(token);
   if (!payload) return null;
   if (payload.jti && await isTokenBlacklisted(payload.jti)) return null;
   return payload;
+}
+
+/**
+ * SEC-C2 FIX (Cycle 1): high-level "revoke current session" helper.
+ *
+ * Reads the access token from the request, decodes its JTI + exp, and
+ * blacklists the JTI for the remaining TTL. Idempotent: if there is no
+ * access token, or it has no JTI, or it is already expired, this is a no-op.
+ *
+ * Use this on:
+ *   - logout        → user explicitly signs out
+ *   - change-password → user changes their own password (current session kept
+ *                       alive only via the new cookies the caller issues)
+ *   - reset-password → admin/system forces a password reset
+ *   - admin force-logout → founder kicks a user out
+ *
+ * Pairs with `User.tokenVersion++` which invalidates the refresh token;
+ * together they fully terminate the session.
+ */
+export async function revokeAccessSession(req: NextRequest): Promise<void> {
+  const access = getAccessToken(req);
+  if (!access) return;
+  // Decode without verifying — we already trust the cookie came from us,
+  // and we want this to work even if the token has just expired (so we
+  // can still kill it for the remaining natural TTL window).
+  let decoded: jwt.JwtPayload | null = null;
+  try {
+    decoded = jwt.decode(access) as jwt.JwtPayload | null;
+  } catch {
+    decoded = null;
+  }
+  if (!decoded) return;
+  const jti = decoded.jti;
+  if (!jti) return;
+  const exp = typeof decoded.exp === "number" ? decoded.exp : 0;
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = exp - now;
+  if (remaining <= 0) return; // already expired — nothing to blacklist
+  // Cap the blacklist TTL at the natural access-token TTL so stale entries
+  // don't accumulate if the exp claim is somehow wrong.
+  const ttl = Math.min(remaining, ACCESS_TTL);
+  await blacklistToken(jti, ttl);
 }
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────
@@ -227,11 +272,21 @@ export interface AuthResult {
 /**
  * Resolve the authenticated user from the request's access cookie.
  * On expired access token, attempts to refresh from the refresh cookie.
+ *
+ * SEC-C1 FIX (Cycle 1): the access-token path now consults the Valkey
+ * token blacklist via `verifyTokenWithBlacklist`. This makes admin
+ * force-logout, post-logout invalidation, and post-password-change
+ * invalidation effective immediately for the access token too — previously
+ * a blacklisted access token remained valid for its full 30-minute TTL
+ * because the sync `verifyToken` could not perform the async blacklist
+ * check. The performance cost is one Valkey EXISTS call per authenticated
+ * request (sub-ms on a hot Valkey connection); when Valkey is not
+ * configured the function degrades to the old behavior (no blacklist).
  */
 export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   const access = getAccessToken(req);
   if (access) {
-    const payload = verifyToken(access);
+    const payload = await verifyTokenWithBlacklist(access);
     if (payload) return { ok: true, user: payload };
   }
 

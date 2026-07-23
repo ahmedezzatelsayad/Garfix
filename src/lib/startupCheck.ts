@@ -50,6 +50,43 @@ const RECOMMENDED = [
   "SMTP_FROM",
 ];
 
+// SEC-C3 / SEC-M4 FIX: Blocklist of known placeholder / leaked secret values
+// that must NEVER be accepted in production. If any env var matches one of
+// these, the server refuses to boot.
+//
+// These values come from the originally-committed `.env` file — they are
+// effectively public. Anyone running production with one of these values is
+// running with a compromised secret.
+const LEAKED_PLACEHOLDER_VALUES: ReadonlySet<string> = new Set([
+  "garfix-build-secret-key-32-chars-long!!",
+  "garfix-refresh-secret-32-chars!!",
+  "garfix-payments-encryption-32-char-key!!",
+  "garfix-dev-secret-change-me",
+  "garfix_strong_pass_change_me",
+]);
+
+// Env vars that must not match any leaked placeholder value in production.
+const PLACEHOLDER_CHECKED_VARS = [
+  "JWT_SECRET",
+  "JWT_REFRESH_SECRET",
+  "PAYMENTS_ENC_KEY",
+];
+
+function isPlaceholderValue(value: string): boolean {
+  // Direct match against the blocklist (case-insensitive).
+  const lower = value.toLowerCase();
+  for (const leaked of LEAKED_PLACEHOLDER_VALUES) {
+    if (lower === leaked.toLowerCase()) return true;
+  }
+  // Heuristic: starts with the canonical prefix.
+  if (lower.startsWith("replace_with_")) return true;
+  if (lower.startsWith("garfix-build-secret")) return true;
+  if (lower.startsWith("garfix-refresh-secret")) return true;
+  if (lower.startsWith("garfix-payments-encryption")) return true;
+  if (lower.startsWith("garfix-dev-secret")) return true;
+  return false;
+}
+
 export interface StartupCheckResult {
   ok: boolean;
   fatal: string[];
@@ -85,8 +122,25 @@ export function runStartupChecks(): StartupCheckResult {
     if (!process.env.PAYMENTS_ENC_KEY) {
       fatal.push("PAYMENTS_ENC_KEY is required in production — generate one with: openssl rand -base64 32");
     }
-    if (process.env.JWT_SECRET === "garfix-dev-secret-change-me") {
-      fatal.push("JWT_SECRET must be changed from the dev default in production");
+    // SEC-C3 / SEC-M4 FIX: reject any known leaked/placeholder value.
+    // The original `.env` file was committed to the repo with these exact
+    // values, so they are effectively public — production must NOT use them.
+    for (const varName of PLACEHOLDER_CHECKED_VARS) {
+      const value = process.env[varName];
+      if (value && isPlaceholderValue(value)) {
+        fatal.push(
+          `${varName} is set to a known leaked/placeholder value. ` +
+            `Generate a fresh secret with: openssl rand -base64 48 (for JWT_*) or openssl rand -base64 32 (for PAYMENTS_ENC_KEY).`,
+        );
+      }
+    }
+    // SEC-C3 FIX: reject the leaked DATABASE_URL password too.
+    const dbUrl = process.env.DATABASE_URL || "";
+    if (dbUrl.includes("garfix_strong_pass_change_me")) {
+      fatal.push(
+        "DATABASE_URL still uses the leaked placeholder password 'garfix_strong_pass_change_me'. " +
+          "Rotate the database user's password and update DATABASE_URL / DATABASE_DIRECT_URL.",
+      );
     }
   }
 
