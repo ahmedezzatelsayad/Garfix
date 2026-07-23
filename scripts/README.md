@@ -1,6 +1,6 @@
 # Scripts — أدوات البذرة، الاختبار، والأتمتة
 
-> ~30 سكريبت TypeScript و Shell لأداء مهام التطوير: بذر البيانات، اختبار الأداء، النسخ الاحتياطي، والتوليد التلقائي للاختبارات.
+> ~35 سكريبت TypeScript و Shell لأداء مهام التطوير: بذر البيانات، اختبار الأداء، النسخ الاحتياطي، والتوليد التلقائي للاختبارات، بما في ذلك سكريبتات ترحيل Decimal واختبارات التجاوب.
 
 ## الفئات
 
@@ -32,6 +32,8 @@
 | الملف | الوظيفة |
 |-------|---------|
 | `scale-load-test.ts` | اختبار تحميل متدرج (100 → 10000 طلب) |
+| `load-test.ts` | اختبار تحميل إنتاجي على الـ API (p50/p90/p95/p99) |
+| `load-test.sh` | اختبار تحميل Shell باستخدام curl/ab/k6 |
 | `test-infra.ts` | فحص صحة البنية التحتية (Valkey, DB, Queues) |
 | `load-model-probe.ts` | فحص تحميل النماذج والـ providers |
 | `test-vault.ts` | اختبار نظام التخزين الآمن (Vault) |
@@ -43,6 +45,25 @@
 |-------|---------|
 | `test-invoice-brain-100.ts` | اختبار Invoice Brain بـ 100 فاتورة |
 | `test-invoice-brain-normalization.ts` | اختبار توحيد البيانات (عملات، تواريخ، أسماء) |
+
+### اتصال AI والتحقق
+
+| الملف | الوظيفة |
+|-------|---------|
+| `test-deepseek-connection.ts` | اختبار سريع: التحقق من اتصال OpenRouter + DeepSeek |
+| `verification_tests.ts` | اختبارات تحقق runnable لكل بند في التقرير التقني v12.1.0 |
+| `founder-validation-suite.ts` | تشغيل Founder Validation Suite الكامل (11 قسم) |
+
+### ترحيل Decimal والتجاوب
+
+> سكريبتات مرتبطة بترحيل الحقول المالية من String إلى Decimal (ADR 002) واختبارات التجاوب مع الأجهزة.
+
+| الملف | الوظيفة |
+|-------|---------|
+| *(سكريبتات ترحيل Decimal)* | ترحيل الحقول المالية (`String → Decimal`) — تُشغّل بالتتابع مع seed |
+| *(اختبارات التجاوب)* | اختبار أحجام الشاشة (viewport) في Playwright — تُشغّل عبر `bunx playwright test --project=mobile` |
+
+> **ملاحظة**: سكريبتات ترحيل Decimal واختبارات التجاوب قد تُضاف لاحقاً كملفات مستقلة أو تُدار عبر الـ ADR (انظر `docs/adr/002-decimal-monetary-fields.md` و `docs/MOBILE_RESPONSIVE_REPORT.md`).
 
 ### التوليد التلقائي والصيانة
 
@@ -63,7 +84,6 @@
 | الملف | الوظيفة |
 |-------|---------|
 | `generate-evidence-pack.ts` | توليد حزمة أدلة للتدقيق |
-| `founder-validation-suite.ts` | تشغيل Founder Validation Suite الكامل (11 قسم) |
 
 ## التشغيل
 
@@ -74,8 +94,20 @@ bun run scripts/seed.ts
 # اختبار الأداء
 bun run scripts/bench-free-models.ts
 
+# اختبار التحميل (TypeScript)
+bun run scripts/load-test.ts
+
+# اختبار التحميل (Shell)
+bash scripts/load-test.sh
+
 # اختبار البنية التحتية
 bun run scripts/test-infra.ts
+
+# اتصال DeepSeek
+bun run scripts/test-deepseek-connection.ts
+
+# اختبارات التحقق التقني
+bun test scripts/verification_tests.ts
 
 # Founder Validation Suite
 bun run scripts/founder-validation-suite.ts
