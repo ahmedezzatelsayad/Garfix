@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
 import { createInterCompanySettlement } from "@/lib/accounting/consolidation";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -85,6 +86,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       user.uid,
     );
 
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "create_inter_company_settlement",
+      entity: "inter_company_transaction",
+      companySlug: data.companySlugTo,
+      details: { from: data.companySlugFrom, to: data.companySlugTo, amount: amountStr, currency: data.currency },
+    });
+
     return NextResponse.json({ ok: true, settlement: result });
   }
 
@@ -103,6 +113,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     user.email,
     user.uid,
   );
+
+  await logAudit({
+    userEmail: user.email,
+    userUid: user.uid,
+    action: "create_inter_company_settlement",
+    entity: "inter_company_transaction",
+    companySlug: data.companySlugFrom,
+    details: { from: data.companySlugFrom, to: data.companySlugTo, amount: amountStr, currency: data.currency },
+  });
 
   return NextResponse.json({ ok: true, settlement: result });
 });

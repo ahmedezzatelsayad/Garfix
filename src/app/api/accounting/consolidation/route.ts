@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
 import { consolidateGroup } from "@/lib/accounting/consolidation";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
@@ -21,6 +22,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
 
   const consolidation = await consolidateGroup(groupSlug, asOfDate);
+
+  await logAudit({
+    userEmail: access.user.email,
+    userUid: access.user.uid,
+    action: "view_consolidation",
+    entity: "consolidation",
+    companySlug: groupSlug,
+    details: { asOfDate, groupSlug },
+  });
+
   return NextResponse.json({ consolidation });
 });
 
@@ -41,5 +52,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
 
   const consolidation = await consolidateGroup(data.groupSlug, data.asOfDate);
+
+  await logAudit({
+    userEmail: access.user.email,
+    userUid: access.user.uid,
+    action: "run_consolidation",
+    entity: "consolidation",
+    companySlug: data.groupSlug,
+    details: { asOfDate: data.asOfDate, groupSlug: data.groupSlug },
+  });
+
   return NextResponse.json({ ok: true, consolidation });
 });

@@ -1,11 +1,15 @@
 /**
  * /api/accounting/fiscal-periods/[id]/close
  * POST — close a fiscal period
+ *
+ * FIX: Now uses the proper closeFiscalPeriod engine which creates
+ * closing entries (revenue/expense → income summary → retained earnings),
+ * updates account balances, and locks posted JEs in the period.
  */
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
-import { logAudit } from "@/lib/audit";
+import { closeFiscalPeriod } from "@/lib/accounting/period-close";
 import { apiError, withErrorHandler, apiOk } from "@/lib/api";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -23,28 +27,35 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     where: { id: parseInt(id), companySlug },
   });
   if (!period) return apiError("Fiscal period not found", 404);
-
   if (period.status === "closed") return apiError("Period is already closed", 400);
   if (period.status === "locked") return apiError("Period is locked and cannot be closed", 400);
 
-  const updated = await db.fiscalPeriod.update({
-    where: { id: parseInt(id) },
-    data: {
-      status: "closed",
-      closedBy: user.email,
-      closedAt: new Date(),
-    },
-  });
+  // Use the proper closeFiscalPeriod engine for full period close
+  try {
+    const result = await closeFiscalPeriod(
+      companySlug,
+      period.name,
+      user.email,
+      user.uid,
+    );
 
-  await logAudit({
-    userEmail: user.email,
-    userUid: user.uid,
-    action: "close_period",
-    entity: "fiscal_period",
-    entityId: updated.id,
-    companySlug,
-    details: { name: updated.name, periodType: updated.periodType, fiscalYear: updated.fiscalYear },
-  });
-
-  return apiOk({ ok: true, period: updated });
+    return apiOk({
+      ok: true,
+      period: {
+        id: result.periodId,
+        name: result.periodName,
+        status: "closed",
+        closedBy: result.closedBy,
+        closedAt: result.closedAt,
+        netIncome: result.netIncome,
+        closingJEId: result.closingJEId,
+        revenueClosed: result.revenueClosed,
+        expensesClosed: result.expensesClosed,
+        retainedEarningsUpdate: result.retainedEarningsUpdate,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return apiError(message, 400);
+  }
 });

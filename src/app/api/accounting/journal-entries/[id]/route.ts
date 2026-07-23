@@ -26,39 +26,42 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if ("error" in access) return access.error;
   const user = access.user;
 
-  // If the entry was posted, roll back its impact on account balances first
-  // Batch fetch accounts and aggregate deltas to avoid N+1
-  if (existing.status === "posted") {
-    const accountIds = [...new Set(existing.lines.map((l) => l.accountId))];
-    const accounts = await db.account.findMany({
-      where: { id: { in: accountIds } },
-    });
-    const accountMap = new Map(accounts.map((a) => [a.id, a]));
-
-    const deltas = new Map<number, number>();
-    for (const line of existing.lines) {
-      const acc = accountMap.get(line.accountId);
-      if (!acc) continue;
-      const isDebitNormal = acc.type === "asset" || acc.type === "expense";
-      // Reverse the original delta: subtract what was originally added.
-      const delta = isDebitNormal
-        ? num(line.credit, 3) - num(line.debit, 3)
-        : num(line.debit, 3) - num(line.credit, 3);
-      deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
-    }
-
-    for (const [accountId, delta] of deltas) {
-      const acc = accountMap.get(accountId)!;
-      const currentBalance = num(acc.balance, 3);
-      await db.account.update({
-        where: { id: accountId },
-        data: { balance: (currentBalance + delta).toFixed(3) },
+  // Wrap balance rollback + deletion in a transaction for atomicity
+  // (prevents data inconsistency if delete fails after balances are rolled back)
+  await db.$transaction(async (tx) => {
+    // If the entry was posted, roll back its impact on account balances first
+    if (existing.status === "posted") {
+      const accountIds = [...new Set(existing.lines.map((l) => l.accountId))];
+      const accounts = await tx.account.findMany({
+        where: { id: { in: accountIds } },
       });
-    }
-  }
+      const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
-  // Delete the entry and its lines (lines cascade via Prisma schema)
-  await db.journalEntry.delete({ where: { id: existing.id } });
+      const deltas = new Map<number, number>();
+      for (const line of existing.lines) {
+        const acc = accountMap.get(line.accountId);
+        if (!acc) continue;
+        const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+        // Reverse the original delta: subtract what was originally added.
+        const delta = isDebitNormal
+          ? num(line.credit, 3) - num(line.debit, 3)
+          : num(line.debit, 3) - num(line.credit, 3);
+        deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+      }
+
+      for (const [accountId, delta] of deltas) {
+        const acc = accountMap.get(accountId)!;
+        const currentBalance = num(acc.balance, 3);
+        await tx.account.update({
+          where: { id: accountId },
+          data: { balance: (currentBalance + delta).toFixed(3) },
+        });
+      }
+    }
+
+    // Delete the entry and its lines (lines cascade via Prisma schema)
+    await tx.journalEntry.delete({ where: { id: existing.id } });
+  });
 
   await logAudit({
     userEmail: user.email, userUid: user.uid,

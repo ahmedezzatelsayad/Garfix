@@ -84,6 +84,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       user.email,
       user.uid,
     );
+
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "create_installment_schedule",
+      entity: "installment_schedule",
+      companySlug: data.companySlug,
+      details: { invoiceId: data.invoiceId, installmentCount: data.installmentCount, startDate: data.startDate, interval: data.interval },
+    });
+
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
