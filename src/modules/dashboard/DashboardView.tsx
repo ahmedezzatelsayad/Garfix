@@ -69,7 +69,7 @@ export function DashboardView() {
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-8 md:p-12 text-center text-muted-foreground">
         جارٍ تحميل لوحة التحكم…
       </div>
     );
@@ -77,7 +77,7 @@ export function DashboardView() {
 
   if (!stats) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-8 md:p-12 text-center text-muted-foreground">
         تعذّر تحميل البيانات. حاول مرة أخرى.
       </div>
     );
@@ -93,7 +93,7 @@ export function DashboardView() {
     <div className="flex flex-col gap-5">
       {/* Page title */}
       <div>
-        <h1 className="text-2xl font-extrabold mb-1">
+        <h1 className="text-xl md:text-2xl font-extrabold mb-1">
           {activeCompany ? `لوحة تحكم — ${activeCompany.nameAr || activeCompany.name}` : "لوحة التحكم العامة"}
         </h1>
         <p className="text-[13px] text-muted-foreground">
@@ -138,8 +138,8 @@ export function DashboardView() {
       {/* Charts row — stack on mobile, 2-col on lg+ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Revenue chart */}
-        <div className="p-5 rounded-[14px] bg-card border border-border">
-          <h3 className="text-[15px] font-bold mb-4 flex items-center">
+        <div className="p-3 md:p-5 rounded-[14px] bg-card border border-border">
+          <h3 className="text-sm md:text-[15px] font-bold mb-4 flex items-center">
             <TrendingUp size={16} className="ms-1.5 text-primary align-middle" />
             الإيرادات الشهرية (آخر 6 أشهر)
           </h3>
@@ -155,12 +155,12 @@ export function DashboardView() {
         </div>
 
         {/* Status distribution */}
-        <div className="p-5 rounded-[14px] bg-card border border-border">
-          <h3 className="text-[15px] font-bold mb-4">
+        <div className="p-3 md:p-5 rounded-[14px] bg-card border border-border">
+          <h3 className="text-sm md:text-[15px] font-bold mb-4">
             توزيع الفواتير حسب الحالة
           </h3>
           {pieData.length === 0 ? (
-            <div className="p-10 text-center text-muted-foreground">
+            <div className="p-6 md:p-10 text-center text-muted-foreground">
               لا توجد بيانات
             </div>
           ) : (
@@ -190,9 +190,9 @@ export function DashboardView() {
       </div>
 
       {/* Recent invoices — table on md+, stacked cards on mobile */}
-      <div className="p-5 rounded-[14px] bg-card border border-border">
+      <div className="p-3 md:p-5 rounded-[14px] bg-card border border-border">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-[15px] font-bold">أحدث الفواتير</h3>
+          <h3 className="text-sm md:text-[15px] font-bold">أحدث الفواتير</h3>
           <a
             href="#invoices"
             className="text-[12px] text-primary no-underline inline-flex items-center gap-1 font-semibold"
@@ -202,7 +202,7 @@ export function DashboardView() {
           </a>
         </div>
         {stats.recent.length === 0 ? (
-          <div className="p-10 text-center text-muted-foreground">
+          <div className="p-6 md:p-10 text-center text-muted-foreground">
             <FileText size={32} className="opacity-30 mb-2 mx-auto" />
             <div>لا توجد فواتير بعد</div>
           </div>
@@ -282,7 +282,7 @@ export function DashboardView() {
 
 function KpiCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   return (
-    <div className="relative overflow-hidden p-[18px] rounded-[14px] bg-card border border-border flex flex-col gap-2">
+    <div className="relative overflow-hidden p-3 md:p-[18px] rounded-[14px] bg-card border border-border flex flex-col gap-2">
       {/* Decorative color blob — dynamic color, kept inline */}
       <div
         className="absolute -top-5 -start-5 w-20 h-20 rounded-full opacity-[0.08]"
@@ -297,7 +297,7 @@ function KpiCard({ icon, label, value, color }: { icon: React.ReactNode; label: 
         </div>
         <div className="text-[12px] text-muted-foreground font-semibold">{label}</div>
       </div>
-      <div className="text-[22px] font-black [direction:ltr] text-end">{value}</div>
+      <div className="text-lg md:text-[22px] font-black [direction:ltr] text-end">{value}</div>
     </div>
   );
 }

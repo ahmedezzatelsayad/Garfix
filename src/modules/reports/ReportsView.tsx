@@ -135,7 +135,7 @@ export function ReportsView() {
 
   if (!activeCompany) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-8 md:p-12 text-center text-muted-foreground">
         اختر شركة لعرض التقارير
       </div>
     );
@@ -147,7 +147,7 @@ export function ReportsView() {
     <div className="flex flex-col gap-5">
       {/* Page title */}
       <div>
-        <h1 className="text-2xl font-extrabold mb-1 flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-extrabold mb-1 flex items-center gap-2">
           <BarChart3 size={22} className="text-primary" />
           التقارير
         </h1>
@@ -157,7 +157,7 @@ export function ReportsView() {
       </div>
 
       {/* Controls card */}
-      <div className="p-[18px] rounded-[14px] bg-card border border-border flex flex-col gap-3.5">
+      <div className="p-3 md:p-[18px] rounded-[14px] bg-card border border-border flex flex-col gap-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelStyle}>من تاريخ</label>
@@ -226,12 +226,12 @@ export function ReportsView() {
 
       {/* Content */}
       {loading ? (
-        <div className="p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
+        <div className="p-6 md:p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
           <Loader2 size={28} className="animate-spin text-primary" />
           <div className="text-[13px]">جارٍ حساب التقرير…</div>
         </div>
       ) : !data ? (
-        <div className="p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
+        <div className="p-6 md:p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
           <BarChart3 size={36} className="opacity-40" />
           <div className="text-sm font-bold">لا يوجد تقرير بعد</div>
           <div className="text-xs max-w-[360px]">
@@ -244,7 +244,7 @@ export function ReportsView() {
           <SummaryCards data={data} currency={currency} />
 
           {/* Data table */}
-          <div className="p-[18px] rounded-[14px] bg-card border border-border">
+          <div className="p-3 md:p-[18px] rounded-[14px] bg-card border border-border">
             <div className="flex flex-wrap justify-between items-center mb-3.5 gap-2">
               <h3 className="text-[15px] font-bold">
                 {REPORT_TYPES.find((t) => t.key === data.type)?.label || data.type} — تفاصيل ({data.count} صف)
@@ -307,7 +307,7 @@ function SummaryCards({ data, currency }: { data: ReportResponse; currency: stri
       {cards.map((c, i) => (
         <div
           key={i}
-          className="p-4 rounded-[14px] bg-card border border-border flex flex-col gap-2 relative overflow-hidden"
+          className="p-3 md:p-4 rounded-[14px] bg-card border border-border flex flex-col gap-2 relative overflow-hidden"
         >
           <div
             style={{
@@ -338,7 +338,7 @@ function SummaryCards({ data, currency }: { data: ReportResponse; currency: stri
 function ReportTable({ rows }: { rows: Array<Record<string, unknown>> }) {
   if (rows.length === 0) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-6 md:p-12 text-center text-muted-foreground">
         <FileText size={32} className="opacity-30 mb-2" />
         <div>لا توجد صفوف في هذا النطاق الزمني</div>
       </div>

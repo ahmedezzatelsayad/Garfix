@@ -1236,7 +1236,7 @@ export function autoPopulateUaeFtaFields(
   result.currencyDecimalPlaces = UAE_FTA_DECIMAL_PLACES;
 
   // ── 8. Enforce 5% VAT rate ────────────────────────────────────────────
-  const currentTaxRate = parseFloat((invoiceData.taxRate as string) || (company.defaultTaxRate as string) || "0");
+  const currentTaxRate = num(invoiceData.taxRate ?? company.defaultTaxRate ?? 0);
   if (currentTaxRate !== UAE_FTA_VAT_RATE) {
     result.taxRate = UAE_FTA_VAT_RATE.toFixed(UAE_FTA_DECIMAL_PLACES);
   }

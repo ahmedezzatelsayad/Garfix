@@ -142,7 +142,7 @@ export function AutomationView() {
   };
 
   if (!activeCompany) {
-    return <div className="p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
+    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
   }
 
   const activeCount = rules.filter((r) => r.isActive).length;
@@ -151,7 +151,7 @@ export function AutomationView() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
             <Zap size={20} /> قواعد الأتمتة
           </h1>
           <p className="text-[13px] text-muted-foreground">
@@ -178,11 +178,11 @@ export function AutomationView() {
       </div>
 
       {loading ? (
-        <div className="bg-card rounded-[14px] border border-border p-12 text-center text-muted-foreground flex items-center justify-center gap-2">
+        <div className="bg-card rounded-[14px] border border-border p-8 md:p-12 text-center text-muted-foreground flex items-center justify-center gap-2">
           <Loader2 size={16} className="animate-spin" /> جارٍ التحميل…
         </div>
       ) : rules.length === 0 ? (
-        <div className="bg-card rounded-[14px] border border-border p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+        <div className="bg-card rounded-[14px] border border-border p-8 md:p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
           <Zap size={36} className="opacity-30" />
           <div>لا توجد قواعد أتمتة بعد لهذه الشركة.</div>
           <div className="text-[11px] mt-1">

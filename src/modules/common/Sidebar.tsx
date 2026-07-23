@@ -148,127 +148,91 @@ export function Sidebar({
         </div>
 
         {/* Brand header */}
-        <div style={{ padding: "20px 18px 16px", borderBottom: "1px solid var(--sidebar-border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div className="py-5 px-[18px] pb-4 border-b border-sidebar-border">
+          <div className="flex items-center gap-2.5">
             <div
-              style={{
-                width: "40px", height: "40px", borderRadius: "12px",
-                background: "linear-gradient(135deg, var(--primary), var(--accent))",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "20px", fontWeight: 900, color: "#fff",
-                boxShadow: "0 6px 20px rgba(124, 58, 237, 0.35)",
-              }}
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xl font-black text-white shadow-[0_6px_20px_rgba(124,58,237,0.35)]"
             >
               G
             </div>
             <div>
-              <div style={{ fontWeight: 900, fontSize: "16px", letterSpacing: "0.5px" }}>GARFIX</div>
-              <div style={{ fontSize: "10px", color: "var(--muted-foreground)", letterSpacing: "1px" }}>EOS v12</div>
+              <div className="font-black text-base tracking-wide">GARFIX</div>
+              <div className="text-[10px] text-muted-foreground tracking-widest">EOS v12</div>
             </div>
           </div>
         </div>
 
         {/* Company selector */}
-        <div style={{ padding: "14px 14px", borderBottom: "1px solid var(--sidebar-border)" }}>
+        <div className="py-3.5 px-3.5 border-b border-sidebar-border">
           <button
             onClick={() => setShowCompanyMenu(!showCompanyMenu)}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", gap: "10px",
-              padding: "10px 12px", borderRadius: "10px",
-              background: "var(--sidebar-accent)", border: "1px solid var(--sidebar-border)",
-              color: "var(--sidebar-foreground)", cursor: "pointer", fontFamily: "inherit",
-              textAlign: "right",
-            }}
+            className="w-full flex items-center gap-2.5 py-2.5 px-3 rounded-[10px] bg-sidebar-accent border border-sidebar-border text-sidebar-foreground cursor-pointer font-inherit text-right"
           >
             <div
-              style={{
-                width: "32px", height: "32px", borderRadius: "8px",
-                background: activeCompany?.color || "var(--primary)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "16px", flexShrink: 0,
-              }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0"
+              style={{ background: activeCompany?.color || "var(--primary)" }} // TAILWINDBREAK: dynamic company color
             >
               {activeCompany?.emoji || "🏢"}
             </div>
-            <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div className="flex-1 min-w-0 text-right">
+              <div className="text-[13px] font-bold whitespace-nowrap overflow-hidden text-ellipsis">
                 {activeCompany?.nameAr || activeCompany?.name || "اختر شركة"}
               </div>
-              <div style={{ fontSize: "10px", color: "var(--muted-foreground)" }}>
+              <div className="text-[10px] text-muted-foreground">
                 {activeCompany ? activeCompany.plan : "—"}
               </div>
             </div>
-            <ChevronDown size={16} style={{ opacity: 0.6 }} />
+            <ChevronDown size={16} className="opacity-60" />
           </button>
           {showCompanyMenu && (
-            <div style={{ marginTop: "6px", background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "10px", padding: "6px", maxHeight: "240px", overflowY: "auto" }} className="garfix-scroll">
-              {loadingCompanies && <div style={{ padding: "8px 10px", fontSize: "11px", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div>}
+            <div className="mt-1.5 bg-popover border border-border rounded-[10px] p-1.5 max-h-[240px] overflow-y-auto garfix-scroll">
+              {loadingCompanies && <div className="py-2 px-2.5 text-[11px] text-muted-foreground">جارٍ التحميل…</div>}
               {!loadingCompanies && companies.length === 0 && (
-                <div style={{ padding: "8px 10px", fontSize: "11px", color: "var(--muted-foreground)" }}>لا توجد شركات بعد</div>
+                <div className="py-2 px-2.5 text-[11px] text-muted-foreground">لا توجد شركات بعد</div>
               )}
               {companies.map((c) => (
                 <button
                   key={c.slug}
                   onClick={() => { setActiveSlug(c.slug); setShowCompanyMenu(false); }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: "8px",
-                    padding: "8px 10px", borderRadius: "6px",
-                    border: "none", color: "var(--popover-foreground)", cursor: "pointer",
-                    fontFamily: "inherit", textAlign: "right",
-                    background: c.slug === activeCompany?.slug ? "var(--accent)" : "transparent",
-                  }}
+                  className={cn("w-full flex items-center gap-2 py-2 px-2.5 rounded-md border-none text-popover-foreground cursor-pointer font-inherit text-right", c.slug === activeCompany?.slug ? "bg-accent" : "bg-transparent")}
                 >
-                  <span style={{ fontSize: "16px" }}>{c.emoji || "🏢"}</span>
-                  <span style={{ fontSize: "12px", fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nameAr || c.name}</span>
+                  <span className="text-base">{c.emoji || "🏢"}</span>
+                  <span className="text-xs font-semibold flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{c.nameAr || c.name}</span>
                 </button>
               ))}
               <button
                 onClick={() => { setShowCreateCompany(true); setShowCompanyMenu(false); }}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: "8px",
-                  padding: "8px 10px", borderRadius: "6px", background: "transparent",
-                  border: "1px dashed var(--border)", color: "var(--primary)", cursor: "pointer",
-                  fontFamily: "inherit", textAlign: "right", marginTop: "4px", fontSize: "12px",
-                }}
+                className="w-full flex items-center gap-2 py-2 px-2.5 rounded-md bg-transparent border border-dashed border-border text-primary cursor-pointer font-inherit text-right mt-1 text-xs"
               >
                 <Plus size={14} /> شركة جديدة
               </button>
             </div>
           )}
           {showCreateCompany && (
-            <div style={{ marginTop: "8px", padding: "10px", background: "var(--card)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+            <div className="mt-2 p-2.5 bg-card rounded-lg border border-border">
               <input
                 placeholder="اسم الشركة"
                 value={newCompanyName}
                 onChange={(e) => setNewCompanyName(e.target.value)}
-                style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--border)", marginBottom: "6px", fontFamily: "inherit", fontSize: "12px", background: "var(--background)", color: "var(--foreground)" }}
+                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground" // TAILWINDBREAK: var(--background)/var(--foreground)
               />
               <input
                 placeholder="المعرّف (english-slug)"
                 value={newCompanySlug}
                 onChange={(e) => setNewCompanySlug(e.target.value)}
-                style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--border)", marginBottom: "6px", fontFamily: "inherit", fontSize: "12px", background: "var(--background)", color: "var(--foreground)", direction: "ltr" }}
+                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground" dir="ltr" // TAILWINDBREAK: var(--background)/var(--foreground)
               />
-              <div style={{ display: "flex", gap: "6px" }}>
+              <div className="flex gap-1.5">
                 <button
                   onClick={createCompany}
                   disabled={creating || !newCompanyName || !newCompanySlug}
-                  style={{
-                    flex: 1, padding: "8px", borderRadius: "6px",
-                    background: "var(--primary)", color: "var(--primary-foreground)",
-                    border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px",
-                    opacity: creating || !newCompanyName || !newCompanySlug ? 0.6 : 1,
-                  }}
+                  className={cn("flex-1 py-2 rounded-md bg-primary text-primary-foreground border-none cursor-pointer font-inherit text-[11px", creating || !newCompanyName || !newCompanySlug ? "opacity-60" : "")}
                 >
                   {creating ? "جارٍ…" : "إنشاء"}
                 </button>
                 <button
                   onClick={() => setShowCreateCompany(false)}
-                  style={{
-                    padding: "8px 12px", borderRadius: "6px",
-                    background: "transparent", color: "var(--muted-foreground)",
-                    border: "1px solid var(--border)", cursor: "pointer", fontFamily: "inherit", fontSize: "11px",
-                  }}
+                  className="py-2 px-3 rounded-md bg-transparent text-muted-foreground border border-border cursor-pointer font-inherit text-[11px"
                 >
                   إلغاء
                 </button>
@@ -278,7 +242,7 @@ export function Sidebar({
         </div>
 
         {/* Navigation */}
-        <nav style={{ flex: 1, overflowY: "auto", padding: "10px 8px" }} className="garfix-scroll">
+        <nav className="flex-1 overflow-y-auto py-2.5 px-2 garfix-scroll">
           {NAV_ITEMS.filter(canSee).map((item) => {
             const Icon = item.icon;
             const active = view === item.key;
@@ -286,70 +250,48 @@ export function Sidebar({
               <button
                 key={item.key}
                 onClick={() => navigate(item.key)}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: "12px",
-                  padding: "10px 12px", borderRadius: "8px",
-                  background: active ? "var(--sidebar-primary)" : "transparent",
-                  color: active ? "#FFFFFF" : "var(--sidebar-foreground)",
-                  border: "none", cursor: "pointer", fontFamily: "inherit",
-                  fontSize: "13px", fontWeight: active ? 700 : 500,
-                  marginBottom: "2px", textAlign: "right",
-                  transition: "all 0.15s",
-                  boxShadow: active ? "0 2px 8px rgba(124, 58, 237, 0.3)" : "none",
-                }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--sidebar-accent)"; }}
-                onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                className={cn(
+                  "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg border-none cursor-pointer font-inherit text-[13px] text-right transition-all duration-150 mb-0.5",
+                  active ? "bg-sidebar-primary text-white font-bold shadow-[0_2px_8px_rgba(124,58,237,0.3)]" : "bg-transparent text-sidebar-foreground font-medium",
+                )}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.classList.add("bg-sidebar-accent"); }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.classList.remove("bg-sidebar-accent"); }}
               >
                 <Icon size={16} />
-                <span style={{ flex: 1 }}>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* User footer */}
-        <div style={{ padding: "12px", borderTop: "1px solid var(--sidebar-border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+        <div className="p-3 border-t border-sidebar-border">
+          <div className="flex items-center gap-2.5 mb-2">
             <div
-              style={{
-                width: "36px", height: "36px", borderRadius: "50%",
-                background: "linear-gradient(135deg, var(--primary), var(--accent))",
-                color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, fontSize: "14px",
-              }}
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center font-bold text-sm"
             >
               {user.displayName.charAt(0).toUpperCase()}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold whitespace-nowrap overflow-hidden text-ellipsis">
                 {user.displayName}
               </div>
-              <div style={{ fontSize: "10px", color: "var(--muted-foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div className="text-[10px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                 {user.email}
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div className="flex gap-1.5">
             <button
               onClick={toggleTheme}
-              style={{
-                flex: 1, padding: "8px", borderRadius: "6px",
-                background: "var(--sidebar-accent)", border: "1px solid var(--sidebar-border)",
-                color: "var(--sidebar-foreground)", cursor: "pointer", fontFamily: "inherit", fontSize: "11px",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
-              }}
+              className="flex-1 py-2 rounded-md bg-sidebar-accent border border-sidebar-border text-sidebar-foreground cursor-pointer font-inherit text-[11px] flex items-center justify-center gap-1"
             >
               {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
               {theme === "dark" ? "فاتح" : "داكن"}
             </button>
             <button
               onClick={onLogout}
-              style={{
-                flex: 1, padding: "8px", borderRadius: "6px",
-                background: "var(--destructive)", border: "none",
-                color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "11px",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
-              }}
+              className="flex-1 py-2 rounded-md bg-destructive border-none text-white cursor-pointer font-inherit text-[11px] flex items-center justify-center gap-1"
             >
               <LogOut size={12} /> خروج
             </button>

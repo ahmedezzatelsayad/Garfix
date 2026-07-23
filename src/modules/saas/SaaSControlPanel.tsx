@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth, authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Building2, Users, CreditCard, Plus, X, Edit2, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -59,7 +60,7 @@ export function SaaSControlPanel() {
   useEffect(() => { load(); }, [load]);
 
   if (!currentUser || (currentUser.role !== "admin" && !currentUser.isFounder)) {
-    return <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>هذه الصفحة مخصصة للمدراء فقط</div>;
+    return <div className="p-12 text-center text-muted-foreground">هذه الصفحة مخصصة للمدراء فقط</div>;
   }
 
   const usersTotalPages = Math.max(1, Math.ceil(users.length / saasPageSize));
@@ -70,13 +71,8 @@ export function SaaSControlPanel() {
   const companiesSafePage = Math.min(companiesPage, companiesTotalPages);
   const currentPageCompanies = companies.slice((companiesSafePage - 1) * saasPageSize, companiesSafePage * saasPageSize);
 
-  const saasPageBtnStyle = (disabled: boolean): React.CSSProperties => ({
-    padding: "6px 12px", borderRadius: "6px",
-    background: disabled ? "transparent" : "var(--card)",
-    color: disabled ? "var(--muted-foreground)" : "var(--foreground)",
-    border: "1px solid var(--border)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
-  });
+  const saasPageBtnClass = (disabled: boolean): string =>
+    cn("py-1.5 px-3 rounded-md border border-border font-inherit text-xs font-bold", disabled ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer");
 
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode; count: number }> = [
     { key: "users", label: "المستخدمون", icon: <Users size={14} />, count: users.length },
@@ -86,26 +82,26 @@ export function SaaSControlPanel() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="flex flex-col gap-4">
       <div>
-        <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}><Building2 size={20} /> لوحة تحكم المنصة</h1>
-        <p style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>إدارة المستخدمين والشركات والمدفوعات</p>
+        <h1 className="text-2xl font-extrabold flex items-center gap-2"><Building2 size={20} /> لوحة تحكم المنصة</h1>
+        <p className="text-[13px] text-muted-foreground">إدارة المستخدمين والشركات والمدفوعات</p>
       </div>
-      <div style={{ display: "flex", gap: "6px", overflowX: "auto" }} className="garfix-scroll">
+      <div className="flex gap-1.5 overflow-x-auto garfix-scroll">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: tab === t.key ? "var(--primary)" : "var(--card)", color: tab === t.key ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+          <button key={t.key} onClick={() => setTab(t.key)} className={cn("inline-flex items-center gap-1.5 py-2 px-4 rounded-[10px] border border-border font-inherit text-xs font-bold cursor-pointer whitespace-nowrap", tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
             {t.icon} {t.label} ({t.count})
           </button>
         ))}
       </div>
 
-      {loading ? <div style={{ padding: "48px", textAlign: "center", color: "var(--muted-foreground)" }}>جارٍ التحميل…</div> : (
-        <div style={{ background: "var(--card)", borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden" }}>
+      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : (
+        <div className="bg-card rounded-[14px] border border-border overflow-hidden">
           {tab === "users" && (
             <>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ fontSize: "14px", fontWeight: 700 }}>المستخدمون ({users.length})</h3>
-                <button onClick={() => setShowUserForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}><Plus size={12} /> مستخدم جديد</button>
+              <div className="py-3 px-4 border-b border-border flex justify-between items-center">
+                <h3 className="text-sm font-bold">المستخدمون ({users.length})</h3>
+                <button onClick={() => setShowUserForm(true)} className="inline-flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-[11px] font-bold cursor-pointer"><Plus size={12} /> مستخدم جديد</button>
               </div>
               {showUserForm && <UserForm onClose={() => setShowUserForm(false)} onSaved={() => { setShowUserForm(false); load(); }} />}
               {editingUser && (
@@ -122,33 +118,27 @@ export function SaaSControlPanel() {
                   onDeleted={() => { setDeletingUser(null); load(); }}
                 />
               )}
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "var(--muted)" }}>
-                    <th style={th}>الاسم</th><th style={th}>البريد</th><th style={th}>الدور</th>
-                    <th style={th}>الشركات</th><th style={th}>المؤسس</th><th style={th}>إجراءات</th>
+              <div className="overflow-x-auto garfix-scroll">
+                <table className="w-full border-collapse">
+                  <thead><tr className="bg-muted">
+                    <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الاسم</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">البريد</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الدور</th>
+                    <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركات</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">المؤسس</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">إجراءات</th>
                   </tr></thead>
                   <tbody>
                     {currentPageUsers.map((u) => (
-                      <tr key={u.uid} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ ...td, fontWeight: 700 }}>{u.displayName}</td>
-                        <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{u.email}</td>
-                        <td style={td}>{u.role}</td>
-                        <td style={td}>{u.companies?.length || 0}</td>
-                        <td style={td}>{u.isFounder ? "✓" : "—"}</td>
-                        <td style={td}>
-                          <div style={{ display: "flex", gap: "4px" }}>
+                      <tr key={u.uid} className="border-b border-border">
+                        <td className="py-2.5 px-3 text-[13px] font-bold">{u.displayName}</td>
+                        <td className="py-2.5 px-3 text-[13px] text-right" dir="ltr">{u.email}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{u.role}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{u.companies?.length || 0}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{u.isFounder ? "✓" : "—"}</td>
+                        <td className="py-2.5 px-3 text-[13px]">
+                          <div className="flex gap-1">
                             <button
                               onClick={() => setEditingUser(u)}
                               disabled={u.isFounder}
                               title={u.isFounder ? "لا يمكن تعديل المؤسس من هنا" : "تعديل"}
-                              style={{
-                                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                width: "28px", height: "28px", borderRadius: "6px",
-                                background: "transparent", border: "1px solid var(--border)",
-                                color: "#3b82f6", cursor: u.isFounder ? "not-allowed" : "pointer",
-                                opacity: u.isFounder ? 0.4 : 1, padding: 0,
-                              }}
+                              className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-blue-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}
                             >
                               <Edit2 size={14} />
                             </button>
@@ -156,13 +146,7 @@ export function SaaSControlPanel() {
                               onClick={() => setDeletingUser(u)}
                               disabled={u.isFounder}
                               title={u.isFounder ? "لا يمكن حذف المؤسس" : "حذف"}
-                              style={{
-                                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                width: "28px", height: "28px", borderRadius: "6px",
-                                background: "transparent", border: "1px solid var(--border)",
-                                color: "#ef4444", cursor: u.isFounder ? "not-allowed" : "pointer",
-                                opacity: u.isFounder ? 0.4 : 1, padding: 0,
-                              }}
+                              className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-red-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -174,11 +158,11 @@ export function SaaSControlPanel() {
                 </table>
               </div>
               {users.length > saasPageSize && (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: "8px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>صفحة {usersSafePage} من {usersTotalPages} ({users.length} مستخدم)</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <button onClick={() => setUsersPage((p) => Math.max(1, p - 1))} disabled={usersSafePage === 1} style={saasPageBtnStyle(usersSafePage === 1)}>السابق</button>
-                    <button onClick={() => setUsersPage((p) => Math.min(usersTotalPages, p + 1))} disabled={usersSafePage === usersTotalPages} style={saasPageBtnStyle(usersSafePage === usersTotalPages)}>التالي</button>
+                <div className="flex justify-between items-center py-3 px-4 border-t border-border flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">صفحة {usersSafePage} من {usersTotalPages} ({users.length} مستخدم)</span>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => setUsersPage((p) => Math.max(1, p - 1))} disabled={usersSafePage === 1} className={saasPageBtnClass(usersSafePage === 1)}>السابق</button>
+                    <button onClick={() => setUsersPage((p) => Math.min(usersTotalPages, p + 1))} disabled={usersSafePage === usersTotalPages} className={saasPageBtnClass(usersSafePage === usersTotalPages)}>التالي</button>
                   </div>
                 </div>
               )}
@@ -186,21 +170,21 @@ export function SaaSControlPanel() {
           )}
           {tab === "companies" && (
             <>
-              <div style={{ overflowX: "auto" }} className="garfix-scroll">
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "var(--muted)" }}>
-                    <th style={th}>الشركة</th><th style={th}>المعرّف</th><th style={th}>الباقة</th>
-                    <th style={th}>الحالة</th><th style={th}>تاريخ الإنشاء</th>
+              <div className="overflow-x-auto garfix-scroll">
+                <table className="w-full border-collapse">
+                  <thead><tr className="bg-muted">
+                    <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">المعرّف</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الباقة</th>
+                    <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الحالة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">تاريخ الإنشاء</th>
                   </tr></thead>
                   <tbody>
-                    {companies.length === 0 ? <tr><td colSpan={5} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد شركات بعد</td></tr> :
+                    {companies.length === 0 ? <tr><td colSpan={5} className="py-2.5 px-3 text-[13px] text-center p-8 text-muted-foreground">لا توجد شركات بعد</td></tr> :
                       currentPageCompanies.map((c) => (
-                        <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                          <td style={{ ...td, fontWeight: 700 }}>{c.emoji} {c.nameAr || c.name}</td>
-                          <td style={{ ...td, fontFamily: "monospace" }}>{c.slug}</td>
-                          <td style={td}>{c.plan}</td>
-                          <td style={td}>{c.subscriptionStatus}</td>
-                          <td style={td}>{new Date(c.createdAt).toLocaleDateString("ar-EG")}</td>
+                        <tr key={c.id} className="border-b border-border">
+                          <td className="py-2.5 px-3 text-[13px] font-bold">{c.emoji} {c.nameAr || c.name}</td>
+                          <td className="py-2.5 px-3 text-[13px] font-mono">{c.slug}</td>
+                          <td className="py-2.5 px-3 text-[13px]">{c.plan}</td>
+                          <td className="py-2.5 px-3 text-[13px]">{c.subscriptionStatus}</td>
+                          <td className="py-2.5 px-3 text-[13px]">{new Date(c.createdAt).toLocaleDateString("ar-EG")}</td>
                         </tr>
                       ))
                     }
@@ -208,32 +192,32 @@ export function SaaSControlPanel() {
                 </table>
               </div>
               {companies.length > saasPageSize && (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: "8px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>صفحة {companiesSafePage} من {companiesTotalPages} ({companies.length} شركة)</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <button onClick={() => setCompaniesPage((p) => Math.max(1, p - 1))} disabled={companiesSafePage === 1} style={saasPageBtnStyle(companiesSafePage === 1)}>السابق</button>
-                    <button onClick={() => setCompaniesPage((p) => Math.min(companiesTotalPages, p + 1))} disabled={companiesSafePage === companiesTotalPages} style={saasPageBtnStyle(companiesSafePage === companiesTotalPages)}>التالي</button>
+                <div className="flex justify-between items-center py-3 px-4 border-t border-border flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">صفحة {companiesSafePage} من {companiesTotalPages} ({companies.length} شركة)</span>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => setCompaniesPage((p) => Math.max(1, p - 1))} disabled={companiesSafePage === 1} className={saasPageBtnClass(companiesSafePage === 1)}>السابق</button>
+                    <button onClick={() => setCompaniesPage((p) => Math.min(companiesTotalPages, p + 1))} disabled={companiesSafePage === companiesTotalPages} className={saasPageBtnClass(companiesSafePage === companiesTotalPages)}>التالي</button>
                   </div>
                 </div>
               )}
             </>
           )}
           {tab === "payments" && (
-            <div style={{ overflowX: "auto" }} className="garfix-scroll">
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead><tr style={{ background: "var(--muted)" }}>
-                  <th style={th}>الشركة</th><th style={th}>الباقة</th><th style={th}>المبلغ</th>
-                  <th style={th}>الحالة</th><th style={th}>التاريخ</th>
+            <div className="overflow-x-auto garfix-scroll">
+              <table className="w-full border-collapse">
+                <thead><tr className="bg-muted">
+                  <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الباقة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">المبلغ</th>
+                  <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الحالة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">التاريخ</th>
                 </tr></thead>
                 <tbody>
-                  {payments.length === 0 ? <tr><td colSpan={5} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد مدفوعات بعد</td></tr> :
+                  {payments.length === 0 ? <tr><td colSpan={5} className="py-2.5 px-3 text-[13px] text-center p-8 text-muted-foreground">لا توجد مدفوعات بعد</td></tr> :
                     payments.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ ...td, fontFamily: "monospace" }}>{p.companySlug}</td>
-                        <td style={td}>{p.plan}</td>
-                        <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700 }}>{p.amount} {p.currency}</td>
-                        <td style={td}><span style={{ padding: "2px 10px", borderRadius: "12px", background: p.status === "paid" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: p.status === "paid" ? "#10b981" : "#f59e0b", fontSize: "11px", fontWeight: 700 }}>{p.status}</span></td>
-                        <td style={td}>{new Date(p.createdAt).toLocaleDateString("ar-EG")}</td>
+                      <tr key={p.id} className="border-b border-border">
+                        <td className="py-2.5 px-3 text-[13px] font-mono">{p.companySlug}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{p.plan}</td>
+                        <td className="py-2.5 px-3 text-[13px] font-bold text-right" dir="ltr">{p.amount} {p.currency}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{p.status === "paid" ? <span className="py-0.5 px-2.5 rounded-xl bg-emerald-500/15 text-emerald-500 text-[11px] font-bold">{p.status}</span> : <span className="py-0.5 px-2.5 rounded-xl bg-amber-500/15 text-amber-500 text-[11px] font-bold">{p.status}</span>}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{new Date(p.createdAt).toLocaleDateString("ar-EG")}</td>
                       </tr>
                     ))
                   }
@@ -242,7 +226,7 @@ export function SaaSControlPanel() {
             </div>
           )}
           {tab === "settings" && (
-            <div style={{ padding: "32px", textAlign: "center", color: "var(--muted-foreground)" }}>
+            <div className="p-8 text-center text-muted-foreground">
               إعدادات المنصة — متاحة للمؤسس فقط من خلال صفحة إدارة المؤسس.
             </div>
           )}
@@ -252,10 +236,10 @@ export function SaaSControlPanel() {
   );
 }
 
-const th: React.CSSProperties = { textAlign: "right", padding: "10px 12px", fontSize: "11px", color: "var(--muted-foreground)", fontWeight: 700 };
-const td: React.CSSProperties = { padding: "10px 12px", fontSize: "13px" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "13px", outline: "none" };
-const labelStyle: React.CSSProperties = { display: "block", fontSize: "11px", fontWeight: 600, color: "var(--muted-foreground)", marginBottom: "4px" };
+// th style converted to Tailwind inline classes
+// td style converted to Tailwind inline classes
+const inputTW = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground font-inherit text-[13px] outline-none"; // TAILWINDBREAK: var(--background)/var(--border)/var(--foreground) CSS variables
+const labelTW = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSaved: () => void; editTarget?: User }) {
   const isEdit = !!editTarget;
@@ -296,42 +280,42 @@ function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSav
   };
 
   return (
-    <div style={{ padding: "16px", borderBottom: "1px solid var(--border)", background: "var(--muted)", display: "flex", flexDirection: "column", gap: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h4 style={{ fontSize: "13px", fontWeight: 700 }}>{isEdit ? "تعديل مستخدم" : "مستخدم جديد"}</h4>
-        <button onClick={onClose} style={{ background: "transparent", border: "none", color: "var(--muted-foreground)", cursor: "pointer", padding: "4px" }}><X size={14} /></button>
+    <div className="p-4 border-b border-border bg-muted flex flex-col gap-2.5">
+      <div className="flex justify-between items-center">
+        <h4 className="text-[13px] font-bold">{isEdit ? "تعديل مستخدم" : "مستخدم جديد"}</h4>
+        <button onClick={onClose} className="bg-transparent border-none text-muted-foreground cursor-pointer p-1"><X size={14} /></button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5">
         <div>
-          <label style={labelStyle}>الاسم</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={inputStyle} />
+          <label className={labelTW}>الاسم</label>
+          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputTW} />
         </div>
         <div>
-          <label style={labelStyle}>البريد</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} dir="ltr" disabled={isEdit} title={isEdit ? "لا يمكن تغيير البريد" : ""} />
+          <label className={labelTW}>البريد</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} className={inputTW} dir="ltr" disabled={isEdit} title={isEdit ? "لا يمكن تغيير البريد" : ""} />
         </div>
         {!isEdit && (
           <div>
-            <label style={labelStyle}>كلمة المرور</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} dir="ltr" />
+            <label className={labelTW}>كلمة المرور</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputTW} dir="ltr" />
           </div>
         )}
         <div>
-          <label style={labelStyle}>الدور</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}>
+          <label className={labelTW}>الدور</label>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className={inputTW}>
             <option value="admin">مدير</option><option value="editor">محرّر</option>
             <option value="employee">موظف</option><option value="viewer">مشاهد</option>
             {isEdit && <option value="inactive">غير نشط (محذوف ناعم)</option>}
           </select>
         </div>
         {isEdit && (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>الشركات (افصل بفواصل)</label>
-            <input value={companiesText} onChange={(e) => setCompaniesText(e.target.value)} style={inputStyle} dir="ltr" placeholder="company-1, company-2" />
+          <div className="col-span-full">
+            <label className={labelTW}>الشركات (افصل بفواصل)</label>
+            <input value={companiesText} onChange={(e) => setCompaniesText(e.target.value)} className={inputTW} dir="ltr" placeholder="company-1, company-2" />
           </div>
         )}
       </div>
-      <button onClick={submit} disabled={saving} style={{ alignSelf: "flex-end", padding: "8px 20px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "جارٍ…" : (isEdit ? "حفظ" : "إنشاء")}</button>
+      <button onClick={submit} disabled={saving} className={cn("self-end py-2 px-5 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-xs font-bold", saving ? "cursor-not-allowed opacity-70" : "cursor-pointer")}>{saving ? "جارٍ…" : (isEdit ? "حفظ" : "إنشاء")}</button>
     </div>
   );
 }

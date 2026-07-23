@@ -29,7 +29,7 @@ export function ClientsView() {
   }, []);
 
   if (!activeCompany) {
-    return <div className="p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
+    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
   }
 
   // If a client is selected, show profile
@@ -49,7 +49,7 @@ export function ClientsView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 md:space-y-5">
       <ClientList
         companySlug={activeCompany.slug}
         onSelectClient={setSelectedClientId}

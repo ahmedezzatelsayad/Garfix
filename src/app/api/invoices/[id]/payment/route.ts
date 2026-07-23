@@ -117,7 +117,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const expectedVersion = data.expectedVersion;
   const versionFilter = expectedVersion !== undefined ? { version: expectedVersion } : {};
 
-  const newPaid = (num(existing.paid, 3) + amountNum).toFixed(3);
+  const newPaid = num(existing.paid, 3) + amountNum;
   const total = num(existing.total, 3);
   const newStatus = num(newPaid, 3) >= total && total > 0 ? "paid" : num(newPaid, 3) > 0 ? "partial" : existing.status;
 

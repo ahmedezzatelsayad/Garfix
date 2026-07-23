@@ -316,7 +316,7 @@ export function BulkInputView() {
 
   if (!activeCompany) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-8 md:p-12 text-center text-muted-foreground">
         اختر شركة أولاً
       </div>
     );
@@ -329,7 +329,7 @@ export function BulkInputView() {
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
           <Sparkles size={20} /> الإدخال المجمع بالذكاء الاصطناعي
         </h1>
         <p className="text-[13px] text-muted-foreground">

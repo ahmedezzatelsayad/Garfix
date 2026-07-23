@@ -17,6 +17,8 @@
 //
 // Migration from SQLite to PostgreSQL required NO model changes because
 // the schema was already PostgreSQL-compatible (String for money/JSON).
+// P1 FIX: Monetary String fields have now been migrated to Decimal for
+// accurate math on PostgreSQL. JSON/array fields remain as String.
 // ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
@@ -109,7 +111,7 @@ model Company {
   currency                     String    @default("KWD")
   country                      String? // KW | SA | AE | BH | OM | QA | EG
   timezone                     String?
-  defaultTaxRate               String    @default("0")
+  defaultTaxRate               Decimal   @default(0)
   // Gulf-specific settings
   weekendDays                  String    @default("[5,6]") // JSON array: 5=Fri, 6=Sat (Gulf weekend)
   ramadanHours                 Boolean   @default(false) // reduced working hours during Ramadan
@@ -272,13 +274,13 @@ model Invoice {
   dueDate               String
   status                String    @default("draft") // draft | sent | paid | partial | overdue | cancelled
   lineItems             String    @default("[]") // JSON
-  subtotal              String    @default("0")
-  taxRate               String    @default("0")
-  taxAmount             String    @default("0")
-  total                 String    @default("0")
-  shipping              String    @default("0")
-  discount              String    @default("0")
-  paid                  String    @default("0")
+  subtotal              Decimal   @default(0)
+  taxRate               Decimal   @default(0)
+  taxAmount             Decimal   @default(0)
+  total                 Decimal   @default(0)
+  shipping              Decimal   @default(0)
+  discount              Decimal   @default(0)
+  paid                  Decimal   @default(0)
   notes                 String?
   source                String?
   createdByEmail        String?
@@ -340,9 +342,9 @@ model ProductCatalog {
   code           String?
   name           String
   aliases        String   @default("[]") // JSON
-  purchasePrice  String?
-  sellingPrice   String?
-  wholesalePrice String?
+  purchasePrice  Decimal?
+  sellingPrice   Decimal?
+  wholesalePrice Decimal?
   companySlug    String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -416,8 +418,8 @@ model StockMovement {
   createdBy   String   @default("system")
   createdAt   DateTime @default(now())
   // ERP-05 FIX: COGS tracking for cost engine
-  unitCost    String? // cost per unit at time of movement
-  totalCost   String? // qty * unitCost
+  unitCost    Decimal? // cost per unit at time of movement
+  totalCost   Decimal? // qty * unitCost
   costMethod  String? // "fifo" | "weighted_average" | "specific"
 
   tenant    Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
@@ -443,7 +445,7 @@ model SalesReturn {
   returnDate     String
   reason         String?
   items          String    @default("[]") // JSON: [{productId, qty, unitPrice, returnReason}]
-  totalAmount    String    @default("0")
+  totalAmount    Decimal   @default(0)
   status         String    @default("pending") // pending | approved | processed | refunded
   refundMethod   String? // "cash" | "credit_note" | "bank_transfer"
   creditNoteId   Int?
@@ -475,7 +477,7 @@ model PurchaseReturn {
   returnDate        String
   reason            String?
   items             String    @default("[]") // JSON: [{productId, qty, unitCost, returnReason}]
-  totalAmount       String    @default("0")
+  totalAmount       Decimal   @default(0)
   status            String    @default("pending") // pending | approved | processed | credited
   journalEntryId    Int? // link to reversal journal entry
   approvedBy        String?
@@ -543,7 +545,7 @@ model PurchaseInvoice {
   items            String    @default("[]") // JSON
   sourceInvoiceIds String    @default("[]") // JSON
   totalQty         Int       @default(0)
-  totalAmount      String    @default("0")
+  totalAmount      Decimal   @default(0)
   notes            String?
   createdAt        DateTime  @default(now())
   deletedAt        DateTime?
@@ -573,8 +575,8 @@ model Employee {
   email           String?
   position        String?
   department      String?
-  baseSalary      String   @default("0") // الراتب الأساسي (for gratuity calc)
-  allowances      String   @default("0") // البدلات (housing, transport, etc.)
+  baseSalary      Decimal  @default(0) // الراتب الأساسي (for gratuity calc)
+  allowances      Decimal  @default(0) // البدلات (housing, transport, etc.)
   currency        String   @default("KWD")
   joinDate        String?
   endDate         String? // تاريخ انتهاء الخدمة (for gratuity calc)
@@ -625,11 +627,11 @@ model Salary {
   companySlug String
   employeeId  Int
   month       String // "2025-06"
-  baseSalary  String    @default("0")
-  allowances  String    @default("0")
-  deductions  String    @default("0")
-  bonus       String    @default("0")
-  netSalary   String    @default("0")
+  baseSalary  Decimal   @default(0)
+  allowances  Decimal   @default(0)
+  deductions  Decimal   @default(0)
+  bonus       Decimal   @default(0)
+  netSalary   Decimal   @default(0)
   isPaid      Boolean   @default(false)
   paidAt      DateTime?
   notes       String?
@@ -651,7 +653,7 @@ model Commission {
   date        String
   type        String   @default("sales") // sales | referral | target | other
   description String?
-  amount      String   @default("0")
+  amount      Decimal  @default(0)
   isPaid      Boolean  @default(false)
   createdAt   DateTime @default(now())
 
@@ -724,7 +726,7 @@ model Account {
   type        String // asset | liability | equity | revenue | expense | contra_revenue | contra_asset
   parentId    Int?
   companySlug String
-  balance     String   @default("0")
+  balance     Decimal  @default(0)
   currency    String   @default("KWD")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -795,8 +797,8 @@ model JournalEntryLine {
   entryId      Int
   accountId    Int
   costCenterId Int?
-  debit        String   @default("0")
-  credit       String   @default("0")
+  debit        Decimal  @default(0)
+  credit       Decimal  @default(0)
   description  String?
   createdAt    DateTime @default(now())
 
@@ -881,7 +883,7 @@ model OrderDelivery {
   address       String?
   locationUrl   String?
   preferredTime DateTime?
-  deliveryFee   String    @default("0")
+  deliveryFee   Decimal   @default(0)
   status        String    @default("Pending") // Pending | Assigned | Delivered | Cancelled
   driverId      String?
   notes         String?
@@ -921,7 +923,7 @@ model PaymentTransaction {
   plan              String
   method            String // myfatoorah_card | myfatoorah_mada | myfatoorah_apple_pay | myfatoorah_knet | paymob_wallet | paymob_meeza | paymob_card | paymob_bank_installment
   provider          String // myfatoorah | paymob
-  amount            String    @default("0")
+  amount            Decimal   @default(0)
   currency          String    @default("KWD")
   status            String    @default("pending") // pending | paid | failed | cancelled
   providerPaymentId String?
@@ -973,7 +975,7 @@ model RefundTransaction {
   id               Int       @id @default(autoincrement())
   paymentTxnId     Int // FK to PaymentTransaction.id
   companySlug      String
-  refundAmount     String    @default("0") // amount to refund (may be partial)
+  refundAmount     Decimal   @default(0) // amount to refund (may be partial)
   currency         String    @default("KWD")
   reason           String? // free-text reason for refund
   status           String    @default("pending") // pending | processing | completed | failed | cancelled
@@ -1005,7 +1007,7 @@ model SubscriptionSchedule {
   plan            String // starter | professional | unlimited
   billingPeriod   String    @default("monthly") // monthly | yearly
   status          String    @default("active") // active | past_due | cancelled | reactivated | paused
-  amount          String    @default("0") // per-cycle charge amount
+  amount          Decimal   @default(0) // per-cycle charge amount
   currency        String    @default("KWD")
   provider        String    @default("myfatoorah") // myfatoorah | paymob
   paymentMethod   String    @default("myfatoorah_card") // payment method slug
@@ -2129,7 +2131,7 @@ model BankAccount {
   iban          String?
   branchCode    String?
   currency      String   @default("KWD")
-  balance       String   @default("0")
+  balance       Decimal  @default(0)
   accountType   String   @default("checking") // checking/savings/cash_vault
   glAccountId   Int?
   isActive      Boolean  @default(true)
@@ -2159,7 +2161,7 @@ model BankTransaction {
   date            String // YYYY-MM-DD
   reference       String?
   description     String?
-  amount          String // positive = deposit, negative = withdrawal
+  amount          Decimal @default(0) // positive = deposit, negative = withdrawal
   transactionType String // deposit/withdrawal/transfer/fee
   isReconciled    Boolean  @default(false)
   reconciledWith  String? // journal_entry / payment / invoice
@@ -2188,10 +2190,10 @@ model BankReconciliation {
   bankAccountId    Int
   periodStart      String // YYYY-MM-DD
   periodEnd        String // YYYY-MM-DD
-  statementBalance String
-  bookBalance      String
-  adjustedBalance  String
-  difference       String
+  statementBalance Decimal @default(0)
+  bookBalance      Decimal @default(0)
+  adjustedBalance  Decimal @default(0)
+  difference       Decimal @default(0)
   status           String    @default("draft") // draft/completed/approved
   completedBy      String?
   completedAt      DateTime?
@@ -2215,7 +2217,7 @@ model PostDatedCheck {
   companySlug    String
   checkNumber    String
   bankName       String
-  amount         String
+  amount         Decimal @default(0)
   currency       String    @default("KWD")
   dueDate        String // YYYY-MM-DD
   issueDate      String?
@@ -2252,7 +2254,7 @@ model InstallmentSchedule {
   id              Int      @id @default(autoincrement())
   companySlug     String
   invoiceId       Int?
-  totalAmount     String   @default("0")
+  totalAmount     Decimal  @default(0)
   installmentCount Int
   interval        String   @default("monthly") // monthly/weekly
   startDate       String // YYYY-MM-DD
@@ -2275,11 +2277,11 @@ model Installment {
   id                Int      @id @default(autoincrement())
   scheduleId        Int
   installmentNumber Int
-  amount            String   @default("0")
+  amount            Decimal  @default(0)
   dueDate           String // YYYY-MM-DD
   status            String   @default("pending") // pending/paid/overdue/cancelled
   paidAt            DateTime?
-  paidAmount        String   @default("0")
+  paidAmount        Decimal  @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -2302,19 +2304,19 @@ model FixedAsset {
   nameEn                  String?
   category                String // vehicle/equipment/building/it/furniture/other
   acquisitionDate         String // YYYY-MM-DD
-  acquisitionCost         String
-  salvageValue            String   @default("0")
+  acquisitionCost         Decimal @default(0)
+  salvageValue            Decimal  @default(0)
   usefulLifeYears         Int
   depreciationMethod      String   @default("straight_line") // straight_line/declining_balance
-  decliningRate           String   @default("0") // for declining balance method
-  currentBookValue        String
-  accumulatedDepreciation String   @default("0")
+  decliningRate           Decimal  @default(0) // for declining balance method
+  currentBookValue        Decimal @default(0)
+  accumulatedDepreciation Decimal  @default(0)
   location                String?
   assetTag                String?
   isActive                Boolean  @default(true)
   disposalDate            String?
   disposalType            String? // sold/scrapped/donated
-  disposalAmount          String?
+  disposalAmount          Decimal?
   glAccountId             Int? // asset account
   depreciationAccountId   Int? // accumulated depreciation account
   expenseAccountId        Int? // depreciation expense account
@@ -2342,8 +2344,8 @@ model DepreciationEntry {
   companySlug        String
   assetId            Int
   period             String // YYYY-MM or YYYY
-  depreciationAmount String
-  bookValueAfter     String
+  depreciationAmount Decimal @default(0)
+  bookValueAfter     Decimal @default(0)
   journalEntryId     Int?
   status             String   @default("draft") // draft/posted
   createdAt          DateTime @default(now())
@@ -2368,7 +2370,7 @@ model PaymentVoucher {
   voucherNumber  String
   voucherType    String // receipt/payment
   date           String // YYYY-MM-DD
-  amount         String
+  amount         Decimal @default(0)
   currency       String   @default("KWD")
   amountArText   String? // Arabic text of amount like "خمسمائة دينار"
   payee          String
@@ -2411,10 +2413,10 @@ model Quotation {
   date               String // YYYY-MM-DD
   validUntil         String?
   lineItems          String // JSON
-  subtotal           String
-  taxRate            String
-  taxAmount          String
-  total              String
+  subtotal           Decimal @default(0)
+  taxRate            Decimal @default(0)
+  taxAmount          Decimal @default(0)
+  total              Decimal @default(0)
   notes              String?
   status             String   @default("draft") // draft/sent/accepted/rejected/converted
   convertedInvoiceId Int?
@@ -2442,10 +2444,10 @@ model PurchaseOrder {
   date             String // YYYY-MM-DD
   expectedDelivery String?
   lineItems        String // JSON
-  subtotal         String
-  taxRate          String
-  taxAmount        String
-  total            String
+  subtotal         Decimal @default(0)
+  taxRate          Decimal @default(0)
+  taxAmount        Decimal @default(0)
+  total            Decimal @default(0)
   notes            String?
   status           String   @default("draft") // draft/sent/received/partial_received/completed/cancelled
   createdAt        DateTime @default(now())
@@ -2472,9 +2474,9 @@ model Budget {
   periodName    String // e.g. "2024-Q1"
   accountId     Int
   costCenterId  Int?
-  plannedAmount String
-  actualAmount  String   @default("0")
-  variance      String   @default("0")
+  plannedAmount Decimal @default(0)
+  actualAmount  Decimal  @default(0)
+  variance      Decimal  @default(0)
   notes         String?
   status        String   @default("draft") // draft/approved/revised
   createdAt     DateTime @default(now())
@@ -2500,12 +2502,12 @@ model LetterOfCredit {
   lcNumber          String
   supplierId        Int
   bankAccountId     Int
-  amount            String
+  amount            Decimal @default(0)
   currency          String   @default("KWD")
   issueDate         String // YYYY-MM-DD
   expiryDate        String // YYYY-MM-DD
   status            String   @default("issued") // issued/amended/utilized/expired/cancelled
-  utilizationAmount String   @default("0")
+  utilizationAmount Decimal  @default(0)
   documentsRequired String? // JSON array of required docs
   notes             String?
   createdAt         DateTime @default(now())
@@ -2530,7 +2532,7 @@ model LandedCostAllocation {
   companySlug       String
   purchaseInvoiceId Int
   costType          String // shipping/customs/clearance/insurance/other
-  totalCost         String
+  totalCost         Decimal @default(0)
   allocationMethod  String   @default("quantity") // quantity/value/weight/volume
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -2553,9 +2555,9 @@ model LandedCostLine {
   allocationId    Int
   inventoryItemId Int?
   productId       Int?
-  allocatedCost   String
-  baseQuantity    String?
-  baseValue       String?
+  allocatedCost   Decimal @default(0)
+  baseQuantity    Decimal?
+  baseValue       Decimal?
 
   allocation       LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
   productCatalog   ProductCatalog?      @relation(fields: [productCatalogId], references: [id])
@@ -2575,12 +2577,12 @@ model FxRevaluation {
   companySlug    String
   fromCurrency   String
   toCurrency     String
-  rate           String
+  rate           Decimal @default(0)
   period         String // YYYY-MM
-  realizedGain   String   @default("0")
-  realizedLoss   String   @default("0")
-  unrealizedGain String   @default("0")
-  unrealizedLoss String   @default("0")
+  realizedGain   Decimal  @default(0)
+  realizedLoss   Decimal  @default(0)
+  unrealizedGain Decimal  @default(0)
+  unrealizedLoss Decimal  @default(0)
   journalEntryId Int?
   status         String   @default("draft") // draft/posted
   createdAt      DateTime @default(now())
@@ -2601,7 +2603,7 @@ model InterCompanyTransaction {
   id                 Int       @id @default(autoincrement())
   companySlugFrom    String
   companySlugTo      String
-  amount             String
+  amount             Decimal @default(0)
   currency           String
   description        String?
   journalEntryIdFrom Int?
@@ -2634,7 +2636,7 @@ model WpsFile {
   fileName        String
   fileContent     String? // base64 of generated file
   totalEmployees  Int       @default(0)
-  totalAmount     String    @default("0")
+  totalAmount     Decimal   @default(0)
   status          String    @default("draft") // draft/submitted/accepted/rejected
   submittedAt     DateTime?
   rejectionReason String?
@@ -2659,9 +2661,9 @@ model TaxFiling {
   taxType         String // vat/zakat/income/other
   periodFrom      String // YYYY-MM-DD
   periodTo        String // YYYY-MM-DD
-  totalSales      String    @default("0")
-  totalPurchases  String    @default("0")
-  vatDue          String    @default("0")
+  totalSales      Decimal   @default(0)
+  totalPurchases  Decimal   @default(0)
+  vatDue          Decimal   @default(0)
   filingReference String?
   status          String    @default("draft") // draft/submitted/accepted/rejected
   submittedAt     DateTime?
@@ -2710,7 +2712,7 @@ model OpeningBalanceEntry {
   id             Int      @id @default(autoincrement())
   companySlug    String
   accountId      Int
-  amount         String
+  amount         Decimal @default(0)
   asOfDate       String // YYYY-MM-DD
   importedFrom   String? // manual/excel/other_system
   journalEntryId Int?

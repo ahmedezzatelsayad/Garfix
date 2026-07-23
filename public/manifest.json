@@ -1,21 +1,53 @@
 {
   "name": "GARFIX EOS — منصة إدارة الأعمال",
   "short_name": "GARFIX",
-  "description": "منصة SaaS متكاملة لإدارة الفواتير والعملاء والموارد البشرية والمحاسبة",
+  "description": "منصة SaaS متكاملة لإدارة الفواتير والعملاء والموارد البشرية والمحاسبة — مدعومة بالذكاء الاصطناعي ومُحسّنة لـ 20+ دولة في MENA",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f0a1e",
   "theme_color": "#7c3aed",
+  "prefer_related_applications": false,
   "categories": ["business", "productivity", "finance"],
   "icons": [
+    {
+      "src": "/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
     },
     {
       "src": "/icon-512.png",
@@ -26,10 +58,48 @@
   ],
   "screenshots": [
     {
-      "src": "/screenshot.png",
+      "src": "/screenshot-wide.png",
       "sizes": "1280x720",
       "type": "image/png",
-      "form_factor": "wide"
+      "form_factor": "wide",
+      "label": "لوحة تحكم GARFIX"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "واجهة الموبايل لـ GARFIX"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "لوحة التحكم",
+      "short_name": "لوحة التحكم",
+      "description": "عرض الإحصائيات والتقارير لحظية",
+      "url": "/?shortcut=dashboard",
+      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "فواتير جديدة",
+      "short_name": "فواتير",
+      "description": "إنشاء فاتورة جديدة",
+      "url": "/?shortcut=invoices",
+      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "مساعد AI",
+      "short_name": "AI",
+      "description": "مساعد الذكاء الاصطناعي لتحليل البيانات",
+      "url": "/?shortcut=ai-chat",
+      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "إدارة العملاء",
+      "short_name": "عملاء",
+      "description": "عرض وإدارة قاعدة بيانات العملاء",
+      "url": "/?shortcut=clients",
+      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
     }
   ]
 }

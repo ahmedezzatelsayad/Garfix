@@ -200,7 +200,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       total: totals.total,
       shipping: totals.shipping,
       discount: totals.discount,
-      paid: "0",
+      paid: 0,
       notes: data.notes || null,
       source: data.source || null,
       createdByEmail: user.email,

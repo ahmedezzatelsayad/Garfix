@@ -39,6 +39,7 @@ import { db } from "../db";
 import { logger } from "../logger";
 import { registerWorker, QUEUE_NAMES, recoverPendingJobs } from "../queues";
 import { resolveAmbiguousMatch, getAIResolutionAction } from "../aiProductResolver";
+import { num } from "../money";
 
 /** Shape of the job payload — must match what productMatcher.ts enqueues. */
 export interface AIProductMatchJobData {
@@ -100,7 +101,7 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
     {
       id: candidateProduct.id,
       name: candidateProduct.name,
-      price: candidateProduct.sellingPrice ? Number(candidateProduct.sellingPrice) : undefined,
+      price: candidateProduct.sellingPrice ? num(candidateProduct.sellingPrice, 3) : undefined,
     },
     fuzzyScore,
     companySlug,

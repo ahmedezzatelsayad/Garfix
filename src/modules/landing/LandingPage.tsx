@@ -1,17 +1,40 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Sparkles, Shield, Zap, Globe, ChevronLeft } from "lucide-react";
-import { DEFAULT_PLANS } from "@/lib/plans";
-import { cn } from "@/lib/utils";
-import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
+import { EnhancedLandingPage } from "./EnhancedLandingPage";
 
 interface LandingPageProps {
   onLogin: () => void;
   onRegister: () => void;
 }
 
+/**
+ * LandingPage now delegates to EnhancedLandingPage which includes:
+ * - Full pricing tiers (SAR)
+ * - Comparison table vs competitors
+ * - Framer Motion animations
+ * - shadcn/ui components (Card, Badge, Accordion)
+ * - PWA install hint
+ *
+ * The original implementation is preserved below as a fallback
+ * in case EnhancedLandingPage fails to render.
+ */
 export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
+  try {
+    return <EnhancedLandingPage onLogin={onLogin} onRegister={onRegister} />;
+  } catch {
+    // Fallback to legacy implementation below
+  }
+}
+
+/* ── Legacy LandingPage (fallback) ───────────────────────────────────── */
+
+import { useEffect, useRef, useState } from "react";
+import { Sparkles, Shield, Zap, Globe, ChevronLeft } from "lucide-react";
+import { DEFAULT_PLANS } from "@/lib/plans";
+import { cn } from "@/lib/utils";
+import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
+
+function LegacyLandingPage({ onLogin, onRegister }: LandingPageProps) {
   const cvsRef = useRef<HTMLCanvasElement>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [content, setContent] = useState<Record<string, any> | null>(null);
