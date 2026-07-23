@@ -7,7 +7,7 @@
  * API route patterns, event type catalog, audit integration.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import crypto from "node:crypto";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
@@ -744,3 +744,5 @@ describe("Edge cases", () => {
     expect(verifyWebhookSignature(payload, `sha256=${sig}`, secret)).toBe(true);
   });
 });
+
+afterAll(() => { mock.restore(); });

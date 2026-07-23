@@ -4,7 +4,7 @@
  * Tests recordObservation, promoteCandidates, getLearningStatus.
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
 
 // ─── Mock setup ─────────────────────────────────────────────────────────
 
@@ -313,3 +313,5 @@ describe("getLearningStatus", () => {
     );
   });
 });
+
+afterAll(() => { mock.restore(); });

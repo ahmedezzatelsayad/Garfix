@@ -4,7 +4,7 @@
  * Tests recordSpend, getBudgetStatus, checkBudgetGate, forecastMonthlySpend.
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
 
 // ─── Mock setup ─────────────────────────────────────────────────────────
 
@@ -343,3 +343,5 @@ describe("forecastMonthlySpend", () => {
     expect(r).toBe(300000);
   });
 });
+
+afterAll(() => { mock.restore(); });

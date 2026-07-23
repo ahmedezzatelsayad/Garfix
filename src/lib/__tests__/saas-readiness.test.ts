@@ -6,7 +6,7 @@
  * notifications, status page, domain mapping, email templates, SLA, GDPR.
  */
 
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -335,3 +335,5 @@ describe("GDPR data deletion", () => {
     expect(result).toBe(0);
   });
 });
+
+afterAll(() => { mock.restore(); });

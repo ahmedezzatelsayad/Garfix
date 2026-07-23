@@ -7,7 +7,7 @@
  * metrics isolation, permission elevation prevention, and API route isolation.
  */
 
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mock valkey & logger BEFORE imports ─────────────────────────────────
 
@@ -556,3 +556,5 @@ describe("API route isolation", () => {
     expect(merged).toEqual({ status: "active", companySlug: "co-a" });
   });
 });
+
+afterAll(() => { mock.restore(); });

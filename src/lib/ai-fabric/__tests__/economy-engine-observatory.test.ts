@@ -4,7 +4,7 @@
  * Tests getEconomyStatus, shouldUseEconomyMode, recordDecisionTrace, getExplainabilitySummary.
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
 
 // ─── Mock setup ─────────────────────────────────────────────────────────
 
@@ -296,3 +296,5 @@ describe("getExplainabilitySummary", () => {
     expect(s.period).toBe("30 days");
   });
 });
+
+afterAll(() => { mock.restore(); });

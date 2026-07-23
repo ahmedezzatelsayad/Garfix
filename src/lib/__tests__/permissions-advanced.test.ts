@@ -6,7 +6,7 @@
  * can() helper, DB_KEY_TO_CATALOG_KEY mapping, negative tests.
  */
 
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -338,3 +338,5 @@ describe("Negative tests", () => {
     expect(perms.create_invoice).toBe(0);
   });
 });
+
+afterAll(() => { mock.restore(); });

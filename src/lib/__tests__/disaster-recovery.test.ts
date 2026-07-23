@@ -6,7 +6,7 @@
  * recovery drills, Valkey persistence, and snapshot cleanup.
  */
 
-import { describe, it, expect, mock } from "bun:test";
+import { describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -336,3 +336,5 @@ describe("Snapshot cleanup", () => {
     expect(isPathSafe("/backups", "/etc/passwd")).toBe(false);
   });
 });
+
+afterAll(() => { mock.restore(); });

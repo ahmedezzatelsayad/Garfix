@@ -1224,12 +1224,13 @@ export function* generateBusinessActivities(
   companies: SyntheticCompany[],
   durationMs: number = 60_000,
   concurrency: number = 5,
+  maxIterations: number = 10_000, // P0 FIX: safety valve — prevents infinite yield
 ): Generator<BusinessActivity[]> {
   const rng = new SeededRandom(1337);
   const startTime = Date.now();
   let tick = 0;
 
-  while (Date.now() - startTime < durationMs) {
+  while (Date.now() - startTime < durationMs && tick < maxIterations) {
     const batch: BusinessActivity[] = [];
     const batchSize = rng.int(1, concurrency);
 
@@ -1637,7 +1638,10 @@ export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | Tele
   const totalRequests = telemetry.length;
   const totalTokens = telemetry.reduce((s, e) => s + e.totalTokens, 0);
   const totalUsd = telemetry.reduce((s, e) => s + e.costUsd, 0);
-  const totalInvoices = companies.reduce((s, c) => s + (c.invoices?.length ?? 0), 0) || 1;
+  // P0 FIX: Remove `|| 1` fallback — when totalInvoices=0, avgCostPerInvoice
+  // should return 0, not totalUsd/1. The `|| 1` caused calculateMetrics(entries, [])
+  // to return avgCostPerInvoice=1 instead of 0.
+  const totalInvoices = companies.reduce((s, c) => s + (c.invoices?.length ?? 0), 0);
 
   // Provider distribution (with cost per provider)
   const providerDist: Record<string, { requests: number; cost: number }> = {};
@@ -1704,8 +1708,8 @@ export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | Tele
     totalTokenUsage: totalTokens,
     totalUsdSpent: totalUsd,
     avgCostPerRequest: totalUsd / totalRequests,
-    avgCostPerInvoice: totalUsd / totalInvoices,
-    avgCostPerCompany: totalUsd / companies.length,
+    avgCostPerInvoice: totalInvoices > 0 ? totalUsd / totalInvoices : 0,
+    avgCostPerCompany: companies.length > 0 ? totalUsd / companies.length : 0,
     highestCostTenants,
     cacheHitRate,
     memoryHitRate,

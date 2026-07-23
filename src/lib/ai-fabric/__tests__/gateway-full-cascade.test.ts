@@ -4,7 +4,7 @@
  * Uses mock.module from bun:test for DB and logger mocking.
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
 
 // ─── Mock DB setup ─────────────────────────────────────────────────────────
 
@@ -764,3 +764,5 @@ describe("storeAIMemory", () => {
     expect(parsed.result.name).toBe("widget");
   });
 });
+
+afterAll(() => { mock.restore(); });

@@ -8,7 +8,7 @@
  * issueSession/clearSession.
  */
 
-import { describe, it, expect, mock, spyOn, beforeEach } from "bun:test";
+import { describe, it, expect, mock, spyOn, beforeEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -655,4 +655,13 @@ describe("Cookie constants", () => {
   it("REFRESH_COOKIE is inv_refresh", () => {
     expect(REFRESH_COOKIE).toBe("inv_refresh");
   });
+});
+
+// P0 FIX: Restore all mocked modules after this test suite to prevent
+// mock isolation bleed — Bun's mock.module() persists across test files
+// in the same process, so other test suites (e.g. multi-tenant-isolation)
+// that import the real @/lib/valkey, @/lib/db, @/lib/founder, next/headers,
+// next/server get the mock instead of the real module.
+afterAll(() => {
+  mock.restore();
 });

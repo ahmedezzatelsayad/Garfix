@@ -968,3 +968,5 @@ describe("GET /api/invoices/[id] — soft-delete enforcement (H1 FIX)", () => {
     expect(res.status).toBe(404);
   });
 });
+
+afterAll(() => { mock.restore(); });

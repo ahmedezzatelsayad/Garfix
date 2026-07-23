@@ -7,7 +7,7 @@
  * getActiveSessionCount, cleanupExpiredSessions.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
 
@@ -478,3 +478,5 @@ describe("Password Policy Module", () => {
     });
   });
 });
+
+afterAll(() => { mock.restore(); });
