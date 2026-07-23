@@ -13,6 +13,8 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { syncInventoryOnSale } from "@/lib/inventorySync";
+import { applyKuwaitCompliance, formatKuwaitErrorsForResponse } from "@/lib/e-invoicing/kuwait-validation";
+import { isKuwait } from "@/lib/gulfConfig";
 
 const LineItemSchema = z.object({
   description: z.string().min(1),
@@ -38,6 +40,16 @@ const CreateSchema = z.object({
   discount: z.union([z.number(), z.string()]).default(0),
   notes: z.string().optional(),
   source: z.string().optional(),
+  // Kuwait Decree 10/2026 compliance fields
+  sellerNameAr: z.string().optional(),
+  sellerAddressAr: z.string().optional(),
+  buyerNameAr: z.string().optional(),
+  buyerAddressAr: z.string().optional(),
+  lineItemsAr: z.string().optional(), // JSON string of Arabic line items
+  notesAr: z.string().optional(),
+  invoiceTypeAr: z.string().optional(), // فاتورة ضريبية / فاتورة مبسطة
+  invoiceTypeEn: z.string().optional(), // standard / simplified
+  mociNumber: z.string().optional(),
 });
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -138,6 +150,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   });
   if (existing) return apiError("رقم الفاتورة مستخدم مسبقاً في هذه الشركة", 409);
 
+  // ── Kuwait Decree 10/2026 compliance ──────────────────────────────────
+  // If the company is Kuwait-based, auto-populate Kuwait fields and validate
+  const company = await db.company.findUnique({ where: { slug: data.companySlug } });
+  let kuwaitWarnings: Array<{ field: string; messageAr: string; messageEn: string }> = [];
+  let enrichedData = data as Record<string, unknown>;
+
+  if (company && isKuwait(company.country)) {
+    const kuwaitResult = applyKuwaitCompliance(data as Record<string, unknown>, company as Record<string, unknown>);
+    if (!kuwaitResult.valid) {
+      const errorResponse = formatKuwaitErrorsForResponse(kuwaitResult);
+      return NextResponse.json(
+        { error: errorResponse.error, code: "KUWAIT_COMPLIANCE_ERROR", details: errorResponse.details },
+        { status: 400 },
+      );
+    }
+    kuwaitWarnings = kuwaitResult.warnings;
+    enrichedData = kuwaitResult.enrichedData;
+  }
+
   const totals = calcInvoiceTotals(
     data.lineItems.map((it) => ({
       description: it.description,
@@ -175,6 +206,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       createdByEmail: user.email,
       createdByName: user.uid,
       version: 0,
+      // Kuwait Decree 10/2026 compliance fields
+      hijriIssueDate: (enrichedData.hijriIssueDate as string) || null,
+      hijriDueDate: (enrichedData.hijriDueDate as string) || null,
+      mociNumber: (enrichedData.mociNumber as string) || null,
+      invoiceTypeAr: (enrichedData.invoiceTypeAr as string) || null,
+      invoiceTypeEn: (enrichedData.invoiceTypeEn as string) || null,
+      sellerNameAr: (enrichedData.sellerNameAr as string) || null,
+      sellerAddressAr: (enrichedData.sellerAddressAr as string) || null,
+      buyerNameAr: (enrichedData.buyerNameAr as string) || null,
+      buyerAddressAr: (enrichedData.buyerAddressAr as string) || null,
+      lineItemsAr: (enrichedData.lineItemsAr as string) || "[]",
+      notesAr: (enrichedData.notesAr as string) || null,
+      currencyDecimalPlaces: (enrichedData.currencyDecimalPlaces as number) ?? 3,
+      eInvoiceAuthority: (enrichedData.eInvoiceAuthority as string) || null,
     },
   });
 
@@ -209,5 +254,5 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     details: { invoiceNumber: data.invoiceNumber, total: totals.total, reviewQueueWarnings: reviewQueueWarnings.length, warnings: warnings.length },
   });
 
-  return NextResponse.json({ ok: true, invoice, reviewQueueWarnings, warnings });
+  return NextResponse.json({ ok: true, invoice, reviewQueueWarnings, warnings, kuwaitWarnings });
 });

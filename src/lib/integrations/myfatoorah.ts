@@ -45,7 +45,7 @@ import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } fro
  * overwhelming majority of SSRF attempts (the audit finding's primary
  * concern was the trivially-exploitable "set base_url to internal IP" case).
  */
-function validateBaseUrl(url: string): void {
+export function validateBaseUrl(url: string): void {
   let parsed: URL;
   try {
     parsed = new URL(url);

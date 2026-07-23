@@ -12,6 +12,10 @@ import { logAudit } from "@/lib/audit";
 import { calcInvoiceTotals, num, type LineItem } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { applyKuwaitCompliance, formatKuwaitErrorsForResponse } from "@/lib/e-invoicing/kuwait-validation";
+import { checkInvoiceRetention } from "@/lib/e-invoicing/retention";
+import { isKuwait } from "@/lib/gulfConfig";
+import { logger } from "@/lib/logger";
 
 const UpdateSchema = z.object({
   invoiceNumber: z.string().min(1).optional(),
@@ -40,6 +44,16 @@ const UpdateSchema = z.object({
   discount: z.union([z.number(), z.string()]).optional(),
   notes: z.string().optional().nullable(),
   expectedVersion: z.number().int().optional(),
+  // Kuwait Decree 10/2026 compliance fields
+  sellerNameAr: z.string().optional(),
+  sellerAddressAr: z.string().optional(),
+  buyerNameAr: z.string().optional(),
+  buyerAddressAr: z.string().optional(),
+  lineItemsAr: z.string().optional(),
+  notesAr: z.string().optional().nullable(),
+  invoiceTypeAr: z.string().optional(),
+  invoiceTypeEn: z.string().optional(),
+  mociNumber: z.string().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -111,6 +125,35 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   }
   updateData.version = existing.version + 1;
 
+  // ── Kuwait Decree 10/2026 compliance for updates ──────────────────────
+  let kuwaitWarnings: Array<{ field: string; messageAr: string; messageEn: string }> = [];
+  const company = await db.company.findUnique({ where: { slug: existing.companySlug } });
+  if (company && isKuwait(company.country)) {
+    const kuwaitResult = applyKuwaitCompliance(
+      { ...updateData, ...existing },
+      company as Record<string, unknown>,
+    );
+    if (!kuwaitResult.valid) {
+      const errorResponse = formatKuwaitErrorsForResponse(kuwaitResult);
+      return NextResponse.json(
+        { error: errorResponse.error, code: "KUWAIT_COMPLIANCE_ERROR", details: errorResponse.details },
+        { status: 400 },
+      );
+    }
+    kuwaitWarnings = kuwaitResult.warnings;
+    // Merge Kuwait-enriched fields into update data
+    const enriched = kuwaitResult.enrichedData;
+    for (const key of [
+      "hijriIssueDate", "hijriDueDate", "mociNumber", "invoiceTypeAr", "invoiceTypeEn",
+      "sellerNameAr", "sellerAddressAr", "buyerNameAr", "buyerAddressAr",
+      "lineItemsAr", "notesAr", "currencyDecimalPlaces", "eInvoiceAuthority",
+    ]) {
+      if (enriched[key] !== undefined) {
+        updateData[key] = enriched[key];
+      }
+    }
+  }
+
   const invoice = await db.invoice.update({
     where: { id: existing.id },
     data: updateData,
@@ -125,7 +168,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     companySlug: existing.companySlug,
   });
 
-  return NextResponse.json({ ok: true, invoice });
+  return NextResponse.json({ ok: true, invoice, kuwaitWarnings });
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
@@ -136,6 +179,26 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermissionForCompany(req, "delete_invoice", existing.companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
+
+  // ── Kuwait Decree 10/2026: retention enforcement ──────────────────────
+  // Check retention period before allowing soft-delete
+  const company = await db.company.findUnique({ where: { slug: existing.companySlug } });
+  if (company) {
+    const retentionCheck = checkInvoiceRetention(
+      existing as Record<string, unknown>,
+      company as Record<string, unknown>,
+    );
+    // Soft-delete is always allowed, but we log the retention warning
+    if (retentionCheck.reasonAr) {
+      logger.info("[invoice-delete] retention notice", {
+        invoiceId: existing.id,
+        retentionYears: retentionCheck.retentionYears,
+        decreeRef: retentionCheck.decreeRef,
+        reasonEn: retentionCheck.reasonEn,
+      });
+    }
+  }
+
   // DB-005 FIX: Soft delete instead of hard delete
   await db.invoice.update({
     where: { id: existing.id },
@@ -148,7 +211,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     entity: "invoice",
     entityId: existing.id,
     companySlug: existing.companySlug,
-    details: { softDelete: true },
+    details: { softDelete: true, retentionNotice: company ? checkInvoiceRetention(existing as Record<string, unknown>, company as Record<string, unknown>).reasonEn : undefined },
   });
   return NextResponse.json({ ok: true });
 });

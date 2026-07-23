@@ -24,6 +24,7 @@ export const INTEGRATION_TYPES = {
   WHATSAPP: "whatsapp",
   MYFATOORAH: "myfatoorah",
   META_ADS: "meta_ads",
+  PAYMOB: "paymob",
 } as const;
 
 export type IntegrationType = (typeof INTEGRATION_TYPES)[keyof typeof INTEGRATION_TYPES];
@@ -61,6 +62,15 @@ export const INTEGRATION_INFO: Array<{
     requiredFields: [
       { key: "access_token", label: "Access Token", type: "password" },
       { key: "ad_account_id", label: "Ad Account ID", type: "text" },
+    ],
+  },
+  {
+    type: INTEGRATION_TYPES.PAYMOB,
+    name: "Paymob",
+    description: "بوابة الدفع المصرية الرائدة — قبول محافظ رقمية (فودافون كاش، أورنج كاش)، بطاقات ميزة، فيزا/Mastercard، وأقساط بنكية لجميع السوق المصري.",
+    requiredFields: [
+      { key: "api_key", label: "API Key", type: "password" },
+      { key: "base_url", label: "Base URL", type: "text" },
     ],
   },
 ];

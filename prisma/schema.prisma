@@ -60,27 +60,27 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  chatHistory       ChatMessage[]
+  chatHistory        ChatMessage[]
   emailVerifications EmailVerification[]
-  orderDeliveries   OrderDelivery[]
-  auditLogs         AuditLog[]
-  mfaSecrets        MFASecret[]
-  sessions          SessionRegistry[]
+  orderDeliveries    OrderDelivery[]
+  auditLogs          AuditLog[]
+  mfaSecrets         MFASecret[]
+  sessions           SessionRegistry[]
 
   @@index([role])
   @@map("app_users")
 }
 
 model EmailVerification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String?  @unique
+  token     String?   @unique
   codeHash  String?
-  purpose   String   @default("email_verify") // email_verify | password_reset
-  attempts  Int      @default(0)
+  purpose   String    @default("email_verify") // email_verify | password_reset
+  attempts  Int       @default(0)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [uid], onDelete: Restrict)
 
@@ -93,85 +93,97 @@ model EmailVerification {
 // ────────────────────────────────────────────────────────────────────────────
 
 model Company {
-  id                          Int      @id @default(autoincrement())
-  name                        String
-  slug                        String   @unique
-  logoBase64                  String?  // EA-013 DEPRECATED: Use storage.ts instead. This column will be removed in a future migration.
-  nameAr                      String?
-  emoji                       String?
-  color                       String?
-  phone                       String?
-  email                       String?
-  address                     String?
-  vatNumber                   String?
-  commercialRegistration      String? // السجل التجاري (Kuwait CR number)
-  currency                    String   @default("KWD")
-  country                     String? // KW | SA | AE | BH | OM | QA
-  timezone                    String?
-  defaultTaxRate              String   @default("0")
+  id                           Int       @id @default(autoincrement())
+  name                         String
+  slug                         String    @unique
+  logoBase64                   String? // EA-013 DEPRECATED: Use storage.ts instead. This column will be removed in a future migration.
+  nameAr                       String?
+  emoji                        String?
+  color                        String?
+  phone                        String?
+  email                        String?
+  address                      String?
+  vatNumber                    String?
+  commercialRegistration       String? // السجل التجاري (Kuwait CR number)
+  mociNumber                   String? // رقم وزارة التجارة والصناعة (Kuwait MOCI registration number)
+  currency                     String    @default("KWD")
+  country                      String? // KW | SA | AE | BH | OM | QA | EG
+  timezone                     String?
+  defaultTaxRate               String    @default("0")
   // Gulf-specific settings
-  weekendDays                 String   @default("[5,6]") // JSON array: 5=Fri, 6=Sat (Gulf weekend)
-  ramadanHours                Boolean  @default(false) // reduced working hours during Ramadan
-  openrouterApiKey            String?
-  openrouterModel             String   @default("anthropic/claude-3.5-haiku")
+  weekendDays                  String    @default("[5,6]") // JSON array: 5=Fri, 6=Sat (Gulf weekend)
+  ramadanHours                 Boolean   @default(false) // reduced working hours during Ramadan
+  hijriDateRequired            Boolean   @default(false) // require Hijri (Islamic) date alongside Gregorian
+  arabicMandatory              Boolean   @default(false) // Arabic language mandatory for all documents
+  recordRetentionYears         Int       @default(5) // minimum record retention period in years (GCC compliance)
+  openrouterApiKey             String?
+  openrouterModel              String    @default("anthropic/claude-3.5-haiku")
   // SaaS subscription
-  plan                        String   @default("trial")
-  subscriptionStatus          String   @default("active")
-  trialEndsAt                 DateTime?
-  stripeCustomerId            String?
-  stripeSubscriptionId        String?
+  plan                         String    @default("trial")
+  subscriptionStatus           String    @default("active")
+  trialEndsAt                  DateTime?
+  currentBillingCycleEnd       DateTime? // end of the current billing cycle
+  stripeCustomerId             String?
+  stripeSubscriptionId         String?
+  myfatoorahCustomerId         String?
+  paymobCustomerId             String?
   // WhatsApp config (encrypted at rest in production)
-  whatsappEnabled             Boolean  @default(false)
-  whatsappBusinessNumber      String?
-  whatsappPhoneNumberId       String?
-  whatsappAccessTokenEnc      String?
-  whatsappAppSecretEnc        String?
-  whatsappVerifyTokenHash     String?
-  whatsappGreeting            String?
+  whatsappEnabled              Boolean   @default(false)
+  whatsappBusinessNumber       String?
+  whatsappPhoneNumberId        String?
+  whatsappAccessTokenEnc       String?
+  whatsappAppSecretEnc         String?
+  whatsappVerifyTokenHash      String?
+  whatsappGreeting             String?
   whatsappCredentialsUpdatedAt DateTime?
   // P0.3 fix: deletedAt was referenced by tenants/[slug] + companies/[slug]
   // DELETE handlers but was missing from the model — caused 3 pre-existing
   // tsc errors. Adding it here closes all of them and enables proper
   // soft-delete cascade for tenants (5-year financial-record retention).
-  deletedAt                   DateTime?
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  deletedAt                    DateTime?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
-  clients           Client[]
-  invoices          Invoice[]
-  products          ProductCatalog[]
-  purchaseInvoices  PurchaseInvoice[]
-  employees         Employee[]
-  journalEntries    JournalEntry[]
-  accounts          Account[]
-  eInvoices         EInvoice[]
-  orderDeliveries   OrderDelivery[]
-  setupWizard       SetupWizardProgress?
-  paymentTxns       PaymentTransaction[]
-  aiLogs            AiProcessingLog[]
-  invoiceTemplates      InvoiceTemplate[]
+  clients                 Client[]
+  invoices                Invoice[]
+  products                ProductCatalog[]
+  purchaseInvoices        PurchaseInvoice[]
+  employees               Employee[]
+  journalEntries          JournalEntry[]
+  accounts                Account[]
+  eInvoices               EInvoice[]
+  zatcaCertificates       ZatcaCertificate[]
+  orderDeliveries         OrderDelivery[]
+  setupWizard             SetupWizardProgress?
+  paymentTxns             PaymentTransaction[]
+  aiLogs                  AiProcessingLog[]
+  invoiceTemplates        InvoiceTemplate[]
   invoiceTemplateSettings InvoiceTemplateSettings?
-  warehouses        Warehouse[]
-  inventoryItems    InventoryItem[]
-  stockMovements    StockMovement[]
-  productMatchAudit ProductMatchAudit[]
-  productAliases    ProductAlias[]
-  matchOverrides    MatchOverride[]
-  runtime           CompanyRuntime?
-  attendances       Attendance[]
-  salaries           Salary[]
-  commissions        Commission[]
-  leaveRequests      LeaveRequest[]
-  performances       Performance[]
-  automationRules    AutomationRule[]
-  notifications      Notification[]
-  suppliers          Supplier[]
-  salesReturns       SalesReturn[]
-  purchaseReturns    PurchaseReturn[]
+  warehouses              Warehouse[]
+  inventoryItems          InventoryItem[]
+  stockMovements          StockMovement[]
+  productMatchAudit       ProductMatchAudit[]
+  productAliases          ProductAlias[]
+  matchOverrides          MatchOverride[]
+  runtime                 CompanyRuntime?
+  attendances             Attendance[]
+  salaries                Salary[]
+  commissions             Commission[]
+  leaveRequests           LeaveRequest[]
+  performances            Performance[]
+  automationRules         AutomationRule[]
+  notifications           Notification[]
+  suppliers               Supplier[]
+  salesReturns            SalesReturn[]
+  purchaseReturns         PurchaseReturn[]
+  refundTransactions      RefundTransaction[]
+  subscriptionSchedules   SubscriptionSchedule[]
 
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
   @@index([subscriptionStatus])
+  @@index([myfatoorahCustomerId])
+  @@index([paymobCustomerId])
   @@index([plan])
   @@index([deletedAt])
   @@map("companies")
@@ -196,7 +208,7 @@ model SetupWizardProgress {
 // ────────────────────────────────────────────────────────────────────────────
 
 model Client {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
   email       String?
   phone       String?
@@ -207,10 +219,10 @@ model Client {
   // DB-005 FIX: Soft delete
   deletedAt   DateTime?
   deletedBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant   Company   @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   invoices Invoice[]
 
   @@index([companySlug, createdAt, id])
@@ -223,43 +235,57 @@ model Client {
 // ────────────────────────────────────────────────────────────────────────────
 
 model Invoice {
-  id              Int      @id @default(autoincrement())
-  invoiceNumber   String
-  companySlug     String
-  clientId        Int?
-  clientName      String
-  clientEmail     String?
-  clientPhone     String?
-  clientAddress   String?
-  issueDate       String // YYYY-MM-DD
-  dueDate         String
-  status          String   @default("draft") // draft | sent | paid | partial | overdue | cancelled
-  lineItems       String   @default("[]") // JSON
-  subtotal        String   @default("0")
-  taxRate         String   @default("0")
-  taxAmount       String   @default("0")
-  total           String   @default("0")
-  shipping        String   @default("0")
-  discount        String   @default("0")
-  paid            String   @default("0")
-  notes           String?
-  source          String?
-  createdByEmail  String?
-  createdByName   String?
-  whatsappRawText String?
-  parsedConfidence String?
-  journalEntryId  Int?
-  eInvoiceStatus  String?
-  deliveryMethod  String?
-  version         Int      @default(0) // optimistic lock
+  id                    Int       @id @default(autoincrement())
+  invoiceNumber         String
+  companySlug           String
+  clientId              Int?
+  clientName            String
+  clientEmail           String?
+  clientPhone           String?
+  clientAddress         String?
+  issueDate             String // YYYY-MM-DD
+  dueDate               String
+  status                String    @default("draft") // draft | sent | paid | partial | overdue | cancelled
+  lineItems             String    @default("[]") // JSON
+  subtotal              String    @default("0")
+  taxRate               String    @default("0")
+  taxAmount             String    @default("0")
+  total                 String    @default("0")
+  shipping              String    @default("0")
+  discount              String    @default("0")
+  paid                  String    @default("0")
+  notes                 String?
+  source                String?
+  createdByEmail        String?
+  createdByName         String?
+  whatsappRawText       String?
+  parsedConfidence      String?
+  journalEntryId        Int?
+  eInvoiceStatus        String?
+  deliveryMethod        String?
+  version               Int       @default(0) // optimistic lock
+  // ── Kuwait Decree 10/2026 compliance fields ──────────────────────────────
+  hijriIssueDate        String? // Hijri date for issue date (e.g. "١٢ رجب ١٤٤٧")
+  hijriDueDate          String? // Hijri date for due date
+  mociNumber            String? // MOCI registration number (copied from company for immutability)
+  invoiceTypeAr         String? // Arabic invoice type description (فاتورة ضريبية / فاتورة مبسطة)
+  invoiceTypeEn         String? // English invoice type description (standard / simplified)
+  sellerNameAr          String? // Arabic seller name
+  sellerAddressAr       String? // Arabic seller address
+  buyerNameAr           String? // Arabic buyer name (B2B required)
+  buyerAddressAr        String? // Arabic buyer address (B2B required)
+  lineItemsAr           String    @default("[]") // Arabic line items JSON (mirrors lineItems with Arabic descriptions)
+  notesAr               String? // Arabic notes
+  currencyDecimalPlaces Int       @default(3) // KWD=3, SAR/AED=2, EGP=2
+  eInvoiceAuthority     String? // which authority this invoice is submitted to (kuwait_decree_10_2026, zatca, etc.)
   // DB-005 FIX: Soft delete for financial records
-  deletedAt       DateTime?
-  deletedBy       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  deletedAt             DateTime?
+  deletedBy             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  client       Client?  @relation(fields: [clientId], references: [id])
+  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  client       Client?        @relation(fields: [clientId], references: [id])
   eInvoice     EInvoice?
   delivery     OrderDelivery?
   salesReturns SalesReturn[]
@@ -284,18 +310,18 @@ model Invoice {
 // ────────────────────────────────────────────────────────────────────────────
 
 model ProductCatalog {
-  id            Int      @id @default(autoincrement())
-  code          String?
-  name          String
-  aliases       String   @default("[]") // JSON
-  purchasePrice String?
-  sellingPrice  String?
+  id             Int      @id @default(autoincrement())
+  code           String?
+  name           String
+  aliases        String   @default("[]") // JSON
+  purchasePrice  String?
+  sellingPrice   String?
   wholesalePrice String?
-  companySlug   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  companySlug    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant         Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   inventoryItems InventoryItem[]
   productAliases ProductAlias[]
   stockMovements StockMovement[]
@@ -309,38 +335,40 @@ model ProductCatalog {
 // ────────────────────────────────────────────────────────────────────────────
 
 model Warehouse {
-  id          Int      @id @default(autoincrement())
-  companySlug String
-  name        String
-  code        String
-  address     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tenant      Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  items       InventoryItem[]
+  id             Int             @id @default(autoincrement())
+  companySlug    String
+  name           String
+  code           String
+  address        String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  tenant         Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  items          InventoryItem[]
   stockMovements StockMovement[]
+
+  @@unique([companySlug, code])
   @@index([companySlug])
   @@index([companySlug, isActive])
-  @@unique([companySlug, code])
   @@map("warehouses")
 }
 
 model InventoryItem {
-  id          Int      @id @default(autoincrement())
-  companySlug String
-  warehouseId Int
-  productId   Int
-  quantity    String   @default("0")
-  reorderLevel String  @default("0")
-  reorderQty  String   @default("0")
-  batchNumber String?
-  expiryDate  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  product     ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tenant      Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  id           Int            @id @default(autoincrement())
+  companySlug  String
+  warehouseId  Int
+  productId    Int
+  quantity     String         @default("0")
+  reorderLevel String         @default("0")
+  reorderQty   String         @default("0")
+  batchNumber  String?
+  expiryDate   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  warehouse    Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product      ProductCatalog @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
   @@unique([warehouseId, productId])
   @@index([companySlug])
   @@index([productId])
@@ -349,24 +377,24 @@ model InventoryItem {
 }
 
 model StockMovement {
-  id           Int      @id @default(autoincrement())
-  companySlug  String
-  productId    Int?
-  warehouseId  Int
-  qty          String
-  sourceType   String
-  sourceId     Int?
-  note         String?
-  createdBy    String   @default("system")
-  createdAt    DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  companySlug String
+  productId   Int?
+  warehouseId Int
+  qty         String
+  sourceType  String
+  sourceId    Int?
+  note        String?
+  createdBy   String   @default("system")
+  createdAt   DateTime @default(now())
   // ERP-05 FIX: COGS tracking for cost engine
-  unitCost     String?  // cost per unit at time of movement
-  totalCost    String?  // qty * unitCost
-  costMethod   String?  // "fifo" | "weighted_average" | "specific"
+  unitCost    String? // cost per unit at time of movement
+  totalCost   String? // qty * unitCost
+  costMethod  String? // "fifo" | "weighted_average" | "specific"
 
-  tenant      Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  product     ProductCatalog? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  tenant    Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  product   ProductCatalog? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
   @@index([companySlug, createdAt])
   @@index([companySlug, productId])
@@ -380,29 +408,29 @@ model StockMovement {
 
 // ERP-05 FIX: Sales & Purchase Returns
 model SalesReturn {
-  id              Int      @id @default(autoincrement())
-  companySlug     String
-  invoiceId       Int
-  clientId        Int?
-  returnDate      String
-  reason          String?
-  items           String   @default("[]") // JSON: [{productId, qty, unitPrice, returnReason}]
-  totalAmount     String   @default("0")
-  status          String   @default("pending") // pending | approved | processed | refunded
-  refundMethod    String?  // "cash" | "credit_note" | "bank_transfer"
-  creditNoteId    Int?
-  journalEntryId  Int?     // link to reversal journal entry
-  approvedBy      String?
-  approvedAt      DateTime?
-  notes           String?
-  createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
-  deletedBy       String?
+  id             Int       @id @default(autoincrement())
+  companySlug    String
+  invoiceId      Int
+  clientId       Int?
+  returnDate     String
+  reason         String?
+  items          String    @default("[]") // JSON: [{productId, qty, unitPrice, returnReason}]
+  totalAmount    String    @default("0")
+  status         String    @default("pending") // pending | approved | processed | refunded
+  refundMethod   String? // "cash" | "credit_note" | "bank_transfer"
+  creditNoteId   Int?
+  journalEntryId Int? // link to reversal journal entry
+  approvedBy     String?
+  approvedAt     DateTime?
+  notes          String?
+  createdBy      String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  deletedBy      String?
 
-  tenant        Company       @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  invoice      Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  tenant  Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
 
   @@index([companySlug, createdAt])
   @@index([companySlug, status])
@@ -412,28 +440,28 @@ model SalesReturn {
 }
 
 model PurchaseReturn {
-  id              Int      @id @default(autoincrement())
-  companySlug     String
+  id                Int       @id @default(autoincrement())
+  companySlug       String
   purchaseInvoiceId Int?
-  supplierId      Int?
-  returnDate      String
-  reason          String?
-  items           String   @default("[]") // JSON: [{productId, qty, unitCost, returnReason}]
-  totalAmount     String   @default("0")
-  status          String   @default("pending") // pending | approved | processed | credited
-  journalEntryId  Int?     // link to reversal journal entry
-  approvedBy      String?
-  approvedAt      DateTime?
-  notes           String?
-  createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
-  deletedBy       String?
+  supplierId        Int?
+  returnDate        String
+  reason            String?
+  items             String    @default("[]") // JSON: [{productId, qty, unitCost, returnReason}]
+  totalAmount       String    @default("0")
+  status            String    @default("pending") // pending | approved | processed | credited
+  journalEntryId    Int? // link to reversal journal entry
+  approvedBy        String?
+  approvedAt        DateTime?
+  notes             String?
+  createdBy         String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+  deletedBy         String?
 
-  tenant             Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  purchaseInvoice    PurchaseInvoice? @relation("PurchaseReturnInvoice", fields: [purchaseInvoiceId], references: [id], onDelete: SetNull)
-  supplierEntity     Supplier?        @relation("SupplierReturns", fields: [supplierId], references: [id], onDelete: SetNull)
+  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  purchaseInvoice PurchaseInvoice? @relation("PurchaseReturnInvoice", fields: [purchaseInvoiceId], references: [id], onDelete: SetNull)
+  supplierEntity  Supplier?        @relation("SupplierReturns", fields: [supplierId], references: [id], onDelete: SetNull)
 
   @@index([companySlug, createdAt])
   @@index([companySlug, status])
@@ -448,7 +476,7 @@ model PurchaseReturn {
 
 // ERP-05 FIX: Supplier as a proper entity (not inline string in PurchaseInvoice)
 model Supplier {
-  id            Int      @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   companySlug   String
   name          String
   nameEn        String?
@@ -458,14 +486,15 @@ model Supplier {
   vatNumber     String?
   contactPerson String?
   notes         String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
   deletedBy     String?
 
-  tenant            Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  purchaseInvoices  PurchaseInvoice[]
+  tenant           Company           @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  purchaseInvoices PurchaseInvoice[]
+  purchaseReturns  PurchaseReturn[]  @relation("SupplierReturns")
 
   @@index([companySlug, isActive])
   @@index([companySlug, name])
@@ -473,23 +502,24 @@ model Supplier {
 }
 
 model PurchaseInvoice {
-  id              Int      @id @default(autoincrement())
-  num             String
-  date            String
-  supplier        String   @default("")
-  supplierId      Int?     // ERP-05 FIX: FK to Supplier table (nullable for backward compat)
-  companySlug     String
-  items           String   @default("[]") // JSON
-  sourceInvoiceIds String  @default("[]") // JSON
-  totalQty        Int      @default(0)
-  totalAmount     String   @default("0")
-  notes           String?
-  createdAt       DateTime @default(now())
-  deletedAt       DateTime?
-  deletedBy       String?
+  id               Int       @id @default(autoincrement())
+  num              String
+  date             String
+  supplier         String    @default("")
+  supplierId       Int? // ERP-05 FIX: FK to Supplier table (nullable for backward compat)
+  companySlug      String
+  items            String    @default("[]") // JSON
+  sourceInvoiceIds String    @default("[]") // JSON
+  totalQty         Int       @default(0)
+  totalAmount      String    @default("0")
+  notes            String?
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+  deletedBy        String?
 
-  tenant         Company   @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  supplierEntity Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  tenant          Company          @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  supplierEntity  Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseReturns PurchaseReturn[] @relation("PurchaseReturnInvoice")
 
   @@index([companySlug, createdAt, id])
   @@index([companySlug, deletedAt])
@@ -502,31 +532,31 @@ model PurchaseInvoice {
 // ────────────────────────────────────────────────────────────────────────────
 
 model Employee {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  name          String
-  nameEn        String?
-  phone         String?
-  email         String?
-  position      String?
-  department    String?
-  baseSalary    String   @default("0") // الراتب الأساسي (for gratuity calc)
-  allowances    String   @default("0") // البدلات (housing, transport, etc.)
-  currency      String   @default("KWD")
-  joinDate      String?
-  endDate       String? // تاريخ انتهاء الخدمة (for gratuity calc)
-  isActive      Boolean  @default(true)
-  notes         String?
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  name            String
+  nameEn          String?
+  phone           String?
+  email           String?
+  position        String?
+  department      String?
+  baseSalary      String   @default("0") // الراتب الأساسي (for gratuity calc)
+  allowances      String   @default("0") // البدلات (housing, transport, etc.)
+  currency        String   @default("KWD")
+  joinDate        String?
+  endDate         String? // تاريخ انتهاء الخدمة (for gratuity calc)
+  isActive        Boolean  @default(true)
+  notes           String?
   // Gulf-specific fields
-  civilId       String? // الرقم المدني (Kuwait Civil ID - PacI)
-  nationality   String? // الجنسية
+  civilId         String? // الرقم المدني (Kuwait Civil ID - PacI)
+  nationality     String? // الجنسية
   residenceExpiry String? // تاريخ انتهاء الإقامة (YYYY-MM-DD)
-  passportNumber String? // رقم الجواز
-  bankAccount   String? // رقم الحساب البنكي (for salary transfer)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  passportNumber  String? // رقم الجواز
+  bankAccount     String? // رقم الحساب البنكي (for salary transfer)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenant       Company      @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant       Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   attendance   Attendance[]
   salaries     Salary[]
   commissions  Commission[]
@@ -550,7 +580,7 @@ model Attendance {
   createdAt   DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([employeeId, date])
   @@index([companySlug, date])
@@ -558,22 +588,22 @@ model Attendance {
 }
 
 model Salary {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   companySlug String
   employeeId  Int
   month       String // "2025-06"
-  baseSalary  String   @default("0")
-  allowances  String   @default("0")
-  deductions  String   @default("0")
-  bonus       String   @default("0")
-  netSalary   String   @default("0")
-  isPaid      Boolean  @default(false)
+  baseSalary  String    @default("0")
+  allowances  String    @default("0")
+  deductions  String    @default("0")
+  bonus       String    @default("0")
+  netSalary   String    @default("0")
+  isPaid      Boolean   @default(false)
   paidAt      DateTime?
   notes       String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([employeeId, month])
   @@index([companySlug, isPaid])
@@ -593,7 +623,7 @@ model Commission {
   createdAt   DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant   Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([employeeId])
   @@index([companySlug, isPaid])
@@ -614,7 +644,9 @@ model LeaveRequest {
   approvedBy  String?
   createdAt   DateTime @default(now())
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company   Company? @relation(fields: [companyId], references: [id])
+  companyId Int?
 
   @@index([companySlug])
   @@index([employeeId])
@@ -623,21 +655,23 @@ model LeaveRequest {
 }
 
 model Performance {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  employeeId    Int
-  period        String // "2025-Q2"
-  kpiScore      Int?
-  attendScore   Int?
-  teamScore     Int?
-  overallScore  Int?
-  rating        String?
-  strengths     String?
-  improvements  String?
-  reviewerNote  String?
-  createdAt     DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  companySlug  String
+  employeeId   Int
+  period       String // "2025-Q2"
+  kpiScore     Int?
+  attendScore  Int?
+  teamScore    Int?
+  overallScore Int?
+  rating       String?
+  strengths    String?
+  improvements String?
+  reviewerNote String?
+  createdAt    DateTime @default(now())
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company   Company? @relation(fields: [companyId], references: [id])
+  companyId Int?
 
   @@index([companySlug])
   @@index([employeeId])
@@ -663,14 +697,14 @@ model Account {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  parent        Account?          @relation("AccountParent", fields: [parentId], references: [id])
-  children      Account[]         @relation("AccountParent")
-  journalLines  JournalEntryLine[]
-  tenant        Company           @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  parent       Account?           @relation("AccountParent", fields: [parentId], references: [id])
+  children     Account[]          @relation("AccountParent")
+  journalLines JournalEntryLine[]
+  tenant       Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
+  @@unique([companySlug, code])
   @@index([companySlug])
   @@index([code])
-  @@unique([companySlug, code])
   @@index([parentId])
   @@index([companySlug, type])
   @@index([companySlug, isActive])
@@ -678,22 +712,22 @@ model Account {
 }
 
 model JournalEntry {
-  id          Int      @id @default(autoincrement())
-  date        String   // YYYY-MM-DD
+  id          Int       @id @default(autoincrement())
+  date        String // YYYY-MM-DD
   description String?
   reference   String?
   companySlug String
   createdBy   String
-  status      String   @default("draft") // draft | posted | reversed
+  status      String    @default("draft") // draft | posted | reversed
   sourceType  String?
   sourceId    Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   deletedBy   String?
 
-  tenant Company             @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
-  lines   JournalEntryLine[]
+  tenant Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  lines  JournalEntryLine[]
 
   @@index([companySlug])
   @@index([companySlug, date])
@@ -704,13 +738,13 @@ model JournalEntry {
 }
 
 model JournalEntryLine {
-  id         Int      @id @default(autoincrement())
-  entryId    Int
-  accountId  Int
-  debit      String   @default("0")
-  credit     String   @default("0")
+  id          Int      @id @default(autoincrement())
+  entryId     Int
+  accountId   Int
+  debit       String   @default("0")
+  credit      String   @default("0")
   description String?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   account Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -725,11 +759,11 @@ model JournalEntryLine {
 // ────────────────────────────────────────────────────────────────────────────
 
 model EInvoice {
-  id               Int      @id @default(autoincrement())
-  invoiceId        Int      @unique
+  id               Int       @id @default(autoincrement())
+  invoiceId        Int       @unique
   companySlug      String
-  authorityType    String   @default("none") // none | zatca | uae_fta | bahrain_nbr | oman_tax | kuwait_future
-  submissionStatus String   @default("pending") // pending | submitted | approved | rejected
+  authorityType    String    @default("none") // none | zatca | uae_fta | bahrain_nbr | oman_tax | kuwait_decree_10_2026 | eta_egypt
+  submissionStatus String    @default("pending") // pending | submitted | approved | rejected
   uuid             String?
   xmlHash          String?
   signedXml        String?
@@ -737,10 +771,10 @@ model EInvoice {
   rejectionReason  String?
   submittedAt      DateTime?
   approvedAt       DateTime?
-  retryCount       Int      @default(0)
+  retryCount       Int       @default(0)
   lastRetryAt      DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
   deletedBy        String?
 
@@ -755,24 +789,48 @@ model EInvoice {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// ZATCA Certificate Management (Saudi e-invoicing Phase 2)
+// ────────────────────────────────────────────────────────────────────────────
+
+model ZatcaCertificate {
+  id                 Int      @id @default(autoincrement())
+  companySlug        String
+  certificateType    String   @default("csid") // csid | ccd
+  certificateDataEnc String // AES-256-GCM encrypted X.509 certificate PEM
+  privateKeyDataEnc  String // AES-256-GCM encrypted ECDSA private key PEM
+  serialNumber       String   @unique
+  expiryDate         DateTime
+  status             String   @default("active") // active | expired | revoked | pending
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug])
+  @@index([companySlug, certificateType, status])
+  @@index([companySlug, expiryDate])
+  @@map("zatca_certificates")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Order Deliveries
 // ────────────────────────────────────────────────────────────────────────────
 
 model OrderDelivery {
-  id            Int      @id @default(autoincrement())
-  invoiceId     Int?     @unique
+  id            Int       @id @default(autoincrement())
+  invoiceId     Int?      @unique
   companySlug   String
   clientName    String?
   clientPhone   String?
   address       String?
   locationUrl   String?
   preferredTime DateTime?
-  deliveryFee   String   @default("0")
-  status        String   @default("Pending") // Pending | Assigned | Delivered | Cancelled
+  deliveryFee   String    @default("0")
+  status        String    @default("Pending") // Pending | Assigned | Delivered | Cancelled
   driverId      String?
   notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   tenant  Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
   invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
@@ -790,26 +848,26 @@ model OrderDelivery {
 // ────────────────────────────────────────────────────────────────────────────
 
 model PaymentProviderConfig {
-  provider              String   @id // 'stripe' | 'paymob'
-  encryptedCredentials  String?
-  publicConfig          String?
-  credentialsUpdatedAt  DateTime?
-  updatedBy             String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @default(now())
+  provider             String    @id // 'stripe' | 'paymob'
+  encryptedCredentials String?
+  publicConfig         String?
+  credentialsUpdatedAt DateTime?
+  updatedBy            String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @default(now())
 
   @@map("payment_provider_configs")
 }
 
 model PaymentTransaction {
-  id                Int      @id @default(autoincrement())
+  id                Int       @id @default(autoincrement())
   companySlug       String
   plan              String
-  method            String // stripe_card | paymob_wallet | paymob_meeza | paymob_card
-  provider          String // stripe | paymob
-  amount            String   @default("0")
-  currency          String   @default("EGP")
-  status            String   @default("pending") // pending | paid | failed | cancelled
+  method            String // myfatoorah_card | myfatoorah_mada | myfatoorah_apple_pay | myfatoorah_knet | paymob_wallet | paymob_meeza | paymob_card | paymob_bank_installment
+  provider          String // myfatoorah | paymob
+  amount            String    @default("0")
+  currency          String    @default("KWD")
+  status            String    @default("pending") // pending | paid | failed | cancelled
   providerPaymentId String?
   providerOrderId   String?
   providerEventId   String?
@@ -817,12 +875,14 @@ model PaymentTransaction {
   failureReason     String?
   metadata          String? // JSON
   createdBy         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now())
   deletedAt         DateTime?
   deletedBy         String?
 
   tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  refundTransactions RefundTransaction[]
 
   @@unique([provider, providerEventId])
   @@index([provider, providerPaymentId])
@@ -835,18 +895,86 @@ model PaymentTransaction {
 }
 
 model PaymentsVault {
-  id          String   @id @default("singleton")
+  id          String    @id @default("singleton")
   wrappedKey  String
   kdfSalt     String
-  kdfN        Int      @default(16384)
+  kdfN        Int       @default(16384)
   fingerprint String
-  algo        String   @default("aes-256-gcm")
+  algo        String    @default("aes-256-gcm")
   createdBy   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   rotatedAt   DateTime?
   rotatedBy   String?
 
   @@map("payments_vault")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Refund Transactions
+// ────────────────────────────────────────────────────────────────────────────
+
+model RefundTransaction {
+  id               Int       @id @default(autoincrement())
+  paymentTxnId     Int // FK to PaymentTransaction.id
+  companySlug      String
+  refundAmount     String    @default("0") // amount to refund (may be partial)
+  currency         String    @default("KWD")
+  reason           String? // free-text reason for refund
+  status           String    @default("pending") // pending | processing | completed | failed | cancelled
+  providerRefundId String? // refund ID from payment provider (MyFatoorah / Paymob)
+  failureReason    String?
+  metadata         String? // JSON
+  createdBy        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+  completedAt      DateTime?
+
+  paymentTransaction PaymentTransaction @relation(fields: [paymentTxnId], references: [id], onDelete: Restrict)
+  tenant             Company            @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([paymentTxnId])
+  @@index([companySlug])
+  @@index([providerRefundId])
+  @@index([status])
+  @@map("refund_transactions")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Subscription Schedules (recurring billing)
+// ────────────────────────────────────────────────────────────────────────────
+
+model SubscriptionSchedule {
+  id              Int       @id @default(autoincrement())
+  companySlug     String
+  plan            String // starter | professional | unlimited
+  billingPeriod   String    @default("monthly") // monthly | yearly
+  status          String    @default("active") // active | past_due | cancelled | reactivated | paused
+  amount          String    @default("0") // per-cycle charge amount
+  currency        String    @default("KWD")
+  provider        String    @default("myfatoorah") // myfatoorah | paymob
+  paymentMethod   String    @default("myfatoorah_card") // payment method slug
+  nextChargeDate  DateTime // next scheduled charge date
+  lastChargeDate  DateTime? // last successful charge date
+  lastChargeTxnId Int? // FK to PaymentTransaction.id of last successful charge
+  retryCount      Int       @default(0) // number of consecutive failed charge attempts
+  maxRetries      Int       @default(3) // dunning: max retries before downgrade (3 over 7 days)
+  downgradePlan   String    @default("trial") // plan to downgrade to after max retries exceeded
+  cycleStart      DateTime // start of current billing cycle
+  cycleEnd        DateTime // end of current billing cycle
+  cancelledAt     DateTime?
+  reactivatedAt   DateTime?
+  metadata        String? // JSON
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@index([companySlug])
+  @@index([status])
+  @@index([nextChargeDate])
+  @@index([companySlug, status])
+  @@map("subscription_schedules")
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -879,9 +1007,9 @@ model RolePermission {
 
   permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
 
+  @@unique([role, permissionKey, companySlug])
   @@index([role])
   @@index([companySlug])
-  @@unique([role, permissionKey, companySlug])
   @@index([permissionKey])
   @@map("role_permissions")
 }
@@ -935,16 +1063,16 @@ model AdminAuditLog {
 }
 
 model Announcement {
-  id         String   @id @default(cuid())
-  title      String
-  body       String
-  type       String   @default("info")
-  targetPlans String  @default("[]") // JSON
-  startsAt   DateTime?
-  endsAt     DateTime?
-  isActive   Boolean  @default(true)
-  createdBy  String
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  type        String    @default("info")
+  targetPlans String    @default("[]") // JSON
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  createdBy   String
+  createdAt   DateTime  @default(now())
 
   @@index([isActive, startsAt])
   @@map("announcements")
@@ -972,12 +1100,12 @@ model SupportTicket {
 }
 
 model TicketReply {
-  id         String   @id @default(cuid())
-  ticketId   String
+  id          String   @id @default(cuid())
+  ticketId    String
   senderEmail String
-  senderRole String
-  body       String
-  createdAt  DateTime @default(now())
+  senderRole  String
+  body        String
+  createdAt   DateTime @default(now())
 
   ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
@@ -993,7 +1121,7 @@ model PlatformSetting {
   key         String   @id
   category    String
   valueType   String // number | string | boolean | json
-  value       String   // JSON-encoded
+  value       String // JSON-encoded
   description String?
   updatedBy   String?
   updatedAt   DateTime @default(now())
@@ -1006,13 +1134,13 @@ model PlatformSetting {
 }
 
 model PlatformSettingHistory {
-  id              Int      @id @default(autoincrement())
-  settingKey      String
-  oldValue        String? // JSON
-  newValue        String? // JSON
-  changedBy       String?
-  changedByEmail  String?
-  changedAt       DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  settingKey     String
+  oldValue       String? // JSON
+  newValue       String? // JSON
+  changedBy      String?
+  changedByEmail String?
+  changedAt      DateTime @default(now())
 
   setting PlatformSetting @relation(fields: [settingKey], references: [key], onDelete: Cascade)
 
@@ -1046,18 +1174,18 @@ model Module {
 // ────────────────────────────────────────────────────────────────────────────
 
 model ChatMessage {
-  id              Int      @id @default(autoincrement())
-  userUid         String
-  companySlug     String?
-  role            String   @default("user") // user | assistant | system | tool
-  content         String
-  functionName    String?
-  functionArgs    String? // JSON
-  functionResult  String? // JSON
-  tokensUsed      Int?
-  model           String?
-  conversationId  String?
-  createdAt       DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  userUid        String
+  companySlug    String?
+  role           String   @default("user") // user | assistant | system | tool
+  content        String
+  functionName   String?
+  functionArgs   String? // JSON
+  functionResult String? // JSON
+  tokensUsed     Int?
+  model          String?
+  conversationId String?
+  createdAt      DateTime @default(now())
 
   user User @relation(fields: [userUid], references: [uid], onDelete: Cascade)
 
@@ -1068,20 +1196,20 @@ model ChatMessage {
 }
 
 model AiProcessingLog {
-  id            Int      @id @default(autoincrement())
-  companySlug   String?
-  endpoint      String // smart-parse | parse-orders | parse-products
-  model         String?
-  provider      String?
-  ordersCount   Int      @default(0)
-  itemsCount    Int      @default(0)
-  processingMs  Int      @default(0)
-  inputTokens   Int      @default(0)
-  outputTokens  Int      @default(0)
-  totalTokens   Int      @default(0)
-  retried       Boolean  @default(false)
-  success       Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  companySlug  String?
+  endpoint     String // smart-parse | parse-orders | parse-products
+  model        String?
+  provider     String?
+  ordersCount  Int      @default(0)
+  itemsCount   Int      @default(0)
+  processingMs Int      @default(0)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  totalTokens  Int      @default(0)
+  retried      Boolean  @default(false)
+  success      Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
   tenant Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
@@ -1113,18 +1241,18 @@ model IdempotencyKey {
 // ────────────────────────────────────────────────────────────────────────────
 
 model Notification {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   userUid     String
   companySlug String?
   type        String // overdue_invoice | subscription_expiring | residence_expiring | low_stock | payment_received | general
   title       String
   body        String
   link        String? // hash route to navigate to
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
   readAt      DateTime?
 
-  tenant   Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant Company? @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@index([userUid, isRead])
   @@index([userUid, createdAt])
@@ -1137,22 +1265,22 @@ model Notification {
 // ────────────────────────────────────────────────────────────────────────────
 
 model InvoiceTemplate {
-  id              Int      @id @default(autoincrement())
-  companySlug     String
-  name            String
-  isDefault       Boolean  @default(false)
-  layoutType      String   @default("classic") // classic | modern | minimal | thermal
-  primaryColor    String   @default("#7c3aed")
-  fontFamily      String   @default("Cairo")
-  logoPosition    String   @default("right") // right | left | center
-  showTaxNumber   Boolean  @default(true)
-  showQrCode      Boolean  @default(false)
-  showBankDetails Boolean  @default(false)
-  footerText      String?
+  id                 Int      @id @default(autoincrement())
+  companySlug        String
+  name               String
+  isDefault          Boolean  @default(false)
+  layoutType         String   @default("classic") // classic | modern | minimal | thermal
+  primaryColor       String   @default("#7c3aed")
+  fontFamily         String   @default("Cairo")
+  logoPosition       String   @default("right") // right | left | center
+  showTaxNumber      Boolean  @default(true)
+  showQrCode         Boolean  @default(false)
+  showBankDetails    Boolean  @default(false)
+  footerText         String?
   termsAndConditions String?
-  paperSize       String   @default("A4") // A4 | Thermal80mm
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  paperSize          String   @default("A4") // A4 | Thermal80mm
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
@@ -1167,12 +1295,12 @@ model InvoiceTemplate {
 model InvoiceTemplateSettings {
   id              Int      @id @default(autoincrement())
   companySlug     String
-  templateId      String   @default("modern")   // classic | modern | minimal | arabic-rtl
+  templateId      String   @default("modern") // classic | modern | minimal | arabic-rtl
   primaryColor    String   @default("#7C3AED")
   fontFamily      String   @default("Noto Sans SC")
   fontSize        Int      @default(12)
   showLogo        Boolean  @default(true)
-  logoPosition    String   @default("right")    // left | center | right
+  logoPosition    String   @default("right") // left | center | right
   showPaymentInfo Boolean  @default(true)
   showStamp       Boolean  @default(false)
   invoiceTypes    String   @default("sales,purchase,quote") // comma-separated
@@ -1195,12 +1323,12 @@ model AIUsageLog {
   userUid       String?
   provider      String
   model         String
-  endpoint      String   // chat, chat-stream, smart-parse, parse-image, parse-file, tools, invoice-brain
+  endpoint      String // chat, chat-stream, smart-parse, parse-image, parse-file, tools, invoice-brain
   tokensIn      Int      @default(0)
   tokensOut     Int      @default(0)
   totalTokens   Int      @default(0)
-  estimatedCost Float    @default(0)  // in USD
-  processingMs  Int?     // wall-clock latency of the actual AI provider call (null if not measured)
+  estimatedCost Float    @default(0) // in USD
+  processingMs  Int? // wall-clock latency of the actual AI provider call (null if not measured)
   success       Boolean  @default(true)
   errorMessage  String?
   createdAt     DateTime @default(now())
@@ -1217,9 +1345,10 @@ model AIUsageLog {
 
 model LandingContent {
   key       String   @id
-  value     String   // JSON
+  value     String // JSON
   updatedAt DateTime @default(now())
   updatedBy String?
+
   @@map("landing_content")
 }
 
@@ -1231,7 +1360,7 @@ model AutomationRule {
   id          Int      @id @default(autoincrement())
   companySlug String
   name        String
-  trigger     String   // invoice_created | stock_low | payment_overdue
+  trigger     String // invoice_created | stock_low | payment_overdue
   condition   String   @default("{}") // JSON
   actions     String   @default("[]") // JSON array of actions
   isActive    Boolean  @default(true)
@@ -1239,6 +1368,8 @@ model AutomationRule {
   updatedAt   DateTime @updatedAt
 
   executions AutomationExecutionLog[]
+  company    Company?                 @relation(fields: [companyId], references: [id])
+  companyId  Int?
 
   @@index([trigger])
   @@index([companySlug, isActive])
@@ -1249,7 +1380,7 @@ model AutomationExecutionLog {
   id          Int      @id @default(autoincrement())
   ruleId      Int
   status      String   @default("pending") // pending | success | failed | skipped
-  triggerData String?  // JSON — what triggered it
+  triggerData String? // JSON — what triggered it
   error       String?
   durationMs  Int      @default(0)
   createdAt   DateTime @default(now())
@@ -1268,7 +1399,7 @@ model AutomationExecutionLog {
 model AIMemoryNote {
   id          Int      @id @default(autoincrement())
   companySlug String
-  entityType  String   // client | invoice | product | employee
+  entityType  String // client | invoice | product | employee
   entityId    Int
   note        String
   createdBy   String
@@ -1302,10 +1433,10 @@ model FeatureFlag {
 // ────────────────────────────────────────────────────────────────────────────
 
 model UserWorkspaceState {
-  userUid        String @id
-  pinnedViews    String @default("[]") // JSON
-  lastActiveView String @default("dash")
-  widgetOrder    String @default("[]") // JSON
+  userUid        String   @id
+  pinnedViews    String   @default("[]") // JSON
+  lastActiveView String   @default("dash")
+  widgetOrder    String   @default("[]") // JSON
   updatedAt      DateTime @updatedAt
 
   @@map("user_workspace_state")
@@ -1322,7 +1453,7 @@ model UserWorkspaceState {
 // FieldTemplate[] (SQLite-compatible; works as Json on PostgreSQL too).
 model InvoiceBrainTemplate {
   fingerprint String   @id // 16-char sha256 prefix of the structural/content fingerprint
-  fields      String   // JSON: [{field, label, regex}, ...]
+  fields      String // JSON: [{field, label, regex}, ...]
   sampleCount Int      @default(1) // times this template was successfully reused
   createdAt   DateTime @default(now())
   lastUsedAt  DateTime @updatedAt
@@ -1335,7 +1466,7 @@ model InvoiceBrainTemplate {
 // then reused for every row of every file with the same headers.
 model InvoiceBrainHeaderMap {
   headerFingerprint String   @id // 16-char sha256 prefix of sorted lowercased headers
-  mapping           String   // JSON: { "column name": "field", ... }
+  mapping           String // JSON: { "column name": "field", ... }
   sampleCount       Int      @default(1)
   createdAt         DateTime @default(now())
   lastUsedAt        DateTime @updatedAt
@@ -1348,20 +1479,20 @@ model InvoiceBrainHeaderMap {
 // ────────────────────────────────────────────────────────────────────────────
 
 model ProductAlias {
-  id                Int      @id @default(autoincrement())
-  productCatalogId  Int
-  companySlug       String
-  alias             String
-  language          String   @default("unspecified")
-  source            String   @default("manual")
-  confidence        Float    @default(1.0)
-  isVerified        Boolean  @default(false)
-  createdBy         String   @default("system")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  productCatalogId Int
+  companySlug      String
+  alias            String
+  language         String   @default("unspecified")
+  source           String   @default("manual")
+  confidence       Float    @default(1.0)
+  isVerified       Boolean  @default(false)
+  createdBy        String   @default("system")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   product ProductCatalog @relation(fields: [productCatalogId], references: [id], onDelete: Cascade)
-  tenant  Company         @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  tenant  Company        @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@unique([companySlug, alias])
   @@index([companySlug])
@@ -1370,33 +1501,33 @@ model ProductAlias {
 }
 
 model ProductMatchAudit {
-  id           Int      @id @default(autoincrement())
-  companySlug  String
-  inputText    String
+  id               Int       @id @default(autoincrement())
+  companySlug      String
+  inputText        String
   matchedProductId Int?
-  matchedAlias String?
-  confidence   Float
-  tier         String
-  action       String
-  isUndone     Boolean  @default(false)
-  undoneBy     String?
-  undoneAt     DateTime?
-  invoiceId    Int?
-  createdBy    String   @default("system")
-  createdAt    DateTime @default(now())
+  matchedAlias     String?
+  confidence       Float
+  tier             String
+  action           String
+  isUndone         Boolean   @default(false)
+  undoneBy         String?
+  undoneAt         DateTime?
+  invoiceId        Int?
+  createdBy        String    @default("system")
+  createdAt        DateTime  @default(now())
 
   // ── Task 17a: AI resolution tracking ───────────────────────────────────────
   // resolvedBy: who made the final decision — "ai" (OpenRouter/z-ai), "human"
   // (admin confirmed via review queue), "auto" (deterministic matcher tier 1/2/3),
   // or null for legacy entries created before this column existed.
-  resolvedBy   String?
+  resolvedBy  String?
   // aiReasoning: the reasoning_ar text returned by the AI model — null if the
   // entry was not AI-resolved (legacy/auto/human).
-  aiReasoning  String?
+  aiReasoning String?
   // aiModel: "{provider}/{model}" used for the call, e.g. "openrouter/deepseek/deepseek-r1"
   // or "z-ai/z-ai-glm". Null for non-AI entries. Used for monitoring overturn rate
   // per model in the first two weeks of production usage.
-  aiModel      String?
+  aiModel     String?
 
   tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
@@ -1426,14 +1557,14 @@ model ProductMatchAudit {
 model MatchOverride {
   id              Int      @id @default(autoincrement())
   companySlug     String
-  inputText       String   // raw invoice line description that was overridden
-  inputNormalized String   // normalizeArabic(inputText) — fast exact re-lookup
-  fromProductId   Int?     // matcher's original winner (null if matcher said "new")
-  toProductId     Int      // product the employee chose instead
-  chosenAlias     String?  // alias text the employee confirmed
-  auditId         Int?     // link to ProductMatchAudit row of the original decision
-  reason          String?  // optional employee note ("brand mismatch", "wrong size")
-  overriddenBy    String   // user email/id
+  inputText       String // raw invoice line description that was overridden
+  inputNormalized String // normalizeArabic(inputText) — fast exact re-lookup
+  fromProductId   Int? // matcher's original winner (null if matcher said "new")
+  toProductId     Int // product the employee chose instead
+  chosenAlias     String? // alias text the employee confirmed
+  auditId         Int? // link to ProductMatchAudit row of the original decision
+  reason          String? // optional employee note ("brand mismatch", "wrong size")
+  overriddenBy    String // user email/id
   createdAt       DateTime @default(now())
 
   tenant Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
@@ -1454,20 +1585,20 @@ model MatchOverride {
 /// `(queue, status, scheduledAt)` is the primary polling index used by
 /// `recoverPendingJobs()` and the worker loop.
 model JobQueue {
-  id          Int      @id @default(autoincrement())
-  queue       String   // queue name (e.g. "ai-jobs")
-  type        String   // job type (e.g. "ai-product-match-resolve")
-  data        String   // JSON-serialized payload
-  status      String   @default("pending") // pending | running | completed | failed | dead-letter
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
+  id          Int       @id @default(autoincrement())
+  queue       String // queue name (e.g. "ai-jobs")
+  type        String // job type (e.g. "ai-product-match-resolve")
+  data        String // JSON-serialized payload
+  status      String    @default("pending") // pending | running | completed | failed | dead-letter
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
   lastError   String?
   lockedAt    DateTime?
-  lockedBy    String?  // worker ID (process-unique)
-  scheduledAt DateTime @default(now())
+  lockedBy    String? // worker ID (process-unique)
+  scheduledAt DateTime  @default(now())
   startedAt   DateTime?
   completedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([queue, status, scheduledAt])
   @@index([status, scheduledAt])
@@ -1487,31 +1618,31 @@ model JobQueue {
 // ────────────────────────────────────────────────────────────────────────────
 
 model AIModelRegistry {
-  id              Int      @id @default(autoincrement())
-  provider        String   // openrouter | z-ai | anthropic | openai | gemini | custom
-  model           String   // e.g. "tencent/hy3:free", "z-ai-glm"
-  displayName     String   // human-friendly label for the dashboard
-  capabilities    String   @default("[]") // JSON array: ["chat","invoice-extraction","reasoning","vision"]
-  tier            String   @default("free") // "free" | "paid"
-  costPer1kIn     Float    @default(0)  // USD per 1k input tokens
-  costPer1kOut    Float    @default(0)  // USD per 1k output tokens
-  maxTokens       Int      @default(4096)
-  contextWindow   Int      @default(8192)
-  isEnabled       Boolean  @default(true) // founder can disable a model
-  isHealthy       Boolean  @default(true) // auto-set false when healthScore < threshold
+  id            Int     @id @default(autoincrement())
+  provider      String // openrouter | z-ai | anthropic | openai | gemini | custom
+  model         String // e.g. "tencent/hy3:free", "z-ai-glm"
+  displayName   String // human-friendly label for the dashboard
+  capabilities  String  @default("[]") // JSON array: ["chat","invoice-extraction","reasoning","vision"]
+  tier          String  @default("free") // "free" | "paid"
+  costPer1kIn   Float   @default(0) // USD per 1k input tokens
+  costPer1kOut  Float   @default(0) // USD per 1k output tokens
+  maxTokens     Int     @default(4096)
+  contextWindow Int     @default(8192)
+  isEnabled     Boolean @default(true) // founder can disable a model
+  isHealthy     Boolean @default(true) // auto-set false when healthScore < threshold
 
   // ── Live health metrics (updated by auto-benchmark) ───────────────────────
-  healthScore     Float    @default(0)   // 0-10 composite
-  successRate     Float    @default(0)   // 0-100 %
-  avgLatencyMs    Int      @default(0)
-  p95LatencyMs    Int      @default(0)
-  avgQualityScore Float    @default(0)   // 0-10 heuristic
-  totalBenchmarks Int      @default(0)
+  healthScore     Float     @default(0) // 0-10 composite
+  successRate     Float     @default(0) // 0-100 %
+  avgLatencyMs    Int       @default(0)
+  p95LatencyMs    Int       @default(0)
+  avgQualityScore Float     @default(0) // 0-10 heuristic
+  totalBenchmarks Int       @default(0)
   lastBenchmarkAt DateTime?
   lastError       String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   benchmarks AIBenchmarkResult[]
 
@@ -1524,13 +1655,13 @@ model AIModelRegistry {
 model AIBenchmarkResult {
   id              Int      @id @default(autoincrement())
   modelRegistryId Int
-  capability      String   // chat | invoice-extraction | reasoning | vision
+  capability      String // chat | invoice-extraction | reasoning | vision
   success         Boolean
   latencyMs       Int
   tokensIn        Int      @default(0)
   tokensOut       Int      @default(0)
-  responseQuality Float    @default(0)  // 0-10 heuristic score
-  responseSample  String?  // truncated response text for manual inspection
+  responseQuality Float    @default(0) // 0-10 heuristic score
+  responseSample  String? // truncated response text for manual inspection
   errorMessage    String?
   createdAt       DateTime @default(now())
 
@@ -1555,14 +1686,14 @@ model AIBenchmarkResult {
 /// throttling/paused state. Tier-based defaults are enforced in
 /// /lib/ai-fabric/worker-scaler.ts constants, not hardcoded here.
 model CompanyRuntime {
-  id                   Int      @id @default(autoincrement())
-  companyId            Int      @unique
-  workerPoolSize       Int      @default(2)
-  status               String   @default("active") // active | throttled | paused
-  slaTier              String   @default("starter") // enterprise | business | starter (Phase 9)
-  maxAcceptableLatencyMs Int    @default(2000) // SLA latency target (Phase 9)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                     Int      @id @default(autoincrement())
+  companyId              Int      @unique
+  workerPoolSize         Int      @default(2)
+  status                 String   @default("active") // active | throttled | paused
+  slaTier                String   @default("starter") // enterprise | business | starter (Phase 9)
+  maxAcceptableLatencyMs Int      @default(2000) // SLA latency target (Phase 9)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -1577,15 +1708,15 @@ model CompanyRuntime {
 /// Complements (does NOT replace) AIUsageLog, which tracks raw provider
 /// calls. AIRequestLog tracks the BUSINESS-LEVEL resolution path.
 model AIRequestLog {
-  id           Int      @id @default(autoincrement())
-  companySlug  String
-  requestType  String   // ocr | whatsapp | financial_analysis | matching | other
-  resolvedBy   String   // cache | pattern | rule | memory | ai
-  provider     String?  // actual model used, e.g. "openrouter/deepseek/deepseek-chat"
-  tokensUsed   Int?
-  costUsd      Float    @default(0)
-  latencyMs    Int      @default(0)
-  createdAt    DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  companySlug String
+  requestType String // ocr | whatsapp | financial_analysis | matching | other
+  resolvedBy  String // cache | pattern | rule | memory | ai
+  provider    String? // actual model used, e.g. "openrouter/deepseek/deepseek-chat"
+  tokensUsed  Int?
+  costUsd     Float    @default(0)
+  latencyMs   Int      @default(0)
+  createdAt   DateTime @default(now())
 
   @@index([companySlug, createdAt])
   @@index([companySlug, resolvedBy, createdAt])
@@ -1600,14 +1731,14 @@ model AIRequestLog {
 /// SHA-256 hash of (companyId + normalized input) to ensure deterministic
 /// cache hits across identical requests.
 model CacheEntry {
-  id         Int      @id @default(autoincrement())
-  key        String   @unique // sha256(companyId + normalized input)
+  id          Int      @id @default(autoincrement())
+  key         String   @unique // sha256(companyId + normalized input)
   companySlug String
-  value      String   // JSON — the cached AI response
-  hitCount   Int      @default(0)
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  value       String // JSON — the cached AI response
+  hitCount    Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([companySlug])
   @@index([expiresAt])
@@ -1640,9 +1771,9 @@ model BudgetConfig {
 model ProviderConfig {
   id                Int      @id @default(autoincrement())
   taskType          String   @unique // ocr | whatsapp | financial_analysis | matching | other
-  primaryProvider   String   // e.g. "anthropic/claude-3-5-haiku" or "z-ai/z-ai-glm"
-  fallbackProvider  String   // fallback when primary fails
-  costPerRequestUsd Float?   // estimated average cost per request for this task type
+  primaryProvider   String // e.g. "anthropic/claude-3-5-haiku" or "z-ai/z-ai-glm"
+  fallbackProvider  String // fallback when primary fails
+  costPerRequestUsd Float? // estimated average cost per request for this task type
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -1657,8 +1788,8 @@ model ProviderConfig {
 model AIMemoryEntry {
   id             Int      @id @default(autoincrement())
   companySlug    String
-  category       String   // product | customer | invoice | rule | decision
-  content        String   // JSON — the decision + its context
+  category       String // product | customer | invoice | rule | decision
+  content        String // JSON — the decision + its context
   createdAt      DateTime @default(now())
   lastAccessedAt DateTime @updatedAt
 
@@ -1704,16 +1835,16 @@ model ProfitSnapshot {
 /// (sampleCount >= threshold) with high consistency (confidence >= 0.95),
 /// the candidate is promoted to status='promoted' and a Rule is created.
 model RuleCandidate {
-  id                Int      @id @default(autoincrement())
-  companySlug       String
-  requestType       String   // ocr | whatsapp | financial_analysis | matching | other
-  patternSignature  String   // hash of normalized inputs grouped together
-  sampleCount       Int      @default(0)
-  consistentOutput  String   // JSON — the output that appeared in >= 95% of samples
-  confidence        Float    @default(0)  // 0-1, percentage of samples matching consistentOutput
-  status            String   @default("observing") // observing | promoted | rejected
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  companySlug      String
+  requestType      String // ocr | whatsapp | financial_analysis | matching | other
+  patternSignature String // hash of normalized inputs grouped together
+  sampleCount      Int      @default(0)
+  consistentOutput String // JSON — the output that appeared in >= 95% of samples
+  confidence       Float    @default(0) // 0-1, percentage of samples matching consistentOutput
+  status           String   @default("observing") // observing | promoted | rejected
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([companySlug, status])
   @@index([companySlug, patternSignature])
@@ -1730,14 +1861,14 @@ model RuleCandidate {
 /// Privacy guarantee: no field in this table can be traced back to any
 /// specific company. Only contributingCompaniesCount (an integer) is stored.
 model GlobalPattern {
-  id                       Int      @id @default(autoincrement())
-  patternKey               String   // normalized product name, e.g. "apple charger"
-  suggestedSku             String?  // JSON — suggested SKU mapping
-  suggestedVatCategory     String?  // suggested VAT category
-  suggestedCategory        String?  // JSON — suggested product category
-  contributingCompaniesCount Int     @default(0) // COUNT ONLY, no company IDs
-  confidence               Float    @default(0)
-  lastUpdated              DateTime @updatedAt
+  id                         Int      @id @default(autoincrement())
+  patternKey                 String // normalized product name, e.g. "apple charger"
+  suggestedSku               String? // JSON — suggested SKU mapping
+  suggestedVatCategory       String? // suggested VAT category
+  suggestedCategory          String? // JSON — suggested product category
+  contributingCompaniesCount Int      @default(0) // COUNT ONLY, no company IDs
+  confidence                 Float    @default(0)
+  lastUpdated                DateTime @updatedAt
 
   @@unique([patternKey])
   @@index([confidence])
@@ -1751,15 +1882,15 @@ model GlobalPattern {
 /// Score 0-100: higher = more requests resolved without AI calls.
 /// Triggers Learning Engine and Cost Optimizer when score drops below threshold.
 model AIScoreSnapshot {
-  id              Int      @id @default(autoincrement())
-  companySlug     String
-  period          String   // e.g. "2026-07-20" (daily)
-  score           Float    @default(0)  // 0-100
-  cacheHitPct     Float    @default(0)
-  ruleHitPct      Float    @default(0)
-  aiCallPct       Float    @default(0)
-  avgCostPerRequest Float  @default(0)
-  createdAt       DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  companySlug       String
+  period            String // e.g. "2026-07-20" (daily)
+  score             Float    @default(0) // 0-100
+  cacheHitPct       Float    @default(0)
+  ruleHitPct        Float    @default(0)
+  aiCallPct         Float    @default(0)
+  avgCostPerRequest Float    @default(0)
+  createdAt         DateTime @default(now())
 
   @@unique([companySlug, period])
   @@index([companySlug, createdAt])
@@ -1778,18 +1909,18 @@ model AIScoreSnapshot {
 /// rule could silently corrupt business decisions. Human-in-the-loop is
 /// MANDATORY for status transitions from pending_review → active.
 model CompiledRule {
-  id                    Int      @id @default(autoincrement())
-  requestType           String   // ocr | whatsapp | financial_analysis | matching | other
-  patternDescription    String   // human-readable description of the pattern
-  logicType             String   // regex | decision_tree | extractor
-  logicDefinition       String   // JSON — the actual compiled logic (regex, tree, etc.)
-  accuracyOnHistoricalSample Float @default(0) // measured accuracy (0-1)
-  status                String   @default("pending_review") // pending_review | active | rejected
-  reviewedBy            String?  // email of the human who approved/rejected
-  reviewedAt            DateTime?
-  sourceCandidateId     Int?     // link to RuleCandidate that generated this
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                         Int       @id @default(autoincrement())
+  requestType                String // ocr | whatsapp | financial_analysis | matching | other
+  patternDescription         String // human-readable description of the pattern
+  logicType                  String // regex | decision_tree | extractor
+  logicDefinition            String // JSON — the actual compiled logic (regex, tree, etc.)
+  accuracyOnHistoricalSample Float     @default(0) // measured accuracy (0-1)
+  status                     String    @default("pending_review") // pending_review | active | rejected
+  reviewedBy                 String? // email of the human who approved/rejected
+  reviewedAt                 DateTime?
+  sourceCandidateId          Int? // link to RuleCandidate that generated this
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
   @@index([status])
   @@index([requestType, status])
@@ -1798,78 +1929,78 @@ model CompiledRule {
 }
 
 model MFASecret {
-  id             String   @id @default(cuid())
-  userUid        String
-  secret         String   /// encrypted TOTP secret (stored via cryptoVault)
-  recoveryCodes  String   /// JSON array of hashed recovery codes, encrypted
-  enabled        Boolean  @default(true)
-  verifiedAt     DateTime?
-  lastUsedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  userUid       String
+  secret        String /// encrypted TOTP secret (stored via cryptoVault)
+  recoveryCodes String /// JSON array of hashed recovery codes, encrypted
+  enabled       Boolean   @default(true)
+  verifiedAt    DateTime?
+  lastUsedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userUid], references: [uid], onDelete: Cascade)
 
   @@index([userUid])
 }
 
 model SessionRegistry {
-  id         String   @id @default(cuid())
-  userUid    String
-  jti        String   @unique
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
-  user       User     @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userUid   String
+  jti       String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userUid], references: [uid], onDelete: Cascade)
 
   @@index([userUid])
   @@index([expiresAt])
 }
 
 model TamperEvidenceChain {
-  id            String   @id @default(cuid())
-  companySlug   String?
-  entryId       String   @unique  /// references AuditLog.id or AdminAuditLog.id
-  contentHash   String   /// SHA-256 of the entry content at write time
-  prevHash      String   /// hash of the previous entry in the chain (null for first)
-  chainOrder    Int      @default(0)
-  verifiedAt    DateTime?
-  isValid       Boolean? /// null = not yet verified, true = chain intact, false = tampered
-  createdAt     DateTime @default(now())
+  id          String    @id @default(cuid())
+  companySlug String?
+  entryId     String    @unique /// references AuditLog.id or AdminAuditLog.id
+  contentHash String /// SHA-256 of the entry content at write time
+  prevHash    String /// hash of the previous entry in the chain (null for first)
+  chainOrder  Int       @default(0)
+  verifiedAt  DateTime?
+  isValid     Boolean? /// null = not yet verified, true = chain intact, false = tampered
+  createdAt   DateTime  @default(now())
 
   @@index([companySlug])
   @@index([chainOrder])
 }
 
 model WebhookEndpoint {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   companySlug String
   url         String
-  events      String   /// JSON array of subscribed event types
-  secret      String   /// HMAC signing secret (encrypted via cryptoVault)
-  isActive    Boolean  @default(true)
+  events      String /// JSON array of subscribed event types
+  secret      String /// HMAC signing secret (encrypted via cryptoVault)
+  isActive    Boolean           @default(true)
   lastPingAt  DateTime?
-  failCount   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  failCount   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   deliveries  WebhookDelivery[]
 
   @@index([companySlug])
 }
 
 model WebhookDelivery {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   endpointId  String
   endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
   eventType   String
-  payload     String   /// JSON payload
+  payload     String /// JSON payload
   statusCode  Int?
   response    String?
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
-  status      String   @default("pending") /// pending / success / failed / retried
+  attempts    Int             @default(0)
+  maxAttempts Int             @default(3)
+  status      String          @default("pending") /// pending / success / failed / retried
   nextRetryAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
   deliveredAt DateTime?
 
   @@index([endpointId])

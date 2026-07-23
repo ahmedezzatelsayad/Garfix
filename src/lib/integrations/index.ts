@@ -12,6 +12,7 @@ import { registerProvider } from "./registry";
 import { whatsappProvider } from "./whatsapp";
 import { myfatoorahProvider } from "./myfatoorah";
 import { metaAdsProvider } from "./meta_ads";
+import { paymobProvider } from "./paymob";
 import { logger } from "@/lib/logger";
 
 let registered = false;
@@ -22,9 +23,10 @@ export function ensureProvidersRegistered(): void {
   registerProvider("whatsapp", whatsappProvider);
   registerProvider("myfatoorah", myfatoorahProvider);
   registerProvider("meta_ads", metaAdsProvider);
+  registerProvider("paymob", paymobProvider);
   registered = true;
   logger.info("[integrations] all providers registered", {
-    types: ["whatsapp", "myfatoorah", "meta_ads"],
+    types: ["whatsapp", "myfatoorah", "meta_ads", "paymob"],
   });
 }
 
