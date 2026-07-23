@@ -1,0 +1,539 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { authedFetch } from "@/context/AuthContext";
+     6→import { toast } from "sonner";
+     7→import {
+     8→  ArrowUpDown, Plus, X, Trash2, FileText, CheckCircle2,
+     9→  Clock, Banknote, CalendarDays, Send, Download,
+    10→  TrendingUp, TrendingDown, RefreshCw,
+    11→} from "lucide-react";
+    12→import { cn } from "@/lib/utils";
+    13→
+    14→/* ─── Interfaces ───────────────────────────────────────────────────────────── */
+    15→interface AgingRow { name: string; current: number; thirty: number; sixty: number; ninetyPlus: number; total: number; }
+    16→interface AgingSummary { direction: string; rows: AgingRow[]; grandCurrent: number; grandThirty: number; grandSixty: number; grandNinetyPlus: number; grandTotal: number; }
+    17→interface ClientStatementLine { date: string; type: string; reference: string; debit: number; credit: number; balance: number; }
+    18→interface ClientStatement { clientName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number; }
+    19→interface PDC { id: number; checkNumber: string; bankName: string; amount: number; dueDate: string; status: string; direction: string; clientName?: string; supplierName?: string; }
+    20→interface Installment { id: number; reference: string; clientName: string; totalAmount: number; installmentCount: number; paidCount: number; nextDueDate: string; status: string; }
+    21→interface Contact { id: number; name: string; }
+    22→
+    23→type Tab = "aging" | "client-statement" | "supplier-statement" | "pdc" | "installments";
+    24→type Direction = "receivable" | "payable";
+    25→
+    26→/* ─── Shared Styles ────────────────────────────────────────────────────────── */
+    27→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+    28→const tdStyle = "py-2.5 px-3 text-[13px]";
+    29→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+    30→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    31→function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
+    32→function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
+    33→
+    34→/* ─── Main Component ───────────────────────────────────────────────────────── */
+    35→export function ArApView() {
+    36→  const { activeCompany } = useBrand();
+    37→  const [tab, setTab] = useState<Tab>("aging");
+    38→  const [agingData, setAgingData] = useState<AgingSummary | null>(null);
+    39→  const [agingDirection, setAgingDirection] = useState<Direction>("receivable");
+    40→  const [clientStatement, setClientStatement] = useState<ClientStatement | null>(null);
+    41→  const [supplierStatement, setSupplierStatement] = useState<ClientStatement | null>(null);
+    42→  const [pdcs, setPdcs] = useState<PDC[]>([]);
+    43→  const [installments, setInstallments] = useState<Installment[]>([]);
+    44→  const [loading, setLoading] = useState(false);
+    45→  const [showForm, setShowForm] = useState(false);
+    46→
+    47→  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
+    48→
+    49→  const loadAging = useCallback(async () => {
+    50→    if (!activeCompany) return;
+    51→    setLoading(true);
+    52→    try {
+    53→      const res = await authedFetch(`/api/accounting/aging?companySlug=${slug}&direction=${agingDirection}`);
+    54→      if (res.ok) { const d = await res.json(); setAgingData(d.summary || null); }
+    55→      else setAgingData(null);
+    56→    } catch { setAgingData(null); }
+    57→    finally { setLoading(false); }
+    58→  }, [activeCompany, slug, agingDirection]);
+    59→
+    60→  const loadPDCs = useCallback(async () => {
+    61→    if (!activeCompany) return;
+    62→    setLoading(true);
+    63→    try {
+    64→      const res = await authedFetch(`/api/accounting/post-dated-checks?companySlug=${slug}`);
+    65→      if (res.ok) { const d = await res.json(); setPdcs(d.checks || []); }
+    66→      else setPdcs([]);
+    67→    } catch { setPdcs([]); }
+    68→    finally { setLoading(false); }
+    69→  }, [activeCompany, slug]);
+    70→
+    71→  const loadInstallments = useCallback(async () => {
+    72→    if (!activeCompany) return;
+    73→    setLoading(true);
+    74→    try {
+    75→      const res = await authedFetch(`/api/accounting/installments?companySlug=${slug}`);
+    76→      if (res.ok) { const d = await res.json(); setInstallments(d.installments || []); }
+    77→      else setInstallments([]);
+    78→    } catch { setInstallments([]); }
+    79→    finally { setLoading(false); }
+    80→  }, [activeCompany, slug]);
+    81→
+    82→  useEffect(() => {
+    83→    // eslint-disable-next-line react-hooks/set-state-in-effect
+    84→    if (tab === "aging") loadAging();
+    85→    if (tab === "pdc") loadPDCs();
+    86→    if (tab === "installments") loadInstallments();
+    87→  }, [tab, loadAging, loadPDCs, loadInstallments]);
+    88→
+    89→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+    90→
+    91→  const tabs: Array<{ key: Tab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    92→    { key: "aging", label: "تقادم الذمم", icon: ArrowUpDown },
+    93→    { key: "client-statement", label: "كشف حساب عميل", icon: FileText },
+    94→    { key: "supplier-statement", label: "كشف حساب مورد", icon: FileText },
+    95→    { key: "pdc", label: "شيكات مؤجلة", icon: Banknote },
+    96→    { key: "installments", label: "التقسيط", icon: CalendarDays },
+    97→  ];
+    98→
+    99→  return (
+   100→    <div className="flex flex-col gap-4">
+   101→      <div className="flex flex-wrap justify-between items-center gap-3">
+   102→        <div>
+   103→          <h1 className="text-2xl font-extrabold flex items-center gap-2"><ArrowUpDown size={20} /> الذمم</h1>
+   104→          <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
+   105→        </div>
+   106→        {(tab === "pdc" || tab === "installments") && !showForm && (
+   107→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+   108→        )}
+   109→      </div>
+   110→      <div className="flex gap-1.5 flex-wrap">
+   111→        {tabs.map((t) => { const Icon = t.icon; return (
+   112→          <button key={t.key} onClick={() => { setTab(t.key); setShowForm(false); }} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5", tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
+   113→            <Icon size={14} /> {t.label}
+   114→          </button>
+   115→        ); })}
+   116→      </div>
+   117→
+   118→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "aging" ? (
+   119→        <AgingReportView data={agingData} direction={agingDirection} onDirectionChange={setAgingDirection} />
+   120→      ) : tab === "client-statement" ? (
+   121→        <StatementView type="client" company={activeCompany} data={clientStatement} setData={setClientStatement} />
+   122→      ) : tab === "supplier-statement" ? (
+   123→        <StatementView type="supplier" company={activeCompany} data={supplierStatement} setData={setSupplierStatement} />
+   124→      ) : tab === "pdc" ? (
+   125→        showForm ? <PDCForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadPDCs(); }} /> : <PDCList pdcs={pdcs} company={activeCompany} onRefresh={loadPDCs} />
+   126→      ) : tab === "installments" ? (
+   127→        showForm ? <InstallmentForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadInstallments(); }} /> : <InstallmentList installments={installments} />
+   128→      ) : null}
+   129→    </div>
+   130→  );
+   131→}
+   132→
+   133→/* ─── Aging Report ─────────────────────────────────────────────────────────── */
+   134→function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSummary | null; direction: Direction; onDirectionChange: (d: Direction) => void }) {
+   135→  const rows = data?.rows || [];
+   136→  const label = direction === "receivable" ? "العميل" : "المورد";
+   137→  const accentColor = direction === "receivable" ? "#7c3aed" : "#f59e0b";
+   138→
+   139→  return (
+   140→    <div className="flex flex-col gap-4">
+   141→      <div className="flex gap-1.5">
+   142→        <button onClick={() => onDirectionChange("receivable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", direction === "receivable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم مدينة (مستحقات)</button>
+   143→        <button onClick={() => onDirectionChange("payable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", direction === "payable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم دائنة (التزامات)</button>
+   144→      </div>
+   145→
+   146→      {data && (
+   147→        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   148→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   149→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: `${accentColor}20`, color: accentColor }}><ArrowUpDown size={18} /></div>
+   150→            <div><div className="text-[11px] text-muted-foreground">إجمالي {direction === "receivable" ? "الذمم المدينة" : "الذمم الدائنة"}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandTotal)}</div></div>
+   151→          </div>
+   152→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   153→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><TrendingUp size={18} /></div>
+   154→            <div><div className="text-[11px] text-muted-foreground">حالي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandCurrent)}</div></div>
+   155→          </div>
+   156→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   157→            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}><TrendingDown size={18} /></div>
+   158→            <div><div className="text-[11px] text-muted-foreground">فوق 90 يوم</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: "#ef4444" }}>{fmt(data.grandNinetyPlus)}</div></div>
+   159→          </div>
+   160→        </div>
+   161→      )}
+   162→
+   163→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   164→        {!data || rows.length === 0 ? <Empty label="بيانات التقادم" /> : (
+   165→          <div className="overflow-x-auto garfix-scroll">
+   166→            <table className="w-full border-collapse">
+   167→              <thead><tr className="border-b border-border bg-muted">
+   168→                <th className={thStyle}>{label}</th>
+   169→                <th className={cn(thStyle, "text-end")}>حالي</th>
+   170→                <th className={cn(thStyle, "text-end")}>30 يوم</th>
+   171→                <th className={cn(thStyle, "text-end")}>60 يوم</th>
+   172→                <th className={cn(thStyle, "text-end")}>90+ يوم</th>
+   173→                <th className={cn(thStyle, "text-end")}>الإجمالي</th>
+   174→              </tr></thead>
+   175→              <tbody>
+   176→                {rows.map((r, i) => (
+   177→                  <tr key={i} className="border-b border-border">
+   178→                    <td className={cn(tdStyle, "font-bold")}>{r.name}</td>
+   179→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.current > 0 ? fmt(r.current) : "—"}</td>
+   180→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.thirty > 0 ? fmt(r.thirty) : "—"}</td>
+   181→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.sixty > 0 ? fmt(r.sixty) : "—"}</td>
+   182→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: r.ninetyPlus > 0 ? "#ef4444" : "#10b981" }}>{r.ninetyPlus > 0 ? fmt(r.ninetyPlus) : "—"}</td>
+   183→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: accentColor }}>{fmt(r.total)}</td>
+   184→                  </tr>
+   185→                ))}
+   186→              </tbody>
+   187→              <tfoot>
+   188→                <tr className="border-t-2 border-border bg-muted font-extrabold">
+   189→                  <td className={cn(tdStyle, "font-extrabold")}>الإجمالي</td>
+   190→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandCurrent)}</td>
+   191→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandThirty)}</td>
+   192→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandSixty)}</td>
+   193→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#ef4444" }}>{fmt(data.grandNinetyPlus)}</td>
+   194→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: accentColor }}>{fmt(data.grandTotal)}</td>
+   195→                </tr>
+   196→              </tfoot>
+   197→            </table>
+   198→          </div>
+   199→        )}
+   200→      </div>
+   201→    </div>
+   202→  );
+   203→}
+   204→
+   205→/* ─── Client/Supplier Statement ────────────────────────────────────────────── */
+   206→function StatementView({ type, company, data, setData }: { type: "client" | "supplier"; company: { slug: string }; data: ClientStatement | null; setData: (d: ClientStatement | null) => void }) {
+   207→  const [selectedId, setSelectedId] = useState<number | null>(null);
+   208→  const [contacts, setContacts] = useState<Contact[]>([]);
+   209→  const [loadingStatement, setLoadingStatement] = useState(false);
+   210→
+   211→  useEffect(() => {
+   212→    const endpoint = type === "client" ? "/api/clients" : "/api/suppliers";
+   213→    authedFetch(`${endpoint}?companySlug=${encodeURIComponent(company.slug)}`)
+   214→      .then(r => r.ok ? r.json() : { clients: [], suppliers: [] })
+   215→      .then(d => setContacts(type === "client" ? (d.clients || []) : (d.suppliers || [])))
+   216→      .catch(() => setContacts([]));
+   217→  }, [type, company.slug]);
+   218→
+   219→  const loadStatement = async () => {
+   220→    if (!selectedId) { toast.error("اختر " + (type === "client" ? "عميل" : "مورد")); return; }
+   221→    setLoadingStatement(true);
+   222→    try {
+   223→      const endpoint = type === "client" ? "/api/accounting/client-statement" : "/api/accounting/supplier-statement";
+   224→      const paramName = type === "client" ? "clientId" : "supplierId";
+   225→      const res = await authedFetch(`${endpoint}?companySlug=${encodeURIComponent(company.slug)}&${paramName}=${selectedId}`);
+   226→      if (res.ok) { setData(await res.json()); }
+   227→      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر تحميل كشف الحساب"); setData(null); }
+   228→    } catch { toast.error("خطأ في الاتصال"); setData(null); }
+   229→    finally { setLoadingStatement(false); }
+   230→  };
+   231→
+   232→  const totalDebit = data?.lines.reduce((s, l) => s + l.debit, 0) || 0;
+   233→  const totalCredit = data?.lines.reduce((s, l) => s + l.credit, 0) || 0;
+   234→
+   235→  return (
+   236→    <div className="flex flex-col gap-4">
+   237→      <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
+   238→        <div className="flex items-center gap-1.5">
+   239→          <label className="text-[11px] font-bold text-muted-foreground">{type === "client" ? "العميل" : "المورد"}</label>
+   240→          <select value={selectedId ?? ""} onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : null)} className={cn(inputStyle, "w-auto min-w-[200px]")} disabled={loadingStatement}>
+   241→            <option value="">— اختر —</option>
+   242→            {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+   243→          </select>
+   244→        </div>
+   245→        <button onClick={loadStatement} disabled={!selectedId || loadingStatement} className="py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   246→          <RefreshCw size={12} className={loadingStatement ? "animate-spin" : ""} /> {loadingStatement ? "جارٍ…" : "عرض"}
+   247→        </button>
+   248→      </div>
+   249→
+   250→      {loadingStatement ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : !data ? (
+   251→        <div className="bg-card rounded-[14px] border border-border p-12 text-center text-muted-foreground">
+   252→          <FileText size={36} className="opacity-30 mb-2" />اختر {type === "client" ? "عميل" : "مورد"} ثم اضغط عرض
+   253→        </div>
+   254→      ) : (
+   255→        <div className="flex flex-col gap-4">
+   256→          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   257→            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   258→              <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(124,58,237,0.20)", color: "#7c3aed" }}><FileText size={18} /></div>
+   259→              <div><div className="text-[11px] text-muted-foreground">{data.clientName}</div><div className="text-[13px] font-bold">رصيد افتتاحي: {fmt(data.openingBalance)}</div></div>
+   260→            </div>
+   261→            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   262→              <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><TrendingUp size={18} /></div>
+   263→              <div><div className="text-[11px] text-muted-foreground">إجمالي مدين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDebit)}</div></div>
+   264→            </div>
+   265→            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   266→              <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}><TrendingDown size={18} /></div>
+   267→              <div><div className="text-[11px] text-muted-foreground">إجمالي دائن</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCredit)}</div></div>
+   268→            </div>
+   269→            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   270→              <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: data.closingBalance >= 0 ? "rgba(124,58,237,0.20)" : "rgba(239,68,68,0.20)", color: data.closingBalance >= 0 ? "#7c3aed" : "#ef4444" }}><CheckCircle2 size={18} /></div>
+   271→              <div><div className="text-[11px] text-muted-foreground">رصيد إقفالي</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: data.closingBalance >= 0 ? "#7c3aed" : "#ef4444" }}>{fmt(data.closingBalance)}</div></div>
+   272→            </div>
+   273→          </div>
+   274→
+   275→          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   276→            {data.lines.length === 0 ? <Empty label="حركات" /> : (
+   277→              <div className="overflow-x-auto garfix-scroll">
+   278→                <table className="w-full border-collapse">
+   279→                  <thead><tr className="border-b border-border bg-muted">
+   280→                    <th className={thStyle}>التاريخ</th><th className={thStyle}>النوع</th><th className={thStyle}>المرجع</th>
+   281→                    <th className={cn(thStyle, "text-end")}>مدين</th><th className={cn(thStyle, "text-end")}>دائن</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
+   282→                  </tr></thead>
+   283→                  <tbody>
+   284→                    {data.lines.map((l, i) => (
+   285→                      <tr key={i} className="border-b border-border">
+   286→                        <td className={tdStyle} dir="ltr">{l.date}</td>
+   287→                        <td className={tdStyle}>{l.type}</td>
+   288→                        <td className={cn(tdStyle, "font-mono")}>{l.reference}</td>
+   289→                        <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: l.debit > 0 ? "#7c3aed" : undefined }}>{l.debit ? fmt(l.debit) : "—"}</td>
+   290→                        <td className={cn(tdStyle, "[direction:ltr] text-end")} style={{ color: l.credit > 0 ? "#ef4444" : undefined }}>{l.credit ? fmt(l.credit) : "—"}</td>
+   291→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: l.balance >= 0 ? "#7c3aed" : "#ef4444" }}>{fmt(l.balance)}</td>
+   292→                      </tr>
+   293→                    ))}
+   294→                  </tbody>
+   295→                  <tfoot>
+   296→                    <tr className="border-t-2 border-border bg-muted font-extrabold">
+   297→                      <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>رصيد إقفالي</td>
+   298→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#7c3aed" }}>{fmt(totalDebit)}</td>
+   299→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: "#ef4444" }}>{fmt(totalCredit)}</td>
+   300→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: data.closingBalance >= 0 ? "#7c3aed" : "#ef4444" }}>{fmt(data.closingBalance)}</td>
+   301→                    </tr>
+   302→                  </tfoot>
+   303→                </table>
+   304→              </div>
+   305→            )}
+   306→          </div>
+   307→        </div>
+   308→      )}
+   309→    </div>
+   310→  );
+   311→}
+   312→
+   313→/* ─── PDC List ──────────────────────────────────────────────────────────────── */
+   314→function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: string }; onRefresh: () => void }) {
+   315→  const [actionId, setActionId] = useState<number | null>(null);
+   316→
+   317→  const handleAction = async (pdcId: number, action: string) => {
+   318→    setActionId(pdcId);
+   319→    try {
+   320→      const res = await authedFetch(`/api/accounting/post-dated-checks/${pdcId}/${action}?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
+   321→      if (res.ok) {
+   322→        const actionLabel = action === "deposit" ? "تسليم الشيك" : action === "clear" ? "تحصيل الشيك" : "إرجاع الشيك";
+   323→        toast.success(`تم ${actionLabel}`);
+   324→        onRefresh();
+   325→      } else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر تنفيذ الإجراء"); }
+   326→    } catch { toast.error("خطأ"); }
+   327→    finally { setActionId(null); }
+   328→  };
+   329→
+   330→  const statusBadge = (status: string) => {
+   331→    const map: Record<string, { bg: string; fg: string; label: string }> = {
+   332→      pending: { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", label: "معلّق" },
+   333→      deposited: { bg: "rgba(59,130,246,0.15)", fg: "#3b82f6", label: "مسلّم" },
+   334→      cleared: { bg: "rgba(16,185,129,0.15)", fg: "#10b981", label: "محصل" },
+   335→      returned: { bg: "rgba(239,68,68,0.15)", fg: "#ef4444", label: "مرجع" },
+   336→    };
+   337→    return map[status] || { bg: "rgba(156,163,175,0.15)", fg: "#9ca3af", label: status };
+   338→  };
+   339→
+   340→  const totalAmount = pdcs.reduce((s, p) => s + p.amount, 0);
+   341→  const pendingTotal = pdcs.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0);
+   342→
+   343→  return (
+   344→    <div className="flex flex-col gap-4">
+   345→      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   346→        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   347→          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><Banknote size={18} /></div>
+   348→          <div><div className="text-[11px] text-muted-foreground">إجمالي الشيكات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAmount)}</div></div>
+   349→        </div>
+   350→        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   351→          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(245,158,11,0.20)", color: "#f59e0b" }}><Clock size={18} /></div>
+   352→          <div><div className="text-[11px] text-muted-foreground">المعلّقة</div><div className="text-lg font-extrabold [direction:ltr] text-end" style={{ color: "#f59e0b" }}>{fmt(pendingTotal)}</div></div>
+   353→        </div>
+   354→      </div>
+   355→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   356→        {pdcs.length === 0 ? <Empty label="شيكات مؤجلة" /> : (
+   357→          <div className="overflow-x-auto garfix-scroll">
+   358→            <table className="w-full border-collapse">
+   359→              <thead><tr className="border-b border-border bg-muted">
+   360→                <th className={thStyle}>رقم الشيك</th><th className={thStyle}>البنك</th><th className={thStyle}>النوع</th>
+   361→                <th className={thStyle}>الاسم</th><th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>تاريخ الاستحقاق</th>
+   362→                <th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   363→              </tr></thead>
+   364→              <tbody>
+   365→                {pdcs.map((p) => {
+   366→                  const sc = statusBadge(p.status);
+   367→                  const name = p.direction === "receivable" ? p.clientName : p.supplierName;
+   368→                  return (
+   369→                    <tr key={p.id} className="border-b border-border">
+   370→                      <td className={cn(tdStyle, "font-mono")} dir="ltr">{p.checkNumber}</td>
+   371→                      <td className={tdStyle}>{p.bankName}</td>
+   372→                      <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: p.direction === "receivable" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)", color: p.direction === "receivable" ? "#10b981" : "#ef4444" }}>{p.direction === "receivable" ? "مقبوض" : "مدفوع"}</span></td>
+   373→                      <td className={tdStyle}>{name || "—"}</td>
+   374→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(p.amount)}</td>
+   375→                      <td className={tdStyle} dir="ltr">{p.dueDate}</td>
+   376→                      <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: sc.bg, color: sc.fg }}>{sc.label}</span></td>
+   377→                      <td className={tdStyle}>
+   378→                        <div className="flex items-center gap-1">
+   379→                          {p.status === "pending" && <button onClick={() => handleAction(p.id, "deposit")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">تسليم</button>}
+   380→                          {p.status === "deposited" && <button onClick={() => handleAction(p.id, "clear")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">تحصيل</button>}
+   381→                          {(p.status === "pending" || p.status === "deposited") && <button onClick={() => handleAction(p.id, "return")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-red-500/10 border border-red-500/30 text-red-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">إرجاع</button>}
+   382→                        </div>
+   383→                      </td>
+   384→                    </tr>
+   385→                  );
+   386→                })}
+   387→              </tbody>
+   388→            </table>
+   389→          </div>
+   390→        )}
+   391→      </div>
+   392→    </div>
+   393→  );
+   394→}
+   395→
+   396→/* ─── PDC Form ──────────────────────────────────────────────────────────────── */
+   397→function PDCForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   398→  const [checkNumber, setCheckNumber] = useState("");
+   399→  const [bankName, setBankName] = useState("");
+   400→  const [amount, setAmount] = useState(0);
+   401→  const [dueDate, setDueDate] = useState("");
+   402→  const [direction, setDirection] = useState<"receivable" | "payable">("receivable");
+   403→  const [clientName, setClientName] = useState("");
+   404→  const [supplierName, setSupplierName] = useState("");
+   405→  const [saving, setSaving] = useState(false);
+   406→
+   407→  const submit = async () => {
+   408→    if (!checkNumber || !bankName || !dueDate || amount <= 0) { toast.error("جميع الحقول مطلوبة"); return; }
+   409→    setSaving(true);
+   410→    try {
+   411→      const res = await authedFetch("/api/accounting/post-dated-checks", {
+   412→        method: "POST", headers: { "Content-Type": "application/json" },
+   413→        body: JSON.stringify({ checkNumber, bankName, amount, dueDate, direction, clientName: direction === "receivable" ? clientName : undefined, supplierName: direction === "payable" ? supplierName : undefined, companySlug: company.slug }),
+   414→      });
+   415→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+   416→      toast.success("تم إنشاء الشيك المؤجل");
+   417→      onSaved();
+   418→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   419→    finally { setSaving(false); }
+   420→  };
+   421→
+   422→  return (
+   423→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   424→      <h3 className="text-[15px] font-bold flex items-center gap-2"><Banknote size={16} /> شيك مؤجل جديد</h3>
+   425→      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   426→        <div><label className={labelStyle}>رقم الشيك *</label><input value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   427→        <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
+   428→        <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   429→        <div><label className={labelStyle}>تاريخ الاستحقاق *</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   430→        <div><label className={labelStyle}>النوع *</label>
+   431→          <select value={direction} onChange={(e) => setDirection(e.target.value as "receivable" | "payable")} className={inputStyle}>
+   432→            <option value="receivable">شيك مقبوض (مدين)</option><option value="payable">شيك مدفوع (دائن)</option>
+   433→          </select>
+   434→        </div>
+   435→        {direction === "receivable" && <div><label className={labelStyle}>اسم العميل</label><input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputStyle} /></div>}
+   436→        {direction === "payable" && <div><label className={labelStyle}>اسم المورد</label><input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className={inputStyle} /></div>}
+   437→      </div>
+   438→      <div className="flex gap-2.5 justify-end">
+   439→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   440→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   441→      </div>
+   442→    </div>
+   443→  );
+   444→}
+   445→
+   446→/* ─── Installment List ──────────────────────────────────────────────────────── */
+   447→function InstallmentList({ installments }: { installments: Installment[] }) {
+   448→  const totalActive = installments.filter(i => i.status === "active").reduce((s, i) => s + i.totalAmount, 0);
+   449→
+   450→  return (
+   451→    <div className="flex flex-col gap-4">
+   452→      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   453→        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   454→          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(16,185,129,0.20)", color: "#10b981" }}><CalendarDays size={18} /></div>
+   455→          <div><div className="text-[11px] text-muted-foreground">أقساط نشطة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalActive)}</div></div>
+   456→        </div>
+   457→        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   458→          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: "rgba(59,130,246,0.20)", color: "#3b82f6" }}><CheckCircle2 size={18} /></div>
+   459→          <div><div className="text-[11px] text-muted-foreground">عدد الاتفاقات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{installments.length}</div></div>
+   460→        </div>
+   461→      </div>
+   462→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   463→        {installments.length === 0 ? <Empty label="اتفاقات تقسيط" /> : (
+   464→          <div className="overflow-x-auto garfix-scroll">
+   465→            <table className="w-full border-collapse">
+   466→              <thead><tr className="border-b border-border bg-muted">
+   467→                <th className={thStyle}>المرجع</th><th className={thStyle}>العميل</th><th className={cn(thStyle, "text-end")}>المبلغ</th>
+   468→                <th className={thStyle}>عدد الأقساط</th><th className={thStyle}>المسددة</th><th className={thStyle}>القسط التالي</th><th className={thStyle}>الحالة</th>
+   469→              </tr></thead>
+   470→              <tbody>
+   471→                {installments.map((ins) => (
+   472→                  <tr key={ins.id} className="border-b border-border">
+   473→                    <td className={cn(tdStyle, "font-mono")}>{ins.reference}</td>
+   474→                    <td className={cn(tdStyle, "font-bold")}>{ins.clientName}</td>
+   475→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(ins.totalAmount)}</td>
+   476→                    <td className={tdStyle}>{ins.installmentCount}</td>
+   477→                    <td className={tdStyle}>{ins.paidCount}/{ins.installmentCount}</td>
+   478→                    <td className={tdStyle} dir="ltr">{ins.nextDueDate}</td>
+   479→                    <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: ins.status === "active" ? "rgba(16,185,129,0.15)" : ins.status === "completed" ? "rgba(59,130,246,0.15)" : "rgba(239,68,68,0.15)", color: ins.status === "active" ? "#10b981" : ins.status === "completed" ? "#3b82f6" : "#ef4444" }}>{ins.status === "active" ? "نشط" : ins.status === "completed" ? "مكتمل" : "متوقف"}</span></td>
+   480→                  </tr>
+   481→                ))}
+   482→              </tbody>
+   483→            </table>
+   484→          </div>
+   485→        )}
+   486→      </div>
+   487→    </div>
+   488→  );
+   489→}
+   490→
+   491→/* ─── Installment Form ──────────────────────────────────────────────────────── */
+   492→function InstallmentForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   493→  const [reference, setReference] = useState("");
+   494→  const [clientName, setClientName] = useState("");
+   495→  const [totalAmount, setTotalAmount] = useState(0);
+   496→  const [installmentCount, setInstallmentCount] = useState(1);
+   497→  const [firstDueDate, setFirstDueDate] = useState("");
+   498→  const [saving, setSaving] = useState(false);
+   499→
+   500→  const submit = async () => {
+   501→    if (!reference || !clientName || totalAmount <= 0 || installmentCount <= 0 || !firstDueDate) { toast.error("جميع الحقول مطلوبة"); return; }
+   502→    setSaving(true);
+   503→    try {
+   504→      const res = await authedFetch("/api/accounting/installments", {
+   505→        method: "POST", headers: { "Content-Type": "application/json" },
+   506→        body: JSON.stringify({ reference, clientName, totalAmount, installmentCount, firstDueDate, companySlug: company.slug }),
+   507→      });
+   508→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+   509→      toast.success("تم إنشاء اتفاق التقسيط");
+   510→      onSaved();
+   511→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   512→    finally { setSaving(false); }
+   513→  };
+   514→
+   515→  return (
+   516→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   517→      <h3 className="text-[15px] font-bold flex items-center gap-2"><CalendarDays size={16} /> اتفاق تقسيط جديد</h3>
+   518→      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   519→        <div><label className={labelStyle}>المرجع *</label><input value={reference} onChange={(e) => setReference(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   520→        <div><label className={labelStyle}>العميل *</label><input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputStyle} /></div>
+   521→        <div><label className={labelStyle}>المبلغ الإجمالي *</label><input type="number" value={totalAmount} onChange={(e) => setTotalAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   522→        <div><label className={labelStyle}>عدد الأقساط *</label><input type="number" min={1} value={installmentCount} onChange={(e) => setInstallmentCount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   523→        <div><label className={labelStyle}>تاريخ القسط الأول *</label><input type="date" value={firstDueDate} onChange={(e) => setFirstDueDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   524→      </div>
+   525→      {totalAmount > 0 && installmentCount > 0 && (
+   526→        <div className="bg-muted rounded-md p-3 text-[12px] text-muted-foreground">
+   527→          القسط الشهري: <span className="font-bold text-foreground">{fmt(totalAmount / installmentCount)}</span> × {installmentCount} قسط
+   528→        </div>
+   529→      )}
+   530→      <div className="flex gap-2.5 justify-end">
+   531→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   532→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   533→      </div>
+   534→    </div>
+   535→  );
+   536→}
+   537→
+   538→export default ArApView;
+   539→
