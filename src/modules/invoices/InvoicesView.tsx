@@ -239,7 +239,7 @@ export function InvoicesView() {
 
       {/* KPI summary cards */}
       {!loading && invoices.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <KpiCard label="الإجمالي" value={totalRevenue.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} sub={`${paidInvoices.length} مدفوعة`} color="#10b981" icon={<FileText size={15} />} />
           <KpiCard label="مستحقة" value={outstanding.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} sub={`${pendingInvoices.length} قيد الانتظار`} color="#3b82f6" icon={<Clock size={15} />} />
           <KpiCard label="متأخرة" value={overdueInvoices.length.toLocaleString("ar-EG")} sub={overdueInvoices.length > 0 ? "تحتاج متابعة" : "لا يوجد"} color="#ef4444" icon={<AlertTriangle size={15} />} />
@@ -256,6 +256,7 @@ export function InvoicesView() {
           />
           <input
             placeholder="بحث برقم الفاتورة أو اسم العميل…"
+            aria-label="بحث الفواتير"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full py-2.5 px-10 rounded-[12px] bg-white border border-gray-200 text-foreground text-[13px] outline-none focus:border-[#7C3AED]/50 focus:ring-2 focus:ring-[#EDE9FE] transition-all"
@@ -317,7 +318,7 @@ export function InvoicesView() {
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="w-10 text-center py-2.5 px-2 text-[11px] font-bold text-gray-500">
+                  <th scope="col" className="w-10 text-center py-2.5 px-2 text-[11px] font-bold text-gray-500">
                     <input
                       type="checkbox"
                       checked={selectedIds.size === currentPageInvoices.length && currentPageInvoices.length > 0}
@@ -326,13 +327,13 @@ export function InvoicesView() {
                       aria-label="تحديد الكل"
                     />
                   </th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">رقم الفاتورة</th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">العميل</th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">تاريخ الإصدار</th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">المبلغ</th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">مدفوع</th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">الحالة</th>
-                  <th className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">إجراءات</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">رقم الفاتورة</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">العميل</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">تاريخ الإصدار</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">المبلغ</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">مدفوع</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">الحالة</th>
+                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -537,10 +538,11 @@ function KpiCard({ label, value, sub, color, icon }: { label: string; value: str
   );
 }
 
-function IconBtn({ children, title, onClick, danger, className }: { children: React.ReactNode; title: string; onClick: () => void; danger?: boolean; className?: string }) {
+function IconBtn({ children, title, onClick, danger, className, "aria-label": ariaLabel }: { children: React.ReactNode; title: string; onClick: () => void; danger?: boolean; className?: string; "aria-label"?: string }) {
   return (
     <button
       title={title}
+      aria-label={ariaLabel || title}
       onClick={onClick}
       className={cn(iconBtnStyle, danger ? "text-destructive" : "text-muted-foreground", className)}
     >
@@ -913,10 +915,10 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
         <table className="w-full border-collapse mb-6">
           <thead>
             <tr className="bg-[#f3f4f6]">
-              <th className="text-start p-2.5 text-[12px] font-bold">الوصف</th>
-              <th className="text-center p-2.5 text-[12px] font-bold w-20">الكمية</th>
-              <th className="text-center p-2.5 text-[12px] font-bold w-[100px]">السعر</th>
-              <th className="text-end p-2.5 text-[12px] font-bold w-[120px]">الإجمالي</th>
+              <th scope="col" className="text-start p-2.5 text-[12px] font-bold">الوصف</th>
+              <th scope="col" className="text-center p-2.5 text-[12px] font-bold w-20">الكمية</th>
+              <th scope="col" className="text-center p-2.5 text-[12px] font-bold w-[100px]">السعر</th>
+              <th scope="col" className="text-end p-2.5 text-[12px] font-bold w-[120px]">الإجمالي</th>
             </tr>
           </thead>
           <tbody>

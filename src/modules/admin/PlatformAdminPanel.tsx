@@ -235,32 +235,28 @@ export function PlatformAdminPanel() {
   const auditSafePage = Math.min(auditPage, auditTotalPages);
   const currentPageAudit = audit.slice((auditSafePage - 1) * adminPageSize, auditSafePage * adminPageSize);
 
-  const adminPageBtnStyle = (disabled: boolean): React.CSSProperties => ({
-    padding: "6px 12px", borderRadius: "6px",
-    background: disabled ? "transparent" : "var(--card)",
-    color: disabled ? "var(--muted-foreground)" : "var(--foreground)",
-    border: "1px solid var(--border)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
-  });
+  function AdminPageBtn({ disabled, children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+    return <button className={`px-3 py-1.5 rounded-md border border-[var(--border)] font-inherit text-xs font-bold ${disabled ? "bg-transparent text-[var(--muted-foreground)] cursor-not-allowed opacity-50" : "bg-[var(--card)] text-[var(--foreground)] cursor-pointer"}`} disabled={disabled} {...props}>{children}</button>;
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 style={{ fontSize: "24px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}><Shield size={20} /> لوحة المؤسس</h1>
+        <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><Shield size={20} /> لوحة المؤسس</h1>
         <p className="text-[13px] text-[var(--muted-foreground)]">إدارة شاملة للمنصة</p>
       </div>
-      <div className="garfix-scroll flex gap-1.5 flex-wrap">
+      <div role="tablist" className="garfix-scroll flex gap-1.5 flex-wrap">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: tab === t.key ? "var(--primary)" : "var(--card)", color: tab === t.key ? "var(--primary-foreground)" : "var(--muted-foreground)", border: "1px solid var(--border)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+          <button key={t.key} role="tab" aria-selected={tab === t.key} id={`tab-${t.key}`} onClick={() => setTab(t.key)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] font-inherit text-xs font-bold cursor-pointer whitespace-nowrap" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: tab === t.key ? "var(--primary)" : "var(--card)", color: tab === t.key ? "var(--primary-foreground)" : "var(--muted-foreground)" }}>
             {t.icon} {t.label}
           </button>
         ))}
       </div>
 
-      {loading ? <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div> : (
-        <>
+      {loading ? <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div> : (
+        <div role="tabpanel" aria-labelledby={`tab-${tab}`}>
           {tab === "stats" && !stats && (
-            <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل الإحصائيات. تحقّق من صلاحيات المؤسس.</div>
+            <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل الإحصائيات. تحقّق من صلاحيات المؤسس.</div>
           )}
           {tab === "stats" && stats && (
             <>
@@ -313,22 +309,22 @@ export function PlatformAdminPanel() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full" style={{ borderCollapse: "collapse" }}>
                   <thead><tr className="bg-[var(--muted)]">
-                    <th style={th}>الشركة</th><th style={th}>الباقة</th><th style={th}>الفواتير</th>
-                    <th style={th}>المستخدمون</th><th style={th}>العملاء</th><th style={th}>الإيراد</th>
-                    <th style={th}>استهلاك الباقة</th>
-                    <th style={th}>إجراءات</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الباقة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الفواتير</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المستخدمون</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">العملاء</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الإيراد</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">استهلاك الباقة</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراءات</th>
                   </tr></thead>
                   <tbody>
-                    {tenants.length === 0 ? <tr><td colSpan={8} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد مستأجرون</td></tr> :
+                    {tenants.length === 0 ? <tr><td colSpan={8} className="px-3 py-2.5 text-[13px] text-center py-8 text-[var(--muted-foreground)]">لا توجد مستأجرون</td></tr> :
                       currentPageTenants.map((t) => (
                         <tr className="border-b border-b-[var(--border)]" key={t.id}>
-                          <td style={{ ...td, fontWeight: 700 }}>{t.emoji} {t.nameAr || t.name}</td>
-                          <td style={td}>{t.plan}</td>
-                          <td style={td}>{t.stats.invoices}</td>
-                          <td style={td}>{t.stats.users}</td>
-                          <td style={td}>{t.stats.clients}</td>
-                          <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700 }}>{t.stats.revenue.toLocaleString("ar-EG", { maximumFractionDigits: 0 })}</td>
-                          <td style={td}>
+                          <td className="px-3 py-2.5 text-[13px] font-bold">{t.emoji} {t.nameAr || t.name}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{t.plan}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{t.stats.invoices}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{t.stats.users}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{t.stats.clients}</td>
+                          <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold">{t.stats.revenue.toLocaleString("ar-EG", { maximumFractionDigits: 0 })}</td>
+                          <td className="px-3 py-2.5 text-[13px]">
                             {/* P1.8 fix: usage-vs-plan visualization. */}
                             {t.planLimits ? (
                               <div className="flex flex-col gap-1 min-w-[120px]">
@@ -349,22 +345,14 @@ export function PlatformAdminPanel() {
                               <span className="text-[11px] text-[var(--muted-foreground)]">—</span>
                             )}
                           </td>
-                          <td style={td}>
+                          <td className="px-3 py-2.5 text-[13px]">
                             <div className="flex gap-1">
-                              <button
-                                onClick={() => setSelectedTenantSlug(t.slug)}
-                                title="عرض الدعم (Support View)"
-                                style={iconBtn("#3b82f6")}
-                              >
+                              <IconBtn color="#3b82f6" onClick={() => setSelectedTenantSlug(t.slug)} title="عرض الدعم (Support View)" aria-label="عرض">
                                 <Eye size={14} />
-                              </button>
-                              <button
-                                onClick={() => setDeleteTarget(t)}
-                                title="حذف مبدئي (إيقاف مؤقت)"
-                                style={iconBtn("#f59e0b")}
-                              >
+                              </IconBtn>
+                              <IconBtn color="#f59e0b" onClick={() => setDeleteTarget(t)} title="حذف مبدئي (إيقاف مؤقت)" aria-label="حذف">
                                 <Trash2 size={14} />
-                              </button>
+                              </IconBtn>
                             </div>
                           </td>
                         </tr>
@@ -376,7 +364,7 @@ export function PlatformAdminPanel() {
               {/* Part 3: Mobile card list (hidden on desktop) */}
               <div className="md:hidden flex flex-col gap-2 p-3">
                 {tenants.length === 0 ? (
-                  <div className="text-center p-8 text-muted-foreground text-sm">لا توجد مستأجرون</div>
+                  <div className="text-center p-4 md:p-8 text-muted-foreground text-sm">لا توجد مستأجرون</div>
                 ) : (
                   currentPageTenants.map((t) => (
                     <div key={t.id} className="rounded-xl border border-border p-3 bg-background">
@@ -392,6 +380,7 @@ export function PlatformAdminPanel() {
                           <button
                             onClick={() => setSelectedTenantSlug(t.slug)}
                             title="عرض الدعم"
+                            aria-label="عرض"
                             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-border text-blue-500 cursor-pointer"
                           >
                             <Eye size={16} />
@@ -399,6 +388,7 @@ export function PlatformAdminPanel() {
                           <button
                             onClick={() => setDeleteTarget(t)}
                             title="حذف"
+                            aria-label="حذف"
                             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-border text-amber-500 cursor-pointer"
                           >
                             <Trash2 size={16} />
@@ -433,8 +423,8 @@ export function PlatformAdminPanel() {
                 <div className="flex justify-between items-center px-4 py-3 border-t border-t-[var(--border)] flex-wrap gap-2">
                   <span className="text-xs text-[var(--muted-foreground)]">صفحة {tenantsSafePage} من {tenantsTotalPages} ({tenants.length} مستأجر)</span>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => setTenantsPage((p) => Math.max(1, p - 1))} disabled={tenantsSafePage === 1} style={adminPageBtnStyle(tenantsSafePage === 1)}>السابق</button>
-                    <button onClick={() => setTenantsPage((p) => Math.min(tenantsTotalPages, p + 1))} disabled={tenantsSafePage === tenantsTotalPages} style={adminPageBtnStyle(tenantsSafePage === tenantsTotalPages)}>التالي</button>
+                    <AdminPageBtn onClick={() => setTenantsPage((p) => Math.max(1, p - 1))} disabled={tenantsSafePage === 1}>السابق</AdminPageBtn>
+                    <AdminPageBtn onClick={() => setTenantsPage((p) => Math.min(tenantsTotalPages, p + 1))} disabled={tenantsSafePage === tenantsTotalPages}>التالي</AdminPageBtn>
                   </div>
                 </div>
               )}
@@ -454,22 +444,22 @@ export function PlatformAdminPanel() {
             <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center">
                 <h3 className="text-sm font-bold">الإعلانات ({announcements.length})</h3>
-                <button onClick={() => setShowAnnouncementForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}><Plus size={12} /> إعلان جديد</button>
+                <button onClick={() => setShowAnnouncementForm(true)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer"><Plus size={12} /> إعلان جديد</button>
               </div>
               {showAnnouncementForm && <AnnouncementForm onClose={() => setShowAnnouncementForm(false)} onSaved={() => { setShowAnnouncementForm(false); load(); }} />}
               <div className="garfix-scroll overflow-x-auto">
                 <table className="w-full" style={{ borderCollapse: "collapse" }}>
                   <thead><tr className="bg-[var(--muted)]">
-                    <th style={th}>العنوان</th><th style={th}>النوع</th><th style={th}>الحالة</th><th style={th}>التاريخ</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">العنوان</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التاريخ</th>
                   </tr></thead>
                   <tbody>
-                    {announcements.length === 0 ? <tr><td colSpan={4} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد إعلانات</td></tr> :
+                    {announcements.length === 0 ? <tr><td colSpan={4} className="px-3 py-2.5 text-[13px] text-center py-8 text-[var(--muted-foreground)]">لا توجد إعلانات</td></tr> :
                       announcements.map((a) => (
                         <tr className="border-b border-b-[var(--border)]" key={a.id}>
-                          <td style={{ ...td, fontWeight: 700 }}>{a.title}</td>
-                          <td style={td}>{a.type}</td>
-                          <td style={td}><span style={{ padding: "2px 10px", borderRadius: "12px", background: a.isActive ? "rgba(16,185,129,0.15)" : "rgba(156,163,175,0.15)", color: a.isActive ? "#10b981" : "#9ca3af", fontSize: "11px", fontWeight: 700 }}>{a.isActive ? "نشط" : "موقوف"}</span></td>
-                          <td style={td}>{new Date(a.createdAt).toLocaleDateString("ar-EG")}</td>
+                          <td className="px-3 py-2.5 text-[13px] font-bold">{a.title}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{a.type}</td>
+                          <td className="px-3 py-2.5 text-[13px]"><StatusBadge active={a.isActive} /></td>
+                          <td className="px-3 py-2.5 text-[13px]">{new Date(a.createdAt).toLocaleDateString("ar-EG")}</td>
                         </tr>
                       ))
                     }
@@ -483,26 +473,22 @@ export function PlatformAdminPanel() {
               <div className="garfix-scroll overflow-x-auto">
                 <table className="w-full" style={{ borderCollapse: "collapse" }}>
                   <thead><tr className="bg-[var(--muted)]">
-                    <th style={th}>المستخدم</th><th style={th}>الموضوع</th><th style={th}>الأولوية</th>
-                    <th style={th}>الحالة</th><th style={th}>التاريخ</th><th style={th}>إجراء</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المستخدم</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الموضوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الأولوية</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التاريخ</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراء</th>
                   </tr></thead>
                   <tbody>
-                    {tickets.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد تذاكر</td></tr> :
+                    {tickets.length === 0 ? <tr><td colSpan={6} className="px-3 py-2.5 text-[13px] text-center py-8 text-[var(--muted-foreground)]">لا توجد تذاكر</td></tr> :
                       tickets.map((t) => (
                         <tr className="border-b border-b-[var(--border)]" key={t.id}>
-                          <td style={td}>{t.userEmail}</td>
-                          <td style={{ ...td, fontWeight: 700 }}>{t.subject}</td>
-                          <td style={td}>{t.priority}</td>
-                          <td style={td}><span style={{ padding: "2px 10px", borderRadius: "12px", background: t.status === "open" ? "rgba(245,158,11,0.15)" : "rgba(16,185,129,0.15)", color: t.status === "open" ? "#f59e0b" : "#10b981", fontSize: "11px", fontWeight: 700 }}>{t.status}</span></td>
-                          <td style={td}>{new Date(t.createdAt).toLocaleDateString("ar-EG")}</td>
-                          <td style={td}>
-                            <button
-                              onClick={() => setSelectedTicketId(t.id)}
-                              style={iconBtn("#3b82f6")}
-                              title="فتح التذكرة"
-                            >
+                          <td className="px-3 py-2.5 text-[13px]">{t.userEmail}</td>
+                          <td className="px-3 py-2.5 text-[13px] font-bold">{t.subject}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{t.priority}</td>
+                          <td className="px-3 py-2.5 text-[13px]"><TicketStatusBadge status={t.status} /></td>
+                          <td className="px-3 py-2.5 text-[13px]">{new Date(t.createdAt).toLocaleDateString("ar-EG")}</td>
+                          <td className="px-3 py-2.5 text-[13px]">
+                            <IconBtn color="#3b82f6" onClick={() => setSelectedTicketId(t.id)} title="فتح التذكرة" aria-label="فتح التذكرة">
                               <Eye size={14} />
-                            </button>
+                            </IconBtn>
                           </td>
                         </tr>
                       ))
@@ -525,18 +511,18 @@ export function PlatformAdminPanel() {
               <div className="garfix-scroll overflow-x-auto">
                 <table className="w-full" style={{ borderCollapse: "collapse" }}>
                   <thead><tr className="bg-[var(--muted)]">
-                    <th style={th}>الوقت</th><th style={th}>المدير</th><th style={th}>الإجراء</th>
-                    <th style={th}>النوع</th><th style={th}>المعرّف</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المدير</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الإجراء</th>
+                    <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المعرّف</th>
                   </tr></thead>
                   <tbody>
-                    {audit.length === 0 ? <tr><td colSpan={5} style={{ ...td, textAlign: "center", padding: "32px", color: "var(--muted-foreground)" }}>لا توجد سجلات</td></tr> :
+                    {audit.length === 0 ? <tr><td colSpan={5} className="px-3 py-2.5 text-[13px] text-center py-8 text-[var(--muted-foreground)]">لا توجد سجلات</td></tr> :
                       currentPageAudit.map((a) => (
                         <tr className="border-b border-b-[var(--border)]" key={a.id}>
-                          <td style={td}>{new Date(a.createdAt).toLocaleString("ar-EG")}</td>
-                          <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{a.adminEmail}</td>
-                          <td style={{ ...td, fontWeight: 700 }}>{a.action}</td>
-                          <td style={td}>{a.targetType || "—"}</td>
-                          <td style={{ ...td, fontFamily: "monospace" }}>{a.targetId || "—"}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{new Date(a.createdAt).toLocaleString("ar-EG")}</td>
+                          <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{a.adminEmail}</td>
+                          <td className="px-3 py-2.5 text-[13px] font-bold">{a.action}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{a.targetType || "—"}</td>
+                          <td className="px-3 py-2.5 text-[13px] font-mono">{a.targetId || "—"}</td>
                         </tr>
                       ))
                     }
@@ -547,8 +533,8 @@ export function PlatformAdminPanel() {
                 <div className="flex justify-between items-center px-4 py-3 border-t border-t-[var(--border)] flex-wrap gap-2">
                   <span className="text-xs text-[var(--muted-foreground)]">صفحة {auditSafePage} من {auditTotalPages} ({audit.length} سجل)</span>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => setAuditPage((p) => Math.max(1, p - 1))} disabled={auditSafePage === 1} style={adminPageBtnStyle(auditSafePage === 1)}>السابق</button>
-                    <button onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))} disabled={auditSafePage === auditTotalPages} style={adminPageBtnStyle(auditSafePage === auditTotalPages)}>التالي</button>
+                    <AdminPageBtn onClick={() => setAuditPage((p) => Math.max(1, p - 1))} disabled={auditSafePage === 1}>السابق</AdminPageBtn>
+                    <AdminPageBtn onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))} disabled={auditSafePage === auditTotalPages}>التالي</AdminPageBtn>
                   </div>
                 </div>
               )}
@@ -557,48 +543,44 @@ export function PlatformAdminPanel() {
           {tab === "queue-failures" && (
             <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
-                <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+                <h3 className="text-sm font-bold flex items-center gap-2">
                   <AlertTriangle className="text-amber-500" size={16} />
                   أعطال الطوابير ({queueFailures.length})
                 </h3>
                 <div className="flex gap-2">
-                  <button onClick={loadQueueFailures} style={iconBtn("#3b82f6")}>
-                    <Activity size={14} /> تحديث
-                  </button>
+                  <IconBtn color="#3b82f6" onClick={loadQueueFailures} aria-label="تحديث الطوابير"><Activity size={14} /> تحديث</IconBtn>
                   {queueFailures.length > 0 && (
-                    <button
-                      onClick={async () => {
+                    <IconBtn color="#ef4444" aria-label="مسح" onClick={async () => {
                         if (!confirm("مسح سجل الأعطال؟")) return;
                         await authedFetch("/api/platform-admin/queue-failures?clear=1");
                         setQueueFailures([]);
                         toast.success("تم مسح السجل");
                       }}
-                      style={iconBtn("#ef4444")}
                     >
                       <Trash2 size={14} /> مسح
-                    </button>
+                    </IconBtn>
                   )}
                 </div>
               </div>
               {queueFailures.length === 0 ? (
-                <div className="p-12 text-center text-[var(--muted-foreground)]">
+                <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">
                   ✅ لا توجد أعطال في الطوابير — جميع المهام تتم بنجاح.
                 </div>
               ) : (
                 <div className="garfix-scroll overflow-x-auto">
                   <table className="w-full" style={{ borderCollapse: "collapse" }}>
                     <thead><tr className="bg-[var(--muted)]">
-                      <th style={th}>الطابور</th><th style={th}>النوع</th>
-                      <th style={th}>الخطأ</th><th style={th}>الوقت</th><th style={th}>المحاولات</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الطابور</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الخطأ</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المحاولات</th>
                     </tr></thead>
                     <tbody>
                       {queueFailures.map((f, i) => (
                         <tr className="border-b border-b-[var(--border)]" key={f.id || i}>
-                          <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{f.queue}</td>
-                          <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{f.type || "—"}</td>
-                          <td style={{ ...td, fontSize: "11px", color: "#fca5a5", direction: "ltr", textAlign: "right" }}>{f.error}</td>
-                          <td style={td}>{new Date(f.failedAt).toLocaleString("ar-EG")}</td>
-                          <td style={td}>{f.attempts}</td>
+                          <td className="px-3 py-2.5 font-mono text-[11px]">{f.queue}</td>
+                          <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">{f.type || "—"}</td>
+                          <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right" /* TAILWINDBREAK: dynamic color */ style={{ color: "#fca5a5" }}>{f.error}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{new Date(f.failedAt).toLocaleString("ar-EG")}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{f.attempts}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -621,7 +603,7 @@ export function PlatformAdminPanel() {
                   <select
                     value={stockLedgerSlug}
                     onChange={(e) => setStockLedgerSlug(e.target.value)}
-                    style={{ ...inputStyle, maxWidth: "260px" }}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[260px]"
                   >
                     <option value="">— اختر شركة —</option>
                     <option value="__all__">🌐 كل الشركات (founder)</option>
@@ -630,17 +612,15 @@ export function PlatformAdminPanel() {
                     ))}
                   </select>
                   {stockLedgerSlug && (
-                    <button
-                      onClick={() => loadStockMovements(stockLedgerSlug, {
+                    <IconBtn color="#7c3aed" aria-label="تحديث" onClick={() => loadStockMovements(stockLedgerSlug, {
                         productName: stockLedgerProductName,
                         from: stockLedgerFrom,
                         to: stockLedgerTo,
                       })}
-                      style={iconBtn("#7c3aed")}
                       title="تحديث"
                     >
                       <Activity size={14} /> تحديث
-                    </button>
+                    </IconBtn>
                   )}
                 </div>
                 <div className="flex gap-2.5 items-center flex-wrap">
@@ -650,21 +630,21 @@ export function PlatformAdminPanel() {
                     value={stockLedgerProductName}
                     onChange={(e) => setStockLedgerProductName(e.target.value)}
                     placeholder="بحث بالاسم..."
-                    style={{ ...inputStyle, maxWidth: "180px" }}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[180px]"
                   />
                   <label className="text-[11px] font-bold text-[var(--muted-foreground)]">من:</label>
                   <input
                     type="date"
                     value={stockLedgerFrom}
                     onChange={(e) => setStockLedgerFrom(e.target.value)}
-                    style={{ ...inputStyle, maxWidth: "150px" }}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[150px]"
                   />
                   <label className="text-[11px] font-bold text-[var(--muted-foreground)]">إلى:</label>
                   <input
                     type="date"
                     value={stockLedgerTo}
                     onChange={(e) => setStockLedgerTo(e.target.value)}
-                    style={{ ...inputStyle, maxWidth: "150px" }}
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[150px]"
                   />
                   {stockLedgerSlug && (
                     <button
@@ -673,18 +653,13 @@ export function PlatformAdminPanel() {
                         from: stockLedgerFrom,
                         to: stockLedgerTo,
                       })}
-                      style={{
-                        padding: "6px 12px", borderRadius: "8px",
-                        background: "#7c3aed", color: "#fff", border: "none",
-                        fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer",
-                      }}
+                      className="px-3 py-1.5 rounded-lg bg-violet-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer"
                     >
                       تطبيق الفلاتر
                     </button>
                   )}
                   {(stockLedgerProductName || stockLedgerFrom || stockLedgerTo) && (
-                    <button
-                      onClick={() => {
+                    <IconBtn color="#9ca3af" aria-label="مسح الفلاتر" className="!w-auto !px-2 !py-1" onClick={() => {
                         setStockLedgerProductName("");
                         setStockLedgerFrom("");
                         setStockLedgerTo("");
@@ -692,52 +667,51 @@ export function PlatformAdminPanel() {
                           loadStockMovements(stockLedgerSlug, {});
                         }
                       }}
-                      style={{ ...iconBtn("#9ca3af"), padding: "4px 8px", width: "auto" }}
                     >
                       مسح الفلاتر
-                    </button>
+                    </IconBtn>
                   )}
                 </div>
               </div>
               {!stockLedgerSlug ? (
-                <div className="p-12 text-center text-[var(--muted-foreground)]">
+                <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">
                   اختر شركة (أو «كل الشركات» للمؤسس) لعرض دفتر حركة المخزون (StockMovement ledger).
                 </div>
               ) : stockMovements.length === 0 ? (
-                <div className="p-12 text-center text-[var(--muted-foreground)]">
+                <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">
                   لا توجد حركات مخزون مطابقة للفلاتر المحددة.
                 </div>
               ) : (
                 <div className="garfix-scroll overflow-x-auto">
                   <table className="w-full" style={{ borderCollapse: "collapse" }}>
                     <thead><tr className="bg-[var(--muted)]">
-                      <th style={th}>الوقت</th>
-                      <th style={th}>الشركة</th>
-                      <th style={th}>المنتج</th>
-                      <th style={th}>التغيّر</th>
-                      <th style={th}>السبب</th>
-                      <th style={th}>المرجع</th>
-                      <th style={th}>المستودع</th>
-                      <th style={th}>ملاحظة</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المنتج</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التغيّر</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">السبب</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المرجع</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المستودع</th>
+                      <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">ملاحظة</th>
                     </tr></thead>
                     <tbody>
                       {stockMovements.slice(0, 300).map((m) => (
                         <tr className="border-b border-b-[var(--border)]" key={m.id}>
-                          <td style={td}>{new Date(m.createdAt).toLocaleString("ar-EG")}</td>
-                          <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{m.companySlug}</td>
-                          <td style={{ ...td, fontWeight: 700 }}>
+                          <td className="px-3 py-2.5 text-[13px]">{new Date(m.createdAt).toLocaleString("ar-EG")}</td>
+                          <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">{m.companySlug}</td>
+                          <td className="px-3 py-2.5 text-[13px] font-bold">
                             {m.productName}
                             {m.productCode && (
                               <span className="text-[var(--muted-foreground)] font-mono text-[10px] mr-1"> ({m.productCode})</span>
                             )}
                           </td>
-                          <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700, color: m.qty < 0 ? "#fca5a5" : "#86efac" }}>{m.qty > 0 ? "+" : ""}{m.qty}</td>
-                          <td style={td}><span style={{ padding: "2px 8px", borderRadius: "8px", background: "var(--muted)", fontSize: "10px", fontWeight: 700 }}>{m.sourceType}</span></td>
-                          <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>
+                          <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: m.qty < 0 ? "#fca5a5" : "#86efac" }}>{m.qty > 0 ? "+" : ""}{m.qty}</td>
+                          <td className="px-3 py-2.5 text-[13px]"><span className="px-2 py-0.5 rounded-lg bg-[var(--muted)] text-[10px] font-bold">{m.sourceType}</span></td>
+                          <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">
                             {m.sourceId != null ? `#${m.sourceId}` : "—"}
                           </td>
-                          <td style={td}>{m.warehouseName}</td>
-                          <td style={{ ...td, fontSize: "11px", color: "var(--muted-foreground)" }}>{m.note || "—"}</td>
+                          <td className="px-3 py-2.5 text-[13px]">{m.warehouseName}</td>
+                          <td className="px-3 py-2.5 text-[11px] text-[var(--muted-foreground)]">{m.note || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -756,7 +730,7 @@ export function PlatformAdminPanel() {
           {tab === "retention-cleanup" && <RetentionCleanupTab />}
           {tab === "plans" && <PlansTab />}
           {tab === "backups" && <BackupsTab />}
-        </>
+        </div>
       )}
 
       {reviewQueueSlug && (
@@ -793,18 +767,7 @@ export function PlatformAdminPanel() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div
-            style={{
-              padding: "10px 12px",
-              background: "rgba(245,158,11,0.12)",
-              border: "1px solid rgba(245,158,11,0.3)",
-              borderRadius: "8px",
-              fontSize: "11px",
-              color: "#f59e0b",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
+            className="px-3 py-2.5 bg-amber-500/12 border border-amber-500/30 rounded-lg text-[11px] text-amber-500 font-bold flex items-center gap-1.5"
           >
             <AlertTriangle size={14} />
             soft-delete — data preserved 5 years per retention policy
@@ -873,28 +836,28 @@ export function PlatformAdminPanel() {
   }
 }
 
-function iconBtn(color: string): React.CSSProperties {
-  return {
-    display: "inline-flex", alignItems: "center", justifyContent: "center",
-    width: "28px", height: "28px", borderRadius: "6px",
-    background: "transparent", border: "1px solid var(--border)",
-    color, cursor: "pointer", padding: 0,
-  };
+function IconBtn({ color, children, ...props }: { color: string; children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-[var(--border)] cursor-pointer p-0" /* TAILWINDBREAK: dynamic color */ style={{ color }} {...props}>{children}</button>;
 }
+function StatusBadge({ active, activeText, inactiveText }: { active: boolean; activeText?: string; inactiveText?: string }) {
+  const label = active ? (activeText || "نشط") : (inactiveText || "موقوف");
+  return <span role="status" aria-label={label} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-emerald-500/15 text-emerald-500" : "bg-gray-400/15 text-gray-400"}`}>{label}</span>;
+}
+
+function TicketStatusBadge({ status }: { status: string }) {
+  const label = status === "open" ? "مفتوحة" : "مغلقة";
+  return <span role="status" aria-label={`تذكرة ${label}`} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${status === "open" ? "bg-amber-500/15 text-amber-500" : "bg-emerald-500/15 text-emerald-500"}`}>{label}</span>;
+}
+
 
 function KpiCard({ label, value, color }: { label: string; value: number | string; color: string }) {
   return (
     <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
-      <div style={{ fontSize: "11px", color: "var(--muted-foreground)", fontWeight: 600, marginBottom: "6px" }}>{label}</div>
-      <div style={{ fontSize: "22px", fontWeight: 900, color }}>{value}</div>
+      <div className="text-[11px] text-[var(--muted-foreground)] font-semibold mb-1.5">{label}</div>
+      <div className="text-[22px] font-black" /* TAILWINDBREAK: dynamic color */ style={{ color }}>{value}</div>
     </div>
   );
 }
-
-const th: React.CSSProperties = { textAlign: "right", padding: "10px 12px", fontSize: "11px", color: "var(--muted-foreground)", fontWeight: 700 };
-const td: React.CSSProperties = { padding: "10px 12px", fontSize: "13px" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "8px 12px", borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)", fontFamily: "inherit", fontSize: "13px", outline: "none" };
-const labelStyle: React.CSSProperties = { display: "block", fontSize: "11px", fontWeight: 600, color: "var(--muted-foreground)", marginBottom: "4px" };
 
 /**
  * GATE 4 — Tenant Detail Drawer (Support View).
@@ -978,22 +941,22 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
           </SheetTitle>
         </SheetHeader>
         {loading ? (
-          <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
+          <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
         ) : detail ? (
           <>
             {/* Plan management card */}
             <div className="p-3.5 bg-[var(--card)] rounded-xl border border-[var(--border)]">
               <div className="flex items-center gap-1.5 mb-2.5">
                 <Shield className="text-violet-600" size={14} />
-                <span style={{ fontSize: "13px", fontWeight: 800 }}>إدارة الباقة</span>
+                <span className="text-[13px] font-extrabold">إدارة الباقة</span>
               </div>
-              <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-2.5">
                 <div>
-                  <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الباقة</label>
+                  <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">الباقة</label>
                   <select
                     value={planDraft}
                     onChange={(e) => setPlanDraft(e.target.value)}
-                    style={{ width: "100%", padding: "6px 8px", background: "var(--background)", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--foreground)", fontSize: "12px", fontFamily: "inherit" }}
+                    className="w-full px-1.5 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md text-[var(--foreground)] text-xs font-inherit"
                   >
                     <option value="trial">تجريبي (مجاني)</option>
                     <option value="starter">Starter ($9.99)</option>
@@ -1002,11 +965,11 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>حالة الاشتراك</label>
+                  <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">حالة الاشتراك</label>
                   <select
                     value={subStatusDraft}
                     onChange={(e) => setSubStatusDraft(e.target.value)}
-                    style={{ width: "100%", padding: "6px 8px", background: "var(--background)", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--foreground)", fontSize: "12px", fontFamily: "inherit" }}
+                    className="w-full px-1.5 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md text-[var(--foreground)] text-xs font-inherit"
                   >
                     <option value="active">نشط</option>
                     <option value="trialing">فترة تجريبية</option>
@@ -1019,18 +982,18 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
               <button
                 onClick={savePlan}
                 disabled={planSaving}
-                style={{ padding: "7px 16px", background: planSaving ? "var(--muted)" : "#7c3aed", color: "#fff", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: planSaving ? "not-allowed" : "pointer", opacity: planSaving ? 0.7 : 1, fontFamily: "inherit" }}
+                className="px-4 py-1.5 rounded-lg border-none text-white text-xs font-bold font-inherit" /* TAILWINDBREAK: dynamic bg/opacity/cursor */ style={{ background: planSaving ? "var(--muted)" : "#7c3aed", cursor: planSaving ? "not-allowed" : "pointer", opacity: planSaving ? 0.7 : 1 }}
               >
                 {planSaving ? "جارٍ الحفظ…" : "حفظ الباقة"}
               </button>
               {(planDraft !== detail.tenant.plan || subStatusDraft !== detail.tenant.subscriptionStatus) && (
-                <div style={{ marginTop: "8px", fontSize: "10px", color: "#f59e0b", fontWeight: 600 }}>
+                <div className="mt-2 text-[10px] text-amber-500 font-semibold">
                   ⚠️ تغييرات غير محفوظة
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               <DetailStat label="الباقة الحالية" value={detail.tenant.plan} />
               <DetailStat label="الحالة" value={detail.tenant.subscriptionStatus} />
               <DetailStat label="الفواتير" value={String(detail.overview.invoicesCount)} />
@@ -1045,13 +1008,7 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
               <button
                 type="button"
                 onClick={() => onOpenReviewQueue(slug)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "8px",
-                  padding: "10px 14px", borderRadius: "10px",
-                  background: "#f59e0b", color: "#fff", border: "none",
-                  fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: "pointer",
-                  boxShadow: "0 1px 2px rgba(245,158,11,0.3)",
-                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[10px] bg-amber-500 text-white border-none font-inherit text-xs font-bold cursor-pointer shadow-[0_1px_2px_rgba(245,158,11,0.3)]"
               >
                 <ListChecks size={14} />
                 افتح طابور المراجعة لهذه الشركة ({detail.overview.reviewQueueCount} عنصر)
@@ -1062,7 +1019,7 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
             </div>
             {detail.overview.lastInvoice && (
               <div className="p-3 bg-[var(--muted)] rounded-[10px] text-xs">
-                <div style={{ fontWeight: 700, marginBottom: "4px" }}>آخر فاتورة:</div>
+                <div className="font-bold mb-1">آخر فاتورة:</div>
                 <div>رقم: {detail.overview.lastInvoice.invoiceNumber}</div>
                 <div>التاريخ: {new Date(detail.overview.lastInvoice.createdAt).toLocaleString("ar-EG")}</div>
                 <div>الإجمالي: {detail.overview.lastInvoice.total}</div>
@@ -1075,7 +1032,7 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
             )}
           </>
         ) : (
-          <div className="p-8 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>
+          <div className="p-4 md:p-8 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>
         )}
       </SheetContent>
     </Sheet>
@@ -1085,8 +1042,8 @@ function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug: string
 function DetailStat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)]">
-      <div style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: "16px", fontWeight: 800, color: color || "var(--foreground)" }}>{value}</div>
+      <div className="text-[10px] text-[var(--muted-foreground)] font-semibold">{label}</div>
+      <div className="text-base font-extrabold" /* TAILWINDBREAK: dynamic color */ style={{ color: color || "var(--foreground)" }}>{value}</div>
     </div>
   );
 }
@@ -1181,7 +1138,7 @@ function TicketDetailDrawer({
 
         <div className="flex gap-2 items-center">
           <label className="text-[11px] font-bold text-[var(--muted-foreground)]">الحالة:</label>
-          <select value={status} onChange={(e) => changeStatus(e.target.value)} style={{ ...inputStyle, maxWidth: "180px" }}>
+          <select value={status} onChange={(e) => changeStatus(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[180px]">
             <option value="open">مفتوحة</option>
             <option value="pending">بانتظار المستخدم</option>
             <option value="resolved">تم الحل</option>
@@ -1190,8 +1147,8 @@ function TicketDetailDrawer({
         </div>
 
         {ticket.body && (
-          <div style={{ padding: "12px", background: "var(--muted)", borderRadius: "10px", fontSize: "13px", lineHeight: 1.6 }}>
-            <div style={{ fontSize: "10px", color: "var(--muted-foreground)", marginBottom: "6px", fontWeight: 700 }}>الرسالة الأصلية:</div>
+          <div className="p-3 bg-[var(--muted)] rounded-[10px] text-[13px] leading-relaxed">
+            <div className="text-[10px] text-[var(--muted-foreground)] mb-1.5 font-bold">الرسالة الأصلية:</div>
             {ticket.body}
           </div>
         )}
@@ -1207,14 +1164,14 @@ function TicketDetailDrawer({
                   <span className="font-bold">{r.senderEmail} ({r.senderRole})</span>
                   <span>{new Date(r.createdAt).toLocaleString("ar-EG")}</span>
                 </div>
-                <div style={{ fontSize: "12px", lineHeight: 1.5 }}>{r.body}</div>
+                <div className="text-xs leading-relaxed">{r.body}</div>
               </div>
             ))
           )}
         </div>
 
         <div className="flex flex-col gap-2 mt-2">
-          <label style={labelStyle}>إضافة رد:</label>
+          <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">إضافة رد:</label>
           <Textarea
             value={replyBody}
             onChange={(e) => setReplyBody(e.target.value)}
@@ -1225,13 +1182,7 @@ function TicketDetailDrawer({
           <button
             onClick={sendReply}
             disabled={sending || !replyBody.trim()}
-            style={{
-              alignSelf: "flex-end", display: "inline-flex", alignItems: "center", gap: "6px",
-              padding: "8px 16px", borderRadius: "8px",
-              background: "var(--primary)", color: "var(--primary-foreground)",
-              border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 700,
-              cursor: sending ? "not-allowed" : "pointer", opacity: (sending || !replyBody.trim()) ? 0.6 : 1,
-            }}
+            className="self-end inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: sending ? "not-allowed" : "pointer", opacity: (sending || !replyBody.trim()) ? 0.6 : 1 }}
           >
             <Send size={14} /> {sending ? "جارٍ…" : "إرسال الرد"}
           </button>
@@ -1330,8 +1281,8 @@ function AiOrchestrationTab() {
     }
   }, [load]);
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
-  if (!data) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!data) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
 
   const fmtMs = (ms: number | null): string => {
     if (!ms) return "—";
@@ -1351,7 +1302,7 @@ function AiOrchestrationTab() {
       {/* Header + Run Benchmark button */}
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <div>
-          <h3 style={{ fontSize: "16px", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-base font-extrabold flex items-center gap-2">
             <Network className="text-violet-600" size={18} /> طبقة تنسيق الذكاء الاصطناعي
           </h3>
           <p className="text-xs text-[var(--muted-foreground)] mt-1">
@@ -1361,14 +1312,7 @@ function AiOrchestrationTab() {
         <button
           onClick={runBenchmark}
           disabled={running}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "8px",
-            padding: "10px 18px", borderRadius: "10px",
-            background: running ? "var(--muted)" : "#7c3aed",
-            color: running ? "var(--muted-foreground)" : "#fff",
-            border: "1px solid var(--border)", fontFamily: "inherit", fontSize: "13px", fontWeight: 700,
-            cursor: running ? "not-allowed" : "pointer", opacity: running ? 0.7 : 1,
-          }}
+          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] border border-[var(--border)] font-inherit text-[13px] font-bold" /* TAILWINDBREAK: dynamic bg/color/opacity/cursor */ style={{ background: running ? "var(--muted)" : "#7c3aed", color: running ? "var(--muted-foreground)" : "#fff", cursor: running ? "not-allowed" : "pointer", opacity: running ? 0.7 : 1 }}
         >
           {running ? <RefreshCw size={15} className="animate-spin" /> : <Zap size={15} />}
           {running ? "جارٍ الاختبار…" : "تشغيل الاختبار الآن"}
@@ -1388,7 +1332,7 @@ function AiOrchestrationTab() {
       {/* Routing matrix — primary model per capability */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
-          <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-sm font-bold flex items-center gap-2">
             <Gauge className="text-violet-600" size={16} /> مصفوفة التوجيه (النموذج الأساسي لكل قدرة)
           </h3>
           <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
@@ -1398,31 +1342,31 @@ function AiOrchestrationTab() {
         <div className="garfix-scroll overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead><tr className="bg-[var(--muted)]">
-              <th style={th}>القدرة</th><th style={th}>النموذج الأساسي</th>
-              <th style={th}>المزوّد</th><th style={th}>درجة الصحة</th>
-              <th style={th}>الطبقة</th><th style={th}>عدد المرشحين</th>
+              <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">القدرة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النموذج الأساسي</th>
+              <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المزوّد</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">درجة الصحة</th>
+              <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الطبقة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">عدد المرشحين</th>
             </tr></thead>
             <tbody>
               {data.routingMatrix.map((r) => {
                 const tb = r.primary ? tierBadge(r.primary.tier) : null;
                 return (
                   <tr className="border-b border-b-[var(--border)]" key={r.capability}>
-                    <td style={{ ...td, fontWeight: 700 }}>{capLabel[r.capability] || r.capability}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "12px", direction: "ltr", textAlign: "right" }}>
+                    <td className="px-3 py-2.5 text-[13px] font-bold">{capLabel[r.capability] || r.capability}</td>
+                    <td className="px-3 py-2.5 font-mono text-[12px] [direction:ltr] text-right">
                       {r.primary ? r.primary.displayName : <span className="text-[var(--muted-foreground)]">— لا يوجد مرشح سليم —</span>}
                     </td>
-                    <td style={{ ...td, fontSize: "12px" }}>{r.primary?.provider || "—"}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>
+                    <td className="px-3 py-2.5 text-[12px]">{r.primary?.provider || "—"}</td>
+                    <td className="px-3 py-2.5 text-[13px] font-bold">
                       {r.primary ? (
-                        <span style={{ color: healthColor(r.primary.healthScore) }}>{r.primary.healthScore.toFixed(1)} / 10</span>
+                        <span /* TAILWINDBREAK: dynamic color */ style={{ color: healthColor(r.primary.healthScore) }}>{r.primary.healthScore.toFixed(1)} / 10</span>
                       ) : "—"}
                     </td>
-                    <td style={td}>
+                    <td className="px-3 py-2.5 text-[13px]">
                       {tb ? (
-                        <span style={{ background: tb.bg, color: tb.fg, padding: "2px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700 }}>{tb.label}</span>
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: tb.bg, color: tb.fg }}>{tb.label}</span>
                       ) : "—"}
                     </td>
-                    <td style={td}>{r.candidateCount}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{r.candidateCount}</td>
                   </tr>
                 );
               })}
@@ -1434,7 +1378,7 @@ function AiOrchestrationTab() {
       {/* Model Registry table */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
-          <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-sm font-bold flex items-center gap-2">
             <Network className="text-violet-600" size={16} /> سجل النماذج ({data.registry.length})
           </h3>
           <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
@@ -1446,15 +1390,15 @@ function AiOrchestrationTab() {
             السجل فارغ — شغّل <code className="bg-[var(--muted)] px-1.5 py-0.5 rounded">bun run scripts/seed-model-registry.ts</code> لملئه
           </div>
         ) : (
-          <div style={{ maxHeight: "420px" }} className="garfix-scroll overflow-x-auto overflow-y-auto">
+          <div className="max-h-[420px]" className="garfix-scroll overflow-x-auto overflow-y-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)", position: "sticky", top: 0, zIndex: 1 }}>
-                <th style={th}>النموذج</th><th style={th}>القدرات</th>
-                <th style={th}>الطبقة</th><th style={th}>درجة الصحة</th>
-                <th style={th}>النجاح</th><th style={th}>p50</th>
-                <th style={th}>p95</th><th style={th}>الجودة</th>
-                <th style={th}>التكلفة/1k</th><th style={th}>الاختبارات</th>
-                <th style={th}>آخر اختبار</th><th style={th}>الحالة</th>
+              <thead><tr className="bg-[var(--muted)] sticky top-0 z-[1]">
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النموذج</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">القدرات</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الطبقة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">درجة الصحة</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النجاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">p50</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">p95</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الجودة</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التكلفة/1k</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الاختبارات</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">آخر اختبار</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th>
               </tr></thead>
               <tbody>
                 {data.registry.map((m) => {
@@ -1463,31 +1407,31 @@ function AiOrchestrationTab() {
                   const last = m.lastBenchmarkAt ? new Date(m.lastBenchmarkAt).toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—";
                   return (
                     <tr className="border-b border-b-[var(--border)]" key={m.id}>
-                      <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right", fontWeight: 700 }}>
+                      <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right font-bold">
                         {m.provider}/{m.model}
                       </td>
-                      <td style={td}>
+                      <td className="px-3 py-2.5 text-[13px]">
                         <div className="flex gap-1 flex-wrap">
                           {m.capabilities.map((c) => (
-                            <span key={c} style={{ background: "var(--muted)", padding: "1px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: 600 }}>{capLabel[c] || c}</span>
+                            <span key={c} className="bg-[var(--muted)] px-1.5 py-px rounded text-[10px] font-semibold">{capLabel[c] || c}</span>
                           ))}
                         </div>
                       </td>
-                      <td style={td}><span style={{ background: tb.bg, color: tb.fg, padding: "2px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700 }}>{tb.label}</span></td>
-                      <td style={{ ...td, fontWeight: 800, color: healthColor(m.healthScore) }}>{m.healthScore.toFixed(1)}</td>
-                      <td style={{ ...td, fontWeight: 700, color: m.successRate >= 95 ? "#10b981" : m.successRate >= 80 ? "#f59e0b" : "#ef4444" }}>
+                      <td className="px-3 py-2.5 text-[13px]"><span className="px-2 py-0.5 rounded-md text-[11px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: tb.bg, color: tb.fg }}>{tb.label}</span></td>
+                      <td className="px-3 py-2.5 text-[13px] font-extrabold" /* TAILWINDBREAK: dynamic color */ style={{ color: healthColor(m.healthScore) }}>{m.healthScore.toFixed(1)}</td>
+                      <td className="px-3 py-2.5 text-[13px] font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: m.successRate >= 95 ? "#10b981" : m.successRate >= 80 ? "#f59e0b" : "#ef4444" }}>
                         {m.totalBenchmarks > 0 ? `${m.successRate.toFixed(0)}%` : "—"}
                       </td>
-                      <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{fmtMs(m.avgLatencyMs)}</td>
-                      <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700, color: (m.p95LatencyMs ?? 0) > 5000 ? "#ef4444" : (m.p95LatencyMs ?? 0) > 2000 ? "#f59e0b" : "var(--foreground)" }}>{fmtMs(m.p95LatencyMs)}</td>
-                      <td style={{ ...td, fontWeight: 700 }}>{m.totalBenchmarks > 0 ? m.avgQualityScore.toFixed(1) : "—"}</td>
-                      <td style={{ ...td, direction: "ltr", textAlign: "right", fontSize: "11px" }}>{costStr}</td>
-                      <td style={td}>{m.totalBenchmarks}</td>
-                      <td style={{ ...td, fontSize: "11px", color: "var(--muted-foreground)" }}>{last}</td>
-                      <td style={td}>
+                      <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{fmtMs(m.avgLatencyMs)}</td>
+                      <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: (m.p95LatencyMs ?? 0) > 5000 ? "#ef4444" : (m.p95LatencyMs ?? 0) > 2000 ? "#f59e0b" : "var(--foreground)" }}>{fmtMs(m.p95LatencyMs)}</td>
+                      <td className="px-3 py-2.5 text-[13px] font-bold">{m.totalBenchmarks > 0 ? m.avgQualityScore.toFixed(1) : "—"}</td>
+                      <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right">{costStr}</td>
+                      <td className="px-3 py-2.5 text-[13px]">{m.totalBenchmarks}</td>
+                      <td className="px-3 py-2.5 text-[11px] text-[var(--muted-foreground)]">{last}</td>
+                      <td className="px-3 py-2.5 text-[13px]">
                         <div className="flex items-center gap-1.5">
                           {!m.isHealthy && m.isEnabled && (
-                            <span style={{ background: "#fee2e2", color: "#dc2626", padding: "1px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: 700 }}>غير صحي</span>
+                            <span className="bg-red-100 text-red-600 px-1.5 py-px rounded text-[10px] font-bold">غير صحي</span>
                           )}
                           <Switch checked={m.isEnabled} onCheckedChange={(v) => toggleModel(m.provider, m.model, v)} />
                         </div>
@@ -1505,25 +1449,25 @@ function AiOrchestrationTab() {
       {data.recentBenchmarks.length > 0 && (
         <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
           <div className="px-4 py-3 border-b border-b-[var(--border)]">
-            <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+            <h3 className="text-sm font-bold flex items-center gap-2">
               <Activity className="text-violet-600" size={16} /> آخر نتائج الاختبارات ({data.recentBenchmarks.length})
             </h3>
           </div>
-          <div style={{ maxHeight: "260px" }} className="garfix-scroll overflow-x-auto overflow-y-auto">
+          <div className="max-h-[260px]" className="garfix-scroll overflow-x-auto overflow-y-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "var(--muted)", position: "sticky", top: 0, zIndex: 1 }}>
-                <th style={th}>القدرة</th><th style={th}>الحالة</th><th style={th}>الزمن</th>
-                <th style={th}>الرموز</th><th style={th}>الجودة</th><th style={th}>الوقت</th>
+              <thead><tr className="bg-[var(--muted)] sticky top-0 z-[1]">
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">القدرة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الزمن</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الرموز</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الجودة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th>
               </tr></thead>
               <tbody>
                 {data.recentBenchmarks.slice(0, 20).map((b) => (
                   <tr className="border-b border-b-[var(--border)]" key={b.id}>
-                    <td style={{ ...td, fontWeight: 700 }}>{capLabel[b.capability] || b.capability}</td>
-                    <td style={{ ...td, fontWeight: 700, color: b.success ? "#10b981" : "#ef4444" }}>{b.success ? "✓ نجاح" : "✗ فشل"}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{fmtMs(b.latencyMs)}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right", fontSize: "11px" }}>{b.tokensIn}/{b.tokensOut}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{b.responseQuality.toFixed(1)}</td>
-                    <td style={{ ...td, fontSize: "11px", color: "var(--muted-foreground)" }}>{new Date(b.createdAt).toLocaleTimeString("ar-EG")}</td>
+                    <td className="px-3 py-2.5 text-[13px] font-bold">{capLabel[b.capability] || b.capability}</td>
+                    <td className="px-3 py-2.5 text-[13px] font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: b.success ? "#10b981" : "#ef4444" }}>{b.success ? "✓ نجاح" : "✗ فشل"}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{fmtMs(b.latencyMs)}</td>
+                    <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right">{b.tokensIn}/{b.tokensOut}</td>
+                    <td className="px-3 py-2.5 text-[13px] font-bold">{b.responseQuality.toFixed(1)}</td>
+                    <td className="px-3 py-2.5 text-[11px] text-[var(--muted-foreground)]">{new Date(b.createdAt).toLocaleTimeString("ar-EG")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1617,77 +1561,77 @@ function FeatureFlagsTab() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
     <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center">
-        <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h3 className="text-sm font-bold flex items-center gap-2">
           <Sparkles className="text-violet-600" size={16} />
           ميزات المنصة ({flags.length})
         </h3>
-        <button onClick={() => setShowForm((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => setShowForm((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer">
           <Plus size={12} /> ميزة جديدة
         </button>
       </div>
       {showForm && (
         <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div>
-              <label style={labelStyle}>المفتاح (key)</label>
-              <input value={newFlag.key} onChange={(e) => setNewFlag({ ...newFlag, key: e.target.value })} placeholder="ai.invoice-brain" style={inputStyle} dir="ltr" />
+              <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المفتاح (key)</label>
+              <input value={newFlag.key} onChange={(e) => setNewFlag({ ...newFlag, key: e.target.value })} placeholder="ai.invoice-brain" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" dir="ltr" />
             </div>
             <div>
-              <label style={labelStyle}>التسمية (label)</label>
-              <input value={newFlag.label} onChange={(e) => setNewFlag({ ...newFlag, label: e.target.value })} placeholder="محرك تعلم الفواتير" style={inputStyle} />
+              <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">التسمية (label)</label>
+              <input value={newFlag.label} onChange={(e) => setNewFlag({ ...newFlag, label: e.target.value })} placeholder="محرك تعلم الفواتير" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" />
             </div>
             <div className="col-span-full">
-              <label style={labelStyle}>الوصف</label>
-              <input value={newFlag.description} onChange={(e) => setNewFlag({ ...newFlag, description: e.target.value })} style={inputStyle} />
+              <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">الوصف</label>
+              <input value={newFlag.description} onChange={(e) => setNewFlag({ ...newFlag, description: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" />
             </div>
             <div>
-              <label style={labelStyle}>الباقات (افصل بفواصل)</label>
-              <input value={newFlag.plans} onChange={(e) => setNewFlag({ ...newFlag, plans: e.target.value })} placeholder="trial, starter, professional" style={inputStyle} dir="ltr" />
+              <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">الباقات (افصل بفواصل)</label>
+              <input value={newFlag.plans} onChange={(e) => setNewFlag({ ...newFlag, plans: e.target.value })} placeholder="trial, starter, professional" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" dir="ltr" />
             </div>
             <div>
-              <label style={labelStyle}>الحالة</label>
-              <select value={newFlag.isActive ? "1" : "0"} onChange={(e) => setNewFlag({ ...newFlag, isActive: e.target.value === "1" })} style={inputStyle}>
+              <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">الحالة</label>
+              <select value={newFlag.isActive ? "1" : "0"} onChange={(e) => setNewFlag({ ...newFlag, isActive: e.target.value === "1" })} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none">
                 <option value="1">نشطة</option>
                 <option value="0">موقوفة</option>
               </select>
             </div>
           </div>
-          <button onClick={create} style={{ alignSelf: "flex-end", padding: "8px 20px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>إنشاء</button>
+          <button onClick={create} className="self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer">إنشاء</button>
         </div>
       )}
       {flags.length === 0 ? (
-        <div className="p-8 text-center text-[var(--muted-foreground)]">لا توجد ميزات بعد</div>
+        <div className="p-4 md:p-8 text-center text-[var(--muted-foreground)]">لا توجد ميزات بعد</div>
       ) : (
         <div className="garfix-scroll overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead><tr className="bg-[var(--muted)]">
-              <th style={th}>المفتاح</th><th style={th}>التسمية</th><th style={th}>الباقات</th>
-              <th style={th}>الحالة</th><th style={th}>إجراءات</th>
+              <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المفتاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التسمية</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الباقات</th>
+              <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراءات</th>
             </tr></thead>
             <tbody>
               {flags.map((f) => (
                 <tr className="border-b border-b-[var(--border)]" key={f.id}>
-                  <td style={{ ...td, fontFamily: "monospace", direction: "ltr", textAlign: "right" }}>{f.key}</td>
-                  <td style={{ ...td, fontWeight: 700 }}>{f.label}</td>
-                  <td style={td}>{f.plans.length === 0 ? "الكل" : f.plans.join(", ")}</td>
-                  <td style={td}>
-                    <span style={{ padding: "2px 10px", borderRadius: "12px", background: f.isActive ? "rgba(16,185,129,0.15)" : "rgba(156,163,175,0.15)", color: f.isActive ? "#10b981" : "#9ca3af", fontSize: "11px", fontWeight: 700 }}>
+                  <td className="px-3 py-2.5 text-[13px] font-mono [direction:ltr] text-right">{f.key}</td>
+                  <td className="px-3 py-2.5 text-[13px] font-bold">{f.label}</td>
+                  <td className="px-3 py-2.5 text-[13px]">{f.plans.length === 0 ? "الكل" : f.plans.join(", ")}</td>
+                  <td className="px-3 py-2.5 text-[13px]">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: f.isActive ? "rgba(16,185,129,0.15)" : "rgba(156,163,175,0.15)", color: f.isActive ? "#10b981" : "#9ca3af" }}>
                       {f.isActive ? "نشطة" : "موقوفة"}
                     </span>
                   </td>
-                  <td style={td}>
+                  <td className="px-3 py-2.5 text-[13px]">
                     <div className="flex gap-1">
-                      <button onClick={() => toggle(f.id, f.isActive)} style={iconBtn(f.isActive ? "#f59e0b" : "#10b981")} title={f.isActive ? "إيقاف" : "تفعيل"}>
+                      <IconBtn color={f.isActive ? "#f59e0b" : "#10b981"} onClick={() => toggle(f.id, f.isActive)} title={f.isActive ? "إيقاف" : "تفعيل"} aria-label={f.isActive ? "إيقاف" : "تفعيل"}>
                         {f.isActive ? <X size={14} /> : <Check size={14} />}
-                      </button>
-                      <button onClick={() => remove(f.id)} style={iconBtn("#ef4444")} title="حذف">
+                      </IconBtn>
+                      <IconBtn color="#ef4444" onClick={() => remove(f.id)} title="حذف" aria-label="حذف">
                         <Trash2 size={14} />
-                      </button>
+                      </IconBtn>
                     </div>
                   </td>
                 </tr>
@@ -1745,8 +1689,8 @@ function AiUsageTab() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
-  if (!data) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!data) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
 
   // P0.3: helper to format ms nicely (e.g. "1.2s" or "340ms")
   const fmtMs = (ms: number | null): string => {
@@ -1772,7 +1716,7 @@ function AiUsageTab() {
           see at a glance which AI paths are fast/reliable and which aren't. */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
-          <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-sm font-bold flex items-center gap-2">
             <Activity className="text-violet-600" size={16} />
             فعالية وزمن كل Endpoint ({data.perEndpoint.length})
           </h3>
@@ -1786,26 +1730,26 @@ function AiUsageTab() {
           <div className="garfix-scroll overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead><tr className="bg-[var(--muted)]">
-                <th style={th}>Endpoint</th><th style={th}>النداءات</th>
-                <th style={th}>معدل النجاح</th><th style={th}>p50</th>
-                <th style={th}>p95</th><th style={th}>min</th>
-                <th style={th}>max</th><th style={th}>avg</th>
-                <th style={th}>التكلفة</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">Endpoint</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النداءات</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">معدل النجاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">p50</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">p95</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">min</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">max</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">avg</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التكلفة</th>
               </tr></thead>
               <tbody>
                 {data.perEndpoint.map((e) => (
                   <tr className="border-b border-b-[var(--border)]" key={e.endpoint}>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right", fontWeight: 700 }}>{e.endpoint}</td>
-                    <td style={td}>{e.calls}</td>
-                    <td style={{ ...td, fontWeight: 700, color: e.successRate === null ? "var(--muted-foreground)" : (e.successRate >= 95 ? "#10b981" : e.successRate >= 80 ? "#f59e0b" : "#ef4444") }}>
+                    <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right font-bold">{e.endpoint}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{e.calls}</td>
+                    <td className="px-3 py-2.5 text-[13px] font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: e.successRate === null ? "var(--muted-foreground)" : (e.successRate >= 95 ? "#10b981" : e.successRate >= 80 ? "#f59e0b" : "#ef4444") }}>
                       {e.successRate !== null ? `${e.successRate}%` : "—"}
                     </td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{fmtMs(e.p50Ms)}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700, color: (e.p95Ms ?? 0) > 5000 ? "#ef4444" : (e.p95Ms ?? 0) > 2000 ? "#f59e0b" : "var(--foreground)" }}>{fmtMs(e.p95Ms)}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right", fontSize: "11px", color: "var(--muted-foreground)" }}>{fmtMs(e.minMs)}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right", fontSize: "11px", color: "var(--muted-foreground)" }}>{fmtMs(e.maxMs)}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{fmtMs(e.avgMs)}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>${e.cost.toFixed(4)}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{fmtMs(e.p50Ms)}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: (e.p95Ms ?? 0) > 5000 ? "#ef4444" : (e.p95Ms ?? 0) > 2000 ? "#f59e0b" : "var(--foreground)" }}>{fmtMs(e.p95Ms)}</td>
+                    <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right text-[var(--muted-foreground)]">{fmtMs(e.minMs)}</td>
+                    <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right text-[var(--muted-foreground)]">{fmtMs(e.maxMs)}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{fmtMs(e.avgMs)}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">${e.cost.toFixed(4)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1815,7 +1759,7 @@ function AiUsageTab() {
       </div>
 
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4">
-        <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+        <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
           <Activity className="text-violet-600" size={16} />
           استهلاك آخر ٣٠ يوماً ({data.last30Days.length} يوم)
         </h3>
@@ -1846,7 +1790,7 @@ function AiUsageTab() {
       */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
-          <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-sm font-bold flex items-center gap-2">
             <Activity className="text-violet-600" size={16} />
             استهلاك AI لكل شركة × شهر ({data.perCompanyMonthly.length} صف)
           </h3>
@@ -1857,17 +1801,17 @@ function AiUsageTab() {
           <div className="garfix-scroll overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead><tr className="bg-[var(--muted)]">
-                <th style={th}>الشركة</th><th style={th}>الشهر</th>
-                <th style={th}>نداءات AI</th><th style={th}>الرموز</th><th style={th}>التكلفة</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشهر</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">نداءات AI</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الرموز</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التكلفة</th>
               </tr></thead>
               <tbody>
                 {data.perCompanyMonthly.slice(0, 200).map((row, i) => (
                   <tr className="border-b border-b-[var(--border)]" key={`${row.companySlug}-${row.month}-${i}`}>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{row.companySlug}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{row.month}</td>
-                    <td style={td}>{row.calls}</td>
-                    <td style={td}>{row.tokens.toLocaleString("en-US")}</td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right", fontWeight: 700 }}>${row.cost.toFixed(4)}</td>
+                    <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">{row.companySlug}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{row.month}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{row.calls}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{row.tokens.toLocaleString("en-US")}</td>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold">${row.cost.toFixed(4)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1879,24 +1823,24 @@ function AiUsageTab() {
       {data.recentErrors.length > 0 && (
         <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
           <div className="px-4 py-3 border-b border-b-[var(--border)]">
-            <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#ef4444", display: "flex", alignItems: "center", gap: "8px" }}>
+            <h3 className="text-sm font-bold flex items-center gap-2 text-red-500">
               <AlertTriangle size={16} /> أخطاء حديثة ({data.recentErrors.length})
             </h3>
           </div>
           <div className="garfix-scroll overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead><tr className="bg-[var(--muted)]">
-                <th style={th}>الوقت</th><th style={th}>المزود</th><th style={th}>الموديل</th>
-                <th style={th}>الشركة</th><th style={th}>الخطأ</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المزود</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الموديل</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الخطأ</th>
               </tr></thead>
               <tbody>
                 {data.recentErrors.map((e) => (
                   <tr className="border-b border-b-[var(--border)]" key={e.id}>
-                    <td style={td}>{new Date(e.createdAt).toLocaleString("ar-EG")}</td>
-                    <td style={td}>{e.provider}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{e.model}</td>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{e.companySlug || "—"}</td>
-                    <td style={{ ...td, fontSize: "11px", color: "#fca5a5", direction: "ltr", textAlign: "right" }}>{(e.errorMessage || "").slice(0, 200)}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{new Date(e.createdAt).toLocaleString("ar-EG")}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{e.provider}</td>
+                    <td className="px-3 py-2.5 font-mono text-[11px]">{e.model}</td>
+                    <td className="px-3 py-2.5 font-mono text-[11px]">{e.companySlug || "—"}</td>
+                    <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right" /* TAILWINDBREAK: dynamic color */ style={{ color: "#fca5a5" }}>{(e.errorMessage || "").slice(0, 200)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1912,7 +1856,7 @@ function UsageTable({ title, headers, rows }: { title: string; headers: string[]
   return (
     <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
       <div className="px-3 py-2.5 border-b border-b-[var(--border)]">
-        <h4 style={{ fontSize: "12px", fontWeight: 700 }}>{title}</h4>
+        <h4 className="text-xs font-bold">{title}</h4>
       </div>
       {rows.length === 0 ? (
         <div className="p-4 text-center text-[var(--muted-foreground)] text-[11px]">لا توجد بيانات</div>
@@ -1920,15 +1864,15 @@ function UsageTable({ title, headers, rows }: { title: string; headers: string[]
         <div className="garfix-scroll overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead><tr className="bg-[var(--muted)]">
-              {headers.map((h) => <th key={h} style={th}>{h}</th>)}
+              {headers.map((h) => <th scope="col" key={h} className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">{h}</th>)}
             </tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr className="border-b border-b-[var(--border)]" key={i}>
-                  <td style={{ ...td, fontWeight: 700, fontFamily: "monospace", fontSize: "11px", direction: "ltr", textAlign: "right" }}>{r.col1}</td>
-                  <td style={td}>{r.col2}</td>
-                  <td style={{ ...td, direction: "ltr", textAlign: "right" }}>{r.col3}</td>
-                  <td style={td}>{r.col4}</td>
+                  <td className="px-3 py-2.5 font-bold font-mono text-[11px] [direction:ltr] text-right">{r.col1}</td>
+                  <td className="px-3 py-2.5 text-[13px]">{r.col2}</td>
+                  <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{r.col3}</td>
+                  <td className="px-3 py-2.5 text-[13px]">{r.col4}</td>
                 </tr>
               ))}
             </tbody>
@@ -1985,15 +1929,15 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
-  if (!data) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!data) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>;
 
   return (
     <div className="flex flex-col gap-4">
       {/* Per-tenant breakdown chips */}
       {data.byTenant.length > 0 && (
         <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] px-4 py-3">
-          <h3 style={{ fontSize: "13px", fontWeight: 700, marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+          <h3 className="text-[13px] font-bold mb-2 flex items-center gap-1.5">
             <ListChecks className="text-violet-600" size={14} />
             التوزيع حسب الشركة ({data.byTenant.length} شركة)
           </h3>
@@ -2002,13 +1946,7 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
               <button
                 key={t.companySlug}
                 onClick={() => setTenantFilter(tenantFilter === t.companySlug ? "" : t.companySlug)}
-                style={{
-                  padding: "4px 10px", borderRadius: "12px",
-                  background: tenantFilter === t.companySlug ? "var(--primary)" : "var(--muted)",
-                  color: tenantFilter === t.companySlug ? "var(--primary-foreground)" : "var(--foreground)",
-                  border: "1px solid var(--border)", fontFamily: "inherit",
-                  fontSize: "11px", fontWeight: 700, cursor: "pointer",
-                }}
+                className="px-2.5 py-1 rounded-full border border-[var(--border)] font-inherit text-[11px] font-bold cursor-pointer" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: tenantFilter === t.companySlug ? "var(--primary)" : "var(--muted)", color: tenantFilter === t.companySlug ? "var(--primary-foreground)" : "var(--foreground)" }}
               >
                 {t.companySlug}: {t.count}
               </button>
@@ -2019,7 +1957,7 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
 
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
-          <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-sm font-bold flex items-center gap-2">
             <AlertTriangle className="text-amber-500" size={16} />
             عناصر بانتظار المراجعة ({data.count})
           </h3>
@@ -2027,12 +1965,7 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
             <button
               type="button"
               onClick={() => onOpenReviewQueue(null)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "6px 12px", borderRadius: "8px",
-                background: "#7c3aed", color: "#fff", border: "none",
-                fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer",
-              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer"
               title="افتح نافذة المراجعة لكل الشركات (founder cross-tenant)"
             >
               <Eye size={12} /> افتح كل الشركات
@@ -2040,42 +1973,40 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
             <select
               value={tierFilter}
               onChange={(e) => setTierFilter(e.target.value)}
-              style={{ ...inputStyle, maxWidth: "200px" }}
+              className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[200px]"
             >
               <option value="">كل الأنواع</option>
               <option value="suggested">مقترح (suggested)</option>
               <option value="collision-recovery-failed">فشل التطابق (collision)</option>
             </select>
             {(tierFilter || tenantFilter) && (
-              <button
-                onClick={() => { setTierFilter(""); setTenantFilter(""); }}
-                style={{ ...iconBtn("#9ca3af"), padding: "4px 8px", width: "auto" }}
+              <IconBtn color="#9ca3af" aria-label="مسح الفلاتر" className="!w-auto !px-2 !py-1" onClick={() => { setTierFilter(""); setTenantFilter(""); }}
               >
                 مسح الفلاتر
-              </button>
+              </IconBtn>
             )}
           </div>
         </div>
         {data.items.length === 0 ? (
-          <div className="p-12 text-center text-[var(--muted-foreground)]">
+          <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">
             ✅ لا توجد عناصر بانتظار المراجعة — جميع التطابقات تتم بنجاح.
           </div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead><tr className="bg-[var(--muted)]">
-                <th style={th}>الشركة</th><th style={th}>النص المُدخل</th>
-                <th style={th}>المنتج المُطابق</th><th style={th}>الثقة</th>
-                <th style={th}>النوع</th><th style={th}>التاريخ</th><th style={th}>إجراء</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النص المُدخل</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المنتج المُطابق</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الثقة</th>
+                <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التاريخ</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراء</th>
               </tr></thead>
               <tbody>
                 {data.items.map((item) => (
                   <tr className="border-b border-b-[var(--border)]" key={item.id}>
-                    <td style={{ ...td, fontFamily: "monospace", fontSize: "11px" }}>{item.companySlug}</td>
-                    <td style={{ ...td, maxWidth: "240px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.inputText}>
+                    <td className="px-3 py-2.5 font-mono text-[11px]">{item.companySlug}</td>
+                    <td className="px-3 py-2.5 text-[13px] max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap" title={item.inputText}>
                       {item.inputText}
                     </td>
-                    <td style={td}>
+                    <td className="px-3 py-2.5 text-[13px]">
                       {item.productName ? (
                         <span className="text-[11px]">
                           {item.productName}
@@ -2085,34 +2016,27 @@ function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug: strin
                         <span className="text-[11px] text-[#fca5a5]">— لا يطابق —</span>
                       )}
                     </td>
-                    <td style={{ ...td, direction: "ltr", textAlign: "right" }}>
-                      <span style={{
-                        padding: "2px 8px", borderRadius: "8px", fontSize: "10px", fontWeight: 700,
-                        background: item.confidence >= 0.85 ? "rgba(16,185,129,0.15)" : item.confidence >= 0.7 ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)",
-                        color: item.confidence >= 0.85 ? "#10b981" : item.confidence >= 0.7 ? "#f59e0b" : "#ef4444",
-                      }}>
+                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: item.confidence >= 0.85 ? "rgba(16,185,129,0.15)" : item.confidence >= 0.7 ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)", color: item.confidence >= 0.85 ? "#10b981" : item.confidence >= 0.7 ? "#f59e0b" : "#ef4444" }}>
                         {(item.confidence * 100).toFixed(0)}%
                       </span>
                     </td>
-                    <td style={td}>
-                      <span style={{
-                        padding: "2px 8px", borderRadius: "8px", fontSize: "10px", fontWeight: 700,
-                        background: item.tier === "collision-recovery-failed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
-                        color: item.tier === "collision-recovery-failed" ? "#ef4444" : "#f59e0b",
-                      }}>
+                    <td className="px-3 py-2.5 text-[13px]">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: item.tier === "collision-recovery-failed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: item.tier === "collision-recovery-failed" ? "#ef4444" : "#f59e0b" }}>
                         {item.tier}
                       </span>
                     </td>
-                    <td style={td}>{new Date(item.createdAt).toLocaleString("ar-EG")}</td>
-                    <td style={td}>
-                      <button
+                    <td className="px-3 py-2.5 text-[13px]">{new Date(item.createdAt).toLocaleString("ar-EG")}</td>
+                    <td className="px-3 py-2.5 text-[13px]">
+                      <IconBtn
+                        color="#3b82f6"
                         type="button"
                         onClick={() => onOpenReviewQueue(item.companySlug)}
-                        style={iconBtn("#3b82f6")}
                         title="فتح صفحة المراجعة الخاصة بالشركة"
+                        aria-label="فتح صفحة المراجعة"
                       >
                         <Eye size={14} />
-                      </button>
+                      </IconBtn>
                     </td>
                   </tr>
                 ))}
@@ -2133,13 +2057,13 @@ function UtilizationBar({ label, current, max, pct }: { label: string; current: 
   const color = pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : "#10b981";
   const displayMax = max >= 999999 ? "∞" : String(max);
   return (
-    <div className="flex flex-col gap-0.5">
+    <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={label} className="flex flex-col gap-0.5">
       <div className="flex justify-between text-[10px] text-[var(--muted-foreground)]">
         <span>{label}</span>
         <span className="[direction:ltr]">{current} / {displayMax}</span>
       </div>
-      <div className="h-1 bg-[var(--muted)] overflow-hidden" style={{ borderRadius: "2px" }}>
-        <div style={{ height: "100%", width: `${Math.min(100, pct)}%`, background: color, transition: "width .2s" }} />
+      <div className="h-1 bg-[var(--muted)] overflow-hidden" className="rounded-sm">
+        <div className="h-full" /* TAILWINDBREAK: dynamic width/bg/transition */ style={{ width: `${Math.min(100, pct)}%`, background: color, transition: "width .2s" }} />
       </div>
     </div>
   );
@@ -2256,16 +2180,16 @@ function LandingContentTab() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
     <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
-        <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h3 className="text-sm font-bold flex items-center gap-2">
           <FileText className="text-emerald-500" size={16} />
           محتوى الصفحة الرئيسية ({items.length})
         </h3>
-        <button onClick={() => setShowCreate((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => setShowCreate((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer">
           <Plus size={12} /> مفتاح جديد
         </button>
       </div>
@@ -2273,21 +2197,21 @@ function LandingContentTab() {
       {showCreate && (
         <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
           <div>
-            <label style={labelStyle}>المفتاح (مثال: hero.title)</label>
+            <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المفتاح (مثال: hero.title)</label>
             <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="hero.title" dir="ltr" />
           </div>
           <div>
-            <label style={labelStyle}>القيمة (نص أو JSON)</label>
+            <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">القيمة (نص أو JSON)</label>
             <Textarea value={newValue} onChange={(e) => setNewValue(e.target.value)} rows={3} placeholder="مرحباً بكم في GarfiX" className="resize-y" />
           </div>
-          <button onClick={create} disabled={savingKey === "__new__"} style={{ alignSelf: "flex-end", display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 20px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: "pointer", opacity: savingKey === "__new__" ? 0.7 : 1 }}>
+          <button onClick={create} disabled={savingKey === "__new__"} className="self-end inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer" /* TAILWINDBREAK: dynamic opacity */ style={{ opacity: savingKey === "__new__" ? 0.7 : 1 }}>
             <Save size={14} /> {savingKey === "__new__" ? "جارٍ…" : "إنشاء"}
           </button>
         </div>
       )}
 
       {items.length === 0 ? (
-        <div className="p-8 text-center text-[var(--muted-foreground)]">
+        <div className="p-4 md:p-8 text-center text-[var(--muted-foreground)]">
           لا يوجد محتوى بعد. أنشئ مفتاحاً جديداً (مثل <code className="font-mono">hero.title</code>) ليقرأه صفحة الواجهة.
         </div>
       ) : (
@@ -2297,7 +2221,7 @@ function LandingContentTab() {
             return (
               <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex flex-col gap-2" key={it.key}>
                 <div className="flex justify-between items-center gap-2.5 flex-wrap">
-                  <code style={{ fontFamily: "monospace", fontSize: "12px", fontWeight: 700, direction: "ltr", color: "var(--foreground)" }}>{it.key}</code>
+                  <code className="font-mono text-xs font-bold [direction:ltr] text-[var(--foreground)]">{it.key}</code>
                   <span className="text-[10px] text-[var(--muted-foreground)]">
                     آخر تحديث: {new Date(it.updatedAt).toLocaleString("ar-EG")} {it.updatedBy ? `• ${it.updatedBy}` : ""}
                   </span>
@@ -2308,13 +2232,13 @@ function LandingContentTab() {
                   rows={isJson ? 5 : 2}
                   className="resize-y"
                   dir="ltr"
-                  style={{ fontFamily: isJson ? "monospace" : "inherit", fontSize: "12px" }}
+                  /* TAILWINDBREAK: dynamic fontFamily */ style={{ fontFamily: isJson ? "monospace" : "inherit" }} className="text-xs"
                 />
                 <div className="flex justify-end">
                   <button
                     onClick={() => save(it.key)}
                     disabled={savingKey === it.key}
-                    style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, cursor: "pointer", opacity: savingKey === it.key ? 0.7 : 1 }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer" /* TAILWINDBREAK: dynamic opacity */ style={{ opacity: savingKey === it.key ? 0.7 : 1 }}
                   >
                     <Save size={12} /> {savingKey === it.key ? "جارٍ…" : "حفظ"}
                   </button>
@@ -2386,40 +2310,40 @@ function IntegrationsTab() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   const configuring = integrations.find((i) => i.type === configuringType) || null;
 
   return (
     <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
-        <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h3 className="text-sm font-bold flex items-center gap-2">
           <Plug className="text-emerald-500" size={16} />
           التكاملات ({integrations.length})
         </h3>
-        <button onClick={load} style={iconBtn("#10b981")}><Activity size={14} /> تحديث</button>
+        <IconBtn color="#10b981" aria-label="تحديث التكاملات" onClick={load}><Activity size={14} /> تحديث</IconBtn>
       </div>
 
       {integrations.length === 0 ? (
-        <div className="p-8 text-center text-[var(--muted-foreground)]">لا توجد تكاملات مسجّلة</div>
+        <div className="p-4 md:p-8 text-center text-[var(--muted-foreground)]">لا توجد تكاملات مسجّلة</div>
       ) : (
         <div className="flex flex-col">
           {integrations.map((it) => (
             <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex items-center justify-between gap-3 flex-wrap" key={it.type}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "3px", flex: "1 1 240px", minWidth: 0 }}>
+              <div className="flex flex-col gap-[3px] flex-[1_1_240px] min-w-0">
                 <div className="flex items-center gap-2">
-                  <span style={{ fontSize: "13px", fontWeight: 800 }}>{it.name}</span>
-                  <code className="font-mono text-[10px] rounded bg-[var(--muted)] text-[var(--muted-foreground)]" style={{ padding: "1px 6px" }}>{it.type}</code>
+                  <span className="text-[13px] font-extrabold">{it.name}</span>
+                  <code className="font-mono text-[10px] rounded bg-[var(--muted)] text-[var(--muted-foreground)] px-1.5 py-px">{it.type}</code>
                 </div>
-                <div style={{ fontSize: "11px", color: "var(--muted-foreground)", lineHeight: 1.5 }}>{it.description}</div>
+                <div className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">{it.description}</div>
                 <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
                   {it.hasCredentials ? (
                     <>
-                      <span style={{ color: "#10b981", fontWeight: 700 }}>● مُهيّأ</span>
+                      <span className="text-emerald-500 font-bold">● مُهيّأ</span>
                       {it.credentialsLastUpdatedAt && <> • آخر تحديث: {new Date(it.credentialsLastUpdatedAt).toLocaleString("ar-EG")}</>}
                     </>
                   ) : (
-                    <span style={{ color: "#9ca3af", fontWeight: 700 }}>○ غير مُهيّأ</span>
+                    <span className="text-gray-400 font-bold">○ غير مُهيّأ</span>
                   )}
                   {!it.isRegistered && <span className="text-red-500 mr-2"> • غير مسجّل</span>}
                 </div>
@@ -2433,13 +2357,12 @@ function IntegrationsTab() {
                   }}
                   aria-label={`تفعيل ${it.name}`}
                 />
-                <button
+                <IconBtn color="#10b981" aria-label="إعدادات" className="!w-auto !px-2.5 !py-1"
                   onClick={() => setConfiguringType(it.type)}
                   title="إعدادات"
-                  style={{ ...iconBtn("#10b981"), width: "auto", padding: "4px 10px" }}
                 >
                   <Settings size={12} /> إعدادات
-                </button>
+                </IconBtn>
               </div>
             </div>
           ))}
@@ -2508,7 +2431,7 @@ function IntegrationConfigDialog({
         <div className="flex flex-col gap-3">
           {integration.requiredFields.map((f) => (
             <div key={f.key}>
-              <Label htmlFor={`int-${f.key}`} style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-foreground)", marginBottom: "4px", display: "block" }}>
+              <Label htmlFor={`int-${f.key}`} className="block text-[11px] font-bold text-[var(--muted-foreground)] mb-1">
                 {f.label} <code className="font-mono text-[10px]">{f.key}</code>
               </Label>
               <Input
@@ -2526,7 +2449,7 @@ function IntegrationConfigDialog({
           <button
             onClick={submit}
             disabled={saving}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 18px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+            className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
           >
             <Save size={14} /> {saving ? "جارٍ…" : "حفظ"}
           </button>
@@ -2604,8 +2527,8 @@ function RetentionCleanupTab() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
-  if (!preview) return <div className="p-12 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (!preview) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر التحميل</div>;
 
   const eligibleTotal = Object.values(preview.eligible).reduce((a, b) => a + b, 0);
   const deletedTotal = preview.deleted ? Object.values(preview.deleted).reduce((a, b) => a + b, 0) : 0;
@@ -2621,7 +2544,7 @@ function RetentionCleanupTab() {
   return (
     <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
-        <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h3 className="text-sm font-bold flex items-center gap-2">
           <Database className="text-emerald-500" size={16} />
           التنظيف الدوري للسجلات المعزولة
         </h3>
@@ -2630,7 +2553,7 @@ function RetentionCleanupTab() {
           <select
             value={retentionYears}
             onChange={(e) => setRetentionYears(Number(e.target.value))}
-            style={{ ...inputStyle, maxWidth: "100px" }}
+            className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[100px]"
             disabled={running}
           >
             {[3, 5, 7, 10].map((y) => <option key={y} value={y}>{y} سنوات</option>)}
@@ -2639,7 +2562,7 @@ function RetentionCleanupTab() {
       </div>
 
       <div className="p-4 flex flex-col gap-3.5">
-        <div className="bg-[var(--muted)] rounded-[10px] text-xs flex flex-col gap-1.5" style={{ padding: "12px 14px" }}>
+        <div className="bg-[var(--muted)] rounded-[10px] text-xs flex flex-col gap-1.5 px-3.5 py-3">
           <div><strong>تاريخ القطع:</strong> {new Date(preview.cutoffDate).toLocaleString("ar-EG")}</div>
           <div><strong>السجلات المعزولة قبل هذا التاريخ ستُحذف نهائياً.</strong></div>
           <div className="text-[10px] text-[var(--muted-foreground)]">
@@ -2650,10 +2573,10 @@ function RetentionCleanupTab() {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5">
           {Object.entries(preview.eligible).map(([k, v]) => (
             <div className="p-3 rounded-[10px] bg-[var(--card)] border border-[var(--border)]" key={k}>
-              <div style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 700 }}>{labelMap[k] || k}</div>
-              <div style={{ fontSize: "20px", fontWeight: 900, color: v > 0 ? "#f59e0b" : "var(--foreground)" }}>{v}</div>
+              <div className="text-[10px] text-[var(--muted-foreground)] font-bold">{labelMap[k] || k}</div>
+              <div className="text-xl font-black" /* TAILWINDBREAK: dynamic color */ style={{ color: v > 0 ? "#f59e0b" : "var(--foreground)" }}>{v}</div>
               {preview.deleted && (
-                <div style={{ fontSize: "10px", color: "#10b981", fontWeight: 700 }}>حُذف: {preview.deleted[k] || 0}</div>
+                <div className="text-[10px] text-emerald-500 font-bold">حُذف: {preview.deleted[k] || 0}</div>
               )}
             </div>
           ))}
@@ -2661,20 +2584,20 @@ function RetentionCleanupTab() {
 
         <div className="flex justify-between items-center flex-wrap gap-2.5">
           <div className="text-xs text-[var(--muted-foreground)]">
-            الإجمالي المؤهّل: <strong style={{ color: eligibleTotal > 0 ? "#f59e0b" : "var(--foreground)" }}>{eligibleTotal}</strong>
+            الإجمالي المؤهّل: <strong /* TAILWINDBREAK: dynamic color */ style={{ color: eligibleTotal > 0 ? "#f59e0b" : "var(--foreground)" }}>{eligibleTotal}</strong>
             {preview.deleted && <> • تم حذف: <strong className="text-emerald-500">{deletedTotal}</strong></>}
           </div>
           <button
             onClick={runCleanup}
             disabled={running || eligibleTotal === 0}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "10px 22px", borderRadius: "10px", background: eligibleTotal > 0 ? "#ef4444" : "var(--muted)", color: "#fff", border: "none", fontFamily: "inherit", fontSize: "13px", fontWeight: 800, cursor: running || eligibleTotal === 0 ? "not-allowed" : "pointer", opacity: running ? 0.7 : 1 }}
+            className="inline-flex items-center gap-1.5 px-5.5 py-2.5 rounded-[10px] border-none text-white font-inherit text-[13px] font-extrabold" /* TAILWINDBREAK: dynamic bg/cursor/opacity */ style={{ background: eligibleTotal > 0 ? "#ef4444" : "var(--muted)", cursor: running || eligibleTotal === 0 ? "not-allowed" : "pointer", opacity: running ? 0.7 : 1 }}
           >
             <Trash2 size={14} /> {running ? "جارٍ الحذف…" : "تشغيل التنظيف الآن"}
           </button>
         </div>
 
         {!preview.dryRun && deletedTotal > 0 && (
-          <div style={{ padding: "10px 14px", background: "rgba(16,185,129,0.1)", borderRadius: "8px", fontSize: "12px", color: "#10b981", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+          <div className="px-3.5 py-2.5 bg-emerald-500/10 rounded-lg text-xs text-emerald-500 font-bold flex items-center gap-1.5">
             <Check size={14} /> تم تنفيذ التنظيف بنجاح — حُذف {deletedTotal} سجل نهائياً.
           </div>
         )}
@@ -2707,20 +2630,20 @@ function AnnouncementForm({ onClose, onSaved }: { onClose: () => void; onSaved: 
   return (
     <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
       <div className="flex justify-between items-center">
-        <h4 style={{ fontSize: "13px", fontWeight: 700 }}>إعلان جديد</h4>
+        <h4 className="text-[13px] font-bold">إعلان جديد</h4>
         <button className="bg-transparent border-none text-[var(--muted-foreground)] cursor-pointer" onClick={onClose}><X size={14} /></button>
       </div>
-      <div className="grid grid-cols-[1fr_160px] gap-2.5">
-        <div><label style={labelStyle}>العنوان</label><input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} /></div>
-        <div><label style={labelStyle}>النوع</label>
-          <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_160px] gap-2.5">
+        <div><label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">العنوان</label><input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" /></div>
+        <div><label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">النوع</label>
+          <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none">
             <option value="info">معلومات</option><option value="warning">تحذير</option>
             <option value="success">نجاح</option><option value="critical">حرج</option>
           </select>
         </div>
       </div>
-      <div><label style={labelStyle}>المحتوى</label><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} /></div>
-      <button onClick={submit} disabled={saving} style={{ alignSelf: "flex-end", padding: "8px 20px", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "جارٍ…" : "نشر"}</button>
+      <div><label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المحتوى</label><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none resize-y" /></div>
+      <button onClick={submit} disabled={saving} className="self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "جارٍ…" : "نشر"}</button>
     </div>
   );
 }
@@ -2805,31 +2728,21 @@ function PlansTab() {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "6px 8px", background: "var(--background)",
-    border: "1px solid var(--border)", borderRadius: "6px", color: "var(--foreground)",
-    fontSize: "12px", fontFamily: "inherit",
-  };
+  const plansInputClass = "w-full px-1.5 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md text-[var(--foreground)] text-xs font-inherit";
 
-  if (loading) return <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
+  if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <h3 style={{ fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+        <h3 className="text-sm font-bold flex items-center gap-2">
           <Gauge className="text-violet-600" size={16} />
           كتالوج الباقات ({Object.keys(plans).length} باقة)
         </h3>
         <button
           onClick={save}
           disabled={saving || !dirty}
-          style={{
-            padding: "7px 16px", background: saving || !dirty ? "var(--muted)" : "#7c3aed",
-            color: "#fff", border: "none", borderRadius: "8px", fontSize: "12px",
-            fontWeight: 700, cursor: saving || !dirty ? "not-allowed" : "pointer",
-            opacity: saving || !dirty ? 0.7 : 1, fontFamily: "inherit",
-            display: "flex", alignItems: "center", gap: "6px",
-          }}
+          className="px-4 py-1.5 rounded-lg border-none text-white text-xs font-bold font-inherit flex items-center gap-1.5" /* TAILWINDBREAK: dynamic bg/cursor/opacity */ style={{ background: saving || !dirty ? "var(--muted)" : "#7c3aed", cursor: saving || !dirty ? "not-allowed" : "pointer", opacity: saving || !dirty ? 0.7 : 1 }}
         >
           <Save size={12} />
           {saving ? "جارٍ الحفظ…" : "حفظ التغييرات"}
@@ -2837,7 +2750,7 @@ function PlansTab() {
       </div>
 
       {dirty && (
-        <div style={{ padding: "8px 12px", background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "8px", fontSize: "11px", color: "#f59e0b", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+        <div className="px-3 py-2 bg-amber-500/12 border border-amber-500/30 rounded-lg text-[11px] text-amber-500 font-semibold flex items-center gap-1.5">
           <AlertTriangle size={14} />
           تغييرات غير محفوظة
         </div>
@@ -2846,61 +2759,58 @@ function PlansTab() {
       {Object.entries(plans).map(([key, plan]) => (
         <div className="p-4 bg-[var(--card)] rounded-xl border border-[var(--border)]" key={key}>
           <div className="flex items-center gap-2 mb-3">
-            <span style={{
-              padding: "2px 10px", borderRadius: "8px", background: "#7c3aed",
-              color: "#fff", fontSize: "10px", fontWeight: 800, fontFamily: "monospace",
-            }}>
+            <span className="px-2.5 py-0.5 rounded-lg bg-violet-600 text-white text-[10px] font-extrabold font-mono">
               {key}
             </span>
-            <span style={{ fontSize: "13px", fontWeight: 700 }}>{plan.name}</span>
+            <span className="text-[13px] font-bold">{plan.name}</span>
             {plan.highlight && (
-              <span style={{ padding: "1px 6px", borderRadius: "6px", background: "#10b981", color: "#fff", fontSize: "9px", fontWeight: 700 }}>مميزة</span>
+              <span className="px-1.5 py-px rounded-md bg-emerald-500 text-white text-[9px] font-bold">مميزة</span>
             )}
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5">
             <div>
-              <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الاسم</label>
+              <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">الاسم</label>
               <input
                 value={plan.name}
                 onChange={(e) => updatePlan(key, "name", e.target.value)}
-                style={inputStyle}
+                className={plansInputClass}
               />
             </div>
             <div>
-              <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>السعر الشهري ($)</label>
+              <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">السعر الشهري ($)</label>
               <input
                 type="number"
                 step="0.01"
                 value={plan.priceMonthly}
                 onChange={(e) => updatePlan(key, "priceMonthly", parseFloat(e.target.value) || 0)}
-                style={inputStyle}
+                className={plansInputClass}
               />
             </div>
             <div>
-              <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الحد الأقصى للفواتير/شهر</label>
+              <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">الحد الأقصى للفواتير/شهر</label>
               <input
                 type="number"
                 value={plan.maxInvoicesPerMonth}
                 onChange={(e) => updatePlan(key, "maxInvoicesPerMonth", parseInt(e.target.value) || -1)}
-                style={inputStyle}
+                className={plansInputClass}
               />
             </div>
             <div>
-              <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الحد الأقصى للشركات</label>
+              <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">الحد الأقصى للشركات</label>
               <input
                 type="number"
                 value={plan.maxCompanies}
                 onChange={(e) => updatePlan(key, "maxCompanies", parseInt(e.target.value) || -1)}
-                style={inputStyle}
+                className={plansInputClass}
               />
             </div>
             <div>
-              <label style={{ fontSize: "10px", color: "var(--muted-foreground)", fontWeight: 600, display: "block", marginBottom: "4px" }}>الحد الأقصى للمستخدمين</label>
+              <label className="block text-[10px] text-[var(--muted-foreground)] font-semibold mb-1">الحد الأقصى للمستخدمين</label>
               <input
                 type="number"
                 value={plan.maxUsers}
                 onChange={(e) => updatePlan(key, "maxUsers", parseInt(e.target.value) || -1)}
-                style={inputStyle}
+                className={plansInputClass}
               />
             </div>
           </div>
@@ -2983,14 +2893,14 @@ function BackupsTab() {
     } catch { return s; }
   };
 
-  const thStyle: React.CSSProperties = { textAlign: "right", padding: "10px 12px", fontSize: "11px", fontWeight: 600, color: "var(--muted-foreground)", borderBottom: "1px solid var(--border)", background: "var(--muted)" };
-  const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: "13px", borderBottom: "1px solid var(--border)", verticalAlign: "middle" };
+  const backupThClass = "text-right px-3 py-2.5 text-[11px] font-semibold text-[var(--muted-foreground)] border-b border-b-[var(--border)] bg-[var(--muted)]";
+  const backupTdClass = "px-3 py-2.5 text-[13px] border-b border-b-[var(--border)] align-middle";
 
   return (
     <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
       <div className="px-5 py-4 border-b border-b-[var(--border)] flex justify-between items-center gap-3 flex-wrap">
         <div>
-          <h3 style={{ fontSize: "15px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="text-[15px] font-bold flex items-center gap-2">
             <HardDriveDownload size={16} className="text-primary" /> النسخ الاحتياطي اليدوي
           </h3>
           <p className="text-xs text-[var(--muted-foreground)] mt-1">
@@ -3000,13 +2910,7 @@ function BackupsTab() {
         <button
           onClick={() => setConfirmingTrigger(true)}
           disabled={triggering}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "8px",
-            padding: "10px 18px", borderRadius: "10px",
-            background: "var(--primary)", color: "var(--primary-foreground)",
-            border: "none", fontFamily: "inherit", fontSize: "13px", fontWeight: 700,
-            cursor: triggering ? "not-allowed" : "pointer", opacity: triggering ? 0.7 : 1,
-          }}
+          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[13px] font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: triggering ? "not-allowed" : "pointer", opacity: triggering ? 0.7 : 1 }}
         >
           {triggering ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           {triggering ? "جارٍ الإنشاء…" : "نسخة احتياطية جديدة"}
@@ -3014,12 +2918,12 @@ function BackupsTab() {
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-[var(--muted-foreground)] flex items-center justify-center gap-2">
+        <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)] flex items-center justify-center gap-2">
           <Loader2 size={16} className="animate-spin" /> جارٍ التحميل…
         </div>
       ) : backups.length === 0 ? (
-        <div className="p-12 text-center text-[var(--muted-foreground)]">
-          <HardDriveDownload size={36} style={{ opacity: 0.3, marginBottom: "8px" }} />
+        <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">
+          <HardDriveDownload size={36} className="opacity-30 mb-2" />
           <div>لا توجد نسخ احتياطية بعد.</div>
         </div>
       ) : (
@@ -3027,17 +2931,17 @@ function BackupsTab() {
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={thStyle}>اسم الملف</th>
-                <th style={thStyle}>الحجم</th>
-                <th style={thStyle}>تاريخ الإنشاء</th>
+                <th scope="col" className={backupThClass}>اسم الملف</th>
+                <th scope="col" className={backupThClass}>الحجم</th>
+                <th scope="col" className={backupThClass}>تاريخ الإنشاء</th>
               </tr>
             </thead>
             <tbody>
               {backups.map((b, i) => (
                 <tr key={b.name || i}>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "12px" }} dir="ltr">{b.name}</td>
-                  <td style={tdStyle}>{fmtSize(b.size)}</td>
-                  <td style={tdStyle}>{fmtDate(b.createdAt)}</td>
+                  <td className="px-3 py-2.5 text-[12px] border-b border-b-[var(--border)] align-middle font-mono" dir="ltr">{b.name}</td>
+                  <td className={backupTdClass}>{fmtSize(b.size)}</td>
+                  <td className={backupTdClass}>{fmtDate(b.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -3047,20 +2951,20 @@ function BackupsTab() {
 
       {confirmingTrigger && (
         <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={() => !triggering && setConfirmingTrigger(false)}
         >
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full p-5"
- style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.3)", maxWidth: "440px" }}
+ className="shadow-[0_20px_50px_rgba(0,0,0,0.3)] max-w-[440px]"
  onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start gap-3" style={{ marginBottom: "14px" }}>
-              <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(124,58,237,0.15)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div className="flex items-start gap-3" className="mb-3.5">
+              <div className="w-10 h-10 rounded-full bg-violet-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
                 <HardDriveDownload size={18} />
               </div>
               <div>
-                <h4 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "4px" }}>تأكيد النسخ الاحتياطي</h4>
-                <p style={{ fontSize: "12px", color: "var(--muted-foreground)", lineHeight: 1.6 }}>
+                <h4 className="text-[15px] font-bold mb-1">تأكيد النسخ الاحتياطي</h4>
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
                   سيتم إنشاء نسخة احتياطية مشفّرة من قاعدة البيانات الحالية. قد يستغرق ذلك عدة ثوانٍ.
                 </p>
               </div>
@@ -3069,14 +2973,14 @@ function BackupsTab() {
               <button
                 onClick={() => setConfirmingTrigger(false)}
                 disabled={triggering}
-                style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border)", background: "transparent", color: "var(--foreground)", fontFamily: "inherit", fontSize: "13px", fontWeight: 600, cursor: triggering ? "not-allowed" : "pointer" }}
+                className="px-4 py-2 rounded-lg border border-[var(--border)] bg-transparent text-[var(--foreground)] font-inherit text-[13px] font-semibold" /* TAILWINDBREAK: dynamic cursor */ style={{ cursor: triggering ? "not-allowed" : "pointer" }}
               >
                 إلغاء
               </button>
               <button
                 onClick={triggerBackup}
                 disabled={triggering}
-                style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: "var(--primary)", color: "var(--primary-foreground)", fontFamily: "inherit", fontSize: "13px", fontWeight: 700, cursor: triggering ? "not-allowed" : "pointer", opacity: triggering ? 0.7 : 1, display: "inline-flex", alignItems: "center", gap: "6px" }}
+                className="px-4 py-2 rounded-lg border-none bg-[var(--primary)] text-[var(--primary-foreground)] font-inherit text-[13px] font-bold inline-flex items-center gap-1.5" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: triggering ? "not-allowed" : "pointer", opacity: triggering ? 0.7 : 1 }}
               >
                 {triggering ? <Loader2 size={14} className="animate-spin" /> : <HardDriveDownload size={14} />}
                 {triggering ? "جارٍ…" : "تأكيد الإنشاء"}

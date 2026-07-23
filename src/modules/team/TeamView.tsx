@@ -200,14 +200,14 @@ export function TeamView() {
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th className="w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground">
+                  <th scope="col" className="w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground">
                     <input type="checkbox" checked={selectedIds.size === pageMembers.length && pageMembers.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" />
                   </th>
-                  <th className={thStyle}>الاسم</th>
-                  <th className={thStyle}>البريد</th>
-                  <th className={thStyle}>الدور</th>
-                  <th className={thStyle}>الصلاحيات</th>
-                  <th className={thStyle}>إجراءات</th>
+                  <th scope="col" className={thStyle}>الاسم</th>
+                  <th scope="col" className={thStyle}>البريد</th>
+                  <th scope="col" className={thStyle}>الدور</th>
+                  <th scope="col" className={thStyle}>الصلاحيات</th>
+                  <th scope="col" className={thStyle}>إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -256,11 +256,13 @@ export function TeamView() {
                           <button
                             onClick={() => setEditing(m)}
                             title="تعديل"
+                            aria-label="تعديل"
                             className={iconBtn}
                           ><Edit2 size={14} /></button>
                           <button
                             onClick={() => handleRemove(m)}
                             title="إزالة من الشركة"
+                            aria-label="إزالة"
                             disabled={m.isFounder}
                             className={cn(iconBtn, "text-destructive disabled:opacity-40 disabled:cursor-not-allowed")}
                           ><Trash2 size={14} /></button>
@@ -297,8 +299,8 @@ export function TeamView() {
                       </div>
                     </label>
                     <div className="flex gap-1">
-                      <button onClick={() => setEditing(m)} title="تعديل" className="min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center"><Edit2 size={14} /></button>
-                      <button onClick={() => handleRemove(m)} title="إزالة من الشركة" disabled={m.isFounder} className={cn("min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed")}><Trash2 size={14} /></button>
+                      <button onClick={() => setEditing(m)} title="تعديل" aria-label="تعديل" className="min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center"><Edit2 size={14} /></button>
+                      <button onClick={() => handleRemove(m)} title="إزالة من الشركة" aria-label="إزالة" disabled={m.isFounder} className={cn("min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed")}><Trash2 size={14} /></button>
                     </div>
                   </div>
                   <div className="flex flex-col gap-1 text-[13px]">
@@ -434,11 +436,11 @@ function InviteDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelStyle}>البريد الإلكتروني *</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" className={inputStyle} placeholder="user@example.com" />
+              <input value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" aria-label="البريد الإلكتروني" className={inputStyle} placeholder="user@example.com" />
             </div>
             <div>
               <label className={labelStyle}>الاسم (للمستخدم الجديد)</label>
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputStyle} placeholder="محمد علي" />
+              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} aria-label="الاسم" className={inputStyle} placeholder="محمد علي" />
             </div>
           </div>
 

@@ -252,7 +252,7 @@ function Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: 
 }
 
 function Empty({ label }: { label: string }) {
-  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
+  return <div className="p-6 md:p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
 }
 
 // ─── Table components ───────────────────────────────────────────────────────
