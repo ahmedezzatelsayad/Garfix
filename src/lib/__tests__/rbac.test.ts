@@ -31,10 +31,10 @@ mock.module("@/lib/db", () => ({
   },
 }));
 
-mock.module("@/lib/cryptoVault", () => ({
-  encryptSecret: mock((s: string) => `enc_${s}`),
-  decryptSecret: mock((s: string) => s.startsWith("enc_") ? s.slice(4) : s),
-}));
+// NOTE: We do NOT mock @/lib/cryptoVault. rbac.ts's import chain
+// (permissions.ts) does NOT touch cryptoVault. Mocking it globally breaks
+// mfa.test.ts (whose setupMFA calls the real encryptSecret/decryptSecret
+// and asserts the encrypted output format).
 
 // ─── Real imports ──────────────────────────────────────────────────────────
 

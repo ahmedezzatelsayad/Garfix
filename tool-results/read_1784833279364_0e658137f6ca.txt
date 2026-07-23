@@ -1,0 +1,848 @@
+     1→/**
+     2→ * queues.ts — Multi-tier persistent job queue.
+     3→ *
+     4→ * Architecture (3-tier fallback):
+     5→ *   1. VALKEY_URL / REDIS_URL set → BullMQ over Valkey (production, multi-instance).
+     6→ *   2. DATABASE_URL set (no Valkey) → pg-boss over PostgreSQL (production-safe, no extra infra).
+     7→ *   3. Neither set (sandbox/dev)    → In-process DB-backed runner (NOT production-safe).
+     8→ *
+     9→ * BullMQ gives us:
+    10→ *   - Persistent jobs that survive crashes (no custom DB table needed).
+    11→ *   - Built-in retries with configurable backoff.
+    12→ *   - Rate limiting, priority, delayed jobs.
+    13→ *   - Multi-instance safe (distributed locking via Valkey).
+    14→ *   - Dashboard-ready (BullMQ Board can be mounted for admin visibility).
+    15→ *
+    16→ * pg-boss gives us (as secondary fallback):
+    17→ *   - Persistent jobs that survive crashes (stored in PG tables).
+    18→ *   - Built-in retries with configurable exponential backoff.
+    19→ *   - Dead-letter queues (failed jobs archived automatically).
+    20→ *   - Multi-instance safe (advisory locks in PG).
+    21→ *   - Uses the SAME DATABASE_URL as Prisma — no extra infrastructure.
+    22→ *   - Schema auto-migration (pg-boss creates its own tables on start).
+    23→ *
+    24→ * The public API is 100% backward-compatible:
+    25→ *   - registerWorker(queue, handler)
+    26→ *   - enqueue(queue, payload)         — fire-and-forget
+    27→ *   - enqueueAsync(queue, payload)    — await result
+    28→ *   - enqueueBackground(queue, payload) — fire-and-forget
+    29→ *   - getDeadLetters(queue?)
+    30→ *   - clearDeadLetters(queue?)
+    31→ *   - recoverPendingJobs()
+    32→ *   - QUEUE_NAMES, QUEUE_TTL, QueueName, JobPayload, FailedJobRecord
+    33→ *   - getConnection(), getWorkerId()
+    34→ *
+    35→ * Existing workers (email, whatsapp, AI, backup, scheduler) need ZERO changes.
+    36→ *
+    37→ * RUNTIME: Node.js only — uses process.pid, BullMQ, pg-boss (Node-only)
+    38→ */
+    39→'use node';
+    40→
+    41→import { db } from "./db";
+    42→import { logger } from "./logger";
+    43→import { VALKEY_CONFIGURED, getValkeyClient } from "./valkey";
+    44→
+    45→// ─── Constants (unchanged) ───────────────────────────────────────────────
+    46→
+    47→export const QUEUE_NAMES = {
+    48→  AI: "ai-jobs",
+    49→  EMAIL: "email-jobs",
+    50→  WHATSAPP: "whatsapp-jobs",
+    51→  BACKUP: "backup-jobs",
+    52→  SCHEDULER: "scheduler-jobs",
+    53→} as const;
+    54→
+    55→export type QueueName = typeof QUEUE_NAMES[keyof typeof QUEUE_NAMES];
+    56→
+    57→export const QUEUE_TTL = {
+    58→  [QUEUE_NAMES.AI]: 60_000,
+    59→  [QUEUE_NAMES.EMAIL]: 30_000,
+    60→  [QUEUE_NAMES.WHATSAPP]: 30_000,
+    61→  [QUEUE_NAMES.BACKUP]: 600_000,
+    62→  [QUEUE_NAMES.SCHEDULER]: 5_000,
+    63→} as const;
+    64→
+    65→export interface JobPayload {
+    66→  type: string;
+    67→  data: Record<string, unknown>;
+    68→  attempts?: number;
+    69→}
+    70→
+    71→export interface FailedJobRecord {
+    72→  queue: QueueName;
+    73→  type: string;
+    74→  error: string;
+    75→  failedAt: string;
+    76→  attempts: number;
+    77→  payload: JobPayload;
+    78→}
+    79→
+    80→// ─── Mode detection (3-tier) ────────────────────────────────────────────
+    81→
+    82→// Priority: BullMQ > pg-boss > in-process
+    83→const USE_BULLMQ = VALKEY_CONFIGURED;
+    84→const PGBOSS_AVAILABLE = Boolean(process.env.DATABASE_URL); // computed locally to avoid circular dep
+    85→const USE_PGBOSS = !USE_BULLMQ && PGBOSS_AVAILABLE; // pg-boss as secondary fallback
+    86→
+    87→if (USE_BULLMQ) {
+    88→  logger.info("[queues] BullMQ mode — Valkey detected, using BullMQ for background jobs");
+    89→} else if (USE_PGBOSS) {
+    90→  logger.info("[queues] pg-boss mode — PostgreSQL detected (no Valkey), using pg-boss for background jobs");
+    91→} else {
+    92→  logger.warn(
+    93→    "[queues] Fallback mode — VALKEY_URL/REDIS_URL not set and pg-boss not available. " +
+    94→      "Using in-process DB-backed runner. Set VALKEY_URL for production, or ensure DATABASE_URL is set for pg-boss.",
+    95→  );
+    96→}
+    97→
+    98→// Lazy pg-boss module reference (loaded on demand to avoid circular deps at init)
+    99→let pgbossModule: typeof import("./queue-pgboss") | null = null;
+   100→async function loadPgBossModule(): Promise<typeof import("./queue-pgboss") | null> {
+   101→  if (!USE_PGBOSS) return null;
+   102→  if (pgbossModule) return pgbossModule;
+   103→  try {
+   104→    pgbossModule = await import("./queue-pgboss");
+   105→    return pgbossModule;
+   106→  } catch (err) {
+   107→    logger.error("[queues] pg-boss module load failed", { err: err instanceof Error ? err.message : String(err) });
+   108→    return null;
+   109→  }
+   110→}
+   111→
+   112→// ─── BullMQ state ────────────────────────────────────────────────────────
+   113→
+   114→type BullMQQueue = import("bullmq").Queue;
+   115→type BullMQWorker = import("bullmq").Worker;
+   116→type BullMQJob = import("bullmq").Job;
+   117→
+   118→const bullQueues = new Map<QueueName, BullMQQueue>();
+   119→const bullWorkers = new Map<QueueName, BullMQWorker>();
+   120→let bullInitialized = false;
+   121→
+   122→const BULLMQ_DEFAULTS = {
+   123→  removeOnComplete: { count: 1000 },
+   124→  removeOnFail: { count: 5000 },
+   125→  defaultJobOptions: {
+   126→    attempts: 3,
+   127→    backoff: {
+   128→      type: "exponential" as const,
+   129→      delay: 1000,
+   130→    },
+   131→  },
+   132→};
+   133→
+   134→type JobHandler = (data: Record<string, unknown>) => Promise<void>;
+   135→const handlers = new Map<QueueName, JobHandler>();
+   136→
+   137→// ─── BullMQ helpers ──────────────────────────────────────────────────────
+   138→
+   139→async function ensureBullMQ(): Promise<boolean> {
+   140→  if (bullInitialized) return true;
+   141→
+   142→  const connection = await getValkeyClient();
+   143→  if (!connection) {
+   144→    logger.error("[queues] Valkey client unavailable — BullMQ cannot start");
+   145→    return false;
+   146→  }
+   147→
+   148→  try {
+   149→    const { Queue, Worker } = await import("bullmq");
+   150→
+   151→    for (const [name] of Object.entries(QUEUE_NAMES) as [QueueName, string][]) {
+   152→      const q = new Queue(name, {
+   153→        connection: connection.duplicate(),
+   154→        ...BULLMQ_DEFAULTS,
+   155→      });
+   156→      bullQueues.set(name, q);
+   157→
+   158→      // If a handler is already registered, start a worker
+   159→      if (handlers.has(name)) {
+   160→        await createBullWorker(name, connection, Queue, Worker);
+   161→      }
+   162→    }
+   163→
+   164→    bullInitialized = true;
+   165→    logger.info("[queues] BullMQ initialized", {
+   166→      queues: Object.values(QUEUE_NAMES),
+   167→    });
+   168→    return true;
+   169→  } catch (err) {
+   170→    const msg = err instanceof Error ? err.message : String(err);
+   171→    logger.error("[queues] BullMQ init failed", { err: msg });
+   172→    return false;
+   173→  }
+   174→}
+   175→
+   176→async function createBullWorker(
+   177→  name: QueueName,
+   178→  connection: import("ioredis").default,
+   179→  Queue: typeof import("bullmq").Queue,
+   180→  Worker: typeof import("bullmq").Worker,
+   181→): Promise<void> {
+   182→  const handler = handlers.get(name);
+   183→  if (!handler) return;
+   184→
+   185→  const ttl = QUEUE_TTL[name] ?? 30_000;
+   186→
+   187→  const worker = new Worker(name, async (job: BullMQJob) => {
+   188→    logger.debug("[queues] BullMQ processing job", { queue: name, jobId: job.id, type: job.data.type });
+   189→    // Timeout guard
+   190→    await Promise.race([
+   191→      handler(job.data as Record<string, unknown>),
+   192→      new Promise<never>((_, reject) =>
+   193→        setTimeout(() => reject(new Error(`Job timed out after ${ttl}ms`)), ttl),
+   194→      ),
+   195→    ]);
+   196→  }, {
+   197→    connection: connection.duplicate(),
+   198→    concurrency: name === QUEUE_NAMES.AI ? 2 : 5,
+   199→    autorun: true,
+   200→  });
+   201→
+   202→  worker.on("completed", (job) => {
+   203→    logger.debug("[queues] BullMQ job completed", { queue: name, jobId: job.id });
+   204→  });
+   205→
+   206→  worker.on("failed", (job, err) => {
+   207→    logger.warn("[queues] BullMQ job failed", {
+   208→      queue: name,
+   209→      jobId: job?.id,
+   210→      attempts: job?.attemptsMade,
+   211→      err: err.message,
+   212→    });
+   213→  });
+   214→
+   215→  worker.on("error", (err) => {
+   216→    logger.error("[queues] BullMQ worker error", { queue: name, err: err.message });
+   217→  });
+   218→
+   219→  bullWorkers.set(name, worker);
+   220→  logger.info("[queues] BullMQ worker started", { queue: name });
+   221→}
+   222→
+   223→// ─── In-process fallback state ───────────────────────────────────────────
+   224→
+   225→const MAX_RETRIES = 3;
+   226→const RETRY_BACKOFF_MS = [1_000, 5_000, 15_000] as const;
+   227→const MAX_DEAD_LETTER_PER_QUEUE = 100;
+   228→const STALE_LOCK_THRESHOLD_MS = 5 * 60 * 1000;
+   229→
+   230→const deadLetters = new Map<QueueName, FailedJobRecord[]>();
+   231→
+   232→const WORKER_ID = `worker-${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+   233→
+   234→// ─── In-process helpers (fallback) ──────────────────────────────────────
+   235→
+   236→function recordDeadLetter(queue: QueueName, payload: JobPayload, error: string, attempts: number): void {
+   237→  let list = deadLetters.get(queue);
+   238→  if (!list) {
+   239→    list = [];
+   240→    deadLetters.set(queue, list);
+   241→  }
+   242→  list.push({
+   243→    queue,
+   244→    type: payload.type,
+   245→    error,
+   246→    failedAt: new Date().toISOString(),
+   247→    attempts,
+   248→    payload,
+   249→  });
+   250→  if (list.length > MAX_DEAD_LETTER_PER_QUEUE) {
+   251→    list.splice(0, list.length - MAX_DEAD_LETTER_PER_QUEUE);
+   252→  }
+   253→  logger.error(
+   254→    "[queues] job permanently failed after retries — recorded to dead-letter log",
+   255→    { queue, type: payload.type, attempts, err: error },
+   256→  );
+   257→}
+   258→
+   259→async function persistEnqueue(queue: QueueName, payload: JobPayload): Promise<number | null> {
+   260→  try {
+   261→    const row = await db.jobQueue.create({
+   262→      data: {
+   263→        queue,
+   264→        type: payload.type,
+   265→        data: JSON.stringify(payload.data ?? {}),
+   266→        status: "pending",
+   267→        attempts: 0,
+   268→        maxAttempts: payload.attempts ?? MAX_RETRIES,
+   269→        scheduledAt: new Date(),
+   270→      },
+   271→    });
+   272→    return row.id;
+   273→  } catch (err) {
+   274→    logger.error("[queues] failed to persist job to JobQueue — in-memory run only", {
+   275→      queue, type: payload.type, err: err instanceof Error ? err.message : String(err),
+   276→    });
+   277→    return null;
+   278→  }
+   279→}
+   280→
+   281→async function updateJobStatus(
+   282→  jobId: number | null,
+   283→  patch: {
+   284→    status?: string;
+   285→    lockedAt?: Date | null;
+   286→    lockedBy?: string | null;
+   287→    startedAt?: Date | null;
+   288→    completedAt?: Date | null;
+   289→    attempts?: number;
+   290→    lastError?: string | null;
+   291→  },
+   292→): Promise<void> {
+   293→  if (jobId === null) return;
+   294→  try {
+   295→    await db.jobQueue.update({ where: { id: jobId }, data: patch });
+   296→  } catch (err) {
+   297→    logger.warn("[queues] failed to update JobQueue row", {
+   298→      jobId, patch: patch.status, err: err instanceof Error ? err.message : String(err),
+   299→    });
+   300→  }
+   301→}
+   302→
+   303→async function runWithRetries(queue: QueueName, payload: JobPayload, jobId: number | null): Promise<void> {
+   304→  const max = payload.attempts ?? MAX_RETRIES;
+   305→  let lastError = "";
+   306→
+   307→  await updateJobStatus(jobId, {
+   308→    status: "running",
+   309→    lockedAt: new Date(),
+   310→    lockedBy: WORKER_ID,
+   311→    startedAt: new Date(),
+   312→    attempts: 0,
+   313→  });
+   314→
+   315→  for (let attempt = 1; attempt <= max; attempt++) {
+   316→    try {
+   317→      const handler = handlers.get(queue);
+   318→      if (!handler) throw new Error(`No handler registered for queue "${queue}"`);
+   319→      const ttl = QUEUE_TTL[queue] ?? 30_000;
+   320→      await Promise.race([
+   321→        handler(payload.data),
+   322→        new Promise<never>((_, reject) =>
+   323→          setTimeout(() => reject(new Error(`Job timed out after ${ttl}ms`)), ttl),
+   324→        ),
+   325→      ]);
+   326→      await updateJobStatus(jobId, {
+   327→        status: "completed",
+   328→        attempts: attempt,
+   329→        completedAt: new Date(),
+   330→        lastError: null,
+   331→        lockedAt: null,
+   332→        lockedBy: null,
+   333→      });
+   334→      logger.debug("[queues] job succeeded (in-process)", { queue, type: payload.type, attempt, jobId });
+   335→      return;
+   336→    } catch (err) {
+   337→      lastError = err instanceof Error ? err.message : String(err);
+   338→      await updateJobStatus(jobId, {
+   339→        attempts: attempt,
+   340→        lastError: lastError.slice(0, 1000),
+   341→      });
+   342→      logger.warn("[queues] job attempt failed (in-process)", { queue, type: payload.type, attempt, max, err: lastError });
+   343→      if (attempt < max) {
+   344→        const backoff = RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)];
+   345→        await new Promise((resolve) => setTimeout(resolve, backoff));
+   346→      }
+   347→    }
+   348→  }
+   349→
+   350→  recordDeadLetter(queue, payload, lastError, max);
+   351→  await updateJobStatus(jobId, {
+   352→    status: "dead-letter",
+   353→    attempts: max,
+   354→    lastError: lastError.slice(0, 1000),
+   355→    lockedAt: null,
+   356→    lockedBy: null,
+   357→    completedAt: new Date(),
+   358→  });
+   359→}
+   360→
+   361→// ─── Public API ──────────────────────────────────────────────────────────
+   362→
+   363→/** Register a handler for a queue. */
+   364→export function registerWorker(queue: QueueName, handler: JobHandler): void {
+   365→  handlers.set(queue, handler);
+   366→  const mode = USE_BULLMQ ? "bullmq" : USE_PGBOSS ? "pg-boss" : "in-process";
+   367→  logger.info("[queues] worker registered", { queue, workerId: WORKER_ID, mode });
+   368→
+   369→  // If BullMQ is already initialized, start the worker immediately
+   370→  if (USE_BULLMQ && bullInitialized) {
+   371→    getValkeyClient().then(async (connection) => {
+   372→      if (!connection) return;
+   373→      try {
+   374→        const { Queue, Worker } = await import("bullmq");
+   375→        await createBullWorker(queue, connection, Queue, Worker);
+   376→      } catch (err) {
+   377→        logger.error("[queues] failed to create BullMQ worker for late-registered queue", {
+   378→          queue, err: err instanceof Error ? err.message : String(err),
+   379→        });
+   380→      }
+   381→    });
+   382→  }
+   383→
+   384→  // If pg-boss mode, register with pg-boss
+   385→  if (USE_PGBOSS) {
+   386→    loadPgBossModule().then((pgboss) => {
+   387→      if (pgboss) {
+   388→        pgboss.registerWorker(queue, handler);
+   389→      }
+   390→    });
+   391→  }
+   392→}
+   393→
+   394→/** Inspect recent failures. */
+   395→export function getDeadLetters(queue?: QueueName): FailedJobRecord[] {
+   396→  // In BullMQ mode or in-process mode, return in-memory tracked failures
+   397→  if (queue) return [...(deadLetters.get(queue) ?? [])];
+   398→  const all: FailedJobRecord[] = [];
+   399→  for (const list of Array.from(deadLetters.values())) all.push(...list);
+   400→  return all.sort((a, b) => b.failedAt.localeCompare(a.failedAt));
+   401→}
+   402→
+   403→/** Inspect recent failures (async — includes pg-boss dead letters when available). */
+   404→export async function getDeadLettersAsync(queue?: QueueName): Promise<FailedJobRecord[]> {
+   405→  // If pg-boss mode, delegate to pg-boss which queries the DB
+   406→  if (USE_PGBOSS) {
+   407→    const pgboss = await loadPgBossModule();
+   408→    if (pgboss) {
+   409→      return pgboss.getDeadLetters(queue);
+   410→    }
+   411→  }
+   412→  // Fallback to in-memory only
+   413→  return getDeadLetters(queue);
+   414→}
+   415→
+   416→/** Clear dead-letter entries. */
+   417→export function clearDeadLetters(queue?: QueueName): void {
+   418→  if (queue) deadLetters.delete(queue);
+   419→  else deadLetters.clear();
+   420→}
+   421→
+   422→/** Clear dead-letter entries (async — also clears pg-boss dead letters when available). */
+   423→export async function clearDeadLettersAsync(queue?: QueueName): Promise<void> {
+   424→  // Clear in-memory first
+   425→  clearDeadLetters(queue);
+   426→
+   427→  // If pg-boss mode, also clear pg-boss dead-letter queues
+   428→  if (USE_PGBOSS) {
+   429→    const pgboss = await loadPgBossModule();
+   430→    if (pgboss) {
+   431→      await pgboss.clearDeadLetters(queue);
+   432→    }
+   433→  }
+   434→}
+   435→
+   436→/**
+   437→ * Enqueue a job asynchronously — caller awaits the result, with retries.
+   438→ */
+   439→export async function enqueueAsync(queue: QueueName, payload: JobPayload): Promise<void> {
+   440→  // Tier 1: BullMQ (Valkey available)
+   441→  if (USE_BULLMQ) {
+   442→    const ready = await ensureBullMQ();
+   443→    if (ready) {
+   444→      const bullQueue = bullQueues.get(queue);
+   445→      if (bullQueue) {
+   446→        await bullQueue.add(payload.type, payload, {
+   447→          attempts: payload.attempts ?? MAX_RETRIES,
+   448→        });
+   449→        logger.debug("[queues] BullMQ job enqueued (async)", { queue, type: payload.type });
+   450→        return;
+   451→      }
+   452→    }
+   453→    logger.warn("[queues] BullMQ not available for enqueueAsync — falling back");
+   454→  }
+   455→
+   456→  // Tier 2: pg-boss (PostgreSQL available, no Valkey)
+   457→  if (USE_PGBOSS) {
+   458→    const pgboss = await loadPgBossModule();
+   459→    if (pgboss) {
+   460→      try {
+   461→        await pgboss.enqueueAsync(queue, payload);
+   462→        return;
+   463→      } catch (err) {
+   464→        logger.warn("[queues] pg-boss enqueueAsync failed — falling back to in-process", {
+   465→          err: err instanceof Error ? err.message : String(err),
+   466→        });
+   467→      }
+   468→    }
+   469→  }
+   470→
+   471→  // Tier 3: In-process fallback
+   472→  const jobId = await persistEnqueue(queue, payload);
+   473→  await runWithRetries(queue, payload, jobId);
+   474→}
+   475→
+   476→/**
+   477→ * Enqueue a job in the background — caller does NOT await the result.
+   478→ */
+   479→export function enqueueBackground(queue: QueueName, payload: JobPayload): void {
+   480→  // Tier 1: BullMQ (Valkey available)
+   481→  if (USE_BULLMQ) {
+   482→    ensureBullMQ().then(async (ready) => {
+   483→      if (ready) {
+   484→        const bullQueue = bullQueues.get(queue);
+   485→        if (bullQueue) {
+   486→          try {
+   487→            await bullQueue.add(payload.type, payload, {
+   488→              attempts: payload.attempts ?? MAX_RETRIES,
+   489→            });
+   490→            logger.debug("[queues] BullMQ job enqueued (background)", { queue, type: payload.type });
+   491→            return;
+   492→          } catch (err) {
+   493→            logger.error("[queues] BullMQ add failed — falling back", { err: err instanceof Error ? err.message : String(err) });
+   494→          }
+   495→        }
+   496→      }
+   497→      // Fallback to pg-boss or in-process
+   498→      fallbackEnqueue(queue, payload);
+   499→    });
+   500→    return;
+   501→  }
+   502→
+   503→  // Tier 2: pg-boss (PostgreSQL available, no Valkey)
+   504→  if (USE_PGBOSS) {
+   505→    loadPgBossModule().then(async (pgboss) => {
+   506→      if (pgboss) {
+   507→        try {
+   508→          await pgboss.startPgBoss(); // ensure pg-boss is started
+   509→          pgboss.enqueueBackground(queue, payload);
+   510→          return;
+   511→        } catch (err) {
+   512→          logger.warn("[queues] pg-boss enqueueBackground failed — falling back to in-process", {
+   513→            err: err instanceof Error ? err.message : String(err),
+   514→          });
+   515→        }
+   516→      }
+   517→      // pg-boss unavailable — fall through to in-process
+   518→      fallbackEnqueue(queue, payload);
+   519→    });
+   520→    return;
+   521→  }
+   522→
+   523→  // Tier 3: In-process fallback
+   524→  fallbackEnqueue(queue, payload);
+   525→}
+   526→
+   527→/** In-process fallback enqueue. */
+   528→function fallbackEnqueue(queue: QueueName, payload: JobPayload): void {
+   529→  if (!handlers.has(queue)) {
+   530→    const err = `No handler registered for queue "${queue}"`;
+   531→    recordDeadLetter(queue, payload, err, 0);
+   532→    void persistEnqueue(queue, payload).then((id) =>
+   533→      updateJobStatus(id, {
+   534→        status: "dead-letter",
+   535→        lastError: err,
+   536→        attempts: 0,
+   537→        completedAt: new Date(),
+   538→      }),
+   539→    );
+   540→    return;
+   541→  }
+   542→  void persistEnqueue(queue, payload).then((jobId) => {
+   543→    const p = runWithRetries(queue, payload, jobId);
+   544→    p.catch(() => {});
+   545→  });
+   546→  logger.debug("[queues] job enqueued (background, in-process)", { queue, type: payload.type });
+   547→}
+   548→
+   549→/**
+   550→ * Backward-compatible enqueue().
+   551→ */
+   552→export async function enqueue(queue: QueueName, payload: JobPayload): Promise<void> {
+   553→  enqueueBackground(queue, payload);
+   554→}
+   555→
+   556→/**
+   557→ * Recover unfinished jobs (called on boot).
+   558→ * Tier 1: BullMQ → Valkey handles recovery automatically.
+   559→ * Tier 2: pg-boss → pg-boss supervise + redrive.
+   560→ * Tier 3: In-process → picks up pending/stale JobQueue rows.
+   561→ */
+   562→export async function recoverPendingJobs(): Promise<{ recovered: number; errors: string[] }> {
+   563→  if (USE_BULLMQ) {
+   564→    // BullMQ handles job persistence and recovery via Valkey.
+   565→    // We still check the DB for any orphaned in-process rows from before migration.
+   566→    logger.info("[queues] BullMQ mode — Valkey handles job recovery. Checking for orphaned DB rows...");
+   567→  } else if (USE_PGBOSS) {
+   568→    // pg-boss handles recovery via its supervise/maintenance process.
+   569→    // Delegate to pg-boss's recoverPendingJobs which also redrives dead-letter jobs.
+   570→    const pgboss = await loadPgBossModule();
+   571→    if (pgboss) {
+   572→      const pgResult = await pgboss.recoverPendingJobs();
+   573→      // Also check for any orphaned JobQueue rows and re-enqueue them via pg-boss
+   574→      const dbResult = await recoverOrphanedJobQueueRows();
+   575→      return {
+   576→        recovered: pgResult.recovered + dbResult.recovered,
+   577→        errors: [...pgResult.errors, ...dbResult.errors],
+   578→      };
+   579→    }
+   580→    logger.warn("[queues] pg-boss module unavailable — falling back to in-process recovery");
+   581→  }
+   582→
+   583→  const errors: string[] = [];
+   584→  let recovered = 0;
+   585→  const staleCutoff = new Date(Date.now() - STALE_LOCK_THRESHOLD_MS);
+   586→
+   587→  try {
+   588→    const pending = await db.jobQueue.findMany({
+   589→      where: { status: "pending" },
+   590→      orderBy: { scheduledAt: "asc" },
+   591→      take: 200,
+   592→    });
+   593→
+   594→    const staleRunning = await db.jobQueue.findMany({
+   595→      where: { status: "running", lockedAt: { lt: staleCutoff } },
+   596→      orderBy: { lockedAt: "asc" },
+   597→      take: 50,
+   598→    });
+   599→
+   600→    const candidates = [...pending, ...staleRunning];
+   601→    if (candidates.length === 0) {
+   602→      logger.info("[queues] recoverPendingJobs: nothing to recover");
+   603→      return { recovered: 0, errors };
+   604→    }
+   605→
+   606→    logger.info("[queues] recoverPendingJobs: re-enqueuing unfinished jobs", {
+   607→      pending: pending.length, staleRunning: staleRunning.length,
+   608→    });
+   609→
+   610→    for (const row of candidates) {
+   611→      try {
+   612→        await db.jobQueue.update({
+   613→          where: { id: row.id },
+   614→          data: {
+   615→            status: "pending",
+   616→            lockedAt: null,
+   617→            lockedBy: null,
+   618→            lastError: row.status === "running" ? `recovered from stale lock (was locked since ${row.lockedAt?.toISOString()})` : row.lastError,
+   619→          },
+   620→        });
+   621→      } catch (err) {
+   622→        errors.push(`JobQueue#${row.id}: failed to re-claim — ${err instanceof Error ? err.message : String(err)}`);
+   623→        continue;
+   624→      }
+   625→
+   626→      if (!handlers.has(row.queue as QueueName)) {
+   627→        logger.debug("[queues] recoverPendingJobs: skipping — no handler for queue", { jobId: row.id, queue: row.queue });
+   628→        continue;
+   629→      }
+   630→
+   631→      let payloadData: Record<string, unknown>;
+   632→      try {
+   633→        payloadData = JSON.parse(row.data);
+   634→      } catch {
+   635→        errors.push(`JobQueue#${row.id}: malformed payload JSON — moving to dead-letter`);
+   636→        await updateJobStatus(row.id, {
+   637→          status: "dead-letter",
+   638→          lastError: "malformed payload JSON during recovery",
+   639→          completedAt: new Date(),
+   640→        });
+   641→        continue;
+   642→      }
+   643→
+   644→      const payload: JobPayload = {
+   645→        type: row.type,
+   646→        data: payloadData,
+   647→        attempts: row.maxAttempts || MAX_RETRIES,
+   648→      };
+   649→
+   650→      // In BullMQ mode, re-enqueue through BullMQ for proper processing
+   651→      if (USE_BULLMQ) {
+   652→        enqueueBackground(row.queue as QueueName, payload);
+   653→        // Mark old DB row as completed (migrated to BullMQ)
+   654→        await updateJobStatus(row.id, {
+   655→          status: "completed",
+   656→          completedAt: new Date(),
+   657→          lastError: "migrated-to-bullmq",
+   658→        });
+   659→      } else if (USE_PGBOSS) {
+   660→        // In pg-boss mode, re-enqueue through pg-boss
+   661→        enqueueBackground(row.queue as QueueName, payload);
+   662→        await updateJobStatus(row.id, {
+   663→          status: "completed",
+   664→          completedAt: new Date(),
+   665→          lastError: "migrated-to-pgboss",
+   666→        });
+   667→      } else {
+   668→        const p = runWithRetries(row.queue as QueueName, payload, row.id);
+   669→        p.catch(() => {});
+   670→      }
+   671→      recovered++;
+   672→    }
+   673→
+   674→    logger.info("[queues] recoverPendingJobs: done", { recovered, errors: errors.length });
+   675→  } catch (err) {
+   676→    const msg = err instanceof Error ? err.message : String(err);
+   677→    logger.error("[queues] recoverPendingJobs: fatal error during recovery", { err: msg });
+   678→    errors.push(`fatal: ${msg}`);
+   679→  }
+   680→
+   681→  return { recovered, errors };
+   682→}
+   683→
+   684→/** Connection factory — returns Valkey/ioredis connection when available. */
+   685→export function getConnection(): import("ioredis").default | null {
+   686→  // BullMQ manages its own connections from valkey.ts
+   687→  return null;
+   688→}
+   689→
+   690→/** Expose the worker ID. */
+   691→export function getWorkerId(): string {
+   692→  return WORKER_ID;
+   693→}
+   694→
+   695→/**
+   696→ * Get BullMQ queue counts (for admin dashboards).
+   697→ * Returns null if BullMQ is not active.
+   698→ */
+   699→export async function getBullMQStats(): Promise<Record<string, {
+   700→  waiting: number;
+   701→  active: number;
+   702→  completed: number;
+   703→  failed: number;
+   704→  delayed: number;
+   705→}> | null> {
+   706→  if (!USE_BULLMQ || !bullInitialized) return null;
+   707→
+   708→  const stats: Record<string, { waiting: number; active: number; completed: number; failed: number; delayed: number }> = {};
+   709→  for (const [name, queue] of Array.from(bullQueues.entries())) {
+   710→    try {
+   711→      const [waiting, active, completed, failed, delayed] = await Promise.all([
+   712→        queue.getWaitingCount(),
+   713→        queue.getActiveCount(),
+   714→        queue.getCompletedCount(),
+   715→        queue.getFailedCount(),
+   716→        queue.getDelayedCount(),
+   717→      ]);
+   718→      stats[name] = { waiting, active, completed, failed, delayed };
+   719→    } catch (err) {
+   720→      stats[name] = { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 };
+   721→      logger.debug("[queues] failed to get BullMQ stats", {
+   722→        queue: name, err: err instanceof Error ? err.message : String(err),
+   723→      });
+   724→    }
+   725→  }
+   726→  return stats;
+   727→}
+   728→
+   729→/**
+   730→ * Get pg-boss queue statistics (for admin dashboards).
+   731→ * Returns null if pg-boss is not active.
+   732→ */
+   733→export async function getPgBossStats(): Promise<Record<string, {
+   734→  queuedCount: number;
+   735→  activeCount: number;
+   736→  failedCount: number;
+   737→  totalCount: number;
+   738→  completedCount: number;
+   739→}> | null> {
+   740→  if (!USE_PGBOSS) return null;
+   741→  const pgboss = await loadPgBossModule();
+   742→  if (!pgboss) return null;
+   743→  return pgboss.getPgBossStats();
+   744→}
+   745→
+   746→// ─── pg-boss lifecycle (called from instrumentation/bootstrap) ──────────
+   747→
+   748→/** Start pg-boss if in pg-boss mode. Safe to call from app boot. */
+   749→export async function startQueue(): Promise<void> {
+   750→  if (USE_PGBOSS) {
+   751→    const pgboss = await loadPgBossModule();
+   752→    if (pgboss) {
+   753→      await pgboss.startPgBoss();
+   754→    }
+   755→  }
+   756→}
+   757→
+   758→/** Stop pg-boss gracefully (called from app shutdown). */
+   759→export async function stopQueue(): Promise<void> {
+   760→  if (USE_PGBOSS) {
+   761→    const pgboss = await loadPgBossModule();
+   762→    if (pgboss) {
+   763→      await pgboss.stopPgBoss();
+   764→    }
+   765→  }
+   766→}
+   767→
+   768→/** Whether the current queue mode uses pg-boss. */
+   769→export function isPgBossMode(): boolean {
+   770→  return USE_PGBOSS;
+   771→}
+   772→
+   773→// ─── Orphaned JobQueue row recovery (for pg-boss mode) ──────────────────
+   774→
+   775→/**
+   776→ * Recover orphaned rows from the legacy JobQueue Prisma table.
+   777→ * This is used when pg-boss is active to migrate any leftover rows
+   778→ * from the old in-process system into pg-boss.
+   779→ */
+   780→async function recoverOrphanedJobQueueRows(): Promise<{ recovered: number; errors: string[] }> {
+   781→  const errors: string[] = [];
+   782→  let recovered = 0;
+   783→  const staleCutoff = new Date(Date.now() - STALE_LOCK_THRESHOLD_MS);
+   784→
+   785→  try {
+   786→    const pending = await db.jobQueue.findMany({
+   787→      where: { status: "pending" },
+   788→      orderBy: { scheduledAt: "asc" },
+   789→      take: 200,
+   790→    });
+   791→
+   792→    const staleRunning = await db.jobQueue.findMany({
+   793→      where: { status: "running", lockedAt: { lt: staleCutoff } },
+   794→      orderBy: { lockedAt: "asc" },
+   795→      take: 50,
+   796→    });
+   797→
+   798→    const candidates = [...pending, ...staleRunning];
+   799→    if (candidates.length === 0) {
+   800→      logger.info("[queues] recoverOrphanedJobQueueRows: nothing to recover");
+   801→      return { recovered: 0, errors };
+   802→    }
+   803→
+   804→    logger.info("[queues] recoverOrphanedJobQueueRows: migrating leftover rows to pg-boss", {
+   805→      pending: pending.length, staleRunning: staleRunning.length,
+   806→    });
+   807→
+   808→    for (const row of candidates) {
+   809→      let payloadData: Record<string, unknown>;
+   810→      try {
+   811→        payloadData = JSON.parse(row.data);
+   812→      } catch {
+   813→        errors.push(`JobQueue#${row.id}: malformed payload JSON`);
+   814→        await updateJobStatus(row.id, {
+   815→          status: "dead-letter",
+   816→          lastError: "malformed payload JSON during pg-boss migration",
+   817→          completedAt: new Date(),
+   818→        });
+   819→        continue;
+   820→      }
+   821→
+   822→      const payload: JobPayload = {
+   823→        type: row.type,
+   824→        data: payloadData,
+   825→        attempts: row.maxAttempts || MAX_RETRIES,
+   826→      };
+   827→
+   828→      // Re-enqueue through pg-boss
+   829→      enqueueBackground(row.queue as QueueName, payload);
+   830→
+   831→      // Mark old DB row as migrated
+   832→      await updateJobStatus(row.id, {
+   833→        status: "completed",
+   834→        completedAt: new Date(),
+   835→        lastError: "migrated-to-pgboss",
+   836→      });
+   837→      recovered++;
+   838→    }
+   839→
+   840→    logger.info("[queues] recoverOrphanedJobQueueRows: done", { recovered, errors: errors.length });
+   841→  } catch (err) {
+   842→    const msg = err instanceof Error ? err.message : String(err);
+   843→    logger.error("[queues] recoverOrphanedJobQueueRows: fatal error", { err: msg });
+   844→    errors.push(`fatal: ${msg}`);
+   845→  }
+   846→
+   847→  return { recovered, errors };
+   848→}

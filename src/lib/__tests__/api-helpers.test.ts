@@ -21,10 +21,109 @@
  * warnings visible in the test output come from that one-time module
  * initialization.
  */
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+
+// ─── Mocks to isolate from cross-test contamination ──────────────────────
+// Other test files mock @/lib/db globally via bun:test's mock.module().
+// Without our own mock here, the leaked mock breaks our import chain.
+mock.module("@/lib/db", () => ({
+  db: {
+    user: { findUnique: mock(() => Promise.resolve(null)) },
+    auditLog: { create: mock(() => Promise.resolve({ id: "mock-audit" })) },
+    adminAuditLog: { create: mock(() => Promise.resolve({ id: "mock-admin-audit" })) },
+    tamperEvidenceChain: {
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({ id: "mock-chain" })),
+      findMany: mock(() => Promise.resolve([])),
+      update: mock(() => Promise.resolve({})),
+      updateMany: mock(() => Promise.resolve({ count: 0 })),
+      count: mock(() => Promise.resolve(0)),
+    },
+    $transaction: mock((cb: any) => cb({
+      auditLog: { create: mock(() => Promise.resolve({ id: "mock-audit" })) },
+      tamperEvidenceChain: {
+        findFirst: mock(() => Promise.resolve(null)),
+        create: mock(() => Promise.resolve({ id: "mock-chain" })),
+      },
+    })),
+  },
+}));
+
+mock.module("@/lib/logger", () => ({
+  logger: { debug: mock(() => {}), info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), fatal: mock(() => {}) },
+}));
+
+mock.module("@/lib/valkey", () => ({
+  getValkeyClient: mock(() => Promise.resolve(null)),
+  getValkeySubscriber: mock(() => Promise.resolve(null)),
+  VALKEY_CONFIGURED: false,
+}));
+
+// NOTE: We do NOT mock @/lib/secretsManager or @/lib/cryptoVault.
+// api.ts's import chain (auth → db/founder/permissions/valkey) does NOT
+// touch secretsManager or cryptoVault. Mocking cryptoVault globally breaks
+// mfa.test.ts (whose setupMFA calls the real encryptSecret/decryptSecret
+// and asserts the encrypted output matches the real format).
+
+// NOTE: We do NOT mock @/lib/permissions or @/lib/founder.
+// permissions.ts is a pure data module with no database imports — it can be
+// imported safely without a generated Prisma client. Mocking it globally
+// breaks rbac.test.ts (which imports the real computeEffectivePermissions
+// and asserts the full admin permission set, not just { create_invoice: 1 }).
+// founder.ts is also pure (reads from process.env, no imports) — safe to
+// import the real version.
+
+mock.module("next/headers", () => ({
+  cookies: mock(() => Promise.resolve(new Map())),
+}));
+
+// ─── Mock next/server to protect against cross-test contamination ──────
+// auth-advanced.test.ts mocks next/server with a minimal MockNextRequest/
+// MockNextResponse that lacks .json(), .nextUrl.searchParams, etc. When
+// that test runs in the same Bun process, its mock leaks into our module
+// space, breaking parseJsonBody / getQuery tests. Our own mock here
+// provides a fully-functional NextRequest/NextResponse built on top of
+// Bun's native Request/Response, which correctly supports .json(),
+// .nextUrl, .headers, etc.
+mock.module("next/server", () => {
+  // NextRequest: extends Bun's Request with .nextUrl (a URL object whose
+  // searchParams are live and pathname is correct).
+  class NextRequest extends Request {
+    _nextUrl: URL;
+    constructor(input: string | Request, init?: RequestInit) {
+      // Bun's Request handles body/headers/method automatically
+      super(input as any, init as any);
+      this._nextUrl = new URL(typeof input === "string" ? input : input.url);
+    }
+    get nextUrl() {
+      return this._nextUrl;
+    }
+  }
+
+  // NextResponse: extends Bun's Response with a static .json() factory.
+  class NextResponse extends Response {
+    constructor(body?: BodyInit | null, init?: ResponseInit) {
+      super(body, init);
+    }
+    static json(body: unknown, init?: ResponseInit): NextResponse {
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return new NextResponse(JSON.stringify(body), {
+        ...init,
+        status: init?.status ?? 200,
+        headers,
+      });
+    }
+  }
+
+  return { NextRequest, NextResponse };
+});
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
+
+// Dynamic import AFTER mocks are set up so they take effect
+const {
   validateBody,
   parseJsonField,
   withErrorHandler,
@@ -32,7 +131,7 @@ import {
   apiOk,
   parseJsonBody,
   getQuery,
-} from "@/lib/api";
+} = await import("@/lib/api");
 
 // ─── validateBody ─────────────────────────────────────────────────────────────
 

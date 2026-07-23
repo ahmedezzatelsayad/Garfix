@@ -1,0 +1,671 @@
+     1→     1→// @ts-nocheck
+     2→     2→/**
+     3→     3→ * mfa.test.ts — 60 tests for the TOTP-based MFA module.
+     4→     4→ *
+     5→     5→ * Covers: setupMFA, verifyAndEnableMFA, validateMFA, useRecoveryCode,
+     6→     6→ * isMFAEnabled, isMFARequired, disableMFA, getRecoveryCodeCount, and edge cases.
+     7→     7→ */
+     8→     8→
+     9→     9→import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+    10→    10→import crypto from "node:crypto";
+    11→    11→
+    12→    12→// ── Mock definitions ──────────────────────────────────────────────────────────
+    13→    13→
+    14→    14→const mockMFASecretFindUnique = mock(() => Promise.resolve(null));
+    15→    15→const mockMFASecretUpsert = mock(() => Promise.resolve({}));
+    16→    16→const mockMFASecretUpdate = mock(() => Promise.resolve({}));
+    17→    17→const mockMFASecretDelete = mock(() => Promise.resolve({}));
+    18→    18→
+    19→    19→mock.module("@/lib/db", () => ({
+    20→    20→  db: {
+    21→    21→    user: {
+    22→    22→      findUnique: mock(() => Promise.resolve(null)),
+    23→    23→      findMany: mock(() => Promise.resolve([])),
+    24→    24→      update: mock(() => Promise.resolve({})),
+    25→    25→      create: mock(() => Promise.resolve({})),
+    26→    26→      delete: mock(() => Promise.resolve({})),
+    27→    27→      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    28→    28→      upsert: mock(() => Promise.resolve({})),
+    29→    29→      count: mock(() => Promise.resolve(0)),
+    30→    30→    },
+    31→    31→    auditLog: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), aggregate: mock(() => Promise.resolve({})) },
+    32→    32→    adminAuditLog: { create: mock(() => Promise.resolve({})) },
+    33→    33→    mFASecret: {
+    34→    34→      findUnique: mockMFASecretFindUnique,
+    35→    35→      upsert: mockMFASecretUpsert,
+    36→    36→      update: mockMFASecretUpdate,
+    37→    37→      delete: mockMFASecretDelete,
+    38→    38→    },
+    39→    39→    sessionRegistry: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), delete: mock(() => Promise.resolve({})), deleteMany: mock(() => Promise.resolve({ count: 0 })), count: mock(() => Promise.resolve(0)) },
+    40→    40→    tamperEvidenceChain: { findFirst: mock(() => Promise.resolve(null)), create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), updateMany: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), count: mock(() => Promise.resolve(0)) },
+    41→    41→    webhookEndpoint: { findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), create: mock(() => Promise.resolve({})), count: mock(() => Promise.resolve(0)) },
+    42→    42→    webhookDelivery: { findMany: mock(() => Promise.resolve([])), create: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})) },
+    43→    43→    budgetConfig: { findUnique: mock(() => Promise.resolve(null)) },
+    44→    44→    aIRequestLog: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), aggregate: mock(() => Promise.resolve({})) },
+    45→    45→    aIMemoryEntry: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)), update: mock(() => Promise.resolve({})) },
+    46→    46→    cacheEntry: { findUnique: mock(() => Promise.resolve(null)), upsert: mock(() => Promise.resolve({})), update: mock(() => Promise.resolve({})), delete: mock(() => Promise.resolve({})) },
+    47→    47→    ruleCandidate: { findMany: mock(() => Promise.resolve([])) },
+    48→    48→    company: { findMany: mock(() => Promise.resolve([])) },
+    49→    49→    notification: { create: mock(() => Promise.resolve({})) },
+    50→    50→  },
+    51→    51→}));
+    52→    52→
+    53→    53→mock.module("@/lib/logger", () => ({
+    54→    54→  logger: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), debug: mock(() => {}) },
+    55→    55→}));
+    56→    56→
+    57→    57→// ── Import after mocks ────────────────────────────────────────────────────────
+    58→    58→
+    59→    59→const { setupMFA, verifyAndEnableMFA, validateMFA, useRecoveryCode, isMFAEnabled, isMFARequired, disableMFA, getRecoveryCodeCount } = await import("@/lib/mfa");
+    60→    60→const { encryptSecret, decryptSecret, hashToken } = await import("@/lib/cryptoVault");
+    61→    61→
+    62→    62→// ── Helper ────────────────────────────────────────────────────────────────────
+    63→    63→
+    64→    64→function createEncryptedRecoveryCodes(codes: string[]): string {
+    65→    65→  const hashed = codes.map((c) => hashToken(c));
+    66→    66→  return encryptSecret(JSON.stringify(hashed));
+    67→    67→}
+    68→    68→
+    69→    69→// ── Tests ─────────────────────────────────────────────────────────────────────
+    70→    70→
+    71→    71→describe("MFA Module", () => {
+    72→    72→  beforeEach(() => {
+    73→    73→    mockMFASecretFindUnique.mockClear();
+    74→    74→    mockMFASecretUpsert.mockClear();
+    75→    75→    mockMFASecretUpdate.mockClear();
+    76→    76→    mockMFASecretDelete.mockClear();
+    77→    77→  });
+    78→    78→
+    79→    79→  // ═══════════════════════════════════════════════════════════════════════════
+    80→    80→  // setupMFA — 12 tests
+    81→    81→  // ═══════════════════════════════════════════════════════════════════════════
+    82→    82→  describe("setupMFA", () => {
+    83→    83→    it("generates a non-empty secret", async () => {
+    84→    84→      const result = await setupMFA("user-1");
+    85→    85→      expect(result.secret).toBeTruthy();
+    86→    86→      expect(result.secret.length).toBeGreaterThan(0);
+    87→    87→    });
+    88→    88→
+    89→    89→    it("returns a valid otpauth URI", async () => {
+    90→    90→      const result = await setupMFA("user-1");
+    91→    91→      expect(result.uri).toContain("otpauth://totp/");
+    92→    92→      expect(result.uri).toContain("GarfiX:");
+    93→    93→      expect(result.uri).toContain("secret=");
+    94→    94→      expect(result.uri).toContain("algorithm=SHA1");
+    95→    95→      expect(result.uri).toContain("digits=6");
+    96→    96→      expect(result.uri).toContain("period=30");
+    97→    97→    });
+    98→    98→
+    99→    99→    it("URI encodes the userUid", async () => {
+   100→   100→      const result = await setupMFA("user@test.com");
+   101→   101→      expect(result.uri).toContain("GarfiX:user%40test.com");
+   102→   102→    });
+   103→   103→
+   104→   104→    it("generates exactly 10 recovery codes", async () => {
+   105→   105→      const result = await setupMFA("user-1");
+   106→   106→      expect(result.recoveryCodes).toHaveLength(10);
+   107→   107→    });
+   108→   108→
+   109→   109→    it("recovery codes are in XXXX-XXXX format", async () => {
+   110→   110→      const result = await setupMFA("user-1");
+   111→   111→      for (const code of result.recoveryCodes) {
+   112→   112→        expect(code).toMatch(/^[A-F0-9]{4}-[A-F0-9]{4}$/);
+   113→   113→      }
+   114→   114→    });
+   115→   115→
+   116→   116→    it("recovery codes are uppercase", async () => {
+   117→   117→      const result = await setupMFA("user-1");
+   118→   118→      for (const code of result.recoveryCodes) {
+   119→   119→        expect(code).toBe(code.toUpperCase());
+   120→   120→      }
+   121→   121→    });
+   122→   122→
+   123→   123→    it("calls db.mFASecret.upsert with correct id", async () => {
+   124→   124→      await setupMFA("user-abc");
+   125→   125→      expect(mockMFASecretUpsert).toHaveBeenCalledTimes(1);
+   126→   126→      const call = mockMFASecretUpsert.mock.calls[0][0];
+   127→   127→      expect(call.where).toEqual({ id: "mfa-user-abc" });
+   128→   128→    });
+   129→   129→
+   130→   130→    it("stores encrypted secret in DB", async () => {
+   131→   131→      await setupMFA("user-1");
+   132→   132→      const call = mockMFASecretUpsert.mock.calls[0][0];
+   133→   133→      expect(call.create.secret).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
+   134→   134→    });
+   135→   135→
+   136→   136→    it("stores encrypted recovery codes in DB", async () => {
+   137→   137→      await setupMFA("user-1");
+   138→   138→      const call = mockMFASecretUpsert.mock.calls[0][0];
+   139→   139→      expect(call.create.recoveryCodes).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
+   140→   140→    });
+   141→   141→
+   142→   142→    it("sets enabled=false on create", async () => {
+   143→   143→      await setupMFA("user-1");
+   144→   144→      const call = mockMFASecretUpsert.mock.calls[0][0];
+   145→   145→      expect(call.create.enabled).toBe(false);
+   146→   146→    });
+   147→   147→
+   148→   148→    it("sets enabled=false on update (re-setup)", async () => {
+   149→   149→      await setupMFA("user-1");
+   150→   150→      const call = mockMFASecretUpsert.mock.calls[0][0];
+   151→   151→      expect(call.update.enabled).toBe(false);
+   152→   152→    });
+   153→   153→
+   154→   154→    it("clears verifiedAt on update (re-setup)", async () => {
+   155→   155→      await setupMFA("user-1");
+   156→   156→      const call = mockMFASecretUpsert.mock.calls[0][0];
+   157→   157→      expect(call.update.verifiedAt).toBeNull();
+   158→   158→    });
+   159→   159→  });
+   160→   160→
+   161→   161→  // ═══════════════════════════════════════════════════════════════════════════
+   162→   162→  // verifyAndEnableMFA — 10 tests
+   163→   163→  // ═══════════════════════════════════════════════════════════════════════════
+   164→   164→  describe("verifyAndEnableMFA", () => {
+   165→   165→    it("returns false when record does not exist", async () => {
+   166→   166→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   167→   167→      const result = await verifyAndEnableMFA("user-ghost", "123456");
+   168→   168→      expect(result).toBe(false);
+   169→   169→    });
+   170→   170→
+   171→   171→    it("returns false for an invalid TOTP code", async () => {
+   172→   172→      const secret = crypto.randomBytes(20).toString("base64url");
+   173→   173→      const encSecret = encryptSecret(secret);
+   174→   174→      const encCodes = createEncryptedRecoveryCodes(["AAAA-BBBB"]);
+   175→   175→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   176→   176→        id: "mfa-user-1", userUid: "user-1", secret: encSecret,
+   177→   177→        recoveryCodes: encCodes, enabled: false, verifiedAt: null, lastUsedAt: null,
+   178→   178→      });
+   179→   179→      const result = await verifyAndEnableMFA("user-1", "000000");
+   180→   180→      expect(result).toBe(false);
+   181→   181→    });
+   182→   182→
+   183→   183→    it("returns false for a wrong 6-digit code", async () => {
+   184→   184→      const secret = crypto.randomBytes(20).toString("base64url");
+   185→   185→      const encSecret = encryptSecret(secret);
+   186→   186→      const encCodes = createEncryptedRecoveryCodes(["AAAA-BBBB"]);
+   187→   187→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   188→   188→        id: "mfa-user-1", userUid: "user-1", secret: encSecret,
+   189→   189→        recoveryCodes: encCodes, enabled: false, verifiedAt: null, lastUsedAt: null,
+   190→   190→      });
+   191→   191→      const result = await verifyAndEnableMFA("user-1", "999999");
+   192→   192→      expect(result).toBe(false);
+   193→   193→    });
+   194→   194→
+   195→   195→    it("returns false when code has wrong length", async () => {
+   196→   196→      const secret = crypto.randomBytes(20).toString("base64url");
+   197→   197→      const encSecret = encryptSecret(secret);
+   198→   198→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   199→   199→        id: "mfa-user-1", userUid: "user-1", secret: encSecret,
+   200→   200→        recoveryCodes: "enc", enabled: false, verifiedAt: null, lastUsedAt: null,
+   201→   201→      });
+   202→   202→      const result = await verifyAndEnableMFA("user-1", "12345");
+   203→   203→      expect(result).toBe(false);
+   204→   204→    });
+   205→   205→
+   206→   206→    it("returns false for empty code", async () => {
+   207→   207→      const secret = crypto.randomBytes(20).toString("base64url");
+   208→   208→      const encSecret = encryptSecret(secret);
+   209→   209→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   210→   210→        id: "mfa-user-1", userUid: "user-1", secret: encSecret,
+   211→   211→        recoveryCodes: "enc", enabled: false, verifiedAt: null, lastUsedAt: null,
+   212→   212→      });
+   213→   213→      const result = await verifyAndEnableMFA("user-1", "");
+   214→   214→      expect(result).toBe(false);
+   215→   215→    });
+   216→   216→
+   217→   217→    it("does not call update when record not found", async () => {
+   218→   218→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   219→   219→      await verifyAndEnableMFA("user-ghost", "123456");
+   220→   220→      expect(mockMFASecretUpdate).not.toHaveBeenCalled();
+   221→   221→    });
+   222→   222→
+   223→   223→    it("does not call update when code is invalid", async () => {
+   224→   224→      const secret = crypto.randomBytes(20).toString("base64url");
+   225→   225→      const encSecret = encryptSecret(secret);
+   226→   226→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   227→   227→        id: "mfa-user-1", userUid: "user-1", secret: encSecret,
+   228→   228→        recoveryCodes: "enc", enabled: false, verifiedAt: null, lastUsedAt: null,
+   229→   229→      });
+   230→   230→      await verifyAndEnableMFA("user-1", "000000");
+   231→   231→      expect(mockMFASecretUpdate).not.toHaveBeenCalled();
+   232→   232→    });
+   233→   233→
+   234→   234→    it("queries with correct where clause", async () => {
+   235→   235→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   236→   236→      await verifyAndEnableMFA("user-xyz", "123456");
+   237→   237→      expect(mockMFASecretFindUnique).toHaveBeenCalledWith({ where: { id: "mfa-user-xyz" } });
+   238→   238→    });
+   239→   239→
+   240→   240→    it("handles decryption error gracefully (returns false)", async () => {
+   241→   241→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   242→   242→        id: "mfa-user-1", userUid: "user-1", secret: "corrupted-not-encrypted",
+   243→   243→        recoveryCodes: "enc", enabled: false, verifiedAt: null, lastUsedAt: null,
+   244→   244→      });
+   245→   245→      const result = await verifyAndEnableMFA("user-1", "123456");
+   246→   246→      expect(result).toBe(false);
+   247→   247→    });
+   248→   248→
+   249→   249→    it("non-existent user returns false without throwing", async () => {
+   250→   250→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   251→   251→      const result = await verifyAndEnableMFA("nonexistent-uid", "123456");
+   252→   252→      expect(result).toBe(false);
+   253→   253→    });
+   254→   254→  });
+   255→   255→
+   256→   256→  // ═══════════════════════════════════════════════════════════════════════════
+   257→   257→  // validateMFA — 10 tests
+   258→   258→  // ═══════════════════════════════════════════════════════════════════════════
+   259→   259→  describe("validateMFA", () => {
+   260→   260→    it("returns false when record does not exist", async () => {
+   261→   261→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   262→   262→      const result = await validateMFA("user-ghost", "123456");
+   263→   263→      expect(result).toBe(false);
+   264→   264→    });
+   265→   265→
+   266→   266→    it("returns false when MFA is not enabled", async () => {
+   267→   267→      const secret = crypto.randomBytes(20).toString("base64url");
+   268→   268→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   269→   269→        id: "mfa-user-1", userUid: "user-1",
+   270→   270→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   271→   271→        enabled: false, verifiedAt: null, lastUsedAt: null,
+   272→   272→      });
+   273→   273→      const result = await validateMFA("user-1", "123456");
+   274→   274→      expect(result).toBe(false);
+   275→   275→    });
+   276→   276→
+   277→   277→    it("returns false for an invalid code on enabled MFA", async () => {
+   278→   278→      const secret = crypto.randomBytes(20).toString("base64url");
+   279→   279→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   280→   280→        id: "mfa-user-1", userUid: "user-1",
+   281→   281→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   282→   282→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   283→   283→      });
+   284→   284→      const result = await validateMFA("user-1", "000000");
+   285→   285→      expect(result).toBe(false);
+   286→   286→    });
+   287→   287→
+   288→   288→    it("returns false for wrong-length code", async () => {
+   289→   289→      const secret = crypto.randomBytes(20).toString("base64url");
+   290→   290→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   291→   291→        id: "mfa-user-1", userUid: "user-1",
+   292→   292→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   293→   293→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   294→   294→      });
+   295→   295→      const result = await validateMFA("user-1", "1234");
+   296→   296→      expect(result).toBe(false);
+   297→   297→    });
+   298→   298→
+   299→   299→    it("returns false for empty code", async () => {
+   300→   300→      const secret = crypto.randomBytes(20).toString("base64url");
+   301→   301→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   302→   302→        id: "mfa-user-1", userUid: "user-1",
+   303→   303→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   304→   304→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   305→   305→      });
+   306→   306→      const result = await validateMFA("user-1", "");
+   307→   307→      expect(result).toBe(false);
+   308→   308→    });
+   309→   309→
+   310→   310→    it("does not update lastUsedAt for invalid code", async () => {
+   311→   311→      const secret = crypto.randomBytes(20).toString("base64url");
+   312→   312→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   313→   313→        id: "mfa-user-1", userUid: "user-1",
+   314→   314→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   315→   315→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   316→   316→      });
+   317→   317→      await validateMFA("user-1", "000000");
+   318→   318→      expect(mockMFASecretUpdate).not.toHaveBeenCalled();
+   319→   319→    });
+   320→   320→
+   321→   321→    it("queries with correct where clause", async () => {
+   322→   322→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   323→   323→      await validateMFA("user-zzz", "123456");
+   324→   324→      expect(mockMFASecretFindUnique).toHaveBeenCalledWith({ where: { id: "mfa-user-zzz" } });
+   325→   325→    });
+   326→   326→
+   327→   327→    it("handles decryption error gracefully", async () => {
+   328→   328→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   329→   329→        id: "mfa-user-1", userUid: "user-1",
+   330→   330→        secret: "not-properly-encrypted", recoveryCodes: "enc",
+   331→   331→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   332→   332→      });
+   333→   333→      const result = await validateMFA("user-1", "123456");
+   334→   334→      expect(result).toBe(false);
+   335→   335→    });
+   336→   336→
+   337→   337→    it("non-existent user returns false", async () => {
+   338→   338→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   339→   339→      const result = await validateMFA("no-such-user", "123456");
+   340→   340→      expect(result).toBe(false);
+   341→   341→    });
+   342→   342→
+   343→   343→    it("disabled MFA returns false even with valid-looking code", async () => {
+   344→   344→      const secret = crypto.randomBytes(20).toString("base64url");
+   345→   345→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   346→   346→        id: "mfa-user-1", userUid: "user-1",
+   347→   347→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   348→   348→        enabled: false, verifiedAt: null, lastUsedAt: null,
+   349→   349→      });
+   350→   350→      const result = await validateMFA("user-1", "123456");
+   351→   351→      expect(result).toBe(false);
+   352→   352→    });
+   353→   353→  });
+   354→   354→
+   355→   355→  // ═══════════════════════════════════════════════════════════════════════════
+   356→   356→  // useRecoveryCode — 10 tests
+   357→   357→  // ═══════════════════════════════════════════════════════════════════════════
+   358→   358→  describe("useRecoveryCode", () => {
+   359→   359→    it("returns false when record does not exist", async () => {
+   360→   360→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   361→   361→      const result = await useRecoveryCode("user-ghost", "AAAA-BBBB");
+   362→   362→      expect(result).toBe(false);
+   363→   363→    });
+   364→   364→
+   365→   365→    it("returns false when MFA is not enabled", async () => {
+   366→   366→      const codes = ["AAAA-BBBB", "CCCC-DDDD"];
+   367→   367→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   368→   368→        id: "mfa-user-1", userUid: "user-1",
+   369→   369→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   370→   370→        enabled: false, verifiedAt: null, lastUsedAt: null,
+   371→   371→      });
+   372→   372→      const result = await useRecoveryCode("user-1", "AAAA-BBBB");
+   373→   373→      expect(result).toBe(false);
+   374→   374→    });
+   375→   375→
+   376→   376→    it("returns false for invalid recovery code", async () => {
+   377→   377→      const codes = ["AAAA-BBBB", "CCCC-DDDD"];
+   378→   378→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   379→   379→        id: "mfa-user-1", userUid: "user-1",
+   380→   380→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   381→   381→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   382→   382→      });
+   383→   383→      const result = await useRecoveryCode("user-1", "ZZZZ-ZZZZ");
+   384→   384→      expect(result).toBe(false);
+   385→   385→    });
+   386→   386→
+   387→   387→    it("returns true for a valid recovery code", async () => {
+   388→   388→      const codes = ["AAAA-BBBB", "CCCC-DDDD"];
+   389→   389→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   390→   390→        id: "mfa-user-1", userUid: "user-1",
+   391→   391→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   392→   392→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   393→   393→      });
+   394→   394→      const result = await useRecoveryCode("user-1", "AAAA-BBBB");
+   395→   395→      expect(result).toBe(true);
+   396→   396→    });
+   397→   397→
+   398→   398→    it("removes used code from the pool (one-time use)", async () => {
+   399→   399→      const codes = ["AAAA-BBBB", "CCCC-DDDD"];
+   400→   400→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   401→   401→        id: "mfa-user-1", userUid: "user-1",
+   402→   402→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   403→   403→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   404→   404→      });
+   405→   405→      await useRecoveryCode("user-1", "AAAA-BBBB");
+   406→   406→      expect(mockMFASecretUpdate).toHaveBeenCalledTimes(1);
+   407→   407→      const updateCall = mockMFASecretUpdate.mock.calls[0][0];
+   408→   408→      const updatedCodes = JSON.parse(decryptSecret(updateCall.data.recoveryCodes));
+   409→   409→      expect(updatedCodes).toHaveLength(1);
+   410→   410→      expect(updatedCodes).not.toContain(hashToken("AAAA-BBBB"));
+   411→   411→      expect(updatedCodes).toContain(hashToken("CCCC-DDDD"));
+   412→   412→    });
+   413→   413→
+   414→   414→    it("second use of same code returns false", async () => {
+   415→   415→      const codes = ["AAAA-BBBB"];
+   416→   416→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   417→   417→        id: "mfa-user-1", userUid: "user-1",
+   418→   418→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   419→   419→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   420→   420→      });
+   421→   421→      const first = await useRecoveryCode("user-1", "AAAA-BBBB");
+   422→   422→      expect(first).toBe(true);
+   423→   423→
+   424→   424→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   425→   425→        id: "mfa-user-1", userUid: "user-1",
+   426→   426→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes([]),
+   427→   427→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   428→   428→      });
+   429→   429→      const second = await useRecoveryCode("user-1", "AAAA-BBBB");
+   430→   430→      expect(second).toBe(false);
+   431→   431→    });
+   432→   432→
+   433→   433→    it("does not update DB when code is invalid", async () => {
+   434→   434→      const codes = ["AAAA-BBBB"];
+   435→   435→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   436→   436→        id: "mfa-user-1", userUid: "user-1",
+   437→   437→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   438→   438→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   439→   439→      });
+   440→   440→      await useRecoveryCode("user-1", "ZZZZ-ZZZZ");
+   441→   441→      expect(mockMFASecretUpdate).not.toHaveBeenCalled();
+   442→   442→    });
+   443→   443→
+   444→   444→    it("handles case-insensitive code matching (lowercase fails)", async () => {
+   445→   445→      const codes = ["AAAA-BBBB"];
+   446→   446→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   447→   447→        id: "mfa-user-1", userUid: "user-1",
+   448→   448→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes(codes),
+   449→   449→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   450→   450→      });
+   451→   451→      const result = await useRecoveryCode("user-1", "aaaa-bbbb");
+   452→   452→      expect(result).toBe(false);
+   453→   453→    });
+   454→   454→
+   455→   455→    it("handles empty recovery code pool", async () => {
+   456→   456→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   457→   457→        id: "mfa-user-1", userUid: "user-1",
+   458→   458→        secret: "enc", recoveryCodes: createEncryptedRecoveryCodes([]),
+   459→   459→        enabled: true, verifiedAt: new Date(), lastUsedAt: null,
+   460→   460→      });
+   461→   461→      const result = await useRecoveryCode("user-1", "AAAA-BBBB");
+   462→   462→      expect(result).toBe(false);
+   463→   463→    });
+   464→   464→
+   465→   465→    it("queries with correct where clause", async () => {
+   466→   466→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   467→   467→      await useRecoveryCode("user-abc", "AAAA-BBBB");
+   468→   468→      expect(mockMFASecretFindUnique).toHaveBeenCalledWith({ where: { id: "mfa-user-abc" } });
+   469→   469→    });
+   470→   470→  });
+   471→   471→
+   472→   472→  // ═══════════════════════════════════════════════════════════════════════════
+   473→   473→  // isMFAEnabled — 5 tests
+   474→   474→  // ═══════════════════════════════════════════════════════════════════════════
+   475→   475→  describe("isMFAEnabled", () => {
+   476→   476→    it("returns true when record exists and enabled=true", async () => {
+   477→   477→      mockMFASecretFindUnique.mockResolvedValueOnce({ enabled: true });
+   478→   478→      const result = await isMFAEnabled("user-1");
+   479→   479→      expect(result).toBe(true);
+   480→   480→    });
+   481→   481→
+   482→   482→    it("returns false when record exists and enabled=false", async () => {
+   483→   483→      mockMFASecretFindUnique.mockResolvedValueOnce({ enabled: false });
+   484→   484→      const result = await isMFAEnabled("user-1");
+   485→   485→      expect(result).toBe(false);
+   486→   486→    });
+   487→   487→
+   488→   488→    it("returns false when record does not exist", async () => {
+   489→   489→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   490→   490→      const result = await isMFAEnabled("user-ghost");
+   491→   491→      expect(result).toBe(false);
+   492→   492→    });
+   493→   493→
+   494→   494→    it("returns false when enabled is undefined", async () => {
+   495→   495→      mockMFASecretFindUnique.mockResolvedValueOnce({ enabled: undefined });
+   496→   496→      const result = await isMFAEnabled("user-1");
+   497→   497→      expect(result).toBe(false);
+   498→   498→    });
+   499→   499→
+   500→   500→    it("queries with correct where clause", async () => {
+   501→   501→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   502→   502→      await isMFAEnabled("user-xyz");
+   503→   503→      expect(mockMFASecretFindUnique).toHaveBeenCalledWith({ where: { id: "mfa-user-xyz" } });
+   504→   504→    });
+   505→   505→  });
+   506→   506→
+   507→   507→  // ═══════════════════════════════════════════════════════════════════════════
+   508→   508→  // isMFARequired — 5 tests
+   509→   509→  // ═══════════════════════════════════════════════════════════════════════════
+   510→   510→  describe("isMFARequired", () => {
+   511→   511→    it("returns true for admin role", () => {
+   512→   512→      expect(isMFARequired("admin", false)).toBe(true);
+   513→   513→    });
+   514→   514→
+   515→   515→    it("returns true for founder (isFounder=true)", () => {
+   516→   516→      expect(isMFARequired("employee", true)).toBe(true);
+   517→   517→    });
+   518→   518→
+   519→   519→    it("returns true for admin founder", () => {
+   520→   520→      expect(isMFARequired("admin", true)).toBe(true);
+   521→   521→    });
+   522→   522→
+   523→   523→    it("returns false for employee (isFounder=false)", () => {
+   524→   524→      expect(isMFARequired("employee", false)).toBe(false);
+   525→   525→    });
+   526→   526→
+   527→   527→    it("returns false for editor (isFounder=false)", () => {
+   528→   528→      expect(isMFARequired("editor", false)).toBe(false);
+   529→   529→    });
+   530→   530→  });
+   531→   531→
+   532→   532→  // ═══════════════════════════════════════════════════════════════════════════
+   533→   533→  // disableMFA — 4 tests
+   534→   534→  // ═══════════════════════════════════════════════════════════════════════════
+   535→   535→  describe("disableMFA", () => {
+   536→   536→    it("calls db delete with correct id", async () => {
+   537→   537→      mockMFASecretDelete.mockResolvedValueOnce({});
+   538→   538→      await disableMFA("user-1");
+   539→   539→      expect(mockMFASecretDelete).toHaveBeenCalledWith({ where: { id: "mfa-user-1" } });
+   540→   540→    });
+   541→   541→
+   542→   542→    it("handles non-existent user (delete throws) gracefully", async () => {
+   543→   543→      mockMFASecretDelete.mockRejectedValueOnce(new Error("Record not found"));
+   544→   544→      await disableMFA("user-ghost");
+   545→   545→      expect(mockMFASecretDelete).toHaveBeenCalledWith({ where: { id: "mfa-user-ghost" } });
+   546→   546→    });
+   547→   547→
+   548→   548→    it("handles Prisma not-found error gracefully", async () => {
+   549→   549→      const prismaError = new Error("Record to delete does not exist");
+   550→   550→      (prismaError as any).code = "P2025";
+   551→   551→      mockMFASecretDelete.mockRejectedValueOnce(prismaError);
+   552→   552→      await disableMFA("user-missing");
+   553→   553→      expect(mockMFASecretDelete).toHaveBeenCalledTimes(1);
+   554→   554→    });
+   555→   555→
+   556→   556→    it("resolves without error for valid user", async () => {
+   557→   557→      mockMFASecretDelete.mockResolvedValueOnce({ id: "mfa-user-1" });
+   558→   558→      await expect(disableMFA("user-1")).resolves.toBeUndefined();
+   559→   559→    });
+   560→   560→  });
+   561→   561→
+   562→   562→  // ═══════════════════════════════════════════════════════════════════════════
+   563→   563→  // getRecoveryCodeCount — 4 tests
+   564→   564→  // ═══════════════════════════════════════════════════════════════════════════
+   565→   565→  describe("getRecoveryCodeCount", () => {
+   566→   566→    it("returns 0 for non-existent user", async () => {
+   567→   567→      mockMFASecretFindUnique.mockResolvedValueOnce(null);
+   568→   568→      const result = await getRecoveryCodeCount("user-ghost");
+   569→   569→      expect(result).toBe(0);
+   570→   570→    });
+   571→   571→
+   572→   572→    it("returns correct count for user with 10 codes", async () => {
+   573→   573→      const codes = Array.from({ length: 10 }, (_, i) => `${i.toString(16).toUpperCase().padStart(4, "0")}-AAAA`);
+   574→   574→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   575→   575→        recoveryCodes: createEncryptedRecoveryCodes(codes),
+   576→   576→      });
+   577→   577→      const result = await getRecoveryCodeCount("user-1");
+   578→   578→      expect(result).toBe(10);
+   579→   579→    });
+   580→   580→
+   581→   581→    it("returns 0 when recovery codes have been exhausted", async () => {
+   582→   582→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   583→   583→        recoveryCodes: createEncryptedRecoveryCodes([]),
+   584→   584→      });
+   585→   585→      const result = await getRecoveryCodeCount("user-1");
+   586→   586→      expect(result).toBe(0);
+   587→   587→    });
+   588→   588→
+   589→   589→    it("returns 0 when recovery codes are corrupted", async () => {
+   590→   590→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   591→   591→        recoveryCodes: "not-encrypted-properly",
+   592→   592→      });
+   593→   593→      const result = await getRecoveryCodeCount("user-1");
+   594→   594→      expect(result).toBe(0);
+   595→   595→    });
+   596→   596→  });
+   597→   597→
+   598→   598→  // ═══════════════════════════════════════════════════════════════════════════
+   599→   599→  // Edge cases — 10 tests
+   600→   600→  // ═══════════════════════════════════════════════════════════════════════════
+   601→   601→  describe("Edge cases", () => {
+   602→   602→    it("consecutive setup calls generate different secrets", async () => {
+   603→   603→      const r1 = await setupMFA("user-1");
+   604→   604→      const r2 = await setupMFA("user-1");
+   605→   605→      expect(r1.secret).not.toBe(r2.secret);
+   606→   606→    });
+   607→   607→
+   608→   608→    it("consecutive setup calls generate different recovery codes", async () => {
+   609→   609→      const r1 = await setupMFA("user-1");
+   610→   610→      const r2 = await setupMFA("user-1");
+   611→   611→      expect(r1.recoveryCodes).not.toEqual(r2.recoveryCodes);
+   612→   612→    });
+   613→   613→
+   614→   614→    it("recovery codes from setup are unique", async () => {
+   615→   615→      const result = await setupMFA("user-1");
+   616→   616→      const unique = new Set(result.recoveryCodes);
+   617→   617→      expect(unique.size).toBe(10);
+   618→   618→    });
+   619→   619→
+   620→   620→    it("isMFARequired returns false for viewer role", () => {
+   621→   621→      expect(isMFARequired("viewer", false)).toBe(false);
+   622→   622→    });
+   623→   623→
+   624→   624→    it("isMFARequired returns false for empty string role", () => {
+   625→   625→      expect(isMFARequired("", false)).toBe(false);
+   626→   626→    });
+   627→   627→
+   628→   628→    it("disableMFA with empty string uid calls delete", async () => {
+   629→   629→      mockMFASecretDelete.mockResolvedValueOnce({});
+   630→   630→      await disableMFA("");
+   631→   631→      expect(mockMFASecretDelete).toHaveBeenCalledWith({ where: { id: "mfa-" } });
+   632→   632→    });
+   633→   633→
+   634→   634→    it("getRecoveryCodeCount for user with 3 codes returns 3", async () => {
+   635→   635→      const codes = ["AAAA-BBBB", "CCCC-DDDD", "EEEE-FFFF"];
+   636→   636→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   637→   637→        recoveryCodes: createEncryptedRecoveryCodes(codes),
+   638→   638→      });
+   639→   639→      expect(await getRecoveryCodeCount("user-1")).toBe(3);
+   640→   640→    });
+   641→   641→
+   642→   642→    it("getRecoveryCodeCount after using 2 of 5 codes returns 3", async () => {
+   643→   643→      const remaining = ["CCCC-DDDD", "EEEE-FFFF", "GGGG-HHHH"];
+   644→   644→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   645→   645→        recoveryCodes: createEncryptedRecoveryCodes(remaining),
+   646→   646→      });
+   647→   647→      expect(await getRecoveryCodeCount("user-1")).toBe(3);
+   648→   648→    });
+   649→   649→
+   650→   650→    it("verifyAndEnableMFA with non-string code returns false", async () => {
+   651→   651→      const secret = crypto.randomBytes(20).toString("base64url");
+   652→   652→      mockMFASecretFindUnique.mockResolvedValueOnce({
+   653→   653→        id: "mfa-user-1", userUid: "user-1",
+   654→   654→        secret: encryptSecret(secret), recoveryCodes: "enc",
+   655→   655→        enabled: false, verifiedAt: null, lastUsedAt: null,
+   656→   656→      });
+   657→   657→      const result = await verifyAndEnableMFA("user-1", "not-a-number" as any);
+   658→   658→      expect(result).toBe(false);
+   659→   659→    });
+   660→   660→
+   661→   661→    it("setupMFA for different users produces independent records", async () => {
+   662→   662→      const r1 = await setupMFA("user-A");
+   663→   663→      const r2 = await setupMFA("user-B");
+   664→   664→      expect(r1.secret).not.toBe(r2.secret);
+   665→   665→      expect(r1.uri).not.toBe(r2.uri);
+   666→   666→      expect(mockMFASecretUpsert).toHaveBeenCalledTimes(2);
+   667→   667→      expect(mockMFASecretUpsert.mock.calls[0][0].where.id).toBe("mfa-user-A");
+   668→   668→      expect(mockMFASecretUpsert.mock.calls[1][0].where.id).toBe("mfa-user-B");
+   669→   669→    });
+   670→   670→  });
+   671→   671→});

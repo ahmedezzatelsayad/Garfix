@@ -22,7 +22,7 @@ describe('Seeder Edge Case 10', () => {
     const companies = seedEnterpriseData(10, 42 + 10);
     for (const c of companies) {
       for (const inv of c.invoices) {
-        expect(inv.finalTotal).toBeGreaterThanOrEqual(0);
+        expect(inv.total).toBeGreaterThanOrEqual(0);
       }
     }
   });
@@ -30,7 +30,7 @@ describe('Seeder Edge Case 10', () => {
     const companies = seedEnterpriseData(10, 42 + 10);
     for (const c of companies) {
       for (const p of c.products) {
-        expect(p.sellPrice).toBeGreaterThanOrEqual(p.costPrice);
+        expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
       }
     }
   });

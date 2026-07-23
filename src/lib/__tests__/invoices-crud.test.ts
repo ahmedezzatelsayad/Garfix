@@ -169,6 +169,15 @@ const RICH_TX = {
     create: async () => ({}),
   },
   stockMovement: { create: async () => ({}) },
+  // Support appendToChain (called by logAudit after db.auditLog.create):
+  // appendToChain wraps findFirst + create in a $transaction, so the fake
+  // tx must support tamperEvidenceChain operations.
+  tamperEvidenceChain: {
+    findFirst: async () => null,
+    create: async () => ({ id: "mock-chain" }),
+  },
+  // Support logAudit's db.auditLog.create inside $transaction (if used)
+  auditLog: { create: async () => ({ id: "mock-audit-id", createdAt: new Date() }) },
 };
 
 // ─── Register mock.module for non-conflicting modules ────────────────────────
@@ -216,10 +225,16 @@ mock.module("@/lib/middleware", () => ({
   hasPermission: mock(() => permissionGranted),
 }));
 
-mock.module("@/lib/audit", () => ({
-  logAudit: mock(async () => {}),
-  logAdminAction: mock(async () => {}),
-}));
+// NOTE: We do NOT mock @/lib/audit via mock.module. The audit-advanced
+// test file imports the real logAudit/logAdminAction and tests them against
+// mock db.auditLog / db.adminAuditLog / db.tamperEvidenceChain. If we mock
+// @/lib/audit globally, audit-advanced's tests break (the mock replaces the
+// real implementation). Instead, we rely on monkey-patching db.auditLog,
+// db.adminAuditLog, db.tamperEvidenceChain, and db.$transaction so that the
+// real logAudit/logAdminAction (which the route handlers import) work
+// correctly with our mock db. The fire-and-forget appendToChain call inside
+// logAudit also works because RICH_TX (the fake tx passed to $transaction)
+// includes tamperEvidenceChain operations.
 
 mock.module("@/lib/usageMeter", () => ({
   checkTrialExpiry: mock(async () => ({ ok: trialOk })),
@@ -227,6 +242,43 @@ mock.module("@/lib/usageMeter", () => ({
   checkUserQuota: mock(async () => ({ ok: true })),
   checkCompanyQuota: mock(async () => ({ ok: true })),
 }));
+
+// ─── Mock next/server to protect against cross-test contamination ──────
+// auth-advanced.test.ts mocks next/server with a minimal MockNextRequest/
+// MockNextResponse that lacks .json(), .nextUrl.searchParams, etc. When
+// that test runs in the same Bun process, its mock leaks into our module
+// space, breaking the invoice route handlers. Our own mock here provides
+// a fully-functional NextRequest/NextResponse built on Bun's native
+// Request/Response.
+mock.module("next/server", () => {
+  class NextRequest extends Request {
+    _nextUrl: URL;
+    constructor(input: string | Request, init?: RequestInit) {
+      super(input as any, init as any);
+      this._nextUrl = new URL(typeof input === "string" ? input : input.url);
+    }
+    get nextUrl() {
+      return this._nextUrl;
+    }
+  }
+
+  class NextResponse extends Response {
+    constructor(body?: BodyInit | null, init?: ResponseInit) {
+      super(body, init);
+    }
+    static json(body: unknown, init?: ResponseInit): NextResponse {
+      const headers = new Headers(init?.headers);
+      headers.set("content-type", "application/json");
+      return new NextResponse(JSON.stringify(body), {
+        ...init,
+        status: init?.status ?? 200,
+        headers,
+      });
+    }
+  }
+
+  return { NextRequest, NextResponse };
+});
 
 // ─── Import db + route handlers ──────────────────────────────────────────────
 //
@@ -264,6 +316,8 @@ beforeAll(() => {
   _orig.platformSetting = (db as any).platformSetting;
   _orig.$transaction = (db as any).$transaction;
   _orig.idempotencyKey = (db as any).idempotencyKey;
+  _orig.adminAuditLog = (db as any).adminAuditLog;
+  _orig.tamperEvidenceChain = (db as any).tamperEvidenceChain;
 
   (db as any).invoice = {
     findUnique: invoiceFindUnique,
@@ -273,7 +327,7 @@ beforeAll(() => {
     updateMany: invoiceUpdateMany,
     count: invoiceCount,
   };
-  (db as any).auditLog = { create: mock(async () => ({})) };
+  (db as any).auditLog = { create: mock(async () => ({ id: "mock-audit-id", createdAt: new Date() })) };
   (db as any).company = {
     findUnique: mock(async () => ({
       plan: "trial",
@@ -291,6 +345,18 @@ beforeAll(() => {
     findUnique: idempotencyFindUnique,
     upsert: idempotencyUpsert,
   };
+  // Audit support: logAdminAction uses db.adminAuditLog.create
+  (db as any).adminAuditLog = { create: mock(async () => ({ id: "mock-admin-audit" })) };
+  // Tamper evidence: logAudit calls appendToChain which uses db.tamperEvidenceChain
+  // inside $transaction (best-effort, fire-and-forget with .catch())
+  (db as any).tamperEvidenceChain = {
+    findFirst: async () => null,
+    create: async () => ({ id: "mock-chain" }),
+    findMany: async () => [],
+    update: async () => ({}),
+    updateMany: async () => ({ count: 0 }),
+    count: async () => 0,
+  };
 });
 
 afterAll(() => {
@@ -301,6 +367,8 @@ afterAll(() => {
   (db as any).platformSetting = _orig.platformSetting;
   (db as any).$transaction = _orig.$transaction;
   (db as any).idempotencyKey = _orig.idempotencyKey;
+  (db as any).adminAuditLog = _orig.adminAuditLog;
+  (db as any).tamperEvidenceChain = _orig.tamperEvidenceChain;
 });
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
@@ -684,7 +752,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(lastUpdateManyArgs.data.paid).toBe("30.000");
+    expect(lastUpdateManyArgs.data.paid).toBe(30);
     expect(lastUpdateManyArgs.data.status).toBe("partial");
     // C1 FIX: version is now `{ increment: 1 }`, not a literal
     expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
@@ -700,7 +768,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("21"),
     );
     expect(res.status).toBe(200);
-    expect(lastUpdateManyArgs.data.paid).toBe("100.000");
+    expect(lastUpdateManyArgs.data.paid).toBe(100);
     expect(lastUpdateManyArgs.data.status).toBe("paid");
   });
 
@@ -838,7 +906,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("27"),
     );
     expect(res2.status).toBe(200);
-    expect(lastUpdateManyArgs.data.paid).toBe("50.000"); // 25 + 25 = 50
+    expect(lastUpdateManyArgs.data.paid).toBe(50); // 25 + 25 = 50
   });
 });
 

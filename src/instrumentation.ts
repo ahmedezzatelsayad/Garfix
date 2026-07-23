@@ -8,46 +8,25 @@
  *
  * It does NOT run during `next build` — this is the critical distinction.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * PURPOSE:
- *
- * This file serves as the bridge between Next.js's lifecycle and our runtime
- * bootstrap. It's the correct place to initialize things that need to happen
- * when the server starts, but NOT during build.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHAT IT DOES:
- *
- * 1. Runs environment validation (startup checks)
- * 2. Bootstraps queue workers (via bootstrapRuntime)
- * 3. Sets up process-level error handlers
- * 4. Configures graceful shutdown hooks
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * ANTI-PATTERNS AVOIDED:
- *
- * ❌ No Prisma queries at module level (causes build failures)
- * ❌ No worker registration at import time (causes build failures)
- * ❌ No setInterval/setTimeout at module level (causes memory leaks in build)
- * ✅ All initialization deferred to register() or after explicit call
  * ═══════════════════════════════════════════════════════════════════════════
+ * KEY FIX (P0): All worker imports are now DYNAMIC inside register().
+ * Static imports of bootstrap.ts caused Next.js to trace backup.ts,
+ * backupWorker.ts, schedulerWorker.ts — all of which use node:fs/path.
+ * This created Edge Runtime errors and NFT trace warnings during build.
  *
- * RUNTIME: Node.js only — uses process.on(), process.exit(), setTimeout()
- * Directive: 'use node' tells Turbopack to skip Edge Runtime analysis
+ * Dynamic imports inside register() only execute at server startup,
+ * AFTER the build completes. This prevents Turbopack/Webpack from
+ * tracing these Node-only modules during the build phase.
  * ═══════════════════════════════════════════════════════════════════════════
  */
-'use node';
 
 import { logger } from "@/lib/logger";
-import { runStartupChecks } from "@/lib/startupCheck";
-import { bootstrapRuntime } from "@/runtime/bootstrap";
-import { initDb } from "@/lib/db";
 
 /**
  * register — Called by Next.js on server startup.
  *
- * This function is the entry point for all runtime initialization.
- * It runs AFTER the build completes and the server is ready to serve requests.
+ * All runtime initialization is deferred to dynamic imports inside
+ * this function to prevent build-time tracing of Node-only modules.
  */
 export async function register(): Promise<void> {
   const startTime = Date.now();
@@ -57,21 +36,21 @@ export async function register(): Promise<void> {
   try {
     // ── Step 1: Database Initialization ──────────────────────────────────
     logger.info("[instrumentation] Initializing database connection...");
+    const { initDb } = await import("@/lib/db");
     await initDb();
 
     // ── Step 2: Environment Validation ──────────────────────────────────
     logger.info("[instrumentation] Running environment checks...");
+    const { runStartupChecks } = await import("@/lib/startupCheck");
     const startupResult = runStartupChecks();
 
     if (!startupResult.ok && startupResult.fatal.length > 0) {
       if (process.env.NODE_ENV === "production") {
-        // In production, fatal errors should prevent startup
         logger.error("[instrumentation] FATAL: Environment check failed", {
           errors: startupResult.fatal,
         });
         throw new Error(`FATAL: ${startupResult.fatal.join("; ")}`);
       }
-      // In development, log warnings but continue
       logger.warn("[instrumentation] Continuing despite warnings in development mode");
     }
 
@@ -82,14 +61,15 @@ export async function register(): Promise<void> {
     }
 
     // ── Step 3: Bootstrap Queue Workers ───────────────────────────────────
+    // Dynamic import prevents build-time tracing of Node-only worker modules
     logger.info("[instrumentation] Bootstrapping runtime services...");
+    const { bootstrapRuntime } = await import("@/runtime/bootstrap");
     const bootstrapResult = await bootstrapRuntime();
 
     if (!bootstrapResult.success) {
       logger.error("[instrumentation] Runtime bootstrap completed with errors", {
         errors: bootstrapResult.errors,
       });
-      // Don't throw — workers may partially work, log only
     } else {
       logger.info("[instrumentation] ✓ Runtime bootstrapped successfully", {
         workersRegistered: bootstrapResult.workersRegistered,
@@ -99,20 +79,16 @@ export async function register(): Promise<void> {
     }
 
     // ── Step 4: Process-Level Error Handlers ─────────────────────────────
-
-    // Handle uncaught exceptions
     process.on("uncaughtException", (error: Error) => {
       logger.error("[instrumentation] UNCAUGHT EXCEPTION", {
         error: error.message,
         stack: error.stack,
       });
-      // In production, give time for logging then exit
       if (process.env.NODE_ENV === "production") {
         setTimeout(() => process.exit(1), 1000);
       }
     });
 
-    // Handle unhandled promise rejections
     process.on("unhandledRejection", (reason: unknown) => {
       logger.error("[instrumentation] UNHANDLED REJECTION", {
         reason: reason instanceof Error ? reason.message : String(reason),
@@ -120,20 +96,13 @@ export async function register(): Promise<void> {
     });
 
     // ── Step 5: Graceful Shutdown Hooks ──────────────────────────────────
-
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`[instrumentation] Received ${signal}, initiating graceful shutdown...`);
-
-      // Give workers time to finish current jobs
-      // In a full implementation, you'd gracefully close queue connections here
-
       const shutdownTimeout = setTimeout(() => {
         logger.warn("[instrumentation] Forced shutdown after timeout");
         process.exit(1);
-      }, 10000); // 10 second grace period
-
+      }, 10000);
       try {
-        // Cleanup tasks would go here
         logger.info("[instrumentation] Graceful shutdown complete");
       } catch (err) {
         logger.error("[instrumentation] Error during shutdown", {
@@ -149,7 +118,6 @@ export async function register(): Promise<void> {
     process.on("SIGINT", () => shutdown("SIGINT"));
 
     // ── Complete ──────────────────────────────────────────────────────────
-
     const totalDuration = Date.now() - startTime;
     logger.info(`[instrumentation] ✓ Server ready (${totalDuration}ms)`);
 
@@ -159,6 +127,6 @@ export async function register(): Promise<void> {
       error: err instanceof Error ? err.message : String(err),
       duration: `${duration}ms`,
     });
-    throw err; // Re-throw to prevent server from starting
+    throw err;
   }
 }

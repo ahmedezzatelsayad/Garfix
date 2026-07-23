@@ -1569,6 +1569,23 @@ export class TelemetryCollector {
 // SECTION 8: Metrics Calculator
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * calculateMetrics — Compute summary metrics from companies and/or telemetry.
+ *
+ * @deprecated Legacy dual-signature API. Will be removed in v13.
+ *   - v13 migration: call `calculateMetricsV2(companies, telemetry)` with
+ *     separate, typed parameters instead of the ambiguous
+ *     `companiesOrTelemetry | telemetryOrCompanies` overload.
+ *   - The overload currently infers argument order by checking for
+ *     `slug`/`invoices` properties, which is fragile and undocumented.
+ *   - After v13, `calculateMetrics` will require exactly two args:
+ *     `(companies: SyntheticCompany[], telemetry: TelemetryEntry[])`.
+ *
+ * Migration plan (v13):
+ *   1. Add `calculateMetricsV2(companies, telemetry)` with clean signature
+ *   2. Mark this function with `@deprecated` for 2 release cycles
+ *   3. Remove overload in v13.0, keeping only the V2 signature
+ */
 export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | TelemetryEntry[], telemetryOrCompanies?: SyntheticCompany[] | TelemetryEntry[]): MetricsSummary {
   // Allow calling as calculateMetrics(companies, telemetry) or calculateMetrics(telemetry, companies)
   // The first array argument that contains objects with a 'slug' property is the companies array
@@ -1712,6 +1729,22 @@ export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | Tele
 // SECTION 9: Founder Report Generator
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * generateFounderReport — Generate a comprehensive founder validation report.
+ *
+ * @deprecated Legacy overloaded `metricsOrSeed` parameter. Will be removed in v13.
+ *   - v13 migration: call `generateFounderReportV2(companies, telemetry, options)` 
+ *     where `options.metrics` is optional and `options.seed` replaces the 
+ *     ambiguous `metricsOrSeed` union parameter.
+ *   - The current overload accepts `MetricsSummary | number` as the 3rd arg,
+ *     which is confusing — callers must know the overload resolution rules.
+ *   - After v13, `generateFounderReport` will only accept the options object.
+ *
+ * Migration plan (v13):
+ *   1. Add `generateFounderReportV2(companies, telemetry, options?)` with clean API
+ *   2. Deprecate this overload for 2 release cycles
+ *   3. Remove overload in v13.0
+ */
 export function generateFounderReport(
   companies: SyntheticCompany[],
   telemetry: TelemetryEntry[],

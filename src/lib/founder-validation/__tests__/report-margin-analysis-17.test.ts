@@ -40,8 +40,8 @@ describe('Report: margin-analysis 17', () => {
     tc.generateAll(companies);
     const metrics = calculateMetrics(companies, tc.getAll());
     const report = generateFounderReport(companies, tc.getAll(), metrics, { seed: 42 + 17, companyCount: 10 });
-    expect(typeof report.costProjection.estimatedAICostMonthly).toBe('number');
-    expect(typeof report.costProjection.estimatedAWSCostMonthly).toBe('number');
+    expect(typeof report.costProjection.aiMonthly).toBe('number');
+    expect(typeof report.costProjection.awsMonthly.total).toBe('number');
   });
   it('report margin-analysis acceptance criteria for 17', () => {
     const companies = seedEnterpriseData(5, 1300 + 17);
@@ -49,8 +49,8 @@ describe('Report: margin-analysis 17', () => {
     tc.generateAll(companies);
     const metrics = calculateMetrics(companies, tc.getAll());
     const report = generateFounderReport(companies, tc.getAll(), metrics, { seed: 42 + 17, companyCount: 5 });
-    expect(typeof report.acceptance.allTestsPass).toBe('boolean');
-    expect(typeof report.acceptance.zeroDataCorruption).toBe('boolean');
+    expect(typeof report.acceptance.allPassed).toBe('boolean');
+    expect(Array.isArray(report.acceptance.failures)).toBe(true);
   });
 
 });
