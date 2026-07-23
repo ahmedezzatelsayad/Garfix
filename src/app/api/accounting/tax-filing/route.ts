@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { generateVATReturn, calculateZakat } from "@/lib/accounting/tax-compliance";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -82,6 +83,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       user.uid,
     );
 
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "generate_vat_return",
+      entity: "tax_filing",
+      companySlug: data.companySlug,
+      details: { country: data.country, periodFrom: data.periodFrom, periodTo: data.periodTo },
+    });
+
     return NextResponse.json({ ok: true, vatReturn: result });
   }
 
@@ -95,6 +105,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       user.email,
       user.uid,
     );
+
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "calculate_zakat",
+      entity: "tax_filing",
+      companySlug: data.companySlug,
+      details: { action: "zakat" },
+    });
 
     return NextResponse.json({ ok: true, zakat: result });
   }

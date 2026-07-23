@@ -61,37 +61,43 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     ? await db.client.findUnique({ where: { id: quotation.clientId } })
     : null;
 
-  // Create invoice from quotation data
-  const invoice = await db.invoice.create({
-    data: {
-      companySlug: data.companySlug,
-      clientId: quotation.clientId,
-      clientName: client?.name || "",
-      clientEmail: client?.email,
-      clientPhone: client?.phone,
-      clientAddress: client?.address,
-      invoiceNumber,
-      issueDate: new Date().toISOString().slice(0, 10),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      lineItems: quotation.lineItems,
-      subtotal: quotation.subtotal,
-      taxRate: quotation.taxRate,
-      taxAmount: quotation.taxAmount,
-      total: quotation.total,
-      notes: quotation.notes,
-      status: "draft",
-      createdByEmail: user.email,
-      createdByName: user.email,
-    },
-  });
+  // Wrap invoice creation + quotation update in a transaction for atomicity
+  // (prevents data inconsistency if quotation update fails after invoice is created)
+  const { invoice, updatedQuotation } = await db.$transaction(async (tx) => {
+    // Create invoice from quotation data
+    const invoice = await tx.invoice.create({
+      data: {
+        companySlug: data.companySlug,
+        clientId: quotation.clientId,
+        clientName: client?.name || "",
+        clientEmail: client?.email,
+        clientPhone: client?.phone,
+        clientAddress: client?.address,
+        invoiceNumber,
+        issueDate: new Date().toISOString().slice(0, 10),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        lineItems: quotation.lineItems,
+        subtotal: quotation.subtotal,
+        taxRate: quotation.taxRate,
+        taxAmount: quotation.taxAmount,
+        total: quotation.total,
+        notes: quotation.notes,
+        status: "draft",
+        createdByEmail: user.email,
+        createdByName: user.email,
+      },
+    });
 
-  // Mark quotation as converted
-  await db.quotation.update({
-    where: { id: quotationId },
-    data: {
-      status: "converted",
-      convertedInvoiceId: invoice.id,
-    },
+    // Mark quotation as converted
+    const updatedQuotation = await tx.quotation.update({
+      where: { id: quotationId },
+      data: {
+        status: "converted",
+        convertedInvoiceId: invoice.id,
+      },
+    });
+
+    return { invoice, updatedQuotation };
   });
 
   await logAudit({
