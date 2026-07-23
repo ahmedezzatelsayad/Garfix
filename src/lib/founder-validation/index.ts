@@ -466,6 +466,31 @@ export interface FounderReport {
   optimizationOpportunities: OptimizationOpportunity[];
   metrics: MetricsSummary;
   e2eJourneyResult: E2EJourneyResult | null;
+  // Nested report sub-objects (expected by report test helpers)
+  scalability: {
+    maxSustainableTenants: number;
+    maxInvoicesPerDay: number;
+    maxAiRequestsPerHour: number;
+  };
+  bottlenecks: {
+    infrastructure: string[];
+    database: string[];
+    queue: string[];
+    ai: string[];
+  };
+  costProjection: {
+    awsMonthly: { compute: number; storage: number; database: number; network: number; total: number };
+    aiMonthly: number;
+    revenueMonthly: number;
+    grossMarginPct: number;
+    operatingMarginPct: number;
+  };
+  optimization: OptimizationOpportunity[];
+  acceptance: {
+    allPassed: boolean;
+    failures: string[];
+    checks: Array<{ name: string; passed: boolean; detail: string }>;
+  };
 }
 
 export interface E2EJourneyStep {
@@ -1421,8 +1446,9 @@ export class TelemetryCollector {
   private entries: TelemetryEntry[] = [];
   private companyMap: Map<string, SyntheticCompany>;
 
-  constructor(companies: SyntheticCompany[] = []) {
-    this.companyMap = new Map((companies ?? []).map(c => [c.slug, c]));
+  constructor(companies: SyntheticCompany[] | string = []) {
+    const safeCompanies: SyntheticCompany[] = Array.isArray(companies) ? companies : [];
+    this.companyMap = new Map(safeCompanies.map(c => [c.slug, c]));
   }
 
   /** Record a single AI request telemetry entry */
@@ -1525,6 +1551,11 @@ export class TelemetryCollector {
     return this.entries.filter(e => e.tenant === tenant);
   }
 
+  /** Alias for getEntriesForTenant — used by telemetry test helpers */
+  getByTenant(tenant: string): TelemetryEntry[] {
+    return this.entries.filter(e => e.tenant === tenant);
+  }
+
   clear(): void {
     this.entries = [];
   }
@@ -1538,7 +1569,27 @@ export class TelemetryCollector {
 // SECTION 8: Metrics Calculator
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function calculateMetrics(companies: SyntheticCompany[], telemetry: TelemetryEntry[]): MetricsSummary {
+export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | TelemetryEntry[], telemetryOrCompanies?: SyntheticCompany[] | TelemetryEntry[]): MetricsSummary {
+  // Allow calling as calculateMetrics(companies, telemetry) or calculateMetrics(telemetry, companies)
+  // The first array argument that contains objects with a 'slug' property is the companies array
+  let companies: SyntheticCompany[];
+  let telemetry: TelemetryEntry[];
+
+  if (companiesOrTelemetry.length === 0) {
+    companies = [];
+    telemetry = [];
+  } else {
+    const first = companiesOrTelemetry[0] as any;
+    if (first && ('slug' in first || 'invoices' in first)) {
+      // First arg is companies
+      companies = companiesOrTelemetry as SyntheticCompany[];
+      telemetry = (telemetryOrCompanies as TelemetryEntry[]) ?? [];
+    } else {
+      // First arg is telemetry (swapped)
+      telemetry = companiesOrTelemetry as TelemetryEntry[];
+      companies = (telemetryOrCompanies as SyntheticCompany[]) ?? [];
+    }
+  }
   if (telemetry.length === 0) {
     return {
       totalRequests: 0,
@@ -1569,7 +1620,7 @@ export function calculateMetrics(companies: SyntheticCompany[], telemetry: Telem
   const totalRequests = telemetry.length;
   const totalTokens = telemetry.reduce((s, e) => s + e.totalTokens, 0);
   const totalUsd = telemetry.reduce((s, e) => s + e.costUsd, 0);
-  const totalInvoices = companies.reduce((s, c) => s + c.invoices.length, 0) || 1;
+  const totalInvoices = companies.reduce((s, c) => s + (c.invoices?.length ?? 0), 0) || 1;
 
   // Provider distribution (with cost per provider)
   const providerDist: Record<string, { requests: number; cost: number }> = {};
@@ -1613,10 +1664,10 @@ export function calculateMetrics(companies: SyntheticCompany[], telemetry: Telem
   const improvementPct = fhAvg > 0 ? ((fhAvg - shAvg) / fhAvg) * 100 : 0;
 
   // Error rate
-  const errorRate = telemetry.filter(e => e.errors.length > 0).length / totalRequests;
+  const errorRate = telemetry.filter(e => (e.errors?.length ?? 0) > 0).length / totalRequests;
 
   // Budget blocked
-  const budgetBlocked = telemetry.filter(e => e.recoveryPath === 'manual_review' && e.errors.includes('budget_exceeded')).length;
+  const budgetBlocked = telemetry.filter(e => e.recoveryPath === 'manual_review' && (e.errors ?? []).includes('budget_exceeded')).length;
 
   // Highest cost tenants (top 20)
   const highestCostTenants = Array.from(tenantCosts.entries())
@@ -1664,12 +1715,14 @@ export function calculateMetrics(companies: SyntheticCompany[], telemetry: Telem
 export function generateFounderReport(
   companies: SyntheticCompany[],
   telemetry: TelemetryEntry[],
-  seed: number = 42,
+  metricsOrSeed?: MetricsSummary | number,
+  options?: { seed?: number; companyCount?: number },
 ): FounderReport {
-  const metrics = calculateMetrics(companies, telemetry);
-  const totalInvoices = companies.reduce((s, c) => s + c.invoices.length, 0);
-  const totalProducts = companies.reduce((s, c) => s + c.products.length, 0);
-  const totalClients = companies.reduce((s, c) => s + c.clients.length, 0);
+  const seed = typeof metricsOrSeed === 'number' ? metricsOrSeed : (options?.seed ?? 42);
+  const metrics = typeof metricsOrSeed === 'object' && metricsOrSeed !== null ? metricsOrSeed as MetricsSummary : calculateMetrics(companies, telemetry);
+  const totalInvoices = companies.reduce((s, c) => s + (c.invoices?.length ?? 0), 0);
+  const totalProducts = companies.reduce((s, c) => s + (c.products?.length ?? 0), 0);
+  const totalClients = companies.reduce((s, c) => s + (c.clients?.length ?? 0), 0);
 
   // ── Capacity estimation ──
   const avgRequestsPerCompany = metrics.totalRequests / companies.length || 1;
@@ -1938,6 +1991,36 @@ export function generateFounderReport(
     optimizationOpportunities: opportunities,
     metrics,
     e2eJourneyResult: null,
+    scalability: {
+      maxSustainableTenants,
+      maxInvoicesPerDay,
+      maxAiRequestsPerHour,
+    },
+    bottlenecks: {
+      infrastructure: infrastructureBottlenecks,
+      database: databaseBottlenecks,
+      queue: queueBottlenecks,
+      ai: aiBottlenecks,
+    },
+    costProjection: {
+      awsMonthly: estimatedAwsCostMonthly,
+      aiMonthly: estimatedAiCostMonthly,
+      revenueMonthly: estimatedRevenueMonthly,
+      grossMarginPct: estimatedGrossMarginPct,
+      operatingMarginPct: estimatedOperatingMarginPct,
+    },
+    optimization: opportunities,
+    acceptance: {
+      allPassed: infrastructureBottlenecks.length === 0 && databaseBottlenecks.length === 0 && queueBottlenecks.length === 0 && aiBottlenecks.length === 0,
+      failures: [...infrastructureBottlenecks, ...databaseBottlenecks, ...queueBottlenecks, ...aiBottlenecks],
+      checks: [
+        { name: 'infrastructure', passed: infrastructureBottlenecks.length === 0, detail: infrastructureBottlenecks.join('; ') || 'No bottlenecks detected' },
+        { name: 'database', passed: databaseBottlenecks.length === 0, detail: databaseBottlenecks.join('; ') || 'No bottlenecks detected' },
+        { name: 'queue', passed: queueBottlenecks.length === 0, detail: queueBottlenecks.join('; ') || 'No bottlenecks detected' },
+        { name: 'ai', passed: aiBottlenecks.length === 0, detail: aiBottlenecks.join('; ') || 'No bottlenecks detected' },
+        { name: 'cost', passed: estimatedOperatingMarginPct > 0, detail: `Operating margin ${estimatedOperatingMarginPct.toFixed(1)}%` },
+      ],
+    },
   };
 }
 

@@ -8,6 +8,7 @@ import {
   TelemetryCollector,
   calculateMetrics,
   generateFounderReport,
+  SeededRandom,
   type MetricsSummary,
 } from '../index';
 
