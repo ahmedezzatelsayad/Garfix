@@ -12,6 +12,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPatch, apiDelete, apiUpload, apiDownloadBlob, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
+import { useCursorPagination, type CursorPage, type CursorPaginationParams } from "@/hooks/cursor-pagination";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

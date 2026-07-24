@@ -1,6 +1,6 @@
-# Scripts — أدوات البذرة، الاختبار، والأتمتة
+# Scripts — أدوات البذرة، الاختبار، الأمان، والأتمتة
 
-> ~35 سكريبت TypeScript و Shell لأداء مهام التطوير: بذر البيانات، اختبار الأداء، النسخ الاحتياطي، والتوليد التلقائي للاختبارات، بما في ذلك سكريبتات ترحيل Decimal واختبارات التجاوب.
+> ~47 سكريبت TypeScript و Shell لأداء مهام التطوير: بذر البيانات، اختبار الأداء، فحص الأمان، النسخ الاحتياطي، والتوليد التلقائي للاختبارات، بما في ذلك سكريبتات ترحيل Decimal، الترحيل بالـ cursor، واختبارات التجاوب.
 
 ## الفئات
 
@@ -12,6 +12,43 @@
 | `seed-model-registry.ts` | بذر سجل نماذج AI الافتراضية |
 | `backup.ts` | نسخ احتياطي لقاعدة البيانات |
 | `archiveAuditLogs.ts` | أرشفة سجلات التدقيق القديمة |
+
+### فحص الأمان (Security)
+
+| الملف | الوظيفة |
+|-------|---------|
+| `security-scan.sh` | فحص أمني شامل (4 فحوصات): dependency audit + secret leak detection + env validation + config hardening — يُخرج تقرير txt/json — يُستخدم في CI |
+
+**`security-scan.sh` تفصيل الفحوصات:**
+
+| الفحص | الوصف |
+|-------|-------|
+| **Dependency Audit** | `bun audit` — فحص الثغرات المعروفة في dependencies |
+| **Secret Leak Detection** | regex scan لـ AWS keys, OpenAI keys, GitHub PATs, JWTs, private keys, hardcoded passwords — يستثني .env و node_modules |
+| **Env Validation** | فحص وجود JWT_SECRET, DATABASE_URL, FOUNDER_EMAIL — فحص طول و entropy — كشف placeholder values — فحص JWT_SECRET ≠ JWT_REFRESH_SECRET |
+| **Config Hardening** | فحص security headers في middleware.ts — فحص ACCOUNTING_READ/WRITE/REPORT_GENERATION rate limits في rateLimit.ts — فحص eslint-plugin-security |
+
+```bash
+bash scripts/security-scan.sh           # فحص كامل
+bash scripts/security-scan.sh --quick   # فحص سريع (بدون bun audit)
+bash scripts/security-scan.sh --json    # تقرير JSON لـ CI
+```
+
+### اختبار حدود المحاسبة (Accounting Rate Limits)
+
+| الملف | الوظيفة |
+|-------|---------|
+| `accounting-rate-limit-load-test.ts` | اختبار ACCOUNTING_READ (40/min), ACCOUNTING_WRITE (15/min), REPORT_GENERATION (5/5min) تحت burst traffic — يحسب p50/p95 latency, 429 rate, throughput/min, burst detection |
+
+**الخيارات:**
+
+```bash
+bun run scripts/accounting-rate-limit-load-test.ts                          # إعدادات افتراضية
+bun run scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000 --duration=120 --concurrency=5  # مخصص
+bun run scripts/accounting-rate-limit-load-test.ts --auth-token=YOUR_JWT    # مع JWT token
+```
+
+**النتائج:** JSON report في `./load-test-results/` مع metadata, results, samples.
 
 ### اختبار الأداء (Benchmarks)
 
@@ -38,6 +75,7 @@
 | `load-model-probe.ts` | فحص تحميل النماذج والـ providers |
 | `test-vault.ts` | اختبار نظام التخزين الآمن (Vault) |
 | `digital-twin.ts` | محاكاة Digital Twin للنظام |
+| `docker-verify.sh` | فحص بيئة Docker للإنتاج |
 
 ### Invoice Brain Tests
 
@@ -65,6 +103,31 @@
 
 > **ملاحظة**: سكريبتات ترحيل Decimal واختبارات التجاوب قد تُضاف لاحقاً كملفات مستقلة أو تُدار عبر الـ ADR (انظر `docs/adr/002-decimal-monetary-fields.md` و `docs/MOBILE_RESPONSIVE_REPORT.md`).
 
+### ترحيل Cursor Pagination
+
+| الملف | الوظيفة |
+|-------|---------|
+| `cursor-pagination-migration-patterns.ts` | أنماط ترحيل الـ API routes من offset pagination إلى cursor pagination |
+| `deploy-cursor-pagination.py` | سكريبت Python لنشر ترحيل الـ cursor على routes عالية الحجم |
+
+### أدوات Prisma Schema
+
+| الملف | الوظيفة |
+|-------|---------|
+| `add-missing-prisma-models.py` | إضافة النماذج المفقودة إلى schema.prisma |
+| `fix-prisma-relations.py` | إصلاح علاقات Prisma في schema |
+| `add-prisma-indexes.py` | إضافة @@index directives للنماذج |
+| `update-prisma-schema.ts` | تحديث schema.prisma من TypeScript |
+
+### توليد المواصفات والتقارير
+
+| الملف | الوظيفة |
+|-------|---------|
+| `generate-openapi-spec.ts` | توليد OpenAPI/Swagger specification من route handlers |
+| `generate-evidence-pack.ts` | توليد حزمة أدلة للتدقيق |
+| `generate-report.js` | توليد تقارير بتنسيق HTML/JSON |
+| `garfix_verification_report.py` | توليد تقرير تحقق Python |
+
 ### التوليد التلقائي والصيانة
 
 | الملف | الوظيفة |
@@ -79,17 +142,18 @@
 | `rewrite-deep.sh` | إعادة كتابة الاختبارات العميقة |
 | `configure-openrouter-deepseek.ts` | إعداد OpenRouter + DeepSeek |
 
-### أدوات إضافية
-
-| الملف | الوظيفة |
-|-------|---------|
-| `generate-evidence-pack.ts` | توليد حزمة أدلة للتدقيق |
-
 ## التشغيل
 
 ```bash
 # بذر البيانات
 bun run scripts/seed.ts
+
+# فحص الأمان
+bash scripts/security-scan.sh
+bash scripts/security-scan.sh --json    # تقرير JSON لـ CI
+
+# اختبار حدود المحاسبة
+bun run scripts/accounting-rate-limit-load-test.ts
 
 # اختبار الأداء
 bun run scripts/bench-free-models.ts
@@ -111,6 +175,9 @@ bun test scripts/verification_tests.ts
 
 # Founder Validation Suite
 bun run scripts/founder-validation-suite.ts
+
+# توليد OpenAPI spec
+bun run scripts/generate-openapi-spec.ts
 
 # توليد اختبارات
 bash scripts/write-tests.sh

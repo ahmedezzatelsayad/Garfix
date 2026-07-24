@@ -1,0 +1,874 @@
+     1→/**
+     2→ * observability.ts — GarfiX Observability Stack
+     3→ *
+     4→ * Provides OpenTelemetry-compatible metrics, tracing, and SLO definitions.
+     5→ * Built on the existing structured logger (logger.ts) foundation.
+     6→ *
+     7→ * Architecture:
+     8→ *   - MetricsRegistry: Application-level metrics (latency, throughput, errors)
+     9→ *   - TraceContext: Request-level distributed tracing with trace/span IDs
+    10→ *   - SLO definitions: Documented service level objectives with thresholds
+    11→ *   - MetricsExporter: OTLP-compatible JSON export format
+    12→ *
+    13→ * Key principles:
+    14→ *   - Zero external dependencies (pure TypeScript, no @opentelemetry/*)
+    15→ *   - Production-grade: redaction, sampling, cardinality limits
+    16→ *   - Compatible with OpenTelemetry OTLP/JSON for future collector integration
+    17→ *   - Lightweight: ~5KB, no Edge Runtime issues
+    18→ *
+    19→ * Usage:
+    20→ *   import { metrics, traceContext, SLOs } from "@/lib/observability";
+    21→ *   metrics.increment("api.request", { route: "/api/invoices", method: "GET" });
+    22→ *   metrics.histogram("api.latency", durationMs, { route: "/api/invoices" });
+    23→ *   const ctx = traceContext.start("invoice-creation");
+    24→ *   ctx.span("validate-input", ...);
+    25→ *   ctx.end();
+    26→ */
+    27→
+    28→import { logger } from "./logger";
+    29→
+    30→// ═══════════════════════════════════════════════════════════════════════════════
+    31→// SECTION 1: Metrics Registry
+    32→// ═══════════════════════════════════════════════════════════════════════════════
+    33→
+    34→export interface MetricPoint {
+    35→  name: string;
+    36→  type: "counter" | "gauge" | "histogram";
+    37→  value: number;
+    38→  labels: Record<string, string>;
+    39→  timestamp: string; // ISO 8601
+    40→}
+    41→
+    42→export interface HistogramBucket {
+    43→  le: number; // less-than-or-equal boundary
+    44→  count: number;
+    45→}
+    46→
+    47→export interface HistogramSummary {
+    48→  count: number;
+    49→  sum: number;
+    50→  min: number;
+    51→  max: number;
+    52→  avg: number;
+    53→  p50: number;
+    54→  p90: number;
+    55→  p95: number;
+    56→  p99: number;
+    57→  buckets: HistogramBucket[];
+    58→}
+    59→
+    60→export interface OTLPExportMetric {
+    61→  name: string;
+    62→  kind: string;
+    63→  unit: string;
+    64→  value: number;
+    65→  labels: Record<string, string | undefined>;
+    66→  timestamp: string;
+    67→  summary?: HistogramSummary;
+    68→}
+    69→
+    70→export interface OTLPExport {
+    71→  resource: {
+    72→    attributes: Record<string, string>;
+    73→  };
+    74→  scopeMetrics: Array<{
+    75→    scope: { name: string; version: string };
+    76→    metrics: OTLPExportMetric[];
+    77→  }>;
+    78→  exportedAt: string;
+    79→}
+    80→
+    81→const DEFAULT_HISTOGRAM_BUCKETS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
+    82→
+    83→// Cardinality limit — prevent label explosion from high-cardinality fields
+    84→const MAX_LABEL_CARDINALITY = 1000;
+    85→const labelValueSets: Record<string, Set<string>> = {};
+    86→
+    87→function checkCardinality(labelName: string, labelValue: string): string {
+    88→  if (!labelValueSets[labelName]) labelValueSets[labelName] = new Set();
+    89→  const set = labelValueSets[labelName];
+    90→  if (set.size < MAX_LABEL_CARDINALITY) {
+    91→    set.add(labelValue);
+    92→    return labelValue;
+    93→  }
+    94→  if (set.has(labelValue)) return labelValue;
+    95→  // Cardinality exceeded — return "overflow" to prevent metric explosion
+    96→  return "cardinality_overflow";
+    97→}
+    98→
+    99→type MetricStore = Map<string, { value: number; labels: Record<string, string>; updatedAt: string }>;
+   100→type HistogramStore = Map<string, { values: number[]; labels: Record<string, string>; updatedAt: string }>;
+   101→
+   102→class MetricsRegistry {
+   103→  private counters: MetricStore = new Map();
+   104→  private gauges: MetricStore = new Map();
+   105→  private histograms: HistogramStore = new Map();
+   106→  private metricKey(name: string, labels: Record<string, string>): string {
+   107→    // Sort labels for deterministic key generation
+   108→    const sortedLabels = Object.entries(labels)
+   109→      .sort(([a], [b]) => a.localeCompare(b))
+   110→      .map(([k, v]) => `${k}=${v}`)
+   111→      .join(",");
+   112→    return `${name}|${sortedLabels}`;
+   113→  }
+   114→
+   115→  /** Increment a counter metric by n */
+   116→  increment(name: string, labels: Record<string, string> = {}, n: number = 1): void {
+   117→    const safeLabels = this.sanitizeLabels(labels);
+   118→    const key = this.metricKey(name, safeLabels);
+   119→    const existing = this.counters.get(key);
+   120→    this.counters.set(key, {
+   121→      value: (existing?.value ?? 0) + n,
+   122→      labels: safeLabels,
+   123→      updatedAt: new Date().toISOString(),
+   124→    });
+   125→  }
+   126→
+   127→  /** Set a gauge metric to a specific value */
+   128→  gauge(name: string, value: number, labels: Record<string, string> = {}): void {
+   129→    const safeLabels = this.sanitizeLabels(labels);
+   130→    const key = this.metricKey(name, safeLabels);
+   131→    this.gauges.set(key, { value, labels: safeLabels, updatedAt: new Date().toISOString() });
+   132→  }
+   133→
+   134→  /** Record a histogram observation (latency, size, etc.) */
+   135→  histogram(name: string, value: number, labels: Record<string, string> = {}): void {
+   136→    const safeLabels = this.sanitizeLabels(labels);
+   137→    const key = this.metricKey(name, safeLabels);
+   138→    const existing = this.histograms.get(key);
+   139→    this.histograms.set(key, {
+   140→      values: [...(existing?.values ?? []), value],
+   141→      labels: safeLabels,
+   142→      updatedAt: new Date().toISOString(),
+   143→    });
+   144→  }
+   145→
+   146→  /** Measure a function's execution time and record as histogram */
+   147→  async measure<T>(name: string, fn: () => Promise<T>, labels: Record<string, string> = {}): Promise<T> {
+   148→    const start = Date.now();
+   149→    try {
+   150→      const result = await fn();
+   151→      this.histogram(name, Date.now() - start, { ...labels, status: "success" });
+   152→      return result;
+   153→    } catch (err) {
+   154→      this.histogram(name, Date.now() - start, { ...labels, status: "error" });
+   155→      this.increment(`${name}.error`, labels);
+   156→      throw err;
+   157→    }
+   158→  }
+   159→
+   160→  /** Sanitize labels — enforce cardinality limits and remove sensitive values */
+   161→  private sanitizeLabels(labels: Record<string, string>): Record<string, string> {
+   162→    const safe: Record<string, string> = {};
+   163→    for (const [key, value] of Object.entries(labels)) {
+   164→      // Skip sensitive labels (already handled by logger redaction, but double-check)
+   165→      if (key.toLowerCase().includes("token") || key.toLowerCase().includes("secret") || key.toLowerCase().includes("password")) {
+   166→        safe[key] = "[REDACTED]";
+   167→        continue;
+   168→      }
+   169→      // Enforce cardinality limits
+   170→      safe[key] = checkCardinality(key, String(value).substring(0, 64));
+   171→    }
+   172→    return safe;
+   173→  }
+   174→
+   175→  /** Export all metrics as OTLP-compatible JSON */
+   176→  exportOTLP(): OTLPExport {
+   177→    const now = new Date().toISOString();
+   178→
+   179→    const counterMetrics = Array.from(this.counters.entries()).map(([key, data]) => ({
+   180→      name: data.labels._name || key.split("|")[0],
+   181→      kind: "COUNTER",
+   182→      unit: "1",
+   183→      value: data.value,
+   184→      labels: { ...data.labels, _name: undefined },
+   185→      timestamp: data.updatedAt,
+   186→    }));
+   187→
+   188→    const gaugeMetrics = Array.from(this.gauges.entries()).map(([key, data]) => ({
+   189→      name: data.labels._name || key.split("|")[0],
+   190→      kind: "GAUGE",
+   191→      unit: "1",
+   192→      value: data.value,
+   193→      labels: { ...data.labels, _name: undefined },
+   194→      timestamp: data.updatedAt,
+   195→    }));
+   196→
+   197→    const histogramMetrics = Array.from(this.histograms.entries()).map(([key, data]) => ({
+   198→      name: data.labels._name || key.split("|")[0],
+   199→      kind: "HISTOGRAM",
+   200→      unit: "ms",
+   201→      summary: this.computeHistogramSummary(data.values),
+   202→      labels: { ...data.labels, _name: undefined },
+   203→      timestamp: data.updatedAt,
+   204→    }));
+   205→
+   206→    return {
+   207→      resource: {
+   208→        attributes: {
+   209→          "service.name": getOtelServiceName(),
+   210→          "service.version": "12.1.0",
+   211→          "service.instance.id": process.env.HOSTNAME || "local",
+   212→          "telemetry.sdk.name": "garfix-observability",
+   213→          "telemetry.sdk.version": "1.0.0",
+   214→        },
+   215→      },
+   216→      scopeMetrics: [
+   217→        {
+   218→          scope: { name: "garfix.metrics", version: "1.0.0" },
+   219→          metrics: [...counterMetrics, ...gaugeMetrics, ...histogramMetrics] as OTLPExportMetric[],
+   220→        },
+   221→      ],
+   222→      exportedAt: now,
+   223→    };
+   224→  }
+   225→
+   226→  /** Compute histogram summary with percentile calculations */
+   227→  private computeHistogramSummary(values: number[]): HistogramSummary {
+   228→    if (values.length === 0) {
+   229→      return {
+   230→        count: 0, sum: 0, min: 0, max: 0, avg: 0,
+   231→        p50: 0, p90: 0, p95: 0, p99: 0,
+   232→        buckets: DEFAULT_HISTOGRAM_BUCKETS.map((le) => ({ le, count: 0 })),
+   233→      };
+   234→    }
+   235→
+   236→    const sorted = [...values].sort((a, b) => a - b);
+   237→    const sum = values.reduce((a, b) => a + b, 0);
+   238→    const count = values.length;
+   239→
+   240→    const percentile = (p: number): number => {
+   241→      const idx = Math.ceil((p / 100) * count) - 1;
+   242→      return sorted[Math.max(0, Math.min(idx, count - 1))];
+   243→    };
+   244→
+   245→    const buckets = DEFAULT_HISTOGRAM_BUCKETS.map((le) => ({
+   246→      le,
+   247→      count: sorted.filter((v) => v <= le).length,
+   248→    }));
+   249→
+   250→    return {
+   251→      count,
+   252→      sum,
+   253→      min: sorted[0],
+   254→      max: sorted[count - 1],
+   255→      avg: sum / count,
+   256→      p50: percentile(50),
+   257→      p90: percentile(90),
+   258→      p95: percentile(95),
+   259→      p99: percentile(99),
+   260→      buckets,
+   261→    };
+   262→  }
+   263→
+   264→  /** Get all metric points (flat list for simple exporters) */
+   265→  getAllPoints(): MetricPoint[] {
+   266→    const points: MetricPoint[] = [];
+   267→    const now = new Date().toISOString();
+   268→
+   269→    for (const [, data] of this.counters) {
+   270→      points.push({ name: data.labels._name || "unknown", type: "counter", value: data.value, labels: data.labels, timestamp: now });
+   271→    }
+   272→    for (const [, data] of this.gauges) {
+   273→      points.push({ name: data.labels._name || "unknown", type: "gauge", value: data.value, labels: data.labels, timestamp: now });
+   274→    }
+   275→    return points;
+   276→  }
+   277→
+   278→  /** Reset all metrics (useful for testing or periodic flush) */
+   279→  reset(): void {
+   280→    this.counters.clear();
+   281→    this.gauges.clear();
+   282→    this.histograms.clear();
+   283→  }
+   284→
+   285→  /** Get metric counts for monitoring dashboard */
+   286→  stats(): { counters: number; gauges: number; histograms: number; totalObservations: number } {
+   287→    const histogramObservations = Array.from(this.histograms.values()).reduce((sum, h) => sum + h.values.length, 0);
+   288→    return {
+   289→      counters: this.counters.size,
+   290→      gauges: this.gauges.size,
+   291→      histograms: this.histograms.size,
+   292→      totalObservations: this.counters.size + this.gauges.size + histogramObservations,
+   293→    };
+   294→  }
+   295→}
+   296→
+   297→export const metrics = new MetricsRegistry();
+   298→
+   299→// ═══════════════════════════════════════════════════════════════════════════════
+   300→// SECTION 2: Trace Context (Distributed Tracing)
+   301→// ═══════════════════════════════════════════════════════════════════════════════
+   302→
+   303→export interface Span {
+   304→  name: string;
+   305→  startTime: number;
+   306→  endTime?: number;
+   307→  durationMs?: number;
+   308→  status: "ok" | "error";
+   309→  attributes: Record<string, string | number>;
+   310→  events: SpanEvent[];
+   311→}
+   312→
+   313→export interface SpanEvent {
+   314→  name: string;
+   315→  timestamp: number;
+   316→  attributes?: Record<string, string | number>;
+   317→}
+   318→
+   319→export interface TraceResult {
+   320→  traceId: string;
+   321→  rootSpan: string;
+   322→  spans: Span[];
+   323→  startTime: number;
+   324→  endTime: number;
+   325→  durationMs: number;
+   326→  status: "ok" | "error";
+   327→}
+   328→
+   329→class TraceContextImpl {
+   330→  private traceId: string;
+   331→  private spans: Span[] = [];
+   332→  private startTime: number;
+   333→  private rootSpanName: string;
+   334→  private currentSpan: string | null = null;
+   335→
+   336→  constructor(rootSpanName: string) {
+   337→    this.traceId = this.generateTraceId();
+   338→    this.startTime = Date.now();
+   339→    this.rootSpanName = rootSpanName;
+   340→    this.currentSpan = rootSpanName;
+   341→    this.spans.push({
+   342→      name: rootSpanName,
+   343→      startTime: this.startTime,
+   344→      status: "ok",
+   345→      attributes: { traceId: this.traceId },
+   346→      events: [],
+   347→    });
+   348→  }
+   349→
+   350→  private generateTraceId(): string {
+   351→    // 128-bit trace ID (32 hex chars) — OpenTelemetry standard
+   352→    const hex = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, "0")).join("");
+   353→    return hex;
+   354→  }
+   355→
+   356→  /** Start a child span within the current trace */
+   357→  span(name: string, attributes: Record<string, string | number> = {}): this {
+   358→    this.currentSpan = name;
+   359→    this.spans.push({
+   360→      name,
+   361→      startTime: Date.now(),
+   362→      status: "ok",
+   363→      attributes: { ...attributes, traceId: this.traceId, parentSpan: this.rootSpanName },
+   364→      events: [],
+   365→    });
+   366→    return this;
+   367→  }
+   368→
+   369→  /** Add an event to the current span */
+   370→  event(name: string, attributes?: Record<string, string | number>): this {
+   371→    const current = this.spans.find((s) => s.name === this.currentSpan);
+   372→    if (current) {
+   373→      current.events.push({ name, timestamp: Date.now(), attributes });
+   374→    }
+   375→    return this;
+   376→  }
+   377→
+   378→  /** Mark the current span as error */
+   379→  setError(message: string): this {
+   380→    const current = this.spans.find((s) => s.name === this.currentSpan);
+   381→    if (current) {
+   382→      current.status = "error";
+   383→      current.attributes.errorMessage = message;
+   384→    }
+   385→    return this;
+   386→  }
+   387→
+   388→  /** End the trace and return the result */
+   389→  end(): TraceResult {
+   390→    const endTime = Date.now();
+   391→    // Close any open spans
+   392→    for (const span of this.spans) {
+   393→      if (!span.endTime) {
+   394→        span.endTime = endTime;
+   395→        span.durationMs = endTime - span.startTime;
+   396→      }
+   397→    }
+   398→
+   399→    const status = this.spans.some((s) => s.status === "error") ? "error" : "ok";
+   400→
+   401→    const traceResult: TraceResult = {
+   402→      traceId: this.traceId,
+   403→      rootSpan: this.rootSpanName,
+   404→      spans: this.spans,
+   405→      startTime: this.startTime,
+   406→      endTime,
+   407→      durationMs: endTime - this.startTime,
+   408→      status,
+   409→    };
+   410→
+   411→    // Log trace completion
+   412→    logger.info("[trace] completed", {
+   413→      traceId: this.traceId,
+   414→      rootSpan: this.rootSpanName,
+   415→      durationMs: endTime - this.startTime,
+   416→      spanCount: this.spans.length,
+   417→      status,
+   418→    });
+   419→
+   420→    // Export trace to OTEL collector if configured
+   421→    exportTraceToOtel(traceResult);
+   422→
+   423→    return traceResult;
+   424→  }
+   425→}
+   426→
+   427→export const traceContext = {
+   428→  /** Start a new trace context */
+   429→  start(rootSpanName: string): TraceContextImpl {
+   430→    return new TraceContextImpl(rootSpanName);
+   431→  },
+   432→};
+   433→
+   434→// ═══════════════════════════════════════════════════════════════════════════════
+   435→// SECTION 3: SLO Definitions
+   436→// ═══════════════════════════════════════════════════════════════════════════════
+   437→
+   438→export interface SLODefinition {
+   439→  name: string;
+   440→  description: string;
+   441→  target: number; // percentage, e.g., 99.9
+   442→  metricName: string;
+   443→  window: string; // e.g., "30d", "7d", "24h"
+   444→  category: "availability" | "latency" | "correctness" | "durability";
+   445→}
+   446→
+   447→/**
+   448→ * SLOs — Service Level Objectives for GarfiX EOS.
+   449→ *
+   450→ * These define the target thresholds for production readiness.
+   451→ * SLO compliance is measured via the metrics registry and reported
+   452→ * through /api/metrics/slo endpoint.
+   453→ */
+   454→export const SLOs: Record<string, SLODefinition> = {
+   455→  // ── Availability SLOs ──
+   456→  api_availability: {
+   457→    name: "API Availability",
+   458→    description: "Percentage of API requests returning non-5xx responses. Target: 99.9% over 30 days.",
+   459→    target: 99.9,
+   460→    metricName: "api.request.success_rate",
+   461→    window: "30d",
+   462→    category: "availability",
+   463→  },
+   464→  auth_availability: {
+   465→    name: "Auth Service Availability",
+   466→    description: "Login/refresh/logout endpoints must respond successfully 99.95% of the time.",
+   467→    target: 99.95,
+   468→    metricName: "auth.request.success_rate",
+   469→    window: "30d",
+   470→    category: "availability",
+   471→  },
+   472→
+   473→  // ── Latency SLOs ──
+   474→  api_latency_p99: {
+   475→    name: "API Latency (p99)",
+   476→    description: "99th percentile API response latency must be under 500ms for standard CRUD, 2000ms for AI endpoints.",
+   477→    target: 500, // ms
+   478→    metricName: "api.latency.p99",
+   479→    window: "7d",
+   480→    category: "latency",
+   481→  },
+   482→  api_latency_p95: {
+   483→    name: "API Latency (p95)",
+   484→    description: "95th percentile API response latency must be under 200ms.",
+   485→    target: 200, // ms
+   486→    metricName: "api.latency.p95",
+   487→    window: "7d",
+   488→    category: "latency",
+   489→  },
+   490→  ai_latency_p95: {
+   491→    name: "AI Fabric Latency (p95)",
+   492→    description: "95th percentile AI cascade pipeline latency must be under 2000ms.",
+   493→    target: 2000, // ms
+   494→    metricName: "ai.cascade.latency.p95",
+   495→    window: "7d",
+   496→    category: "latency",
+   497→  },
+   498→  invoice_creation_latency: {
+   499→    name: "Invoice Creation Latency",
+   500→    description: "Invoice creation (POST /api/invoices) must complete under 300ms at p95.",
+   501→    target: 300, // ms
+   502→    metricName: "invoice.create.latency.p95",
+   503→    window: "7d",
+   504→    category: "latency",
+   505→  },
+   506→
+   507→  // ── Correctness SLOs ──
+   508→  accounting_accuracy: {
+   509→    name: "Accounting Accuracy",
+   510→    description: "Journal entry debit/credit balance must equal zero for 100% of posted entries.",
+   511→    target: 100, // %
+   512→    metricName: "accounting.balance_accuracy",
+   513→    window: "30d",
+   514→    category: "correctness",
+   515→  },
+   516→  ai_cost_tracking: {
+   517→    name: "AI Cost Tracking Accuracy",
+   518→    description: "AI request cost accounting must match provider invoices within 1% tolerance.",
+   519→    target: 99, // %
+   520→    metricName: "ai.cost.tracking_accuracy",
+   521→    window: "30d",
+   522→    category: "correctness",
+   523→  },
+   524→
+   525→  // ── Durability SLOs ──
+   526→  data_durability: {
+   527→    name: "Data Durability",
+   528→    description: "No data loss for committed transactions — zero unrecoverable data loss incidents.",
+   529→    target: 100, // %
+   530→    metricName: "data.durability",
+   531→    window: "365d",
+   532→    category: "durability",
+   533→  },
+   534→  audit_integrity: {
+   535→    name: "Audit Trail Integrity",
+   536→    description: "Tamper detection chain must validate for 100% of audit entries.",
+   537→    target: 100, // %
+   538→    metricName: "audit.chain_integrity",
+   539→    window: "365d",
+   540→    category: "durability",
+   541→  },
+   542→};
+   543→
+   544→// ═══════════════════════════════════════════════════════════════════════════════
+   545→// SECTION 4: Request Metrics Middleware Helpers
+   546→// ═══════════════════════════════════════════════════════════════════════════════
+   547→
+   548→/**
+   549→ * Track an API request end-to-end: latency histogram, success/error counter,
+   550→ * and optional trace context.
+   551→ */
+   552→export function trackApiRequest(
+   553→  route: string,
+   554→  method: string,
+   555→  durationMs: number,
+   556→  statusCode: number,
+   557→  companySlug?: string,
+   558→): void {
+   559→  const status = statusCode >= 500 ? "error" : statusCode >= 400 ? "client_error" : "success";
+   560→  const labels = { route, method, status, companySlug: companySlug || "none" };
+   561→
+   562→  // Increment request counter
+   563→  metrics.increment("api.request", labels);
+   564→
+   565→  // Record latency histogram
+   566→  metrics.histogram("api.latency", durationMs, { route, method, companySlug: companySlug || "none" });
+   567→
+   568→  // Track errors separately
+   569→  if (status === "error") {
+   570→    metrics.increment("api.error", { route, method, statusCode: String(statusCode) });
+   571→    logger.error("[observability] API error", { route, method, statusCode, durationMs, companySlug });
+   572→  }
+   573→}
+   574→
+   575→/**
+   576→ * Check SLO compliance based on current metrics.
+   577→ * Returns a compliance report for each SLO.
+   578→ */
+   579→export function checkSLOCompliance(): Record<string, { slo: SLODefinition; current: number; compliant: boolean; burnRate: number }> {
+   580→  const report: Record<string, { slo: SLODefinition; current: number; compliant: boolean; burnRate: number }> = {};
+   581→
+   582→  for (const [key, slo] of Object.entries(SLOs)) {
+   583→    // For now, use simple metric snapshots.
+   584→    // In production, this would query a time-series database (Prometheus/Valkey).
+   585→    let current = 0;
+   586→    const stats = metrics.stats();
+   587→
+   588→    // Heuristic: estimate current compliance from available metrics
+   589→    switch (slo.category) {
+   590→      case "availability":
+   591→        // Estimate from error rate
+   592→        current = stats.counters > 0 ? 100 : 99.5; // placeholder — needs real data
+   593→        break;
+   594→      case "latency":
+   595→        current = stats.histograms > 0 ? 200 : 500; // placeholder — needs real histogram data
+   596→        break;
+   597→      case "correctness":
+   598→        current = 100; // Accounting accuracy is enforced by validation
+   599→        break;
+   600→      case "durability":
+   601→        current = 100; // No data loss incidents recorded
+   602→        break;
+   603→    }
+   604→
+   605→    const compliant = slo.category === "latency"
+   606→      ? current <= slo.target
+   607→      : current >= slo.target;
+   608→
+   609→    // Burn rate: how quickly we're consuming the error budget
+   610→    // 1.0 = consuming budget at exactly the allowed rate
+   611→    // >1.0 = burning faster than allowed (will breach SLO)
+   612→    const burnRate = slo.category === "latency"
+   613→      ? (current > slo.target ? current / slo.target : 0)
+   614→      : (current < slo.target ? slo.target / current : 0);
+   615→
+   616→    report[key] = { slo, current, compliant, burnRate };
+   617→  }
+   618→
+   619→  return report;
+   620→}
+   621→
+   622→// ═══════════════════════════════════════════════════════════════════════════════
+   623→// SECTION 5: OTEL Collector Integration & Periodic Flush
+   624→// ═══════════════════════════════════════════════════════════════════════════════
+   625→
+   626→/**
+   627→ * Resolve the OTEL service name from env var, defaulting to "garfix-eos".
+   628→ */
+   629→export function getOtelServiceName(): string {
+   630→  return process.env.OTEL_SERVICE_NAME || "garfix-eos";
+   631→}
+   632→
+   633→/**
+   634→ * Resolve the OTEL exporter endpoint from env var.
+   635→ * Returns undefined if not configured — in that case, flushes only log locally.
+   636→ */
+   637→function getOtelEndpoint(): string | undefined {
+   638→  return process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+   639→}
+   640→
+   641→/** Pending trace results awaiting export to the OTEL collector */
+   642→const pendingTraces: TraceResult[] = [];
+   643→
+   644→/**
+   645→ * Export a completed trace to the OTEL collector endpoint (if configured).
+   646→ * Uses fire-and-forget async delivery — does not block the caller.
+   647→ * Traces are queued and batched during the periodic flush cycle.
+   648→ */
+   649→function exportTraceToOtel(traceResult: TraceResult): void {
+   650→  const endpoint = getOtelEndpoint();
+   651→  if (!endpoint) return; // No collector configured — trace was already logged
+   652→
+   653→  pendingTraces.push(traceResult);
+   654→  // If there are many pending traces, flush them immediately to prevent memory buildup
+   655→  if (pendingTraces.length >= 10) {
+   656→    flushTracesToOtel();
+   657→  }
+   658→}
+   659→
+   660→/**
+   661→ * Send pending traces to the OTEL collector via HTTP POST (OTLP/JSON format).
+   662→ * Fire-and-forget — failures are logged but don't block application flow.
+   663→ */
+   664→async function flushTracesToOtel(): Promise<void> {
+   665→  if (pendingTraces.length === 0) return;
+   666→
+   667→  const endpoint = getOtelEndpoint();
+   668→  if (!endpoint) return;
+   669→
+   670→  const traces = pendingTraces.splice(0, pendingTraces.length);
+   671→
+   672→  const payload = {
+   673→    resource: {
+   674→      attributes: {
+   675→        "service.name": getOtelServiceName(),
+   676→        "service.version": "12.1.0",
+   677→        "service.instance.id": process.env.HOSTNAME || "local",
+   678→        "telemetry.sdk.name": "garfix-observability",
+   679→        "telemetry.sdk.version": "1.0.0",
+   680→      },
+   681→    },
+   682→    scopeTraces: [
+   683→      {
+   684→        scope: { name: "garfix.traces", version: "1.0.0" },
+   685→        traces: traces.map((t) => ({
+   686→          traceId: t.traceId,
+   687→          rootSpan: t.rootSpan,
+   688→          startTime: new Date(t.startTime).toISOString(),
+   689→          endTime: new Date(t.endTime).toISOString(),
+   690→          durationMs: t.durationMs,
+   691→          status: t.status,
+   692→          spans: t.spans.map((s) => ({
+   693→            name: s.name,
+   694→            startTime: new Date(s.startTime).toISOString(),
+   695→            endTime: s.endTime ? new Date(s.endTime).toISOString() : undefined,
+   696→            durationMs: s.durationMs,
+   697→            status: s.status,
+   698→            attributes: s.attributes,
+   699→            events: s.events.map((e) => ({
+   700→              name: e.name,
+   701→              timestamp: new Date(e.timestamp).toISOString(),
+   702→              attributes: e.attributes,
+   703→            })),
+   704→          })),
+   705→        })),
+   706→      },
+   707→    ],
+   708→    exportedAt: new Date().toISOString(),
+   709→  };
+   710→
+   711→  try {
+   712→    const response = await fetch(endpoint, {
+   713→      method: "POST",
+   714→      headers: {
+   715→        "Content-Type": "application/json",
+   716→        "User-Agent": `garfix-observability/1.0.0 (${getOtelServiceName()})`,
+   717→      },
+   718→      body: JSON.stringify(payload),
+   719→    });
+   720→    if (!response.ok) {
+   721→      logger.warn("[observability] OTEL trace export failed", {
+   722→        status: response.status,
+   723→        traceCount: traces.length,
+   724→        endpoint,
+   725→      });
+   726→    } else {
+   727→      logger.debug("[observability] OTEL trace export succeeded", {
+   728→        traceCount: traces.length,
+   729→      });
+   730→    }
+   731→  } catch (err) {
+   732→    logger.warn("[observability] OTEL trace export network error", {
+   733→      err: err instanceof Error ? err.message : String(err),
+   734→      traceCount: traces.length,
+   735→    });
+   736→  }
+   737→}
+   738→
+   739→let flushInterval: ReturnType<typeof setInterval> | null = null;
+   740→
+   741→/**
+   742→ * Start periodic metrics flush — exports metrics to logger every N seconds.
+   743→ * When OTEL_EXPORTER_OTLP_ENDPOINT is configured, also POSTs OTLP JSON payloads
+   744→ * to the collector endpoint. Traces are flushed alongside metrics.
+   745→ */
+   746→export function startMetricsFlush(intervalSeconds: number = 60): void {
+   747→  if (flushInterval) return; // Already running
+   748→
+   749→  logger.info("[observability] metrics flush started", {
+   750→    intervalSeconds,
+   751→    otelEndpoint: getOtelEndpoint() || "none (local-only)",
+   752→    serviceName: getOtelServiceName(),
+   753→  });
+   754→
+   755→  flushInterval = setInterval(() => {
+   756→    const stats = metrics.stats();
+   757→    if (stats.totalObservations === 0 && pendingTraces.length === 0) return;
+   758→
+   759→    logger.info("[observability] metrics flush", {
+   760→      counters: stats.counters,
+   761→      gauges: stats.gauges,
+   762→      histograms: stats.histograms,
+   763→      totalObservations: stats.totalObservations,
+   764→      pendingTraces: pendingTraces.length,
+   765→    });
+   766→
+   767→    // Flush traces to OTEL collector if configured
+   768→    flushTracesToOtel();
+   769→
+   770→    // POST metrics to OTEL collector if configured
+   771→    const endpoint = getOtelEndpoint();
+   772→    if (endpoint && stats.totalObservations > 0) {
+   773→      const otlpPayload = metrics.exportOTLP();
+   774→      fetch(endpoint, {
+   775→        method: "POST",
+   776→        headers: {
+   777→          "Content-Type": "application/json",
+   778→          "User-Agent": `garfix-observability/1.0.0 (${getOtelServiceName()})`,
+   779→        },
+   780→        body: JSON.stringify(otlpPayload),
+   781→      })
+   782→        .then((response) => {
+   783→          if (!response.ok) {
+   784→            logger.warn("[observability] OTEL metrics export failed", {
+   785→              status: response.status,
+   786→              endpoint,
+   787→            });
+   788→          } else {
+   789→            logger.debug("[observability] OTEL metrics export succeeded");
+   790→          }
+   791→        })
+   792→        .catch((err) => {
+   793→          logger.warn("[observability] OTEL metrics export network error", {
+   794→            err: err instanceof Error ? err.message : String(err),
+   795→          });
+   796→        });
+   797→    }
+   798→  }, intervalSeconds * 1000);
+   799→}
+   800→
+   801→/**
+   802→ * Stop periodic metrics flush.
+   803→ */
+   804→export function stopMetricsFlush(): void {
+   805→  if (flushInterval) {
+   806→    clearInterval(flushInterval);
+   807→    flushInterval = null;
+   808→  }
+   809→}
+   810→
+   811→/**
+   812→ * Graceful shutdown — flushes remaining metrics and traces to the OTEL collector
+   813→ * before the process exits. Call this in a SIGTERM/SIGINT handler.
+   814→ *
+   815→ * Returns a promise that resolves when all pending data has been sent.
+   816→ */
+   817→export async function gracefulShutdown(): Promise<void> {
+   818→  logger.info("[observability] graceful shutdown initiated — flushing remaining data");
+   819→
+   820→  // Stop the periodic flush interval
+   821→  stopMetricsFlush();
+   822→
+   823→  const endpoint = getOtelEndpoint();
+   824→
+   825→  // Flush remaining traces
+   826→  if (pendingTraces.length > 0) {
+   827→    await flushTracesToOtel();
+   828→  }
+   829→
+   830→  // Flush remaining metrics
+   831→  if (endpoint) {
+   832→    const stats = metrics.stats();
+   833→    if (stats.totalObservations > 0) {
+   834→      const otlpPayload = metrics.exportOTLP();
+   835→      try {
+   836→        const response = await fetch(endpoint, {
+   837→          method: "POST",
+   838→          headers: {
+   839→            "Content-Type": "application/json",
+   840→            "User-Agent": `garfix-observability/1.0.0 (${getOtelServiceName()})`,
+   841→          },
+   842→          body: JSON.stringify(otlpPayload),
+   843→        });
+   844→        if (!response.ok) {
+   845→          logger.warn("[observability] OTEL final metrics flush failed", {
+   846→            status: response.status,
+   847→          });
+   848→        } else {
+   849→          logger.info("[observability] OTEL final metrics flush succeeded", {
+   850→            totalObservations: stats.totalObservations,
+   851→          });
+   852→        }
+   853→      } catch (err) {
+   854→        logger.warn("[observability] OTEL final metrics flush network error", {
+   855→          err: err instanceof Error ? err.message : String(err),
+   856→        });
+   857→      }
+   858→    }
+   859→  }
+   860→
+   861→  logger.info("[observability] graceful shutdown complete");
+   862→}
+   863→
+   864→// Register graceful shutdown handlers for SIGTERM and SIGINT
+   865→if (typeof process !== "undefined" && process.on) {
+   866→  const shutdownAndExit = async (signal: string) => {
+   867→    logger.info(`[observability] received ${signal} — initiating graceful shutdown`);
+   868→    await gracefulShutdown();
+   869→    process.exit(0);
+   870→  };
+   871→  process.on("SIGTERM", () => shutdownAndExit("SIGTERM"));
+   872→  process.on("SIGINT", () => shutdownAndExit("SIGINT"));
+   873→}
+   874→

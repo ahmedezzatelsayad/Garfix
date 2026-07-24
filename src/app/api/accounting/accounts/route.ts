@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -33,14 +34,33 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (!hasPermission(result.user, "finance_access")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const sp = req.nextUrl.searchParams;
-  const companySlug = sp.get("companySlug") || undefined;
+  const { companySlug, cursor, limit, search } = parseCursorParams(req);
   if (companySlug && !assertCompanyAccess(result.user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
+  if (search) {
+    where.OR = [
+      { nameAr: { contains: search, mode: "insensitive" } },
+      { nameEn: { contains: search, mode: "insensitive" } },
+      { code: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  // If cursor param is present, use cursor pagination (infinite scroll)
+  if (cursor || req.nextUrl.searchParams.has("limit")) {
+    const pagination = buildCursorPrismaQuery(cursor, limit, "code", "asc");
+    const allAccounts = await db.account.findMany({ where, ...pagination });
+    const { items, nextCursor } = buildCursorResponse(allAccounts, limit);
+    return NextResponse.json({
+      accounts: items.map((a) => ({ ...a, balance: num(a.balance, 3) })),
+      nextCursor,
+    });
+  }
+
+  // Legacy: no cursor — return all accounts (for backward compat with non-paginated callers)
   const accounts = await db.account.findMany({ where, orderBy: [{ code: "asc" }] });
   return NextResponse.json({ accounts: accounts.map((a) => ({ ...a, balance: num(a.balance, 3) })) });
 });

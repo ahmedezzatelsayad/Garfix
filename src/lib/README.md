@@ -1,10 +1,10 @@
 # lib — المكتبات المشتركة
 
-> البنية التحتية المشتركة التي تستخدمها جميع الوحدات والـ API handlers في GarfiX — **45 ملف جذر + 10 مكتبات فرعية** تغطي الأمان، المحاسبة، الفوترة، الذكاء الاصطناعي، الفوائر الإلكترونية، والتكاملات.
+> البنية التحتية المشتركة التي تستخدمها جميع الوحدات والـ API handlers في GarfiX — **47 ملف جذر + 10 مكتبات فرعية** تغطي الأمان، المحاسبة، الفوترة، الذكاء الاصطناعي، الفوائر الإلكترونية، والتكاملات.
 
 ---
 
-## 📁 الملفات الجذرية (45 ملف)
+## 📁 الملفات الجذرية (47 ملف)
 
 ### الأمان والمصادقة
 
@@ -28,9 +28,10 @@
 |-------|---------|
 | `middleware.ts` | Auth middleware + tenant resolution + CSRF protection |
 | `api.ts` | API helpers: `requirePermissionForCompany()`, `resolveSecret()`, error formatting |
-| `rateLimit.ts` | 7 حدود rate limiting مخصصة — per-endpoint, per-tenant |
+| `rateLimit.ts` | 10 حدود rate limiting مخصصة — per-endpoint, per-tenant, accounting-specific (ACCOUNTING_READ: 40/min, ACCOUNTING_WRITE: 15/min, REPORT_GENERATION: 5/5min) |
 | `logger.ts` | Structured logging (Pino) — request tracing, audit events |
 | `db.ts` | Prisma client مع pool config (SQLite dev / PostgreSQL prod) |
+| `cursor-pagination-server.ts` | Cursor pagination helpers — `parseCursorParams`, `buildCursorPrismaQuery`, `buildCursorResponse` for API route handlers |
 | `valkey.ts` | Valkey/Redis client — cache + pub/sub + rate limit + session store |
 | `cache.ts` | طبقة cache عالية المستوى — invalidation, TTL, multi-tenant keys |
 | `pubSub.ts` | Pub/Sub نظام — cross-module event broadcasting |
@@ -45,7 +46,7 @@
 | `audit.ts` | Audit trail — تسجيل كل عملية مع full context |
 | `auditExport.ts` | تصدير سجلات المراجعة — CSV, PDF, JSON formats |
 | `tamperAudit.ts` | حماية من التلاعب — hash chains, integrity verification |
-| `observatory.ts` | مرصد المراقبة — real-time system health & metrics dashboard data |
+| `observability.ts` | مراقبة وقياسات — OpenTelemetry-compatible metrics, tracing, SLO definitions, OTEL_EXPORTER_OTLP_ENDPOINT support |
 | `usageMeter.ts` | قياس الاستخدام — per-tenant feature & API usage metering |
 | `startupCheck.ts` | فحص بدء التشغيل — dependency verification, config validation |
 
@@ -257,7 +258,7 @@ const safe = validateExternalUrl(userProvidedUrl); // blocks internal IPs
 
 | الفئة | العدد |
 |-------|-------|
-| ملفات الجذر | 45 |
+| ملفات الجذر | 47 |
 | `ai/` | 6 |
 | `ai-fabric/` | 20 |
 | `invoice-brain/` | 13 |
@@ -267,4 +268,4 @@ const safe = validateExternalUrl(userProvidedUrl); // blocks internal IPs
 | `integrations/` | 7 |
 | `workers/` | 5 |
 | `automation/` | 1 |
-| **الإجمالي (مصدر)** | **112** |
+| **الإجمالي (مصدر)** | **114** |

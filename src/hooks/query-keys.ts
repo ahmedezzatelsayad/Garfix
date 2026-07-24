@@ -179,6 +179,13 @@ export const queryKeys = {
       [...queryKeys.accounting.all, "budget-vs-actual", companySlug] as const,
     periodComparison: (companySlug: string) =>
       [...queryKeys.accounting.all, "period-comparison", companySlug] as const,
+    /** Cursor-based pagination keys — for infinite scroll */
+    journalEntriesCursor: (filters: { companySlug: string; status?: string; search?: string }) =>
+      [...queryKeys.accounting.all, "journal-entries-cursor", filters] as const,
+    vouchersCursor: (filters: { companySlug: string; voucherType?: string; status?: string }) =>
+      [...queryKeys.accounting.all, "vouchers-cursor", filters] as const,
+    accountsCursor: (filters: { companySlug: string; search?: string }) =>
+      [...queryKeys.accounting.all, "accounts-cursor", filters] as const,
     exportExcel: (companySlug: string) =>
       [...queryKeys.accounting.all, "export-excel", companySlug] as const,
     financialDashboard: (companySlug: string) =>

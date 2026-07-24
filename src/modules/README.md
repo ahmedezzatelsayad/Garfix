@@ -31,22 +31,36 @@
 
 ## المشاهد الفرعية — accounting
 
-| المشهد | الوصف |
-|--------|-------|
-| `AccountingView.tsx` | المحاسبة العامة: قيود يومية، ميزان المراجعة، أرباح وخسائر |
-| `ArApView.tsx` | الذمم المدينة والدائنة (AR/AP) |
-| `BankingView.tsx` | إدارة الحسابات البنكية والتحويلات |
-| `BudgetsView.tsx` | إعداد ومتابعة الموازنات التشغيلية |
-| `FixedAssetsView.tsx` | إدارة الأصول الثابتة وإهلاكها |
-| `InventoryCostingView.tsx` | تكاليف المخزون وطرق التقييم |
-| `PayrollWpsView.tsx` | ربط الرواتب مع نظام حماية الأجور (WPS) |
-| `TaxComplianceView.tsx` | الالتزام الضريبي والتقارير الضريبية |
-| `TradeFinanceView.tsx` | التمويل التجاري: الاعتمادات، خطابات الضمان |
-| `VouchersDetailView.tsx` | تفاصيل القيود والإيصالات |
-| `AccountantCollabView.tsx` | تعاون المحاسبين والمراجعة المشتركة |
-| `ConsolidationView.tsx` | الدمج المالي بين الشركات |
-| `MultiCompanyView.tsx` | إدارة متعددة الشركات |
-| `PaymentRailsView.tsx` | قنوات الدفع والتحويلات |
+| المشهد | الوصف | Pagination |
+|--------|-------|------------|
+| `AccountingView.tsx` | المحاسبة العامة: قيود يومية، ميزان المراجعة، أرباح وخسائر — **يستخدم cursor pagination hooks** (`useAccountsCursor`, `useJournalEntriesCursor`) مع TanStack Query infinite scroll | ✅ Cursor |
+| `ArApView.tsx` | الذمم المدينة والدائنة (AR/AP) — aging reports, PDCs, installments | — |
+| `BankingView.tsx` | إدارة الحسابات البنكية والتحويلات | — |
+| `BudgetsView.tsx` | إعداد ومتابعة الموازنات التشغيلية | — |
+| `FixedAssetsView.tsx` | إدارة الأصول الثابتة وإهلاكها | — |
+| `InventoryCostingView.tsx` | تكاليف المخزون وطرق التقييم | — |
+| `PayrollWpsView.tsx` | ربط الرواتب مع نظام حماية الأجور (WPS) | — |
+| `TaxComplianceView.tsx` | الالتزام الضريبي والتقارير الضريبية | — |
+| `TradeFinanceView.tsx` | التمويل التجاري: الاعتمادات، خطابات الضمان | — |
+| `VouchersDetailView.tsx` | تفاصيل القيود والإيصالات — **يستخدم `useVouchersCursor`** مع infinite scroll | ✅ Cursor |
+| `AccountantCollabView.tsx` | تعاون المحاسبين والمراجعة المشتركة | — |
+| `ConsolidationView.tsx` | الدمج المالي بين الشركات | — |
+| `MultiCompanyView.tsx` | إدارة متعددة الشركات | — |
+| `PaymentRailsView.tsx` | قنوات الدفع والتحويلات | — |
+
+### Cursor Pagination في Accounting Views
+
+`AccountingView.tsx` يستخدم now TanStack Query infinite scroll hooks بدلاً من manual `authedFetch` + `useState`:
+- `useAccountsCursor(companySlug, { limit: 50 })` — شجرة الحسابات مع "تحميل المزيد"
+- `useJournalEntriesCursor(companySlug, { limit: 20 })` — القيود اليومية مع "تحميل المزيد"
+- `useVouchersCursor(companySlug, { voucherType, status })` — السندات مع filters
+
+الـ API pattern: `GET /api/accounting/resource?companySlug=X&cursor=123&limit=20` → `{ items: [...], nextCursor: "124" | null }`
+
+Rate limits مخصصة:
+- ACCOUNTING_READ: 40 req/min (GET endpoints)
+- ACCOUNTING_WRITE: 15 req/min (POST/PUT/PATCH/DELETE)
+- REPORT_GENERATION: 5 req/5min (heavy financial report exports)
 
 ## المشاهد الفرعية — admin
 

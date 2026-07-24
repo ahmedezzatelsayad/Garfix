@@ -158,6 +158,14 @@ export function AccountingView() {
     setCurrentPage(1);
   };
 
+  // Derived data from cursor pagination hooks (replaces manual state)
+  const accounts = accountsCursor.items as Account[];
+  const entries = journalCursor.items as JournalEntry[];
+  const accountsHasNextPage = accountsCursor.hasNextPage;
+  const accountsFetchingNext = accountsCursor.isFetchingNextPage;
+  const entriesHasNextPage = journalCursor.hasNextPage;
+  const entriesFetchingNext = journalCursor.isFetchingNextPage;
+
   const itemsForTab = (): Array<{ id: number }> => (tab === "accounts" ? accounts : entries);
 
   const allItems = itemsForTab();
@@ -444,10 +452,27 @@ export function AccountingView() {
                       )}
                     </div>
                     <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
-                      <span className="text-[12px] text-muted-foreground">صفحة {safePage} من {totalPages} ({allItems.length} عنصر)</span>
+                      <span className="text-[12px] text-muted-foreground">{allItems.length} عنصر</span>
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={pageBtnStyle(safePage === 1)}>السابق</button>
-                        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={pageBtnStyle(safePage === totalPages)}>التالي</button>
+                        {/* Cursor pagination: Load More button for infinite scroll */}
+                        {(tab === "accounts" && accountsHasNextPage) && (
+                          <button
+                            onClick={() => accountsCursor.fetchNextPage()}
+                            disabled={accountsFetchingNext}
+                            className={pageBtnStyle(accountsFetchingNext)}
+                          >
+                            {accountsFetchingNext ? "جاري التحميل..." : "تحميل المزيد"}
+                          </button>
+                        )}
+                        {(tab === "journal" && entriesHasNextPage) && (
+                          <button
+                            onClick={() => journalCursor.fetchNextPage()}
+                            disabled={entriesFetchingNext}
+                            className={pageBtnStyle(entriesFetchingNext)}
+                          >
+                            {entriesFetchingNext ? "جاري التحميل..." : "تحميل المزيد"}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </>

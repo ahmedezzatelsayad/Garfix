@@ -1,6 +1,6 @@
 # Accounting — المحرك المحاسبي الكامل
 
-> 16 وحدة محاسبية تغطي كل جوانب المحاسبة من القيود اليومية حتى التقارير المالية — مع دعم كامل للعملات العربية والهجرية.
+> 16 وحدة محاسبية تغطي كل جوانب المحاسبة من القيود اليومية حتى التقارير المالية — مع دعم كامل للعملات العربية والهجرية و cursor pagination لـ infinite scroll و rate limits مخصصة.
 
 ## الملفات
 
@@ -23,11 +23,82 @@
 | `accountant-collab.ts` | تعاون المحاسبين | مشاركة مع محاسبين خارجيين |
 | `financial-dashboard.ts` | لوحة التقارير المالية | تقارير: P&L, Balance Sheet, Cash Flow |
 | `arabic-amount-text.ts` | تحويل الأرقام إلى نص عربي | "ألف وثلاثمئة وخمسون ريال" |
-| `accountTemplates.ts` (في lib/) | قوالب الحسابات | قوالب محاسبية مُساعدة للدول العربية |
+
+## Prisma Models — نماذج المحاسبة في schema
+
+| النموذج | الوصف | الفهارس |
+|---------|-------|---------|
+| `Account` | شجرة الحسابات — code, type, companyId | `@@index` على companySlug, type, code |
+| `JournalEntry` | القيود اليومية — date, status, isPosted | `@@index` على companySlug, status, createdAt |
+| `JournalEntryLine` | بنود القيد — accountId, debit, credit | `@@index` على journalEntryId |
+| `Voucher` | السندات — type, amount, status | `@@index` على companySlug, status, createdAt |
+| `VoucherLine` | بنود السند | `@@index` على voucherId |
+| `PaymentVoucher` | سندات الدفع — type, status, amount | `@@index` على companySlug, status |
+| `BankAccount` | حسابات بنكية — bankName, currency, balance | `@@index` على companySlug |
+| `BankTransaction` | المعاملات البنكية — date, amount, type | `@@index` على companySlug, createdAt |
+| `BankReconciliation` | التسوية البنكية — status, periodEnd | `@@index` على companySlug, status |
+| `FixedAsset` | الأصول الثابتة — name, depreciation method | `@@index` على companySlug, status |
+| `DepreciationEntry` | إهلاك الأصول — date, amount | `@@index` على companySlug, assetId |
+| `FinancialPeriod` | الفترات المحاسبية — startDate, endDate, status | `@@index` على companySlug, status |
+| `CostCenter` | مراكز التكلفة — name, code | `@@index` على companySlug |
+| `Budget` | الموازنات — period, totalAmount | `@@index` على companySlug, periodId |
+| `TaxFiling` | الإقرارات الضريبية — period, status | `@@index` على companySlug, status |
+| `FxRevaluation` | إعادة تقييم العملات — date, status | `@@index` على companySlug |
+| `InterCompanyTransaction` | المعاملات بين الشركات | `@@index` على fromCompanyId, toCompanyId |
+| `LetterOfCredit` | خطابات الضمان — type, status, expiry | `@@index` على companySlug, status |
+| `LetterOfCreditDocument` | مستندات خطابات الضمان | `@@index` على letterOfCreditId |
+| `WpsFile` | ملفات WPS — period, status | `@@index` على companySlug, status |
+| `PostDatedCheck` | شيكات مؤجلة — dueDate, status | `@@index` على companySlug, status |
+| `AccountingAuditLog` | سجلات مراجعة المحاسبة | `@@index` على companySlug, createdAt |
+| `Quotation` | عروض الأسعار | `@@index` على companySlug, status |
+| `PurchaseOrder` | أوامر الشراء | `@@index` على companySlug, status |
+| `PurchaseInvoice` | فواتير الشراء | `@@index` على companySlug, status |
+| `OpeningBalance` | الأرصدة الافتتاحية | `@@index` على companySlug, status |
+| `OpeningBalanceEntry` | بنود الأرصدة الافتتاحية | `@@index` على companySlug |
+| `LandedCostAllocation` | توزيع التكاليف الواردة | `@@index` على companySlug |
+| `LandedCostLine` | بنود التكاليف الواردة | `@@index` على allocationId |
+| `Installment` | الأقساط | `@@index` على companySlug, status |
+| `ProfitDistribution` | توزيع الأرباح | `@@index` على companySlug |
+| `ProfitDistributionEntry` | بنود توزيع الأرباح | `@@index` على distributionId |
+
+## Rate Limits — حدود المحاسبة
+
+| الحد | القيمة | الوصف | الـ endpoints المحمية |
+|------|--------|-------|----------------------|
+| ACCOUNTING_READ | 40/min | قراءة المحاسبة — accounts, journal-entries, vouchers | `/api/accounting/accounts`, `/api/accounting/journal-entries`, `/api/accounting/vouchers`, `/api/accounting/bank-accounts`, `/api/accounting/aging` |
+| ACCOUNTING_WRITE | 15/min | كتابة المحاسبة — voucher creation, JE posting | POST `/api/accounting/journal-entries`, POST `/api/accounting/vouchers`, POST `/api/accounting/accounts`, POST `/api/accounting/bank-transfer` |
+| REPORT_GENERATION | 5/5min | تقارير مالية ثقيلة — P&L, balance sheet, export-excel | `/api/accounting/profit-loss`, `/api/accounting/balance-sheet`, `/api/accounting/cash-flow`, `/api/accounting/trial-balance`, `/api/accounting/export-excel` |
+
+الـ rate limiter يُرسل `X-RateLimit-Remaining` و `X-RateLimit-Reset` headers. يُستخدم Valkey (production) أو in-memory (dev). تُختبر عبر `scripts/accounting-rate-limit-load-test.ts`.
+
+## Cursor Pagination — ترحيل بالـ cursor لـ infinite scroll
+
+### Client-side (React Query hooks)
+
+ثلاثة cursor pagination hooks في `src/hooks/queries/accounting.ts`:
+
+| Hook | الـ endpoint | الخيارات |
+|------|-------------|----------|
+| `useAccountsCursor(companySlug, { search, limit })` | `/api/accounting/accounts` | default limit: 50 |
+| `useJournalEntriesCursor(companySlug, { status, search, limit })` | `/api/accounting/journal-entries` | default limit: 20 |
+| `useVouchersCursor(companySlug, { voucherType, status, limit })` | `/api/accounting/vouchers` | default limit: 20 |
+
+كل hook يستخدم `useCursorPagination<T>()` من `src/hooks/cursor-pagination.ts` و TanStack Query `useInfiniteQuery`.
+
+### Server-side (API route helpers)
+
+`src/lib/cursor-pagination-server.ts` يوفّر:
+
+- `parseCursorParams(req)` — تحليل `companySlug, cursor, limit, search, status, extraFilters` من URL params
+- `buildCursorPrismaQuery(cursor, limit, orderField, orderDirection)` — بناء `{ take: limit+1, skip, cursor, orderBy }` لـ Prisma `findMany()`
+- `buildCursorResponse(allItems, limit, totalCount)` — بناء `{ items, nextCursor, totalCount }`
+
+**API pattern:** `GET /api/accounting/accounts?companySlug=X&cursor=123&limit=50`
+**Response:** `{ items: [...], nextCursor: "124" | null, totalCount?: number }`
 
 ## الاختبارات
 
-16 ملف اختبار تغطي كل وحدة محاسبية:
+19 ملف اختبار تغطي كل وحدة محاسبية:
 
 | الملف | النطاق |
 |-------|--------|
@@ -73,14 +144,17 @@ import { arabicAmountText } from '@/lib/accounting/arabic-amount-text';
 
 كل وحدة محاسبية لها set من API endpoints تحت `/api/accounting/`:
 
-- `/api/accounting/accounts/` — إدارة الحسابات
-- `/api/accounting/journal-entries/` — القيود المحاسبية
-- `/api/accounting/vouchers/` — القيود (إنشاء، تعديل، إلغاء، اعتماد)
-- `/api/accounting/balance-sheet/` — ميزانية عمومية
-- `/api/accounting/profit-loss/` — أرباح وخسائر
-- `/api/accounting/cash-flow/` — تدفق نقدي
-- `/api/accounting/aging/` — aging report
-- `/api/accounting/bank-accounts/` — حسابات بنكية
+- `/api/accounting/accounts/` — إدارة الحسابات (GET with cursor pagination, POST, DELETE)
+- `/api/accounting/journal-entries/` — القيود المحاسبية (GET with cursor pagination, POST, DELETE, reverse)
+- `/api/accounting/vouchers/` — القيود (GET with cursor pagination, POST — إنشاء، تعديل، إلغاء، اعتماد)
+- `/api/accounting/balance-sheet/` — ميزانية عمومية (REPORT_GENERATION rate limit)
+- `/api/accounting/profit-loss/` — أرباح وخسائر (REPORT_GENERATION rate limit)
+- `/api/accounting/cash-flow/` — تدفق نقدي (REPORT_GENERATION rate limit)
+- `/api/accounting/trial-balance/` — ميزان مراجعة (REPORT_GENERATION rate limit)
+- `/api/accounting/export-excel/` — تصدير Excel (REPORT_GENERATION rate limit)
+- `/api/accounting/aging/` — aging report (ACCOUNTING_READ rate limit)
+- `/api/accounting/bank-accounts/` — حسابات بنكية (ACCOUNTING_READ rate limit)
+- `/api/accounting/bank-transfer/` — تحويل بنكي (ACCOUNTING_WRITE rate limit)
 - `/api/accounting/fixed-assets/` — أصول ثابتة
 - `/api/accounting/budgets/` — ميزانيات
 - `/api/accounting/fiscal-periods/` — فترات محاسبية
@@ -89,12 +163,15 @@ import { arabicAmountText } from '@/lib/accounting/arabic-amount-text';
 - `/api/accounting/consolidation/` — تجميع
 - `/api/accounting/financial-dashboard/` — لوحة تقارير مالية
 
-... وأكثر من 40 endpoint محاسبي.
+...وأكثر من 40 endpoint محاسبي.
 
 ## التكامل مع النظام
 
 - كل API endpoint محمي عبر `requirePermissionForCompany()` مع صلاحيات `accounting:*`
+- الـ endpoints المحاسبية محمية بـ rate limits مخصصة: ACCOUNTING_READ (40/min), ACCOUNTING_WRITE (15/min), REPORT_GENERATION (5/5min) — محددة في `src/lib/rateLimit.ts`
 - القيود المحاسبية transaction-safe — لا تُكتمل بدون رصيد متوازن
 - `auto-journal.ts` يُستدعى تلقائياً من Automation Engine عند الأحداث (فاتورة جديدة، دفعة، شراء)
 - `arabic-amount-text.ts` يُستخدم في توليد e-invoices لتحويل المبالغ إلى نص عربي
 - `tax-compliance.ts` يُتكامل مع e-invoicing لكل دولة MENA
+- الـ cursor pagination يستفيد من Prisma @@index على `(companySlug, status, createdAt)` و `(companySlug, createdAt)` — `buildCursorPrismaQuery()` في `cursor-pagination-server.ts`
+- الـ rate limit load test (`scripts/accounting-rate-limit-load-test.ts`) يختبر ACCOUNTING_READ/WRITE/REPORT_GENERATION تحت burst traffic مع p50/p95 latency analysis

@@ -1,0 +1,18 @@
+GarfiX Security Scan Report
+Timestamp: 2026-07-24T12:23:01Z
+
+Summary:
+  CRITICAL:  3
+  HIGH:      0
+  MEDIUM:    0
+  LOW:       0
+  INFO:      2
+  TOTAL:     3 (excluding INFO)
+
+Issues:
+  [INFO] DEPS: bun audit skipped | Quick mode — audit not run
+  [INFO] SECRETS: No leaks detected | Pattern scan of src/scripts/prisma found no secrets
+  [CRITICAL] ENV: Missing required environment variable | JWT_SECRET is not set
+  [CRITICAL] ENV: Missing required environment variable | JWT_REFRESH_SECRET is not set
+  [CRITICAL] ENV: Missing required environment variable | FOUNDER_EMAIL is not set
+
