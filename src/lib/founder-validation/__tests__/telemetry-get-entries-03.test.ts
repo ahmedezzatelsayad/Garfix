@@ -3,7 +3,7 @@ import { describe, it, expect } from "bun:test";
 import { TelemetryCollector, type TelemetryEntry } from "../index";
 
 describe("TelemetryCollector getEntries", () => {
-  function make(id: string): TelemetryEntry {
+  function make(id: string, overrides?: Partial<TelemetryEntry>): TelemetryEntry {
     return {
       id, timestamp: new Date(), tenant: "t", worker: "w", queue: "q",
       provider: "p", model: "m", latencyMs: 100, promptTokens: 10,
@@ -11,6 +11,7 @@ describe("TelemetryCollector getEntries", () => {
       queueWaitMs: 10, executionTimeMs: 90, cacheHit: false, memoryHit: false,
       ruleHit: false, patternHit: false, resolvedBy: "ai", confidence: 0.9,
       outputQualityScore: 0.8, errors: [], recoveryPath: null,
+      ...overrides,
     };
   }
 
@@ -31,8 +32,8 @@ describe("TelemetryCollector getEntries", () => {
 
   it("returns entries in insertion order", () => {
     const c = new TelemetryCollector("t");
-    for (let i = 0; i < 10; i++) c.record(make(String(i)));
-    const ids = c.getEntries().map(e => e.id);
-    expect(ids).toEqual(["0","1","2","3","4","5","6","7","8","9"]);
+    for (let i = 0; i < 10; i++) c.record(make(String(i), { latencyMs: i * 100 }));
+    const latencies = c.getEntries().map(e => e.latencyMs);
+    expect(latencies).toEqual([0, 100, 200, 300, 400, 500, 600, 700, 800, 900]);
   });
 });

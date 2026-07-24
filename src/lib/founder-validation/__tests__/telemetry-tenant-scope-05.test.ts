@@ -21,8 +21,8 @@ describe("TelemetryCollector tenant isolation", () => {
     b.record(make("2", "tenant-b"));
     expect(a.getEntries()).toHaveLength(1);
     expect(b.getEntries()).toHaveLength(1);
-    expect(a.getEntries()[0].id).toBe("1");
-    expect(b.getEntries()[0].id).toBe("2");
+    expect(a.getEntries()[0].tenant).toBe("tenant-a");
+    expect(b.getEntries()[0].tenant).toBe("tenant-b");
   });
 
   it("clearing one does not affect the other", () => {

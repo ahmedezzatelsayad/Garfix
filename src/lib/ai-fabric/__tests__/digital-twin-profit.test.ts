@@ -34,11 +34,22 @@ async function cleanTestData() {
   await db.aIMemoryEntry.deleteMany({ where: { companySlug: TEST_SLUG_2 } });
   await db.profitSnapshot.deleteMany({ where: { companySlug: TEST_SLUG } });
   await db.profitSnapshot.deleteMany({ where: { companySlug: TEST_SLUG_2 } });
-  await db.client.deleteMany({ where: { companySlug: TEST_SLUG } });
-  await db.productCatalog.deleteMany({ where: { companySlug: TEST_SLUG } });
+  // Delete in correct FK order: InventoryItem → Warehouse → ProductCatalog → Client
   await db.inventoryItem.deleteMany({ where: { companySlug: TEST_SLUG } });
+  await db.inventoryItem.deleteMany({ where: { companySlug: TEST_SLUG_2 } });
   await db.warehouse.deleteMany({ where: { companySlug: TEST_SLUG } });
-  await db.companyRuntime.deleteMany({ where: {} });
+  await db.warehouse.deleteMany({ where: { companySlug: TEST_SLUG_2 } });
+  await db.productCatalog.deleteMany({ where: { companySlug: TEST_SLUG } });
+  await db.productCatalog.deleteMany({ where: { companySlug: TEST_SLUG_2 } });
+  await db.client.deleteMany({ where: { companySlug: TEST_SLUG } });
+  await db.client.deleteMany({ where: { companySlug: TEST_SLUG_2 } });
+  // Delete runtimes for our test companies
+  for (const slug of [TEST_SLUG, TEST_SLUG_2]) {
+    const company = await db.company.findUnique({ where: { slug } });
+    if (company) {
+      await db.companyRuntime.deleteMany({ where: { companyId: company.id } });
+    }
+  }
   await db.company.deleteMany({
     where: { slug: { in: [TEST_SLUG, TEST_SLUG_2] } },
   });

@@ -1,0 +1,556 @@
+bun test v1.3.14 (0d9b296a)
+
+src/lib/founder-validation/__tests__/scale-provider-entries-16.test.ts:
+(pass) Scale: provider-entries 16 > scale provider-entries generates valid data for 16 [19.99ms]
+(pass) Scale: provider-entries 16 > scale provider-entries has proportional volume for 16 [130.47ms]
+(pass) Scale: provider-entries 16 > scale provider-entries no ID collisions at scale for 16 [42.88ms]
+(pass) Scale: provider-entries 16 > scale provider-entries metrics calculate at scale for 16 [70.42ms]
+(pass) Scale: provider-entries 16 > scale provider-entries report generates at scale for 16 [32.25ms]
+
+src/lib/founder-validation/__tests__/telemetry-get-entries-03.test.ts:
+(pass) TelemetryCollector getEntries > returns array of recorded entries [0.14ms]
+23 |   it("returns copy not reference", () => {
+24 |     const c = new TelemetryCollector("t");
+25 |     c.record(make("1"));
+26 |     const a = c.getEntries();
+27 |     const b = c.getEntries();
+28 |     expect(a).not.toBe(b);
+                       ^
+error: expect(received).not.toBe(expected)
+
+Expected: not [
+  {
+    id: "tel-mry7wuxuannua30w",
+    timestamp: 2026-07-24T00:44:33.570Z,
+    tenant: "t",
+    worker: "w",
+    queue: "q",
+    provider: "p",
+    model: "m",
+    latencyMs: 100,
+    promptTokens: 10,
+    completionTokens: 10,
+    totalTokens: 20,
+    costUsd: 0.01,
+    retries: 0,
+    queueWaitMs: 10,
+    executionTimeMs: 90,
+    cacheHit: false,
+    memoryHit: false,
+    ruleHit: false,
+    patternHit: false,
+    resolvedBy: "ai",
+    confidence: 0.9,
+    outputQualityScore: 0.8,
+    errors: [],
+    recoveryPath: null,
+  }
+]
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-get-entries-03.test.ts:28:19)
+(fail) TelemetryCollector getEntries > returns copy not reference [0.20ms]
+31 | 
+32 |   it("returns entries in insertion order", () => {
+33 |     const c = new TelemetryCollector("t");
+34 |     for (let i = 0; i < 10; i++) c.record(make(String(i)));
+35 |     const ids = c.getEntries().map(e => e.id);
+36 |     expect(ids).toEqual(["0","1","2","3","4","5","6","7","8","9"]);
+                     ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "0",
+-   "1",
+-   "2",
+-   "3",
+-   "4",
+-   "5",
+-   "6",
+-   "7",
+-   "8",
+-   "9",
++   "tel-mry7wuxublg9sajq",
++   "tel-mry7wuxuxcgt1gb1",
++   "tel-mry7wuxuk96sjowt",
++   "tel-mry7wuxu38b6uhw5",
++   "tel-mry7wuxudzlhnwib",
++   "tel-mry7wuxue83nq5xc",
++   "tel-mry7wuxupuo0dobx",
++   "tel-mry7wuxuepl8jnm6",
++   "tel-mry7wuxunbyas8am",
++   "tel-mry7wuxue5twpc02",
+  ]
+
+- Expected  - 10
++ Received  + 10
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-get-entries-03.test.ts:36:17)
+(fail) TelemetryCollector getEntries > returns entries in insertion order [0.29ms]
+
+src/lib/founder-validation/__tests__/scale-concurrent-activities-18.test.ts:
+(pass) Scale: concurrent-activities 18 > scale concurrent-activities generates valid data for 18 [5.54ms]
+(pass) Scale: concurrent-activities 18 > scale concurrent-activities has proportional volume for 18 [94.05ms]
+(pass) Scale: concurrent-activities 18 > scale concurrent-activities no ID collisions at scale for 18 [39.75ms]
+(pass) Scale: concurrent-activities 18 > scale concurrent-activities metrics calculate at scale for 18 [58.42ms]
+(pass) Scale: concurrent-activities 18 > scale concurrent-activities report generates at scale for 18 [28.12ms]
+
+src/lib/founder-validation/__tests__/telemetry-filter-tenant-7.test.ts:
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant works for 7 [5.72ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant handles empty for 7 [0.06ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant filters correctly for 7 [3.07ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant calculates totals for 7 [1.83ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant JSON roundtrip for 7 [1.21ms]
+
+src/lib/founder-validation/__tests__/telemetry-aggregate-tokens-17.test.ts:
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens works for 17 [3.78ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens handles empty for 17 [0.06ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens filters correctly for 17 [3.80ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens calculates totals for 17 [2.11ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens JSON roundtrip for 17 [1.41ms]
+
+src/lib/founder-validation/__tests__/scale-ai-requests-total-6.test.ts:
+(pass) Scale: ai-requests-total 6 > scale ai-requests-total generates valid data for 6 [7.05ms]
+(pass) Scale: ai-requests-total 6 > scale ai-requests-total has proportional volume for 6 [99.87ms]
+(pass) Scale: ai-requests-total 6 > scale ai-requests-total no ID collisions at scale for 6 [37.05ms]
+(pass) Scale: ai-requests-total 6 > scale ai-requests-total metrics calculate at scale for 6 [57.14ms]
+(pass) Scale: ai-requests-total 6 > scale ai-requests-total report generates at scale for 6 [27.60ms]
+
+src/lib/founder-validation/__tests__/telemetry-export-json-15.test.ts:
+(pass) Telemetry: export-json 15 > telemetry export-json works for 15 [4.03ms]
+(pass) Telemetry: export-json 15 > telemetry export-json handles empty for 15 [0.07ms]
+(pass) Telemetry: export-json 15 > telemetry export-json filters correctly for 15 [2.81ms]
+(pass) Telemetry: export-json 15 > telemetry export-json calculates totals for 15 [1.66ms]
+(pass) Telemetry: export-json 15 > telemetry export-json JSON roundtrip for 15 [1.17ms]
+
+src/lib/founder-validation/__tests__/telemetry-percentile-p99-14.test.ts:
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 works for 14 [3.50ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 handles empty for 14 [0.06ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 filters correctly for 14 [2.94ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 calculates totals for 14 [1.92ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 JSON roundtrip for 14 [1.50ms]
+
+src/lib/founder-validation/__tests__/telemetry-recovery-tracking-18.test.ts:
+(pass) TelemetryCollector recovery path tracking > null recovery path stored [0.10ms]
+(pass) TelemetryCollector recovery path tracking > string recovery path stored [0.02ms]
+(pass) TelemetryCollector recovery path tracking > filter entries with recovery paths [0.04ms]
+
+src/lib/founder-validation/__tests__/scale-tokens-total-7.test.ts:
+(pass) Scale: tokens-total 7 > scale tokens-total generates valid data for 7 [6.11ms]
+(pass) Scale: tokens-total 7 > scale tokens-total has proportional volume for 7 [90.54ms]
+(pass) Scale: tokens-total 7 > scale tokens-total no ID collisions at scale for 7 [37.08ms]
+(pass) Scale: tokens-total 7 > scale tokens-total metrics calculate at scale for 7 [59.30ms]
+(pass) Scale: tokens-total 7 > scale tokens-total report generates at scale for 7 [34.10ms]
+
+src/lib/founder-validation/__tests__/telemetry-cost-accumulation-15.test.ts:
+(pass) TelemetryCollector cost accumulation > sums total cost across entries [0.13ms]
+(pass) TelemetryCollector cost accumulation > zero cost entries contribute zero [0.04ms]
+(pass) TelemetryCollector cost accumulation > handles very small costs [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-percentile-p95-13.test.ts:
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 works for 13 [2.75ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 handles empty for 13 [0.05ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 filters correctly for 13 [3.02ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 calculates totals for 13 [1.71ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 JSON roundtrip for 13 [1.55ms]
+
+src/lib/founder-validation/__tests__/telemetry-model-tracking-11.test.ts:
+(pass) TelemetryCollector model tracking > tracks different models [0.16ms]
+(pass) TelemetryCollector model tracking > model count matches entries [0.08ms]
+
+src/lib/founder-validation/__tests__/telemetry-cache-tracking-12.test.ts:
+(pass) TelemetryCollector cache hit tracking > tracks cache hit/miss ratio [0.17ms]
+
+src/lib/founder-validation/__tests__/telemetry-provider-tracking-10.test.ts:
+(pass) TelemetryCollector provider tracking > tracks multiple providers [0.13ms]
+(pass) TelemetryCollector provider tracking > counts per provider [0.07ms]
+
+src/lib/founder-validation/__tests__/telemetry-constructor-01.test.ts:
+(pass) TelemetryCollector constructor > creates collector with tenant name [0.03ms]
+(pass) TelemetryCollector constructor > starts with zero entries
+(pass) TelemetryCollector constructor > accepts any string as tenant name
+(pass) TelemetryCollector constructor > accepts empty string tenant
+(pass) TelemetryCollector constructor > creates independent instances [0.01ms]
+
+src/lib/founder-validation/__tests__/telemetry-summary-06.test.ts:
+(pass) TelemetryCollector summary methods > entry count matches recorded [0.14ms]
+(pass) TelemetryCollector summary methods > unique tenants in entries [0.05ms]
+(pass) TelemetryCollector summary methods > can filter by cacheHit [0.03ms]
+
+src/lib/founder-validation/__tests__/telemetry-timestamp-09.test.ts:
+16 | 
+17 |   it("entries preserve their timestamps", () => {
+18 |     const c = new TelemetryCollector("t");
+19 |     const now = new Date("2024-06-15T12:00:00Z");
+20 |     c.record(make("1", now));
+21 |     expect(c.getEntries()[0].timestamp).toEqual(now);
+                                             ^
+error: expect(received).toEqual(expected)
+
+Expected: 2024-06-15T12:00:00.000Z
+Received: 2026-07-24T00:44:34.328Z
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-timestamp-09.test.ts:21:41)
+(fail) TelemetryCollector timestamp tracking > entries preserve their timestamps [0.20ms]
+24 |   it("entries can have different timestamps", () => {
+25 |     const c = new TelemetryCollector("t");
+26 |     c.record(make("1", new Date("2024-01-01")));
+27 |     c.record(make("2", new Date("2024-12-31")));
+28 |     const ts = c.getEntries().map(e => e.timestamp.getTime());
+29 |     expect(ts[0]).toBeLessThan(ts[1]);
+                       ^
+error: expect(received).toBeLessThan(expected)
+
+Expected: < 1784853874328
+Received: 1784853874328
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-timestamp-09.test.ts:29:19)
+(fail) TelemetryCollector timestamp tracking > entries can have different timestamps [0.07ms]
+
+src/lib/founder-validation/__tests__/telemetry-collector.test.ts:
+(pass) TelemetryCollector > instance creation > should create an instance with empty entries [0.04ms]
+(pass) TelemetryCollector > instance creation > should create an instance with companies [0.13ms]
+(pass) TelemetryCollector > instance creation > should handle single company [0.02ms]
+(pass) TelemetryCollector > record > should record a basic telemetry entry [0.12ms]
+(pass) TelemetryCollector > record > should auto-generate a timestamp [0.04ms]
+(pass) TelemetryCollector > record > should record entries with cache hit [0.03ms]
+(pass) TelemetryCollector > record > should record entries with memory hit [0.02ms]
+(pass) TelemetryCollector > record > should record entries with rule hit [0.03ms]
+(pass) TelemetryCollector > record > should record entries with pattern hit [0.02ms]
+(pass) TelemetryCollector > record > should record entry with errors array [0.02ms]
+(pass) TelemetryCollector > record > should record entry with recovery path [0.01ms]
+(pass) TelemetryCollector > record > should record entry with retries [0.01ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate total tokens across all entries [0.04ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate total cost across all entries [0.03ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate average latency [0.03ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate P50 latency [0.07ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate P95 latency [0.39ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate cache hit rate [0.09ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate memory hit rate [0.06ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate rule hit rate [0.05ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate pattern hit rate [0.04ms]
+(pass) TelemetryCollector > filtering > should get entries by tenant [0.06ms]
+(pass) TelemetryCollector > filtering > should filter entries by provider [0.05ms]
+(pass) TelemetryCollector > filtering > should filter entries by model [0.03ms]
+(pass) TelemetryCollector > filtering > should get entries with errors [0.03ms]
+(pass) TelemetryCollector > filtering > should get entries sorted by cost descending [0.04ms]
+(pass) TelemetryCollector > filtering > should get entries sorted by latency descending [0.05ms]
+(pass) TelemetryCollector > edge cases > should handle empty collector - all computations return zero [0.03ms]
+(pass) TelemetryCollector > edge cases > should handle single entry [0.03ms]
+(pass) TelemetryCollector > edge cases > should handle 10000 entries without memory issues [7.82ms]
+(pass) TelemetryCollector > edge cases > should isolate entries by tenant [0.36ms]
+(pass) TelemetryCollector > JSON round-trip > should export entries to JSON [0.10ms]
+(pass) TelemetryCollector > JSON round-trip > should import entries from JSON into a new collector [0.11ms]
+(pass) TelemetryCollector > clear / reset > should reset collector to empty via clear() [0.05ms]
+(pass) TelemetryCollector > clear / reset > should allow recording after clear [0.06ms]
+(pass) TelemetryCollector > generateFromCompany > should generate entries from a company provider history [7.16ms]
+(pass) TelemetryCollector > generateFromCompany > should produce entries with correct structure [6.98ms]
+(pass) TelemetryCollector > generateFromCompany > should respect custom RNG for deterministic output [7.23ms]
+(pass) TelemetryCollector > generateFromCompany > should add generated entries to the collector [6.87ms]
+(pass) TelemetryCollector > generateAll > should generate telemetry for all companies [8.24ms]
+(pass) TelemetryCollector > generateAll > should produce entries spanning all tenants [8.50ms]
+(pass) TelemetryCollector > size property > should reflect the number of entries [0.07ms]
+
+src/lib/founder-validation/__tests__/telemetry-error-handling-08.test.ts:
+(pass) TelemetryCollector error entries > entries with empty error array are valid [0.10ms]
+(pass) TelemetryCollector error entries > entries with error strings are valid [0.03ms]
+(pass) TelemetryCollector error entries > filter entries with errors [0.04ms]
+
+src/lib/founder-validation/__tests__/scale-invoices-per-company-0.test.ts:
+(pass) Scale: invoices-per-company 0 > scale invoices-per-company generates valid data for 0 [5.42ms]
+(pass) Scale: invoices-per-company 0 > scale invoices-per-company has proportional volume for 0 [90.44ms]
+(pass) Scale: invoices-per-company 0 > scale invoices-per-company no ID collisions at scale for 0 [42.60ms]
+(pass) Scale: invoices-per-company 0 > scale invoices-per-company metrics calculate at scale for 0 [64.59ms]
+(pass) Scale: invoices-per-company 0 > scale invoices-per-company report generates at scale for 0 [24.92ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-retry-6.test.ts:
+(pass) Telemetry: record-retry 6 > telemetry record-retry works for 6 [3.54ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry handles empty for 6 [0.12ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry filters correctly for 6 [2.95ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry calculates totals for 6 [1.56ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry JSON roundtrip for 6 [1.24ms]
+
+src/lib/founder-validation/__tests__/scale-ai-rules-15.test.ts:
+(pass) Scale: ai-rules 15 > scale ai-rules generates valid data for 15 [5.69ms]
+(pass) Scale: ai-rules 15 > scale ai-rules has proportional volume for 15 [89.29ms]
+(pass) Scale: ai-rules 15 > scale ai-rules no ID collisions at scale for 15 [39.22ms]
+(pass) Scale: ai-rules 15 > scale ai-rules metrics calculate at scale for 15 [65.66ms]
+(pass) Scale: ai-rules 15 > scale ai-rules report generates at scale for 15 [24.06ms]
+
+src/lib/founder-validation/__tests__/telemetry-import-json-16.test.ts:
+(pass) Telemetry: import-json 16 > telemetry import-json works for 16 [3.19ms]
+(pass) Telemetry: import-json 16 > telemetry import-json handles empty for 16 [0.07ms]
+(pass) Telemetry: import-json 16 > telemetry import-json filters correctly for 16 [2.79ms]
+(pass) Telemetry: import-json 16 > telemetry import-json calculates totals for 16 [1.60ms]
+(pass) Telemetry: import-json 16 > telemetry import-json JSON roundtrip for 16 [1.16ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-cache-hit-1.test.ts:
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit works for 1 [2.65ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit handles empty for 1 [0.05ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit filters correctly for 1 [3.15ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit calculates totals for 1 [1.68ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit JSON roundtrip for 1 [1.23ms]
+
+src/lib/founder-validation/__tests__/telemetry-output-quality-20.test.ts:
+(pass) TelemetryCollector output quality scores > tracks quality from 0 to 1 [0.14ms]
+(pass) TelemetryCollector output quality scores > average quality is calculable [0.05ms]
+(pass) TelemetryCollector output quality scores > all perfect quality entries [0.05ms]
+
+src/lib/founder-validation/__tests__/scale-telemetry-records-9.test.ts:
+(pass) Scale: telemetry-records 9 > scale telemetry-records generates valid data for 9 [5.04ms]
+(pass) Scale: telemetry-records 9 > scale telemetry-records has proportional volume for 9 [86.91ms]
+(pass) Scale: telemetry-records 9 > scale telemetry-records no ID collisions at scale for 9 [38.91ms]
+(pass) Scale: telemetry-records 9 > scale telemetry-records metrics calculate at scale for 9 [65.05ms]
+(pass) Scale: telemetry-records 9 > scale telemetry-records report generates at scale for 9 [19.97ms]
+
+src/lib/founder-validation/__tests__/telemetry-sort-latency-11.test.ts:
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency works for 11 [2.84ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency handles empty for 11 [0.07ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency filters correctly for 11 [2.87ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency calculates totals for 11 [1.66ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency JSON roundtrip for 11 [1.05ms]
+
+src/lib/founder-validation/__tests__/scale-ai-memories-14.test.ts:
+(pass) Scale: ai-memories 14 > scale ai-memories generates valid data for 14 [5.37ms]
+(pass) Scale: ai-memories 14 > scale ai-memories has proportional volume for 14 [91.34ms]
+(pass) Scale: ai-memories 14 > scale ai-memories no ID collisions at scale for 14 [37.27ms]
+(pass) Scale: ai-memories 14 > scale ai-memories metrics calculate at scale for 14 [58.76ms]
+(pass) Scale: ai-memories 14 > scale ai-memories report generates at scale for 14 [34.59ms]
+
+src/lib/founder-validation/__tests__/scale-invoice-items-12.test.ts:
+(pass) Scale: invoice-items 12 > scale invoice-items generates valid data for 12 [6.41ms]
+(pass) Scale: invoice-items 12 > scale invoice-items has proportional volume for 12 [106.07ms]
+(pass) Scale: invoice-items 12 > scale invoice-items no ID collisions at scale for 12 [39.24ms]
+(pass) Scale: invoice-items 12 > scale invoice-items metrics calculate at scale for 12 [64.97ms]
+(pass) Scale: invoice-items 12 > scale invoice-items report generates at scale for 12 [22.60ms]
+
+src/lib/founder-validation/__tests__/scale-suppliers-per-company-3.test.ts:
+(pass) Scale: suppliers-per-company 3 > scale suppliers-per-company generates valid data for 3 [5.41ms]
+(pass) Scale: suppliers-per-company 3 > scale suppliers-per-company has proportional volume for 3 [97.63ms]
+(pass) Scale: suppliers-per-company 3 > scale suppliers-per-company no ID collisions at scale for 3 [68.22ms]
+(pass) Scale: suppliers-per-company 3 > scale suppliers-per-company metrics calculate at scale for 3 [94.33ms]
+(pass) Scale: suppliers-per-company 3 > scale suppliers-per-company report generates at scale for 3 [19.66ms]
+
+src/lib/founder-validation/__tests__/scale-companies-1000-11.test.ts:
+(pass) Scale: companies-1000 11 > scale companies-1000 generates valid data for 11 [5.11ms]
+(pass) Scale: companies-1000 11 > scale companies-1000 has proportional volume for 11 [144.86ms]
+(pass) Scale: companies-1000 11 > scale companies-1000 no ID collisions at scale for 11 [36.77ms]
+(pass) Scale: companies-1000 11 > scale companies-1000 metrics calculate at scale for 11 [87.05ms]
+(pass) Scale: companies-1000 11 > scale companies-1000 report generates at scale for 11 [25.36ms]
+
+src/lib/founder-validation/__tests__/telemetry-filter-model-9.test.ts:
+(pass) Telemetry: filter-model 9 > telemetry filter-model works for 9 [2.97ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model handles empty for 9 [0.07ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model filters correctly for 9 [3.18ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model calculates totals for 9 [1.90ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model JSON roundtrip for 9 [1.60ms]
+
+src/lib/founder-validation/__tests__/telemetry-retry-counting-16.test.ts:
+(pass) TelemetryCollector retry counting > tracks retry counts [0.18ms]
+(pass) TelemetryCollector retry counting > high retries are stored correctly [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-queue-metrics-17.test.ts:
+(pass) TelemetryCollector queue metrics > tracks different queues [0.12ms]
+(pass) TelemetryCollector queue metrics > queue wait times stored correctly [0.02ms]
+
+src/lib/founder-validation/__tests__/scale-warehouses-per-company-5.test.ts:
+(pass) Scale: warehouses-per-company 5 > scale warehouses-per-company generates valid data for 5 [5.16ms]
+(pass) Scale: warehouses-per-company 5 > scale warehouses-per-company has proportional volume for 5 [89.66ms]
+(pass) Scale: warehouses-per-company 5 > scale warehouses-per-company no ID collisions at scale for 5 [36.21ms]
+(pass) Scale: warehouses-per-company 5 > scale warehouses-per-company metrics calculate at scale for 5 [58.22ms]
+(pass) Scale: warehouses-per-company 5 > scale warehouses-per-company report generates at scale for 5 [24.16ms]
+
+src/lib/founder-validation/__tests__/telemetry-tenant-scope-05.test.ts:
+19 |     const b = new TelemetryCollector("tenant-b");
+20 |     a.record(make("1", "tenant-a"));
+21 |     b.record(make("2", "tenant-b"));
+22 |     expect(a.getEntries()).toHaveLength(1);
+23 |     expect(b.getEntries()).toHaveLength(1);
+24 |     expect(a.getEntries()[0].id).toBe("1");
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "1"
+Received: "tel-mry7wx4idc421fvb"
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-tenant-scope-05.test.ts:24:34)
+(fail) TelemetryCollector tenant isolation > each collector has its own entries [0.19ms]
+(pass) TelemetryCollector tenant isolation > clearing one does not affect the other [0.10ms]
+
+src/lib/founder-validation/__tests__/telemetry-confidence-range-14.test.ts:
+(pass) TelemetryCollector confidence range > records confidence from 0 to 1 [0.67ms]
+(pass) TelemetryCollector confidence range > average confidence is calculable [0.15ms]
+
+src/lib/founder-validation/__tests__/telemetry-sort-cost-10.test.ts:
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost works for 10 [2.87ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost handles empty for 10 [0.14ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost filters correctly for 10 [3.13ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost calculates totals for 10 [1.57ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost JSON roundtrip for 10 [1.50ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-basic-0.test.ts:
+(pass) Telemetry: record-basic 0 > telemetry record-basic works for 0 [3.19ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic handles empty for 0 [0.07ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic filters correctly for 0 [3.64ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic calculates totals for 0 [1.65ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic JSON roundtrip for 0 [1.32ms]
+
+src/lib/founder-validation/__tests__/telemetry-aggregate-cost-18.test.ts:
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost works for 18 [3.09ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost handles empty for 18 [0.06ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost filters correctly for 18 [2.73ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost calculates totals for 18 [1.71ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost JSON roundtrip for 18 [1.46ms]
+
+src/lib/founder-validation/__tests__/telemetry-resolved-by-13.test.ts:
+(pass) TelemetryCollector resolvedBy tracking > all cascade stages represented [0.15ms]
+(pass) TelemetryCollector resolvedBy tracking > counts per stage [0.09ms]
+
+src/lib/founder-validation/__tests__/scale-products-per-company-1.test.ts:
+(pass) Scale: products-per-company 1 > scale products-per-company generates valid data for 1 [5.09ms]
+(pass) Scale: products-per-company 1 > scale products-per-company has proportional volume for 1 [90.55ms]
+(pass) Scale: products-per-company 1 > scale products-per-company no ID collisions at scale for 1 [42.01ms]
+(pass) Scale: products-per-company 1 > scale products-per-company metrics calculate at scale for 1 [61.49ms]
+(pass) Scale: products-per-company 1 > scale products-per-company report generates at scale for 1 [21.95ms]
+
+src/lib/founder-validation/__tests__/scale-employees-per-company-4.test.ts:
+(pass) Scale: employees-per-company 4 > scale employees-per-company generates valid data for 4 [6.05ms]
+(pass) Scale: employees-per-company 4 > scale employees-per-company has proportional volume for 4 [88.37ms]
+(pass) Scale: employees-per-company 4 > scale employees-per-company no ID collisions at scale for 4 [41.23ms]
+(pass) Scale: employees-per-company 4 > scale employees-per-company metrics calculate at scale for 4 [59.44ms]
+(pass) Scale: employees-per-company 4 > scale employees-per-company report generates at scale for 4 [21.20ms]
+
+src/lib/founder-validation/__tests__/telemetry-filter-provider-8.test.ts:
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider works for 8 [3.03ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider handles empty for 8 [0.07ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider filters correctly for 8 [2.83ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider calculates totals for 8 [1.79ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider JSON roundtrip for 8 [1.28ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-memory-hit-2.test.ts:
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit works for 2 [2.88ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit handles empty for 2 [0.06ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit filters correctly for 2 [2.58ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit calculates totals for 2 [1.69ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit JSON roundtrip for 2 [1.32ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-error-5.test.ts:
+(pass) Telemetry: record-error 5 > telemetry record-error works for 5 [2.99ms]
+(pass) Telemetry: record-error 5 > telemetry record-error handles empty for 5 [0.07ms]
+(pass) Telemetry: record-error 5 > telemetry record-error filters correctly for 5 [2.55ms]
+(pass) Telemetry: record-error 5 > telemetry record-error calculates totals for 5 [1.32ms]
+(pass) Telemetry: record-error 5 > telemetry record-error JSON roundtrip for 5 [1.36ms]
+
+src/lib/founder-validation/__tests__/telemetry-large-batch-07.test.ts:
+(pass) TelemetryCollector large batch recording > records 1000 entries [1.08ms]
+(pass) TelemetryCollector large batch recording > clears 1000 entries [0.75ms]
+(pass) TelemetryCollector large batch recording > unique IDs across 1000 entries [0.89ms]
+
+src/lib/founder-validation/__tests__/scale-customers-per-company-2.test.ts:
+(pass) Scale: customers-per-company 2 > scale customers-per-company generates valid data for 2 [5.41ms]
+(pass) Scale: customers-per-company 2 > scale customers-per-company has proportional volume for 2 [89.17ms]
+(pass) Scale: customers-per-company 2 > scale customers-per-company no ID collisions at scale for 2 [41.60ms]
+(pass) Scale: customers-per-company 2 > scale customers-per-company metrics calculate at scale for 2 [61.68ms]
+(pass) Scale: customers-per-company 2 > scale customers-per-company report generates at scale for 2 [22.31ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-rule-hit-3.test.ts:
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit works for 3 [2.93ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit handles empty for 3 [0.06ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit filters correctly for 3 [2.57ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit calculates totals for 3 [1.92ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit JSON roundtrip for 3 [1.53ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-pattern-hit-4.test.ts:
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit works for 4 [2.89ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit handles empty for 4 [0.06ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit filters correctly for 4 [2.94ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit calculates totals for 4 [1.65ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit JSON roundtrip for 4 [1.48ms]
+
+src/lib/founder-validation/__tests__/scale-worker-entries-17.test.ts:
+(pass) Scale: worker-entries 17 > scale worker-entries generates valid data for 17 [5.65ms]
+(pass) Scale: worker-entries 17 > scale worker-entries has proportional volume for 17 [89.32ms]
+(pass) Scale: worker-entries 17 > scale worker-entries no ID collisions at scale for 17 [40.42ms]
+(pass) Scale: worker-entries 17 > scale worker-entries metrics calculate at scale for 17 [61.62ms]
+(pass) Scale: worker-entries 17 > scale worker-entries report generates at scale for 17 [22.11ms]
+
+src/lib/founder-validation/__tests__/telemetry-clear-04.test.ts:
+(pass) TelemetryCollector clear > clear removes all entries [0.12ms]
+25 |     const c = new TelemetryCollector("t");
+26 |     c.record(make("1"));
+27 |     c.clear();
+28 |     c.record(make("2"));
+29 |     expect(c.getEntries()).toHaveLength(1);
+30 |     expect(c.getEntries()[0].id).toBe("2");
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "2"
+Received: "tel-mry7wxvksvlfw4l7"
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-clear-04.test.ts:30:34)
+(fail) TelemetryCollector clear > clear then record works [0.11ms]
+(pass) TelemetryCollector clear > clear on empty is safe [0.02ms]
+
+src/lib/founder-validation/__tests__/scale-companies-100-10.test.ts:
+(pass) Scale: companies-100 10 > scale companies-100 generates valid data for 10 [5.26ms]
+(pass) Scale: companies-100 10 > scale companies-100 has proportional volume for 10 [88.86ms]
+(pass) Scale: companies-100 10 > scale companies-100 no ID collisions at scale for 10 [41.25ms]
+(pass) Scale: companies-100 10 > scale companies-100 metrics calculate at scale for 10 [63.82ms]
+(pass) Scale: companies-100 10 > scale companies-100 report generates at scale for 10 [22.08ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-entry-02.test.ts:
+(pass) TelemetryCollector record > records single entry [0.10ms]
+(pass) TelemetryCollector record > records multiple entries [0.13ms]
+(pass) TelemetryCollector record > preserves entry data [0.03ms]
+
+src/lib/founder-validation/__tests__/telemetry-reset-clear-19.test.ts:
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear works for 19 [3.05ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear handles empty for 19 [0.06ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear filters correctly for 19 [3.03ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear calculates totals for 19 [1.42ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear JSON roundtrip for 19 [1.31ms]
+
+src/lib/founder-validation/__tests__/scale-cache-entries-8.test.ts:
+(pass) Scale: cache-entries 8 > scale cache-entries generates valid data for 8 [5.82ms]
+(pass) Scale: cache-entries 8 > scale cache-entries has proportional volume for 8 [88.93ms]
+(pass) Scale: cache-entries 8 > scale cache-entries no ID collisions at scale for 8 [40.80ms]
+(pass) Scale: cache-entries 8 > scale cache-entries metrics calculate at scale for 8 [62.70ms]
+(pass) Scale: cache-entries 8 > scale cache-entries report generates at scale for 8 [24.00ms]
+
+src/lib/founder-validation/__tests__/scale-purchase-items-13.test.ts:
+(pass) Scale: purchase-items 13 > scale purchase-items generates valid data for 13 [6.27ms]
+(pass) Scale: purchase-items 13 > scale purchase-items has proportional volume for 13 [88.25ms]
+(pass) Scale: purchase-items 13 > scale purchase-items no ID collisions at scale for 13 [39.89ms]
+(pass) Scale: purchase-items 13 > scale purchase-items metrics calculate at scale for 13 [61.65ms]
+(pass) Scale: purchase-items 13 > scale purchase-items report generates at scale for 13 [23.49ms]
+
+src/lib/founder-validation/__tests__/telemetry-multi-tenant-19.test.ts:
+(pass) TelemetryCollector multi-tenant isolation > 20 tenants each have their own collector [0.28ms]
+(pass) TelemetryCollector multi-tenant isolation > entries in one collector never appear in another [0.07ms]
+
+src/lib/founder-validation/__tests__/scale-report-size-19.test.ts:
+(pass) Scale: report-size 19 > scale report-size generates valid data for 19 [5.33ms]
+(pass) Scale: report-size 19 > scale report-size has proportional volume for 19 [89.09ms]
+(pass) Scale: report-size 19 > scale report-size no ID collisions at scale for 19 [38.95ms]
+(pass) Scale: report-size 19 > scale report-size metrics calculate at scale for 19 [64.75ms]
+(pass) Scale: report-size 19 > scale report-size report generates at scale for 19 [18.73ms]
+
+src/lib/founder-validation/__tests__/telemetry-percentile-p50-12.test.ts:
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 works for 12 [3.19ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 handles empty for 12 [0.06ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 filters correctly for 12 [2.69ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 calculates totals for 12 [1.67ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 JSON roundtrip for 12 [1.60ms]
+
+6 tests failed:
+(fail) TelemetryCollector getEntries > returns copy not reference [0.20ms]
+(fail) TelemetryCollector getEntries > returns entries in insertion order [0.29ms]
+(fail) TelemetryCollector timestamp tracking > entries preserve their timestamps [0.20ms]
+(fail) TelemetryCollector timestamp tracking > entries can have different timestamps [0.07ms]
+(fail) TelemetryCollector tenant isolation > each collector has its own entries [0.19ms]
+(fail) TelemetryCollector clear > clear then record works [0.11ms]
+
+ 287 pass
+ 6 fail
+ 1207 expect() calls
+Ran 293 tests across 61 files. [5.08s]

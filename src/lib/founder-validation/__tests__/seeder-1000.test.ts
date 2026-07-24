@@ -16,7 +16,7 @@ describe('Enterprise Seeder — 1000 companies', () => {
 
   it('all companies have valid structure with all relation arrays', () => {
     for (const c of companies) {
-      expect(typeof c.id).toBe('number');
+      expect(typeof c.id).toBe('string');
       expect(typeof c.slug).toBe('string');
       expect(typeof c.nameAr).toBe('string');
       expect(typeof c.currency).toBe('string');
@@ -272,11 +272,11 @@ describe('Enterprise Seeder — 1000 companies', () => {
 
   it('sample check: first 10 companies have correct IDs 1-10', () => {
     for (let i = 0; i < 10; i++) {
-      expect(companies[i].id).toBe(i + 1);
+      expect(companies[i].id).toBe(String(i + 1).padStart(8, '0'));
     }
   });
 
   it('sample check: last company has ID 1000', () => {
-    expect(companies[999].id).toBe(1000);
+    expect(companies[999].id).toBe(String(1000).padStart(8, '0'));
   });
 });

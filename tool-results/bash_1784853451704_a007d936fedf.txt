@@ -1,0 +1,677 @@
+PID: 2400
+
+e2e/api-health.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+2252 |     this.test = test;
+2253 |   }
+2254 |   _currentSuite(location, title) {
+2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+2256 |     if (!suite) {
+2257 |       throw new Error([
+                       ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+      at /home/z/my-project/e2e/api-health.spec.ts:6:6
+-------------------------------
+
+
+e2e/invoices.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+2252 |     this.test = test;
+2253 |   }
+2254 |   _currentSuite(location, title) {
+2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+2256 |     if (!suite) {
+2257 |       throw new Error([
+                       ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+      at /home/z/my-project/e2e/invoices.spec.ts:6:6
+-------------------------------
+
+
+e2e/auth.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+2252 |     this.test = test;
+2253 |   }
+2254 |   _currentSuite(location, title) {
+2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+2256 |     if (!suite) {
+2257 |       throw new Error([
+                       ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+      at /home/z/my-project/e2e/auth.spec.ts:9:6
+-------------------------------
+
+
+e2e/settings.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+2252 |     this.test = test;
+2253 |   }
+2254 |   _currentSuite(location, title) {
+2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+2256 |     if (!suite) {
+2257 |       throw new Error([
+                       ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+      at /home/z/my-project/e2e/settings.spec.ts:6:6
+-------------------------------
+
+
+e2e/dashboard.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+2252 |     this.test = test;
+2253 |   }
+2254 |   _currentSuite(location, title) {
+2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+2256 |     if (!suite) {
+2257 |       throw new Error([
+                       ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+      at /home/z/my-project/e2e/dashboard.spec.ts:6:6
+-------------------------------
+
+
+e2e/clients.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+2252 |     this.test = test;
+2253 |   }
+2254 |   _currentSuite(location, title) {
+2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+2256 |     if (!suite) {
+2257 |       throw new Error([
+                       ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+      at /home/z/my-project/e2e/clients.spec.ts:6:6
+-------------------------------
+
+
+src/lib/__tests__/secretsManager.test.ts:
+(pass) Secrets Manager Module > getSecret > returns value when env var is set [0.25ms]
+(pass) Secrets Manager Module > getSecret > throws in production for required secret not set [0.08ms]
+(pass) Secrets Manager Module > getSecret > returns placeholder in non-production when not set [0.05ms]
+(pass) Secrets Manager Module > getSecret > validates minimum length and throws if too short [0.08ms]
+(pass) Secrets Manager Module > getSecret > returns value when length meets minimum [0.05ms]
+(pass) Secrets Manager Module > getSecret > does not throw for optional secret not set in non-production [0.07ms]
+(pass) Secrets Manager Module > getSecret > does not throw for optional secret not set in production (just warns) [0.04ms]
+(pass) Secrets Manager Module > getSecret > returns dev-placeholder for unknown env key [0.05ms]
+(pass) Secrets Manager Module > generateSecret > returns a string of the requested length [0.99ms]
+(pass) Secrets Manager Module > generateSecret > returns a string of different length when requested [0.05ms]
+(pass) Secrets Manager Module > generateSecret > uses default length of 32 when not specified [0.04ms]
+(pass) Secrets Manager Module > generateSecret > is base64url safe (no +, /, =) [0.04ms]
+(pass) Secrets Manager Module > generateSecret > generates different values on consecutive calls [0.03ms]
+(pass) Secrets Manager Module > generateSecret > generates random-looking values (not predictable) [0.24ms]
+(pass) Secrets Manager Module > getSecretInventory > lists all defined secrets [0.13ms]
+(pass) Secrets Manager Module > getSecretInventory > masks values (never shows actual secret) [0.07ms]
+(pass) Secrets Manager Module > getSecretInventory > shows isSet=false when secret not set [0.04ms]
+(pass) Secrets Manager Module > getSecretInventory > shows isSet=true when secret is set [0.04ms]
+(pass) Secrets Manager Module > getSecretInventory > shows isSet=false for dev-placeholder values [0.04ms]
+(pass) Secrets Manager Module > getSecretInventory > shows correct required status [0.05ms]
+(pass) Secrets Manager Module > validateSecrets > returns ok=true when all required secrets are set in production [0.11ms]
+(pass) Secrets Manager Module > validateSecrets > returns errors for missing required secrets in production [0.04ms]
+(pass) Secrets Manager Module > validateSecrets > returns warnings for missing required secrets in non-production [0.03ms]
+(pass) Secrets Manager Module > validateSecrets > returns error for too-short secret [0.98ms]
+(pass) Secrets Manager Module > validateSecrets > does not error for missing optional secrets [0.05ms]
+(pass) Secrets Manager Module > validateSecrets > returns ok=false with error details for short secret [0.06ms]
+(pass) Secrets Manager Module > rotateSecret > generates a new secret of correct length for known key [0.10ms]
+(pass) Secrets Manager Module > rotateSecret > generates a new secret of correct length for DATABASE_URL [0.03ms]
+(pass) Secrets Manager Module > rotateSecret > generates different values on consecutive calls [0.03ms]
+(pass) Secrets Manager Module > rotateSecret > returns default length 32 for unknown key [0.03ms]
+
+src/lib/__tests__/task1-100-cases.test.ts:
+(pass) Task 1 — 100-case product matching matrix > single-item cases > exact_match_ar — 15 cases all match expected tier + productId [3.30ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > exact_match_en — 10 cases all match expected tier + productId [0.67ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > arabic_normalization — 15 cases all match expected tier + productId [1.30ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > fuzzy_typo — 10 cases all match expected tier + productId [5.46ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > false_positive_trap — 15 cases all match expected tier + productId [0.42ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > new_product — 10 cases all match expected tier + productId [3.24ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > arabic_indic_numerals — 5 cases all match expected tier + productId [0.29ms]
+(pass) Task 1 — 100-case product matching matrix > single-item cases > purchase_invoice — 5 cases all match expected tier + productId [0.11ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #1: 3-item invoice: cola + pepsi + water (3 items) [0.25ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #2: 3-item invoice: filters + spark plug (3 items) [0.06ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #3: 3-item Arabic invoice: battery + tire + wiper (3 items) [0.07ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #4: 3-item invoice: oil + brake fluid + charger (3 items) [0.06ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #5: 4-item invoice: cooling parts (4 items) [0.11ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #6: 3-item trap invoice: 500ml variants (3 items) [0.06ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #7: 2-item premium trap invoice (2 items) [0.05ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #8: 3-item Arabic staples invoice (3 items) [0.09ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #9: 4-item mixed parts invoice (4 items) [0.11ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #10: 3-item tire + battery + filter invoice (3 items) [0.07ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #11: mixed: English + Arabic beverages (3 items) [0.07ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #12: mixed: English + Arabic filters (3 items) [0.06ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #13: mixed: Arabic battery + English tire + Arabic wiper (3 items) [0.09ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #14: mixed: English oil + Arabic brake fluid + English charger (3 items) [0.05ms]
+(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #15: mixed: Arabic + English filter + battery (3 items) [0.06ms]
+(pass) Task 1 — 100-case product matching matrix > total case count is exactly 100 (15+10+15+10+15+10+10+5+5 + 10+5 multi) [0.05ms]
+
+src/lib/__tests__/productMatcher-b7e.test.ts:
+(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.1: 'زيت' (oil) vs 'زززيت' (gibberish) — same unique chars {ز,ي,ت}, different counts [0.49ms]
+(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.2: 'ملح' (salt) vs 'ملللح' (gibberish) — same unique chars {م,ل,ح}, different counts [0.16ms]
+(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.3: 'باب' (door) vs 'ببباب' (gibberish) — same unique chars {ب,ا}, different counts [0.11ms]
+(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.4: 'شمس' (sun) vs 'شششمس' (gibberish) — same unique chars {ش,م,س}, different counts [0.12ms]
+
+src/lib/__tests__/mfa.test.ts:
+⚠️ PAYMENTS_ENC_KEY not set — using dev-only key. DO NOT use in production.
+(pass) MFA Module > setupMFA > generates a non-empty secret [61.06ms]
+(pass) MFA Module > setupMFA > returns a valid otpauth URI [0.23ms]
+(pass) MFA Module > setupMFA > URI encodes the userUid [0.20ms]
+(pass) MFA Module > setupMFA > generates exactly 10 recovery codes [0.15ms]
+(pass) MFA Module > setupMFA > recovery codes are in XXXX-XXXX format [0.21ms]
+(pass) MFA Module > setupMFA > recovery codes are uppercase [0.21ms]
+(pass) MFA Module > setupMFA > calls db.mFASecret.upsert with correct id [0.15ms]
+(pass) MFA Module > setupMFA > stores encrypted secret in DB [0.21ms]
+(pass) MFA Module > setupMFA > stores encrypted recovery codes in DB [0.14ms]
+(pass) MFA Module > setupMFA > sets enabled=false on create [0.12ms]
+(pass) MFA Module > setupMFA > sets enabled=false on update (re-setup) [0.12ms]
+(pass) MFA Module > setupMFA > clears verifiedAt on update (re-setup) [0.10ms]
+(pass) MFA Module > verifyAndEnableMFA > returns false when record does not exist [0.13ms]
+(pass) MFA Module > verifyAndEnableMFA > returns false for an invalid TOTP code [0.73ms]
+(pass) MFA Module > verifyAndEnableMFA > returns false for a wrong 6-digit code [0.28ms]
+(pass) MFA Module > verifyAndEnableMFA > returns false when code has wrong length [0.21ms]
+(pass) MFA Module > verifyAndEnableMFA > returns false for empty code [0.20ms]
+(pass) MFA Module > verifyAndEnableMFA > does not call update when record not found [0.05ms]
+(pass) MFA Module > verifyAndEnableMFA > does not call update when code is invalid [0.16ms]
+(pass) MFA Module > verifyAndEnableMFA > queries with correct where clause [0.07ms]
+(pass) MFA Module > verifyAndEnableMFA > handles decryption error gracefully (returns false) [0.10ms]
+(pass) MFA Module > verifyAndEnableMFA > non-existent user returns false without throwing [0.05ms]
+(pass) MFA Module > validateMFA > returns false when record does not exist [0.11ms]
+(pass) MFA Module > validateMFA > returns false when MFA is not enabled [0.06ms]
+(pass) MFA Module > validateMFA > returns false for an invalid code on enabled MFA [0.12ms]
+(pass) MFA Module > validateMFA > returns false for wrong-length code [0.14ms]
+(pass) MFA Module > validateMFA > returns false for empty code [0.14ms]
+(pass) MFA Module > validateMFA > does not update lastUsedAt for invalid code [0.13ms]
+(pass) MFA Module > validateMFA > queries with correct where clause [0.05ms]
+(pass) MFA Module > validateMFA > handles decryption error gracefully [0.07ms]
+(pass) MFA Module > validateMFA > non-existent user returns false [0.03ms]
+(pass) MFA Module > validateMFA > disabled MFA returns false even with valid-looking code [0.05ms]
+(pass) MFA Module > useRecoveryCode > returns false when record does not exist [0.15ms]
+(pass) MFA Module > useRecoveryCode > returns false when MFA is not enabled [0.10ms]
+(pass) MFA Module > useRecoveryCode > returns false for invalid recovery code [0.10ms]
+(pass) MFA Module > useRecoveryCode > returns true for a valid recovery code [0.12ms]
+(pass) MFA Module > useRecoveryCode > removes used code from the pool (one-time use) [0.18ms]
+(pass) MFA Module > useRecoveryCode > second use of same code returns false [0.15ms]
+(pass) MFA Module > useRecoveryCode > does not update DB when code is invalid [0.07ms]
+(pass) MFA Module > useRecoveryCode > handles case-insensitive code matching (lowercase fails) [0.07ms]
+(pass) MFA Module > useRecoveryCode > handles empty recovery code pool [0.06ms]
+(pass) MFA Module > useRecoveryCode > queries with correct where clause [0.06ms]
+(pass) MFA Module > isMFAEnabled > returns true when record exists and enabled=true [0.08ms]
+(pass) MFA Module > isMFAEnabled > returns false when record exists and enabled=false [0.03ms]
+(pass) MFA Module > isMFAEnabled > returns false when record does not exist [0.03ms]
+(pass) MFA Module > isMFAEnabled > returns false when enabled is undefined [0.03ms]
+(pass) MFA Module > isMFAEnabled > queries with correct where clause [0.03ms]
+(pass) MFA Module > isMFARequired > returns true for admin role [0.02ms]
+(pass) MFA Module > isMFARequired > returns true for founder (isFounder=true)
+(pass) MFA Module > isMFARequired > returns true for admin founder
+(pass) MFA Module > isMFARequired > returns false for employee (isFounder=false)
+(pass) MFA Module > isMFARequired > returns false for editor (isFounder=false)
+(pass) MFA Module > disableMFA > calls db delete with correct id [0.10ms]
+(pass) MFA Module > disableMFA > handles non-existent user (delete throws) gracefully [0.05ms]
+(pass) MFA Module > disableMFA > handles Prisma not-found error gracefully [0.04ms]
+(pass) MFA Module > disableMFA > resolves without error for valid user [0.04ms]
+(pass) MFA Module > getRecoveryCodeCount > returns 0 for non-existent user [0.08ms]
+(pass) MFA Module > getRecoveryCodeCount > returns correct count for user with 10 codes [0.15ms]
+(pass) MFA Module > getRecoveryCodeCount > returns 0 when recovery codes have been exhausted [0.09ms]
+(pass) MFA Module > getRecoveryCodeCount > returns 0 when recovery codes are corrupted [0.07ms]
+(pass) MFA Module > Edge cases > consecutive setup calls generate different secrets [0.17ms]
+(pass) MFA Module > Edge cases > consecutive setup calls generate different recovery codes [0.11ms]
+(pass) MFA Module > Edge cases > recovery codes from setup are unique [0.10ms]
+(pass) MFA Module > Edge cases > isMFARequired returns false for viewer role [0.01ms]
+(pass) MFA Module > Edge cases > isMFARequired returns false for empty string role
+(pass) MFA Module > Edge cases > disableMFA with empty string uid calls delete [0.06ms]
+(pass) MFA Module > Edge cases > getRecoveryCodeCount for user with 3 codes returns 3 [0.10ms]
+(pass) MFA Module > Edge cases > getRecoveryCodeCount after using 2 of 5 codes returns 3 [0.07ms]
+(pass) MFA Module > Edge cases > verifyAndEnableMFA with non-string code returns false [0.22ms]
+(pass) MFA Module > Edge cases > setupMFA for different users produces independent records [0.26ms]
+
+src/lib/__tests__/invoices-crud.test.ts:
+(pass) POST /api/invoices > 1. happy path → 200 with { ok, invoice, reviewQueueWarnings } [5.68ms]
+(pass) POST /api/invoices > 2. 403 forbidden — user lacks company access [0.22ms]
+(pass) POST /api/invoices > 3. 409 duplicate invoice number — same companySlug_invoiceNumber exists [0.26ms]
+(pass) POST /api/invoices > 4. 400 invalid input — missing required fields [0.58ms]
+(pass) GET /api/invoices (list) > 5. happy path → 200 with array of invoices + parsed lineItems JSON [0.56ms]
+(pass) GET /api/invoices (list) > 6. filters by status — passes `status` query param into the where clause [0.10ms]
+(pass) GET /api/invoices/[id] > 7. happy path → 200 with single invoice [0.29ms]
+(pass) GET /api/invoices/[id] > 8. 404 not found [0.09ms]
+(pass) GET /api/invoices/[id] > 9. 403 cross-tenant — invoice exists but belongs to a different company [0.08ms]
+(pass) PATCH /api/invoices/[id] > 10. happy path → updates invoice, increments version (PATCH does NOT accept `status` — security: payments go through /payment endpoint) [1.77ms]
+(pass) PATCH /api/invoices/[id] > 10b. PATCH strips `status` from body — security: status changes require /status or /payment endpoint [0.23ms]
+(pass) PATCH /api/invoices/[id] > 10c. PATCH optimistic-lock conflict — wrong expectedVersion returns 409 (C1 FIX: atomic via updateMany count=0) [0.16ms]
+(pass) PATCH /api/invoices/[id] > 10d. C1 FIX: concurrent edit detected atomically — updateMany returns count=0 → 409 [0.11ms]
+(pass) PATCH /api/invoices/[id] > 10e. H4 FIX: PATCH on soft-deleted invoice → 404 (not 200 with silent overwrite) [0.12ms]
+(pass) DELETE /api/invoices/[id] > 11. soft delete → sets deletedAt, returns 200 [0.64ms]
+(pass) DELETE /api/invoices/[id] > 11b. delete on already-deleted invoice → 400 [0.13ms]
+(pass) PATCH /api/invoices/[id]/payment > 12. partial payment → status flips to 'partial', paid amount accumulates [1.03ms]
+(pass) PATCH /api/invoices/[id]/payment > 13. full payment (paid >= total) → status flips to 'paid' [0.21ms]
+(pass) PATCH /api/invoices/[id]/payment > 14. payment on a zero-total invoice → status unchanged (no divide-by-zero trap) [0.13ms]
+(pass) PATCH /api/invoices/[id]/payment > 14b. H5 FIX: negative amount rejected (defense against `paid` reduction) [0.15ms]
+(pass) PATCH /api/invoices/[id]/payment > 14c. H4 FIX: payment on soft-deleted invoice → 404 (not silent paid update) [0.09ms]
+(pass) PATCH /api/invoices/[id]/payment > 14d. C1 FIX: concurrent payment → 409, no payment lost [0.12ms]
+(pass) PATCH /api/invoices/[id]/payment > 14e. H5 FIX: idempotent payment — same key replays cached response, no double-charge [0.65ms]
+(pass) PATCH /api/invoices/[id]/payment > 14f. H5 FIX: different idempotency keys → independent payments (no false cache hit) [0.43ms]
+(pass) PATCH /api/invoices/[id]/status > 15. operational status transition: sent → overdue (allowed) [0.71ms]
+(pass) PATCH /api/invoices/[id]/status > 16. SECURITY: status='paid' rejected on /status endpoint — must go through /payment [0.26ms]
+(pass) PATCH /api/invoices/[id]/status > 16b. H4 FIX: status change on soft-deleted invoice → 404 [0.11ms]
+(pass) PATCH /api/invoices/[id]/status > 16c. C1 FIX: concurrent status change → 409 atomic [0.12ms]
+(pass) GET /api/invoices/[id] — soft-delete enforcement (H1 FIX) > 17. H1 FIX: GET on soft-deleted invoice → 404 (not silent leak of deleted data) [0.10ms]
+
+src/lib/__tests__/rateLimit-advanced.test.ts:
+(pass) checkRateLimit — memory backend > allows first request under limit [0.33ms]
+(pass) checkRateLimit — memory backend > allows up to maxAttempts [0.08ms]
+(pass) checkRateLimit — memory backend > blocks request over maxAttempts [0.08ms]
+(pass) checkRateLimit — memory backend > resets after window expires (simulated via different key) [0.07ms]
+(pass) checkRateLimit — memory backend > sets lockout when lockoutMs is configured [0.06ms]
+(pass) checkRateLimit — memory backend > continues blocking during lockout [0.05ms]
+(pass) checkRateLimit — memory backend > remaining counts down correctly [0.05ms]
+(pass) Rate limit per key — independent counters > different keys have independent counters [0.08ms]
+(pass) Rate limit per key — independent counters > clearing one key does not affect another [0.16ms]
+(pass) Rate limit per key — independent counters > three keys are fully independent [0.12ms]
+(pass) Memory backend lockout > returns retryAfter when locked out [0.06ms]
+(pass) Memory backend lockout > retryAfter is at least 1 second [0.06ms]
+(pass) rateLimitResponse > returns null when under limit [0.33ms]
+(pass) rateLimitResponse > returns 429 status when blocked [0.14ms]
+(pass) rateLimitResponse > 429 response has Arabic error message [0.08ms]
+(pass) rateLimitResponse > 429 response includes retryAfter in body [0.08ms]
+(pass) rateLimitResponse > 429 response has Retry-After header [0.07ms]
+(pass) rateLimitResponse > 429 response has X-RateLimit-Remaining: 0 header [0.05ms]
+(pass) rateLimitResponse > 429 response has X-RateLimit-Reset header [0.07ms]
+(pass) rateLimitResponse > uses identifier when provided [0.08ms]
+(pass) getClientIp > extracts x-real-ip header [0.02ms]
+(pass) getClientIp > returns 'unknown' when no IP headers present [0.01ms]
+(pass) getClientIp > trims whitespace from x-real-ip [0.03ms]
+(pass) getClientIp > prefers x-real-ip over x-forwarded-for when no trusted proxies [0.02ms]
+(pass) getClientIp > returns 'unknown' for empty x-real-ip [0.01ms]
+(pass) clearRateLimit > allows requests after clearing [0.09ms]
+(pass) clearRateLimit > does not throw on clearing non-existent key [0.05ms]
+(pass) LIMITS config > LOGIN has correct maxAttempts [0.01ms]
+(pass) LIMITS config > LOGIN has lockoutMs configured [0.01ms]
+(pass) LIMITS config > REGISTER has correct maxAttempts
+(pass) LIMITS config > OTP_VERIFY has correct maxAttempts
+(pass) LIMITS config > AI_CHAT has 10 max attempts per 60s [0.01ms]
+(pass) Edge cases > zero maxAttempts succeeds on first call then blocks [0.06ms]
+(pass) Edge cases > concurrent requests increment counter [0.12ms]
+(pass) Edge cases > same IP with different prefixes are independent [0.07ms]
+(pass) Edge cases > large windowMs value works correctly [0.04ms]
+(pass) Edge cases > very small windowMs value (1ms) [0.03ms]
+(pass) Edge cases > retryAfter is always a positive number when blocked [0.07ms]
+
+src/lib/__tests__/decimal-migration.test.ts:
+(pass) P1 Decimal migration: num() helper > handles Prisma Decimal (decimal.js) values [0.08ms]
+(pass) P1 Decimal migration: num() helper > handles null and undefined gracefully [0.02ms]
+(pass) P1 Decimal migration: num() helper > handles legacy string values (backward compat) [0.02ms]
+(pass) P1 Decimal migration: num() helper > handles numeric values [0.01ms]
+(pass) P1 Decimal migration: num() helper > rounds to specified scale [0.01ms]
+(pass) P1 Decimal migration: calcInvoiceTotals() > returns proper 3-decimal string values for Decimal columns [0.07ms]
+(pass) P1 Decimal migration: calcInvoiceTotals() > handles zero items correctly [0.02ms]
+(pass) P1 Decimal migration: calcInvoiceTotals() > handles KWD precision (3 decimals) correctly [0.02ms]
+(pass) P1 Decimal migration: arithmetic helpers > addNums works with Decimal values [0.04ms]
+(pass) P1 Decimal migration: arithmetic helpers > subNums works with Decimal values [0.02ms]
+(pass) P1 Decimal migration: arithmetic helpers > mulNums works with Decimal values [0.02ms]
+(pass) P1 Decimal migration: fmtMoney with Decimal > formats Decimal values correctly [0.11ms]
+(pass) P1 Decimal migration: fmtMoney with Decimal > formats zero Decimal correctly [0.05ms]
+(pass) P1 Decimal migration: invoice creation data > paid field should use numeric 0 (not string "0") for Decimal column [0.02ms]
+(pass) P1 Decimal migration: invoice creation data > calcInvoiceTotals output can be directly used as Decimal column values [0.03ms]
+(pass) P1 Decimal migration: payment arithmetic > computes newPaid correctly with Decimal source values [0.03ms]
+(pass) P1 Decimal migration: payment arithmetic > correctly determines payment status with Decimal [0.03ms]
+(pass) P1 Decimal migration: payment arithmetic > partial payment status works [0.02ms]
+(pass) P1 Decimal migration: SQL cast validation > string monetary values can be cast to Decimal via PostgreSQL [0.04ms]
+(pass) P1 Decimal migration: SQL cast validation > empty/null monetary strings default to 0 after migration [0.01ms]
+
+src/lib/__tests__/inventorySync.test.ts:
+(pass) isReviewQueueWarning > recognizes the [REVIEW-QUEUE] prefix [0.03ms]
+(pass) isReviewQueueWarning > recognizes an empty [REVIEW-QUEUE] tag (just the prefix) [0.01ms]
+(pass) isReviewQueueWarning > rejects the [OVERSELL] prefix — oversell is a different warning class [0.01ms]
+(pass) isReviewQueueWarning > rejects arbitrary error messages [0.01ms]
+(pass) isReviewQueueWarning > rejects empty / falsy input
+(pass) isReviewQueueWarning > does NOT match if [REVIEW-QUEUE] appears later in the string (only prefix counts) [0.01ms]
+(pass) export smoke test > exports the three sync entrypoints as functions [0.02ms]
+(pass) export smoke test > syncInventoryOnSale has arity 4 (tx, companySlug, items, invoiceId) [0.01ms]
+(pass) export smoke test > syncInventoryOnPurchase has arity 4 (tx, companySlug, items, purchaseInvoiceId)
+(pass) export smoke test > recordStockMovement has arity 7+ (tx, companySlug, productId, warehouseId, signedQty, sourceType, sourceId, ...)
+
+src/lib/__tests__/passwordPolicy.test.ts:
+(pass) Password Policy Module > validatePassword — minimum length > rejects password shorter than 10 chars [0.24ms]
+(pass) Password Policy Module > validatePassword — minimum length > accepts exactly 10 chars [0.03ms]
+(pass) Password Policy Module > validatePassword — minimum length > score gets +20 for length >= 10 [0.01ms]
+(pass) Password Policy Module > validatePassword — minimum length > score gets +10 bonus for length >= 14 [0.01ms]
+(pass) Password Policy Module > validatePassword — minimum length > score gets +5 bonus for length >= 20 [0.02ms]
+(pass) Password Policy Module > validatePassword — character classes > requires lowercase letter [0.02ms]
+(pass) Password Policy Module > validatePassword — character classes > gives +10 for lowercase [0.01ms]
+(pass) Password Policy Module > validatePassword — character classes > requires uppercase letter [0.02ms]
+(pass) Password Policy Module > validatePassword — character classes > gives +10 for uppercase [0.01ms]
+(pass) Password Policy Module > validatePassword — character classes > requires digit [0.02ms]
+(pass) Password Policy Module > validatePassword — character classes > gives +15 for digit [0.02ms]
+(pass) Password Policy Module > validatePassword — character classes > requires special character [0.02ms]
+(pass) Password Policy Module > validatePassword — character classes > gives +15 for special character [0.03ms]
+(pass) Password Policy Module > validatePassword — score calculation > score is capped at 100 [0.02ms]
+(pass) Password Policy Module > validatePassword — score calculation > score is floored at 0 [0.01ms]
+(pass) Password Policy Module > validatePassword — score calculation > valid strong password has score >= 40 [0.01ms]
+(pass) Password Policy Module > validatePassword — score calculation > password missing multiple classes has low score [0.01ms]
+(pass) Password Policy Module > validatePassword — score calculation > perfect password scores 100 [0.01ms]
+(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with '1234' [0.02ms]
+(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'password' [0.02ms]
+(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'admin' [0.03ms]
+(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'qwer' [0.01ms]
+(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'abcd' [0.01ms]
+(pass) Password Policy Module > validatePassword — repeated character penalty > penalizes 3+ repeated chars [0.01ms]
+(pass) Password Policy Module > validatePassword — repeated character penalty > does not penalize 2 repeated chars [0.03ms]
+(pass) Password Policy Module > validatePassword — repeated character penalty > penalizes repeated special chars too [0.02ms]
+(pass) Password Policy Module > validatePassword — variety bonus > gives +10 bonus when unique chars >= 70% of length [0.01ms]
+(pass) Password Policy Module > validatePassword — variety bonus > gives +5 extra bonus when unique chars >= 90% of length [0.03ms]
+(pass) Password Policy Module > validatePassword — variety bonus > low variety password gets no variety bonus [0.02ms]
+(pass) Password Policy Module > validatePassword — variety bonus > variety is case-insensitive [0.01ms]
+(pass) Password Policy Module > registerSession > creates a session with correct userUid and jti [0.31ms]
+(pass) Password Policy Module > registerSession > creates session with expiresAt in the future [0.11ms]
+(pass) Password Policy Module > registerSession > stores ipAddress when provided [0.06ms]
+(pass) Password Policy Module > registerSession > stores null ipAddress when not provided [0.07ms]
+(pass) Password Policy Module > registerSession > stores userAgent when provided [0.05ms]
+(pass) Password Policy Module > isSessionValid > returns true for valid non-expired session [0.12ms]
+(pass) Password Policy Module > isSessionValid > returns false for non-existent session [0.04ms]
+(pass) Password Policy Module > isSessionValid > returns false and deletes expired session [0.06ms]
+(pass) Password Policy Module > isSessionValid > queries by jti [0.03ms]
+(pass) Password Policy Module > isSessionValid > handles delete error gracefully for expired session [0.05ms]
+(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeSession deletes by jti [0.07ms]
+(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeSession handles not-found gracefully [0.03ms]
+(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeAllSessions deletes many by userUid [0.06ms]
+(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeAllSessions handles error gracefully [0.03ms]
+(pass) Password Policy Module > session limit enforcement > evicts oldest sessions when over limit (max 5) [0.14ms]
+(pass) Password Policy Module > session limit enforcement > does not evict when below the limit [0.10ms]
+(pass) Password Policy Module > session limit enforcement > queries sessions ordered by createdAt asc for eviction [0.05ms]
+(pass) Password Policy Module > getActiveSessionCount > returns count of non-expired sessions [0.05ms]
+(pass) Password Policy Module > getActiveSessionCount > queries with expiresAt greater than now [0.05ms]
+(pass) Password Policy Module > cleanupExpiredSessions > deletes sessions with expiresAt in the past and returns count [0.07ms]
+
+src/lib/__tests__/responsive-design.test.ts:
+(pass) Responsive Design Breakpoints > each module file contains responsive prefixes (sm/md/lg/xl) [0.65ms]
+(pass) Responsive Design Breakpoints > grid layouts use responsive breakpoints (not bare grid-cols) [0.17ms]
+(pass) Responsive Design Breakpoints > table views use responsive visibility toggles [0.30ms]
+(pass) Responsive Design Breakpoints > views use responsive padding (sm/md/lg:p-) [0.09ms]
+(pass) Responsive Design Breakpoints > views use responsive text sizes (sm/md/lg:text-) [0.21ms]
+(pass) Responsive Design Breakpoints > DataTable uses overflow-x-auto for mobile table scrolling [0.02ms]
+(pass) Responsive Design Breakpoints > AppShell uses responsive padding on main content [0.03ms]
+(pass) Responsive Design Breakpoints > Sidebar uses responsive mobile/desktop layout [0.03ms]
+(pass) Responsive Design Breakpoints > Topbar uses responsive layout (md:hidden, sm:inline, md:px-) [0.02ms]
+(pass) Responsive Design Breakpoints > summary: count responsive prefix occurrences per file [0.76ms]
+
+src/lib/__tests__/oversell-behavior.test.ts:
+(pass) oversell warning category separation > isReviewQueueWarning returns FALSE for [OVERSELL] warnings [0.03ms]
+(pass) oversell warning category separation > isReviewQueueWarning returns TRUE for [REVIEW-QUEUE] warnings [0.01ms]
+(pass) oversell warning category separation > isReviewQueueWarning returns FALSE for non-prefixed strings [0.01ms]
+(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > manual adjust (positive delta) records movement with source 'manual_adjustment' [0.17ms]
+(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > manual adjust (negative delta) records movement with negative qty [0.06ms]
+(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > manual set mode records movement with the delta (not absolute value) [0.04ms]
+(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > initial stock creation records movement with source 'initial_stock' [0.04ms]
+(pass) AI Copilot inventory edit — same audit trail as manual > AI adjust records movement with source 'ai_adjustment' [0.04ms]
+(pass) AI Copilot inventory edit — same audit trail as manual > AI initial stock records movement with source 'ai_initial_stock' [0.04ms]
+(pass) oversell source types are distinct from sale/purchase > sale oversell block records zero-qty movement with source 'sale' [0.04ms]
+(pass) oversell source types are distinct from sale/purchase > collision-recovery-failed records zero-qty movement with source 'collision-recovery' [0.05ms]
+
+src/lib/__tests__/productMatcher.test.ts:
+(pass) normalizeArabic > lowercases + trims [0.07ms]
+(pass) normalizeArabic > collapses internal whitespace [0.01ms]
+(pass) normalizeArabic > strips Arabic diacritics (tashkeel) [0.01ms]
+(pass) normalizeArabic > normalizes alef variants (أ إ آ → ا) [0.02ms]
+(pass) normalizeArabic > normalizes ta-marbuta ة → ha ه [0.01ms]
+(pass) normalizeArabic > normalizes alef-maqsura ى → ya ي [0.03ms]
+(pass) normalizeArabic > converts Arabic-Indic digits ٠-٩ to ASCII 0-9 [0.03ms]
+(pass) normalizeArabic > strips leading definite article ال [0.02ms]
+(pass) normalizeArabic > removes non-word non-Arabic punctuation [0.03ms]
+(pass) normalizeArabic > returns empty string for empty input [0.02ms]
+(pass) matchProduct > 1. Exact alias match → confidence 1.0, tier auto-match [0.32ms]
+(pass) matchProduct > 2. Normalized match (case + whitespace difference) → confidence 0.99 (Path 2 cap, zero-cost steps only) [0.12ms]
+(pass) matchProduct > 3. Arabic-to-English alias is found via exact alias lookup (بيبسي 330) [0.08ms]
+(pass) matchProduct > 4. Arabic normalization: ta-marbuta variant matches the canonical alias [0.12ms]
+(pass) matchProduct > 5. Fuzzy match: small typo within auto-match threshold [0.15ms]
+(pass) matchProduct > 6. No match → productId null + tier 'new-product' [0.13ms]
+(pass) matchProduct > 7. Low-similarity input below suggested threshold → still returns new-product [0.10ms]
+(pass) matchProduct > 8. B.7d prefilter: very long unrelated input is NOT fuzzy-matched [0.11ms]
+(pass) matchProduct > 9. Kill-switch OFF (autoMatchingEnabled=false): exact match still resolves, but tier drops to suggested [0.08ms]
+(pass) matchProduct > 10. Confidence thresholds: just-above-suggested input lands in 'suggested' tier [0.13ms]
+(pass) matchProduct > 11. Arabic-Indic digits in input normalize before matching [0.09ms]
+(pass) matchProduct > 12. Default thresholds are exported and sane [0.02ms]
+(pass) matchProduct > 13. AI-zone: fuzzy score in [0.70, 0.85) → tier 'new-product', action 'ai-queued-for-review' [0.19ms]
+(pass) matchProduct > 14. AI-zone audit row: tier='suggested', action='ai-queued-for-review', resolvedBy=null [0.14ms]
+(pass) matchProduct > 15. AI-zone with real invoiceId: audit row carries the real invoiceId (not null) [0.15ms]
+(pass) matchProduct > 16. AI-zone kill-switch OFF: matcher STILL routes to AI zone (returns new-product, NOT suggested) [0.11ms]
+
+src/lib/__tests__/csrf.test.ts:
+(pass) CSRF cookie module > generateCsrfToken returns a 64-char hex string [0.07ms]
+(pass) CSRF cookie module > generateCsrfToken produces unique tokens on each call [0.02ms]
+(pass) CSRF cookie module > CSRF_COOKIE is 'inv_csrf'
+(pass) CSRF cookie module > CSRF_COOKIE_OPTS has httpOnly=false (JS must read it) [0.01ms]
+(pass) CSRF cookie module > CSRF_COOKIE_OPTS has sameSite='lax'
+(pass) CSRF cookie module > CSRF_TTL is 1800 seconds (30 min)
+(pass) CSRF cookie module > CSRF_COOKIE_OPTS.maxAge matches CSRF_TTL
+(pass) CSRF enforcement logic (SEC-010) > POST on /api/clients requires CSRF [0.03ms]
+(pass) CSRF enforcement logic (SEC-010) > DELETE on /api/invoices/123 requires CSRF [0.02ms]
+(pass) CSRF enforcement logic (SEC-010) > PATCH on /api/settings requires CSRF
+(pass) CSRF enforcement logic (SEC-010) > PUT on /api/catalog/456 requires CSRF
+(pass) CSRF enforcement logic (SEC-010) > GET on /api/clients does NOT require CSRF [0.01ms]
+(pass) CSRF enforcement logic (SEC-010) > HEAD on /api/health does NOT require CSRF
+(pass) CSRF enforcement logic (SEC-010) > OPTIONS does NOT require CSRF
+(pass) CSRF enforcement logic (SEC-010) > POST on /api/auth/refresh is CSRF-exempt
+(pass) CSRF enforcement logic (SEC-010) > POST on /api/auth/login is NOT CSRF-exempt (but is PUBLIC)
+(pass) CSRF double-submit token matching > matching cookie and header passes verification [0.02ms]
+(pass) CSRF double-submit token matching > mismatched cookie and header fails verification [0.01ms]
+(pass) CSRF double-submit token matching > empty cookie fails verification [0.01ms]
+(pass) CSRF double-submit token matching > empty header fails verification
+(pass) CSRF double-submit token matching > undefined cookie fails verification
+(pass) CSRF double-submit token matching > undefined header fails verification [0.01ms]
+(pass) Client-side getCsrfToken > returns undefined when cookie is not set [0.07ms]
+(pass) Client-side getCsrfToken > returns the token value when cookie is set [0.03ms]
+(pass) Client-side getCsrfToken > returns the token value when other cookies are present [0.01ms]
+(pass) Client-side getCsrfToken > handles URL-encoded token values [0.01ms]
+(pass) Client-side getCsrfToken > returns undefined for a cookie with a different name
+
+src/lib/__tests__/cryptoVault-advanced.test.ts:
+(pass) encryptSecret / decryptSecret round-trip > round-trips a simple string [0.12ms]
+(pass) encryptSecret / decryptSecret round-trip > round-trips a JSON string [0.06ms]
+(pass) encryptSecret / decryptSecret round-trip > round-trips an API key [0.03ms]
+(pass) encryptSecret / decryptSecret round-trip > round-trips a numeric string [0.02ms]
+(pass) encryptSecret / decryptSecret round-trip > round-trips an Arabic string [0.03ms]
+(pass) encryptSecret / decryptSecret round-trip > different inputs produce different outputs [0.02ms]
+(pass) encryptSecret / decryptSecret round-trip > same input produces different outputs (random IV) [0.03ms]
+(pass) encryptSecret / decryptSecret round-trip > encrypted format has three dot-separated segments [0.02ms]
+(pass) encryptSecret / decryptSecret round-trip > encrypted format segments are valid base64 [0.06ms]
+(pass) decryptSecret legacy plaintext > returns plaintext for non-encrypted format [0.02ms]
+(pass) decryptSecret legacy plaintext > returns plaintext for random text
+(pass) decryptSecret legacy plaintext > returns plaintext for API-key-like format (no dots) [0.02ms]
+(pass) decryptSecret failure modes > throws on encrypted value with wrong key [0.12ms]
+(pass) decryptSecret failure modes > throws on corrupted ciphertext [0.07ms]
+(pass) decryptSecret failure modes > throws on tampered auth tag [0.07ms]
+(pass) decryptSecret failure modes > NEVER returns ciphertext as plaintext [0.07ms]
+(pass) decryptSecret failure modes > error message mentions wrong key possibility [0.05ms]
+(pass) decryptSecret failure modes > throws on malformed encrypted format (two segments only) [0.02ms]
+(pass) decryptSecret failure modes > returns empty string as-is
+(pass) tryDecryptSecret > returns decrypted value for valid encrypted input [0.06ms]
+(pass) tryDecryptSecret > returns null on decryption failure instead of throwing [0.05ms]
+(pass) tryDecryptSecret > returns plaintext for non-encrypted input
+(pass) isEncrypted > detects encrypted format [0.02ms]
+(pass) isEncrypted > rejects plaintext [0.01ms]
+(pass) isEncrypted > rejects short strings
+(pass) isEncrypted > rejects strings without dots
+(pass) isEncrypted > rejects empty string
+(pass) hashToken > produces consistent SHA-256 hash [0.02ms]
+(pass) hashToken > produces 64-character hex string [0.10ms]
+(pass) hashToken > different inputs produce different hashes [0.02ms]
+(pass) hashToken > hashes empty string
+(pass) safeCompare > returns true for equal strings [0.02ms]
+(pass) safeCompare > returns false for different strings of same length [0.01ms]
+(pass) safeCompare > returns false for different lengths
+(pass) safeCompare > returns true for empty strings
+(pass) safeCompare > returns false for empty vs non-empty
+(pass) Edge cases > encrypts empty string but decryptSecret returns raw blob (empty ciphertext fails regex) [0.04ms]
+(pass) Edge cases > encrypts and decrypts unicode characters [0.05ms]
+(pass) Edge cases > encrypts and decrypts very long string (10KB) [0.12ms]
+(pass) Edge cases > encrypts and decrypts special characters [0.02ms]
+(pass) Edge cases > encrypts and decrypts JSON with special characters [0.04ms]
+(pass) Edge cases > hashToken is deterministic for long input [0.03ms]
+
+src/lib/__tests__/permissions-advanced.test.ts:
+(pass) Permission catalog > has 16 permissions defined [0.02ms]
+(pass) Permission catalog > all permission keys are strings [0.04ms]
+(pass) Permission catalog > all permissions have a label [0.02ms]
+(pass) Permission catalog > all permissions have a group [0.01ms]
+(pass) Permission catalog > all permissions have an icon [0.01ms]
+(pass) Permission catalog > ALL_PERMISSION_KEYS has 16 entries
+(pass) Permission catalog > ALL_PERMISSION_KEYS matches catalog keys [0.04ms]
+(pass) Permission catalog > no duplicate keys in catalog [0.03ms]
+(pass) Locked permissions > reports_access is locked
+(pass) Locked permissions > settings_access is locked
+(pass) Locked permissions > finance_access is locked
+(pass) Locked permissions > employee_management is locked
+(pass) Locked permissions > e_invoicing_submit is locked [0.01ms]
+(pass) Role presets > admin has all 16 permissions set to 1 [0.04ms]
+(pass) Role presets > editor has create_invoice
+(pass) Role presets > editor does NOT have settings_access
+(pass) Role presets > employee has create_invoice
+(pass) Role presets > employee does NOT have export_data
+(pass) Role presets > viewer has only view_customers [0.02ms]
+(pass) Role presets > ROLE_PRESETS has 4 entries
+(pass) Role presets > ROLE_PRESETS includes admin, editor, employee, viewer [0.02ms]
+(pass) computeEffectivePermissions — founder override > founder gets all permissions regardless of role [0.06ms]
+(pass) computeEffectivePermissions — founder override > founder gets employee_management
+(pass) computeEffectivePermissions — founder override > founder gets finance_access
+(pass) computeEffectivePermissions — founder override > founder override ignores custom permissions [0.01ms]
+(pass) computeEffectivePermissions — founder override > founder gets reports_access
+(pass) computeEffectivePermissions — role-based > admin role always returns full set [0.01ms]
+(pass) computeEffectivePermissions — role-based > editor role has export_data [0.01ms]
+(pass) computeEffectivePermissions — role-based > employee role has print_invoice
+(pass) computeEffectivePermissions — role-based > viewer role does not have create_invoice
+(pass) computeEffectivePermissions — role-based > unknown role falls back to viewer
+(pass) computeEffectivePermissions — custom permissions merge > non-locked custom permission overrides role default [0.02ms]
+(pass) computeEffectivePermissions — custom permissions merge > custom 0 value removes a permission
+(pass) computeEffectivePermissions — custom permissions merge > locked permission in custom is ignored [0.01ms]
+(pass) computeEffectivePermissions — custom permissions merge > custom permission not in catalog is ignored
+(pass) computeEffectivePermissions — custom permissions merge > null permissions falls back to role defaults [0.01ms]
+(pass) computeEffectivePermissions — custom permissions merge > undefined permissions falls back to role defaults [0.01ms]
+(pass) can() helper > returns true for permitted action [0.02ms]
+(pass) can() helper > returns false for denied action
+(pass) can() helper > returns false for unknown permission key
+(pass) can() helper > returns true when value is truthy non-zero [0.01ms]
+(pass) can() helper > returns false when value is 0
+(pass) can() helper > returns false for missing key in empty map
+(pass) DB_KEY_TO_CATALOG_KEY mapping > maps invoices:create to create_invoice
+(pass) DB_KEY_TO_CATALOG_KEY mapping > maps clients:view to view_customers
+(pass) DB_KEY_TO_CATALOG_KEY mapping > maps settings:manage to settings_access
+(pass) DB_KEY_TO_CATALOG_KEY mapping > all mapped values exist in catalog [0.02ms]
+(pass) DB_KEY_TO_CATALOG_KEY mapping > has 12 mappings
+(pass) Negative tests > missing permission key returns undefined (not in defaults) [0.02ms]
+(pass) Negative tests > empty role string defaults to viewer [0.01ms]
+
+src/lib/__tests__/tamperAudit.test.ts:
+(pass) Tamper Audit Module > appendToChain > creates first entry with GENESIS prevHash when chain is empty [0.22ms]
+(pass) Tamper Audit Module > appendToChain > creates first entry with chainOrder 0 [0.11ms]
+(pass) Tamper Audit Module > appendToChain > stores entryId correctly [0.06ms]
+(pass) Tamper Audit Module > appendToChain > stores companySlug when provided [0.08ms]
+(pass) Tamper Audit Module > appendToChain > stores null companySlug when not provided [0.07ms]
+(pass) Tamper Audit Module > appendToChain > subsequent entry chains to previous contentHash [0.08ms]
+(pass) Tamper Audit Module > appendToChain > subsequent entry has chainOrder incremented by 1 [0.09ms]
+(pass) Tamper Audit Module > appendToChain > stores a computed contentHash (SHA-256 of content:prevHash) [0.07ms]
+(pass) Tamper Audit Module > appendToChain > contentHash is deterministic for same content and prevHash [0.12ms]
+(pass) Tamper Audit Module > appendToChain > contentHash changes when content changes [0.08ms]
+(pass) Tamper Audit Module > appendToChain > contentHash changes when prevHash changes [0.09ms]
+(pass) Tamper Audit Module > appendToChain > fetches last entry ordered by chainOrder desc [0.06ms]
+(pass) Tamper Audit Module > appendToChain > calls create exactly once per append [0.06ms]
+(pass) Tamper Audit Module > appendToChain > handles DB error gracefully without throwing [0.08ms]
+(pass) Tamper Audit Module > appendToChain > handles create error gracefully without throwing [0.05ms]
+(pass) Tamper Audit Module > verifyChain > returns valid=true for empty chain [0.21ms]
+(pass) Tamper Audit Module > verifyChain > returns valid=true for single entry with GENESIS prevHash [0.11ms]
+(pass) Tamper Audit Module > verifyChain > returns valid=true for valid two-entry chain [0.07ms]
+(pass) Tamper Audit Module > verifyChain > returns valid=true for valid three-entry chain [0.06ms]
+(pass) Tamper Audit Module > verifyChain > detects broken chain when prevHash is wrong [0.09ms]
+(pass) Tamper Audit Module > verifyChain > detects broken chain when first entry prevHash is not GENESIS [0.04ms]
+(pass) Tamper Audit Module > verifyChain > marks entry as invalid (isValid=false) when tampered [0.07ms]
+(pass) Tamper Audit Module > verifyChain > marks all entries as verified (isValid=true) for valid chain [0.07ms]
+(pass) Tamper Audit Module > verifyChain > does not call updateMany when chain is broken [0.04ms]
+(pass) Tamper Audit Module > verifyChain > queries entries ordered by chainOrder asc [0.03ms]
+(pass) Tamper Audit Module > verifyChain > filters by companySlug when provided [0.04ms]
+(pass) Tamper Audit Module > verifyChain > partial company-scope verification only sees entries for that company [0.08ms]
+(pass) Tamper Audit Module > verifyChain > reports correct totalEntries for broken chain [0.07ms]
+(pass) Tamper Audit Module > verifyChain > breakAt reason includes expected and actual hash prefixes [0.06ms]
+(pass) Tamper Audit Module > verifyChain > returns valid for 10-entry chain built correctly [0.12ms]
+(pass) Tamper Audit Module > getChainStats > returns all zeros when no entries exist [0.13ms]
+(pass) Tamper Audit Module > getChainStats > returns correct total entries [0.04ms]
+(pass) Tamper Audit Module > getChainStats > returns correct verified count [0.03ms]
+(pass) Tamper Audit Module > getChainStats > returns correct tampered count [0.04ms]
+(pass) Tamper Audit Module > getChainStats > calculates unverified count as total - verified - tampered [0.04ms]
+(pass) Tamper Audit Module > getChainStats > handles all entries verified [0.04ms]
+(pass) Tamper Audit Module > getChainStats > handles all entries tampered [0.03ms]
+(pass) Tamper Audit Module > getChainStats > calls count three times (total, verified, tampered) [0.04ms]
+(pass) Tamper Audit Module > getChainStats > verified count query includes isValid=true and verifiedAt not null [0.05ms]
+(pass) Tamper Audit Module > getChainStats > tampered count query includes isValid=false [0.05ms]
+(pass) Tamper Audit Module > Edge cases > consecutive appends increment chainOrder correctly [0.14ms]
+(pass) Tamper Audit Module > Edge cases > company isolation: append with companySlug creates company-scoped entry [0.06ms]
+(pass) Tamper Audit Module > Edge cases > very long chain (100 entries) verifies correctly [0.28ms]
+(pass) Tamper Audit Module > Edge cases > hash collision resistance: different content produces different hashes [0.14ms]
+(pass) Tamper Audit Module > Edge cases > chain breaks at the exact tampered entry, not earlier [0.09ms]
+(pass) Tamper Audit Module > Edge cases > getChainStats returns unverified=0 when all are verified or tampered [0.04ms]
+(pass) Tamper Audit Module > Edge cases > verifyChain with company filter does not mark entries from other companies [0.06ms]
+(pass) Tamper Audit Module > Edge cases > appendToChain with null companySlug stores null [0.09ms]
+(pass) Tamper Audit Module > Edge cases > verifyChain handles undefined companySlug (global scope) [0.06ms]
+(pass) Tamper Audit Module > Edge cases > different createdAt timestamps produce different contentHashes [0.13ms]
+
+src/lib/__tests__/valkey-integration.test.ts:
+(pass) valkey.ts — Connection Manager > getValkeyUrl returns undefined when neither env var is set [0.56ms]
+(pass) valkey.ts — Connection Manager > VALKEY_URL takes precedence over REDIS_URL [0.40ms]
+(pass) valkey.ts — Connection Manager > falls back to REDIS_URL when VALKEY_URL is not set [0.33ms]
+(pass) cache.ts — Cache (In-Memory Fallback) > cache miss returns null [2.52ms]
+(pass) cache.ts — Cache (In-Memory Fallback) > cache set + get round-trip [0.15ms]
+Started background process

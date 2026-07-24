@@ -1,0 +1,885 @@
+     1→     1→// @ts-nocheck
+     2→     2→/**
+     3→     3→ * economics-p1.test.ts — Phases 9-12 integration tests.
+     4→     4→ *
+     5→     5→ * Tests:
+     6→     6→ *   - Phase 9 (worker-marketplace): priority ordering, enterprise preemption, SLA limits
+     7→     7→ *   - Phase 10 (heat-map): insufficient data returns null, builds correct matrix
+     8→     8→ *   - Phase 11 (learning-engine): observation recording, promotion at threshold, rejection
+     9→     9→ *   - Phase 12 (cross-company): pattern contribution, lookup, privacy filtering
+    10→    10→ *
+    11→    11→ * Uses real Prisma (SQLite) — no mocks for DB.
+    12→    12→ */
+    13→    13→
+    14→    14→import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+    15→    15→import { db } from "@/lib/db";
+    16→    16→
+    17→    17→// Phase 9
+    18→    18→import {
+    19→    19→  prioritizeRequest,
+    20→    20→  canPreempt,
+    21→    21→  getGlobalPoolStatus,
+    22→    22→  SLA_LATENCY_DEFAULTS,
+    23→    23→} from "@/lib/ai-fabric/worker-marketplace";
+    24→    24→
+    25→    25→// Phase 10
+    26→    26→import {
+    27→    27→  getHeatMap,
+    28→    28→  getPredictiveScale,
+    29→    29→  hasEnoughData,
+    30→    30→} from "@/lib/ai-fabric/heat-map";
+    31→    31→
+    32→    32→// Phase 11
+    33→    33→import {
+    34→    34→  recordObservation,
+    35→    35→  promoteCandidates,
+    36→    36→  getLearningStatus,
+    37→    37→  MIN_SAMPLES,
+    38→    38→  MIN_CONFIDENCE,
+    39→    39→} from "@/lib/ai-fabric/learning-engine";
+    40→    40→
+    41→    41→// Phase 12
+    42→    42→import {
+    43→    43→  contributePattern,
+    44→    44→  lookupGlobalPattern,
+    45→    45→  getPatternStats,
+    46→    46→  verifyNoSensitiveData,
+    47→    47→} from "@/lib/ai-fabric/cross-company-intelligence";
+    48→    48→
+    49→    49→import { fabricHash } from "@/lib/ai-fabric/types";
+    50→    50→
+    51→    51→// ─── Test company slugs ─────────────────────────────────────────────────────
+    52→    52→
+    53→    53→const SLUG_A = "test-econ-co-a";
+    54→    54→const SLUG_B = "test-econ-co-b";
+    55→    55→const SLUG_C = "test-econ-co-c";
+    56→    56→const SLUG_D = "test-econ-co-d";
+    57→    57→
+    58→    58→// ─── Helpers ────────────────────────────────────────────────────────────────
+    59→    59→
+    60→    60→/** Create a Company row and return its id. */
+    61→    61→async function createCompany(slug: string, plan: string): Promise<number> {
+    62→    62→  const company = await db.company.create({
+    63→    63→    data: { name: `Test ${slug}`, slug, plan },
+    64→    64→  });
+    65→    65→  return company.id;
+    66→    66→}
+    67→    67→
+    68→    68→/** Create a CompanyRuntime for a company with SLA tier. */
+    69→    69→async function createRuntime(
+    70→    70→  companyId: number,
+    71→    71→  opts: {
+    72→    72→    workerPoolSize?: number;
+    73→    73→    status?: string;
+    74→    74→    slaTier?: string;
+    75→    75→    maxAcceptableLatencyMs?: number;
+    76→    76→  } = {},
+    77→    77→) {
+    78→    78→  return db.companyRuntime.create({
+    79→    79→    data: {
+    80→    80→      companyId,
+    81→    81→      workerPoolSize: opts.workerPoolSize ?? 2,
+    82→    82→      status: opts.status ?? "active",
+    83→    83→      slaTier: opts.slaTier ?? "starter",
+    84→    84→      maxAcceptableLatencyMs: opts.maxAcceptableLatencyMs ?? 2000,
+    85→    85→    },
+    86→    86→  });
+    87→    87→}
+    88→    88→
+    89→    89→/** Create an AIRequestLog entry. */
+    90→    90→async function createAIRequestLog(
+    91→    91→  companySlug: string,
+    92→    92→  opts: {
+    93→    93→    requestType?: string;
+    94→    94→    resolvedBy?: string;
+    95→    95→    costUsd?: number;
+    96→    96→    latencyMs?: number;
+    97→    97→    createdAt?: Date;
+    98→    98→    provider?: string;
+    99→    99→    tokensUsed?: number;
+   100→   100→  } = {},
+   101→   101→) {
+   102→   102→  return db.aIRequestLog.create({
+   103→   103→    data: {
+   104→   104→      companySlug,
+   105→   105→      requestType: opts.requestType ?? "other",
+   106→   106→      resolvedBy: opts.resolvedBy ?? "ai",
+   107→   107→      costUsd: opts.costUsd ?? 0,
+   108→   108→      latencyMs: opts.latencyMs ?? 100,
+   109→   109→      createdAt: opts.createdAt ?? new Date(),
+   110→   110→      provider: opts.provider ?? null,
+   111→   111→      tokensUsed: opts.tokensUsed ?? null,
+   112→   112→    },
+   113→   113→  });
+   114→   114→}
+   115→   115→
+   116→   116→/** Create a pending job in the queue. */
+   117→   117→async function createPendingJob(companySlug: string) {
+   118→   118→  return db.jobQueue.create({
+   119→   119→    data: {
+   120→   120→      queue: `ai-queue:${companySlug}`,
+   121→   121→      type: "ai-test",
+   122→   122→      data: "{}",
+   123→   123→      status: "pending",
+   124→   124→      attempts: 0,
+   125→   125→      maxAttempts: 3,
+   126→   126→      scheduledAt: new Date(),
+   127→   127→    },
+   128→   128→  });
+   129→   129→}
+   130→   130→
+   131→   131→/** Create a running job in the queue. */
+   132→   132→async function createRunningJob(companySlug: string) {
+   133→   133→  return db.jobQueue.create({
+   134→   134→    data: {
+   135→   135→      queue: `ai-queue:${companySlug}`,
+   136→   136→      type: "ai-test",
+   137→   137→      data: "{}",
+   138→   138→      status: "running",
+   139→   139→      attempts: 0,
+   140→   140→      maxAttempts: 3,
+   141→   141→      scheduledAt: new Date(),
+   142→   142→      startedAt: new Date(),
+   143→   143→    },
+   144→   144→  });
+   145→   145→}
+   146→   146→
+   147→   147→/** Full cleanup for test isolation. */
+   148→   148→async function cleanTestData() {
+   149→   149→  const slugs = [SLUG_A, SLUG_B, SLUG_C, SLUG_D];
+   150→   150→
+   151→   151→  await db.jobQueue.deleteMany({
+   152→   152→    where: { queue: { in: slugs.map((s) => `ai-queue:${s}`) } },
+   153→   153→  });
+   154→   154→  await db.aIRequestLog.deleteMany({
+   155→   155→    where: { companySlug: { in: slugs } },
+   156→   156→  });
+   157→   157→  await db.budgetConfig.deleteMany({
+   158→   158→    where: { companySlug: { in: slugs } },
+   159→   159→  });
+   160→   160→  await db.ruleCandidate.deleteMany({
+   161→   161→    where: { companySlug: { in: slugs } },
+   162→   162→  });
+   163→   163→  await db.globalPattern.deleteMany({
+   164→   164→    where: { patternKey: { in: ["test widget", "safe product"] } },
+   165→   165→  });
+   166→   166→  // Broader cleanup for cross-company tests
+   167→   167→  await db.globalPattern.deleteMany();
+   168→   168→
+   169→   169→  for (const slug of slugs) {
+   170→   170→    const company = await db.company.findUnique({ where: { slug } });
+   171→   171→    if (company) {
+   172→   172→      await db.companyRuntime.deleteMany({ where: { companyId: company.id } });
+   173→   173→    }
+   174→   174→  }
+   175→   175→  await db.company.deleteMany({
+   176→   176→    where: { slug: { in: slugs } },
+   177→   177→  });
+   178→   178→  await db.notification.deleteMany({
+   179→   179→    where: { companySlug: { in: slugs } },
+   180→   180→  });
+   181→   181→}
+   182→   182→
+   183→   183→// ═══════════════════════════════════════════════════════════════════════════════
+   184→   184→// Phase 9: Worker Marketplace
+   185→   185→// ═══════════════════════════════════════════════════════════════════════════════
+   186→   186→
+   187→   187→describe("Phase 9: Worker Marketplace", () => {
+   188→   188→  beforeEach(async () => {
+   189→   189→    await cleanTestData();
+   190→   190→  });
+   191→   191→
+   192→   192→  afterAll(async () => {
+   193→   193→    await cleanTestData();
+   194→   194→  });
+   195→   195→
+   196→   196→  // ── SLA defaults ────────────────────────────────────────────────────────
+   197→   197→
+   198→   198→  it("SLA_LATENCY_DEFAULTS should have correct values", () => {
+   199→   199→    expect(SLA_LATENCY_DEFAULTS.enterprise).toBe(200);
+   200→   200→    expect(SLA_LATENCY_DEFAULTS.business).toBe(800);
+   201→   201→    expect(SLA_LATENCY_DEFAULTS.starter).toBe(2000);
+   202→   202→  });
+   203→   203→
+   204→   204→  // ── prioritizeRequest: tier ordering ─────────────────────────────────────
+   205→   205→
+   206→   206→  it("enterprise request should have higher priority than business at same wait time", () => {
+   207→   207→    const waitTime = 100;
+   208→   208→    const ent = prioritizeRequest("ent-co", "ocr", waitTime, "enterprise");
+   209→   209→    const bus = prioritizeRequest("bus-co", "ocr", waitTime, "business");
+   210→   210→
+   211→   211→    expect(ent).toBeGreaterThan(bus);
+   212→   212→  });
+   213→   213→
+   214→   214→  it("business request should have higher priority than starter at same wait time", () => {
+   215→   215→    const waitTime = 100;
+   216→   216→    const bus = prioritizeRequest("bus-co", "ocr", waitTime, "business");
+   217→   217→    const sta = prioritizeRequest("sta-co", "ocr", waitTime, "starter");
+   218→   218→
+   219→   219→    expect(bus).toBeGreaterThan(sta);
+   220→   220→  });
+   221→   221→
+   222→   222→  it("longer wait time should increase priority within same tier", () => {
+   223→   223→    const ent1 = prioritizeRequest("co", "ocr", 50, "enterprise");
+   224→   224→    const ent2 = prioritizeRequest("co", "ocr", 150, "enterprise");
+   225→   225→
+   226→   226→    expect(ent2).toBeGreaterThan(ent1);
+   227→   227→  });
+   228→   228→
+   229→   229→  it("enterprise at 0 wait should still outrank starter at max wait", () => {
+   230→   230→    const ent = prioritizeRequest("ent-co", "ocr", 0, "enterprise");
+   231→   231→    const sta = prioritizeRequest("sta-co", "ocr", 2000, "starter");
+   232→   232→
+   233→   233→    expect(ent).toBeGreaterThan(sta);
+   234→   234→  });
+   235→   235→
+   236→   236→  // ── canPreempt ──────────────────────────────────────────────────────────
+   237→   237→
+   238→   238→  it("enterprise can preempt from starter", () => {
+   239→   239→    expect(canPreempt("starter", "enterprise")).toBe(true);
+   240→   240→  });
+   241→   241→
+   242→   242→  it("enterprise can preempt from business", () => {
+   243→   243→    expect(canPreempt("business", "enterprise")).toBe(true);
+   244→   244→  });
+   245→   245→
+   246→   246→  it("business can preempt from starter", () => {
+   247→   247→    expect(canPreempt("starter", "business")).toBe(true);
+   248→   248→  });
+   249→   249→
+   250→   250→  it("starter cannot preempt from anyone", () => {
+   251→   251→    expect(canPreempt("enterprise", "starter")).toBe(false);
+   252→   252→    expect(canPreempt("business", "starter")).toBe(false);
+   253→   253→    expect(canPreempt("starter", "starter")).toBe(false);
+   254→   254→  });
+   255→   255→
+   256→   256→  it("cannot preempt from same tier", () => {
+   257→   257→    expect(canPreempt("enterprise", "enterprise")).toBe(false);
+   258→   258→    expect(canPreempt("business", "business")).toBe(false);
+   259→   259→  });
+   260→   260→
+   261→   261→  it("cannot preempt from a higher tier", () => {
+   262→   262→    // canPreempt(fromTier, toTier): can toTier preempt FROM fromTier?
+   263→   263→    // A lower toTier can NEVER preempt from a higher fromTier
+   264→   264→    expect(canPreempt("enterprise", "business")).toBe(false); // business can't take from enterprise
+   265→   265→    expect(canPreempt("enterprise", "starter")).toBe(false);  // starter can't take from enterprise
+   266→   266→    expect(canPreempt("business", "starter")).toBe(false);    // starter can't take from business
+   267→   267→  });
+   268→   268→
+   269→   269→  // ── getGlobalPoolStatus ─────────────────────────────────────────────────
+   270→   270→
+   271→   271→  it("should return correct pool status with multiple companies", async () => {
+   272→   272→    const idA = await createCompany(SLUG_A, "enterprise");
+   273→   273→    const idB = await createCompany(SLUG_B, "starter");
+   274→   274→    await createRuntime(idA, { workerPoolSize: 10, slaTier: "enterprise", maxAcceptableLatencyMs: 200 });
+   275→   275→    await createRuntime(idB, { workerPoolSize: 1, slaTier: "starter", maxAcceptableLatencyMs: 2000 });
+   276→   276→
+   277→   277→    // Create some jobs
+   278→   278→    await createRunningJob(SLUG_A);
+   279→   279→    await createRunningJob(SLUG_A);
+   280→   280→    await createPendingJob(SLUG_A);
+   281→   281→    await createPendingJob(SLUG_B);
+   282→   282→
+   283→   283→    const status = await getGlobalPoolStatus();
+   284→   284→
+   285→   285→    expect(status.totalWorkers).toBe(11); // 10 + 1
+   286→   286→    expect(status.runningJobs).toBe(2);
+   287→   287→    expect(status.waitingJobs).toBe(2);
+   288→   288→    expect(status.waitingByTier.enterprise).toBe(1);
+   289→   289→    expect(status.waitingByTier.starter).toBe(1);
+   290→   290→    expect(status.runningByTier.enterprise).toBe(2);
+   291→   291→  });
+   292→   292→
+   293→   293→  it("should return zeroed status with no active runtimes", async () => {
+   294→   294→    const status = await getGlobalPoolStatus();
+   295→   295→
+   296→   296→    expect(status.totalWorkers).toBe(0);
+   297→   297→    expect(status.runningJobs).toBe(0);
+   298→   298→    expect(status.waitingJobs).toBe(0);
+   299→   299→  });
+   300→   300→});
+   301→   301→
+   302→   302→// ═══════════════════════════════════════════════════════════════════════════════
+   303→   303→// Phase 10: Heat Map
+   304→   304→// ═══════════════════════════════════════════════════════════════════════════════
+   305→   305→
+   306→   306→describe("Phase 10: Heat Map", () => {
+   307→   307→  beforeEach(async () => {
+   308→   308→    await cleanTestData();
+   309→   309→  });
+   310→   310→
+   311→   311→  afterAll(async () => {
+   312→   312→    await cleanTestData();
+   313→   313→  });
+   314→   314→
+   315→   315→  // ── hasEnoughData ───────────────────────────────────────────────────────
+   316→   316→
+   317→   317→  it("should return false when no data exists", async () => {
+   318→   318→    const result = await hasEnoughData(SLUG_A);
+   319→   319→    expect(result).toBe(false);
+   320→   320→  });
+   321→   321→
+   322→   322→  it("should return false when data spans less than 7 days", async () => {
+   323→   323→    // Create logs only for today and yesterday (2 days)
+   324→   324→    await createAIRequestLog(SLUG_A, { createdAt: new Date() });
+   325→   325→    await createAIRequestLog(SLUG_A, { createdAt: new Date(Date.now() - 1 * 86_400_000) });
+   326→   326→
+   327→   327→    const result = await hasEnoughData(SLUG_A);
+   328→   328→    expect(result).toBe(false);
+   329→   329→  });
+   330→   330→
+   331→   331→  it("should return true when data spans 7+ days", async () => {
+   332→   332→    // Create a log 8 days ago
+   333→   333→    await createAIRequestLog(SLUG_A, {
+   334→   334→      createdAt: new Date(Date.now() - 8 * 86_400_000),
+   335→   335→    });
+   336→   336→    // And a recent one
+   337→   337→    await createAIRequestLog(SLUG_A, { createdAt: new Date() });
+   338→   338→
+   339→   339→    const result = await hasEnoughData(SLUG_A);
+   340→   340→    expect(result).toBe(true);
+   341→   341→  });
+   342→   342→
+   343→   343→  // ── getHeatMap ──────────────────────────────────────────────────────────
+   344→   344→
+   345→   345→  it("should return null when insufficient data", async () => {
+   346→   346→    // Only 2 days of data
+   347→   347→    await createAIRequestLog(SLUG_A, { createdAt: new Date() });
+   348→   348→    await createAIRequestLog(SLUG_A, {
+   349→   349→      createdAt: new Date(Date.now() - 2 * 86_400_000),
+   350→   350→    });
+   351→   351→
+   352→   352→    const heatMap = await getHeatMap(SLUG_A);
+   353→   353→    expect(heatMap).toBeNull();
+   354→   354→  });
+   355→   355→
+   356→   356→  it("should return 24x7 matrix with sufficient data", async () => {
+   357→   357→    // Seed 8 days of data: 5 requests per day at hour 14 (2 PM)
+   358→   358→    for (let d = 0; d < 8; d++) {
+   359→   359→      const date = new Date(Date.now() - d * 86_400_000);
+   360→   360→      date.setHours(14, 0, 0, 0);
+   361→   361→      for (let i = 0; i < 5; i++) {
+   362→   362→        await createAIRequestLog(SLUG_A, { createdAt: date });
+   363→   363→      }
+   364→   364→    }
+   365→   365→
+   366→   366→    const heatMap = await getHeatMap(SLUG_A);
+   367→   367→
+   368→   368→    expect(heatMap).not.toBeNull();
+   369→   369→    expect(heatMap!.length).toBe(24); // 24 hours
+   370→   370→    expect(heatMap![0].length).toBe(7); // 7 days of week
+   371→   371→
+   372→   372→    // Hour 14 should have data
+   373→   373→    const hour14Data = heatMap![14];
+   374→   374→    const hasData = hour14Data.some((v) => v > 0);
+   375→   375→    expect(hasData).toBe(true);
+   376→   376→  });
+   377→   377→
+   378→   378→  it("should return a matrix with all zeros for empty hour slots", async () => {
+   379→   379→    // Seed 8 days of data at hour 0 only
+   380→   380→    for (let d = 0; d < 8; d++) {
+   381→   381→      const date = new Date(Date.now() - d * 86_400_000);
+   382→   382→      date.setHours(0, 0, 0, 0);
+   383→   383→      await createAIRequestLog(SLUG_A, { createdAt: date });
+   384→   384→    }
+   385→   385→
+   386→   386→    const heatMap = await getHeatMap(SLUG_A);
+   387→   387→    expect(heatMap).not.toBeNull();
+   388→   388→
+   389→   389→    // Hour 3 should be all zeros (no data)
+   390→   390→    const hour3Data = heatMap![3];
+   391→   391→    for (const val of hour3Data) {
+   392→   392→      expect(val).toBe(0);
+   393→   393→    }
+   394→   394→  });
+   395→   395→
+   396→   396→  // ── getPredictiveScale ──────────────────────────────────────────────────
+   397→   397→
+   398→   398→  it("should return null when insufficient data", async () => {
+   399→   399→    const scale = await getPredictiveScale(SLUG_A);
+   400→   400→    expect(scale).toBeNull();
+   401→   401→  });
+   402→   402→
+   403→   403→  it("should return a number when data is available", async () => {
+   404→   404→    // Seed 8 days of data with requests at the current hour
+   405→   405→    const now = new Date();
+   406→   406→    for (let d = 0; d < 8; d++) {
+   407→   407→      const date = new Date(Date.now() - d * 86_400_000);
+   408→   408→      date.setHours(now.getHours(), 0, 0, 0);
+   409→   409→      for (let i = 0; i < 10; i++) {
+   410→   410→        await createAIRequestLog(SLUG_A, { createdAt: date });
+   411→   411→      }
+   412→   412→    }
+   413→   413→
+   414→   414→    const scale = await getPredictiveScale(SLUG_A);
+   415→   415→    expect(scale).not.toBeNull();
+   416→   416→    expect(scale!).toBeGreaterThanOrEqual(1);
+   417→   417→    expect(scale!).toBeLessThanOrEqual(64);
+   418→   418→  });
+   419→   419→
+   420→   420→  it("should return at least 1 worker minimum", async () => {
+   421→   421→    // Seed minimal data — very few requests
+   422→   422→    for (let d = 0; d < 8; d++) {
+   423→   423→      const date = new Date(Date.now() - d * 86_400_000);
+   424→   424→      date.setHours(3, 0, 0, 0); // 3 AM — low traffic hour
+   425→   425→      await createAIRequestLog(SLUG_A, { createdAt: date });
+   426→   426→    }
+   427→   427→
+   428→   428→    const scale = await getPredictiveScale(SLUG_A);
+   429→   429→    expect(scale).not.toBeNull();
+   430→   430→    expect(scale!).toBeGreaterThanOrEqual(1);
+   431→   431→  });
+   432→   432→});
+   433→   433→
+   434→   434→// ═══════════════════════════════════════════════════════════════════════════════
+   435→   435→// Phase 11: Learning Engine
+   436→   436→// ═══════════════════════idence══════════════════════════════════════════════════
+   437→   437→
+   438→   438→describe("Phase 11: Learning Engine", () => {
+   439→   439→  beforeEach(async () => {
+   440→   440→    await cleanTestData();
+   441→   441→  });
+   442→   442→
+   443→   443→  afterAll(async () => {
+   444→   444→    await cleanTestData();
+   445→   445→  });
+   446→   446→
+   447→   447→  // ── recordObservation ───────────────────────────────────────────────────
+   448→   448→
+   449→   449→  it("should create a new candidate on first observation", async () => {
+   450→   450→    const hash = fabricHash("test-input");
+   451→   451→    await recordObservation(SLUG_A, "matching", hash, { product: "Widget" });
+   452→   452→
+   453→   453→    const candidates = await db.ruleCandidate.findMany({
+   454→   454→      where: { companySlug: SLUG_A },
+   455→   455→    });
+   456→   456→
+   457→   457→    expect(candidates.length).toBe(1);
+   458→   458→    expect(candidates[0].sampleCount).toBe(1);
+   459→   459→    expect(candidates[0].confidence).toBe(1.0);
+   460→   460→    expect(candidates[0].status).toBe("observing");
+   461→   461→    expect(candidates[0].consistentOutput).toBe(JSON.stringify({ product: "Widget" }));
+   462→   462→  });
+   463→   463→
+   464→   464→  it("should increment sampleCount on repeated observation with same output", async () => {
+   465→   465→    const hash = fabricHash("test-input");
+   466→   466→    const output = { product: "Widget" };
+   467→   467→
+   468→   468→    for (let i = 0; i < 5; i++) {
+   469→   469→      await recordObservation(SLUG_A, "matching", hash, output);
+   470→   470→    }
+   471→   471→
+   472→   472→    const candidate = await db.ruleCandidate.findFirst({
+   473→   473→      where: { companySlug: SLUG_A, patternSignature: hash },
+   474→   474→    });
+   475→   475→
+   476→   476→    expect(candidate).not.toBeNull();
+   477→   477→    expect(candidate!.sampleCount).toBe(5);
+   478→   478→    expect(candidate!.confidence).toBe(1.0); // all same → 100%
+   479→   479→  });
+   480→   480→
+   481→   481→  it("should decrease confidence on different output", async () => {
+   482→   482→    const hash = fabricHash("test-input");
+   483→   483→
+   484→   484→    // 5 identical, then 5 different
+   485→   485→    for (let i = 0; i < 5; i++) {
+   486→   486→      await recordObservation(SLUG_A, "matching", hash, { product: "Widget" });
+   487→   487→    }
+   488→   488→    for (let i = 0; i < 5; i++) {
+   489→   489→      await recordObservation(SLUG_A, "matching", hash, { product: "Gadget" });
+   490→   490→    }
+   491→   491→
+   492→   492→    const candidate = await db.ruleCandidate.findFirst({
+   493→   493→      where: { companySlug: SLUG_A, patternSignature: hash },
+   494→   494→    });
+   495→   495→
+   496→   496→    expect(candidate).not.toBeNull();
+   497→   497→    expect(candidate!.sampleCount).toBe(10);
+   498→   498→    expect(candidate!.confidence).toBeLessThan(1.0);
+   499→   499→    // 5/10 = 0.5
+   500→   500→    expect(candidate!.confidence).toBe(0.5);
+   501→   501→  });
+   502→   502→
+   503→   503→  // ── promoteCandidates ───────────────────────────────────────────────────
+   504→   504→
+   505→   505→  it("should promote candidate when sampleCount >= 20 and confidence >= 0.95", async () => {
+   506→   506→    const hash = fabricHash("consistent-input");
+   507→   507→    const output = { product: "Consistent Widget" };
+   508→   508→
+   509→   509→    // Record 20 identical observations → confidence = 1.0
+   510→   510→    for (let i = 0; i < 20; i++) {
+   511→   511→      await recordObservation(SLUG_A, "matching", hash, output);
+   512→   512→    }
+   513→   513→
+   514→   514→    const result = await promoteCandidates();
+   515→   515→
+   516→   516→    expect(result.promoted).toBe(1);
+   517→   517→    expect(result.rejected).toBe(0);
+   518→   518→
+   519→   519→    const candidate = await db.ruleCandidate.findFirst({
+   520→   520→      where: { companySlug: SLUG_A, patternSignature: hash },
+   521→   521→    });
+   522→   522→    expect(candidate!.status).toBe("promoted");
+   523→   523→  });
+   524→   524→
+   525→   525→  it("should NOT promote when sampleCount < 20", async () => {
+   526→   526→    const hash = fabricHash("few-input");
+   527→   527→    const output = { product: "Widget" };
+   528→   528→
+   529→   529→    // Only 10 observations — below threshold
+   530→   530→    for (let i = 0; i < 10; i++) {
+   531→   531→      await recordObservation(SLUG_A, "matching", hash, output);
+   532→   532→    }
+   533→   533→
+   534→   534→    const result = await promoteCandidates();
+   535→   535→
+   536→   536→    expect(result.promoted).toBe(0);
+   537→   537→
+   538→   538→    const candidate = await db.ruleCandidate.findFirst({
+   539→   539→      where: { companySlug: SLUG_A, patternSignature: hash },
+   540→   540→    });
+   541→   541→    expect(candidate!.status).toBe("observing"); // still observing
+   542→   542→  });
+   543→   543→
+   544→   544→  it("should reject candidate when confidence < 0.5 with enough samples", async () => {
+   545→   545→    const hash = fabricHash("inconsistent-input");
+   546→   546→
+   547→   547→    // 20 observations: 9 matching, 11 different → confidence < 0.5
+   548→   548→    for (let i = 0; i < 9; i++) {
+   549→   549→      await recordObservation(SLUG_A, "matching", hash, { product: "Widget" });
+   550→   550→    }
+   551→   551→    for (let i = 0; i < 11; i++) {
+   552→   552→      await recordObservation(SLUG_A, "matching", hash, { product: "Other" });
+   553→   553→    }
+   554→   554→
+   555→   555→    const result = await promoteCandidates();
+   556→   556→
+   557→   557→    expect(result.promoted).toBe(0);
+   558→   558→    expect(result.rejected).toBe(1);
+   559→   559→
+   560→   560→    const candidate = await db.ruleCandidate.findFirst({
+   561→   561→      where: { companySlug: SLUG_A, patternSignature: hash },
+   562→   562→    });
+   563→   563→    expect(candidate!.status).toBe("rejected");
+   564→   564→  });
+   565→   565→
+   566→   566→  it("should keep candidate observing when 0.5 <= confidence < 0.95 with enough samples", async () => {
+   567→   567→    const hash = fabricHash("middle-input");
+   568→   568→
+   569→   569→    // 20 observations: 18 matching, 2 different → confidence = 0.90
+   570→   570→    for (let i = 0; i < 18; i++) {
+   571→   571→      await recordObservation(SLUG_A, "matching", hash, { product: "Widget" });
+   572→   572→    }
+   573→   573→    for (let i = 0; i < 2; i++) {
+   574→   574→      await recordObservation(SLUG_A, "matching", hash, { product: "Other" });
+   575→   575→    }
+   576→   576→
+   577→   577→    const result = await promoteCandidates();
+   578→   578→
+   579→   579→    expect(result.promoted).toBe(0); // 18/20 = 0.90 < 0.95
+   580→   580→    expect(result.rejected).toBe(0); // 0.90 >= 0.5
+   581→   581→
+   582→   582→    const candidate = await db.ruleCandidate.findFirst({
+   583→   583→      where: { companySlug: SLUG_A, patternSignature: hash },
+   584→   584→    });
+   585→   585→    expect(candidate!.status).toBe("observing");
+   586→   586→  });
+   587→   587→
+   588→   588→  // ── getLearningStatus ───────────────────────────────────────────────────
+   589→   589→
+   590→   590→  it("should return correct status counts", async () => {
+   591→   591→    // Create some candidates directly
+   592→   592→    await db.ruleCandidate.create({
+   593→   593→      data: {
+   594→   594→        companySlug: SLUG_A,
+   595→   595→        requestType: "matching",
+   596→   596→        patternSignature: "obs-1",
+   597→   597→        sampleCount: 5,
+   598→   598→        consistentOutput: "{}",
+   599→   599→        confidence: 0.8,
+   600→   600→        status: "observing",
+   601→   601→      },
+   602→   602→    });
+   603→   603→    await db.ruleCandidate.create({
+   604→   604→      data: {
+   605→   605→        companySlug: SLUG_A,
+   606→   606→        requestType: "matching",
+   607→   607→        patternSignature: "obs-2",
+   608→   608→        sampleCount: 5,
+   609→   609→        consistentOutput: "{}",
+   610→   610→        confidence: 0.7,
+   611→   611→        status: "observing",
+   612→   612→      },
+   613→   613→    });
+   614→   614→    await db.ruleCandidate.create({
+   615→   615→      data: {
+   616→   616→        companySlug: SLUG_A,
+   617→   617→        requestType: "ocr",
+   618→   618→        patternSignature: "prom-1",
+   619→   619→        sampleCount: 25,
+   620→   620→        consistentOutput: "{}",
+   621→   621→        confidence: 1.0,
+   622→   622→        status: "promoted",
+   623→   623→      },
+   624→   624→    });
+   625→   625→    await db.ruleCandidate.create({
+   626→   626→      data: {
+   627→   627→        companySlug: SLUG_A,
+   628→   628→        requestType: "ocr",
+   629→   629→        patternSignature: "rej-1",
+   630→   630→        sampleCount: 25,
+   631→   631→        consistentOutput: "{}",
+   632→   632→        confidence: 0.3,
+   633→   633→        status: "rejected",
+   634→   634→      },
+   635→   635→    });
+   636→   636→
+   637→   637→    const status = await getLearningStatus(SLUG_A);
+   638→   638→
+   639→   639→    expect(status.companySlug).toBe(SLUG_A);
+   640→   640→    expect(status.observing).toBe(2);
+   641→   641→    expect(status.promoted).toBe(1);
+   642→   642→    expect(status.rejected).toBe(1);
+   643→   643→    expect(status.total).toBe(4);
+   644→   644→  });
+   645→   645→
+   646→   646→  it("should return zeroed status for company with no candidates", async () => {
+   647→   647→    const status = await getLearningStatus(SLUG_A);
+   648→   648→
+   649→   649→    expect(status.companySlug).toBe(SLUG_A);
+   650→   650→    expect(status.observing).toBe(0);
+   651→   651→    expect(status.promoted).toBe(0);
+   652→   652→    expect(status.rejected).toBe(0);
+   653→   653→    expect(status.total).toBe(0);
+   654→   654→  });
+   655→   655→});
+   656→   656→
+   657→   657→// ═══════════════════════════════════════════════════════════════════════════════
+   658→   658→// Phase 12: Cross-Company Intelligence
+   659→   659→// ═══════════════════════════════════════════════════════════════════════════════
+   660→   660→
+   661→   661→describe("Phase 12: Cross-Company Intelligence", () => {
+   662→   662→  beforeEach(async () => {
+   663→   663→    await cleanTestData();
+   664→   664→  });
+   665→   665→
+   666→   666→  afterAll(async () => {
+   667→   667→    await cleanTestData();
+   668→   668→  });
+   669→   669→
+   670→   670→  // ── contributePattern ───────────────────────────────────────────────────
+   671→   671→
+   672→   672→  it("should store a valid pattern with high confidence", async () => {
+   673→   673→    const result = await contributePattern(
+   674→   674→      "test widget",
+   675→   675→      "SKU-001",
+   676→   676→      "standard",
+   677→   677→      "electronics",
+   678→   678→      0.95,
+   679→   679→    );
+   680→   680→
+   681→   681→    expect(result).toBe(true);
+   682→   682→
+   683→   683→    const pattern = await db.globalPattern.findUnique({
+   684→   684→      where: { patternKey: "test widget" },
+   685→   685→    });
+   686→   686→    expect(pattern).not.toBeNull();
+   687→   687→    expect(pattern!.suggestedSku).toBe("SKU-001");
+   688→   688→    expect(pattern!.suggestedVatCategory).toBe("standard");
+   689→   689→    expect(pattern!.suggestedCategory).toBe("electronics");
+   690→   690→    expect(pattern!.contributingCompaniesCount).toBe(1);
+   691→   691→    expect(pattern!.confidence).toBe(0.95);
+   692→   692→  });
+   693→   693→
+   694→   694→  it("should reject pattern with low confidence (< 0.90)", async () => {
+   695→   695→    const result = await contributePattern(
+   696→   696→      "test widget",
+   697→   697→      "SKU-001",
+   698→   698→      "standard",
+   699→   699→      "electronics",
+   700→   700→      0.85, // below threshold
+   701→   701→    );
+   702→   702→
+   703→   703→    expect(result).toBe(false);
+   704→   704→
+   705→   705→    const pattern = await db.globalPattern.findUnique({
+   706→   706→      where: { patternKey: "test widget" },
+   707→   707→    });
+   708→   708→    expect(pattern).toBeNull();
+   709→   709→  });
+   710→   710→
+   711→   711→  it("should increment contributingCompaniesCount on repeated contribution", async () => {
+   712→   712→    await contributePattern("test widget", "SKU-001", "standard", "electronics", 0.95);
+   713→   713→    await contributePattern("test widget", "SKU-002", "reduced", "electronics", 0.92);
+   714→   714→
+   715→   715→    const pattern = await db.globalPattern.findUnique({
+   716→   716→      where: { patternKey: "test widget" },
+   717→   717→    });
+   718→   718→
+   719→   719→    expect(pattern).not.toBeNull();
+   720→   720→    expect(pattern!.contributingCompaniesCount).toBe(2);
+   721→   721→    // Confidence should be average of 0.95 and 0.92
+   722→   722→    expect(pattern!.confidence).toBeCloseTo(0.935, 3);
+   723→   723→    // SKU should keep the first one
+   724→   724→    expect(pattern!.suggestedSku).toBe("SKU-001");
+   725→   725→    // VAT category should keep the first one
+   726→   726→    expect(pattern!.suggestedVatCategory).toBe("standard");
+   727→   727→  });
+   728→   728→
+   729→   729→  // ── lookupGlobalPattern ─────────────────────────────────────────────────
+   730→   730→
+   731→   731→  it("should return null for non-existent pattern", async () => {
+   732→   732→    const result = await lookupGlobalPattern("nonexistent product");
+   733→   733→    expect(result).toBeNull();
+   734→   734→  });
+   735→   735→
+   736→   736→  it("should return pattern data for existing pattern", async () => {
+   737→   737→    await contributePattern("test widget", "SKU-001", "standard", "electronics", 0.95);
+   738→   738→
+   739→   739→    const result = await lookupGlobalPattern("test widget");
+   740→   740→
+   741→   741→    expect(result).not.toBeNull();
+   742→   742→    expect(result!.patternKey).toBe("test widget");
+   743→   743→    expect(result!.suggestedSku).toBe("SKU-001");
+   744→   744→    expect(result!.suggestedVatCategory).toBe("standard");
+   745→   745→    expect(result!.suggestedCategory).toBe("electronics");
+   746→   746→    expect(result!.contributingCompaniesCount).toBe(1);
+   747→   747→    expect(result!.confidence).toBe(0.95);
+   748→   748→  });
+   749→   749→
+   750→   750→  it("should lookup case-insensitively (normalized)", async () => {
+   751→   751→    await contributePattern("Test Widget", "SKU-001", "standard", "electronics", 0.95);
+   752→   752→
+   753→   753→    const result = await lookupGlobalPattern("TEST WIDGET");
+   754→   754→
+   755→   755→    expect(result).not.toBeNull();
+   756→   756→    expect(result!.patternKey).toBe("test widget"); // normalized
+   757→   757→  });
+   758→   758→
+   759→   759→  // ── Privacy filtering ──────────────────────────────────────────────────
+   760→   760→
+   761→   761→  it("should reject pattern containing price information", async () => {
+   762→   762→    const result = await contributePattern(
+   763→   763→      "widget price $19.99",
+   764→   764→      "SKU-001",
+   765→   765→      "standard",
+   766→   766→      "electronics",
+   767→   767→      0.95,
+   768→   768→    );
+   769→   769→
+   770→   770→    expect(result).toBe(false);
+   771→   771→  });
+   772→   772→
+   773→   773→  it("should reject pattern containing customer data", async () => {
+   774→   774→    const result = await contributePattern(
+   775→   775→      "widget for customer John",
+   776→   776→      "SKU-001",
+   777→   777→      "standard",
+   778→   778→      "electronics",
+   779→   779→      0.95,
+   780→   780→    );
+   781→   781→
+   782→   782→    expect(result).toBe(false);
+   783→   783→  });
+   784→   784→
+   785→   785→  it("should reject pattern containing company data", async () => {
+   786→   786→    const result = await contributePattern(
+   787→   787→      "widget from company Acme Corp",
+   788→   788→      "SKU-001",
+   789→   789→      "standard",
+   790→   790→      "electronics",
+   791→   791→      0.95,
+   792→   792→    );
+   793→   793→
+   794→   794→    expect(result).toBe(false);
+   795→   795→  });
+   796→   796→
+   797→   797→  it("should reject pattern containing invoice data", async () => {
+   798→   798→    const result = await contributePattern(
+   799→   799→      "widget invoice #12345",
+   800→   800→      "SKU-001",
+   801→   801→      "standard",
+   802→   802→      "electronics",
+   803→   803→      0.95,
+   804→   804→    );
+   805→   805→
+   806→   806→    expect(result).toBe(false);
+   807→   807→  });
+   808→   808→
+   809→   809→  it("should reject pattern containing email", async () => {
+   810→   810→    const result = await contributePattern(
+   811→   811→      "widget email contact",
+   812→   812→      "SKU-001",
+   813→   813→      "standard",
+   814→   814→      "electronics",
+   815→   815→      0.95,
+   816→   816→    );
+   817→   817→
+   818→   818→    expect(result).toBe(false);
+   819→   819→  });
+   820→   820→
+   821→   821→  it("should reject pattern containing financial terms in VAT category", async () => {
+   822→   822→    const result = await contributePattern(
+   823→   823→      "safe product",
+   824→   824→      "SKU-001",
+   825→   825→      "reduced tax payment due",
+   826→   826→      "electronics",
+   827→   827→      0.95,
+   828→   828→    );
+   829→   829→
+   830→   830→    expect(result).toBe(false);
+   831→   831→  });
+   832→   832→
+   833→   833→  it("should accept clean pattern data", async () => {
+   834→   834→    const result = await contributePattern(
+   835→   835→      "safe product",
+   836→   836→      "SKU-001",
+   837→   837→      "standard",
+   838→   838→      "electronics",
+   839→   839→      0.95,
+   840→   840→    );
+   841→   841→
+   842→   842→    expect(result).toBe(true);
+   843→   843→  });
+   844→   844→
+   845→   845→  // ── verifyNoSensitiveData (unit) ────────────────────────────────────────
+   846→   846→
+   847→   847→  it("verifyNoSensitiveData should detect price in product name", () => {
+   848→   848→    expect(verifyNoSensitiveData("usb cable price", "SKU-1", "std", "elec")).toBe(false);
+   849→   849→  });
+   850→   850→
+   851→   851→  it("verifyNoSensitiveData should detect customer in product name", () => {
+   852→   852→    expect(verifyNoSensitiveData("cable for customer", "SKU-1", "std", "elec")).toBe(false);
+   853→   853→  });
+   854→   854→
+   855→   855→  it("verifyNoSensitiveData should accept clean data", () => {
+   856→   856→    expect(verifyNoSensitiveData("usb cable", "SKU-1", "standard", "electronics")).toBe(true);
+   857→   857→  });
+   858→   858→
+   859→   859→  it("verifyNoSensitiveData should detect quantity in any field", () => {
+   860→   860→    expect(verifyNoSensitiveData("safe product", "SKU-1", "std", "qty 5")).toBe(false);
+   861→   861→  });
+   862→   862→
+   863→   863→  // ── getPatternStats ─────────────────────────────────────────────────────
+   864→   864→
+   865→   865→  it("should return empty stats when no patterns exist", async () => {
+   866→   866→    const stats = await getPatternStats();
+   867→   867→
+   868→   868→    expect(stats.totalPatterns).toBe(0);
+   869→   869→    expect(stats.avgConfidence).toBe(0);
+   870→   870→    expect(stats.avgContributingCompanies).toBe(0);
+   871→   871→    expect(stats.topPatterns).toHaveLength(0);
+   872→   872→  });
+   873→   873→
+   874→   874→  it("should return correct stats with patterns", async () => {
+   875→   875→    await contributePattern("widget a", "SKU-1", "std", "elec", 0.95);
+   876→   876→    await contributePattern("widget b", "SKU-2", "red", "elec", 0.90);
+   877→   877→    await contributePattern("widget a", "SKU-3", "std", "elec", 0.92); // contributes to a
+   878→   878→
+   879→   879→    const stats = await getPatternStats();
+   880→   880→
+   881→   881→    expect(stats.totalPatterns).toBe(2);
+   882→   882→    expect(stats.avgConfidence).toBeGreaterThan(0);
+   883→   883→    expect(stats.topPatterns.length).toBeLessThanOrEqual(10);
+   884→   884→  });
+   885→   885→});

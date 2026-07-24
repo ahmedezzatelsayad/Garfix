@@ -354,8 +354,9 @@ describe("Phase 10: Heat Map", () => {
   });
 
   it("should return 24x7 matrix with sufficient data", async () => {
-    // Seed 8 days of data: 5 requests per day at hour 14 (2 PM)
-    for (let d = 0; d < 8; d++) {
+    // Seed 10 days of data: 5 requests per day at hour 14 (2 PM)
+    // Use 10 days to ensure >= 7 days span regardless of time of day
+    for (let d = 0; d < 10; d++) {
       const date = new Date(Date.now() - d * 86_400_000);
       date.setHours(14, 0, 0, 0);
       for (let i = 0; i < 5; i++) {
@@ -376,8 +377,8 @@ describe("Phase 10: Heat Map", () => {
   });
 
   it("should return a matrix with all zeros for empty hour slots", async () => {
-    // Seed 8 days of data at hour 0 only
-    for (let d = 0; d < 8; d++) {
+    // Seed 10 days of data at hour 0 only
+    for (let d = 0; d < 10; d++) {
       const date = new Date(Date.now() - d * 86_400_000);
       date.setHours(0, 0, 0, 0);
       await createAIRequestLog(SLUG_A, { createdAt: date });
@@ -418,8 +419,8 @@ describe("Phase 10: Heat Map", () => {
   });
 
   it("should return at least 1 worker minimum", async () => {
-    // Seed minimal data — very few requests
-    for (let d = 0; d < 8; d++) {
+    // Seed 10 days of data — very few requests
+    for (let d = 0; d < 10; d++) {
       const date = new Date(Date.now() - d * 86_400_000);
       date.setHours(3, 0, 0, 0); // 3 AM — low traffic hour
       await createAIRequestLog(SLUG_A, { createdAt: date });

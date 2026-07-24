@@ -256,6 +256,6 @@ describe('Network Failure: General Resilience', () => {
   it('seeder handles minimum seed (0)', () => {
     const c = seedEnterpriseData({ companyCount: 10, seed: 0 });
     expect(c.length).toBe(10);
-    expect(c[0].id).toBe(1);
+    expect(c[0].id).toBe('00000001');
   });
 });
