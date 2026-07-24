@@ -1,12 +1,10 @@
 "use client";
 
-// Surgical fix: requires auth + client-side data fetching — must be dynamic to avoid SSG failure
-export const dynamic = "force-dynamic";
-
-import { useState, useEffect, useCallback } from "react";
+import { useAIFabric } from "@/hooks/queries/founder-panel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+// Kept locally for rendering convenience (hook uses same shape)
 interface AIFabricData {
   companiesCount: number;
   workersActive: number;
@@ -70,55 +68,10 @@ function Row({ label, pct }: { label: string; pct: number | undefined }) {
 // ─── Main Page Component ───────────────────────────────────────────────────
 
 export default function AIFabricFounderPanel() {
-  const [data, setData] = useState<AIFabricData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch data (pure function - no setState)
-  const fetchAIFabricData = useCallback(async (): Promise<AIFabricData> => {
-    const res = await fetch("/api/founder-panel/ai-fabric");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }, []);
-
-  // State updaters
-  const updateData = useCallback((result: AIFabricData) => {
-    setData(result);
-    setLoading(false);
-    setError(null);
-  }, []);
-
-  const handleError = useCallback((err: unknown) => {
-    setError(err instanceof Error ? err.message : "Unknown error");
-    setLoading(false);
-  }, []);
-
-  // Effect with setState in async callback
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const result = await fetchAIFabricData();
-        updateData(result); // setState in callback
-      } catch (err) {
-        handleError(err);
-      }
-    };
-    load();
-  }, [fetchAIFabricData, updateData, handleError]);
-
-  // Manual refresh handler
-  const handleRefresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await fetchAIFabricData();
-      updateData(result);
-    } catch (err) {
-      handleError(err);
-    }
-  }, [fetchAIFabricData, updateData, handleError]);
+  const { data, isLoading, error, refetch } = useAIFabric();
 
   // Loading state
-  if (loading && !data) {
+  if (isLoading && !data) {
     return (
       <main className="min-h-screen bg-gray-50 p-6 md:p-10 flex items-center justify-center">
         <div className="text-center">
@@ -134,9 +87,9 @@ export default function AIFabricFounderPanel() {
     return (
       <main className="min-h-screen bg-gray-50 p-6 md:p-10 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">Error: {error}</p>
+          <p className="text-red-500 mb-4">Error: {error?.message ?? "Unknown error"}</p>
           <button
-            onClick={handleRefresh}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry

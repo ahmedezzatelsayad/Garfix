@@ -234,3 +234,41 @@ export function useDeleteWarehouse() {
     },
   });
 }
+
+// ─── Filtered Inventory Movements Hook ─────────────────────────────────────
+
+/** Parameters for filtering inventory movements. */
+export interface InventoryMovementFilterParams {
+  companySlug: string;
+  productName?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+/**
+ * Fetch a filtered list of inventory movements for a given company.
+ *
+ * Supports filtering by product name, date range, and limit. Used by
+ * the Platform Admin Panel's stock ledger view for detailed movement
+ * analysis.
+ *
+ * The query is disabled when `companySlug` is empty, preventing
+ * unnecessary requests before the active company is known.
+ *
+ * @param params - Filter parameters for the inventory movements query.
+ */
+export function useInventoryMovementsFiltered(params: InventoryMovementFilterParams) {
+  return useQuery<InventoryMovementListResponse, ApiError>({
+    queryKey: queryKeys.inventory.movementsFiltered(params),
+    queryFn: () => {
+      const searchParams = new URLSearchParams({ companySlug: params.companySlug });
+      if (params.limit) searchParams.set("limit", String(params.limit));
+      if (params.productName && params.productName.trim()) searchParams.set("productName", params.productName.trim());
+      if (params.from) searchParams.set("from", params.from);
+      if (params.to) searchParams.set("to", params.to);
+      return apiGet<InventoryMovementListResponse>(`/api/inventory/movements?${searchParams.toString()}`);
+    },
+    enabled: !!params.companySlug,
+  });
+}

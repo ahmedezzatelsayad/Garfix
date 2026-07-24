@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2, XCircle, Loader2, Eye, EyeOff, Save, Zap, KeyRound,
 } from "lucide-react";
+import {
+  useAIProviders,
+  useUpdateAIProviders,
+  useTestAIProvider,
+} from "@/hooks/queries";
 
 interface ProviderInfo {
   type: "z-ai" | "openrouter" | "anthropic" | "openai" | "gemini" | "deepseek" | "custom";
@@ -56,37 +60,28 @@ const labelCls = "block text-[11px] font-bold text-muted-foreground mb-1";
 const inputCls = "w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground font-[inherit] text-xs outline-none";
 
 export function AiProviderSettings() {
-  const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
+  const providersQuery = useAIProviders();
+  const updateMutation = useUpdateAIProviders();
+  const testMutation = useTestAIProvider();
   const [cards, setCards] = useState<Record<string, CardState>>({});
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/platform-admin/ai-providers");
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر تحميل الإعدادات");
-      }
-      const data = await res.json();
-      const list: ProviderInfo[] = data.providers || [];
-      setProviders(list);
-      const next: Record<string, CardState> = {};
-      for (const p of list) {
-        next[p.type] = makeInitialCardState(p);
-      }
-      setCards(next);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-      setProviders([]);
-    } finally {
-      setLoading(false);
+  const providers: ProviderInfo[] = ((providersQuery.data as unknown) as { providers?: ProviderInfo[] })?.providers || [];
+  const loading = providersQuery.isLoading;
+
+  // Initialize card states when providers data arrives
+  const prevProvidersRef = useState<ProviderInfo[] | null>(null);
+  const [prevProviders, setPrevProviders] = prevProvidersRef;
+  if (providers.length > 0 && prevProviders !== providers) {
+    setPrevProviders(providers);
+    const next: Record<string, CardState> = {};
+    for (const p of providers) {
+      next[p.type] = cards[p.type] || makeInitialCardState(p);
     }
-  }, []);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+    // Only update if new providers appeared
+    if (Object.keys(next).length !== Object.keys(cards).length) {
+      setCards(next);
+    }
+  }
 
   const updateCard = (type: string, patch: Partial<CardState>) => {
     setCards((prev) => ({
@@ -113,18 +108,10 @@ export function AiProviderSettings() {
       if (c.apiKey.trim()) body.apiKey = c.apiKey.trim();
       if (p.type === "custom" && c.baseUrl.trim()) body.baseUrl = c.baseUrl.trim();
 
-      const res = await authedFetch("/api/platform-admin/ai-providers", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "فشل الحفظ");
-      }
+      await updateMutation.mutateAsync(body);
       toast.success(`تم حفظ إعدادات ${p.name}`);
-      // Reload to refresh masked key + hasApiKey flag
-      await load();
+      // Refetch to refresh masked key + hasApiKey flag
+      providersQuery.refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
       setCards((prev) => ({ ...prev, [p.type]: { ...prev[p.type], saving: false } }));
@@ -141,25 +128,20 @@ export function AiProviderSettings() {
     }
     updateCard(p.type, { testState: "testing", testMessage: undefined, testLatency: undefined });
     try {
-      const res = await authedFetch("/api/platform-admin/ai-providers/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: p.type }),
-      });
-      const data = await res.json();
+      const data = await testMutation.mutateAsync({ provider: p.type });
       if (data.ok) {
         updateCard(p.type, {
           testState: "success",
           testMessage: `نجح الاتصال (${data.latencyMs || 0}ms)`,
-          testLatency: data.latencyMs,
+          testLatency: data.latencyMs as number | undefined,
         });
         toast.success(`الاتصال بـ ${p.name} يعمل`);
       } else {
         updateCard(p.type, {
           testState: "fail",
-          testMessage: data.error || "فشل الاتصال",
+          testMessage: (data.error as string) || "فشل الاتصال",
         });
-        toast.error(`فشل اتصال ${p.name}: ${data.error || "غير معروف"}`);
+        toast.error(`فشل اتصال ${p.name}: ${(data.error as string) || "غير معروف"}`);
       }
     } catch (err) {
       updateCard(p.type, {

@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useVouchers, useCreateVoucher, useApproveVoucher, useCancelVoucher,
+  useQuotations, useCreateQuotation, useConvertQuotationToInvoice,
+  usePurchaseOrders, useCreatePurchaseOrder,
+  useOpeningBalances, useCreateOpeningBalance, usePostOpeningBalances,
+  useAccountingCommissions as useCommissions, usePostCommission,
+  useProfitDistribution, usePostProfitDistribution,
+} from "@/hooks/queries";
 import {
   Plus, X, FileText, Receipt, ShoppingCart, Scale,
   Users, DollarSign, Calendar, CheckCircle2, XCircle,
@@ -48,13 +55,6 @@ function Empty({ label }: { label: string }) {
 export function VouchersDetailView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("vouchers");
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [openingBalances, setOpeningBalances] = useState<OpeningBalance[]>([]);
-  const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [profitDistributions, setProfitDistributions] = useState<ProfitDistribution[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   /* Voucher form */
@@ -85,78 +85,24 @@ export function VouchersDetailView() {
   const [commFrom, setCommFrom] = useState("");
   const [commTo, setCommTo] = useState("");
 
-  const slug = activeCompany ? `companySlug=${encodeURIComponent(activeCompany.slug)}` : "";
+  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  /* ── Loaders ──────────────────────────────────────────────────────────────── */
-  const loadVouchers = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/vouchers?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل السندات"); }
-      const d = await res.json(); setVouchers(d.vouchers || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل السندات"); setVouchers([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
+  // TanStack Query hooks
+  const vouchersQuery = useVouchers(slug);
+  const quotationsQuery = useQuotations(slug);
+  const purchaseOrdersQuery = usePurchaseOrders(slug);
+  const openingBalancesQuery = useOpeningBalances(slug);
+  const commissionsQuery = useCommissions(slug, commFrom, commTo);
+  const profitDistributionQuery = useProfitDistribution(slug);
 
-  const loadQuotations = useCallback(async () => {
-    if (!activeCompany) return; setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/quotations?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل عروض الأسعار"); }
-      const d = await res.json(); setQuotations(d.quotations || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل عروض الأسعار"); setQuotations([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
+  const vouchers = vouchersQuery.data?.vouchers ?? [];
+  const quotations = quotationsQuery.data?.quotations ?? [];
+  const purchaseOrders = purchaseOrdersQuery.data?.purchaseOrders ?? [];
+  const openingBalances = openingBalancesQuery.data?.openingBalances ?? [];
+  const commissions = commissionsQuery.data?.commissions ?? [];
+  const profitDistributions = profitDistributionQuery.data?.distributions ?? [];
 
-  const loadPOs = useCallback(async () => {
-    if (!activeCompany) return; setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/purchase-orders?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل أوامر الشراء"); }
-      const d = await res.json(); setPurchaseOrders(d.purchaseOrders || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل أوامر الشراء"); setPurchaseOrders([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  const loadOBs = useCallback(async () => {
-    if (!activeCompany) return; setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/opening-balances?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل أرصدة افتتاحية"); }
-      const d = await res.json(); setOpeningBalances(d.openingBalances || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل أرصدة افتتاحية"); setOpeningBalances([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  const loadCommissions = useCallback(async () => {
-    if (!activeCompany) return; setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/commissions?${slug}&from=${commFrom}&to=${commTo}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل العمولات"); }
-      const d = await res.json(); setCommissions(d.commissions || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل العمولات"); setCommissions([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug, commFrom, commTo]);
-
-  const loadProfitDist = useCallback(async () => {
-    if (!activeCompany) return; setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/profit-distribution?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل توزيع الأرباح"); }
-      const d = await res.json(); setProfitDistributions(d.distributions || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل توزيع الأرباح"); setProfitDistributions([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  useEffect(() => {
-    const loaders: Record<Tab, () => void> = {
-      vouchers: loadVouchers, quotations: loadQuotations,
-      "purchase-orders": loadPOs, "opening-balances": loadOBs,
-      commissions: loadCommissions, "profit-distribution": loadProfitDist,
-    };
-    if (activeCompany) loaders[tab]();
-  }, [tab, activeCompany, loadVouchers, loadQuotations, loadPOs, loadOBs, loadCommissions, loadProfitDist]);
+  const loading = (tab === "vouchers" && vouchersQuery.isLoading) || (tab === "quotations" && quotationsQuery.isLoading) || (tab === "purchase-orders" && purchaseOrdersQuery.isLoading) || (tab === "opening-balances" && openingBalancesQuery.isLoading) || (tab === "commissions" && commissionsQuery.isLoading) || (tab === "profit-distribution" && profitDistributionQuery.isLoading);
 
   const switchTab = (t: Tab) => { setTab(t); setShowForm(false); };
 
@@ -173,116 +119,136 @@ export function VouchersDetailView() {
     return updated;
   };
 
+  /* ── Mutation hooks ──────────────────────────────────────────────────────── */
+  const createVoucherMutation = useCreateVoucher();
+  const approveVoucherMutation = useApproveVoucher();
+  const cancelVoucherMutation = useCancelVoucher();
+  const createQuotationMutation = useCreateQuotation();
+  const convertQuotationMutation = useConvertQuotationToInvoice();
+  const createPurchaseOrderMutation = useCreatePurchaseOrder();
+  const createOpeningBalanceMutation = useCreateOpeningBalance();
+  const postOpeningBalancesMutation = usePostOpeningBalances();
+  const postCommissionMutation = usePostCommission();
+  const postProfitDistributionMutation = usePostProfitDistribution();
+
   /* ── Create Voucher ─────────────────────────────────────────────────────── */
-  const handleCreateVoucher = async () => {
+  const handleCreateVoucher = () => {
     if (!activeCompany || !vAmount || !vDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/vouchers", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: activeCompany.slug, voucherType: vType, date: vDate, amount: parseFloat(vAmount), currency: vCurrency, payee: vPayee, payer: vPayer }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء السند"); }
-      toast.success("تم إنشاء السند"); setShowForm(false); resetVoucherForm(); loadVouchers();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء السند"); }
+    createVoucherMutation.mutate(
+      { companySlug: activeCompany.slug, voucherType: vType, date: vDate, amount: parseFloat(vAmount), currency: vCurrency, payee: vPayee, payer: vPayer },
+      {
+        onSuccess: () => { toast.success("تم إنشاء السند"); setShowForm(false); resetVoucherForm(); vouchersQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء السند"); },
+      },
+    );
   };
   const resetVoucherForm = () => { setVType("receipt"); setVDate(""); setVAmount(""); setVCurrency("KWD"); setVPayee(""); setVPayer(""); };
 
   /* ── Approve / Cancel Voucher ────────────────────────────────────────────── */
-  const handleApproveVoucher = async (id: number) => {
+  const handleApproveVoucher = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/vouchers/${id}/approve?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل اعتماد السند"); }
-      toast.success("تم اعتماد السند"); loadVouchers();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر اعتماد السند"); }
+    approveVoucherMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم اعتماد السند"); vouchersQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر اعتماد السند"); },
+      },
+    );
   };
-  const handleCancelVoucher = async (id: number) => {
+  const handleCancelVoucher = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/vouchers/${id}/cancel?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إلغاء السند"); }
-      toast.success("تم إلغاء السند"); loadVouchers();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إلغاء السند"); }
+    cancelVoucherMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم إلغاء السند"); vouchersQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إلغاء السند"); },
+      },
+    );
   };
 
   /* ── Create Quotation ────────────────────────────────────────────────────── */
-  const handleCreateQuotation = async () => {
+  const handleCreateQuotation = () => {
     if (!activeCompany || !qClient || !qDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/quotations", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: activeCompany.slug, clientName: qClient, date: qDate, validUntil: qValidUntil, lineItems: qLineItems }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء عرض السعر"); }
-      toast.success("تم إنشاء عرض السعر"); setShowForm(false); loadQuotations();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء عرض السعر"); }
+    createQuotationMutation.mutate(
+      { companySlug: activeCompany.slug, clientName: qClient, date: qDate, validUntil: qValidUntil, lineItems: qLineItems, totalAmount: qLineItems.reduce((s, li) => s + li.total, 0) },
+      {
+        onSuccess: () => { toast.success("تم إنشاء عرض السعر"); setShowForm(false); quotationsQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء عرض السعر"); },
+      },
+    );
   };
 
   /* ── Convert Quotation to Invoice ─────────────────────────────────────────── */
-  const handleConvertToInvoice = async (id: number) => {
+  const handleConvertToInvoice = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/quotations/${id}/convert-to-invoice?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل التحويل"); }
-      toast.success("تم التحويل إلى فاتورة"); loadQuotations();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر التحويل إلى فاتورة"); }
+    convertQuotationMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم التحويل إلى فاتورة"); quotationsQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر التحويل إلى فاتورة"); },
+      },
+    );
   };
 
   /* ── Create PO ────────────────────────────────────────────────────────────── */
-  const handleCreatePO = async () => {
+  const handleCreatePO = () => {
     if (!activeCompany || !poSupplier || !poDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/purchase-orders", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: activeCompany.slug, supplierName: poSupplier, date: poDate, expectedDelivery: poDelivery, lineItems: poLineItems }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء أمر الشراء"); }
-      toast.success("تم إنشاء أمر الشراء"); setShowForm(false); loadPOs();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء أمر الشراء"); }
+    createPurchaseOrderMutation.mutate(
+      { companySlug: activeCompany.slug, supplierName: poSupplier, date: poDate, expectedDelivery: poDelivery, lineItems: poLineItems, totalAmount: poLineItems.reduce((s, li) => s + li.total, 0) },
+      {
+        onSuccess: () => { toast.success("تم إنشاء أمر الشراء"); setShowForm(false); purchaseOrdersQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء أمر الشراء"); },
+      },
+    );
   };
 
   /* ── Create Opening Balance ──────────────────────────────────────────────── */
-  const handleCreateOB = async () => {
+  const handleCreateOB = () => {
     if (!activeCompany || !obAccountId || !obAmount) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/opening-balances", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: activeCompany.slug, accountId: parseInt(obAccountId), amount: parseFloat(obAmount) }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء رصيد افتتاحي"); }
-      toast.success("تم إنشاء الرصيد الافتتاحي"); setShowForm(false); setObAccountId(""); setObAmount(""); loadOBs();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء الرصيد الافتتاحي"); }
+    createOpeningBalanceMutation.mutate(
+      { companySlug: activeCompany.slug, accountId: parseInt(obAccountId), amount: parseFloat(obAmount) },
+      {
+        onSuccess: () => { toast.success("تم إنشاء الرصيد الافتتاحي"); setShowForm(false); setObAccountId(""); setObAmount(""); openingBalancesQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الرصيد الافتتاحي"); },
+      },
+    );
   };
 
   /* ── Post all opening balances ────────────────────────────────────────────── */
-  const handlePostAllOB = async () => {
+  const handlePostAllOB = () => {
     if (!activeCompany) return;
     if (!confirm("ترحيل جميع الأرصدة الافتتاحية؟ لا يمكن التراجع عن هذا الإجراء.")) return;
-    try {
-      const res = await authedFetch(`/api/accounting/opening-balances/post?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل ترحيل الأرصدة"); }
-      toast.success("تم ترحيل جميع الأرصدة الافتتاحية"); loadOBs();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر ترحيل الأرصدة الافتتاحية"); }
+    postOpeningBalancesMutation.mutate(
+      { companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم ترحيل جميع الأرصدة الافتتاحية"); openingBalancesQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر ترحيل الأرصدة الافتتاحية"); },
+      },
+    );
   };
 
   /* ── Post Commission as JE ────────────────────────────────────────────────── */
-  const handlePostCommission = async (id: number) => {
+  const handlePostCommission = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/commissions/${id}/post-as-journal-entry?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل ترحيل العمولة"); }
-      toast.success("تم ترحيل العمولة كقيد يومية"); loadCommissions();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر ترحيل العمولة"); }
+    postCommissionMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم ترحيل العمولة كقيد يومية"); commissionsQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر ترحيل العمولة"); },
+      },
+    );
   };
 
   /* ── Post Profit Distribution as JE ───────────────────────────────────────── */
-  const handlePostProfitDist = async (id: number) => {
+  const handlePostProfitDist = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/profit-distribution/${id}/post-as-journal-entry?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل ترحيل التوزيع"); }
-      toast.success("تم ترحيل التوزيع كقيد يومية"); loadProfitDist();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر ترحيل توزيع الأرباح"); }
+    postProfitDistributionMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم ترحيل التوزيع كقيد يومية"); profitDistributionQuery.refetch(); },
+        onError: (err) => { toast.error(err.message || "تعذّر ترحيل توزيع الأرباح"); },
+      },
+    );
   };
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;

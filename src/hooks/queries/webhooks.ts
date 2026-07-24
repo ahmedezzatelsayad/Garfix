@@ -169,3 +169,138 @@ export function useDeleteWebhookEndpoint() {
     },
   });
 }
+
+// ─── useRetryWebhookDelivery ──────────────────────────────────────────────────
+
+/**
+ * Retry a failed webhook delivery.
+ *
+ * On success the deliveries query is invalidated so the retried
+ * delivery's new status is reflected.
+ */
+export function useRetryWebhookDelivery() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Record<string, unknown>, ApiError, { deliveryId: string }>({
+    mutationFn: ({ deliveryId }) =>
+      apiPost<Record<string, unknown>, Record<string, unknown>>(
+        `/api/webhooks/deliveries/${deliveryId}/retry`,
+        { deliveryId },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.webhooks.deliveries(),
+      });
+    },
+  });
+}
+
+// ─── useTestWebhookEndpoint ───────────────────────────────────────────────────
+
+/**
+ * Test a webhook endpoint by sending a sample payload.
+ *
+ * This is a fire-and-forget style mutation — it does not invalidate
+ * any query caches automatically.
+ */
+export function useTestWebhookEndpoint() {
+  return useMutation<Record<string, unknown>, ApiError, { endpointId: string }>({
+    mutationFn: ({ endpointId }) =>
+      apiPost<Record<string, unknown>, Record<string, unknown>>(
+        `/api/webhooks/endpoints/${endpointId}/test`,
+        { endpointId },
+      ),
+  });
+}
+
+// ─── useWebhookDeliveriesFiltered ────────────────────────────────────────────
+
+/** Parameters for filtering webhook deliveries. */
+export interface WebhookDeliveriesFilterParams {
+  status?: string;
+  eventType?: string;
+  endpointId?: string;
+  limit?: number;
+  [key: string]: unknown;
+}
+
+interface WebhookDeliveriesFilteredResponse {
+  deliveries: WebhookDelivery[];
+  stats?: DeliveryStats;
+}
+
+interface DeliveryStats {
+  total: number;
+  succeeded: number;
+  failed: number;
+  pending: number;
+  retried: number;
+  successRate: number;
+  avgLatencyMs: number;
+}
+
+/**
+ * Fetch webhook deliveries with optional filters (status, event type, endpoint).
+ *
+ * The query key includes the filter params so cache is segmented per filter set.
+ */
+export function useWebhookDeliveriesFiltered(params: WebhookDeliveriesFilterParams) {
+  return useQuery<WebhookDeliveriesFilteredResponse, ApiError>({
+    queryKey: [...queryKeys.webhooks.deliveries(), "filtered", params] as const,
+    queryFn: () => {
+      const searchParams = new URLSearchParams();
+      if (params.status) searchParams.set("status", params.status);
+      if (params.eventType) searchParams.set("eventType", params.eventType);
+      if (params.endpointId) searchParams.set("endpointId", params.endpointId);
+      if (params.limit) searchParams.set("limit", String(params.limit));
+      return apiGet<WebhookDeliveriesFilteredResponse>(
+        `/api/webhooks/deliveries?${searchParams.toString()}`,
+      );
+    },
+  });
+}
+
+// ─── useRetryWebhookDeliveryLegacy ───────────────────────────────────────────
+
+/**
+ * Retry a failed webhook delivery via the legacy POST /api/webhooks/deliveries endpoint.
+ *
+ * Some views use this endpoint instead of the per-delivery retry endpoint.
+ * This is a fire-and-forget style mutation — on success it invalidates
+ * the deliveries query so the retried delivery's new status is reflected.
+ */
+export function useRetryWebhookDeliveryLegacy() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Record<string, unknown>, ApiError, { deliveryId: string }>({
+    mutationFn: ({ deliveryId }) =>
+      apiPost<Record<string, unknown>, Record<string, unknown>>(
+        "/api/webhooks/deliveries",
+        { deliveryId },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.webhooks.all,
+      });
+    },
+  });
+}
+
+// ─── useTestWebhookEvent ──────────────────────────────────────────────────────
+
+/**
+ * Test a webhook endpoint by sending a test event payload via
+ * POST /api/webhooks/events.
+ *
+ * This is a fire-and-forget style mutation — it does not invalidate
+ * any query caches automatically.
+ */
+export function useTestWebhookEvent() {
+  return useMutation<Record<string, unknown>, ApiError, { endpointId: string; eventType: string }>({
+    mutationFn: (payload) =>
+      apiPost<{ endpointId: string; eventType: string }, Record<string, unknown>>(
+        "/api/webhooks/events",
+        payload,
+      ),
+  });
+}

@@ -1,24 +1,16 @@
 "use client";
 
 /**
- * AutomationView — Item 3 (minimal version).
+ * AutomationView — migrated to TanStack Query hooks.
  *
  * Shows the list of automation rules for the active company and lets the
- * user toggle each rule on/off (PATCH /api/automation/[id]?companySlug=X
- * with { isActive: boolean }).
+ * user toggle each rule on/off or delete it.
  *
- * Per the verified-gaps brief: this is intentionally minimal — list +
- * toggle. Creating / editing advanced rules (trigger picker, condition
- * builder, action editor) is deferred to a follow-up session.
- *
- * Backend contract:
- *   GET    /api/automation?companySlug=X           → { rules: Rule[] }
- *   PATCH  /api/automation/[id]?companySlug=X      → { rule }
- *   DELETE /api/automation/[id]?companySlug=X      → { ok }
+ * Uses useAutomations (read), useUpdateAutomation (toggle), useDeleteAutomation (delete).
  */
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { useAutomations, useUpdateAutomation, useDeleteAutomation } from "@/hooks/queries";
 import { toast } from "sonner";
 import { Zap, Loader2, Trash2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -63,89 +55,43 @@ function fmtDate(s: string): string {
 
 export function AutomationView() {
   const { activeCompany } = useBrand();
-  const [rules, setRules] = useState<AutomationRule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [togglingId, setTogglingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { data, isLoading, refetch } = useAutomations(activeCompany?.slug || "");
+  const updateMutation = useUpdateAutomation();
+  const deleteMutation = useDeleteAutomation();
 
-  const load = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/automation?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "تعذّر تحميل القواعد");
-        setRules([]);
-        return;
-      }
-      const data = await res.json();
-      setRules(Array.isArray(data.rules) ? data.rules : []);
-    } catch {
-      setRules([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCompany]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
-
-  const toggleRule = async (rule: AutomationRule) => {
-    if (!activeCompany) return;
-    setTogglingId(rule.id);
-    try {
-      const res = await authedFetch(
-        `/api/automation/${rule.id}?companySlug=${encodeURIComponent(activeCompany.slug)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: !rule.isActive }),
-        },
-      );
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر التحديث");
-      }
-      const data = await res.json();
-      if (data.rule) {
-        setRules((prev) => prev.map((r) => (r.id === rule.id ? data.rule : r)));
-      }
-      toast.success(rule.isActive ? "تم تعطيل القاعدة" : "تم تفعيل القاعدة");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally {
-      setTogglingId(null);
-    }
-  };
-
-  const deleteRule = async (rule: AutomationRule) => {
-    if (!activeCompany) return;
-    if (!confirm(`حذف القاعدة "${rule.name}"؟ لا يمكن التراجع.`)) return;
-    setDeletingId(rule.id);
-    try {
-      const res = await authedFetch(
-        `/api/automation/${rule.id}?companySlug=${encodeURIComponent(activeCompany.slug)}`,
-        { method: "DELETE" },
-      );
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر الحذف");
-      }
-      setRules((prev) => prev.filter((r) => r.id !== rule.id));
-      toast.success("تم حذف القاعدة");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const rules: AutomationRule[] = (data?.automations ?? []) as unknown as AutomationRule[];
 
   if (!activeCompany) {
     return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
   }
 
   const activeCount = rules.filter((r) => r.isActive).length;
+
+  const toggleRule = (rule: AutomationRule) => {
+    updateMutation.mutate(
+      { id: rule.id, enabled: !rule.isActive },
+      {
+        onSuccess: () => {
+          toast.success(rule.isActive ? "تم تعطيل القاعدة" : "تم تفعيل القاعدة");
+        },
+        onError: (err) => {
+          toast.error(err.message || "تعذّر التحديث");
+        },
+      },
+    );
+  };
+
+  const deleteRule = (rule: AutomationRule) => {
+    if (!confirm(`حذف القاعدة "${rule.name}"؟ لا يمكن التراجع.`)) return;
+    deleteMutation.mutate(rule.id, {
+      onSuccess: () => {
+        toast.success("تم حذف القاعدة");
+      },
+      onError: (err) => {
+        toast.error(err.message || "تعذّر الحذف");
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -160,12 +106,12 @@ export function AutomationView() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={load}
-            disabled={loading}
+            onClick={() => refetch()}
+            disabled={isLoading}
             title="تحديث"
             className="inline-flex items-center gap-1.5 py-2.5 px-3.5 rounded-[10px] bg-card text-foreground border border-border text-[13px] font-bold cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> تحديث
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} /> تحديث
           </button>
         </div>
       </div>
@@ -177,7 +123,7 @@ export function AutomationView() {
         عبر الـ API مباشرة (<code className="font-mono text-[11px]">POST /api/automation</code>).
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="bg-card rounded-[14px] border border-border p-8 md:p-12 text-center text-muted-foreground flex items-center justify-center gap-2">
           <Loader2 size={16} className="animate-spin" /> جارٍ التحميل…
         </div>
@@ -193,8 +139,8 @@ export function AutomationView() {
         <div className="flex flex-col gap-2.5">
           {rules.map((rule) => {
             const trigger = TRIGGER_LABELS[rule.trigger] || { label: rule.trigger, color: "#6b7280", bg: "#6b728022", icon: "⚡" };
-            const isToggling = togglingId === rule.id;
-            const isDeleting = deletingId === rule.id;
+            const isToggling = updateMutation.isPending && updateMutation.variables?.id === rule.id;
+            const isDeleting = deleteMutation.isPending && deleteMutation.variables === rule.id;
             return (
               <div
                 key={rule.id}

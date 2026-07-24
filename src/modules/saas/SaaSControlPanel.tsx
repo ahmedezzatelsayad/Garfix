@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuth, authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useSaaSUsers, useSaaSPayments, useCompanies, useCreateSaaSUser, useUpdateSaaSUser, useDeleteSaaSUser } from "@/hooks/queries";
 import { toast } from "sonner";
-import { Building2, Users, CreditCard, Plus, X, Edit2, Trash2 } from "lucide-react";
+import { Building2, Users, CreditCard, Plus, X, Edit2, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -29,10 +30,6 @@ type Tab = "users" | "companies" | "payments" | "settings";
 export function SaaSControlPanel() {
   const { user: currentUser } = useAuth();
   const [tab, setTab] = useState<Tab>("users");
-  const [users, setUsers] = useState<User[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -40,24 +37,15 @@ export function SaaSControlPanel() {
   const [companiesPage, setCompaniesPage] = useState(1);
   const saasPageSize = 15;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [u, c, p] = await Promise.all([
-        authedFetch("/api/saas/users"),
-        authedFetch("/api/companies"),
-        authedFetch("/api/saas/payments"),
-      ]);
-      const [uD, cD, pD] = await Promise.all([u.json(), c.json(), p.json()]);
-      if (u.ok) setUsers(uD.users || []);
-      if (c.ok) setCompanies(cD.companies || []);
-      if (p.ok) setPayments(pD.payments || []);
-    } finally { setLoading(false); }
-  }, []);
+  const { data: usersData, isLoading: usersLoading } = useSaaSUsers();
+  const { data: companiesData, isLoading: companiesLoading } = useCompanies();
+  const { data: paymentsData, isLoading: paymentsLoading } = useSaaSPayments();
 
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const users: User[] = (usersData as User[] | undefined) ?? [];
+  const companies: Company[] = (companiesData as { companies?: Company[] } | undefined)?.companies ?? [];
+  const payments: Payment[] = (paymentsData as Payment[] | undefined) ?? [];
+
+  const loading = usersLoading || companiesLoading || paymentsLoading;
 
   if (!currentUser || (currentUser.role !== "admin" && !currentUser.isFounder)) {
     return <div className="p-12 text-center text-muted-foreground">هذه الصفحة مخصصة للمدراء فقط</div>;
@@ -95,7 +83,7 @@ export function SaaSControlPanel() {
         ))}
       </div>
 
-      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : (
+      {loading ? <div className="p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : (
         <div className="bg-card rounded-[14px] border border-border overflow-hidden">
           {tab === "users" && (
             <>
@@ -103,21 +91,9 @@ export function SaaSControlPanel() {
                 <h3 className="text-sm font-bold">المستخدمون ({users.length})</h3>
                 <button onClick={() => setShowUserForm(true)} className="inline-flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-[11px] font-bold cursor-pointer"><Plus size={12} /> مستخدم جديد</button>
               </div>
-              {showUserForm && <UserForm onClose={() => setShowUserForm(false)} onSaved={() => { setShowUserForm(false); load(); }} />}
-              {editingUser && (
-                <UserForm
-                  editTarget={editingUser}
-                  onClose={() => setEditingUser(null)}
-                  onSaved={() => { setEditingUser(null); load(); }}
-                />
-              )}
-              {deletingUser && (
-                <DeleteUserConfirm
-                  user={deletingUser}
-                  onClose={() => setDeletingUser(null)}
-                  onDeleted={() => { setDeletingUser(null); load(); }}
-                />
-              )}
+              {showUserForm && <UserForm onClose={() => setShowUserForm(false)} onSaved={() => setShowUserForm(false)} />}
+              {editingUser && <UserForm editTarget={editingUser} onClose={() => setEditingUser(null)} onSaved={() => setEditingUser(null)} />}
+              {deletingUser && <DeleteUserConfirm user={deletingUser} onClose={() => setDeletingUser(null)} onDeleted={() => setDeletingUser(null)} />}
               <div className="overflow-x-auto garfix-scroll">
                 <table className="w-full border-collapse">
                   <thead><tr className="bg-muted">
@@ -134,22 +110,8 @@ export function SaaSControlPanel() {
                         <td className="py-2.5 px-3 text-[13px] hidden md:table-cell">{u.isFounder ? "✓" : "—"}</td>
                         <td className="py-2.5 px-3 text-[13px]">
                           <div className="flex gap-1">
-                            <button
-                              onClick={() => setEditingUser(u)}
-                              disabled={u.isFounder}
-                              title={u.isFounder ? "لا يمكن تعديل المؤسس من هنا" : "تعديل"}
-                              className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-blue-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => setDeletingUser(u)}
-                              disabled={u.isFounder}
-                              title={u.isFounder ? "لا يمكن حذف المؤسس" : "حذف"}
-                              className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-red-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <button onClick={() => setEditingUser(u)} disabled={u.isFounder} title={u.isFounder ? "لا يمكن تعديل المؤسس من هنا" : "تعديل"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-blue-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}><Edit2 size={14} /></button>
+                            <button onClick={() => setDeletingUser(u)} disabled={u.isFounder} title={u.isFounder ? "لا يمكن حذف المؤسس" : "حذف"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-red-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -236,9 +198,7 @@ export function SaaSControlPanel() {
   );
 }
 
-// th style converted to Tailwind inline classes
-// td style converted to Tailwind inline classes
-const inputTW = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground font-inherit text-[13px] outline-none"; // TAILWINDBREAK: var(--background)/var(--border)/var(--foreground) CSS variables
+const inputTW = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground font-inherit text-[13px] outline-none";
 const labelTW = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSaved: () => void; editTarget?: User }) {
@@ -250,34 +210,35 @@ function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSav
   const [companiesText, setCompaniesText] = useState((editTarget?.companies || []).join(", "));
   const [saving, setSaving] = useState(false);
 
-  const submit = async () => {
+  const createMutation = useCreateSaaSUser();
+  const updateMutation = useUpdateSaaSUser();
+
+  const submit = () => {
     if (!email || !displayName) { toast.error("الاسم والبريد مطلوبان"); return; }
     if (!isEdit && !password) { toast.error("كلمة المرور مطلوبة لإنشاء مستخدم جديد"); return; }
     setSaving(true);
-    try {
-      if (isEdit && editTarget) {
-        // PATCH /api/saas/users/[uid] — only sends changed fields
-        const body: Record<string, unknown> = { displayName, role };
-        const slugs = companiesText.split(",").map((s) => s.trim()).filter(Boolean);
-        body.companies = slugs;
-        const res = await authedFetch(`/api/saas/users/${encodeURIComponent(editTarget.uid)}`, {
-          method: "PATCH", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-        toast.success("تم تحديث المستخدم");
-      } else {
-        const res = await authedFetch("/api/saas/users", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, displayName, password, role, companies: [] }),
-        });
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-        toast.success("تم إنشاء المستخدم");
-      }
-      onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+
+    if (isEdit && editTarget) {
+      const slugs = companiesText.split(",").map((s) => s.trim()).filter(Boolean);
+      updateMutation.mutate(
+        { uid: editTarget.uid, displayName, role, companies: slugs },
+        {
+          onSuccess: () => { toast.success("تم تحديث المستخدم"); onSaved(); setSaving(false); },
+          onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+        },
+      );
+    } else {
+      createMutation.mutate(
+        { email, displayName, password, role, companies: [] },
+        {
+          onSuccess: () => { toast.success("تم إنشاء المستخدم"); onSaved(); setSaving(false); },
+          onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+        },
+      );
+    }
   };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="p-3 sm:p-4 border-b border-border bg-muted flex flex-col gap-2.5">
@@ -286,70 +247,42 @@ function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSav
         <button onClick={onClose} className="bg-transparent border-none text-muted-foreground cursor-pointer p-1"><X size={14} /></button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2 sm:gap-2.5">
-        <div>
-          <label className={labelTW}>الاسم</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputTW} />
-        </div>
-        <div>
-          <label className={labelTW}>البريد</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} className={inputTW} dir="ltr" disabled={isEdit} title={isEdit ? "لا يمكن تغيير البريد" : ""} />
-        </div>
-        {!isEdit && (
-          <div>
-            <label className={labelTW}>كلمة المرور</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputTW} dir="ltr" />
-          </div>
-        )}
-        <div>
-          <label className={labelTW}>الدور</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} className={inputTW}>
-            <option value="admin">مدير</option><option value="editor">محرّر</option>
-            <option value="employee">موظف</option><option value="viewer">مشاهد</option>
-            {isEdit && <option value="inactive">غير نشط (محذوف ناعم)</option>}
-          </select>
-        </div>
-        {isEdit && (
-          <div className="col-span-full">
-            <label className={labelTW}>الشركات (افصل بفواصل)</label>
-            <input value={companiesText} onChange={(e) => setCompaniesText(e.target.value)} className={inputTW} dir="ltr" placeholder="company-1, company-2" />
-          </div>
-        )}
+        <div><label className={labelTW}>الاسم</label><input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputTW} /></div>
+        <div><label className={labelTW}>البريد</label><input value={email} onChange={(e) => setEmail(e.target.value)} className={inputTW} dir="ltr" disabled={isEdit} title={isEdit ? "لا يمكن تغيير البريد" : ""} /></div>
+        {!isEdit && (<div><label className={labelTW}>كلمة المرور</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputTW} dir="ltr" /></div>)}
+        <div><label className={labelTW}>الدور</label><select value={role} onChange={(e) => setRole(e.target.value)} className={inputTW}><option value="admin">مدير</option><option value="editor">محرّر</option><option value="employee">موظف</option><option value="viewer">مشاهد</option>{isEdit && <option value="inactive">غير نشط (محذوف ناعم)</option>}</select></div>
+        {isEdit && (<div className="col-span-full"><label className={labelTW}>الشركات (افصل بفواصل)</label><input value={companiesText} onChange={(e) => setCompaniesText(e.target.value)} className={inputTW} dir="ltr" placeholder="company-1, company-2" /></div>)}
       </div>
-      <button onClick={submit} disabled={saving} className={cn("self-end py-2 px-5 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-xs font-bold", saving ? "cursor-not-allowed opacity-70" : "cursor-pointer")}>{saving ? "جارٍ…" : (isEdit ? "حفظ" : "إنشاء")}</button>
+      <button onClick={submit} disabled={saving || isPending} className={cn("self-end py-2 px-5 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-xs font-bold", saving || isPending ? "cursor-not-allowed opacity-70" : "cursor-pointer")}>{saving || isPending ? "جارٍ…" : (isEdit ? "حفظ" : "إنشاء")}</button>
     </div>
   );
 }
 
-/**
- * Admin P1.2 — Delete user confirmation dialog.
- * Calls DELETE /api/saas/users/[uid] (founder-only soft-delete).
- *
- * P1-UI-Agent refactor: switched from inline panel to shadcn AlertDialog
- * (radix-ui alert-dialog primitive) for proper focus-trap, ESC handling,
- * scroll lock, and a proper modal confirmation pattern. The action button
- * uses event.preventDefault() to keep the dialog open while the DELETE
- * request is in flight, then closes via onDeleted() on success.
- */
 function DeleteUserConfirm({ user, onClose, onDeleted }: { user: User; onClose: () => void; onDeleted: () => void }) {
+  const deleteMutation = useDeleteSaaSUser();
   const [deleting, setDeleting] = useState(false);
-  const doDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Prevent radix AlertDialog from auto-closing before the request settles.
+
+  const doDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setDeleting(true);
-    try {
-      const res = await authedFetch(`/api/saas/users/${encodeURIComponent(user.uid)}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      toast.success(`تم حذف المستخدم "${user.displayName}" ناعماً (دوره أصبح inactive)`);
-      onDeleted();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally {
-      setDeleting(false);
-    }
+    deleteMutation.mutate(
+      { uid: user.uid },
+      {
+        onSuccess: () => {
+          toast.success(`تم حذف المستخدم "${user.displayName}" ناعماً (دوره أصبح inactive)`);
+          setDeleting(false);
+          onDeleted();
+        },
+        onError: (err) => {
+          toast.error(err.message || "خطأ");
+          setDeleting(false);
+        },
+      },
+    );
   };
+
   return (
-    <AlertDialog open={true} onOpenChange={(open) => { if (!open && !deleting) onClose(); }}>
+    <AlertDialog open={true} onOpenChange={(open) => { if (!open && !deleting && !deleteMutation.isPending) onClose(); }}>
       <AlertDialogContent dir="rtl">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-right flex items-center gap-2 text-destructive">
@@ -361,13 +294,9 @@ function DeleteUserConfirm({ user, onClose, onDeleted }: { user: User; onClose: 
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting} onClick={onClose}>إلغاء</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={doDelete}
-            disabled={deleting}
-            className="bg-destructive text-white hover:bg-destructive/90"
-          >
-            {deleting ? "جارٍ…" : "حذف نهائي"}
+          <AlertDialogCancel disabled={deleting || deleteMutation.isPending} onClick={onClose}>إلغاء</AlertDialogCancel>
+          <AlertDialogAction onClick={doDelete} disabled={deleting || deleteMutation.isPending} className="bg-destructive text-white hover:bg-destructive/90">
+            {deleting || deleteMutation.isPending ? "جارٍ…" : "حذف نهائي"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

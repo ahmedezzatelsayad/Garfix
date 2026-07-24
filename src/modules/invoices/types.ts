@@ -25,6 +25,7 @@ export interface Invoice {
   shipping: number;
   discount: number;
   paid: number;
+  outstanding: number;
   notes?: string;
   version: number;
 }

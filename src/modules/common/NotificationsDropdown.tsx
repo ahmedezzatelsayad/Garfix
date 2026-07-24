@@ -2,23 +2,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/queries/dashboard";
+import { useNotifications, useMarkAllNotificationsRead, type Notification } from "@/hooks/queries/dashboard";
 import { toast } from "sonner";
 import { Bell, X, CheckCheck, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Notification {
-  id: number;
-  userUid: string;
-  companySlug?: string | null;
-  type: string;
-  title: string;
-  body: string;
-  link?: string | null;
-  isRead: boolean;
-  createdAt: string;
-  readAt?: string | null;
-}
 
 interface NotificationsResponse {
   notifications: Notification[];
@@ -54,12 +41,18 @@ export function NotificationsDropdown() {
   const [markingAll, setMarkingAll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // TanStack Query hook replaces raw authedFetch polling
+  // TanStack Query hook
   const { data: notificationsData, isLoading: loading } = useNotifications("");
   const markAllReadMutation = useMarkAllNotificationsRead();
 
-  const notifications = notificationsData?.notifications || [];
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const notifications: Notification[] = notificationsData?.notifications || [];
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleClickNotification = useCallback((n: Notification) => {
+    if (n.link) {
+      window.location.href = n.link;
+    }
+  }, []);
 
   const markAllRead = useCallback(async () => {
     setMarkingAll(true);

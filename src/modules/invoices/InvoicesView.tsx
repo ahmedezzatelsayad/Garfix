@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useEffect, useState, useMemo } from "react";
+import { useBrand } from "@/context/BrandContext";
+import { useInvoices as useInvoicesQuery, useDeleteInvoice, useRecordPayment, useUpdateInvoiceStatus, useCreateInvoice, useUpdateInvoice } from "@/hooks/queries";
+import type { CreateInvoicePayload } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Plus, Search, FileText, Trash2, Edit2, Printer, X, ArrowRight, Download, DollarSign,
@@ -11,53 +13,6 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
-// TODO: Full migration to TanStack Query hooks (useInvoices, useCreateInvoice, etc.)
-// useInvoices was a legacy module-level hook — replaced with per-component query hooks
-// For now, using inline state management to maintain compatibility
-function useInvoices() {
-  // Stub: will be replaced with TanStack Query hooks in next sprint
-  return {
-    activeCompany: null as any,
-    invoices: [] as Invoice[],
-    loading: true,
-    search: "",
-    setSearch: (_: string) => {},
-    statusFilter: "all" as StatusFilter,
-    setStatusFilter: (_: StatusFilter) => {},
-    selectedIds: new Set<number>(),
-    setSelectedIds: (_: Set<number>) => {},
-    currentPage: 1,
-    setCurrentPage: (_: number) => {},
-    bulkDeleting: false,
-    reviewQueueWarnings: [] as any[],
-    setReviewQueueWarnings: (_: any[]) => {},
-    showWarningsBanner: false,
-    setShowWarningsBanner: (_: boolean) => {},
-    inventoryWarnings: [] as any[],
-    setInventoryWarnings: (_: any[]) => {},
-    showInventoryBanner: false,
-    setShowInventoryBanner: (_: boolean) => {},
-    showReviewQueue: false,
-    setShowReviewQueue: (_: boolean) => {},
-    pageSize: 20,
-    filteredInvoices: [] as Invoice[],
-    totalPages: 1,
-    currentPageInvoices: [] as Invoice[],
-    safePage: 1,
-    toggleSelectAll: () => {},
-    toggleRow: (_: number) => {},
-    handleBulkDelete: async () => {},
-    handleDelete: async (_: number) => {},
-    handleExportCSV: () => {},
-    load: async () => {},
-    paidInvoices: 0,
-    pendingInvoices: 0,
-    overdueInvoices: 0,
-    totalRevenue: 0,
-    outstanding: 0,
-  };
-}
-
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -68,46 +23,55 @@ function addDaysStr(days: number) {
 }
 
 export function InvoicesView() {
-  const {
-    activeCompany,
-    invoices,
-    loading,
-    search,
-    setSearch,
-    statusFilter,
-    setStatusFilter,
-    selectedIds,
-    setSelectedIds,
-    currentPage,
-    setCurrentPage,
-    bulkDeleting,
-    reviewQueueWarnings,
-    setReviewQueueWarnings,
-    showWarningsBanner,
-    setShowWarningsBanner,
-    inventoryWarnings,
-    setInventoryWarnings,
-    showInventoryBanner,
-    setShowInventoryBanner,
-    showReviewQueue,
-    setShowReviewQueue,
-    pageSize,
-    filteredInvoices,
-    totalPages,
-    currentPageInvoices,
-    safePage,
-    toggleSelectAll,
-    toggleRow,
-    handleBulkDelete,
-    handleDelete,
-    handleExportCSV,
-    load,
-    paidInvoices,
-    pendingInvoices,
-    overdueInvoices,
-    totalRevenue,
-    outstanding,
-  } = useInvoices();
+  const { activeCompany } = useBrand();
+  const companySlug = activeCompany?.slug || "";
+
+  // TanStack Query replaces the stub useInvoices
+  const invoicesQuery = useInvoicesQuery(companySlug);
+  const deleteInvoiceMutation = useDeleteInvoice();
+  const recordPaymentMutation = useRecordPayment();
+  const updateStatusMutation = useUpdateInvoiceStatus();
+
+  const allInvoices = ((invoicesQuery.data as any)?.invoices ?? []) as Invoice[];
+  const loading = invoicesQuery.isLoading;
+
+  // Local UI state (was provided by stub)
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [reviewQueueWarnings, setReviewQueueWarnings] = useState<any[]>([]);
+  const [showWarningsBanner, setShowWarningsBanner] = useState(false);
+  const [inventoryWarnings, setInventoryWarnings] = useState<any[]>([]);
+  const [showInventoryBanner, setShowInventoryBanner] = useState(false);
+  const [showReviewQueue, setShowReviewQueue] = useState(false);
+  const pageSize = 20;
+
+  // Derived data (was computed by stub)
+  const filteredInvoices = useMemo(() => {
+    let list = allInvoices;
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter((inv: Invoice) => inv.invoiceNumber.toLowerCase().includes(s) || inv.clientName.toLowerCase().includes(s));
+    }
+    if (statusFilter !== "all") {
+      list = list.filter((inv: Invoice) => inv.status === statusFilter);
+    }
+    return list;
+  }, [allInvoices, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const currentPageInvoices = filteredInvoices.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const paidInvoices = allInvoices.filter((inv: Invoice) => inv.status === "paid");
+  const pendingInvoices = allInvoices.filter((inv: Invoice) => inv.status === "sent" || inv.status === "partial");
+  const overdueInvoices = allInvoices.filter((inv: Invoice) => inv.status === "overdue");
+  const totalRevenue = paidInvoices.reduce((s: number, inv: Invoice) => s + inv.total, 0);
+  const outstanding = allInvoices.reduce((s: number, inv: Invoice) => s + inv.outstanding, 0);
+
+  const invoices = allInvoices;
 
   // UI-only state (not part of the invoice list business logic)
   const [showForm, setShowForm] = useState(false);
@@ -115,7 +79,40 @@ export function InvoicesView() {
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
 
-  // Listen for quick-action events from the Command Palette (e.g. "فاتورة جديدة")
+  // Toggle selection
+  const toggleSelectAll = () => {
+    if (selectedIds.size === currentPageInvoices.length && currentPageInvoices.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(currentPageInvoices.map((i: Invoice) => i.id))); 
+  };
+  const toggleRow = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Delete / bulk delete
+  const handleDelete = (id: number) => {
+    deleteInvoiceMutation.mutate(id, {
+      onSuccess: () => toast.success("تم حذف الفاتورة"),
+      onError: (err: any) => toast.error(err.message || "خطأ في الحذف"),
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    for (const id of selectedIds) {
+      await deleteInvoiceMutation.mutateAsync(id).catch(() => {});
+    }
+    setBulkDeleting(false);
+    setSelectedIds(new Set());
+  };
+
+  // Export CSV placeholder (stub was empty)
+  const handleExportCSV = () => { toast.info("سيتم إضافة تصدير CSV قريبًا"); };
+
+  // Quick-action event listener
   useEffect(() => {
     const onQuickAction = (e: Event) => {
       const detail = (e as CustomEvent).detail as { type?: string } | undefined;
@@ -154,7 +151,7 @@ export function InvoicesView() {
             setInventoryWarnings(invWarnings);
             setShowInventoryBanner(true);
           }
-          load();
+          invoicesQuery.refetch();
         }}
       />
     );
@@ -544,7 +541,7 @@ export function InvoicesView() {
         <PaymentDialog
           invoice={paymentInvoice}
           onClose={() => setPaymentInvoice(null)}
-          onPaid={() => { setPaymentInvoice(null); load(); }}
+          onPaid={() => { setPaymentInvoice(null); invoicesQuery.refetch(); }}
         />
       )}
 
@@ -613,6 +610,10 @@ function InvoiceForm({
   onClose: () => void;
   onSaved: (reviewQueueWarnings: string[], inventoryWarnings?: string[]) => void;
 }) {
+  const createInvoiceMutation = useCreateInvoice();
+  const updateInvoiceMutation = useUpdateInvoice();
+  const updateInvoiceStatusMutation = useUpdateInvoiceStatus();
+
   const [invoiceNumber, setInvoiceNumber] = useState(editing?.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`);
   const [clientName, setClientName] = useState(editing?.clientName || "");
   const [clientEmail, setClientEmail] = useState(editing?.clientEmail || "");
@@ -674,30 +675,20 @@ function InvoiceForm({
       if (!isEdit) {
         payload.status = status;
       }
-      const url = isEdit ? `/api/invoices/${editing!.id}` : "/api/invoices";
-      const method = isEdit ? "PATCH" : "POST";
-      const res = await authedFetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed");
-      }
-      // Task 14: capture review-queue / oversell warnings from POST /api/invoices.
-      // The PATCH (edit) path doesn't currently return warnings, so we only
-      // surface them on new-invoice creation. We pass them up to the parent
-      // InvoicesView so the persistent banner survives the form closing.
+
       let createdWarnings: string[] = [];
       let createdInventoryWarnings: string[] = [];
-      if (!isEdit) {
-        const data = await res.json().catch(() => ({}));
-        if (Array.isArray(data.reviewQueueWarnings)) {
-          createdWarnings = data.reviewQueueWarnings as string[];
+
+      if (isEdit) {
+        await updateInvoiceMutation.mutateAsync({ id: editing!.id, ...payload });
+      } else {
+        const result = await createInvoiceMutation.mutateAsync(payload as CreateInvoicePayload);
+        // Task 14: capture review-queue / oversell warnings from POST /api/invoices.
+        if (Array.isArray(result.reviewQueueWarnings)) {
+          createdWarnings = result.reviewQueueWarnings;
         }
-        if (Array.isArray(data.warnings)) {
-          createdInventoryWarnings = data.warnings as string[];
+        if (Array.isArray(result.warnings)) {
+          createdInventoryWarnings = result.warnings;
         }
       }
 
@@ -705,17 +696,13 @@ function InvoiceForm({
       // route it through the dedicated /status endpoint (writes an audit
       // trail). paid/partial are blocked there and must go via /payment.
       if (isEdit && editing!.status !== status) {
-        const statusRes = await authedFetch(`/api/invoices/${editing!.id}/status`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status, expectedVersion: editing!.version + 1 }),
-        });
-        if (!statusRes.ok) {
-          const err = await statusRes.json().catch(() => ({}));
+        try {
+          await updateInvoiceStatusMutation.mutateAsync({ id: editing!.id, status });
+        } catch (statusErr) {
           if (status === "paid" || status === "partial") {
             toast.error("لتسجيل دفعة استخدم زر «تسجيل دفعة» (يتطلب صلاحية مالية)");
           } else {
-            throw new Error(err.error || "تعذّر تحديث الحالة");
+            throw statusErr;
           }
         }
       }
@@ -1049,35 +1036,27 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose
   const remaining = Math.max(0, Number(invoice.total) - Number(invoice.paid));
   const [amount, setAmount] = useState<string>(String(remaining > 0 ? remaining : invoice.total));
   const [method, setMethod] = useState<string>("cash");
-  const [saving, setSaving] = useState(false);
+  const recordPaymentMutation = useRecordPayment();
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const amt = Number(amount);
     if (!amt || amt <= 0) {
       toast.error("أدخل مبلغًا صحيحًا أكبر من صفر");
       return;
     }
-    setSaving(true);
-    try {
-      const res = await authedFetch(`/api/invoices/${invoice.id}/payment`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amt, method, expectedVersion: invoice.version }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        if (res.status === 403) {
-          throw new Error("ليس لديك صلاحية مالية (finance_access) لتسجيل الدفعات");
-        }
-        throw new Error(err.error || "تعذّر تسجيل الدفعة");
-      }
-      toast.success("تم تسجيل الدفعة بنجاح");
-      onPaid();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally {
-      setSaving(false);
-    }
+    recordPaymentMutation.mutate(
+      { id: invoice.id, amount: amt, date: new Date().toISOString().slice(0, 10), method },
+      {
+        onSuccess: () => { toast.success("تم تسجيل الدفعة بنجاح"); onPaid(); },
+        onError: (err: any) => {
+          if (err.status === 403) {
+            toast.error("ليس لديك صلاحية مالية (finance_access) لتسجيل الدفعات");
+          } else {
+            toast.error(err.message || "تعذّر تسجيل الدفعة");
+          }
+        },
+      },
+    );
   };
 
   return (
@@ -1148,10 +1127,10 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={recordPaymentMutation.isPending}
             className="py-2 px-5 rounded-sm bg-[#10b981] text-white border-none text-[13px] font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
           >
-            <DollarSign size={14} /> {saving ? "جارٍ الحفظ…" : "تأكيد الدفعة"}
+            <DollarSign size={14} /> {recordPaymentMutation.isPending ? "جارٍ الحفظ…" : "تأكيد الدفعة"}
           </button>
         </div>
       </div>

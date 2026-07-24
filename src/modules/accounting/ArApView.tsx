@@ -1,10 +1,15 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useArApAging, useClientStatement, useSupplierStatement,
+  usePostDatedChecks, useCreatePDC, usePDCAction,
+  useInstallments, useCreateInstallment,
+  useAccounts, useClients, useSuppliers,
+} from "@/hooks/queries";
 import {
   ArrowUpDown, Plus, X, Trash2, FileText, CheckCircle2,
   Clock, Banknote, CalendarDays, Send, Download,
@@ -38,56 +43,28 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function ArApView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("aging");
-  const [agingData, setAgingData] = useState<AgingSummary | null>(null);
   const [agingDirection, setAgingDirection] = useState<Direction>("receivable");
-  const [clientStatement, setClientStatement] = useState<ClientStatement | null>(null);
-  const [supplierStatement, setSupplierStatement] = useState<ClientStatement | null>(null);
-  const [pdcs, setPdcs] = useState<PDC[]>([]);
-  const [installments, setInstallments] = useState<Installment[]>([]);
-  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadAging = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/aging?companySlug=${slug}&direction=${agingDirection}`);
-      if (res.ok) { const d = await res.json(); setAgingData(d.summary || null); }
-      else setAgingData(null);
-    } catch { setAgingData(null); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug, agingDirection]);
+  // TanStack Query hooks for data fetching
+  const agingQuery = useArApAging(slug, agingDirection);
+  const pdcQuery = usePostDatedChecks(slug);
+  const installmentQuery = useInstallments(slug);
 
-  const loadPDCs = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/post-dated-checks?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setPdcs(d.checks || []); }
-      else setPdcs([]);
-    } catch { setPdcs([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
+  const agingData: AgingSummary | null = agingQuery.data ? {
+    direction: agingDirection, rows: agingQuery.data.rows,
+    grandCurrent: agingQuery.data.grandCurrent, grandThirty: agingQuery.data.grandThirty,
+    grandSixty: agingQuery.data.grandSixty, grandNinetyPlus: agingQuery.data.grandNinetyPlus,
+    grandTotal: agingQuery.data.grandTotal,
+  } : null;
+  const pdcs = pdcQuery.data?.postDatedChecks ?? [];
+  const installments = installmentQuery.data?.installments ?? [];
+  const [clientStatement, setClientStatement] = useState<ClientStatement | null>(null);
+  const [supplierStatement, setSupplierStatement] = useState<ClientStatement | null>(null);
 
-  const loadInstallments = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/installments?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setInstallments(d.installments || []); }
-      else setInstallments([]);
-    } catch { setInstallments([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "aging") loadAging();
-    if (tab === "pdc") loadPDCs();
-    if (tab === "installments") loadInstallments();
-  }, [tab, loadAging, loadPDCs, loadInstallments]);
+  const loading = (tab === "aging" && agingQuery.isLoading) || (tab === "pdc" && pdcQuery.isLoading) || (tab === "installments" && installmentQuery.isLoading);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -125,9 +102,9 @@ export function ArApView() {
       ) : tab === "supplier-statement" ? (
         <StatementView type="supplier" company={activeCompany} data={supplierStatement} setData={setSupplierStatement} />
       ) : tab === "pdc" ? (
-        showForm ? <PDCForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadPDCs(); }} /> : <PDCList pdcs={pdcs} company={activeCompany} onRefresh={loadPDCs} />
+        showForm ? <PDCForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); pdcQuery.refetch(); }} /> : <PDCList pdcs={pdcs} company={activeCompany} onRefresh={() => pdcQuery.refetch()} />
       ) : tab === "installments" ? (
-        showForm ? <InstallmentForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadInstallments(); }} /> : <InstallmentList installments={installments} />
+        showForm ? <InstallmentForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); installmentQuery.refetch(); }} /> : <InstallmentList installments={installments} />
       ) : null}
     </div>
   );
@@ -208,28 +185,35 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
 /* ─── Client/Supplier Statement ────────────────────────────────────────────── */
 function StatementView({ type, company, data, setData }: { type: "client" | "supplier"; company: { slug: string }; data: ClientStatement | null; setData: (d: ClientStatement | null) => void }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingStatement, setLoadingStatement] = useState(false);
 
-  useEffect(() => {
-    const endpoint = type === "client" ? "/api/clients" : "/api/suppliers";
-    authedFetch(`${endpoint}?companySlug=${encodeURIComponent(company.slug)}`)
-      .then(r => r.ok ? r.json() : { clients: [], suppliers: [] })
-      .then(d => setContacts(type === "client" ? (d.clients || []) : (d.suppliers || [])))
-      .catch(() => setContacts([]));
-  }, [type, company.slug]);
+  const clientsQuery = useClients(company.slug);
+  const suppliersQuery = useSuppliers(company.slug);
+  const clientStatementQuery = useClientStatement(company.slug, type === "client" ? selectedId : null);
+  const supplierStatementQuery = useSupplierStatement(company.slug, type === "supplier" ? selectedId : null);
 
-  const loadStatement = async () => {
+  const contacts = type === "client"
+    ? (clientsQuery.data?.clients || [])
+    : (suppliersQuery.data?.suppliers || []);
+
+  const loadStatement = () => {
     if (!selectedId) { toast.error("اختر " + (type === "client" ? "عميل" : "مورد")); return; }
     setLoadingStatement(true);
-    try {
-      const endpoint = type === "client" ? "/api/accounting/client-statement" : "/api/accounting/supplier-statement";
-      const paramName = type === "client" ? "clientId" : "supplierId";
-      const res = await authedFetch(`${endpoint}?companySlug=${encodeURIComponent(company.slug)}&${paramName}=${selectedId}`);
-      if (res.ok) { setData(await res.json()); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر تحميل كشف الحساب"); setData(null); }
-    } catch { toast.error("خطأ في الاتصال"); setData(null); }
-    finally { setLoadingStatement(false); }
+    const query = type === "client" ? clientStatementQuery : supplierStatementQuery;
+    if (query.data) {
+      if (type === "client") {
+        const cs = (query.data as { clientStatement: { clientName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number } }).clientStatement;
+        setData(cs);
+      } else {
+        const ss = (query.data as { supplierStatement: { supplierName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number } }).supplierStatement;
+        setData({ clientName: ss.supplierName, openingBalance: ss.openingBalance, lines: ss.lines, closingBalance: ss.closingBalance });
+      }
+      setLoadingStatement(false);
+    } else if (query.isError) {
+      toast.error("تعذّر تحميل كشف الحساب");
+      setData(null);
+      setLoadingStatement(false);
+    }
   };
 
   const totalDebit = data?.lines.reduce((s, l) => s + l.debit, 0) || 0;
@@ -316,18 +300,22 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
 /* ─── PDC List ──────────────────────────────────────────────────────────────── */
 function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: string }; onRefresh: () => void }) {
   const [actionId, setActionId] = useState<number | null>(null);
+  const pdcActionMutation = usePDCAction();
 
-  const handleAction = async (pdcId: number, action: string) => {
+  const handleAction = (pdcId: number, action: string) => {
     setActionId(pdcId);
-    try {
-      const res = await authedFetch(`/api/accounting/post-dated-checks/${pdcId}/${action}?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
-      if (res.ok) {
-        const actionLabel = action === "deposit" ? "تسليم الشيك" : action === "clear" ? "تحصيل الشيك" : "إرجاع الشيك";
-        toast.success(`تم ${actionLabel}`);
-        onRefresh();
-      } else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر تنفيذ الإجراء"); }
-    } catch { toast.error("خطأ"); }
-    finally { setActionId(null); }
+    pdcActionMutation.mutate(
+      { id: pdcId, action, companySlug: company.slug },
+      {
+        onSuccess: () => {
+          const actionLabel = action === "deposit" ? "تسليم الشيك" : action === "clear" ? "تحصيل الشيك" : "إرجاع الشيك";
+          toast.success(`تم ${actionLabel}`);
+          onRefresh();
+          setActionId(null);
+        },
+        onError: (err) => { toast.error(err.message || "تعذّر تنفيذ الإجراء"); setActionId(null); },
+      },
+    );
   };
 
   const statusBadge = (status: string) => {
@@ -406,20 +394,18 @@ function PDCForm({ company, onClose, onSaved }: { company: { slug: string }; onC
   const [clientName, setClientName] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [saving, setSaving] = useState(false);
+  const createPDCMutation = useCreatePDC();
 
-  const submit = async () => {
+  const submit = () => {
     if (!checkNumber || !bankName || !dueDate || amount <= 0) { toast.error("جميع الحقول مطلوبة"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/post-dated-checks", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkNumber, bankName, amount, dueDate, direction, clientName: direction === "receivable" ? clientName : undefined, supplierName: direction === "payable" ? supplierName : undefined, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-      toast.success("تم إنشاء الشيك المؤجل");
-      onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createPDCMutation.mutate(
+      { checkNumber, bankName, amount, dueDate, direction, clientName: direction === "receivable" ? clientName : undefined, supplierName: direction === "payable" ? supplierName : undefined, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إنشاء الشيك المؤجل"); onSaved(); setSaving(false); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   return (
@@ -499,20 +485,18 @@ function InstallmentForm({ company, onClose, onSaved }: { company: { slug: strin
   const [installmentCount, setInstallmentCount] = useState(1);
   const [firstDueDate, setFirstDueDate] = useState("");
   const [saving, setSaving] = useState(false);
+  const createInstallmentMutation = useCreateInstallment();
 
-  const submit = async () => {
+  const submit = () => {
     if (!reference || !clientName || totalAmount <= 0 || installmentCount <= 0 || !firstDueDate) { toast.error("جميع الحقول مطلوبة"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/installments", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference, clientName, totalAmount, installmentCount, firstDueDate, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-      toast.success("تم إنشاء اتفاق التقسيط");
-      onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createInstallmentMutation.mutate(
+      { reference, clientId: 0, clientName, totalAmount, installmentCount, firstDueDate, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إنشاء اتفاق التقسيط"); onSaved(); setSaving(false); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   return (

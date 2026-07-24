@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import {
@@ -9,18 +8,14 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { Ticket, TicketReply } from "./types";
+import {
+  useUpdatePlatformTicket,
+  useReplyToTicket,
+} from "@/hooks/queries";
 
 /**
  * GATE 4 / Admin P1.1 — Ticket Detail Drawer.
- * Shows ticket body + reply thread, a reply textarea wired to POST
- * /api/platform-admin/tickets/[id]/replies, and a status dropdown wired
- * to PATCH /api/platform-admin/tickets/[id]. Both endpoints already existed
- * but had no UI caller.
- *
- * P1-UI-Agent refactor: switched from custom overlay <div> to shadcn Sheet
- * (radix-ui dialog primitive) for proper focus-trap, ESC handling, scroll
- * lock, and aria attributes. Uses shadcn Textarea for the reply input.
- * Toast feedback uses sonner (the codebase convention — 23 files use it).
+ * Uses TanStack Query mutations for ticket status updates and replies.
  */
 export function TicketDetailDrawer({
   ticketId, tickets, onClose, onUpdated,
@@ -31,6 +26,9 @@ export function TicketDetailDrawer({
   onUpdated: () => void;
 }) {
   const ticket = tickets.find((t) => t.id === ticketId);
+  const updateMutation = useUpdatePlatformTicket();
+  const replyMutation = useReplyToTicket();
+
   const [replyBody, setReplyBody] = useState("");
   const [status, setStatus] = useState(ticket?.status || "open");
   const [sending, setSending] = useState(false);
@@ -44,14 +42,9 @@ export function TicketDetailDrawer({
     if (!replyBody.trim()) return;
     setSending(true);
     try {
-      const res = await authedFetch(`/api/platform-admin/tickets/${encodeURIComponent(ticketId)}/replies`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: replyBody.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل الإرسال");
-      setLocalReplies((prev) => [...prev, data.reply]);
+      const data = await replyMutation.mutateAsync({ id: parseInt(ticketId), message: replyBody.trim() });
+      const reply = (data as unknown as Record<string, unknown>)?.reply as TicketReply | undefined;
+      if (reply) setLocalReplies((prev) => [...prev, reply]);
       setReplyBody("");
       toast.success("تم إرسال الرد");
       onUpdated();
@@ -65,13 +58,7 @@ export function TicketDetailDrawer({
   const changeStatus = async (newStatus: string) => {
     setStatus(newStatus);
     try {
-      const res = await authedFetch(`/api/platform-admin/tickets/${encodeURIComponent(ticketId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل التحديث");
+      await updateMutation.mutateAsync({ id: parseInt(ticketId), status: newStatus });
       toast.success(`تم تحديث الحالة إلى: ${newStatus}`);
       onUpdated();
     } catch (err) {

@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth, authedFetch } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
+import {
+  useOnboardingStatus, useCheckCompanySlug, useCompleteOnboarding,
+  useCreateCompany, useUpdateOnboardingCompany, useSmartParse,
+} from "@/hooks/queries";
+import type { CompleteOnboardingPayload } from "@/hooks/queries/onboarding";
 import { toast } from "sonner";
 import {
   Check, ChevronLeft, ChevronRight, Building2, Globe, Briefcase,
@@ -63,21 +68,25 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCheckedSlugRef = useRef<string>("");
 
-  // Load existing progress
+  // Load existing progress via TanStack Query
+  const onboardingQuery = useOnboardingStatus();
+  const completeOnboardingMutation = useCompleteOnboarding();
+  const createCompanyMutation = useCreateCompany();
+  const updateCompanyMutation = useUpdateOnboardingCompany();
+  const smartParseMutation = useSmartParse();
+
   useEffect(() => {
-    authedFetch("/api/onboarding").then(async (res) => {
-      if (res.ok) {
-        const d = await res.json();
-        if (d.completed) {
-          onComplete();
-          return;
-        }
-        if (d.step > 0) setStep(Math.min(d.step, STEPS.length - 1));
-        if (d.data) setData(d.data);
-      }
-      setLoading(false);
-    });
-  }, [onComplete]);
+    if (onboardingQuery.isLoading) return;
+    const d = onboardingQuery.data as Record<string, unknown> | undefined;
+    if (!d) { setLoading(false); return; }
+    if (d.completed) {
+      onComplete();
+      return;
+    }
+    if ((d.step as number) > 0) setStep(Math.min(d.step as number, STEPS.length - 1));
+    if (d.data) setData(d.data as WizardData);
+    setLoading(false);
+  }, [onboardingQuery.isLoading, onboardingQuery.data, onComplete]);
 
   // Onboarding P2 — auto-suggest slug from company name when the user hasn't
   // manually edited the slug yet. We compare against the last suggestion we
@@ -110,33 +119,34 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
       return;
     }
     if (newCompanySlug === lastCheckedSlugRef.current) return;
-    slugDebounceRef.current = setTimeout(async () => {
+    // Use TanStack Query hook for slug check via debounced slug state
+    slugDebounceRef.current = setTimeout(() => {
       lastCheckedSlugRef.current = newCompanySlug;
       setSlugAvailability({ state: "checking" });
-      try {
-        const res = await authedFetch(`/api/companies?checkSlug=${encodeURIComponent(newCompanySlug)}`);
-        const data = await res.json();
-        if (!res.ok) {
-          setSlugAvailability({ state: "invalid", reason: data.error || "خطأ في التحقق" });
-          return;
-        }
-        if (data.reason === "too-short") {
-          setSlugAvailability({ state: "invalid", reason: "المعرّف قصير جداً (٢ حرف على الأقل)" });
-        } else if (data.reason === "invalid-chars") {
-          setSlugAvailability({ state: "invalid", reason: "المعرّف يجب أن يكون أحرف لاتينية وأرقام و- فقط" });
-        } else if (data.available) {
-          setSlugAvailability({ state: "available", slug: data.slug });
-        } else {
-          setSlugAvailability({ state: "taken", slug: data.slug });
-        }
-      } catch {
-        setSlugAvailability({ state: "idle" });
-      }
+      setCheckSlug(newCompanySlug);
     }, 350);
     return () => {
       if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     };
   }, [newCompanySlug]);
+
+  // Debounced slug check query
+  const [checkSlug, setCheckSlug] = useState("");
+  const slugCheckQuery = useCheckCompanySlug(checkSlug);
+
+  useEffect(() => {
+    if (!slugCheckQuery.data || !checkSlug) return;
+    const d = slugCheckQuery.data;
+    if (d.reason === "too-short") {
+      setSlugAvailability({ state: "invalid", reason: "المعرّف قصير جداً (٢ حرف على الأقل)" });
+    } else if (d.reason === "invalid-chars") {
+      setSlugAvailability({ state: "invalid", reason: "المعرّف يجب أن يكون أحرف لاتينية وأرقام و- فقط" });
+    } else if (d.available) {
+      setSlugAvailability({ state: "available", slug: d.slug as string });
+    } else {
+      setSlugAvailability({ state: "taken", slug: d.slug as string });
+    }
+  }, [slugCheckQuery.data, checkSlug]);
 
   // If no company exists, force step to company creation; or pre-select first company slug.
   // Render-time adjustment keyed on loading/companies/step/data.companySlug — no cascading render.
@@ -156,18 +166,18 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
     const merged = { ...data, ...updates };
     setData(merged);
     if (merged.companySlug) {
-      await authedFetch("/api/onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "update",
+      try {
+        await completeOnboardingMutation.mutateAsync({
           step: stepNum,
           companySlug: merged.companySlug,
-          data: merged,
-        }),
-      });
+          businessType: merged.businessType,
+          hasEmployees: merged.hasEmployees,
+          hasWarehouse: merged.hasWarehouse,
+          usesWhatsApp: merged.usesWhatsApp,
+        } as unknown as CompleteOnboardingPayload);
+      } catch { /* silent — progress save is best-effort */ }
     }
-  }, [data]);
+  }, [data, completeOnboardingMutation]);
 
   const createCompany = async () => {
     if (!newCompanyName || !newCompanySlug) {
@@ -176,15 +186,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
     }
     setSaving(true);
     try {
-      const res = await authedFetch("/api/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCompanyName, slug: newCompanySlug }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed");
-      }
+      await createCompanyMutation.mutateAsync({ name: newCompanyName, slug: newCompanySlug });
       await refreshCompanies();
       setData((d) => ({ ...d, companySlug: newCompanySlug }));
       toast.success("تم إنشاء الشركة");
@@ -201,19 +203,12 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
     setAiLoading(true);
     setAiResult(null);
     try {
-      const res = await authedFetch("/api/ai/smart-parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rawText: aiTestText,
-          companySlug: data.companySlug,
-          autoAddProducts: false,
-        }),
+      const d = await smartParseMutation.mutateAsync({
+        content: aiTestText,
+        companySlug: data.companySlug,
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
       setAiResult(d);
-      toast.success(`تم استخراج ${d.orders?.length || 0} طلب`);
+      toast.success(`تم استخراج ${((d as Record<string, unknown>).orders as Array<unknown> | undefined)?.length || 0} طلب`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     } finally {
@@ -224,23 +219,14 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   const completeWizard = async () => {
     setSaving(true);
     try {
-      const res = await authedFetch("/api/onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "complete",
-          companySlug: data.companySlug,
-          businessType: data.businessType,
-          hasEmployees: data.hasEmployees,
-          hasWarehouse: data.hasWarehouse,
-          usesWhatsApp: data.usesWhatsApp,
-          generateAccounts: true,
-          activateModules: true,
-        }),
+      const d = await completeOnboardingMutation.mutateAsync({
+        companySlug: data.companySlug,
+        businessType: data.businessType,
+        hasEmployees: data.hasEmployees,
+        hasWarehouse: data.hasWarehouse,
+        usesWhatsApp: data.usesWhatsApp,
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
-      toast.success(`تم إعداد منصتك! (${d.summary?.accountsCreated || 0} حساب، ${d.summary?.modulesActivated || 0} موديول)`);
+      toast.success(`تم إعداد منصتك! (${((d as Record<string, unknown>).summary as Record<string, number>)?.accountsCreated || 0} حساب, ${((d as Record<string, unknown>).summary as Record<string, number>)?.modulesActivated || 0} موديول)`);
       onComplete();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
@@ -424,11 +410,14 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                     onClick={async () => {
                       // Update company country
                       if (data.companySlug) {
-                        await authedFetch(`/api/companies/${data.companySlug}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ country: c.code, currency: c.currency, defaultTaxRate: c.defaultTaxRate }),
-                        });
+                        try {
+                          await updateCompanyMutation.mutateAsync({
+                            slug: data.companySlug,
+                            country: c.code,
+                            currency: c.currency,
+                            defaultTaxRate: c.defaultTaxRate,
+                          });
+                        } catch { /* silent best-effort */ }
                       }
                       await saveProgress(step + 1, {});
                       next();

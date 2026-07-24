@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useLettersOfCredit, useCreateLetterOfCredit,
+  useFXRevaluation, useCreateFXRevaluation,
+} from "@/hooks/queries";
 import {
   Plus, X, Landmark, DollarSign, Calendar, ArrowRightLeft,
   TrendingUp, TrendingDown, FileText, Clock, ShieldCheck,
@@ -45,9 +48,7 @@ const LC_STATUS_MAP: Record<string, { label: string; badge: string }> = {
 export function TradeFinanceView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("lc");
-  const [lcs, setLcs] = useState<LetterOfCredit[]>([]);
-  const [fxEntries, setFxEntries] = useState<FXRevaluation[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [showLcForm, setShowLcForm] = useState(false);
   const [showFxForm, setShowFxForm] = useState(false);
 
@@ -68,79 +69,55 @@ export function TradeFinanceView() {
 
   const slug = activeCompany ? `companySlug=${encodeURIComponent(activeCompany.slug)}` : "";
 
-  const loadLcs = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/letters-of-credit?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `فشل تحميل الاعتمادات (${res.status})`); }
-      const d = await res.json();
-      setLcs(d.lettersOfCredit || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل اعتمادات مستندية");
-      setLcs([]);
-    } finally { setLoading(false); }
-  }, [activeCompany, slug]);
+  // TanStack Query hooks for data fetching
+  const lcQuery = useLettersOfCredit(slug);
+  const fxQuery = useFXRevaluation(slug);
 
-  const loadFx = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/fx-revaluation?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `فشل تحميل تقييم FX (${res.status})`); }
-      const d = await res.json();
-      setFxEntries(d.revaluations || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل تقييم العملات");
-      setFxEntries([]);
-    } finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  useEffect(() => { if (tab === "lc") loadLcs(); else loadFx(); }, [tab, loadLcs, loadFx]);
+  const lcs = lcQuery.data?.lettersOfCredit ?? [];
+  const fxEntries = fxQuery.data?.revaluations ?? [];
+  const loading = tab === "lc" ? lcQuery.isLoading : tab === "fx" ? fxQuery.isLoading : false;
 
   const switchTab = (t: Tab) => { setTab(t); setShowLcForm(false); setShowFxForm(false); };
 
   /* ── Create LC ──────────────────────────────────────────────────────────── */
-  const handleCreateLc = async () => {
+  const createLcMutation = useCreateLetterOfCredit();
+
+  const handleCreateLc = () => {
     if (!activeCompany) return;
     if (!lcNumber || !lcSupplier || !lcBank || !lcAmount) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/letters-of-credit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: activeCompany.slug,
-          lcNumber, supplier: lcSupplier, bank: lcBank,
-          amount: parseFloat(lcAmount), currency: lcCurrency,
-          issueDate: lcIssueDate, expiryDate: lcExpiryDate, status: "issued",
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء الاعتماد"); }
-      toast.success("تم إنشاء الاعتماد المستندي");
-      setShowLcForm(false); resetLcForm(); loadLcs();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء الاعتماد"); }
+    createLcMutation.mutate(
+      {
+        companySlug: activeCompany.slug,
+        lcNumber, supplier: lcSupplier, bank: lcBank,
+        amount: parseFloat(lcAmount), currency: lcCurrency,
+        issueDate: lcIssueDate, expiryDate: lcExpiryDate, status: "issued",
+      },
+      {
+        onSuccess: () => { toast.success("تم إنشاء الاعتماد المستندي"); setShowLcForm(false); resetLcForm(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الاعتماد"); },
+      },
+    );
   };
 
   const resetLcForm = () => { setLcNumber(""); setLcSupplier(""); setLcBank(""); setLcAmount(""); setLcCurrency("KWD"); setLcIssueDate(""); setLcExpiryDate(""); };
 
   /* ── Create FX Revaluation ─────────────────────────────────────────────── */
-  const handleCreateFx = async () => {
+  const createFxMutation = useCreateFXRevaluation();
+
+  const handleCreateFx = () => {
     if (!activeCompany) return;
     if (!fxRate) { toast.error("يرجى إدخال سعر الصرف"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/fx-revaluation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: activeCompany.slug,
-          fromCurrency: fxFrom, toCurrency: fxTo,
-          rate: parseFloat(fxRate), period: fxPeriod,
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل حساب تقييم العملات"); }
-      toast.success("تم حساب تقييم العملات");
-      setShowFxForm(false); resetFxForm(); loadFx();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر حساب تقييم العملات"); }
+    createFxMutation.mutate(
+      {
+        companySlug: activeCompany.slug,
+        fromCurrency: fxFrom, toCurrency: fxTo,
+        rate: parseFloat(fxRate), period: fxPeriod,
+      },
+      {
+        onSuccess: () => { toast.success("تم حساب تقييم العملات"); setShowFxForm(false); resetFxForm(); },
+        onError: (err) => { toast.error(err.message || "تعذّر حساب تقييم العملات"); },
+      },
+    );
   };
 
   const resetFxForm = () => { setFxFrom("USD"); setFxTo("KWD"); setFxRate(""); setFxPeriod("Q1"); };

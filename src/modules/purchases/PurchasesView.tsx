@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { usePurchases, useDeletePurchase, useCreatePurchase } from "@/hooks/queries";
+import type { CreatePurchasePayload } from "@/hooks/queries/dashboard";
 import { toast } from "sonner";
-import { Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { Plus, ShoppingCart, Trash2, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -20,30 +21,14 @@ const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 export function PurchasesView() {
   const { activeCompany } = useBrand();
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = usePurchases(activeCompany?.slug || "");
+  const deleteMutation = useDeletePurchase();
+
+  const purchases: Purchase[] = (data?.purchases ?? []) as unknown as Purchase[];
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/purchases?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) {
-        setPurchases((await res.json()).purchases || []);
-        setCurrentPage(1);
-        setSelectedIds(new Set());
-      } else toast.error("تعذّر تحميل فواتير الشراء");
-    } catch { toast.error("تعذّر تحميل فواتير الشراء"); }
-    finally { setLoading(false); }
-  }, [activeCompany]);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(purchases.length / PAGE_SIZE));
   const pagePurchases = purchases.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -61,6 +46,7 @@ export function PurchasesView() {
       return next;
     });
   };
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`حذف ${selectedIds.size} فاتورة شراء؟`)) return;
@@ -68,31 +54,26 @@ export function PurchasesView() {
     let okCount = 0, failCount = 0;
     for (const id of selectedIds) {
       try {
-        const res = await authedFetch(`/api/purchases/${id}`, { method: "DELETE" });
-        if (res.ok) okCount++; else failCount++;
+        await deleteMutation.mutateAsync(id);
+        okCount++;
       } catch { failCount++; }
     }
     setBulkDeleting(false);
     setSelectedIds(new Set());
     if (okCount > 0) toast.success(`تم حذف ${okCount} فاتورة شراء`);
     if (failCount > 0) toast.error(`تعذّر حذف ${failCount} فاتورة شراء`);
-    load();
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!confirm("حذف فاتورة الشراء؟")) return;
-    try {
-      const res = await authedFetch(`/api/purchases/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success("تم الحذف"); load(); }
-      else {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "تعذّر الحذف");
-      }
-    } catch { toast.error("تعذّر الحذف"); }
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast.success("تم الحذف"),
+      onError: (err) => toast.error(err.message || "تعذّر الحذف"),
+    });
   };
 
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
-  if (showForm) return <PurchaseForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />;
+  if (showForm) return <PurchaseForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); refetch(); }} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -112,7 +93,7 @@ export function PurchasesView() {
       )}
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {loading ? <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : purchases.length === 0 ? (
+        {isLoading ? <div className="p-8 md:p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : purchases.length === 0 ? (
           <div className="p-8 md:p-12 text-center text-muted-foreground"><ShoppingCart size={36} className="opacity-30 mb-2" /><div>لا توجد فواتير شراء بعد</div></div>
         ) : (
           <>
@@ -144,7 +125,7 @@ export function PurchasesView() {
                       <td className="px-3 py-2.5">{p.items?.length || 0}</td>
                       <td className="px-3 py-2.5">{p.totalQty}</td>
                       <td className="px-3 py-2.5">
-                        <button onClick={() => handleDelete(p.id)} title="حذف" className="w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center"><Trash2 size={14} /></button>
+                        <button onClick={() => handleDelete(p.id)} title="حذف" disabled={deleteMutation.isPending && deleteMutation.variables === p.id} className="w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center disabled:opacity-50"><Trash2 size={14} /></button>
                       </td>
                     </tr>
                   );
@@ -190,12 +171,12 @@ export function PurchasesView() {
 }
 
 function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+  const createMutation = useCreatePurchase();
   const [num, setNum] = useState(`PUR-${Date.now().toString().slice(-6)}`);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [supplier, setSupplier] = useState("");
   const [items, setItems] = useState<PurchaseItem[]>([{ description: "", qty: 1, price: 0 }]);
   const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const updateItem = (i: number, field: keyof PurchaseItem, value: string | number) => {
     setItems((arr) => arr.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
@@ -205,18 +186,18 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
 
   const submit = async () => {
     if (!num) { toast.error("الرقم مطلوب"); return; }
-    setSaving(true);
     try {
-      const res = await authedFetch("/api/purchases", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ num, date, supplier, items: items.filter((it) => it.description), notes, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createMutation.mutateAsync({
+        num, date, supplier,
+        items: items.filter((it) => it.description),
+        notes, companySlug: company.slug,
+      } as unknown as CreatePurchasePayload);
       toast.success("تم إنشاء فاتورة الشراء");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
   };
+
+  const saving = createMutation.isPending;
 
   return (
     <div className="flex flex-col gap-4">

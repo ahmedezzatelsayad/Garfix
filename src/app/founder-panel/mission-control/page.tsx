@@ -1,76 +1,15 @@
 /**
  * /founder-panel/mission-control — AI Mission Control Dashboard
  *
- * ═══════════════════════════════════════════════════════════════════════════
- * ARCHITECTURAL CHANGE (v12.1):
- *
- * This is now a CLIENT COMPONENT that fetches data from the API route:
- *   GET /api/founder-panel/mission-control
- *
- * WHY: The previous Server Component version executed Prisma queries at
- * module level, causing Next.js to attempt database connections during
- * `next build`. This failed in CI/CD with "Error code 14: Unable to open
- * the database file" because no database exists during build.
- *
- * BENEFITS:
- * ✅ No Prisma imports in this file (build-safe)
- * ✅ Data fetched at runtime only (client-side fetch)
- * ✅ Can implement real-time polling without full page refresh
- * ✅ Build succeeds even without database available
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * DATA SOURCES (now via API):
- *
- *   Companies Online  → db.companyRuntime.count WHERE status='active'
- *   Workers           → db.companyRuntime.aggregate SUM(workerPoolSize)
- *   Queues            → db.jobQueue.count GROUP BY status
- *   Queue Delay       → db.aIRequestLog.aggregate AVG(latencyMs)
- *   AI Calls/sec      → db.aIRequestLog.count (last 60s) / 60
- *   Cascade %         → db.aIRequestLog.groupBy resolvedBy
- *   AI Saved          → cost-optimizer.getPlatformSavings()
- *   Gross Margin      → derived from revenue - cost
- *   Provider Health   → db.aIModelRegistry WHERE isEnabled=true
- *   Token Rate        → db.aIRequestLog.aggregate SUM(tokensUsed) (last hour)
- * ═══════════════════════════════════════════════════════════════════════════
+ * Uses TanStack Query (useMissionControl) with refetchInterval: 10s
+ * for real-time polling. No raw fetch() or useState/useEffect patterns.
  */
 
 "use client";
 
-// Surgical fix: requires auth + client-side data fetching + 10s polling — must be dynamic to avoid SSG failure
-export const dynamic = "force-dynamic";
-
-import { useState, useEffect, useCallback } from "react";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface MissionControlData {
-  companiesOnline: number;
-  totalWorkers: number;
-  workerMap: Record<string, number>;
-  queueDepths: Record<string, number>;
-  totalQueueDepth: number;
-  avgLatencyMs: number | null;
-  aiCallsPerSec: number;
-  callsPerMinute5m: number;
-  cascadePcts: Record<string, number>;
-  savingsToday: { savedUsd: number; savingsPct: number } | null;
-  savingsMonthly: { savedUsd: number; savingsPct: number } | null;
-  grossMarginPct: number | null;
-  providerHealthCount: number;
-  tokenRateLastHour: number | null;
-  timestamp: string;
-}
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const PLAN_REVENUE_MONTHLY_USD: Record<string, number> = {
-  trial: 0,
-  starter: 29,
-  business: 99,
-  enterprise: 299,
-};
-
-const POLLING_INTERVAL_MS = 10000; // Refresh every 10 seconds
+import { useMissionControl } from "@/hooks/queries/founder-panel";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 // ─── Helper Components ─────────────────────────────────────────────────────
 
@@ -141,65 +80,8 @@ function StatusBadge({ status }: { status: "online" | "offline" | "degraded" }) 
 // ─── Main Page Component ───────────────────────────────────────────────────
 
 export default function MissionControlPage() {
-  const [data, setData] = useState<MissionControlData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  // Fetch data from API (returns data without setting state — pure function)
-  const fetchMissionData = useCallback(async (): Promise<MissionControlData> => {
-    const response = await fetch("/api/founder-panel/mission-control");
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return response.json();
-  }, []);
-
-  // State updater (can be called from anywhere)
-  const updateData = useCallback((result: MissionControlData) => {
-    setData(result);
-    setLastUpdated(new Date(result.timestamp));
-    setLoading(false);
-    setError(null);
-  }, []);
-
-  const handleError = useCallback((err: unknown) => {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[mission-control] Failed to fetch data:", err);
-    setError(message);
-    setLoading(false);
-  }, []);
-
-  // Polling effect — subscribes to external system, calls setState in callback
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const result = await fetchMissionData();
-        updateData(result); // setState in async callback, not sync in effect body
-      } catch (err) {
-        handleError(err);
-      }
-    };
-
-    // Initial fetch + set up interval
-    poll();
-    const intervalId = setInterval(poll, POLLING_INTERVAL_MS);
-
-    return () => clearInterval(intervalId);
-  }, [fetchMissionData, updateData, handleError]);
-
-  // Manual refresh handler (for button click)
-  const handleRefresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await fetchMissionData();
-      updateData(result);
-    } catch (err) {
-      handleError(err);
-    }
-  }, [fetchMissionData, updateData, handleError]);
+  const { data, isLoading, error, refetch } = useMissionControl();
+  const lastUpdated = data?.timestamp ? new Date(data.timestamp) : null;
 
   // Format helpers
   const formatNumber = (n: number | null | undefined): string => {
@@ -217,7 +99,7 @@ export default function MissionControlPage() {
   };
 
   // Loading state
-  if (loading && !data) {
+  if (isLoading && !data) {
     return (
       <main className="min-h-screen bg-gray-950 p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
@@ -235,13 +117,9 @@ export default function MissionControlPage() {
         <div className="text-center max-w-md">
           <div className="text-red-400 text-6xl mb-4">⚠</div>
           <h1 className="text-xl font-bold text-white mb-2">Connection Error</h1>
-          <p className="text-gray-400 mb-4">{error}</p>
+          <p className="text-gray-400 mb-4">{error?.message ?? "Unknown error"}</p>
           <button
-            onClick={() => {
-              setLoading(true);
-              setError(null);
-              handleRefresh();
-            }}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
             Retry Connection
@@ -273,7 +151,7 @@ export default function MissionControlPage() {
               </span>
             )}
             <button
-              onClick={handleRefresh}
+              onClick={() => refetch()}
               className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm transition-colors"
             >
               ↻ Refresh
@@ -438,7 +316,7 @@ export default function MissionControlPage() {
         {/* Footer */}
         <footer className="mt-8 pt-4 border-t border-gray-800 text-center">
           <p className="text-xs text-gray-600 font-mono">
-            GarfiX EOS v12.0 — Mission Control Dashboard • Auto-refreshes every {POLLING_INTERVAL_MS / 1000}s
+            GarfiX EOS v12.0 — Mission Control Dashboard • Auto-refreshes every 10s
           </p>
         </footer>
       </div>

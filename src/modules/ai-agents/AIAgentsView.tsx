@@ -20,10 +20,10 @@
  *   POST /api/ai/agents               → { ok, inScope, agentName, response, allowedIntents }
  *      body: { agentType, message, companySlug }
  */
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { useAIAgents, useAIAgentMessage } from "@/hooks/queries";
 import { Bot, Send, User, Loader2, Sparkles, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -66,27 +66,23 @@ export function AIAgentsView() {
   const [loadingAgents, setLoadingAgents] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Load the agent list from the API (so new agents added to lib/aiAgents.ts
-  // appear automatically without a front-end rebuild).
+  // Load the agent list using TanStack Query hook
+  const agentsQuery = useAIAgents(activeCompany?.slug ?? "");
+  const apiAgents = agentsQuery.data?.agents;
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await authedFetch("/api/ai/agents");
-        if (!res.ok) { setLoadingAgents(false); return; }
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data.agents) && data.agents.length > 0) {
-          setAgents(data.agents);
-          setSelectedAgent(data.agents[0].type);
-        }
-      } catch {
-        // keep fallback
-      } finally {
-        if (!cancelled) setLoadingAgents(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    if (apiAgents && apiAgents.length > 0) {
+      setAgents(apiAgents.map((a) => ({
+        type: a.type,
+        name: a.name,
+        nameAr: (a as Record<string, unknown>).nameAr as string ?? a.name,
+        icon: (a as Record<string, unknown>).icon as string ?? "🤖",
+        allowedIntents: (a as Record<string, unknown>).allowedIntents as string[] ?? [],
+      })));
+      setSelectedAgent(apiAgents[0].type);
+    }
+    setLoadingAgents(!agentsQuery.isLoading && !agentsQuery.data);
+  }, [apiAgents, agentsQuery.isLoading]);
 
   // Reset chat when switching agent
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -103,7 +99,9 @@ export function AIAgentsView() {
     }
   }, [turns, sending]);
 
-  const send = useCallback(async () => {
+  const agentMessageMutation = useAIAgentMessage();
+
+  const send = useCallback(() => {
     if (!activeCompany) { toast.error("اختر شركة أولاً"); return; }
     const message = input.trim();
     if (!message || sending) return;
@@ -111,40 +109,32 @@ export function AIAgentsView() {
     setTurns((prev) => [...prev, userTurn]);
     setInput("");
     setSending(true);
-    try {
-      const res = await authedFetch("/api/ai/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agentType: selectedAgent,
-          message,
-          companySlug: activeCompany.slug,
-        }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر إرسال الرسالة");
-      }
-      const data = await res.json();
-      const assistantTurn: ChatTurn = {
-        role: "assistant",
-        content: data.response || "(لا توجد إجابة)",
-        inScope: data.inScope,
-        agentName: data.agentName,
-        allowedIntents: data.allowedIntents,
-        ts: Date.now(),
-      };
-      setTurns((prev) => [...prev, assistantTurn]);
-    } catch (err) {
-      const errTurn: ChatTurn = {
-        role: "assistant",
-        content: `⚠️ ${err instanceof Error ? err.message : "خطأ أثناء الاتصال بالوكيل"}`,
-        ts: Date.now(),
-      };
-      setTurns((prev) => [...prev, errTurn]);
-    } finally {
-      setSending(false);
-    }
+    agentMessageMutation.mutate(
+      { agentType: selectedAgent, message, companySlug: activeCompany.slug },
+      {
+        onSuccess: (data) => {
+          const assistantTurn: ChatTurn = {
+            role: "assistant",
+            content: data.response || "(لا توجد إجابة)",
+            inScope: data.inScope,
+            agentName: data.agentName,
+            allowedIntents: data.allowedIntents,
+            ts: Date.now(),
+          };
+          setTurns((prev) => [...prev, assistantTurn]);
+          setSending(false);
+        },
+        onError: (err) => {
+          const errTurn: ChatTurn = {
+            role: "assistant",
+            content: `⚠️ ${err.message || "خطأ أثناء الاتصال بالوكيل"}`,
+            ts: Date.now(),
+          };
+          setTurns((prev) => [...prev, errTurn]);
+          setSending(false);
+        },
+      },
+    );
   }, [activeCompany, input, selectedAgent, sending]);
 
   const currentAgent = agents.find((a) => a.type === selectedAgent) || agents[0];

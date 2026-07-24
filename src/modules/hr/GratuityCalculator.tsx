@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Loader2, Calculator, Calendar, AlertTriangle, Info, Coins, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useGratuity } from "@/hooks/queries";
 
 interface Employee {
   id: number;
@@ -64,7 +64,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
   const [employeeId, setEmployeeId] = useState<number | null>(null);
   const today = new Date().toISOString().slice(0, 10);
   const [endDate, setEndDate] = useState(today);
-  const [calculating, setCalculating] = useState(false);
+  const gratuityMutation = useGratuity();
   const [result, setResult] = useState<GratuityResponse | null>(null);
 
   const selectedEmployee = employees.find((e) => e.id === employeeId) || null;
@@ -74,30 +74,25 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
       toast.error("اختر موظفاً أولاً");
       return;
     }
-    setCalculating(true);
     try {
-      const res = await authedFetch("/api/hr/gratuity", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, endDate }),
-      });
-      const json = (await res.json()) as GratuityResponse & { error?: string };
-      if (!res.ok) {
-        throw new Error(json.error || "تعذّر حساب المكافأة");
-      }
-      setResult(json);
-      if (!json.eligible) {
-        toast.warning(json.message || "الموظف غير مؤهل");
+      const data = (await gratuityMutation.mutateAsync({
+        employeeId,
+        endDate,
+        companySlug: "", // companySlug handled by mutation context
+      })) as unknown as GratuityResponse & { error?: string };
+      setResult(data);
+      if (!data.eligible) {
+        toast.warning(data.message || "الموظف غير مؤهل");
       } else {
-        toast.success(`مكافأة نهاية الخدمة: ${fmt(json.gratuity?.gratuityAmount || 0)}`);
+        toast.success(`مكافأة نهاية الخدمة: ${fmt(data.gratuity?.gratuityAmount || 0)}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
       setResult(null);
-    } finally {
-      setCalculating(false);
     }
   };
+
+  const calculating = gratuityMutation.isPending;
 
   return (
     <div className="flex flex-col gap-4">

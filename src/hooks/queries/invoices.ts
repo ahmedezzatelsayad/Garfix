@@ -46,15 +46,26 @@ export interface Invoice {
 /** Payload for creating a new invoice. */
 export interface CreateInvoicePayload {
   invoiceNumber: string;
-  clientId: number;
+  clientId?: number;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
   issueDate: string;
   dueDate: string;
   status?: string;
-  subtotal: number;
-  taxAmount: number;
-  total: number;
+  subtotal?: number;
+  taxAmount?: number;
+  total?: number;
   companySlug: string;
   items?: Omit<InvoiceItem, "id">[];
+  lineItems?: Omit<InvoiceItem, "id">[];
+  taxRate?: number;
+  shipping?: number;
+  discount?: number;
+  notes?: string;
+  expectedVersion?: number;
+  [key: string]: unknown;
 }
 
 /** Payload for updating an existing invoice. */
@@ -97,6 +108,10 @@ interface InvoiceListResponse {
 /** Response shape for a single invoice endpoint. */
 interface InvoiceResponse {
   invoice: Invoice;
+  /** Review-queue warnings returned when creating a new invoice. */
+  reviewQueueWarnings?: string[];
+  /** Inventory oversell warnings returned when creating a new invoice. */
+  warnings?: string[];
 }
 
 // ─── Query Hooks ────────────────────────────────────────────────────────────

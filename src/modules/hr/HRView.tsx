@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import {
+  useEmployees, useAttendance, useSalaries, useCommissions,
+  useLeaves, usePerformanceReviews,
+  useDeleteEmployee, useDeleteAttendance, useDeleteSalary,
+  useDeleteCommission, useDeleteLeave, useDeletePerformance,
+  useCreateEmployee, useUpdateEmployee,
+  useCreateAttendance, useUpdateAttendance,
+  useCreateSalary, useUpdateSalary,
+  useCreateCommission, useUpdateCommission,
+  useCreateLeave, useUpdateLeave,
+  useCreatePerformance, useUpdatePerformance,
+} from "@/hooks/queries";
 import { toast } from "sonner";
 import { Plus, Trash2, UserCog, Pencil } from "lucide-react";
 import { GratuityCalculator } from "./GratuityCalculator";
@@ -19,26 +30,7 @@ import type {
   TableShared,
 } from "./types";
 import { PAGE_SIZE, DELETE_PATH, TAB_META } from "./types";
-// TODO: Full migration to TanStack Query hooks (useEmployees, useAttendance, etc.)
-// useHRData was a legacy module-level hook — replaced with individual query hooks
-// For now, using inline stub to maintain compatibility
-function useHRData() {
-  // Stub: will be replaced with TanStack Query hooks in next sprint
-  return {
-    activeTab: "employees" as Tab,
-    setActiveTab: (_: Tab) => {},
-    employees: [] as Employee[],
-    attendance: [] as Attendance[],
-    salaries: [] as Salary[],
-    commissions: [] as Commission[],
-    leaves: [] as LeaveRequest[],
-    performances: [] as Performance[],
-    loading: true,
-    loadAll: async () => {},
-    handleDelete: async (_: string, _: number) => {},
-    handleBulkDelete: async (_: string, _: number[]) => {},
-  };
-}
+
 
 // ─── Style constants ────────────────────────────────────────────────────────
 
@@ -55,20 +47,32 @@ const actionsCell = "flex items-center gap-1.5";
 
 export function HRView() {
   const { activeCompany } = useBrand();
-  const {
-    activeTab: tab,
-    setActiveTab,
-    employees,
-    attendance,
-    salaries,
-    commissions,
-    leaves,
-    performances,
-    loading,
-    loadAll,
-    handleDelete,
-    handleBulkDelete,
-  } = useHRData();
+  const companySlug = activeCompany?.slug || "";
+
+  // TanStack Query hooks replace the stub useHRData
+  const employeesQuery = useEmployees(companySlug);
+  const attendanceQuery = useAttendance(companySlug);
+  const salariesQuery = useSalaries(companySlug);
+  const commissionsQuery = useCommissions(companySlug);
+  const leavesQuery = useLeaves(companySlug);
+  const performanceQuery = usePerformanceReviews(companySlug);
+
+  const deleteEmployeeMutation = useDeleteEmployee();
+  const deleteAttendanceMutation = useDeleteAttendance();
+  const deleteSalaryMutation = useDeleteSalary();
+  const deleteCommissionMutation = useDeleteCommission();
+  const deleteLeaveMutation = useDeleteLeave();
+  const deletePerformanceMutation = useDeletePerformance();
+
+  const employees = (employeesQuery.data as any)?.employees ?? [] as Employee[];
+  const attendance = (attendanceQuery.data as any)?.attendance ?? [] as Attendance[];
+  const salaries = (salariesQuery.data as any)?.salaries ?? [] as Salary[];
+  const commissions = (commissionsQuery.data as any)?.commissions ?? [] as Commission[];
+  const leaves = (leavesQuery.data as any)?.leaves ?? [] as LeaveRequest[];
+  const performances = (performanceQuery.data as any)?.performance ?? [] as Performance[];
+  const loading = employeesQuery.isLoading;
+
+  const [tab, setTab] = useState<Tab>("employees");
 
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<HREditItem | null>(null);
@@ -79,7 +83,7 @@ export function HRView() {
   // ─── Tab switch ───────────────────────────────────────────────────────
 
   const switchTab = (t: Tab) => {
-    setActiveTab(t);
+    setTab(t);
     setShowForm(false);
     setEditingItem(null);
     setSelectedIds(new Set());
@@ -98,7 +102,29 @@ export function HRView() {
     setEditingItem(null);
   };
 
-  // ─── Items for current tab ────────────────────────────────────────────
+  // ─── Delete handlers ────────────────────────────────────────────────
+  const handleDelete = (id: number) => {
+    const mutationMap: Record<string, any> = {
+      employees: deleteEmployeeMutation,
+      attendance: deleteAttendanceMutation,
+      salaries: deleteSalaryMutation,
+      commissions: deleteCommissionMutation,
+      leaves: deleteLeaveMutation,
+      performance: deletePerformanceMutation,
+    };
+    const mutation = mutationMap[tab];
+    if (!mutation) return;
+    mutation.mutate(id, {
+      onSuccess: () => toast.success("تم الحذف"),
+      onError: (err: any) => toast.error(err.message || "خطأ في الحذف"),
+    });
+  };
+
+  const handleBulkDelete = async (ids: Set<number>) => {
+    for (const id of ids) {
+      handleDelete(id);
+    }
+  };
 
   const itemsForTab = (): Array<{ id: number }> => {
     switch (tab) {
@@ -199,7 +225,7 @@ export function HRView() {
           employees={employees}
           editItem={editingItem}
           onClose={closeForm}
-          onSaved={() => { closeForm(); loadAll(); }}
+          onSaved={closeForm}
         />
       ) : (
         <>
@@ -551,46 +577,62 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   const [overallScore, setOverallScore] = useState<number>(editPerformance?.overallScore ?? 80);
   const [rating, setRating] = useState<string>(editPerformance?.rating || "جيد");
 
+  const createEmployeeMutation = useCreateEmployee();
+  const updateEmployeeMutation = useUpdateEmployee();
+  const createAttendanceMutation = useCreateAttendance();
+  const updateAttendanceMutation = useUpdateAttendance();
+  const createSalaryMutation = useCreateSalary();
+  const updateSalaryMutation = useUpdateSalary();
+  const createCommissionMutation = useCreateCommission();
+  const updateCommissionMutation = useUpdateCommission();
+  const createLeaveMutation = useCreateLeave();
+  const updateLeaveMutation = useUpdateLeave();
+  const createPerformanceMutation = useCreatePerformance();
+  const updatePerformanceMutation = useUpdatePerformance();
+
   const submit = async () => {
+    if ((tab !== "employees") && !employeeId) {
+      toast.error("اختر موظفاً");
+      return;
+    }
     setSaving(true);
     try {
-      let endpoint = "";
-      let payload: Record<string, unknown> = { companySlug: company.slug };
       if (tab === "employees") {
-        endpoint = "/api/hr/employees";
-        payload = { ...payload, name: empName_, position, department, baseSalary, phone, email, currency: "KWD" };
+        if (isEditing) {
+          await updateEmployeeMutation.mutateAsync({ id: editId!, name: empName_, position, department, salary: baseSalary, phone, email, currency: "KWD" });
+        } else {
+          await createEmployeeMutation.mutateAsync({ name: empName_, position, department, salary: baseSalary, phone, email, currency: "KWD", companySlug: company.slug });
+        }
       } else if (tab === "attendance") {
-        endpoint = "/api/hr/attendance";
-        payload = { ...payload, employeeId, date, status, checkIn, checkOut };
+        if (isEditing) {
+          await updateAttendanceMutation.mutateAsync({ id: editId!, date, status, checkIn, checkOut });
+        } else {
+          await createAttendanceMutation.mutateAsync({ employeeId: employeeId!, date, status, checkIn, checkOut, companySlug: company.slug });
+        }
       } else if (tab === "salaries") {
-        endpoint = "/api/hr/salaries";
-        payload = { ...payload, employeeId, month, baseSalary, allowances, deductions, bonus, isPaid };
+        if (isEditing) {
+          await updateSalaryMutation.mutateAsync({ id: editId!, month, baseSalary, deductions, allowances, bonus, isPaid });
+        } else {
+          await createSalaryMutation.mutateAsync({ employeeId: employeeId!, month, baseSalary, deductions, netSalary: baseSalary - deductions + allowances + bonus, allowances, bonus, isPaid, companySlug: company.slug });
+        }
       } else if (tab === "commissions") {
-        endpoint = "/api/hr/commissions";
-        payload = { ...payload, employeeId, date, type: commissionType, description, amount: commissionAmount, isPaid };
+        if (isEditing) {
+          await updateCommissionMutation.mutateAsync({ id: editId!, type: commissionType, description, amount: commissionAmount, isPaid });
+        } else {
+          await createCommissionMutation.mutateAsync({ employeeId: employeeId!, date, type: commissionType, description, amount: commissionAmount, isPaid, companySlug: company.slug });
+        }
       } else if (tab === "leaves") {
-        endpoint = "/api/hr/leaves";
-        payload = { ...payload, employeeId, type: leaveType, startDate, endDate, days };
+        if (isEditing) {
+          await updateLeaveMutation.mutateAsync({ id: editId!, type: leaveType, startDate, endDate, days });
+        } else {
+          await createLeaveMutation.mutateAsync({ employeeId: employeeId!, type: leaveType, startDate, endDate, status: "pending", days, companySlug: company.slug });
+        }
       } else if (tab === "performance") {
-        endpoint = "/api/hr/performance";
-        payload = { ...payload, employeeId, period, kpiScore, overallScore, rating };
-      }
-      if ((tab !== "employees") && !employeeId) {
-        toast.error("اختر موظفاً");
-        setSaving(false);
-        return;
-      }
-      const url = isEditing ? `${endpoint}/${editId}` : endpoint;
-      const method = isEditing ? "PATCH" : "POST";
-      const finalPayload = isEditing ? { ...payload, companySlug: undefined } : payload;
-      Object.keys(finalPayload).forEach((k) => finalPayload[k] === undefined && delete finalPayload[k]);
-      const res = await authedFetch(url, {
-        method, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(finalPayload),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "Failed");
+        if (isEditing) {
+          await updatePerformanceMutation.mutateAsync({ id: editId!, period, rating: kpiScore, notes: rating });
+        } else {
+          await createPerformanceMutation.mutateAsync({ employeeId: employeeId!, period, rating: kpiScore, notes: rating, kpiScore, overallScore, companySlug: company.slug });
+        }
       }
       toast.success(isEditing ? "تم التحديث بنجاح" : "تم الحفظ بنجاح");
       onSaved();

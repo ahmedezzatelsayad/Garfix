@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useAuth, authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
+import { useAuditLogLimited, useChangePassword, useUpdateSaasUser } from "@/hooks/queries";
 import { User, Lock, Moon, Sun, Activity, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +17,6 @@ export function AccountView() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
-  const [activities, setActivities] = useState<Array<Record<string, unknown>>>([]);
-  const [loadingActivities, setLoadingActivities] = useState(true);
 
   // Sync displayName when user changes (render-time adjustment, no cascading render).
   const [prevUser, setPrevUser] = useState(user);
@@ -26,65 +25,50 @@ export function AccountView() {
     if (user) setDisplayName(user.displayName);
   }
 
-  const loadActivities = useCallback(async () => {
-    try {
-      const res = await authedFetch("/api/audit?limit=10");
-      if (res.ok) {
-        const data = await res.json();
-        setActivities(data.logs || []);
-      } else {
-        // P2 fix (Phase 2 audit): previously silently swallowed non-OK responses,
-        // leaving the user staring at "لا توجد نشاطات" even when the request failed.
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "تعذّر تحميل النشاطات");
-      }
-    } catch {
-      toast.error("تعذّر الاتصال بالخادم");
-    } finally { setLoadingActivities(false); }
-  }, []);
-  
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadActivities(); }, [loadActivities]);
+  const { data: auditData, isLoading: loadingActivities } = useAuditLogLimited(10);
+  const activities = auditData?.logs ?? [];
 
-  const saveProfile = async () => {
+  const updateSaasUser = useUpdateSaasUser();
+
+  const saveProfile = () => {
+    if (!user?.uid) return;
     setSavingProfile(true);
-    try {
-      const res = await authedFetch(`/api/saas/users/${user?.uid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName }),
-      });
-      // P2 fix (Phase 2 audit): previously threw a generic "Failed" error which
-      // the catch block turned into "فشل الحفظ" — losing the server-side reason
-      // (e.g. "يمكنك تعديل اسمك فقط" or "User not found"). Now we surface it.
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed");
-      }
-      toast.success("تم حفظ البيانات");
-      await refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "فشل الحفظ");
-    }
-    finally { setSavingProfile(false); }
+    updateSaasUser.mutate(
+      { uid: user.uid, displayName },
+      {
+        onSuccess: async () => {
+          toast.success("تم حفظ البيانات");
+          await refresh();
+          setSavingProfile(false);
+        },
+        onError: (err) => {
+          toast.error(err.message || "فشل الحفظ");
+          setSavingProfile(false);
+        },
+      },
+    );
   };
 
-  const changePassword = async () => {
+  const changePasswordMutation = useChangePassword();
+
+  const changePassword = () => {
     if (newPassword !== confirmPassword) { toast.error("كلمتا المرور غير متطابقتين"); return; }
     if (newPassword.length < 8) { toast.error("كلمة المرور يجب أن تكون 8 أحرف على الأقل"); return; }
     setSavingPassword(true);
-    try {
-      const res = await authedFetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      toast.success("تم تغيير كلمة المرور");
-      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSavingPassword(false); }
+    changePasswordMutation.mutate(
+      { currentPassword, newPassword },
+      {
+        onSuccess: () => {
+          toast.success("تم تغيير كلمة المرور");
+          setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+          setSavingPassword(false);
+        },
+        onError: (err) => {
+          toast.error(err.message || "خطأ");
+          setSavingPassword(false);
+        },
+      },
+    );
   };
 
   if (!user) return null;

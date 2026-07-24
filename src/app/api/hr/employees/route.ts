@@ -47,9 +47,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
-  const allEmployees = await db.employee.findMany({ where, ...pagination });
+  const allEmployees: any[] = await db.employee.findMany({ where, ...pagination });
 
-  const { items: employees, nextCursor } = buildCursorResponse(allEmployees, limit);
+  const { items, nextCursor } = buildCursorResponse(allEmployees, limit);
+  const employees: any[] = items;
 
   return NextResponse.json({
     employees: employees.map((e) => ({

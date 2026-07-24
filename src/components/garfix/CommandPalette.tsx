@@ -7,7 +7,7 @@ import {
   Plus, Sparkles, User, CornerDownLeft, ArrowUp, ArrowDown, X, Boxes,
 } from "lucide-react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { useInvoices, useClients } from "@/hooks/queries";
 
 export interface CommandPaletteProps {
   open: boolean;
@@ -103,11 +103,18 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { activeCompany } = useBrand();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [invoiceHits, setInvoiceHits] = useState<InvoiceHit[]>([]);
-  const [clientHits, setClientHits] = useState<ClientHit[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // ─── TanStack Query search (only for >=2 chars) ───────────────────────
+  const searchQuery = query.trim();
+  const searchActive = open && searchQuery.length >= 2 && !!activeCompany?.slug;
+  const slug = activeCompany?.slug || "";
+  const invoiceQuery = useInvoices(slug, searchActive ? searchQuery : undefined);
+  const clientQuery = useClients(slug, searchActive ? searchQuery : undefined);
+  const loading = (searchActive && (invoiceQuery.isLoading || clientQuery.isLoading));
+  const invoiceHits: InvoiceHit[] = (invoiceQuery.data?.invoices || []).slice(0, 5);
+  const clientHits: ClientHit[] = (clientQuery.data?.clients || []).slice(0, 5);
 
   // Reset internal state when the palette opens (render-time adjustment, no cascading render).
   const [prevOpen, setPrevOpen] = useState(open);
@@ -116,8 +123,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     if (open) {
       setQuery("");
       setSelectedIndex(0);
-      setInvoiceHits([]);
-      setClientHits([]);
     }
   }
 
@@ -127,51 +132,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }, [open]);
-
-  // ─── Debounced search against API (only for >=2 chars) ───────────────────
-  // Sync state adjustments when search conditions change (render-time, no cascading render).
-  const searchQuery = query.trim();
-  const searchActive = open && searchQuery.length >= 2 && !!activeCompany?.slug;
-  const searchKey = `${open ? 1 : 0}|${searchQuery}|${activeCompany?.slug || ""}`;
-  const [prevSearchKey, setPrevSearchKey] = useState(searchKey);
-  if (searchKey !== prevSearchKey) {
-    setPrevSearchKey(searchKey);
-    if (!searchActive) {
-      setInvoiceHits([]);
-      setClientHits([]);
-      setLoading(false);
-    } else {
-      setLoading(true);
-    }
-  }
-
-  useEffect(() => {
-    if (!searchActive || !activeCompany?.slug) return;
-    const slug = activeCompany.slug;
-    const q = searchQuery;
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      try {
-        const [invRes, cliRes] = await Promise.all([
-          authedFetch(`/api/invoices?companySlug=${encodeURIComponent(slug)}&search=${encodeURIComponent(q)}&limit=5`),
-          authedFetch(`/api/clients?companySlug=${encodeURIComponent(slug)}&search=${encodeURIComponent(q)}`),
-        ]);
-        if (cancelled) return;
-        const inv = invRes.ok ? await invRes.json() : { invoices: [] };
-        const cli = cliRes.ok ? await cliRes.json() : { clients: [] };
-        setInvoiceHits((inv.invoices || []).slice(0, 5));
-        setClientHits((cli.clients || []).slice(0, 5));
-      } catch {
-        if (!cancelled) {
-          setInvoiceHits([]);
-          setClientHits([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }, 220);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [searchActive, searchQuery, activeCompany]);
 
   const navigate = useCallback((hash: string, eventDetail?: { type: string }) => {
     window.location.hash = hash;

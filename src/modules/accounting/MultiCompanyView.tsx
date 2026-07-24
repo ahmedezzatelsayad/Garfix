@@ -1,10 +1,13 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useInterCompany, useCreateInterCompany, useSettleInterCompany,
+  useCreateConsolidation,
+} from "@/hooks/queries";
 import {
   Building2, ArrowRightLeft, Plus, X, CheckCircle2, Scale,
   Calendar, FileText, DollarSign, TrendingUp, ChevronDown,
@@ -48,28 +51,16 @@ const STATUS_LABELS: Record<string, string> = { settled: "مسوى", pending: "�
 export function MultiCompanyView() {
   const { activeCompany, companies } = useBrand();
   const [tab, setTab] = useState<Tab>("consolidation");
-  const [interCompanyTxs, setInterCompanyTxs] = useState<InterCompanyTx[]>([]);
-  const [loading, setLoading] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [consResult, setConsResult] = useState<ConsolidationResult | null>(null);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadInterCompany = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/inter-company?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setInterCompanyTxs(d.transactions || []); }
-      else setInterCompanyTxs([]);
-    } catch { setInterCompanyTxs([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "inter-company") loadInterCompany();
-  }, [tab, loadInterCompany]);
+  // TanStack Query hooks for data fetching
+  const interCompanyQuery = useInterCompany(slug);
+  const interCompanyTxs = interCompanyQuery.data?.transactions ?? [];
+  const loading = tab === "inter-company" ? interCompanyQuery.isLoading : false;
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -97,7 +88,7 @@ export function MultiCompanyView() {
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "consolidation" ? (
         <ConsolidationView companies={companies} result={consResult} setResult={setConsResult} activeCompany={activeCompany} />
       ) : tab === "inter-company" ? (
-        showForm ? <InterCompanyForm companies={companies} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadInterCompany(); }} /> : <InterCompanyView transactions={interCompanyTxs} company={activeCompany} onRefresh={loadInterCompany} />
+        showForm ? <InterCompanyForm companies={companies} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); interCompanyQuery.refetch(); }} /> : <InterCompanyView transactions={interCompanyTxs} company={activeCompany} onRefresh={() => interCompanyQuery.refetch()} />
       ) : null}
     </div>
   );
@@ -112,6 +103,7 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
   const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set([activeCompany.slug]));
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
   const [running, setRunning] = useState(false);
+  const consolidationMutation = useCreateConsolidation();
 
   const toggleCompany = (slug: string) => {
     setSelectedSlugs(prev => {
@@ -122,21 +114,16 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
     });
   };
 
-  const handleConsolidate = async () => {
+  const handleConsolidate = () => {
     if (selectedSlugs.size < 2) { toast.error("اختر至少 2 شركات"); return; }
     setRunning(true);
-    try {
-      const res = await authedFetch("/api/accounting/consolidation", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlugs: Array.from(selectedSlugs), asOfDate, companySlug: activeCompany.slug }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setResult(d as ConsolidationResult);
-        toast.success("تم التوحيد");
-      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر التوحيد"); }
-    } catch { toast.error("خطأ"); }
-    finally { setRunning(false); }
+    consolidationMutation.mutate(
+      { companySlugs: Array.from(selectedSlugs), asOfDate, companySlug: activeCompany.slug },
+      {
+        onSuccess: (data) => { setResult(data); toast.success("تم التوحيد"); setRunning(false); },
+        onError: (err) => { toast.error(err.message || "تعذّر التوحيد"); setRunning(false); },
+      },
+    );
   };
 
   return (
@@ -215,15 +202,17 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
 /* ─── Inter-Company ─────────────────────────────────── */
 function InterCompanyView({ transactions, company, onRefresh }: { transactions: InterCompanyTx[]; company: { slug: string }; onRefresh: () => void }) {
   const [settlingId, setSettlingId] = useState<number | null>(null);
+  const settleMutation = useSettleInterCompany();
 
-  const handleSettle = async (id: number) => {
+  const handleSettle = (id: number) => {
     setSettlingId(id);
-    try {
-      const res = await authedFetch(`/api/accounting/inter-company/${id}/settle?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
-      if (res.ok) { toast.success("تم التسوية"); onRefresh(); }
-      else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر التسوية"); }
-    } catch { toast.error("خطأ"); }
-    finally { setSettlingId(null); }
+    settleMutation.mutate(
+      { id, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم التسوية"); setSettlingId(null); onRefresh(); },
+        onError: (err) => { toast.error(err.message || "تعذّر التسوية"); setSettlingId(null); },
+      },
+    );
   };
 
   return (
@@ -274,20 +263,19 @@ function InterCompanyForm({ companies, company, onClose, onSaved }: {
   const [type, setType] = useState("loan");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
+  const createInterCompanyMutation = useCreateInterCompany();
 
-  const submit = async () => {
+  const submit = () => {
     if (!fromCompany || !toCompany || amount <= 0) { toast.error("جميع الحقول مطلوبة"); return; }
     if (fromCompany === toCompany) { toast.error("الشركات يجب أن تكون مختلفة"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/inter-company", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromCompany, toCompany, amount, currency, description, type, date, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string || "Failed"); }
-      toast.success("تم إنشاء التسوية"); onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createInterCompanyMutation.mutate(
+      { fromCompany, toCompany, amount, currency, description, type, date, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إنشاء التسوية"); setSaving(false); onSaved(); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   const companyLabel = (slug: string) => {

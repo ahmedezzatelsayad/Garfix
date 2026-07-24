@@ -1,6 +1,7 @@
 "use client";
 
 import { EnhancedLandingPage } from "./EnhancedLandingPage";
+import { useLandingContent } from "@/hooks/queries";
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -37,19 +38,8 @@ import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 function LegacyLandingPage({ onLogin, onRegister }: LandingPageProps) {
   const cvsRef = useRef<HTMLCanvasElement>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
-  const [content, setContent] = useState<Record<string, any> | null>(null);
-
-  useEffect(() => {
-    fetch("/api/landing-content")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch landing content");
-        return res.json();
-      })
-      .then((data) => setContent(data))
-      .catch(() => {
-        // Graceful fallback — keep content as null so hardcoded defaults are used
-      });
-  }, []);
+  const landingQuery = useLandingContent();
+  const content = landingQuery.data as Record<string, any> | null;
 
   useEffect(() => {
     const c = cvsRef.current;

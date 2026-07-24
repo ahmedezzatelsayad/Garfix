@@ -1,10 +1,15 @@
 /**
  * DataTable — Reusable table component with search, pagination, and responsive layout.
+ *
+ * Uses TanStack Query for data fetching via the apiGet helper. The query key
+ * includes the fetchUrl, params, search text, and page size so cache is
+ * correctly scoped per request.
  */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet, ApiError } from "@/hooks/api-client";
 import { Search, ChevronLeft, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,53 +43,42 @@ export function DataTable({
   emptyMessage = "لا توجد بيانات",
   actions,
 }: DataTableProps) {
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Extract fetchParams serialization to a stable primitive so it can be used in dependency arrays.
+  // Debounce search input
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  // Extract fetchParams serialization to a stable primitive for query key
   const fetchParamsKey = JSON.stringify(fetchParams);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Use TanStack Query for data fetching
+  const { data, isLoading, refetch } = useQuery<Record<string, unknown>, ApiError>({
+    queryKey: ["datatable", fetchUrl, fetchParamsKey, debouncedSearch, pageSize],
+    queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(fetchParams).forEach(([k, v]) => {
         if (v !== undefined && v !== null) params.set(k, String(v));
       });
-      if (search && searchFields.length > 0) params.set("search", search);
+      if (debouncedSearch && searchFields.length > 0) params.set("search", debouncedSearch);
       params.set("limit", String(pageSize));
 
-      const res = await authedFetch(`${fetchUrl}?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const newRows = data.rows || data.invoices || data.clients || data.products || data.employees || data.logs || data.tenants || data.users || data.tickets || data.announcements || data.entries || data.accounts || data.notifications || data.backups || data.companies || data.salaries || data.attendance || data.commissions || data.leaves || data.performance || [];
-        const newTotal = data.total ?? data.totalCount ?? null;
-        setRows(newRows);
-        setHasMore(newRows.length === pageSize);
-        setTotalCount(newTotal);
-      }
-    } catch (err) {
-      console.error("[DataTable] fetch failed:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchUrl, fetchParamsKey, search, searchFields, pageSize]);
+      return apiGet<Record<string, unknown>>(`${fetchUrl}?${params.toString()}`);
+    },
+  });
 
-  useEffect(() => {
-    // setState runs inside async .then() callback in fetchData (after await authedFetch) — not synchronous in effect body; no cascading render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData();
-  }, [fetchUrl, fetchParamsKey, fetchData]);
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchData(), 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, fetchData]);
+  // Derive rows from the response data
+  const rows: Record<string, unknown>[] = (data
+    ? (data.rows || data.invoices || data.clients || data.products || data.employees || data.logs || data.tenants || data.users || data.tickets || data.announcements || data.entries || data.accounts || data.notifications || data.backups || data.companies || data.salaries || data.attendance || data.commissions || data.leaves || data.performance || []) as Record<string, unknown>[]
+    : []);
+  const totalCount = (data?.total ?? data?.totalCount ?? null) as number | null;
+  const hasMore = rows.length === pageSize;
+  const loading = isLoading && rows.length === 0;
 
   const inputClass = "w-full py-2 pr-9 pl-3 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none";
   const thClass = "text-end px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold";
@@ -144,8 +138,8 @@ export function DataTable({
             <span>{rows.length} {totalCount ? `من ${totalCount}` : ""} سجل</span>
             {hasMore && (
               <button
-                onClick={fetchData}
-                disabled={loading}
+                onClick={() => refetch()}
+                disabled={isLoading}
                 className="inline-flex items-center gap-1 py-1.5 px-3.5 rounded-lg bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] font-inherit text-xs font-bold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? "..." : "تحميل المزيد"} {!loading && <ChevronLeft size={12} />}

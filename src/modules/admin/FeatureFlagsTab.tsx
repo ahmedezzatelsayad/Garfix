@@ -1,52 +1,42 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Sparkles, Plus, X, Check, Trash2 } from "lucide-react";
 import { IconBtn } from "./shared-helpers";
+import {
+  usePlatformFeatureFlags,
+  useCreatePlatformFeatureFlag,
+  useUpdatePlatformFeatureFlag,
+  useDeletePlatformFeatureFlag,
+} from "@/hooks/queries";
+import type { PlatformFeatureFlag } from "@/hooks/queries/platform-admin";
 
 /**
  * Admin P2 — Feature Flags tab.
- * Wires the previously-orphaned /api/platform-admin/feature-flags (GET/POST)
- * and /api/platform-admin/feature-flags/[id] (PATCH/DELETE) endpoints into
- * a founder-facing UI. Lets the founder toggle platform-wide features on/off,
- * scope them to specific plans, and create new flags.
+ * Wires the /api/platform-admin/feature-flags endpoints into a
+ * founder-facing UI via TanStack Query. Lets the founder toggle
+ * platform-wide features on/off, scope them to specific plans,
+ * and create new flags.
  */
 export function FeatureFlagsTab() {
-  const [flags, setFlags] = useState<Array<{
+  const flagsQuery = usePlatformFeatureFlags();
+  const createMutation = useCreatePlatformFeatureFlag();
+  const updateMutation = useUpdatePlatformFeatureFlag();
+  const deleteMutation = useDeletePlatformFeatureFlag();
+
+  const flags = (flagsQuery.data as unknown as Array<{
     id: number; key: string; label: string; description: string | null;
     plans: string[]; isActive: boolean; createdAt: string; updatedAt: string;
-  }>>([]);
-  const [loading, setLoading] = useState(true);
+  }>) || [];
+  const loading = flagsQuery.isLoading;
   const [showForm, setShowForm] = useState(false);
   const [newFlag, setNewFlag] = useState({ key: "", label: "", description: "", plans: "", isActive: true });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/platform-admin/feature-flags");
-      const data = await res.json();
-      if (res.ok) setFlags(data.flags || []);
-      else toast.error(data.error || "تعذّر التحميل");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
-
   const toggle = async (id: number, currentActive: boolean) => {
     try {
-      const res = await authedFetch(`/api/platform-admin/feature-flags/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !currentActive }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await updateMutation.mutateAsync({ id, isActive: !currentActive });
       toast.success(!currentActive ? "تم تفعيل الميزة" : "تم إيقاف الميزة");
-      load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     }
@@ -55,10 +45,8 @@ export function FeatureFlagsTab() {
   const remove = async (id: number) => {
     if (!confirm("حذف هذه الميزة نهائياً؟")) return;
     try {
-      const res = await authedFetch(`/api/platform-admin/feature-flags/${id}`, { method: "DELETE" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await deleteMutation.mutateAsync({ id });
       toast.success("تم الحذف");
-      load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     }
@@ -67,22 +55,16 @@ export function FeatureFlagsTab() {
   const create = async () => {
     if (!newFlag.key || !newFlag.label) { toast.error("المفتاح والتسمية مطلوبان"); return; }
     try {
-      const res = await authedFetch("/api/platform-admin/feature-flags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: newFlag.key,
-          label: newFlag.label,
-          description: newFlag.description || undefined,
-          plans: newFlag.plans.split(",").map((s) => s.trim()).filter(Boolean),
-          isActive: newFlag.isActive,
-        }),
+      await createMutation.mutateAsync({
+        key: newFlag.key,
+        name: newFlag.label,
+        description: newFlag.description || undefined,
+        enabled: newFlag.isActive,
+        plans: newFlag.plans.split(",").map((s) => s.trim()).filter(Boolean),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
       toast.success("تم إنشاء الميزة");
       setNewFlag({ key: "", label: "", description: "", plans: "", isActive: true });
       setShowForm(false);
-      load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     }

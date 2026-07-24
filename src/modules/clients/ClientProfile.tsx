@@ -12,8 +12,8 @@
  *
  * Takes a `clientId` prop. Rendered by ClientsView when a row is clicked.
  */
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState, useEffect } from "react";
+import { useClientProfile, useEntityMemoryNotes, useCreateEntityMemoryNote, useDeleteAIMemory } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   ArrowRight, User, Mail, Phone, MapPin, StickyNote, FileText, Wallet,
@@ -103,118 +103,52 @@ const thStyle = "text-start px-2.5 sm:px-3 py-2.5 text-[11px] text-muted-foregro
 const tdStyle = "px-2.5 sm:px-3 py-2.5 align-middle";
 
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
-  const [client, setClient] = useState<ClientInfo | null>(null);
-  const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: profileData, isLoading: loading, error: profileError } = useClientProfile(clientId);
+  const { data: notesData, isLoading: loadingNotes } = useEntityMemoryNotes(
+    profileData?.client?.companySlug || "", "client", clientId
+  );
+  const createNoteMutation = useCreateEntityMemoryNote();
+  const deleteNoteMutation = useDeleteAIMemory();
 
-  // ─── Item 4: AI Memory Notes state ───────────────────────────────────
-  const [memoryNotes, setMemoryNotes] = useState<AIMemoryNote[]>([]);
+  const client = (profileData?.client ?? null) as ClientInfo | null;
+  const invoices = ((profileData as Record<string, unknown> | undefined)?.invoices ?? []) as InvoiceRow[];
+  const summary = ((profileData as Record<string, unknown> | undefined)?.summary ?? null) as Summary | null;
+  const memoryNotes = (notesData?.notes ?? []) as AIMemoryNote[];
+
   const [newNote, setNewNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-  const [loadingNotes, setLoadingNotes] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<number | null>(null);
 
-  const loadMemoryNotes = useCallback(async (slug: string, id: number) => {
-    setLoadingNotes(true);
-    try {
-      const res = await authedFetch(
-        `/api/ai/memory?companySlug=${encodeURIComponent(slug)}&entityType=client&entityId=${id}`,
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setMemoryNotes(Array.isArray(data.notes) ? data.notes : []);
-      } else {
-        setMemoryNotes([]);
-      }
-    } catch {
-      setMemoryNotes([]);
-    } finally {
-      setLoadingNotes(false);
-    }
-  }, []);
+  // Handle 404 / 403 errors from the profile query — navigate back
+  useEffect(() => {
+    const status = (profileError as any)?.status;
+    if (status === 404) { toast.error("العميل غير موجود"); onBack(); }
+    else if (status === 403) { toast.error("ليس لديك صلاحية لعرض هذا العميل"); onBack(); }
+  }, [profileError, onBack]);
 
-  const addMemoryNote = async () => {
+  const addMemoryNote = () => {
     if (!client) return;
     const note = newNote.trim();
     if (!note) { toast.error("اكتب نص الملاحظة أولًا"); return; }
     if (note.length > 4000) { toast.error("النص طويل جداً (الحد 4000 حرف)"); return; }
-    setSavingNote(true);
-    try {
-      const res = await authedFetch("/api/ai/memory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: client.companySlug,
-          entityType: "client",
-          entityId: client.id,
-          note,
-        }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر الحفظ");
-      }
-      const data = await res.json();
-      if (data.note) {
-        setMemoryNotes((prev) => [data.note, ...prev]);
-      }
-      setNewNote("");
-      toast.success("تم حفظ الملاحظة");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally {
-      setSavingNote(false);
-    }
+    createNoteMutation.mutate(
+      { companySlug: client.companySlug, entityType: "client", entityId: client.id, note },
+      {
+        onSuccess: () => { setNewNote(""); toast.success("تم حفظ الملاحظة"); },
+        onError: (err) => { toast.error(err.message || "خطأ"); },
+      },
+    );
   };
 
-  const deleteMemoryNote = async (noteId: number) => {
+  const deleteMemoryNote = (noteId: number) => {
     if (!client) return;
     if (!confirm("حذف هذه الملاحظة؟")) return;
     setDeletingNoteId(noteId);
-    try {
-      const res = await authedFetch(`/api/ai/memory/${noteId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر الحذف");
-      }
-      setMemoryNotes((prev) => prev.filter((n) => n.id !== noteId));
-      toast.success("تم حذف الملاحظة");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally {
-      setDeletingNoteId(null);
-    }
+    deleteNoteMutation.mutate(noteId, {
+      onSuccess: () => { toast.success("تم حذف الملاحظة"); },
+      onError: (err) => { toast.error(err.message || "خطأ"); },
+      onSettled: () => { setDeletingNoteId(null); },
+    });
   };
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/clients/${clientId}/profile`);
-      if (res.ok) {
-        const data = await res.json();
-        setClient(data.client);
-        setInvoices(data.invoices || []);
-        setSummary(data.summary || null);
-        if (data.client?.companySlug && data.client?.id) {
-          loadMemoryNotes(data.client.companySlug, data.client.id);
-        }
-      } else if (res.status === 404) {
-        toast.error("العميل غير موجود");
-        onBack();
-      } else if (res.status === 403) {
-        toast.error("ليس لديك صلاحية لعرض هذا العميل");
-        onBack();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "تعذّر تحميل الملف");
-      }
-    } finally { setLoading(false); }
-  }, [clientId, onBack, loadMemoryNotes]);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return (
@@ -479,11 +413,11 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </span>
               <button
                 onClick={addMemoryNote}
-                disabled={savingNote || !newNote.trim()}
+                disabled={createNoteMutation.isPending || !newNote.trim()}
                 className="inline-flex items-center gap-1.5 py-2 px-3.5 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {savingNote ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                {savingNote ? "جارٍ الحفظ…" : "إضافة ملاحظة"}
+                {createNoteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {createNoteMutation.isPending ? "جارٍ الحفظ…" : "إضافة ملاحظة"}
               </button>
             </div>
           </div>

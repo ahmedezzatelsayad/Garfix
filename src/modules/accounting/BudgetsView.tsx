@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useBudgets, useCreateBudget, useApproveBudget, useReviseBudget,
+  useBudgetVsActual, usePeriodComparison,
+} from "@/hooks/queries";
 import {
   Plus, X, PieChart, BarChart3, TrendingUp, TrendingDown,
   CheckCircle2, RotateCcw, DollarSign, Calendar, ArrowRightLeft,
@@ -41,10 +44,6 @@ function Empty({ label }: { label: string }) {
 export function BudgetsView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("budgets");
-  const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
-  const [vsActual, setVsActual] = useState<BudgetVsActualRow[]>([]);
-  const [comparisons, setComparisons] = useState<PeriodComparison[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   /* Filters */
@@ -57,99 +56,72 @@ export function BudgetsView() {
   const [budgetAccountId, setBudgetAccountId] = useState("");
   const [budgetPlanned, setBudgetPlanned] = useState("");
 
-  const slug = activeCompany ? `companySlug=${encodeURIComponent(activeCompany.slug)}` : "";
+  const slug = activeCompany ? activeCompany.slug : "";
 
-  const loadBudgets = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/budgets?${slug}&fiscalYear=${fiscalYear}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل الموازنات"); }
-      const d = await res.json();
-      setBudgets(d.budgets || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل الموازنات");
-      setBudgets([]);
-    } finally { setLoading(false); }
-  }, [activeCompany, slug, fiscalYear]);
+  // TanStack Query hooks for data fetching
+  const budgetsQuery = useBudgets(slug, fiscalYear);
+  const vsActualQuery = useBudgetVsActual(slug, fiscalYear, periodName);
+  const comparisonQuery = usePeriodComparison(slug, compPeriods);
 
-  const loadVsActual = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/budget-vs-actual?${slug}&fiscalYear=${fiscalYear}&periodName=${periodName}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل المقارنة"); }
-      const d = await res.json();
-      setVsActual(d.rows || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحليل الموازنة مقابل الفعلي");
-      setVsActual([]);
-    } finally { setLoading(false); }
-  }, [activeCompany, slug, fiscalYear, periodName]);
+  const budgets = budgetsQuery.data?.budgets ?? [];
+  const vsActual = vsActualQuery.data?.rows ?? [];
+  const comparisons = comparisonQuery.data?.comparisons ?? [];
+  const loading = (tab === "budgets" && budgetsQuery.isLoading) || (tab === "vs-actual" && vsActualQuery.isLoading) || (tab === "comparison" && comparisonQuery.isLoading);
 
-  const loadComparison = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/period-comparison?${slug}&periods=${encodeURIComponent(compPeriods)}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل المقارنة"); }
-      const d = await res.json();
-      setComparisons(d.comparisons || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر مقارنة الفترات");
-      setComparisons([]);
-    } finally { setLoading(false); }
-  }, [activeCompany, slug, compPeriods]);
+  // Error toasts for failed queries
+  if (tab === "budgets" && budgetsQuery.error) toast.error(budgetsQuery.error.message || "تعذّر تحميل الموازنات");
+  if (tab === "vs-actual" && vsActualQuery.error) toast.error(vsActualQuery.error.message || "تعذّر تحليل الموازنة مقابل الفعلي");
+  if (tab === "comparison" && comparisonQuery.error) toast.error(comparisonQuery.error.message || "تعذّر مقارنة الفترات");
 
-  useEffect(() => {
-    if (tab === "budgets" && activeCompany) loadBudgets();
-    if (tab === "vs-actual" && activeCompany) loadVsActual();
-    if (tab === "comparison" && activeCompany) loadComparison();
-  }, [tab, activeCompany, loadBudgets, loadVsActual, loadComparison]);
+  const createBudgetMutation = useCreateBudget();
+  const approveBudgetMutation = useApproveBudget();
+  const reviseBudgetMutation = useReviseBudget();
 
   const switchTab = (t: Tab) => { setTab(t); setShowForm(false); };
 
   /* ── Create Budget ──────────────────────────────────────────────────────── */
-  const handleCreateBudget = async () => {
+  const handleCreateBudget = () => {
     if (!activeCompany) return;
     if (!budgetAccountId || !budgetPlanned) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/budgets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: activeCompany.slug,
-          accountId: parseInt(budgetAccountId),
-          plannedAmount: parseFloat(budgetPlanned),
-          fiscalYear: parseInt(fiscalYear),
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إنشاء الموازنة"); }
-      toast.success("تم إنشاء بند الموازنة");
-      setShowForm(false); setBudgetAccountId(""); setBudgetPlanned(""); loadBudgets();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إنشاء الموازنة"); }
+    createBudgetMutation.mutate(
+      {
+        companySlug: activeCompany.slug,
+        accountId: parseInt(budgetAccountId),
+        plannedAmount: parseFloat(budgetPlanned),
+        fiscalYear: parseInt(fiscalYear),
+      },
+      {
+        onSuccess: () => {
+          toast.success("تم إنشاء بند الموازنة");
+          setShowForm(false); setBudgetAccountId(""); setBudgetPlanned("");
+        },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الموازنة"); },
+      },
+    );
   };
 
   /* ── Approve Budget ─────────────────────────────────────────────────────── */
-  const handleApprove = async (id: number) => {
+  const handleApprove = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/budgets/${id}/approve?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل اعتماد الموازنة"); }
-      toast.success("تم اعتماد الموازنة");
-      loadBudgets();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر اعتماد الموازنة"); }
+    approveBudgetMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم اعتماد الموازنة"); },
+        onError: (err) => { toast.error(err.message || "تعذّر اعتماد الموازنة"); },
+      },
+    );
   };
 
   /* ── Revise Budget ──────────────────────────────────────────────────────── */
-  const handleRevise = async (id: number) => {
+  const handleRevise = (id: number) => {
     if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/budgets/${id}/revise?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل مراجعة الموازنة"); }
-      toast.success("تم إرجاع الموازنة للمراجعة");
-      loadBudgets();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر مراجعة الموازنة"); }
+    reviseBudgetMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم إرجاع الموازنة للمراجعة"); },
+        onError: (err) => { toast.error(err.message || "تعذّر مراجعة الموازنة"); },
+      },
+    );
   };
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;

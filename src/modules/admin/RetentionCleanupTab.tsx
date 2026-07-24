@@ -1,32 +1,28 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Database, Trash2, Check } from "lucide-react";
+import { useRetentionCleanup } from "@/hooks/queries";
 
 /**
  * Admin P2 — Retention Cleanup tab.
- * Wires the previously-orphaned /api/platform-admin/retention-cleanup
- * (POST) endpoint into a founder-facing UI. The endpoint only exposes
- * POST (no GET), so we use POST with dryRun=true on tab-open to show
- * what WOULD be deleted (eligible counts). The "Run cleanup now" button
- * calls POST without dryRun after a confirm() dialog.
- *
- * Behavior:
- * - Cutoff date = now - retentionYears (default 5).
- * - Deletes soft-deleted (deletedAt < cutoff) invoices, journalEntries,
- *   paymentTransactions, eInvoices, purchaseInvoices (in a transaction).
- * - Founder-only; logs to audit trail.
+ * Uses TanStack Query mutations via useRetentionCleanup for both
+ * dry-run preview and actual cleanup. The endpoint only exposes
+ * POST (no GET), so we call POST with dryRun=true on mount for preview,
+ * then POST with dryRun=false after confirm().
  */
+interface CleanupResult {
+  dryRun: boolean;
+  retentionPeriodYears: number;
+  cutoffDate: string;
+  eligible: Record<string, number>;
+  deleted?: Record<string, number>;
+}
+
 export function RetentionCleanupTab() {
-  const [preview, setPreview] = useState<null | {
-    dryRun: boolean;
-    retentionPeriodYears: number;
-    cutoffDate: string;
-    eligible: Record<string, number>;
-    deleted?: Record<string, number>;
-  }>(null);
+  const cleanupMutation = useRetentionCleanup();
+  const [preview, setPreview] = useState<CleanupResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [retentionYears, setRetentionYears] = useState(5);
@@ -34,21 +30,27 @@ export function RetentionCleanupTab() {
   const runPreview = useCallback(async (years: number) => {
     setLoading(true);
     try {
-      const res = await authedFetch("/api/platform-admin/retention-cleanup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmYears: years, dryRun: true }),
-      });
-      const d = await res.json();
-      if (res.ok) setPreview(d);
-      else toast.error(d.error || "تعذّر تحميل المعاينة");
+      const result = await cleanupMutation.mutateAsync({ confirmYears: years, dryRun: true });
+      setPreview(result as unknown as CleanupResult);
+    } catch {
+      toast.error("تعذّر تحميل المعاينة");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cleanupMutation]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { runPreview(retentionYears); }, [runPreview, retentionYears]);
+  // Run preview on mount and when years change
+  const [prevYears, setPrevYears] = useState(retentionYears);
+  if (retentionYears !== prevYears) {
+    setPrevYears(retentionYears);
+    runPreview(retentionYears);
+  }
+  // Initial load
+  const [hasInitialized, setHasInitialized] = useState(false);
+  if (!hasInitialized) {
+    setHasInitialized(true);
+    runPreview(retentionYears);
+  }
 
   const runCleanup = async () => {
     const total = preview ? Object.values(preview.eligible).reduce((a, b) => a + b, 0) : 0;
@@ -56,14 +58,9 @@ export function RetentionCleanupTab() {
     if (!confirm(`حذف نهائي لـ ${total} سجل مالي معزول منذ أكثر من ${retentionYears} سنة؟ لا يمكن التراجع.`)) return;
     setRunning(true);
     try {
-      const res = await authedFetch("/api/platform-admin/retention-cleanup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmYears: retentionYears, dryRun: false }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Failed");
-      const deletedTotal = d.deleted ? Object.values(d.deleted as Record<string, number>).reduce((a, b) => a + b, 0) : 0;
+      const result = await cleanupMutation.mutateAsync({ confirmYears: retentionYears, dryRun: false });
+      const d = result as unknown as CleanupResult;
+      const deletedTotal = d.deleted ? Object.values(d.deleted).reduce((a, b) => a + b, 0) : 0;
       toast.success(`تم حذف ${deletedTotal} سجلاً نهائياً`);
       setPreview(d);
     } catch (err) {

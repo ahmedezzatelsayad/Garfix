@@ -1,56 +1,42 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
-import { toast } from "sonner";
 import { Activity, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { KpiCard } from "./shared-helpers";
+import { useAIUsage } from "@/hooks/queries";
 
 /**
  * Admin P2 — AI Usage tab.
- * Wires the previously-orphaned /api/platform-admin/ai-usage endpoint into
- * a founder-facing dashboard. Shows totals, 30-day trend, per-company /
+ * Wires the /api/platform-admin/ai-usage endpoint into a founder-facing
+ * dashboard via TanStack Query. Shows totals, 30-day trend, per-company /
  * per-endpoint / per-model breakdowns, and recent errors.
  */
+interface AiUsageData {
+  totals: {
+    totalCalls: number; totalCost: number; totalTokensIn: number;
+    totalTokensOut: number; totalTokens: number; successCount: number; failureCount: number;
+    callsToday: number; successRate: number | null;
+  };
+  last30Days: Array<{ date: string; calls: number; cost: number }>;
+  perCompany: Array<{ companySlug: string; calls: number; cost: number; tokens: number }>;
+  perEndpoint: Array<{
+    endpoint: string; calls: number; cost: number; tokens: number;
+    successCount: number; failureCount: number; successRate: number | null;
+    p50Ms: number | null; p95Ms: number | null; minMs: number | null;
+    maxMs: number | null; avgMs: number | null;
+  }>;
+  perModel: Array<{ model: string; calls: number; cost: number; tokens: number }>;
+  perCompanyMonthly: Array<{ companySlug: string; month: string; calls: number; tokens: number; cost: number }>;
+  recentErrors: Array<{
+    id: number; companySlug: string | null; provider: string; model: string;
+    endpoint: string; errorMessage: string | null; createdAt: string;
+  }>;
+}
+
 export function AiUsageTab() {
-  const [data, setData] = useState<null | {
-    totals: {
-      totalCalls: number; totalCost: number; totalTokensIn: number;
-      totalTokensOut: number; totalTokens: number; successCount: number; failureCount: number;
-      callsToday: number; successRate: number | null;
-    };
-    last30Days: Array<{ date: string; calls: number; cost: number }>;
-    perCompany: Array<{ companySlug: string; calls: number; cost: number; tokens: number }>;
-    perEndpoint: Array<{
-      endpoint: string; calls: number; cost: number; tokens: number;
-      successCount: number; failureCount: number; successRate: number | null;
-      p50Ms: number | null; p95Ms: number | null; minMs: number | null;
-      maxMs: number | null; avgMs: number | null;
-    }>;
-    perModel: Array<{ model: string; calls: number; cost: number; tokens: number }>;
-    perCompanyMonthly: Array<{ companySlug: string; month: string; calls: number; tokens: number; cost: number }>;
-    recentErrors: Array<{
-      id: number; companySlug: string | null; provider: string; model: string;
-      endpoint: string; errorMessage: string | null; createdAt: string;
-    }>;
-  }>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/platform-admin/ai-usage");
-      const d = await res.json();
-      if (res.ok) setData(d);
-      else toast.error(d.error || "تعذّر التحميل");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const usageQuery = useAIUsage();
+  const data = usageQuery.data as AiUsageData | undefined;
+  const loading = usageQuery.isLoading;
 
   if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
   if (!data) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
@@ -73,10 +59,7 @@ export function AiUsageTab() {
         <KpiCard label="فشل" value={data.totals.failureCount} color="#ef4444" />
       </div>
 
-      {/* P0.3 (AI Effectiveness prompt): per-endpoint latency + effectiveness table.
-          This is the "فعالية العقل والوقت المستغرق" view — calls, success rate,
-          p50/p95 latency, and cost broken down by endpoint, so the founder can
-          see at a glance which AI paths are fast/reliable and which aren't. */}
+      {/* P0.3 (AI Effectiveness prompt): per-endpoint latency + effectiveness table. */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 className="text-sm font-bold flex items-center gap-2">
@@ -146,11 +129,6 @@ export function AiUsageTab() {
         <UsageTable title="حسب الموديل" rows={data.perModel.map((m) => ({ col1: m.model, col2: String(m.calls), col3: `$${m.cost.toFixed(4)}`, col4: String(m.tokens) }))} headers={["الموديل", "النداءات", "التكلفة", "الرموز"]} />
       </div>
 
-      {/*
-        GATE 4 Task 3 — per-tenant × per-month AI usage ledger.
-        Shows: tenant | month | AI calls | tokens | cost — the exact shape
-        requested in the spec. Renders above the recent-errors card.
-      */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 className="text-sm font-bold flex items-center gap-2">
