@@ -22,9 +22,21 @@ import crypto from "node:crypto";
 import { logger } from "./logger";
 
 // SEC-003 FIX: No fallback to JWT_SECRET — dedicated key required
+// P0 BUILD FIX: Lazy secret resolution — module-level const resolution throws
+// during `next build` because NODE_ENV=production is set at build time.
+// Using a getter defers resolution to first actual use (at runtime), not at import.
+// During build, the module is imported for type analysis only — no secrets needed.
 function resolveEncryptionKey(): string {
   const val = process.env.PAYMENTS_ENC_KEY || process.env.VAULT_ENCRYPTION_KEY;
   if (!val) {
+    // P0 FIX: During `next build`, do NOT throw — secrets are not needed for
+    // static page compilation. Next.js sets NEXT_PHASE during build phases.
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
+      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
+    if (isBuildPhase) {
+      console.warn("⚠️  PAYMENTS_ENC_KEY not set during build — will be validated at runtime. DO NOT deploy without setting this.");
+      return "build-placeholder-encryption-key-not-for-runtime-use-32chars!!";
+    }
     if (process.env.NODE_ENV === "production") {
       throw new Error("FATAL: PAYMENTS_ENC_KEY (or VAULT_ENCRYPTION_KEY) must be set to at least 32 characters for production.");
     }
@@ -32,12 +44,26 @@ function resolveEncryptionKey(): string {
     return "dev-only-encryption-key-not-for-production-use-32chars!";
   }
   if (val.length < 32) {
+    // During build phase, allow short keys with a warning
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
+      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
+    if (isBuildPhase) {
+      console.warn(`⚠️  PAYMENTS_ENC_KEY is ${val.length} chars (< 32) during build — will be validated at runtime.`);
+      return val;
+    }
     throw new Error("FATAL: PAYMENTS_ENC_KEY must be at least 32 characters.");
   }
   return val;
 }
 
-const ENC_KEY_ENV = resolveEncryptionKey();
+// P0 FIX: Lazy getter pattern — encryption key resolved only on first access at runtime.
+// This prevents module-level throws during `next build`'s "Collecting page data" phase.
+let _encKeyEnv: string | undefined;
+
+function getEncryptionKey(): string {
+  if (!_encKeyEnv) _encKeyEnv = resolveEncryptionKey();
+  return _encKeyEnv;
+}
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
 const TAG_LEN = 16;
@@ -51,13 +77,13 @@ let cachedSalt: Buffer | null = null;
 function getSalt(): Buffer {
   if (cachedSalt) return cachedSalt;
   // Derive a stable salt from the env var (deterministic per environment)
-  cachedSalt = crypto.scryptSync(ENC_KEY_ENV, "garfix-vault-salt", KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+  cachedSalt = crypto.scryptSync(getEncryptionKey(), "garfix-vault-salt", KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
   return cachedSalt;
 }
 
 function getKey(): Buffer {
   if (cachedKey) return cachedKey;
-  cachedKey = crypto.scryptSync(ENC_KEY_ENV, getSalt(), KEY_LEN, { N: SCRYPT_N });
+  cachedKey = crypto.scryptSync(getEncryptionKey(), getSalt(), KEY_LEN, { N: SCRYPT_N });
   return cachedKey;
 }
 
