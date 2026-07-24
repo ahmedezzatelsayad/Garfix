@@ -165,3 +165,30 @@ export function useResetPassword() {
     },
   });
 }
+
+// ─── Registration Hook ───────────────────────────────────────────────────────
+
+/** Payload for registering a new account. */
+interface RegisterPayload {
+  email: string;
+  password: string;
+  displayName: string;
+}
+
+/**
+ * Register a new user account.
+ *
+ * On success the `queryKeys.auth.me()` cache is invalidated so that
+ * `useUser()` refetches the freshly-registered profile.
+ */
+export function useRegister() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UserProfile, ApiError, RegisterPayload>({
+    mutationFn: (payload) =>
+      apiPost<RegisterPayload, UserProfile>("/api/auth/register", payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+    },
+  });
+}

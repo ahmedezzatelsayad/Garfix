@@ -151,25 +151,414 @@ export interface HealthCheckDTO {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Sprint 2 — New Domain Types
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface EmployeeDTO {
+  id: string;
+  name: string;
+  email: string;
+  department?: string;
+  position?: string;
+  companySlug: string;
+  hireDate?: string;
+  status: "active" | "terminated" | "on_leave";
+}
+
+export interface AttendanceDTO {
+  id: string;
+  employeeId: string;
+  date: string;
+  checkIn?: string;
+  checkOut?: string;
+  status: "present" | "absent" | "late" | "half_day";
+  companySlug?: string;
+}
+
+export interface SalaryDTO {
+  id: string;
+  employeeId: string;
+  baseSalary: number;
+  allowances?: number;
+  deductions?: number;
+  netSalary: number;
+  period: string;
+  status: "pending" | "processed" | "paid";
+  companySlug?: string;
+}
+
+export interface LeaveRequestDTO {
+  id: string;
+  employeeId: string;
+  type: "annual" | "sick" | "maternity" | "emergency";
+  startDate: string;
+  endDate: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  companySlug?: string;
+}
+
+export interface CommissionDTO {
+  id: string;
+  employeeId: string;
+  amount: number;
+  period: string;
+  status: "pending" | "approved" | "paid";
+  companySlug?: string;
+}
+
+export interface GratuityRecordDTO {
+  id: string;
+  employeeId: string;
+  totalGratuity: number;
+  yearsOfService: number;
+  monthlyGratuity?: number;
+  companySlug?: string;
+}
+
+export interface PlatformTenantDTO {
+  slug: string;
+  name: string;
+  plan: "starter" | "business" | "enterprise";
+  status: "active" | "trial" | "suspended" | "cancelled";
+  createdAt?: string;
+}
+
+export interface PlatformStatsDTO {
+  totalTenants: number;
+  activeTenants: number;
+  totalRevenue: number;
+  monthlyRevenue?: number;
+  aiCostMtd?: number;
+  totalRequestsMtd?: number;
+}
+
+export interface PlatformFeatureFlagDTO {
+  id: string;
+  key: string;
+  enabled: boolean;
+  description?: string;
+  rolloutPct?: number;
+}
+
+export interface AnnouncementDTO {
+  id: string;
+  title: string;
+  body: string;
+  type: "info" | "warning" | "critical";
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface TicketDTO {
+  id: string;
+  title: string;
+  description?: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  priority: "low" | "medium" | "high" | "critical";
+  category?: string;
+  tenantSlug?: string;
+  createdAt?: string;
+}
+
+export interface AIProviderDTO {
+  id: string;
+  name: string;
+  provider: "openai" | "anthropic" | "google" | "deepseek" | "openrouter";
+  modelId: string;
+  isEnabled: boolean;
+  costPer1kTokens?: number;
+  latencyMs?: number;
+}
+
+export interface DashboardStatsDTO {
+  totalRevenue: number;
+  outstanding: number;
+  totalClients: number;
+  totalInvoices: number;
+  paidCount?: number;
+  overdueCount?: number;
+}
+
+export interface NotificationDTO {
+  id: number;
+  title: string;
+  message: string;
+  read: boolean;
+  companySlug?: string;
+  type?: string;
+  createdAt?: string;
+}
+
+export interface ClientDTO {
+  id: number;
+  name: string;
+  nameAr?: string;
+  email?: string;
+  phone?: string;
+  companySlug: string;
+  balance?: number;
+}
+
+export interface InventoryItemDTO {
+  id: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  unitPrice?: number;
+  companySlug: string;
+  warehouseId?: string;
+}
+
+export interface WarehouseDTO {
+  id: string;
+  name: string;
+  location?: string;
+  companySlug: string;
+  capacity?: number;
+}
+
+export interface StockMovementDTO {
+  id: string;
+  itemId: string;
+  type: "in" | "out" | "transfer";
+  quantity: number;
+  reference?: string;
+  companySlug: string;
+  createdAt?: string;
+}
+
+export interface AutomationRuleDTO {
+  id: string;
+  name: string;
+  trigger: string;
+  action: string;
+  isActive: boolean;
+  companySlug?: string;
+  lastRunAt?: string;
+}
+
+export interface FeatureFlagDTO {
+  key: string;
+  enabled: boolean;
+  description?: string;
+  companySlug?: string;
+}
+
+export interface ModuleDTO {
+  id: string;
+  name: string;
+  enabled: boolean;
+  companySlug?: string;
+}
+
+export interface InvoiceTemplateDTO {
+  id: string;
+  name: string;
+  layout?: string;
+  companySlug: string;
+  isDefault?: boolean;
+}
+
+export interface PurchaseDTO {
+  id: number;
+  description: string;
+  amount: number;
+  date: string;
+  companySlug: string;
+  status?: "pending" | "approved" | "received" | "cancelled";
+}
+
+export interface ProductMatchConfigDTO {
+  id: string;
+  threshold: number;
+  algorithm: "fuzzy" | "exact" | "semantic";
+  companySlug: string;
+  isActive?: boolean;
+}
+
+export interface StorageObjectDTO {
+  key: string;
+  size: number;
+  contentType: string;
+  url?: string;
+  createdAt?: string;
+}
+
+export interface ReportDTO {
+  id: number;
+  title: string;
+  type: "financial" | "tax" | "audit" | "custom";
+  createdAt?: string;
+  companySlug: string;
+}
+
+export interface BackupDTO {
+  id: number;
+  filename: string;
+  size: number;
+  createdAt?: string;
+  companySlug: string;
+}
+
+export interface OnboardingStepDTO {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+  isCompleted: boolean;
+  companySlug?: string;
+}
+
+export interface StartupCheckResultDTO {
+  ok: boolean;
+  fatal: string[];
+  warnings: string[];
+  env?: Record<string, boolean>;
+}
+
+export interface ZATCAInvoiceDTO {
+  invoiceNumber: string;
+  sellerVAT: string;
+  buyerVAT?: string;
+  totalAmount: number;
+  vatAmount: number;
+  issueDate?: string;
+  status: "draft" | "submitted" | "cleared" | "rejected";
+  companySlug?: string;
+}
+
+export interface MetricPointDTO {
+  timestamp: string;
+  value: number;
+  labels?: Record<string, string>;
+}
+
+export interface SLODefinitionDTO {
+  name: string;
+  targetPct: number;
+  currentPct: number;
+  window: "7d" | "30d" | "90d";
+  status: "healthy" | "at_risk" | "breached";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // API Path Types (Contract Layer)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Maps API paths to their response types for contract testing */
 export interface APIContractMap {
   "/api/health": { GET: HealthCheckDTO };
-  "/api/startup-check": { GET: { ok: boolean; fatal: string[]; warnings: string[]; env: Record<string, boolean> } };
+  "/api/startup-check": { GET: StartupCheckResultDTO };
+  "/api/metrics": { GET: { metrics: MetricPointDTO[] } };
+  "/api/metrics/slo": { GET: { slos: SLODefinitionDTO[] } };
   "/api/auth/login": { POST: AuthResult };
+  "/api/auth/register": { POST: AuthResult };
   "/api/auth/refresh": { POST: AuthResult };
   "/api/auth/logout": { POST: { ok: boolean } };
+  "/api/auth/me": { GET: UserDTO };
+  "/api/auth/change-password": { POST: { ok: boolean } };
+  "/api/auth/forgot-password": { POST: { ok: boolean } };
+  "/api/auth/reset-password": { POST: { ok: boolean } };
   "/api/accounting/journal-entries": { GET: PaginatedResponse<VoucherDTO>; POST: VoucherDTO };
   "/api/accounting/fiscal-periods": { GET: PaginatedResponse<FinancialPeriodDTO>; POST: FinancialPeriodDTO };
+  "/api/accounting/accounts": { GET: PaginatedResponse<Record<string, unknown>> };
   "/api/accounting/balance-sheet": { GET: Record<string, unknown> };
   "/api/accounting/profit-loss": { GET: Record<string, unknown> };
+  "/api/accounting/cash-flow": { GET: Record<string, unknown> };
+  "/api/accounting/trial-balance": { GET: Record<string, unknown> };
+  "/api/accounting/dashboard": { GET: Record<string, unknown> };
+  "/api/accounting/aging": { GET: Record<string, unknown> };
+  "/api/accounting/bank-accounts": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/bank-transfer": { POST: Record<string, unknown> };
+  "/api/accounting/bank-reconciliation": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/post-dated-checks": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/installments": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/budgets": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/cost-centers": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/payroll": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/wps": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/tax-filing": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/vouchers": { GET: PaginatedResponse<VoucherDTO> };
+  "/api/accounting/quotations": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/purchase-orders": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/fixed-assets": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/depreciation": { GET: Record<string, unknown> };
+  "/api/accounting/inventory-valuation": { GET: Record<string, unknown> };
+  "/api/accounting/landed-cost": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/inter-company": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/letters-of-credit": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/fx-revaluation": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/payment-methods": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/opening-balances": { GET: Record<string, unknown> };
+  "/api/accounting/consolidation": { GET: Record<string, unknown> };
+  "/api/accounting/commissions": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/profit-distribution": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/client-statement": { GET: Record<string, unknown> };
+  "/api/accounting/supplier-statement": { GET: Record<string, unknown> };
+  "/api/accounting/budget-vs-actual": { GET: Record<string, unknown> };
+  "/api/accounting/period-comparison": { GET: Record<string, unknown> };
+  "/api/accounting/cash-flow": { GET: Record<string, unknown> };
+  "/api/accounting/export-excel": { POST: Record<string, unknown> };
+  "/api/accounting/financial-dashboard": { GET: Record<string, unknown> };
+  "/api/accounting/accounting-audit": { GET: PaginatedResponse<AuditLogDTO> };
+  "/api/accounting/filing-reminders": { GET: Record<string, unknown> };
+  "/api/accounting/initiate-payment": { POST: Record<string, unknown> };
+  "/api/accounting/verify-payment": { POST: Record<string, unknown> };
+  "/api/accounting/retention-check": { GET: Record<string, unknown> };
+  "/api/accounting/asset-disposals": { GET: PaginatedResponse<Record<string, unknown>> };
   "/api/invoices": { GET: PaginatedResponse<InvoiceDTO>; POST: InvoiceDTO };
+  "/api/invoice-templates": { GET: PaginatedResponse<InvoiceTemplateDTO> };
+  "/api/clients": { GET: PaginatedResponse<ClientDTO>; POST: ClientDTO };
   "/api/companies": { GET: PaginatedResponse<CompanyDTO>; POST: CompanyDTO };
   "/api/ai/agents": { POST: AIResponseDTO };
+  "/api/ai/chat": { POST: AIResponseDTO };
+  "/api/ai/memory": { GET: Record<string, unknown> };
+  "/api/ai/smart-parse": { POST: AIResponseDTO };
+  "/api/ai/parse-file": { POST: AIResponseDTO };
+  "/api/ai/parse-image": { POST: AIResponseDTO };
+  "/api/ai/bulk-import": { POST: Record<string, unknown> };
+  "/api/ai/invoice-brain/stats": { GET: Record<string, unknown> };
   "/api/audit": { GET: PaginatedResponse<AuditLogDTO> };
   "/api/webhooks/endpoints": { GET: PaginatedResponse<WebhookEndpointDTO>; POST: WebhookEndpointDTO };
+  "/api/webhooks/events": { GET: Record<string, unknown> };
+  "/api/webhooks/deliveries": { GET: Record<string, unknown> };
+  "/api/dashboard/stats": { GET: DashboardStatsDTO };
+  "/api/notifications": { GET: NotificationDTO[] };
+  "/api/hr/employees": { GET: PaginatedResponse<EmployeeDTO> };
+  "/api/hr/attendance": { GET: PaginatedResponse<AttendanceDTO> };
+  "/api/hr/salaries": { GET: PaginatedResponse<SalaryDTO> };
+  "/api/hr/leaves": { GET: PaginatedResponse<LeaveRequestDTO> };
+  "/api/hr/commissions": { GET: PaginatedResponse<CommissionDTO> };
+  "/api/hr/performance": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/hr/gratuity": { GET: PaginatedResponse<GratuityRecordDTO> };
+  "/api/inventory/items": { GET: PaginatedResponse<InventoryItemDTO> };
+  "/api/inventory/warehouses": { GET: PaginatedResponse<WarehouseDTO> };
+  "/api/inventory/movements": { GET: PaginatedResponse<StockMovementDTO> };
+  "/api/catalog": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/automation": { GET: PaginatedResponse<AutomationRuleDTO> };
+  "/api/feature-flags": { GET: PaginatedResponse<FeatureFlagDTO> };
+  "/api/modules": { GET: PaginatedResponse<ModuleDTO> };
+  "/api/settings": { GET: Record<string, unknown> };
+  "/api/reports": { GET: PaginatedResponse<ReportDTO> };
+  "/api/backups": { GET: PaginatedResponse<BackupDTO> };
+  "/api/purchases": { GET: PaginatedResponse<PurchaseDTO> };
+  "/api/product-matching/review": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/product-matching/config": { GET: ProductMatchConfigDTO };
+  "/api/platform-admin/tenants": { GET: PaginatedResponse<PlatformTenantDTO> };
+  "/api/platform-admin/stats": { GET: PlatformStatsDTO };
+  "/api/platform-admin/feature-flags": { GET: PaginatedResponse<PlatformFeatureFlagDTO> };
+  "/api/platform-admin/announcements": { GET: PaginatedResponse<AnnouncementDTO> };
+  "/api/platform-admin/tickets": { GET: PaginatedResponse<TicketDTO> };
+  "/api/platform-admin/ai-providers": { GET: PaginatedResponse<AIProviderDTO> };
+  "/api/platform-admin/audit": { GET: PaginatedResponse<AuditLogDTO> };
+  "/api/founder-panel/mission-control": { GET: Record<string, unknown> };
+  "/api/founder-panel/finops": { GET: Record<string, unknown> };
+  "/api/founder-panel/ai-fabric": { GET: Record<string, unknown> };
+  "/api/onboarding": { GET: PaginatedResponse<OnboardingStepDTO> };
+  "/api/permissions/roles": { GET: Record<string, unknown> };
+  "/api/permissions/catalog": { GET: Record<string, unknown> };
+  "/api/saas/payments": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/saas/users": { GET: PaginatedResponse<Record<string, unknown>> };
 }
 
 /** Type-safe API client — validates response shapes at compile time */

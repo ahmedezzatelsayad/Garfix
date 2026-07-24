@@ -1,10 +1,7 @@
-/**
- * /founder-panel/finops — FinOps Dashboard (Client Component)
- *
- * Build-safe version - fetches data from /api/founder-panel/finops
- */
-
 "use client";
+
+// Surgical fix: requires auth + client-side data fetching — must be dynamic to avoid SSG failure
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
 import {

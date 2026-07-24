@@ -620,3 +620,61 @@ export function useModules() {
     queryFn: () => apiGet<ModuleListResponse>("/api/modules"),
   });
 }
+
+// ─── Notification Mutation Hooks ──────────────────────────────────────────────
+
+/**
+ * Mark specific notifications as read.
+ *
+ * On success notification queries are invalidated.
+ */
+export function useMarkNotificationsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ ok: boolean }, ApiError, { ids: number[] }>({
+    mutationFn: (payload) =>
+      apiPost<{ ids: number[] }, { ok: boolean }>("/api/notifications", { action: "mark_read", ...payload }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.all,
+      });
+    },
+  });
+}
+
+/**
+ * Mark all notifications as read.
+ *
+ * On success notification queries are invalidated.
+ */
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ ok: boolean }, ApiError, void>({
+    mutationFn: () =>
+      apiPost<{ action: string }, { ok: boolean }>("/api/notifications", { action: "mark_all_read" }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.all,
+      });
+    },
+  });
+}
+
+// ─── Landing Content Hook ─────────────────────────────────────────────────────
+
+interface LandingContentResponse {
+  content: Record<string, unknown>;
+}
+
+/**
+ * Fetch landing page content.
+ *
+ * This replaces raw fetch in the LandingPage component.
+ */
+export function useLandingContent() {
+  return useQuery<LandingContentResponse, ApiError>({
+    queryKey: queryKeys.dashboard.all,
+    queryFn: () => apiGet<LandingContentResponse>("/api/landing-content"),
+  });
+}

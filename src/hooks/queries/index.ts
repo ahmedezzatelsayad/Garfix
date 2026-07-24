@@ -15,3 +15,7 @@ export * from "./automation";
 export * from "./ai";
 export * from "./dashboard";
 export * from "./platform-admin";
+export * from "./founder-panel";
+export * from "./product-matching";
+export * from "./catalog";
+export * from "./webhooks";

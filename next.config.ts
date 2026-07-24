@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: false,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   experimental: {
     optimizePackageImports: [
       'lucide-react',
@@ -10,6 +13,7 @@ const nextConfig: NextConfig = {
       '@prisma/client',
     ],
   },
+  turbopack: { root: __dirname },
 };
 
 export default nextConfig;

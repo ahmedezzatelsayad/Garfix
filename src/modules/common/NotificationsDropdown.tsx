@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/queries/dashboard";
 import { toast } from "sonner";
 import { Bell, X, CheckCheck, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,36 +51,27 @@ function timeAgo(iso: string): string {
 
 export function NotificationsDropdown() {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/notifications");
-      if (res.ok) {
-        const data = (await res.json()) as NotificationsResponse;
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
-    } catch {
-      // Silent fail — notification polling shouldn't toast on every error
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // TanStack Query hook replaces raw authedFetch polling
+  const { data: notificationsData, isLoading: loading } = useNotifications("");
+  const markAllReadMutation = useMarkAllNotificationsRead();
 
-  // Fetch on mount + every 60 seconds
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-    const id = window.setInterval(load, 60_000);
-    return () => window.clearInterval(id);
-  }, [load]);
+  const notifications = notificationsData?.notifications || [];
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllRead = useCallback(async () => {
+    setMarkingAll(true);
+    try {
+      await markAllReadMutation.mutateAsync();
+      toast.success("تم تعليم جميع الإشعارات كمقروءة");
+    } catch {
+      toast.error("تعذّر تحديث الإشعارات");
+    } finally {
+      setMarkingAll(false);
+    }
+  }, [markAllReadMutation]);
 
   // Close on outside click + ESC
   useEffect(() => {
@@ -100,56 +91,6 @@ export function NotificationsDropdown() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  const markAllRead = useCallback(async () => {
-    setMarkingAll(true);
-    try {
-      const res = await authedFetch("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "mark_all_read" }),
-      });
-      if (res.ok) {
-        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, readAt: new Date().toISOString() })));
-        setUnreadCount(0);
-        toast.success("تم تعليم جميع الإشعارات كمقروءة");
-      } else {
-        toast.error("تعذّر تحديث الإشعارات");
-      }
-    } catch {
-      toast.error("خطأ في الاتصال");
-    } finally {
-      setMarkingAll(false);
-    }
-  }, []);
-
-  const handleClickNotification = useCallback(async (n: Notification) => {
-    // Optimistically mark as read
-    if (!n.isRead) {
-      setNotifications((prev) =>
-        prev.map((x) => (x.id === n.id ? { ...x, isRead: true, readAt: new Date().toISOString() } : x)),
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-      try {
-        await authedFetch("/api/notifications", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "mark_read", id: n.id }),
-        });
-      } catch {
-        // ignore — already updated UI optimistically
-      }
-    }
-    setOpen(false);
-    if (n.link) {
-      // Support hash-route links (e.g. "#invoices") and full paths
-      if (n.link.startsWith("#")) {
-        window.location.hash = n.link.slice(1);
-      } else {
-        window.location.href = n.link;
-      }
-    }
-  }, []);
 
   return (
     <div ref={containerRef} className="relative">

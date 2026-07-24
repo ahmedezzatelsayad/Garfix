@@ -1,11 +1,7 @@
-/**
- * /founder-panel/ai-fabric — AI Fabric Founder Panel Dashboard
- *
- * Client Component version - fetches data from API route.
- * Build-safe: no Prisma imports, no server-side queries at module level.
- */
-
 "use client";
+
+// Surgical fix: requires auth + client-side data fetching — must be dynamic to avoid SSG failure
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
 
