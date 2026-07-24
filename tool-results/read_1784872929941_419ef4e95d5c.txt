@@ -1,0 +1,1622 @@
+     1→     1→// NOTE: Financial fields use Decimal instead of Float for production accuracy.
+     2→     2→// SQLite doesn't support Decimal, so in dev it falls back to Float-like behavior.
+     3→     3→// For PostgreSQL production, Decimal ensures exact precision (no floating-point errors).
+     4→     4→// This prevents issues like 0.1 + 0.2 = 0.30000000000000004
+     5→     5→
+     6→     6→// This is your Prisma schema file,
+     7→     7→// learn more about it in the docs: https://pris.ly/d/prisma-schema
+     8→     8→
+     9→     9→generator client {
+    10→    10→  provider = "prisma-client-js"
+    11→    11→}
+    12→    12→
+    13→    13→datasource db {
+    14→    14→  provider = "sqlite"  // Change to "postgresql" for production
+    15→    15→  url      = env("DATABASE_URL")
+    16→    16→}
+    17→    17→
+    18→    18→model User {
+    19→    19→  id        String   @id @default(cuid())
+    20→    20→  email     String   @unique
+    21→    21→  name      String?
+    22→    22→  nameAr    String?
+    23→    23→  nameEn    String?
+    24→    24→  password  String?
+    25→    25→  role      String   @default("user")
+    26→    26→  companyId String?
+    27→    27→  createdAt DateTime @default(now())
+    28→    28→  updatedAt DateTime @updatedAt
+    29→    29→  company   Company? @relation(fields: [companyId], references: [id])
+    30→    30→}
+    31→    31→
+    32→    32→model Company {
+    33→    33→  id                String   @id @default(cuid())
+    34→    34→  name              String
+    35→    35→  nameAr            String?
+    36→    36→  nameEn            String?
+    37→    37→  code              String   @unique @default(cuid())
+    38→    38→  slug              String   @unique @default("default-slug")
+    39→    39→  plan              String   @default("trial")
+    40→    40→  subscriptionStatus String  @default("inactive")
+    41→    41→  currency          String   @default("USD")
+    42→    42→  currencyDecimalPlaces Int  @default(3)
+    43→    43→  taxId             String?
+    44→    44→  vatNumber         String?
+    45→    45→  country           String   @default("KW")
+    46→    46→  address           String?
+    47→    47→  deletedAt         DateTime?
+    48→    48→  createdAt         DateTime @default(now())
+    49→    49→  updatedAt         DateTime @updatedAt
+    50→    50→  users             User[]
+    51→    51→  accounts          Account[]
+    52→    52→  clients           Client[]
+    53→    53→  suppliers         Supplier[]
+    54→    54→  vouchers          Voucher[]
+    55→    55→  paymentVouchers   PaymentVoucher[]
+    56→    56→  openingBalances   OpeningBalance[]
+    57→    57→  profitDistributions ProfitDistribution[]
+    58→    58→  lettersOfCredit   LetterOfCredit[]
+    59→    59→  productCatalogs   ProductCatalog[]
+    60→    60→  inventoryItems    InventoryItem[]
+    61→    61→  financialPeriods  FinancialPeriod[]
+    62→    62→  companyRuntime    CompanyRuntime?
+    63→    63→}
+    64→    64→
+    65→    65→// ─── Chart of Accounts ───
+    66→    66→
+    67→    67→model Account {
+    68→    68→  id          Int      @id @default(autoincrement())
+    69→    69→  code        String
+    70→    70→  name        String
+    71→    71→  nameAr      String?
+    72→    72→  nameEn      String?
+    73→    73→  type        String   // asset, liability, equity, revenue, expense, contra_asset
+    74→    74→  parentId    Int?
+    75→    75→  companySlug String   @default("default")
+    76→    76→  companyId   String?
+    77→    77→  isActive    Boolean  @default(true)
+    78→    78→  version     Int      @default(0) // P0-8: Optimistic locking / row versioning for balance updates
+    79→    79→  createdAt   DateTime @default(now())
+    80→    80→  updatedAt   DateTime @updatedAt
+    81→    81→  company     Company? @relation(fields: [companyId], references: [id])
+    82→    82→  parent      Account? @relation("AccountHierarchy", fields: [parentId], references: [id])
+    83→    83→  children    Account[] @relation("AccountHierarchy")
+    84→    84→  openingBalances      OpeningBalance[]
+    85→    85→  voucherLines         VoucherLine[]
+    86→    86→  bankAccounts         BankAccount[]
+    87→    87→  fixedAssetsGl        FixedAsset[] @relation("FixedAssetGL")
+    88→    88→  fixedAssetsDep       FixedAsset[] @relation("FixedAssetDep")
+    89→    89→  fixedAssetsExp       FixedAsset[] @relation("FixedAssetExp")
+    90→    90→  journalEntryLines    JournalEntryLine[] @relation("JELAccount")
+    91→    91→  openingBalanceEntries OpeningBalanceEntry[]
+    92→    92→  budgetItems          Budget[]
+    93→    93→  @@unique([code, companySlug])
+    94→    94→}
+    95→    95→
+    96→    96→// ─── Clients (Accounts Receivable) ───
+    97→    97→
+    98→    98→model Client {
+    99→    99→  id          Int      @id @default(autoincrement())
+   100→   100→  name        String
+   101→   101→  nameEn      String?
+   102→   102→  code        String   @default("")
+   103→   103→  email       String?
+   104→   104→  phone       String?
+   105→   105→  address     String?
+   106→   106→  taxId       String?
+   107→   107→  companySlug String   @default("default")
+   108→   108→  companyId   String?
+   109→   109→  isActive    Boolean  @default(true)
+   110→   110→  deletedAt   DateTime?
+   111→   111→  createdAt   DateTime @default(now())
+   112→   112→  updatedAt   DateTime @updatedAt
+   113→   113→  company     Company? @relation(fields: [companyId], references: [id])
+   114→   114→  paymentVouchers PaymentVoucher[]
+   115→   115→  quotations      Quotation[]
+   116→   116→  invoices        Invoice[]
+   117→   117→}
+   118→   118→
+   119→   119→// ─── Suppliers (Accounts Payable) ───
+   120→   120→
+   121→   121→
+   122→   122→model Supplier {
+   123→   123→  id          Int      @id @default(autoincrement())
+   124→   124→  name        String
+   125→   125→  nameEn      String?
+   126→   126→  code        String
+   127→   127→  email       String?
+   128→   128→  phone       String?
+   129→   129→  address     String?
+   130→   130→  taxId       String?
+   131→   131→  companySlug String   @default("default")
+   132→   132→  companyId   String?
+   133→   133→  isActive    Boolean  @default(true)
+   134→   134→  deletedAt   DateTime?
+   135→   135→  createdAt   DateTime @default(now())
+   136→   136→  updatedAt   DateTime @updatedAt
+   137→   137→  company     Company? @relation(fields: [companyId], references: [id])
+   138→   138→  paymentVouchers PaymentVoucher[]
+   139→   139→  lettersOfCredit  LetterOfCredit[]
+   140→   140→  purchaseOrders   PurchaseOrder[]
+   141→   141→  purchaseInvoices PurchaseInvoice[]
+   142→   142→  @@unique([code, companySlug])
+   143→   143→}
+   144→   144→
+   145→   145→// ─── Product Catalog ───
+   146→   146→
+   147→   147→model ProductCatalog {
+   148→   148→  id            Int      @id @default(autoincrement())
+   149→   149→  name          String
+   150→   150→  nameAr        String?
+   151→   151→  nameEn        String?
+   152→   152→  sku           String   @default("")
+   153→   153→  code          String?
+   154→   154→  category      String?
+   155→   155→  purchasePrice String   @default("0.000") // stored as string for Decimal precision
+   156→   156→  sellingPrice  String   @default("0.000")
+   157→   157→  unit          String   @default("piece")
+   158→   158→  description   String?
+   159→   159→  companySlug   String   @default("default")
+   160→   160→  companyId     String?
+   161→   161→  isActive      Boolean  @default(true)
+   162→   162→  createdAt     DateTime @default(now())
+   163→   163→  updatedAt     DateTime @updatedAt
+   164→   164→  company       Company? @relation(fields: [companyId], references: [id])
+   165→   165→  inventoryItems InventoryItem[]
+   166→   166→  aliases       ProductAlias[]
+   167→   167→}
+   168→   168→
+   169→   169→// ─── Inventory Items ───
+   170→   170→
+   171→   171→model InventoryItem {
+   172→   172→  id            Int      @id @default(autoincrement())
+   173→   173→  productId     Int
+   174→   174→  quantity      String   @default("0")
+   175→   175→  reorderLevel  String   @default("0")
+   176→   176→  warehouseId   Int?
+   177→   177→  warehouse     String?
+   178→   178→  batchNumber   String?
+   179→   179→  expiryDate    DateTime?
+   180→   180→  companySlug   String   @default("default")
+   181→   181→  companyId     String?
+   182→   182→  createdAt     DateTime @default(now())
+   183→   183→  updatedAt     DateTime @updatedAt
+   184→   184→  product       ProductCatalog @relation(fields: [productId], references: [id])
+   185→   185→  company       Company?  @relation(fields: [companyId], references: [id])
+   186→   186→  warehouseRef  Warehouse? @relation(fields: [warehouseId], references: [id])
+   187→   187→  @@unique([warehouseId, productId])
+   188→   188→}
+   189→   189→
+   190→   190→// ─── Warehouse ───
+   191→   191→
+   192→   192→model Warehouse {
+   193→   193→  id          Int      @id @default(autoincrement())
+   194→   194→  name        String
+   195→   195→  nameAr      String?
+   196→   196→  code        String
+   197→   197→  companySlug String
+   198→   198→  isActive    Boolean  @default(true)
+   199→   199→  createdAt   DateTime @default(now())
+   200→   200→  updatedAt   DateTime @updatedAt
+   201→   201→  inventoryItems InventoryItem[]
+   202→   202→  @@unique([companySlug, code])
+   203→   203→}
+   204→   204→
+   205→   205→// ─── Financial Periods ───
+   206→   206→
+   207→   207→model FinancialPeriod {
+   208→   208→  id          Int      @id @default(autoincrement())
+   209→   209→  name        String
+   210→   210→  startDate   DateTime
+   211→   211→  endDate     DateTime
+   212→   212→  status      String   @default("open") // open, closed, locked
+   213→   213→  companyId   String?
+   214→   214→  companySlug String   @default("default")
+   215→   215→  createdAt   DateTime @default(now())
+   216→   216→  updatedAt   DateTime @updatedAt
+   217→   217→  company     Company? @relation(fields: [companyId], references: [id])
+   218→   218→  openingBalances OpeningBalance[]
+   219→   219→  @@unique([name, companySlug])
+   220→   220→}
+   221→   221→
+   222→   222→// ─── Vouchers (Journal Entries) ───
+   223→   223→
+   224→   224→model Voucher {
+   225→   225→  id            Int      @id @default(autoincrement())
+   226→   226→  number        String
+   227→   227→  date          DateTime
+   228→   228→  description   String?
+   229→   229→  reference     String?
+   230→   230→  status        String   @default("draft") // draft, posted, cancelled
+   231→   231→  voucherType   String   @default("general") // general, payment, receipt, transfer
+   232→   232→  companySlug   String   @default("default")
+   233→   233→  companyId     String?
+   234→   234→  createdBy     String?
+   235→   235→  createdAt     DateTime @default(now())
+   236→   236→  updatedAt     DateTime @updatedAt
+   237→   237→  company       Company? @relation(fields: [companyId], references: [id])
+   238→   238→  lines         VoucherLine[]
+   239→   239→  @@unique([number, companySlug])
+   240→   240→}
+   241→   241→
+   242→   242→model VoucherLine {
+   243→   243→  id           Int      @id @default(autoincrement())
+   244→   244→  accountId    Int
+   245→   245→  debit        String   @default("0.000")
+   246→   246→  credit       String   @default("0.000")
+   247→   247→  description  String?
+   248→   248→  sortOrder    Int      @default(0)
+   249→   249→  voucherId    Int
+   250→   250→  account      Account  @relation(fields: [accountId], references: [id])
+   251→   251→  voucher      Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+   252→   252→}
+   253→   253→
+   254→   254→// ─── Payment Vouchers (AR/AP) ───
+   255→   255→
+   256→   256→model PaymentVoucher {
+   257→   257→  id            Int      @id @default(autoincrement())
+   258→   258→  number        String
+   259→   259→  voucherNumber String?  // Alternative field name used in seed.ts
+   260→   260→  date          DateTime
+   261→   261→  amount        String   @default("0.000")
+   262→   262→  paymentType   String   @default("receipt") // receipt, payment
+   263→   263→  voucherType   String?  // receipt, payment (alternative field)
+   264→   264→  direction     String   @default("inbound") // inbound, outbound
+   265→   265→  payee         String?
+   266→   266→  payer         String?
+   267→   267→  status        String   @default("draft") // draft, posted, cancelled
+   268→   268→  description   String?
+   269→   269→  reference     String?
+   270→   270→  clientId      Int?
+   271→   271→  supplierId    Int?
+   272→   272→  bankAccountId Int?
+   273→   273→  companySlug   String   @default("default")
+   274→   274→  companyId     String?
+   275→   275→  createdBy     String?
+   276→   276→  createdAt     DateTime @default(now())
+   277→   277→  updatedAt     DateTime @updatedAt
+   278→   278→  client        Client?   @relation(fields: [clientId], references: [id])
+   279→   279→  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+   280→   280→  company       Company?  @relation(fields: [companyId], references: [id])
+   281→   281→  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+   282→   282→  installments  Installment[]
+   283→   283→  @@unique([companySlug, voucherNumber])
+   284→   284→}
+   285→   285→
+   286→   286→model Installment {
+   287→   287→  id              Int      @id @default(autoincrement())
+   288→   288→  paymentVoucherId Int
+   289→   289→  amount          String   @default("0.000")
+   290→   290→  dueDate         DateTime
+   291→   291→  status          String   @default("pending") // pending, paid, overdue, cancelled
+   292→   292→  paidDate        DateTime?
+   293→   293→  paymentRef      String?
+   294→   294→  createdAt       DateTime @default(now())
+   295→   295→  updatedAt       DateTime @updatedAt
+   296→   296→  paymentVoucher  PaymentVoucher @relation(fields: [paymentVoucherId], references: [id], onDelete: Cascade)
+   297→   297→}
+   298→   298→
+   299→   299→// ─── Opening Balances ───
+   300→   300→
+   301→   301→model OpeningBalance {
+   302→   302→  id            Int      @id @default(autoincrement())
+   303→   303→  accountId     Int
+   304→   304→  periodId      Int
+   305→   305→  debit         String   @default("0.000")
+   306→   306→  credit        String   @default("0.000")
+   307→   307→  companySlug   String   @default("default")
+   308→   308→  companyId     String?
+   309→   309→  createdAt     DateTime @default(now())
+   310→   310→  updatedAt     DateTime @updatedAt
+   311→   311→  account       Account        @relation(fields: [accountId], references: [id])
+   312→   312→  period        FinancialPeriod @relation(fields: [periodId], references: [id])
+   313→   313→  company       Company?       @relation(fields: [companyId], references: [id])
+   314→   314→  @@unique([accountId, periodId])
+   315→   315→}
+   316→   316→
+   317→   317→// ─── Profit Distribution ───
+   318→   318→
+   319→   319→model ProfitDistribution {
+   320→   320→  id               Int      @id @default(autoincrement())
+   321→   321→  periodId         Int?
+   322→   322→  totalProfit      String   @default("0.000")
+   323→   323→  retained         String   @default("0.000")
+   324→   324→  distributed      String   @default("0.000")
+   325→   325→  distributionType String   @default("proportional") // proportional, equal, custom
+   326→   326→  status           String   @default("draft") // draft, approved, executed
+   327→   327→  notes            String?
+   328→   328→  companySlug      String   @default("default")
+   329→   329→  companyId        String?
+   330→   330→  createdAt        DateTime @default(now())
+   331→   331→  updatedAt        DateTime @updatedAt
+   332→   332→  company          Company? @relation(fields: [companyId], references: [id])
+   333→   333→  entries          ProfitDistributionEntry[]
+   334→   334→}
+   335→   335→
+   336→   336→model ProfitDistributionEntry {
+   337→   337→  id             Int      @id @default(autoincrement())
+   338→   338→  distributionId Int
+   339→   339→  shareholder    String
+   340→   340→  shareRatio     String   @default("0")
+   341→   341→  amount         String   @default("0.000")
+   342→   342→  createdAt      DateTime @default(now())
+   343→   343→  updatedAt      DateTime @updatedAt
+   344→   344→  distribution   ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+   345→   345→}
+   346→   346→
+   347→   347→// ─── Letters of Credit (Trade Finance) ───
+   348→   348→
+   349→   349→model LetterOfCredit {
+   350→   350→  id            Int      @id @default(autoincrement())
+   351→   351→  lcNumber      String
+   352→   352→  number        String?  // Legacy field
+   353→   353→  type          String   @default("import") // import, export
+   354→   354→  amount        String   @default("0.000")
+   355→   355→  currency      String   @default("USD")
+   356→   356→  status        String   @default("draft") // draft, issued, confirmed, utilized, expired, cancelled
+   357→   357→  issueDate     String?
+   358→   358→  expiryDate    String?
+   359→   359→  beneficiary   String?
+   360→   360→  issuingBank   String?
+   361→   361→  description   String?
+   362→   362→  reference     String?
+   363→   363→  supplierId    Int?
+   364→   364→  bankAccountId Int?
+   365→   365→  companySlug   String   @default("default")
+   366→   366→  companyId     String?
+   367→   367→  createdAt     DateTime @default(now())
+   368→   368→  updatedAt     DateTime @updatedAt
+   369→   369→  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+   370→   370→  company       Company?  @relation(fields: [companyId], references: [id])
+   371→   371→  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+   372→   372→  lcDocuments   LetterOfCreditDocument[]
+   373→   373→  @@unique([companySlug, lcNumber])
+   374→   374→}
+   375→   375→
+   376→   376→model LetterOfCreditDocument {
+   377→   377→  id               Int      @id @default(autoincrement())
+   378→   378→  letterOfCreditId Int
+   379→   379→  documentType     String   // invoice, bill_of_lading, packing_list, insurance, certificate
+   380→   380→  fileName         String
+   381→   381→  fileUrl          String?
+   382→   382→  uploadedAt       DateTime @default(now())
+   383→   383→  letterOfCredit   LetterOfCredit @relation(fields: [letterOfCreditId], references: [id], onDelete: Cascade)
+   384→   384→}
+   385→   385→
+   386→   386→// Keep the existing Post model for compatibility
+   387→   387→model Post {
+   388→   388→  id        String   @id @default(cuid())
+   389→   389→  title     String
+   390→   390→  content   String?
+   391→   391→  published Boolean  @default(false)
+   392→   392→  authorId  String
+   393→   393→  createdAt DateTime @default(now())
+   394→   394→  updatedAt DateTime @updatedAt
+   395→   395→}
+   396→   396→
+   397→   397→// ═══════════════════════════════════════════════════════════════════════════════
+   398→   398→// AI Fabric Models (Phases 1-16)
+   399→   399→// ═══════════════════════════════════════════════════════════════════════════════
+   400→   400→
+   401→   401→// ─── AI Request Log (Phase 1) ───
+   402→   402→
+   403→   403→model AIRequestLog {
+   404→   404→  id          Int      @id @default(autoincrement())
+   405→   405→  companySlug String
+   406→   406→  requestType String
+   407→   407→  resolvedBy  String   // cache, pattern, rule, memory, ai
+   408→   408→  provider    String?
+   409→   409→  tokensUsed  Int?
+   410→   410→  costUsd     Float    @default(0)
+   411→   411→  latencyMs   Int      @default(0)
+   412→   412→  createdAt   DateTime @default(now())
+   413→   413→}
+   414→   414→
+   415→   415→// ─── Cache Entry (Phase 1) ───
+   416→   416→
+   417→   417→model CacheEntry {
+   418→   418→  key        String   @id
+   419→   419→  companySlug String
+   420→   420→  value      String
+   421→   421→  expiresAt  DateTime
+   422→   422→  hitCount   Int      @default(0)
+   423→   423→  createdAt  DateTime @default(now())
+   424→   424→  updatedAt  DateTime @updatedAt
+   425→   425→}
+   426→   426→
+   427→   427→// ─── AI Memory Entry (Phase 1/7) ───
+   428→   428→
+   429→   429→model AIMemoryEntry {
+   430→   430→  id             Int      @id @default(autoincrement())
+   431→   431→  companySlug    String
+   432→   432→  category       String   // decision, invoice, customer, product, digital-twin, decision_trace
+   433→   433→  content        String
+   434→   434→  lastAccessedAt DateTime @default(now())
+   435→   435→  createdAt      DateTime @default(now())
+   436→   436→}
+   437→   437→
+   438→   438→// ─── Budget Config (Phase 6) ───
+   439→   439→
+   440→   440→model BudgetConfig {
+   441→   441→  companySlug      String   @id
+   442→   442→  monthlyBudgetUsd Float    @default(0)
+   443→   443→  currentSpendUsd  Float    @default(0)
+   444→   444→  alertThresholdPct Int     @default(80)
+   445→   445→  hardStopEnabled  Boolean  @default(false)
+   446→   446→  createdAt        DateTime @default(now())
+   447→   447→  updatedAt        DateTime @updatedAt
+   448→   448→}
+   449→   449→
+   450→   450→// ─── Company Runtime (Phase 4) ───
+   451→   451→
+   452→   452→model CompanyRuntime {
+   453→   453→  id                   Int      @id @default(autoincrement())
+   454→   454→  companyId            String   @unique
+   455→   455→  workerPoolSize       Int      @default(1)
+   456→   456→  status               String   @default("active")
+   457→   457→  slaTier              String?
+   458→   458→  maxAcceptableLatencyMs Int?
+   459→   459→  createdAt            DateTime @default(now())
+   460→   460→  updatedAt            DateTime @updatedAt
+   461→   461→  company              Company  @relation(fields: [companyId], references: [id])
+   462→   462→}
+   463→   463→
+   464→   464→// ─── Notification (Phase 6) ───
+   465→   465→
+   466→   466→model Notification {
+   467→   467→  id          Int      @id @default(autoincrement())
+   468→   468→  userUid     String
+   469→   469→  companySlug String
+   470→   470→  type        String   @default("general")
+   471→   471→  title       String
+   472→   472→  body        String?
+   473→   473→  createdAt   DateTime @default(now())
+   474→   474→}
+   475→   475→
+   476→   476→// ─── Job Queue (Phase 4/5) ───
+   477→   477→
+   478→   478→model JobQueue {
+   479→   479→  id          Int      @id @default(autoincrement())
+   480→   480→  queue       String
+   481→   481→  type        String
+   482→   482→  data        String   @default("{}")
+   483→   483→  status      String   @default("pending") // pending, running, completed, failed
+   484→   484→  attempts    Int      @default(0)
+   485→   485→  maxAttempts Int      @default(3)
+   486→   486→  scheduledAt DateTime @default(now())
+   487→   487→  startedAt   DateTime?
+   488→   488→  completedAt DateTime?
+   489→   489→  createdAt   DateTime @default(now())
+   490→   490→}
+   491→   491→
+   492→   492→// ─── Provider Config (Phase 3) ───
+   493→   493→
+   494→   494→model ProviderConfig {
+   495→   495→  taskType         String   @id
+   496→   496→  primaryProvider  String
+   497→   497→  fallbackProvider String
+   498→   498→  createdAt        DateTime @default(now())
+   499→   499→  updatedAt        DateTime @updatedAt
+   500→   500→}
+   501→   501→
+   502→   502→// ─── Rule Candidate (Phase 11) ───
+   503→   503→
+   504→   504→model RuleCandidate {
+   505→   505→  id               Int      @id @default(autoincrement())
+   506→   506→  companySlug      String
+   507→   507→  requestType      String
+   508→   508→  patternSignature String
+   509→   509→  sampleCount      Int      @default(1)
+   510→   510→  consistentOutput String?
+   511→   511→  confidence       Float    @default(1.0)
+   512→   512→  status           String   @default("observing") // observing, promoted, rejected
+   513→   513→  createdAt        DateTime @default(now())
+   514→   514→  updatedAt        DateTime @updatedAt
+   515→   515→}
+   516→   516→
+   517→   517→// ─── Global Pattern (Phase 12) ───
+   518→   518→
+   519→   519→model GlobalPattern {
+   520→   520→  patternKey              String   @id
+   521→   521→  suggestedSku            String?
+   522→   522→  suggestedVatCategory    String?
+   523→   523→  suggestedCategory       String?
+   524→   524→  contributingCompaniesCount Int     @default(1)
+   525→   525→  confidence              Float    @default(1.0)
+   526→   526→  createdAt               DateTime @default(now())
+   527→   527→  updatedAt               DateTime @updatedAt
+   528→   528→}
+   529→   529→
+   530→   530→// ─── Profit Snapshot (Phase 8) ───
+   531→   531→
+   532→   532→model ProfitSnapshot {
+   533→   533→  id            Int      @id @default(autoincrement())
+   534→   534→  companySlug   String
+   535→   535→  periodStart   DateTime
+   536→   536→  periodEnd     DateTime
+   537→   537→  revenueUsd    Float    @default(0)
+   538→   538→  infraCostUsd  Float    @default(0)
+   539→   539→  aiCostUsd     Float    @default(0)
+   540→   540→  workerCostUsd Float    @default(0)
+   541→   541→  profitUsd     Float    @default(0)
+   542→   542→  createdAt     DateTime @default(now())
+   543→   543→  updatedAt     DateTime @updatedAt
+   544→   544→}
+   545→   545→
+   546→   546→// ─── AI Score Snapshot (Phase 14) ───
+   547→   547→
+   548→   548→model AIScoreSnapshot {
+   549→   549→  id               Int      @id @default(autoincrement())
+   550→   550→  companySlug      String
+   551→   551→  period           String   // "YYYY-MM-DD"
+   552→   552→  score            Float
+   553→   553→  cacheHitPct      Float    @default(0)
+   554→   554→  ruleHitPct       Float    @default(0)
+   555→   555→  aiCallPct        Float    @default(0)
+   556→   556→  avgCostPerRequest Float   @default(0)
+   557→   557→  createdAt        DateTime @default(now())
+   558→   558→  updatedAt        DateTime @updatedAt
+   559→   559→  @@unique([companySlug, period])
+   560→   560→}
+   561→   561→
+   562→   562→// ─── Compiled Rule (Phase 16a) ───
+   563→   563→
+   564→   564→model CompiledRule {
+   565→   565→  id                      Int      @id @default(autoincrement())
+   566→   566→  companySlug             String
+   567→   567→  requestType             String
+   568→   568→  clusterKey              String
+   569→   569→  compiledOutput          String?
+   570→   570→  sourceCandidateCount    Int      @default(0)
+   571→   571→  estimatedAnnualSavingsUsd Float  @default(0)
+   572→   572→  status                  String   @default("pending_review")
+   573→   573→  createdAt               DateTime @default(now())
+   574→   574→  updatedAt               DateTime @updatedAt
+   575→   575→}
+   576→   576→
+   577→   577→
+   578→   578→// ─── Invoice (Sales — expanded for e-invoicing & Kuwait compliance) ───
+   579→   579→
+   580→   580→model Invoice {
+   581→   581→  id                    Int      @id @default(autoincrement())
+   582→   582→  companySlug           String
+   583→   583→  invoiceNumber         String
+   584→   584→  clientId              Int?
+   585→   585→  clientName            String
+   586→   586→  clientEmail           String?
+   587→   587→  clientPhone           String?
+   588→   588→  clientAddress         String?
+   589→   589→  issueDate             String
+   590→   590→  dueDate               String?
+   591→   591→  lineItems             String   @default("[]") // JSON
+   592→   592→  subtotal              String   @default("0.000")
+   593→   593→  taxRate               String   @default("0")
+   594→   594→  taxAmount             String   @default("0.000")
+   595→   595→  total                 String   @default("0.000")
+   596→   596→  shipping              String   @default("0.000")
+   597→   597→  discount              String   @default("0.000")
+   598→   598→  paid                  String   @default("0.000")
+   599→   599→  status                String   @default("draft")
+   600→   600→  source                String?
+   601→   601→  notes                 String?
+   602→   602→  version               Int      @default(0)
+   603→   603→  createdByEmail        String?
+   604→   604→  createdByName         String?
+   605→   605→  deletedAt             DateTime?
+   606→   606→  // Kuwait Decree 10/2026 compliance fields
+   607→   607→  hijriIssueDate        String?
+   608→   608→  hijriDueDate          String?
+   609→   609→  mociNumber            String?
+   610→   610→  invoiceTypeAr         String?
+   611→   611→  invoiceTypeEn         String?
+   612→   612→  sellerNameAr          String?
+   613→   613→  sellerAddressAr       String?
+   614→   614→  buyerNameAr           String?
+   615→   615→  buyerAddressAr        String?
+   616→   616→  lineItemsAr           String?
+   617→   617→  notesAr               String?
+   618→   618→  currencyDecimalPlaces Int      @default(3)
+   619→   619→  eInvoiceAuthority     String?
+   620→   620→  createdAt             DateTime @default(now())
+   621→   621→  updatedAt             DateTime @updatedAt
+   622→   622→  client                Client?  @relation(fields: [clientId], references: [id])
+   623→   623→  eInvoices             EInvoice[]
+   624→   624→  @@unique([companySlug, invoiceNumber])
+   625→   625→}
+   626→   626→
+   627→   627→// ─── Feature Flag ───
+   628→   628→
+   629→   629→model FeatureFlag {
+   630→   630→  id          Int      @id @default(autoincrement())
+   631→   631→  key         String   @unique
+   632→   632→  label       String
+   633→   633→  description String?
+   634→   634→  plans       String   @default("[]")
+   635→   635→  isActive    Boolean  @default(true)
+   636→   636→  createdAt   DateTime @default(now())
+   637→   637→  updatedAt   DateTime @updatedAt
+   638→   638→}
+   639→   639→
+   640→   640→// ─── Platform Settings ───
+   641→   641→
+   642→   642→model PlatformSettings {
+   643→   643→  key        String   @id
+   644→   644→  category   String   @default("general")
+   645→   645→  valueType  String   @default("string")
+   646→   646→  value      String   @default("")
+   647→   647→  createdAt  DateTime @default(now())
+   648→   648→  updatedAt  DateTime @updatedAt
+   649→   649→}
+   650→   650→
+   651→   651→// ─── Platform Settings History ───
+   652→   652→
+   653→   653→model PlatformSettingsHistory {
+   654→   654→  id         Int      @id @default(autoincrement())
+   655→   655→  settingKey String
+   656→   656→  newValue   String   @default("")
+   657→   657→  changedBy  String   @default("system")
+   658→   658→  createdAt  DateTime @default(now())
+   659→   659→}
+   660→   660→
+   661→   661→// ─── App User ───
+   662→   662→
+   663→   663→model AppUser {
+   664→   664→  uid           String   @id @default(cuid())
+   665→   665→  email         String   @unique
+   666→   666→  passwordHash  String
+   667→   667→  displayName   String   @default("")
+   668→   668→  role          String   @default("employee")
+   669→   669→  companies     String   @default("[]")
+   670→   670→  permissions   String   @default("{}")
+   671→   671→  emailVerified Boolean  @default(false)
+   672→   672→  tokenVersion  Int      @default(0)
+   673→   673→  createdAt     DateTime @default(now())
+   674→   674→  updatedAt     DateTime @updatedAt
+   675→   675→}
+   676→   676→
+   677→   677→// ─── Product Alias (matching) ───
+   678→   678→
+   679→   679→model ProductAlias {
+   680→   680→  id              Int      @id @default(autoincrement())
+   681→   681→  productCatalogId Int
+   682→   682→  companySlug     String   @default("default")
+   683→   683→  alias           String
+   684→   684→  source          String   @default("manual") // manual, ai, import
+   685→   685→  confidence      Float    @default(1.0)
+   686→   686→  isVerified      Boolean  @default(false)
+   687→   687→  createdBy       String?
+   688→   688→  createdAt       DateTime @default(now())
+   689→   689→  updatedAt       DateTime @updatedAt
+   690→   690→  product         ProductCatalog @relation(fields: [productCatalogId], references: [id])
+   691→   691→  @@unique([companySlug, alias])
+   692→   692→}
+   693→   693→
+   694→   694→// ─── Product Match Audit ───
+   695→   695→
+   696→   696→model ProductMatchAudit {
+   697→   697→  id               Int      @id @default(autoincrement())
+   698→   698→  companySlug      String   @default("default")
+   699→   699→  invoiceId        Int?
+   700→   700→  inputText        String
+   701→   701→  matchedProductId Int?
+   702→   702→  matchedAlias     String?
+   703→   703→  tier             String   @default("auto-match") // auto-match, suggested, new-product
+   704→   704→  action           String   @default("auto-matched")
+   705→   705→  confidence       Float    @default(1.0)
+   706→   706→  resolvedBy       String?
+   707→   707→  isUndone         Boolean  @default(false)
+   708→   708→  undoneBy         String?
+   709→   709→  undoneAt         DateTime?
+   710→   710→  createdAt        DateTime @default(now())
+   711→   711→  updatedAt        DateTime @updatedAt
+   712→   712→}
+   713→   713→
+   714→   714→// ─── Match Override (learning) ───
+   715→   715→
+   716→   716→model MatchOverride {
+   717→   717→  id              Int      @id @default(autoincrement())
+   718→   718→  companySlug     String
+   719→   719→  inputText       String
+   720→   720→  inputNormalized String?
+   721→   721→  fromProductId   Int?
+   722→   722→  toProductId     Int?
+   723→   723→  chosenAlias     String?
+   724→   724→  auditId         Int?
+   725→   725→  reason          String?
+   726→   726→  overriddenBy    String
+   727→   727→  createdAt       DateTime @default(now())
+   728→   728→}
+   729→   729→
+   730→   730→// ─── Stock Movement ───
+   731→   731→
+   732→   732→model StockMovement {
+   733→   733→  id            Int      @id @default(autoincrement())
+   734→   734→  companySlug   String   @default("default")
+   735→   735→  productId     Int
+   736→   736→  quantity      String   @default("0")
+   737→   737→  movementType  String   @default("adjustment") // sale, purchase, adjustment, return, collision-recovery
+   738→   738→  sourceType    String?
+   739→   739→  sourceId      String?
+   740→   740→  reference     String?
+   741→   741→  createdAt     DateTime @default(now())
+   742→   742→}
+   743→   743→
+   744→   744→// ═══════════════════════════════════════════════════════════════════════════════
+   745→   745→// HR Module Models
+   746→   746→// ═══════════════════════════════════════════════════════════════════════════════
+   747→   747→
+   748→   748→// ─── Employee (HR) ───
+   749→   749→
+   750→   750→model Employee {
+   751→   751→  id           Int      @id @default(autoincrement())
+   752→   752→  companySlug  String
+   753→   753→  name         String
+   754→   754→  nameEn       String?
+   755→   755→  phone        String?
+   756→   756→  email        String?
+   757→   757→  position     String?
+   758→   758→  department   String?
+   759→   759→  baseSalary   String   @default("0.000")
+   760→   760→  currency     String   @default("KWD")
+   761→   761→  joinDate     String?
+   762→   762→  isActive     Boolean  @default(true)
+   763→   763→  notes        String?
+   764→   764→  deletedAt    DateTime?
+   765→   765→  createdAt    DateTime @default(now())
+   766→   766→  updatedAt    DateTime @updatedAt
+   767→   767→  attendance      Attendance[]
+   768→   768→  salaries        Salary[]
+   769→   769→  commissions     Commission[]
+   770→   770→  leaveRequests   LeaveRequest[]
+   771→   771→  performance     Performance[]
+   772→   772→}
+   773→   773→
+   774→   774→// ─── Attendance (HR) ───
+   775→   775→
+   776→   776→model Attendance {
+   777→   777→  id           Int      @id @default(autoincrement())
+   778→   778→  employeeId   Int
+   779→   779→  companySlug  String   @default("default")
+   780→   780→  date         String
+   781→   781→  status       String   @default("present") // present, absent, late, half-day, holiday, sick
+   782→   782→  checkIn      String?
+   783→   783→  checkOut     String?
+   784→   784→  notes        String?
+   785→   785→  createdAt    DateTime @default(now())
+   786→   786→  updatedAt    DateTime @updatedAt
+   787→   787→  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   788→   788→}
+   789→   789→
+   790→   790→// ─── Salary (HR) ───
+   791→   791→
+   792→   792→model Salary {
+   793→   793→  id           Int      @id @default(autoincrement())
+   794→   794→  employeeId   Int
+   795→   795→  companySlug  String   @default("default")
+   796→   796→  month        String   // YYYY-MM
+   797→   797→  baseSalary   String   @default("0.000")
+   798→   798→  allowances   String   @default("0.000")
+   799→   799→  deductions   String   @default("0.000")
+   800→   800→  bonus        String   @default("0.000")
+   801→   801→  netSalary    String   @default("0.000")
+   802→   802→  isPaid       Boolean  @default(false)
+   803→   803→  paidDate     String?
+   804→   804→  createdAt    DateTime @default(now())
+   805→   805→  updatedAt    DateTime @updatedAt
+   806→   806→  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   807→   807→}
+   808→   808→
+   809→   809→// ─── Commission (HR) ───
+   810→   810→
+   811→   811→model Commission {
+   812→   812→  id           Int      @id @default(autoincrement())
+   813→   813→  employeeId   Int
+   814→   814→  companySlug  String   @default("default")
+   815→   815→  date         String
+   816→   816→  type         String   // sales, referral, performance, custom
+   817→   817→  description  String?
+   818→   818→  amount       String   @default("0.000")
+   819→   819→  isPaid       Boolean  @default(false)
+   820→   820→  paidDate     String?
+   821→   821→  createdAt    DateTime @default(now())
+   822→   822→  updatedAt    DateTime @updatedAt
+   823→   823→  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   824→   824→}
+   825→   825→
+   826→   826→// ─── LeaveRequest (HR) ───
+   827→   827→
+   828→   828→model LeaveRequest {
+   829→   829→  id           Int      @id @default(autoincrement())
+   830→   830→  employeeId   Int
+   831→   831→  companySlug  String   @default("default")
+   832→   832→  type         String   // annual, sick, maternity, emergency, unpaid, compensatory
+   833→   833→  startDate    String
+   834→   834→  endDate      String
+   835→   835→  days         Int      @default(1)
+   836→   836→  status       String   @default("pending") // pending, approved, rejected, cancelled
+   837→   837→  reason       String?
+   838→   838→  approvedBy   String?
+   839→   839→  createdAt    DateTime @default(now())
+   840→   840→  updatedAt    DateTime @updatedAt
+   841→   841→  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   842→   842→}
+   843→   843→
+   844→   844→// ─── Performance (HR) ───
+   845→   845→
+   846→   846→model Performance {
+   847→   847→  id           Int      @id @default(autoincrement())
+   848→   848→  employeeId   Int
+   849→   849→  companySlug  String   @default("default")
+   850→   850→  period       String   // YYYY-MM or YYYY-Q1
+   851→   851→  kpiScore     Float?
+   852→   852→  overallScore Float?
+   853→   853→  rating       String?  // excellent, good, average, below_average, poor
+   854→   854→  reviewNotes  String?
+   855→   855→  reviewer     String?
+   856→   856→  createdAt    DateTime @default(now())
+   857→   857→  updatedAt    DateTime @updatedAt
+   858→   858→  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+   859→   859→}
+   860→   860→
+   861→   861→// ─── Department (HR) ───
+   862→   862→
+   863→   863→model Department {
+   864→   864→  id           Int      @id @default(autoincrement())
+   865→   865→  companySlug  String
+   866→   866→  name         String
+   867→   867→  nameEn       String?
+   868→   868→  code         String?
+   869→   869→  managerId    Int?
+   870→   870→  isActive     Boolean  @default(true)
+   871→   871→  createdAt    DateTime @default(now())
+   872→   872→  updatedAt    DateTime @updatedAt
+   873→   873→  @@unique([companySlug, name])
+   874→   874→}
+   875→   875→
+   876→   876→// ═══════════════════════════════════════════════════════════════════════════════
+   877→   877→// Accounting — Banking Models
+   878→   878→// ═══════════════════════════════════════════════════════════════════════════════
+   879→   879→
+   880→   880→// ─── Bank Account ───
+   881→   881→
+   882→   882→model BankAccount {
+   883→   883→  id             Int      @id @default(autoincrement())
+   884→   884→  companySlug    String
+   885→   885→  bankName       String
+   886→   886→  accountName    String
+   887→   887→  accountNumber  String
+   888→   888→  iban           String?
+   889→   889→  branchCode     String?
+   890→   890→  currency       String   @default("KWD")
+   891→   891→  accountType    String   @default("checking") // checking, savings, cash_vault
+   892→   892→  balance        String   @default("0.000")
+   893→   893→  glAccountId    Int?
+   894→   894→  isActive       Boolean  @default(true)
+   895→   895→  createdAt      DateTime @default(now())
+   896→   896→  updatedAt      DateTime @updatedAt
+   897→   897→  glAccount      Account? @relation(fields: [glAccountId], references: [id])
+   898→   898→  bankTransactions BankTransaction[]
+   899→   899→  bankReconciliations BankReconciliation[]
+   900→   900→  paymentVouchers  PaymentVoucher[]
+   901→   901→  lettersOfCredit  LetterOfCredit[]
+   902→   902→  @@unique([companySlug, accountNumber])
+   903→   903→}
+   904→   904→
+   905→   905→// ─── Bank Transaction ───
+   906→   906→
+   907→   907→model BankTransaction {
+   908→   908→  id                Int      @id @default(autoincrement())
+   909→   909→  companySlug       String
+   910→   910→  bankAccountId     Int
+   911→   911→  date              String
+   912→   912→  description       String?
+   913→   913→  reference         String?
+   914→   914→  amount            String   @default("0.000")
+   915→   915→  transactionType   String   @default("debit") // debit, credit
+   916→   916→  isReconciled      Boolean  @default(false)
+   917→   917→  reconciledWith    String?  // journal_entry, manual
+   918→   918→  reconciledId      Int?
+   919→   919→  category          String?
+   920→   920→  createdAt         DateTime @default(now())
+   921→   921→  updatedAt         DateTime @updatedAt
+   922→   922→  bankAccount       BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+   923→   923→}
+   924→   924→
+   925→   925→// ─── Bank Reconciliation ───
+   926→   926→
+   927→   927→model BankReconciliation {
+   928→   928→  id                Int      @id @default(autoincrement())
+   929→   929→  companySlug       String
+   930→   930→  bankAccountId     Int
+   931→   931→  periodStart       String
+   932→   932→  periodEnd         String
+   933→   933→  statementBalance  String   @default("0.000")
+   934→   934→  bookBalance       String   @default("0.000")
+   935→   935→  adjustedBalance   String   @default("0.000")
+   936→   936→  difference        String   @default("0.000")
+   937→   937→  status            String   @default("draft") // draft, completed, approved
+   938→   938→  completedBy       String?
+   939→   939→  createdAt         DateTime @default(now())
+   940→   940→  updatedAt         DateTime @updatedAt
+   941→   941→  bankAccount       BankAccount @relation(fields: [bankAccountId], references: [id])
+   942→   942→  matches           BankReconciliationMatch[]
+   943→   943→}
+   944→   944→
+   945→   945→// ─── Bank Reconciliation Match ───
+   946→   946→
+   947→   947→model BankReconciliationMatch {
+   948→   948→  id                  Int      @id @default(autoincrement())
+   949→   949→  reconciliationId    Int
+   950→   950→  bankTransactionId   Int?
+   951→   951→  journalEntryLineId  Int?
+   952→   952→  matchType           String   @default("auto") // auto, manual
+   953→   953→  isConfirmed         Boolean  @default(false)
+   954→   954→  createdAt           DateTime @default(now())
+   955→   955→  bankReconciliation  BankReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+   956→   956→}
+   957→   957→
+   958→   958→// ═══════════════════════════════════════════════════════════════════════════════
+   959→   959→// Accounting — Fixed Assets
+   960→   960→// ═══════════════════════════════════════════════════════════════════════════════
+   961→   961→
+   962→   962→// ─── Fixed Asset ───
+   963→   963→
+   964→   964→model FixedAsset {
+   965→   965→  id                  Int      @id @default(autoincrement())
+   966→   966→  companySlug         String
+   967→   967→  nameAr              String
+   968→   968→  nameEn              String?
+   969→   969→  category            String   @default("other") // vehicle, equipment, building, it, furniture, other
+   970→   970→  acquisitionDate     String
+   971→   971→  acquisitionCost     String   @default("0.000")
+   972→   972→  salvageValue        String   @default("0.000")
+   973→   973→  usefulLifeYears     Int      @default(5)
+   974→   974→  depreciationMethod  String   @default("straight_line") // straight_line, declining_balance
+   975→   975→  decliningRate       String   @default("0")
+   976→   976→  currentBookValue    String   @default("0.000")
+   977→   977→  accumulatedDepreciation String @default("0.000")
+   978→   978→  location            String?
+   979→   979→  assetTag            String?
+   980→   980→  isActive            Boolean  @default(true)
+   981→   981→  disposalDate        String?
+   982→   982→  disposalAmount      String?
+   983→   983→  disposalMethod      String?  // sold, scrapped, donated
+   984→   984→  glAccountId         Int?
+   985→   985→  depreciationAccountId Int?
+   986→   986→  expenseAccountId    Int?
+   987→   987→  createdAt           DateTime @default(now())
+   988→   988→  updatedAt           DateTime @updatedAt
+   989→   989→  glAccount           Account? @relation("FixedAssetGL", fields: [glAccountId], references: [id])
+   990→   990→  depreciationAccount Account? @relation("FixedAssetDep", fields: [depreciationAccountId], references: [id])
+   991→   991→  expenseAccount      Account? @relation("FixedAssetExp", fields: [expenseAccountId], references: [id])
+   992→   992→  depreciationEntries DepreciationEntry[]
+   993→   993→}
+   994→   994→
+   995→   995→// ─── Depreciation Entry ───
+   996→   996→
+   997→   997→model DepreciationEntry {
+   998→   998→  id               Int      @id @default(autoincrement())
+   999→   999→  assetId          Int
+  1000→  1000→  period           String   // YYYY-MM
+  1001→  1001→  depreciationAmount String @default("0.000")
+  1002→  1002→  bookValueAfter   String   @default("0.000")
+  1003→  1003→  isPosted         Boolean  @default(false)
+  1004→  1004→  createdAt        DateTime @default(now())
+  1005→  1005→  updatedAt        DateTime @updatedAt
+  1006→  1006→  fixedAsset       FixedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  1007→  1007→}
+  1008→  1008→
+  1009→  1009→// ═══════════════════════════════════════════════════════════════════════════════
+  1010→  1010→// Accounting — Cost Centers & Budgets
+  1011→  1011→// ═══════════════════════════════════════════════════════════════════════════════
+  1012→  1012→
+  1013→  1013→// ─── Cost Center ───
+  1014→  1014→
+  1015→  1015→model CostCenter {
+  1016→  1016→  id           Int      @id @default(autoincrement())
+  1017→  1017→  companySlug  String
+  1018→  1018→  code         String
+  1019→  1019→  nameAr       String
+  1020→  1020→  nameEn       String?
+  1021→  1021→  parentId     Int?
+  1022→  1022→  isActive     Boolean  @default(true)
+  1023→  1023→  createdAt    DateTime @default(now())
+  1024→  1024→  updatedAt    DateTime @updatedAt
+  1025→  1025→  parent       CostCenter?  @relation("CostCenterHierarchy", fields: [parentId], references: [id])
+  1026→  1026→  children     CostCenter[] @relation("CostCenterHierarchy")
+  1027→  1027→  budgetItems  Budget[]
+  1028→  1028→  @@unique([companySlug, code])
+  1029→  1029→}
+  1030→  1030→
+  1031→  1031→// ─── Budget ───
+  1032→  1032→
+  1033→  1033→model Budget {
+  1034→  1034→  id             Int      @id @default(autoincrement())
+  1035→  1035→  companySlug    String
+  1036→  1036→  fiscalYear     Int
+  1037→  1037→  period         String   // monthly, quarterly, yearly
+  1038→  1038→  periodName     String   // e.g. "2024-Q1"
+  1039→  1039→  accountId      Int
+  1040→  1040→  costCenterId   Int?
+  1041→  1041→  plannedAmount  String   @default("0.000")
+  1042→  1042→  actualAmount   String   @default("0.000")
+  1043→  1043→  variance       String   @default("0.000")
+  1044→  1044→  status         String   @default("draft") // draft, approved, revised
+  1045→  1045→  notes          String?
+  1046→  1046→  createdAt      DateTime @default(now())
+  1047→  1047→  updatedAt      DateTime @updatedAt
+  1048→  1048→  account        Account     @relation(fields: [accountId], references: [id])
+  1049→  1049→  costCenter     CostCenter? @relation(fields: [costCenterId], references: [id])
+  1050→  1050→  @@unique([companySlug, periodName, accountId, costCenterId])
+  1051→  1051→}
+  1052→  1052→
+  1053→  1053→// ═══════════════════════════════════════════════════════════════════════════════
+  1054→  1054→// Accounting — Journal Entries (full double-entry bookkeeping)
+  1055→  1055→// ═══════════════════════════════════════════════════════════════════════════════
+  1056→  1056→
+  1057→  1057→// ─── Journal Entry ───
+  1058→  1058→
+  1059→  1059→model JournalEntry {
+  1060→  1060→  id           Int      @id @default(autoincrement())
+  1061→  1061→  companySlug  String
+  1062→  1062→  date         String
+  1063→  1063→  description  String?
+  1064→  1064→  reference    String?
+  1065→  1065→  status       String   @default("draft") // draft, posted, reversed
+  1066→  1066→  version      Int      @default(0) // P0-8: Optimistic locking / row versioning
+  1067→  1067→  createdBy    String?
+  1068→  1068→  deletedAt    DateTime?
+  1069→  1069→  createdAt    DateTime @default(now())
+  1070→  1070→  updatedAt    DateTime @updatedAt
+  1071→  1071→  lines             JournalEntryLine[]
+  1072→  1072→  openingBalances    OpeningBalanceEntry[]
+  1073→  1073→  @@unique([companySlug, reference])
+  1074→  1074→}
+  1075→  1075→
+  1076→  1076→// ─── Journal Entry Line ───
+  1077→  1077→
+  1078→  1078→model JournalEntryLine {
+  1079→  1079→  id           Int      @id @default(autoincrement())
+  1080→  1080→  entryId      Int
+  1081→  1081→  accountId    Int
+  1082→  1082→  debit        String   @default("0.000")
+  1083→  1083→  credit       String   @default("0.000")
+  1084→  1084→  description  String?
+  1085→  1085→  sortOrder    Int      @default(0)
+  1086→  1086→  createdAt    DateTime @default(now())
+  1087→  1087→  updatedAt    DateTime @updatedAt
+  1088→  1088→  journalEntry JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  1089→  1089→  account      Account     @relation("JELAccount", fields: [accountId], references: [id])
+  1090→  1090→}
+  1091→  1091→
+  1092→  1092→// ═══════════════════════════════════════════════════════════════════════════════
+  1093→  1093→// Accounting — Opening Balance Entry (full audit trail)
+  1094→  1094→// ═══════════════════════════════════════════════════════════════════════════════
+  1095→  1095→
+  1096→  1096→// ─── Opening Balance Entry ───
+  1097→  1097→
+  1098→  1098→model OpeningBalanceEntry {
+  1099→  1099→  id            Int      @id @default(autoincrement())
+  1100→  1100→  companySlug   String
+  1101→  1101→  accountId     Int
+  1102→  1102→  amount        String   @default("0.000") // positive = debit balance, negative = credit balance
+  1103→  1103→  asOfDate      String   // YYYY-MM-DD
+  1104→  1104→  status        String   @default("draft") // draft, posted
+  1105→  1105→  importedFrom  String?  // manual, csv, system
+  1106→  1106→  journalEntryId Int?
+  1107→  1107→  notes         String?
+  1108→  1108→  createdAt     DateTime @default(now())
+  1109→  1109→  updatedAt     DateTime @updatedAt
+  1110→  1110→  account       Account      @relation(fields: [accountId], references: [id])
+  1111→  1111→  journalEntry  JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  1112→  1112→  @@unique([companySlug, accountId, asOfDate])
+  1113→  1113→}
+  1114→  1114→
+  1115→  1115→// ═══════════════════════════════════════════════════════════════════════════════
+  1116→  1116→// Accounting — Fiscal Period (expanded from FinancialPeriod)
+  1117→  1117→// ═══════════════════════════════════════════════════════════════════════════════
+  1118→  1118→
+  1119→  1119→// ─── Fiscal Period ───
+  1120→  1120→
+  1121→  1121→model FiscalPeriod {
+  1122→  1122→  id           Int      @id @default(autoincrement())
+  1123→  1123→  companySlug  String
+  1124→  1124→  name         String
+  1125→  1125→  startDate    String
+  1126→  1126→  endDate      String
+  1127→  1127→  fiscalYear   Int
+  1128→  1128→  periodType   String   @default("yearly") // yearly, quarterly, monthly
+  1129→  1129→  status       String   @default("open") // open, closed, locked
+  1130→  1130→  closedBy     String?
+  1131→  1131→  closedAt     DateTime?
+  1132→  1132→  createdAt    DateTime @default(now())
+  1133→  1133→  updatedAt    DateTime @updatedAt
+  1134→  1134→  @@unique([companySlug, name])
+  1135→  1135→}
+  1136→  1136→
+  1137→  1137→// ═══════════════════════════════════════════════════════════════════════════════
+  1138→  1138→// Accounting — Purchase Orders & Purchase Invoices
+  1139→  1139→// ═══════════════════════════════════════════════════════════════════════════════
+  1140→  1140→
+  1141→  1141→// ─── Purchase Order ───
+  1142→  1142→
+  1143→  1143→model PurchaseOrder {
+  1144→  1144→  id              Int      @id @default(autoincrement())
+  1145→  1145→  companySlug     String
+  1146→  1146→  poNumber        String
+  1147→  1147→  supplierId      Int?
+  1148→  1148→  date            String
+  1149→  1149→  expectedDelivery String?
+  1150→  1150→  lineItems       String   @default("[]") // JSON
+  1151→  1151→  subtotal        String   @default("0.000")
+  1152→  1152→  taxRate         String   @default("0")
+  1153→  1153→  taxAmount       String   @default("0.000")
+  1154→  1154→  total           String   @default("0.000")
+  1155→  1155→  notes           String?
+  1156→  1156→  status          String   @default("draft") // draft, issued, received, cancelled
+  1157→  1157→  createdBy       String?
+  1158→  1158→  createdAt       DateTime @default(now())
+  1159→  1159→  updatedAt       DateTime @updatedAt
+  1160→  1160→  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  1161→  1161→  purchaseInvoices   PurchaseInvoice[]
+  1162→  1162→  @@unique([companySlug, poNumber])
+  1163→  1163→}
+  1164→  1164→
+  1165→  1165→// ─── Purchase Invoice ───
+  1166→  1166→
+  1167→  1167→model PurchaseInvoice {
+  1168→  1168→  id              Int      @id @default(autoincrement())
+  1169→  1169→  companySlug     String
+  1170→  1170→  invoiceNumber   String
+  1171→  1171→  supplierId      Int?
+  1172→  1172→  supplierName    String?
+  1173→  1173→  date            String
+  1174→  1174→  dueDate         String?
+  1175→  1175→  lineItems       String   @default("[]") // JSON
+  1176→  1176→  subtotal        String   @default("0.000")
+  1177→  1177→  taxRate         String   @default("0")
+  1178→  1178→  taxAmount       String   @default("0.000")
+  1179→  1179→  total           String   @default("0.000")
+  1180→  1180→  paid            String   @default("0.000")
+  1181→  1181→  notes           String?
+  1182→  1182→  status          String   @default("draft") // draft, posted, paid, cancelled
+  1183→  1183→  purchaseOrderId Int?
+  1184→  1184→  createdBy       String?
+  1185→  1185→  deletedAt       DateTime?
+  1186→  1186→  createdAt       DateTime @default(now())
+  1187→  1187→  updatedAt       DateTime @updatedAt
+  1188→  1188→  supplier        Supplier?     @relation(fields: [supplierId], references: [id])
+  1189→  1189→  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  1190→  1190→  @@unique([companySlug, invoiceNumber])
+  1191→  1191→}
+  1192→  1192→
+  1193→  1193→// ═══════════════════════════════════════════════════════════════════════════════
+  1194→  1194→// Accounting — Quotations
+  1195→  1195→// ═══════════════════════════════════════════════════════════════════════════════
+  1196→  1196→
+  1197→  1197→// ─── Quotation ───
+  1198→  1198→
+  1199→  1199→model Quotation {
+  1200→  1200→  id               Int      @id @default(autoincrement())
+  1201→  1201→  companySlug      String
+  1202→  1202→  quotationNumber  String
+  1203→  1203→  clientId         Int?
+  1204→  1204→  date             String
+  1205→  1205→  validUntil       String?
+  1206→  1206→  lineItems        String   @default("[]") // JSON
+  1207→  1207→  subtotal         String   @default("0.000")
+  1208→  1208→  taxRate          String   @default("0")
+  1209→  1209→  taxAmount        String   @default("0.000")
+  1210→  1210→  total            String   @default("0.000")
+  1211→  1211→  notes            String?
+  1212→  1212→  status           String   @default("draft") // draft, sent, accepted, rejected, converted, expired
+  1213→  1213→  convertedInvoiceId Int?
+  1214→  1214→  createdBy        String?
+  1215→  1215→  createdAt        DateTime @default(now())
+  1216→  1216→  updatedAt        DateTime @updatedAt
+  1217→  1217→  client           Client?  @relation(fields: [clientId], references: [id])
+  1218→  1218→  @@unique([companySlug, quotationNumber])
+  1219→  1219→}
+  1220→  1220→
+  1221→  1221→// ═══════════════════════════════════════════════════════════════════════════════
+  1222→  1222→// Accounting — Tax Filing & Compliance
+  1223→  1223→// ═══════════════════════════════════════════════════════════════════════════════
+  1224→  1224→
+  1225→  1225→// ─── Tax Filing ───
+  1226→  1226→
+  1227→  1227→model TaxFiling {
+  1228→  1228→  id            Int      @id @default(autoincrement())
+  1229→  1229→  companySlug   String
+  1230→  1230→  country       String   @default("KW") // KW, SA, AE, etc.
+  1231→  1231→  taxType       String   @default("vat") // vat, zakat, corporate_tax
+  1232→  1232→  periodFrom    String
+  1233→  1233→  periodTo      String
+  1234→  1234→  totalSales    String   @default("0.000")
+  1235→  1235→  totalPurchases String  @default("0.000")
+  1236→  1236→  outputVat     String   @default("0.000")
+  1237→  1237→  inputVat      String   @default("0.000")
+  1238→  1238→  vatDue        String   @default("0.000")
+  1239→  1239→  status        String   @default("draft") // draft, submitted, approved, rejected
+  1240→  1240→  filingNumber  String?
+  1241→  1241→  submittedBy   String?
+  1242→  1242→  submittedAt   DateTime?
+  1243→  1243→  notes         String?
+  1244→  1244→  createdAt     DateTime @default(now())
+  1245→  1245→  updatedAt     DateTime @updatedAt
+  1246→  1246→  @@unique([companySlug, country, taxType, periodFrom, periodTo])
+  1247→  1247→}
+  1248→  1248→
+  1249→  1249→// ═══════════════════════════════════════════════════════════════════════════════
+  1250→  1250→// Accounting — Post-Dated Checks
+  1251→  1251→// ═══════════════════════════════════════════════════════════════════════════════
+  1252→  1252→
+  1253→  1253→// ─── Post-Dated Check ───
+  1254→  1254→
+  1255→  1255→model PostDatedCheck {
+  1256→  1256→  id            Int      @id @default(autoincrement())
+  1257→  1257→  companySlug   String
+  1258→  1258→  checkNumber   String
+  1259→  1259→  bankName      String
+  1260→  1260→  amount        String   @default("0.000")
+  1261→  1261→  date          String
+  1262→  1262→  payee         String?
+  1263→  1263→  payer         String?
+  1264→  1264→  direction     String   @default("inbound") // inbound (receivable), outbound (payable)
+  1265→  1265→  status        String   @default("pending") // pending, deposited, cancelled, bounced, cleared
+  1266→  1266→  clientId      Int?
+  1267→  1267→  supplierId    Int?
+  1268→  1268→  bankAccountId Int?
+  1269→  1269→  glAccountId   Int?
+  1270→  1270→  depositedAt   DateTime?
+  1271→  1271→  cancelledAt   DateTime?
+  1272→  1272→  notes         String?
+  1273→  1273→  createdAt     DateTime @default(now())
+  1274→  1274→  updatedAt     DateTime @updatedAt
+  1275→  1275→  @@unique([companySlug, checkNumber])
+  1276→  1276→}
+  1277→  1277→
+  1278→  1278→// ═══════════════════════════════════════════════════════════════════════════════
+  1279→  1279→// Accounting — FX Revaluation
+  1280→  1280→// ═══════════════════════════════════════════════════════════════════════════════
+  1281→  1281→
+  1282→  1282→// ─── FX Revaluation ───
+  1283→  1283→
+  1284→  1284→model FxRevaluation {
+  1285→  1285→  id              Int      @id @default(autoincrement())
+  1286→  1286→  companySlug     String
+  1287→  1287→  revaluationDate String
+  1288→  1288→  baseCurrency    String   @default("USD")
+  1289→  1289→  targetCurrency  String
+  1290→  1290→  exchangeRate    String   @default("1")
+  1291→  1291→  totalGainLoss   String   @default("0.000")
+  1292→  1292→  status          String   @default("draft") // draft, posted, reversed
+  1293→  1293→  journalEntryId  Int?
+  1294→  1294→  notes           String?
+  1295→  1295→  createdAt       DateTime @default(now())
+  1296→  1296→  updatedAt       DateTime @updatedAt
+  1297→  1297→}
+  1298→  1298→
+  1299→  1299→// ═══════════════════════════════════════════════════════════════════════════════
+  1300→  1300→// Accounting — Landed Cost Allocation
+  1301→  1301→// ═══════════════════════════════════════════════════════════════════════════════
+  1302→  1302→
+  1303→  1303→// ─── Landed Cost Allocation ───
+  1304→  1304→
+  1305→  1305→model LandedCostAllocation {
+  1306→  1306→  id              Int      @id @default(autoincrement())
+  1307→  1307→  companySlug     String
+  1308→  1308→  purchaseInvoiceId Int?
+  1309→  1309→  allocationMethod String  @default("proportional") // proportional, equal, weight_based, volume_based, manual
+  1310→  1310→  costType        String   // freight, insurance, customs, handling, other
+  1311→  1311→  amount          String   @default("0.000")
+  1312→  1312→  currency        String   @default("KWD")
+  1313→  1313→  status          String   @default("draft") // draft, allocated, posted
+  1314→  1314→  notes           String?
+  1315→  1315→  createdAt       DateTime @default(now())
+  1316→  1316→  updatedAt       DateTime @updatedAt
+  1317→  1317→}
+  1318→  1318→
+  1319→  1319→// ═══════════════════════════════════════════════════════════════════════════════
+  1320→  1320→// Accounting — Inter-Company Transactions
+  1321→  1321→// ═══════════════════════════════════════════════════════════════════════════════
+  1322→  1322→
+  1323→  1323→// ─── Inter-Company Transaction ───
+  1324→  1324→
+  1325→  1325→model InterCompanyTransaction {
+  1326→  1326→  id              Int      @id @default(autoincrement())
+  1327→  1327→  companySlug     String
+  1328→  1328→  fromCompanySlug String
+  1329→  1329→  toCompanySlug   String
+  1330→  1330→  amount          String   @default("0.000")
+  1331→  1331→  currency        String   @default("KWD")
+  1332→  1332→  description     String?
+  1333→  1333→  reference       String?
+  1334→  1334→  status          String   @default("draft") // draft, settled, cancelled
+  1335→  1335→  settledAt       DateTime?
+  1336→  1336→  journalEntryId  Int?
+  1337→  1337→  createdAt       DateTime @default(now())
+  1338→  1338→  updatedAt       DateTime @updatedAt
+  1339→  1339→}
+  1340→  1340→
+  1341→  1341→// ═══════════════════════════════════════════════════════════════════════════════
+  1342→  1342→// Accounting — WPS (Wage Protection System)
+  1343→  1343→// ═══════════════════════════════════════════════════════════════════════════════
+  1344→  1344→
+  1345→  1345→// ─── WPS File ───
+  1346→  1346→
+  1347→  1347→model WPSFile {
+  1348→  1348→  id            Int      @id @default(autoincrement())
+  1349→  1349→  companySlug   String
+  1350→  1350→  country       String   @default("KW") // KW, SA, AE, BH, OM, QA
+  1351→  1351→  month         String   // YYYY-MM
+  1352→  1352→  fileName      String?
+  1353→  1353→  fileContent   String?
+  1354→  1354→  totalEmployees Int     @default(0)
+  1355→  1355→  totalAmount   String   @default("0.000")
+  1356→  1356→  status        String   @default("draft") // draft, submitted, approved, rejected
+  1357→  1357→  submittedBy   String?
+  1358→  1358→  submittedAt   DateTime?
+  1359→  1359→  createdAt     DateTime @default(now())
+  1360→  1360→  updatedAt     DateTime @updatedAt
+  1361→  1361→  @@unique([companySlug, country, month])
+  1362→  1362→}
+  1363→  1363→
+  1364→  1364→// ═══════════════════════════════════════════════════════════════════════════════
+  1365→  1365→// Accounting — Accountant Access (Collaboration)
+  1366→  1366→// ═══════════════════════════════════════════════════════════════════════════════
+  1367→  1367→
+  1368→  1368→// ─── Role Permission (Accountant Access) ───
+  1369→  1369→
+  1370→  1370→model RolePermission {
+  1371→  1371→  id            Int      @id @default(autoincrement())
+  1372→  1372→  companySlug   String
+  1373→  1373→  role          String   // accountant, auditor, consultant, admin
+  1374→  1374→  permissions   String   @default("[]") // JSON array of permission strings
+  1375→  1375→  assignedTo    String?  // email of the assigned user
+  1376→  1376→  isActive      Boolean  @default(true)
+  1377→  1377→  expiresAt     DateTime?
+  1378→  1378→  createdAt     DateTime @default(now())
+  1379→  1379→  updatedAt     DateTime @updatedAt
+  1380→  1380→}
+  1381→  1381→
+  1382→  1382→// ═══════════════════════════════════════════════════════════════════════════════
+  1383→  1383→// E-Invoicing (ZATCA / Kuwait / GCC Compliance)
+  1384→  1384→// ═══════════════════════════════════════════════════════════════════════════════
+  1385→  1385→
+  1386→  1386→// ─── E-Invoice ───
+  1387→  1387→
+  1388→  1388→model EInvoice {
+  1389→  1389→  id                Int      @id @default(autoincrement())
+  1390→  1390→  companySlug       String
+  1391→  1391→  invoiceId         Int?
+  1392→  1392→  invoiceNumber     String
+  1393→  1393→  authority         String   @default("zatca") // zatca, kuwait_moci, uae_fta
+  1394→  1394→  status            String   @default("draft") // draft, submitted, accepted, rejected, cancelled
+  1395→  1395→  submissionId      String?
+  1396→  1396→  qrCode            String?
+  1397→  1397→  digitalSignature  String?
+  1398→  1398→  xmlContent        String?
+  1399→  1399→  clearanceStatus   String?
+  1400→  1400→  rejectionReason   String?
+  1401→  1401→  deletedAt         DateTime?
+  1402→  1402→  createdAt         DateTime @default(now())
+  1403→  1403→  updatedAt         DateTime @updatedAt
+  1404→  1404→  invoice           Invoice? @relation(fields: [invoiceId], references: [id])
+  1405→  1405→  lines             EInvoiceLine[]
+  1406→  1406→  @@unique([companySlug, authority, invoiceNumber])
+  1407→  1407→}
+  1408→  1408→
+  1409→  1409→// ─── E-Invoice Line ───
+  1410→  1410→
+  1411→  1411→model EInvoiceLine {
+  1412→  1412→  id            Int      @id @default(autoincrement())
+  1413→  1413→  eInvoiceId    Int
+  1414→  1414→  lineNumber    Int      @default(0)
+  1415→  1415→  description   String?
+  1416→  1416→  descriptionAr String?
+  1417→  1417→  quantity      String   @default("0")
+  1418→  1418→  unitPrice     String   @default("0.000")
+  1419→  1419→  total         String   @default("0.000")
+  1420→  1420→  taxRate       String   @default("0")
+  1421→  1421→  taxAmount     String   @default("0.000")
+  1422→  1422→  productCode   String?
+  1423→  1423→  createdAt     DateTime @default(now())
+  1424→  1424→  updatedAt     DateTime @updatedAt
+  1425→  1425→  eInvoice      EInvoice @relation(fields: [eInvoiceId], references: [id], onDelete: Cascade)
+  1426→  1426→}
+  1427→  1427→
+  1428→  1428→// ─── ZATCA Config ───
+  1429→  1429→
+  1430→  1430→model ZATCAConfig {
+  1431→  1431→  id            Int      @id @default(autoincrement())
+  1432→  1432→  companySlug   String
+  1433→  1433→  environment   String   @default("sandbox") // sandbox, production
+  1434→  1434→  vatNumber     String?
+  1435→  1435→  sellerName    String?
+  1436→  1436→  sellerNameAr  String?
+  1437→  1437→  sellerAddress String?
+  1438→  1438→  sellerAddressAr String?
+  1439→  1439→  apiKey        String?
+  1440→  1440→  apiSecret     String?
+  1441→  1441→  csr           String?
+  1442→  1442→  certificate   String?
+  1443→  1443→  isOnboarded   Boolean  @default(false)
+  1444→  1444→  createdAt     DateTime @default(now())
+  1445→  1445→  updatedAt     DateTime @updatedAt
+  1446→  1446→  @@unique([companySlug, environment])
+  1447→  1447→}
+  1448→  1448→
+  1449→  1449→// ═══════════════════════════════════════════════════════════════════════════════
+  1450→  1450→// Invoice Template (Settings)
+  1451→  1451→// ═══════════════════════════════════════════════════════════════════════════════
+  1452→  1452→
+  1453→  1453→// ─── Invoice Template ───
+  1454→  1454→
+  1455→  1455→model InvoiceTemplate {
+  1456→  1456→  id              Int      @id @default(autoincrement())
+  1457→  1457→  companySlug     String
+  1458→  1458→  name            String
+  1459→  1459→  isDefault       Boolean  @default(false)
+  1460→  1460→  layoutType      String   @default("modern") // classic, modern, minimal, thermal
+  1461→  1461→  primaryColor    String   @default("#7C3AED")
+  1462→  1462→  fontFamily      String   @default("Noto Sans SC")
+  1463→  1463→  logoPosition    String   @default("right")
+  1464→  1464→  showTaxNumber   Boolean  @default(true)
+  1465→  1465→  showQrCode      Boolean  @default(true)
+  1466→  1466→  showBankDetails Boolean  @default(true)
+  1467→  1467→  footerText      String?
+  1468→  1468→  termsAndConditions String?
+  1469→  1469→  paperSize       String   @default("A4")
+  1470→  1470→  createdAt       DateTime @default(now())
+  1471→  1471→  updatedAt       DateTime @updatedAt
+  1472→  1472→  settings          InvoiceTemplateSettings[]
+  1473→  1473→  @@unique([companySlug, name])
+  1474→  1474→}
+  1475→  1475→
+  1476→  1476→// ─── Invoice Template Settings ───
+  1477→  1477→
+  1478→  1478→model InvoiceTemplateSettings {
+  1479→  1479→  id              Int      @id @default(autoincrement())
+  1480→  1480→  companySlug     String   @unique
+  1481→  1481→  templateId      Int?
+  1482→  1482→  primaryColor    String   @default("#7C3AED")
+  1483→  1483→  fontFamily      String   @default("Noto Sans SC")
+  1484→  1484→  fontSize        Int      @default(12)
+  1485→  1485→  showLogo        Boolean  @default(true)
+  1486→  1486→  logoPosition    String   @default("right")
+  1487→  1487→  showPaymentInfo Boolean  @default(true)
+  1488→  1488→  showStamp       Boolean  @default(false)
+  1489→  1489→  createdAt       DateTime @default(now())
+  1490→  1490→  updatedAt       DateTime @updatedAt
+  1491→  1491→  template        InvoiceTemplate? @relation(fields: [templateId], references: [id])
+  1492→  1492→}
+  1493→  1493→
+  1494→  1494→// ═══════════════════════════════════════════════════════════════════════════════
+  1495→  1495→// Platform Admin — Announcements, Tickets, Audit
+  1496→  1496→// ═══════════════════════════════════════════════════════════════════════════════
+  1497→  1497→
+  1498→  1498→// ─── Announcement ───
+  1499→  1499→
+  1500→  1500→model Announcement {
+  1501→  1501→  id          Int      @id @default(autoincrement())
+  1502→  1502→  title       String
+  1503→  1503→  body        String?
+  1504→  1504→  type        String   @default("info") // info, warning, maintenance, feature, critical
+  1505→  1505→  isActive    Boolean  @default(true)
+  1506→  1506→  startsAt    DateTime?
+  1507→  1507→  endsAt      DateTime?
+  1508→  1508→  createdAt   DateTime @default(now())
+  1509→  1509→  updatedAt   DateTime @updatedAt
+  1510→  1510→}
+  1511→  1511→
+  1512→  1512→// ─── Support Ticket ───
+  1513→  1513→
+  1514→  1514→model SupportTicket {
+  1515→  1515→  id          Int      @id @default(autoincrement())
+  1516→  1516→  userEmail   String
+  1517→  1517→  subject     String
+  1518→  1518→  body        String?
+  1519→  1519→  status      String   @default("open") // open, in_progress, resolved, closed
+  1520→  1520→  priority    String   @default("medium") // low, medium, high, urgent
+  1521→  1521→  assignedTo  String?
+  1522→  1522→  category    String?
+  1523→  1523→  createdAt   DateTime @default(now())
+  1524→  1524→  updatedAt   DateTime @updatedAt
+  1525→  1525→  replies     SupportTicketReply[]
+  1526→  1526→}
+  1527→  1527→
+  1528→  1528→// ─── Support Ticket Reply ───
+  1529→  1529→
+  1530→  1530→model SupportTicketReply {
+  1531→  1531→  id        Int      @id @default(autoincrement())
+  1532→  1532→  ticketId  Int
+  1533→  1533→  senderEmail String
+  1534→  1534→  senderRole String   @default("user") // user, admin, support
+  1535→  1535→  body      String
+  1536→  1536→  createdAt DateTime @default(now())
+  1537→  1537→  updatedAt DateTime @updatedAt
+  1538→  1538→  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  1539→  1539→}
+  1540→  1540→
+  1541→  1541→// ═══════════════════════════════════════════════════════════════════════════════
+  1542→  1542→// Automation Rules
+  1543→  1543→// ═══════════════════════════════════════════════════════════════════════════════
+  1544→  1544→
+  1545→  1545→// ─── Automation Rule ───
+  1546→  1546→
+  1547→  1547→model AutomationRule {
+  1548→  1548→  id           Int      @id @default(autoincrement())
+  1549→  1549→  companySlug  String
+  1550→  1550→  name         String
+  1551→  1551→  trigger      String   // invoice_created, stock_low, payment_overdue, custom
+  1552→  1552→  condition    String   @default("{}") // JSON
+  1553→  1553→  actions      String   @default("[]") // JSON array
+  1554→  1554→  isActive     Boolean  @default(true)
+  1555→  1555→  lastRunAt    DateTime?
+  1556→  1556→  runCount     Int      @default(0)
+  1557→  1557→  createdAt    DateTime @default(now())
+  1558→  1558→  updatedAt    DateTime @updatedAt
+  1559→  1559→  executions   AutomationExecution[]
+  1560→  1560→}
+  1561→  1561→
+  1562→  1562→// ─── Automation Execution ───
+  1563→  1563→
+  1564→  1564→model AutomationExecution {
+  1565→  1565→  id            Int      @id @default(autoincrement())
+  1566→  1566→  ruleId        Int
+  1567→  1567→  triggerEvent  String?
+  1568→  1568→  result        String   @default("success") // success, failure, skipped
+  1569→  1569→  error         String?
+  1570→  1570→  executionTime Int      @default(0) // ms
+  1571→  1571→  createdAt     DateTime @default(now())
+  1572→  1572→  rule          AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  1573→  1573→}
+  1574→  1574→
+  1575→  1575→// ═══════════════════════════════════════════════════════════════════════════════
+  1576→  1576→// Webhooks
+  1577→  1577→// ═══════════════════════════════════════════════════════════════════════════════
+  1578→  1578→
+  1579→  1579→// ─── Webhook Endpoint ───
+  1580→  1580→
+  1581→  1581→model WebhookEndpoint {
+  1582→  1582→  id            Int      @id @default(autoincrement())
+  1583→  1583→  companySlug   String
+  1584→  1584→  url           String
+  1585→  1585→  events        String   @default("[]") // JSON array of event types
+  1586→  1586→  secret        String?
+  1587→  1587→  isActive      Boolean  @default(true)
+  1588→  1588→  description   String?
+  1589→  1589→  createdAt     DateTime @default(now())
+  1590→  1590→  updatedAt     DateTime @updatedAt
+  1591→  1591→  deliveries    WebhookDelivery[]
+  1592→  1592→}
+  1593→  1593→
+  1594→  1594→// ─── Webhook Event ───
+  1595→  1595→
+  1596→  1596→model WebhookEvent {
+  1597→  1597→  id            Int      @id @default(autoincrement())
+  1598→  1598→  companySlug   String
+  1599→  1599→  eventType     String
+  1600→  1600→  payload       String   @default("{}") // JSON
+  1601→  1601→  createdAt     DateTime @default(now())
+  1602→  1602→  deliveries    WebhookDelivery[]
+  1603→  1603→}
+  1604→  1604→
+  1605→  1605→// ─── Webhook Delivery ───
+  1606→  1606→
+  1607→  1607→model WebhookDelivery {
+  1608→  1608→  id              Int      @id @default(autoincrement())
+  1609→  1609→  endpointId      Int
+  1610→  1610→  eventId         Int?
+  1611→  1611→  status          String   @default("pending") // pending, delivered, failed, retrying
+  1612→  1612→  statusCode      Int?
+  1613→  1613→  responseBody    String?
+  1614→  1614→  attempts        Int      @default(0)
+  1615→  1615→  maxAttempts     Int      @default(5)
+  1616→  1616→  nextRetryAt     DateTime?
+  1617→  1617→  createdAt       DateTime @default(now())
+  1618→  1618→  updatedAt       DateTime @updatedAt
+  1619→  1619→  endpoint        WebhookEndpoint @relation(fields: [endpointId], references: [id])
+  1620→  1620→  event           WebhookEvent?   @relation(fields: [eventId], references: [id])
+  1621→  1621→}
+  1622→  1622→
