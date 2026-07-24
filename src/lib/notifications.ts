@@ -82,7 +82,7 @@ export async function scanOverdueInvoices(): Promise<number> {
     // Same `companies: { contains: slug }` pre-filter as usageMeter — keeps
     // the candidate set small without scanning the whole user table.
     const affectedSlugs = Array.from(new Set(overdueInvoices.map((i) => i.companySlug)));
-    const adminUsers = await db.user.findMany({
+    const adminUsers = await db.appUser.findMany({
       where: {
         role: "admin",
         // Pre-filter to users whose companies field mentions ANY of the
@@ -173,7 +173,7 @@ export async function scanExpiringResidences(): Promise<number> {
 
     // Batch admin lookup
     const affectedSlugs = Array.from(new Set(employees.map((e) => e.companySlug)));
-    const adminUsers = await db.user.findMany({
+    const adminUsers = await db.appUser.findMany({
       where: { role: "admin" },
       select: { uid: true, companies: true },
     });
@@ -239,7 +239,7 @@ export async function scanExpiringSubscriptions(): Promise<number> {
     });
 
     let count = 0;
-    const founder = await db.user.findFirst({
+    const founder = await db.appUser.findFirst({
       where: { role: "admin" },
       select: { uid: true },
       orderBy: { createdAt: "asc" },

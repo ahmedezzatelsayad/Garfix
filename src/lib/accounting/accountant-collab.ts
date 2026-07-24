@@ -74,12 +74,12 @@ export async function createExternalAccountantAccess(
   }
 
   // Also ensure the accountant user has this company in their companies list
-  const user = await db.user.findUnique({ where: { email: accountantEmail } });
+  const user = await db.appUser.findUnique({ where: { email: accountantEmail } });
   if (user) {
     const companies: string[] = JSON.parse(user.companies || "[]");
     if (!companies.includes(companySlug)) {
       companies.push(companySlug);
-      await db.user.update({
+      await db.appUser.update({
         where: { email: accountantEmail },
         data: { companies: JSON.stringify(companies) },
       });

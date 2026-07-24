@@ -100,7 +100,7 @@ export async function checkUserQuota(companySlug: string): Promise<QuotaCheck> {
   //   2. Verify exact membership via JSON.parse + .includes
   // This avoids scanning the entire users table — only rows mentioning the slug
   // are fetched, then JS filtering removes false positives from substring matches.
-  const candidates = await db.user.findMany({
+  const candidates = await db.appUser.findMany({
     where: {
       role: { not: "inactive" },
       companies: { contains: companySlug },
@@ -132,7 +132,7 @@ export async function checkUserQuota(companySlug: string): Promise<QuotaCheck> {
 
 /** Check if company can create a new company (for multi-company plans) */
 export async function checkCompanyQuota(userUid: string): Promise<QuotaCheck> {
-  const user = await db.user.findUnique({
+  const user = await db.appUser.findUnique({
     where: { uid: userUid },
     select: { companies: true, role: true },
   });

@@ -51,7 +51,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
       select: { id: true, invoiceNumber: true, createdAt: true, total: true },
     }),
     // users: stored as JSON array in user.companies — count rows mentioning the slug
-    db.user.count({
+    db.appUser.count({
       where: { companies: { contains: slug }, role: { not: "inactive" } },
     }),
     db.client.count({ where: { companySlug: slug } }),
@@ -208,11 +208,11 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.productCatalog.deleteMany({ where: { companySlug: slug } });
 
     // 2. HR records (physical)
-    await tx.attendance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.salary.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.commission.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.leaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.performance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRAttendance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRSalary.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRCommission.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRLeaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRPerformance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.employee.deleteMany({ where: { companySlug: slug } });
 
     // 3. Accounting (lines physical, entries SOFT-DELETE)
@@ -260,7 +260,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
 
     // 9. Notifications for users in this company
     // (companies column is a JSON-encoded string array; use string contains)
-    const users = await tx.user.findMany({ where: { companies: { contains: slug } } });
+    const users = await tx.appUser.findMany({ where: { companies: { contains: slug } } });
     if (users.length > 0) {
       await tx.notification.deleteMany({ where: { userUid: { in: users.map(u => u.uid) } } }).catch(() => {});
     }

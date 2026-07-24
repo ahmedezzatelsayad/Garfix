@@ -310,7 +310,7 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
 
         // Persist the conversation
         const lastUserMsg = data.messages[data.messages.length - 1];
-        await db.chatMessage.create({
+        await db.chatHistory.create({
           data: {
             userUid: user.uid,
             companySlug: data.companySlug || null,
@@ -320,7 +320,7 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
             model: outcome.model,
           },
         });
-        await db.chatMessage.create({
+        await db.chatHistory.create({
           data: {
             userUid: user.uid,
             companySlug: data.companySlug || null,

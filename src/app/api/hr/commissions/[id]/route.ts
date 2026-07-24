@@ -22,7 +22,7 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.commission.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRCommission.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Commission record not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
@@ -39,7 +39,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (parsed.data.amount !== undefined) data.amount = num(parsed.data.amount, 3).toFixed(3);
   if (parsed.data.isPaid !== undefined) data.isPaid = parsed.data.isPaid;
 
-  const commission = await db.commission.update({ where: { id: existing.id }, data });
+  const commission = await db.hRCommission.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "update", entity: "commission", entityId: commission.id, companySlug: existing.companySlug,
@@ -50,14 +50,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.commission.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRCommission.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Commission record not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
 
-  await db.commission.delete({ where: { id: existing.id } });
+  await db.hRCommission.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "delete", entity: "commission", entityId: existing.id, companySlug: existing.companySlug,

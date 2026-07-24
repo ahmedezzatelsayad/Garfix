@@ -163,10 +163,10 @@ async function main() {
   // Use direct Prisma since the lib/db import path differs for scripts
   const prisma = new PrismaClient();
 
-  const user = await prisma.user.findUnique({ where: { email: TEST_EMAIL } });
+  const user = await prisma.appUser.findUnique({ where: { email: TEST_EMAIL } });
   if (!user) throw new Error("test user not found after register");
 
-  await prisma.user.update({
+  await prisma.appUser.update({
     where: { uid: user.uid },
     data: {
       role: "admin",

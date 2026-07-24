@@ -633,7 +633,7 @@ describe("resolveAuth — token version mismatch", () => {
 
     // Re-mock db
     const mod = await import("@/lib/db");
-    (mod as any).db.user.findUnique = mockFindUnique;
+    (mod as any).db.appUser.findUnique = mockFindUnique;
 
     const req = new MockNextRequest({
       cookies: new Map([[REFRESH_COOKIE, refreshTok]]),

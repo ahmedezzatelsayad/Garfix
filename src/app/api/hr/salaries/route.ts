@@ -34,7 +34,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
-  const salaries = await db.salary.findMany({ where, orderBy: { month: "desc" }, take: 500 });
+  const salaries = await db.hRSalary.findMany({ where, orderBy: { month: "desc" }, take: 500 });
   return NextResponse.json({
     salaries: salaries.map((s) => ({
       ...s,
@@ -63,7 +63,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const deductions = num(data.deductions, 3);
   const bonus = num(data.bonus, 3);
   const net = base + allowances + bonus - deductions;
-  const salary = await db.salary.create({
+  const salary = await db.hRSalary.create({
     data: {
       companySlug: data.companySlug,
       employeeId: data.employeeId,

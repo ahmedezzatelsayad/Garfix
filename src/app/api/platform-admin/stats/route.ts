@@ -18,7 +18,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   const [tenantsCount, usersCount, invoicesCount, ticketsOpen] = await Promise.all([
     db.company.count(),
-    db.user.count(),
+    db.appUser.count(),
     db.invoice.count(),
     db.supportTicket.count({ where: { status: "open" } }),
   ]);

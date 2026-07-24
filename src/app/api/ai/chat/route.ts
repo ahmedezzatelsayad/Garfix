@@ -318,7 +318,7 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
   });
 
   // Persist the conversation (user message + assistant reply)
-  await db.chatMessage.create({
+  await db.chatHistory.create({
     data: {
       userUid: user.uid,
       companySlug: data.companySlug || null,
@@ -328,7 +328,7 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
       model: outcome.model,
     },
   });
-  await db.chatMessage.create({
+  await db.chatHistory.create({
     data: {
       userUid: user.uid,
       companySlug: data.companySlug || null,
@@ -359,7 +359,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const conversationId = sp.get("conversationId") || undefined;
   const where: Record<string, unknown> = { userUid: user.uid };
   if (conversationId) where.conversationId = conversationId;
-  const messages = await db.chatMessage.findMany({
+  const messages = await db.chatHistory.findMany({
     where, orderBy: { createdAt: "asc" }, take: 100,
   });
   return NextResponse.json({ messages });

@@ -27,7 +27,7 @@
  * =============
  * Same monkey-patching pattern as `collision-recovery-audit.test.ts` + the
  * B.7e test file: import the real `db`, monkey-patch `db.featureFlag`,
- * `db.platformSetting`, `db.productAlias`, `db.productMatchAudit` in beforeAll,
+ * `db.platformSettings`, `db.productAlias`, `db.productMatchAudit` in beforeAll,
  * restore them in afterAll. We do NOT call `mock.module("@/lib/db")` — that
  * would leak into `productMatcher.test.ts` (Bun's mock.module is global by
  * default).

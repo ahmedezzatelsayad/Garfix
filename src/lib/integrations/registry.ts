@@ -48,7 +48,7 @@ export async function getIntegrationConfig(
   type: string,
 ): Promise<Record<string, string> | null> {
   const key = settingKey(type);
-  const setting = await db.platformSetting.findUnique({ where: { key } });
+  const setting = await db.platformSettings.findUnique({ where: { key } });
   if (!setting) return null;
   try {
     const encrypted = JSON.parse(setting.value) as Record<string, string>;
@@ -79,11 +79,11 @@ export async function setIntegrationConfig(
     encrypted[k] = encryptSecret(v);
   }
   const value = JSON.stringify(encrypted);
-  const existing = await db.platformSetting.findUnique({ where: { key } });
+  const existing = await db.platformSettings.findUnique({ where: { key } });
   if (existing) {
-    await db.platformSetting.update({ where: { key }, data: { value } });
+    await db.platformSettings.update({ where: { key }, data: { value } });
   } else {
-    await db.platformSetting.create({
+    await db.platformSettings.create({
       data: { key, category: "integration", valueType: "json", value },
     });
   }
@@ -98,6 +98,6 @@ export async function setIntegrationConfig(
  */
 export async function disconnectIntegration(type: string): Promise<void> {
   const key = settingKey(type);
-  await db.platformSetting.deleteMany({ where: { key } });
+  await db.platformSettings.deleteMany({ where: { key } });
   logger.info("[integrations] credentials removed", { type });
 }

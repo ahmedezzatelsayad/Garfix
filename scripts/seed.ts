@@ -30,7 +30,7 @@ async function main() {
   console.log("🌱 Seeding Garfix v11 database...");
 
   const passwordHash = await bcrypt.hash(FOUNDER_PASSWORD, 10);
-  const founder = await db.user.upsert({
+  const founder = await db.appUser.upsert({
     where: { email: FOUNDER_EMAIL },
     update: {},
     create: {
@@ -147,7 +147,7 @@ async function main() {
 
   const todayStr = fmtDate(today);
   await Promise.all(employees.map((e, i) =>
-    db.attendance.create({
+    db.hRAttendance.create({
       data: {
         companySlug: "garfix-demo", employeeId: e.id, date: todayStr,
         status: i === 1 ? "late" : "present",
@@ -164,7 +164,7 @@ async function main() {
     const deductions = i === 1 ? 20 : 0;
     const bonus = i === 0 ? 100 : 0;
     const net = base + allowances + bonus - deductions;
-    return db.salary.create({
+    return db.hRSalary.create({
       data: {
         companySlug: "garfix-demo", employeeId: e.id, month: currentMonth,
         baseSalary: base.toFixed(3), allowances: allowances.toFixed(3),
@@ -224,7 +224,7 @@ async function main() {
     { key: "branding.primary_color", category: "branding", valueType: "string", value: JSON.stringify("#7c3aed") },
   ];
   for (const s of platformSettings) {
-    await db.platformSetting.upsert({ where: { key: s.key }, update: {}, create: { ...s, updatedBy: "system" } });
+    await db.platformSettings.upsert({ where: { key: s.key }, update: {}, create: { ...s, updatedBy: "system" } });
   }
   console.log(`  ✓ ${platformSettings.length} platform settings seeded`);
 

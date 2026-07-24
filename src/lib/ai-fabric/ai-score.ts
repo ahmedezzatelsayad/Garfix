@@ -107,7 +107,7 @@ export async function computeAndSaveScore(companySlug: string): Promise<AIScoreR
   const score = Math.round(Math.max(0, Math.min(100, rawScore)) * 10) / 10;
 
   // Upsert to AIScoreSnapshot
-  await db.aIScoreSnapshot.upsert({
+  await db.aiScoreSnapshot.upsert({
     where: {
       companySlug_period: { companySlug, period },
     },
@@ -165,7 +165,7 @@ export async function computeAndSaveScore(companySlug: string): Promise<AIScoreR
 export async function getLatestScore(
   companySlug: string,
 ): Promise<{ period: string; score: number; cacheHitPct: number; ruleHitPct: number; aiCallPct: number; avgCostPerRequest: number } | null> {
-  const snapshot = await db.aIScoreSnapshot.findFirst({
+  const snapshot = await db.aiScoreSnapshot.findFirst({
     where: { companySlug },
     orderBy: { createdAt: "desc" },
   });
@@ -190,7 +190,7 @@ export async function getLatestScore(
 export async function getAllScores(): Promise<AIScoreResult[]> {
   const today = new Date().toISOString().slice(0, 10);
 
-  const snapshots = await db.aIScoreSnapshot.findMany({
+  const snapshots = await db.aiScoreSnapshot.findMany({
     where: { period: today },
     orderBy: { score: "asc" },
   });

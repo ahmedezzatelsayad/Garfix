@@ -58,7 +58,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   );
   if (emailRateLimitErr) return emailRateLimitErr;
 
-  const user = await db.user.findUnique({ where: { email: normalizedEmail } });
+  const user = await db.appUser.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     // Anti-enumeration: same message for "wrong password" as "no such user"
     return apiError("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);

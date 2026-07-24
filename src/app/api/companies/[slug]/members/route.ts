@@ -43,7 +43,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   if ("error" in access) return access.error;
 
   // SQLite has no native JSON query — use a substring filter then validate in JS.
-  const candidates = await db.user.findMany({
+  const candidates = await db.appUser.findMany({
     where: { companies: { contains: slug } },
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -79,7 +79,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const data = parsed.data;
   const email = data.email.toLowerCase();
 
-  const existing = await db.user.findUnique({ where: { email } });
+  const existing = await db.appUser.findUnique({ where: { email } });
 
   let user: { uid: string; email: string; displayName: string; role: string; companies: string; permissions: string };
   let temporaryPassword: string | null = null;
@@ -96,7 +96,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
       Object.assign(perms, data.permissions);
     }
 
-    user = await db.user.update({
+    user = await db.appUser.update({
       where: { uid: existing.uid },
       data: {
         companies: JSON.stringify(companies),
@@ -117,7 +117,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     const perms = data.permissions || {};
     created = true;
 
-    user = await db.user.create({
+    user = await db.appUser.create({
       data: {
         uid,
         email,

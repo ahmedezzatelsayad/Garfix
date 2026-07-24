@@ -76,7 +76,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // SEC-H2 FIX (Cycle 1): if the email already exists, return the generic
   // response instead of 409. We still do an audit log entry for security.
-  const existing = await db.user.findUnique({ where: { email: normalizedEmail } });
+  const existing = await db.appUser.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     await logAudit({
       userEmail: normalizedEmail,
@@ -94,7 +94,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const passwordHash = await hashPassword(password);
   const uid = randomUUID();
 
-  const user = await db.user.create({
+  const user = await db.appUser.create({
     data: {
       uid,
       email: normalizedEmail,

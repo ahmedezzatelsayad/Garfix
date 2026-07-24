@@ -58,7 +58,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError(pwdCheck.errors[0] || "كلمة المرور غير قوية بما يكفي", 400);
   }
 
-  const user = await db.user.findUnique({ where: { email: normalizedEmail } });
+  const user = await db.appUser.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     return apiError("رمز التحقق غير صحيح أو منتهي الصلاحية", 400);
   }
@@ -111,7 +111,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Set new password + invalidate all sessions (tokenVersion++)
   const newHash = await hashPassword(newPassword);
-  await db.user.update({
+  await db.appUser.update({
     where: { uid: user.uid },
     data: {
       passwordHash: newHash,

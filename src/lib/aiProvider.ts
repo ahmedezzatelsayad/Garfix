@@ -318,7 +318,7 @@ export async function getAiProviders(): Promise<AiProviderConfig[]> {
   if (cachedConfig && Date.now() < cacheExpiry) return cachedConfig;
 
   try {
-    const settings = await db.platformSetting.findMany({
+    const settings = await db.platformSettings.findMany({
       where: { key: { startsWith: "ai.provider." } },
     });
 
@@ -517,15 +517,15 @@ export async function setProviderApiKey(providerType: ProviderType, apiKey: stri
   const encrypted = encryptSecret(apiKey);
   const key = `ai.provider.${providerType}.apiKey`;
 
-  const existing = await db.platformSetting.findUnique({ where: { key } });
+  const existing = await db.platformSettings.findUnique({ where: { key } });
   if (existing) {
-    await db.platformSetting.update({ where: { key }, data: { value: JSON.stringify(encrypted), updatedAt: new Date() } });
+    await db.platformSettings.update({ where: { key }, data: { value: JSON.stringify(encrypted), updatedAt: new Date() } });
   } else {
-    await db.platformSetting.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(encrypted) } });
+    await db.platformSettings.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(encrypted) } });
   }
 
   // Log to history
-  await db.platformSettingHistory.create({
+  await db.platformSettingsHistory.create({
     data: { settingKey: key, newValue: "[encrypted]", changedBy: "system" },
   });
 
@@ -538,11 +538,11 @@ export async function setProviderApiKey(providerType: ProviderType, apiKey: stri
  */
 export async function setProviderModel(providerType: ProviderType, model: string): Promise<void> {
   const key = `ai.provider.${providerType}.model`;
-  const existing = await db.platformSetting.findUnique({ where: { key } });
+  const existing = await db.platformSettings.findUnique({ where: { key } });
   if (existing) {
-    await db.platformSetting.update({ where: { key }, data: { value: JSON.stringify(model), updatedAt: new Date() } });
+    await db.platformSettings.update({ where: { key }, data: { value: JSON.stringify(model), updatedAt: new Date() } });
   } else {
-    await db.platformSetting.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(model) } });
+    await db.platformSettings.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(model) } });
   }
   invalidateAiProviderCache();
 }
@@ -552,11 +552,11 @@ export async function setProviderModel(providerType: ProviderType, model: string
  */
 export async function setProviderEnabled(providerType: ProviderType, isEnabled: boolean): Promise<void> {
   const key = `ai.provider.${providerType}.isEnabled`;
-  const existing = await db.platformSetting.findUnique({ where: { key } });
+  const existing = await db.platformSettings.findUnique({ where: { key } });
   if (existing) {
-    await db.platformSetting.update({ where: { key }, data: { value: JSON.stringify(isEnabled), updatedAt: new Date() } });
+    await db.platformSettings.update({ where: { key }, data: { value: JSON.stringify(isEnabled), updatedAt: new Date() } });
   } else {
-    await db.platformSetting.create({ data: { key, category: "ai", valueType: "boolean", value: JSON.stringify(isEnabled) } });
+    await db.platformSettings.create({ data: { key, category: "ai", valueType: "boolean", value: JSON.stringify(isEnabled) } });
   }
   invalidateAiProviderCache();
 }
@@ -566,11 +566,11 @@ export async function setProviderEnabled(providerType: ProviderType, isEnabled: 
  */
 export async function setProviderPriority(providerType: ProviderType, priority: number): Promise<void> {
   const key = `ai.provider.${providerType}.priority`;
-  const existing = await db.platformSetting.findUnique({ where: { key } });
+  const existing = await db.platformSettings.findUnique({ where: { key } });
   if (existing) {
-    await db.platformSetting.update({ where: { key }, data: { value: JSON.stringify(priority), updatedAt: new Date() } });
+    await db.platformSettings.update({ where: { key }, data: { value: JSON.stringify(priority), updatedAt: new Date() } });
   } else {
-    await db.platformSetting.create({ data: { key, category: "ai", valueType: "number", value: JSON.stringify(priority) } });
+    await db.platformSettings.create({ data: { key, category: "ai", valueType: "number", value: JSON.stringify(priority) } });
   }
   invalidateAiProviderCache();
 }

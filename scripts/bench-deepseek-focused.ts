@@ -75,10 +75,10 @@ async function main() {
   console.log("2. Creating benchmark company...");
   const { PrismaClient } = await import("@prisma/client");
   const prisma = new PrismaClient();
-  const user = await prisma.user.findUnique({ where: { email: TEST_EMAIL } });
+  const user = await prisma.appUser.findUnique({ where: { email: TEST_EMAIL } });
   if (!user) throw new Error("user not found");
 
-  await prisma.user.update({
+  await prisma.appUser.update({
     where: { uid: user.uid },
     data: {
       role: "admin",

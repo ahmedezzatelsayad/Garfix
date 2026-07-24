@@ -61,7 +61,7 @@ export async function calculateSalesCommissions(
   for (const emp of employees) {
     // Default commission rate: 5% (can be configured per employee via notes or future schema addition)
     // For now, we check if the employee has a commission percentage stored (from Commission model)
-    const existingCommissions = await db.commission.findMany({
+    const existingCommissions = await db.hRCommission.findMany({
       where: { employeeId: emp.id, companySlug, type: "sales" },
       orderBy: { date: "desc" },
       take: 1,
@@ -229,7 +229,7 @@ export async function postCommissionsJE(
 
     // Create Commission records for each salesperson
     for (const comm of commissions) {
-      await tx.commission.create({
+      await tx.hRCommission.create({
         data: {
           companySlug,
           employeeId: comm.salespersonId,

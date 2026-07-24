@@ -52,7 +52,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await clearSession(res);
     return res;
   }
-  const user = await db.user.findUnique({ where: { uid: payload.uid } });
+  const user = await db.appUser.findUnique({ where: { uid: payload.uid } });
   if (!user || user.tokenVersion !== payload.tv) {
     const res = NextResponse.json({ error: "Session revoked" }, { status: 401 });
     await clearSession(res);

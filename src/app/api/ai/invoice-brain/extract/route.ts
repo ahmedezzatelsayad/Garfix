@@ -182,7 +182,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           : "pattern";
 
   // 6.1 — log the extraction source so the platform can track AI-dependence ratio
-  await db.aiProcessingLog.create({
+  await db.aIProcessingLog.create({
     data: {
       companySlug,
       endpoint: "invoice-brain",
