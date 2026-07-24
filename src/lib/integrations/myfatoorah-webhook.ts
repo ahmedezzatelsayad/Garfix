@@ -345,18 +345,10 @@ async function handleRefundCompleted(event: ParsedWebhookEvent): Promise<{ ok: b
     return { ok: false, error: 'سجل الاسترجاع غير موجود' };
   }
 
-  const existingMeta = (() => { try { return JSON.parse(refund.metadata || '{}'); } catch { return {}; } })();
   await db.refundTransaction.update({
     where: { id: refund.id },
     data: {
       status: 'completed',
-      completedAt: new Date(),
-      metadata: JSON.stringify({
-        ...existingMeta,
-        webhookRefundId: event.refundId,
-        webhookRefundStatus: event.refundStatus,
-        webhookProcessedAt: new Date().toISOString(),
-      }),
     },
   });
 

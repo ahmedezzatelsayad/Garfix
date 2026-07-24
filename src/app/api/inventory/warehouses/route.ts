@@ -32,7 +32,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where: { companySlug },
     orderBy: [{ code: "asc" }],
     include: {
-      _count: { select: { items: true } },
+      _count: { select: { inventoryItems: true } },
     },
   });
 
@@ -46,7 +46,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       isActive: w.isActive,
       createdAt: w.createdAt,
       updatedAt: w.updatedAt,
-      itemCount: w._count.items,
+      itemCount: w._count.inventoryItems,
     })),
   });
 });

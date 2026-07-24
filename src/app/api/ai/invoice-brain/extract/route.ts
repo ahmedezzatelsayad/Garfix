@@ -57,7 +57,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const company = await db.company.findUnique({ where: { slug: companySlug } });
   if (!company) return apiError("الشركة غير موجودة", 404);
-  const ctx = buildCompanyContext(company);
+  const ctx = buildCompanyContext({
+    slug: company.slug,
+    currency: company.currency,
+    country: company.country,
+    defaultTaxRate: company.defaultTaxRate?.toString(),
+  });
 
   const t0 = Date.now();
   const store = new PrismaPatternStore();

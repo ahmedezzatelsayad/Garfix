@@ -19,7 +19,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const accounts = await db.account.findMany({
     where: { companySlug, isActive: true },
     include: {
-      journalLines: {
+      journalEntryLines: {
         include: { entry: { select: { status: true } } },
       },
     },
@@ -29,7 +29,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const rows = accounts.map((acc) => {
     let totalDebit = 0;
     let totalCredit = 0;
-    for (const line of acc.journalLines) {
+    for (const line of acc.journalEntryLines) {
       if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
       // For reversed entries, swap the effect
       const multiplier = line.entry.status === "reversed" ? -1 : 1;

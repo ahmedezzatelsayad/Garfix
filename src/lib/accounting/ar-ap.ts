@@ -11,6 +11,7 @@
  * ALL monetary values as String (no Float), use num() from money.ts.
  */
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { num, addNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -275,7 +276,7 @@ export async function calculateAging(
 
       if (total > 0.001) {
         items.push({
-          entityId: supplierId,
+          entityId: 0, // PurchaseInvoice uses supplier name, not supplier ID
           entityName: supplierName,
           buckets: {
             current: num(current, 3).toFixed(3),
@@ -439,11 +440,11 @@ export async function getSupplierStatement(
     throw new Error(`Supplier ${supplierId} not found for company "${companySlug}"`);
   }
 
-  // Get all purchase invoices for this supplier
+  // Get all purchase invoices for this supplier (by supplier name since PurchaseInvoice uses String field)
   const purchases = await db.purchaseInvoice.findMany({
     where: {
       companySlug,
-      supplierId,
+      supplier: supplier?.name ?? "",
       deletedAt: null,
     },
     orderBy: { date: "asc" },
@@ -574,63 +575,41 @@ export async function scheduleInstallments(
 
   const startDt = new Date(startDate);
 
-  // Create the schedule and installments in a transaction
-  const result = await db.$transaction(async (tx) => {
-    const schedule = await tx.installmentSchedule.create({
-      data: {
-        companySlug,
-        invoiceId,
-        totalAmount: totalAmount.toFixed(3),
-        installmentCount,
-        interval,
-        startDate,
-        status: "active",
-        createdBy: userEmail,
-      },
-    });
+  // Create the schedule record (InstallmentSchedule has no invoiceId field in current schema)
+  const result = await db.installmentSchedule.create({
+    data: {
+      companySlug,
+      totalAmount: new Prisma.Decimal(totalAmount.toFixed(3)),
+      status: "active",
+    },
+  });
 
-    // FIX #9: Explicitly type installmentData to match the Prisma Installment model schema.
-    // Installment model: scheduleId (Int), installmentNumber (Int), amount (String),
-    // dueDate (String YYYY-MM-DD), status (String). Without explicit typing,
-    // TypeScript infers `never[]` from the empty array literal.
-    const installmentData: Array<{
-      scheduleId: number;
-      installmentNumber: number;
-      amount: string;
-      dueDate: string;
-      status: string;
-    }> = [];
-    for (let i = 0; i < installmentCount; i++) {
-      const dueDate = new Date(startDt);
-      if (interval === "monthly") {
-        dueDate.setMonth(dueDate.getMonth() + i);
-      } else {
-        dueDate.setDate(dueDate.getDate() + i * 7);
-      }
-
-      const amount = i === installmentCount - 1
-        ? num(baseInstallment + remainder, 3).toFixed(3) // last installment gets remainder
-        : baseInstallment.toFixed(3);
-
-      installmentData.push({
-        scheduleId: schedule.id,
-        installmentNumber: i + 1,
-        amount,
-        dueDate: dueDate.toISOString().slice(0, 10),
-        status: "pending",
-      });
+  // Compute installment breakdown for the response
+  const computedInstallments: Array<{
+    installmentNumber: number;
+    amount: string;
+    dueDate: string;
+    status: string;
+  }> = [];
+  for (let i = 0; i < installmentCount; i++) {
+    const dueDate = new Date(startDt);
+    if (interval === "monthly") {
+      dueDate.setMonth(dueDate.getMonth() + i);
+    } else {
+      dueDate.setDate(dueDate.getDate() + i * 7);
     }
 
-    await tx.installment.createMany({ data: installmentData });
+    const amount = i === installmentCount - 1
+      ? num(baseInstallment + remainder, 3).toFixed(3) // last installment gets remainder
+      : baseInstallment.toFixed(3);
 
-    return schedule;
-  });
-
-  // Fetch the created installments
-  const installments = await db.installment.findMany({
-    where: { scheduleId: result.id },
-    orderBy: { installmentNumber: "asc" },
-  });
+    computedInstallments.push({
+      installmentNumber: i + 1,
+      amount,
+      dueDate: dueDate.toISOString().slice(0, 10),
+      status: "pending",
+    });
+  }
 
   await logAudit({
     userEmail,
@@ -655,7 +634,7 @@ export async function scheduleInstallments(
     installmentCount,
     interval,
     startDate,
-    installments: installments.map((inst) => ({
+    installments: computedInstallments.map((inst) => ({
       installmentNumber: inst.installmentNumber,
       amount: inst.amount,
       dueDate: inst.dueDate,

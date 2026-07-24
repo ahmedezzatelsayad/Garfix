@@ -98,11 +98,11 @@ export function BankingView() {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</div></div>
               </div>
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
               </div>
             </div>
@@ -328,11 +328,11 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
       {selectedAccountId && items.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي البنك</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBank)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><FileText size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><FileText size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي الكتب</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBook)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
@@ -342,7 +342,7 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
             <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalDiff)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><CheckCircle2 size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><CheckCircle2 size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span className="text-emerald-500">{matchedCount}</span> / <span className="text-amber-500">{unmatchedCount}</span></div></div>
           </div>
         </div>

@@ -70,20 +70,19 @@ export async function initiateRefund(
   if (txn.provider !== 'myfatoorah') {
     return { ok: false, error: 'هذه المعاملة ليست عبر MyFatoorah — يرجى استخدام مزود الاسترجاع المناسب' };
   }
-  if (parseFloat(txn.amount) < amount) {
+  if (parseFloat(txn.amount.toString()) < amount) {
     return { ok: false, error: 'مبلغ الاسترجاع أكبر من مبلغ المعاملة الأصلية' };
   }
 
   // 2. Create RefundTransaction record
   const refundRecord = await db.refundTransaction.create({
     data: {
-      paymentTxnId,
+      paymentTransactionId: paymentTxnId,
       companySlug: txn.companySlug,
       refundAmount: String(amount),
       currency: txn.currency,
       reason: reason || 'استرجاع بناء على طلب العميل',
       status: 'pending',
-      createdBy,
     },
   });
 
@@ -92,7 +91,7 @@ export async function initiateRefund(
   if (!cfg?.api_key || !cfg?.base_url) {
     await db.refundTransaction.update({
       where: { id: refundRecord.id },
-      data: { status: 'failed', failureReason: 'بوابة الدفع MyFatoorah غير مُهيّأة' },
+      data: { status: 'failed', reason: 'بوابة الدفع MyFatoorah غير مُهيّأة' },
     });
     return { ok: false, error: 'بوابة الدفع MyFatoorah غير مُهيّأة' };
   }
@@ -103,7 +102,7 @@ export async function initiateRefund(
     const msg = err instanceof Error ? err.message : String(err);
     await db.refundTransaction.update({
       where: { id: refundRecord.id },
-      data: { status: 'failed', failureReason: msg },
+      data: { status: 'failed', reason: msg },
     });
     return { ok: false, error: msg };
   }
@@ -135,8 +134,7 @@ export async function initiateRefund(
         where: { id: refundRecord.id },
         data: {
           status: 'failed',
-          failureReason: errMsg,
-          metadata: JSON.stringify({ providerResponse: refundData, updatedAt: new Date().toISOString() }),
+          reason: errMsg,
         },
       });
       logger.error('[myfatoorah-refund] refund API call failed', {
@@ -156,12 +154,6 @@ export async function initiateRefund(
       data: {
         status: refundStatus === 'Complete' ? 'completed' : 'processing',
         providerRefundId,
-        metadata: JSON.stringify({
-          providerResponse: refundData,
-          providerRefundId,
-          refundStatus,
-          updatedAt: new Date().toISOString(),
-        }),
       },
     });
 
@@ -197,7 +189,7 @@ export async function initiateRefund(
     const errMsg = err instanceof Error ? err.message : 'Network error';
     await db.refundTransaction.update({
       where: { id: refundRecord.id },
-      data: { status: 'failed', failureReason: errMsg },
+      data: { status: 'failed', reason: errMsg },
     });
     logger.error('[myfatoorah-refund] network error', {
       refundId: refundRecord.id,
@@ -237,7 +229,7 @@ export async function getRefundStatus(
       ok: true,
       status: refund.status,
       providerRefundId: refund.providerRefundId ?? undefined,
-      amount: refund.refundAmount,
+      amount: refund.refundAmount.toString(),
       currency: refund.currency ?? undefined,
       reason: refund.reason ?? undefined,
     };
@@ -251,7 +243,7 @@ export async function getRefundStatus(
         ok: true,
         status: refund.status,
         providerRefundId: refund.providerRefundId ?? undefined,
-        amount: refund.refundAmount,
+        amount: refund.refundAmount.toString(),
         currency: refund.currency ?? undefined,
         reason: refund.reason ?? undefined,
       };
@@ -265,7 +257,7 @@ export async function getRefundStatus(
         ok: true,
         status: refund.status,
         providerRefundId: refund.providerRefundId ?? undefined,
-        amount: refund.refundAmount,
+        amount: refund.refundAmount.toString(),
         currency: refund.currency ?? undefined,
         reason: refund.reason ?? undefined,
       };
@@ -294,11 +286,6 @@ export async function getRefundStatus(
           where: { id: refundId },
           data: {
             status: mappedStatus,
-            metadata: JSON.stringify({
-              ...JSON.parse(refund.metadata || '{}'),
-              providerRefreshResponse: data,
-              refreshedAt: new Date().toISOString(),
-            }),
           },
         });
 
@@ -306,7 +293,7 @@ export async function getRefundStatus(
           ok: true,
           status: mappedStatus,
           providerRefundId: refund.providerRefundId ?? undefined,
-          amount: refund.refundAmount,
+          amount: refund.refundAmount.toString(),
           currency: refund.currency ?? undefined,
           reason: refund.reason ?? undefined,
         };
@@ -323,7 +310,7 @@ export async function getRefundStatus(
     ok: true,
     status: refund.status,
     providerRefundId: refund.providerRefundId ?? undefined,
-    amount: refund.refundAmount,
+    amount: refund.refundAmount.toString(),
     currency: refund.currency ?? undefined,
     reason: refund.reason ?? undefined,
   };

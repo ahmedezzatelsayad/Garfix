@@ -323,10 +323,10 @@ export function TradeFinanceView() {
                       <td className={tdStyle}>{fx.toCurrency}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-mono")}>{fx.rate}</td>
                       <td className={tdStyle}>{fx.period}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-emerald-500">{fmt(fx.realizedGain)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-red-500">{fmt(fx.realizedLoss)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-blue-500">{fmt(fx.unrealizedGain)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-amber-500">{fmt(fx.unrealizedLoss)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-500")}>{fmt(fx.realizedGain)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-red-500")}>{fmt(fx.realizedLoss)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-blue-500")}>{fmt(fx.unrealizedGain)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-amber-500")}>{fmt(fx.unrealizedLoss)}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", fx.netEffect >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(fx.netEffect)}</td>
                     </tr>
                   ))}

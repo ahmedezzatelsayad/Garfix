@@ -11,13 +11,13 @@ import { getTradeFinanceDashboard } from '@/lib/accounting/trade-finance'
 export async function GET(request: NextRequest) {
   try {
     const auth = await resolveAuth(request)
-    if (!auth) {
-      // For demo purposes, use a default company if no auth
-      const companyId = 'demo-company-1'
-      const financial = await getFinancialDashboard(companyId)
-      const arSummary = await getARSummary(companyId)
-      const apSummary = await getAPSummary(companyId)
-      const tradeFinance = await getTradeFinanceDashboard(companyId)
+    if (!auth || !auth.ok || !auth.user) {
+      // For demo purposes, use a default company slug if no auth
+      const companySlug = 'demo-company-1'
+      const financial = await getFinancialDashboard(companySlug)
+      const arSummary = await getARSummary(companySlug)
+      const apSummary = await getAPSummary(companySlug)
+      const tradeFinance = await getTradeFinanceDashboard(companySlug)
 
       return NextResponse.json({
         financial,
@@ -28,14 +28,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId') ?? auth.companyId
+    const companySlug = searchParams.get('companySlug') ?? auth.user.companies[0]
 
-    assertCompanyAccess(auth, companyId)
+    assertCompanyAccess(auth.user, companySlug)
 
-    const financial = await getFinancialDashboard(companyId)
-    const arSummary = await getARSummary(companyId)
-    const apSummary = await getAPSummary(companyId)
-    const tradeFinance = await getTradeFinanceDashboard(companyId)
+    const financial = await getFinancialDashboard(companySlug)
+    const arSummary = await getARSummary(companySlug)
+    const apSummary = await getAPSummary(companySlug)
+    const tradeFinance = await getTradeFinanceDashboard(companySlug)
 
     return NextResponse.json({
       financial,

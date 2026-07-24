@@ -265,7 +265,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       id: ob.id as number,
       companySlug: ob.companySlug as string,
       accountId: ob.accountId as number,
-      amount: ob.amount as string,
+      amount: ob.amount.toString() as string,
       asOfDate: ob.asOfDate as string,
       importedFrom: ob.importedFrom as string | null,
       status: ob.status as string,

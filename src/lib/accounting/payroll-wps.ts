@@ -6,6 +6,7 @@
  * All monetary values as String (no Float), using num() from money.ts.
  */
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { num, addNums, subNums, mulNums } from "@/lib/money";
 import { getCountryConfig, getCurrencyDecimalPlaces } from "@/lib/gulfConfig";
 import { calculateGratuity } from "@/lib/gratuity";
@@ -22,8 +23,8 @@ interface EmployeeForPayroll {
   email: string | null;
   position: string | null;
   department: string | null;
-  baseSalary: string;
-  allowances: string;
+  baseSalary: Prisma.Decimal;
+  allowances: Prisma.Decimal;
   currency: string;
   joinDate: string | null;
   endDate: string | null;
@@ -249,7 +250,7 @@ export async function calculateNetSalary(
 
   // Social insurance
   const socialInsurance = calculateSocialInsurance(
-    { baseSalary: employee.baseSalary, allowances: employee.allowances },
+    { baseSalary: employee.baseSalary.toString(), allowances: employee.allowances.toString() },
     country,
   );
 

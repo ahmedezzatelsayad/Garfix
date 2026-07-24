@@ -265,8 +265,8 @@ export async function postCommissionsJE(
       accountId: l.accountId,
       accountCode: l.account.code,
       accountNameAr: l.account.nameAr,
-      debit: l.debit,
-      credit: l.credit,
+      debit: l.debit.toString(),
+      credit: l.credit.toString(),
     })),
   };
 }

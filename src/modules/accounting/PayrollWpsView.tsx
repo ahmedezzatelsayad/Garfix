@@ -152,20 +152,20 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الأساسي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBase)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><Users size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><Users size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">البدلات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAllowances)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-amber-500/20 text-amber-500"><AlertTriangle size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><AlertTriangle size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">التأمينات الاجتماعية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalSocialInsurance)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><Calculator size={18} /></div>
-          <div><div className="text-[11px] text-muted-foreground">الاستقطاعات</div><div className="text-lg font-extrabold [direction:ltr] text-end" className="text-red-500">{fmt(totalDeductions)}</div></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><Calculator size={18} /></div>
+          <div><div className="text-[11px] text-muted-foreground">الاستقطاعات</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(totalDeductions)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
           <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalNet >= 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
@@ -193,9 +193,9 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
                   <tr key={s.id} className="border-b border-border">
                     <td className={cn(tdStyle, "font-bold")}>{s.employeeName}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(s.baseSalary)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-blue-500">{fmt(s.allowances)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-amber-500">{fmt(s.socialInsurance)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-red-500">{fmt(s.deductions)}</td>
+                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-blue-500")}>{fmt(s.allowances)}</td>
+                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-amber-500")}>{fmt(s.socialInsurance)}</td>
+                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(s.deductions)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", s.netSalary >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(s.netSalary)}</td>
                     <td className={tdStyle}>{s.currency}</td>
                     <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", s.status === "paid" ? "bg-emerald-500/15 text-emerald-500" : s.status === "pending" ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500")}>{s.status === "paid" ? "مسدّد" : s.status === "pending" ? "معلّق" : "متأخر"}</span></td>
@@ -206,8 +206,8 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
                 <tr className="border-t-2 border-border bg-muted font-extrabold">
                   <td className={cn(tdStyle, "font-extrabold")}>الإجمالي ({salaries.length} موظف)</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(totalBase)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-blue-500">{fmt(totalAllowances)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-amber-500">{fmt(totalSocialInsurance)}</td>
+                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-blue-500")}>{fmt(totalAllowances)}</td>
+                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-amber-500")}>{fmt(totalSocialInsurance)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold text-red-500")}>{fmt(totalDeductions)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalNet)}</td>
                   <td className={cn(tdStyle, "font-extrabold")} colSpan={2}></td>
@@ -305,15 +305,15 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الملفات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{wpsFiles.length}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي المبالغ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAll)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><Users size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><Users size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">عدد الموظفين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{totalEmployees}</div></div>
         </div>
       </div>
@@ -325,9 +325,9 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
         if (files.length === 0 && country !== activeCountry) return null;
         return (
           <div key={country} className="bg-card rounded-[14px] border border-border overflow-hidden">
-            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center" className="bg-violet-500/10 text-violet-500">
+            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center bg-violet-500/10 text-violet-500">
               <span className="flex items-center gap-2">
-                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" className="bg-violet-500/20 text-violet-500">{country}</span>
+                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-violet-500/20 text-violet-500">{country}</span>
                 {countryLabels[country]}
               </span>
               <span className={cn("[direction:ltr] text-end text-[13px]", countryTotal >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(countryTotal)}</span>

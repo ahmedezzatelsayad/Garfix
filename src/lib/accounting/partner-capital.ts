@@ -42,7 +42,7 @@ export async function calculateProfitDistribution(
   const revenueAccounts = await db.account.findMany({
     where: { companySlug, type: "revenue", isActive: true },
     include: {
-      journalLines: {
+      journalEntryLines: {
         include: { entry: { select: { status: true, date: true } } },
       },
     },
@@ -51,7 +51,7 @@ export async function calculateProfitDistribution(
   const expenseAccounts = await db.account.findMany({
     where: { companySlug, type: "expense", isActive: true },
     include: {
-      journalLines: {
+      journalEntryLines: {
         include: { entry: { select: { status: true, date: true } } },
       },
     },
@@ -61,7 +61,7 @@ export async function calculateProfitDistribution(
   const contraRevenueAccounts = await db.account.findMany({
     where: { companySlug, type: "contra_revenue", isActive: true },
     include: {
-      journalLines: {
+      journalEntryLines: {
         include: { entry: { select: { status: true, date: true } } },
       },
     },
@@ -72,7 +72,7 @@ export async function calculateProfitDistribution(
   let totalContraRevenue = 0;
 
   for (const acc of revenueAccounts) {
-    for (const line of acc.journalLines) {
+    for (const line of acc.journalEntryLines) {
       if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
       if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
       const multiplier = line.entry.status === "reversed" ? -1 : 1;
@@ -83,7 +83,7 @@ export async function calculateProfitDistribution(
   }
 
   for (const acc of expenseAccounts) {
-    for (const line of acc.journalLines) {
+    for (const line of acc.journalEntryLines) {
       if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
       if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
       const multiplier = line.entry.status === "reversed" ? -1 : 1;
@@ -94,7 +94,7 @@ export async function calculateProfitDistribution(
   }
 
   for (const acc of contraRevenueAccounts) {
-    for (const line of acc.journalLines) {
+    for (const line of acc.journalEntryLines) {
       if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
       if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
       const multiplier = line.entry.status === "reversed" ? -1 : 1;
@@ -324,8 +324,8 @@ export async function postProfitDistributionJE(
       accountId: l.accountId,
       accountCode: l.account.code,
       accountNameAr: l.account.nameAr,
-      debit: l.debit,
-      credit: l.credit,
+      debit: l.debit.toString(),
+      credit: l.credit.toString(),
     })),
   };
 }

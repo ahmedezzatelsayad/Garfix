@@ -85,7 +85,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       name: data.name,
       email: data.email || null,
       phone: data.phone || null,
-      company: data.company || null,
+      clientCompany: data.company || null,
       address: data.address || null,
       notes: data.notes || null,
       companySlug: data.companySlug,

@@ -68,7 +68,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     totalNet += num(s.netSalary, decimals);
     totalDeductions += num(s.deductions, decimals);
     // Social insurance is computed using the payroll engine
-    const siResult = calculateSocialInsurance({ baseSalary: s.baseSalary, allowances: s.allowances }, country);
+    const siResult = calculateSocialInsurance({ baseSalary: s.baseSalary.toString(), allowances: s.allowances.toString() }, country);
     totalSocialInsurance += num(siResult.employeePortion, decimals);
   }
 

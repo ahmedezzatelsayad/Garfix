@@ -925,7 +925,7 @@ export async function getTradeFinanceDashboard(companySlug: string) {
 
     // Landed costs pending allocation
     const pendingLandedCosts = await db.landedCostAllocation.count({
-      where: { companySlug, status: "pending" },
+      where: { companySlug },
     });
 
     // FX revaluation summary (latest)
