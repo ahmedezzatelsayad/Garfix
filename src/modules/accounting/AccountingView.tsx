@@ -273,14 +273,14 @@ export function AccountingView() {
 
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
-  const ACCOUNT_TYPES: Record<string, { label: string; color: string }> = {
-    asset: { label: "أصول", color: "#10b981" },
-    liability: { label: "خصوم", color: "#ef4444" },
-    equity: { label: "حقوق ملكية", color: "#7c3aed" },
-    revenue: { label: "إيرادات", color: "#3b82f6" },
-    expense: { label: "مصروفات", color: "#f59e0b" },
-    contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af" },
-    contra_asset: { label: "مقابل أصول", color: "#9ca3af" },
+  const ACCOUNT_TYPES: Record<string, { label: string; color: string; badge: string }> = {
+    asset: { label: "أصول", color: "#10b981", badge: "bg-emerald-500/15 text-emerald-500" },
+    liability: { label: "خصوم", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
+    equity: { label: "حقوق ملكية", color: "#7c3aed", badge: "bg-violet-500/15 text-violet-500" },
+    revenue: { label: "إيرادات", color: "#3b82f6", badge: "bg-blue-500/15 text-blue-500" },
+    expense: { label: "مصروفات", color: "#f59e0b", badge: "bg-amber-500/15 text-amber-500" },
+    contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
+    contra_asset: { label: "مقابل أصول", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
   };
 
   const tabs: Array<{ key: Tab; label: string; icon?: React.ComponentType<{ size?: number }> }> = [
@@ -424,7 +424,7 @@ export function AccountingView() {
                           </tr></thead>
                           <tbody>
                             {(pageItems as Account[]).map((a) => {
-                              const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999" };
+                              const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
                               const checked = selectedIds.has(a.id);
                               return (
                                 <tr key={a.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
@@ -984,7 +984,7 @@ function BankAccountsList({ accounts, company, onRefresh }: { accounts: BankAcco
             <tfoot>
               <tr className="border-t-2 border-border bg-muted font-extrabold">
                 <td className={cn(tdStyle, "font-extrabold")} colSpan={5}>إجمالي النقدية</td>
-                <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-emerald-500">{fmt(accounts.reduce((s, ba) => s + ba.balance, 0))}</td>
+                <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-emerald-500")}>{fmt(accounts.reduce((s, ba) => s + ba.balance, 0))}</td>
               </tr>
             </tfoot>
           </table>
@@ -1095,6 +1095,9 @@ const tdCheck = (checked: boolean): string => `py-2.5 px-2 text-center ${checked
 const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+const iconBadge = "bg-muted";
+const sectionBadge = "bg-muted";
+const sectionText = "";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;

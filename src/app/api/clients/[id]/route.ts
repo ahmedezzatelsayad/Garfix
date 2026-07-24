@@ -16,7 +16,7 @@ const UpdateSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional().or(z.literal("")).nullable(),
   phone: z.string().optional().nullable(),
-  company: z.string().optional().nullable(),
+  clientCompany: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });

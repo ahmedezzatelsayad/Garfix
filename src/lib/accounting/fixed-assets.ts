@@ -154,9 +154,9 @@ export async function runDepreciationForPeriod(
         assetId: asset.id,
         assetName: asset.nameAr,
         period,
-        depreciationAmount: existingEntry.depreciationAmount,
-        bookValueAfter: existingEntry.bookValueAfter,
-        accumulatedAfter: asset.accumulatedDepreciation,
+        depreciationAmount: existingEntry.depreciationAmount.toString(),
+        bookValueAfter: existingEntry.bookValueAfter.toString(),
+        accumulatedAfter: asset.accumulatedDepreciation.toString(),
         method: asset.depreciationMethod,
         status: existingEntry.status,
         journalEntryId: existingEntry.journalEntryId ?? undefined,
@@ -166,13 +166,13 @@ export async function runDepreciationForPeriod(
 
     // 2. Calculate depreciation
     const depreciation = calculateDepreciation({
-      acquisitionCost: asset.acquisitionCost,
-      salvageValue: asset.salvageValue,
+      acquisitionCost: asset.acquisitionCost.toString(),
+      salvageValue: asset.salvageValue.toString(),
       usefulLifeYears: asset.usefulLifeYears,
-      currentBookValue: asset.currentBookValue,
-      accumulatedDepreciation: asset.accumulatedDepreciation,
+      currentBookValue: asset.currentBookValue.toString(),
+      accumulatedDepreciation: asset.accumulatedDepreciation.toString(),
       depreciationMethod: asset.depreciationMethod,
-      decliningRate: asset.decliningRate,
+      decliningRate: asset.decliningRate.toString(),
     });
 
     // Use monthly depreciation for a monthly period

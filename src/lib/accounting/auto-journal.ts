@@ -129,7 +129,7 @@ async function getAccountByCode(
   if (!acc) {
     throw new Error(`Account code "${code}" not found for company "${companySlug}"`);
   }
-  return acc;
+  return { id: acc.id, type: acc.type, balance: acc.balance.toString() };
 }
 
 /**

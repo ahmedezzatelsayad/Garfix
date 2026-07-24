@@ -46,18 +46,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const schedules = await db.installmentSchedule.findMany({
     where,
     orderBy: [{ createdAt: "desc" }],
-    include: { installments: { orderBy: { installmentNumber: "asc" } } },
+    include: { company: { select: { slug: true, name: true } } },
   });
 
   return NextResponse.json({
     schedules: schedules.map((s) => ({
       ...s,
       totalAmount: num(s.totalAmount, 3),
-      installments: s.installments.map((i) => ({
-        ...i,
-        amount: num(i.amount, 3),
-        paidAmount: num(i.paidAmount, 3),
-      })),
     })),
   });
 });

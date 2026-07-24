@@ -153,7 +153,7 @@ async function generateTrialBalanceData(
   const accounts = await db.account.findMany({
     where: { companySlug, isActive: true },
     include: {
-      journalLines: {
+      journalEntryLines: {
         include: { entry: { select: { status: true, date: true } } },
       },
     },
@@ -167,7 +167,7 @@ async function generateTrialBalanceData(
   for (const acc of accounts) {
     let totalDebit = 0;
     let totalCredit = 0;
-    for (const line of acc.journalLines) {
+    for (const line of acc.journalEntryLines) {
       if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
       if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
       const multiplier = line.entry.status === "reversed" ? -1 : 1;

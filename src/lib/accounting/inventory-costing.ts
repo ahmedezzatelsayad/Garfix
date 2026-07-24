@@ -115,11 +115,11 @@ export async function calculateCOGS(
   });
 
   if (costingMethod === "fifo") {
-    return calculateFIFO(movements, qtySold, costingMethod);
+    return calculateFIFO(movements.map(m => ({ qty: m.qty, unitCost: m.unitCost?.toString() })), qtySold, costingMethod);
   }
 
   if (costingMethod === "weighted_average") {
-    return calculateWeightedAverage(movements, qtySold, costingMethod);
+    return calculateWeightedAverage(movements.map(m => ({ qty: m.qty, unitCost: m.unitCost?.toString() })), qtySold, costingMethod);
   }
 
   if (costingMethod === "standard_cost") {

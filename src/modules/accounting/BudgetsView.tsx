@@ -313,9 +313,9 @@ export function BudgetsView() {
                     <tr key={c.id} className="border-b border-border">
                       <td className={cn(tdStyle, "font-bold")}>{c.periodName}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold text-emerald-500")}>{fmt(c.revenue)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-red-500">{fmt(c.expenses)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-red-500")}>{fmt(c.expenses)}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", c.profit >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(c.profit)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-blue-500">{fmt(c.cash)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-blue-500")}>{fmt(c.cash)}</td>
                     </tr>
                   ))}
                 </tbody>

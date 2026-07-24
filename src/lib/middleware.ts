@@ -293,10 +293,10 @@ export function withAudit<T>(
   return async (req, ctx) => {
     const response = await handler(req, ctx);
     // Only log if the request succeeded (2xx)
-    if (response.status >= 200 && response.status < 300 && ctx.appUser) {
+    if (response.status >= 200 && response.status < 300 && ctx.user) {
       await logAudit({
-        userEmail: ctx.appUser.email,
-        userUid: ctx.appUser.uid,
+        userEmail: ctx.user.email,
+        userUid: ctx.user.uid,
         action: auditInfo.action,
         entity: auditInfo.entity,
         companySlug: ctx.body && typeof ctx.body === "object" && "companySlug" in ctx.body

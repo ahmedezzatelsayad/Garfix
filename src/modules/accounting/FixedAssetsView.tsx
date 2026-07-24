@@ -173,15 +173,15 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">تكلفة الاستحواذ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCost)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إهلاك متراكم</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDep)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><Calculator size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><Calculator size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">صافي القيمة الدفترية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBV)}</div></div>
         </div>
       </div>
@@ -202,7 +202,7 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
                   <td className={tdStyle}>{CATEGORIES.find(c => c.value === a.category)?.label || a.category}</td>
                   <td className={tdStyle} dir="ltr">{a.acquisitionDate}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(a.acquisitionCost)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-red-500">{fmt(a.accumulatedDepreciation)}</td>
+                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(a.accumulatedDepreciation)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", a.bookValue > 0 ? "text-emerald-500" : "text-gray-400")}>{fmt(a.bookValue)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.status === "active" ? "bg-emerald-500/15 text-emerald-500" : a.status === "disposed" ? "bg-red-500/15 text-red-500" : "bg-gray-400/15 text-gray-400")}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
                 </tr>
@@ -276,7 +276,7 @@ function AssetForm({ company, onClose, onSaved }: { company: { slug: string; cur
         <div><label className={labelStyle}>حساب الإهلاك</label><input type="number" value={depreciationAccountId ?? ""} onChange={(e) => setDepreciationAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
         <div><label className={labelStyle}>حساب المصروف</label><input type="number" value={expenseAccountId ?? ""} onChange={(e) => setExpenseAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
       </div>
-      {annualDep > 0 && <div className="text-[12px] text-muted-foreground">الإهلاك السنوي (خط مستقيم): <span className="font-bold" className="text-amber-500">{fmt(annualDep)}</span></div>}
+      {annualDep > 0 && <div className="text-[12px] text-muted-foreground">الإهلاك السنوي (خط مستقيم): <span className="font-bold text-amber-500">{fmt(annualDep)}</span></div>}
       <div className="flex gap-2.5 justify-end">
         <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
         <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
@@ -327,7 +327,7 @@ function DepreciationView({ entries, company, onRefresh }: { entries: DepEntry[]
                 <tr key={e.id} className="border-b border-border">
                   <td className={cn(tdStyle, "font-bold")}>{e.assetName}</td>
                   <td className={tdStyle} dir="ltr">{e.period}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end")} className="text-red-500">{fmt(e.depreciationAmount)}</td>
+                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(e.depreciationAmount)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", e.bookValueAfter > 0 ? "text-emerald-500" : "text-gray-400")}>{fmt(e.bookValueAfter)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : "مسودة"}</span></td>
                 </tr>

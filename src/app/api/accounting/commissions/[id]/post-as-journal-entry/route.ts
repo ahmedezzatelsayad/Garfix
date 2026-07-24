@@ -51,7 +51,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
       name: employee?.name || "",
       totalSales: "0",
       commissionRate: "0",
-      commissionAmount: commission.amount,
+      commissionAmount: commission.amount.toString(),
     }],
     { from: commission.date, to: commission.date },
     user.email,

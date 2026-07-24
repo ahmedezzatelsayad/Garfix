@@ -37,7 +37,7 @@ async function cleanupWithPerCompanyRetention(
 ): Promise<Record<string, { retentionYears: number; country: string; decreeRef?: string; deletedCount: Record<string, number> }>> {
   const companies = await db.company.findMany({
     where: { deletedAt: null },
-    select: { slug: true, country: true, recordRetentionYears: true },
+    select: { slug: true, country: true },
   });
 
   const results: Record<string, { retentionYears: number; country: string; decreeRef?: string; deletedCount: Record<string, number> }> = {};

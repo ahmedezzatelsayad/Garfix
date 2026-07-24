@@ -185,7 +185,16 @@ export async function processScheduledCharge(scheduleId: number): Promise<{
   });
 
   // Attempt the charge via the configured provider
-  const chargeResult = await initiateProviderCharge(schedule, company);
+  const chargeResult = await initiateProviderCharge({
+    id: schedule.id,
+    companySlug: schedule.companySlug,
+    plan: schedule.plan,
+    amount: schedule.amount.toString(),
+    currency: schedule.currency,
+    provider: schedule.provider,
+    paymentMethod: schedule.paymentMethod,
+    billingPeriod: schedule.billingPeriod,
+  }, company);
 
   if (chargeResult.ok) {
     // ── Success: reset retry count, advance next charge date ──
@@ -198,8 +207,6 @@ export async function processScheduledCharge(scheduleId: number): Promise<{
       data: {
         status: 'active',
         retryCount: 0,
-        lastChargeDate: now,
-        lastChargeTxnId: chargeResult.txnId,
         nextChargeDate,
         cycleStart: now,
         cycleEnd,
@@ -241,7 +248,6 @@ export async function processScheduledCharge(scheduleId: number): Promise<{
       data: {
         status: 'cancelled',
         retryCount: newRetryCount,
-        cancelledAt: new Date(),
       },
     });
 
@@ -307,8 +313,6 @@ export async function cancelSubscription(
     where: { id: schedule.id },
     data: {
       status: 'cancelled',
-      cancelledAt: new Date(),
-      metadata: JSON.stringify({ reason: reason || 'cancelled by user' }),
     },
   });
 
@@ -361,7 +365,6 @@ export async function reactivateSubscription(
         retryCount: 0,
         cycleStart: now,
         cycleEnd,
-        reactivatedAt: now,
       },
     });
 

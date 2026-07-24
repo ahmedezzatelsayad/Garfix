@@ -166,19 +166,19 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
           {/* Summary Cards */}
           <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي الأصول</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalAssets)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><DollarSign size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><DollarSign size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي الخصوم</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalLiabilities)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-amber-500/20 text-amber-500"><TrendingUp size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><TrendingUp size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي الإيرادات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalRevenue)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">صافي الدخل</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", result.netIncome >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(result.netIncome)}</div></div>
             </div>
           </div>
@@ -200,7 +200,7 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyA)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyB)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end", l.adjustments !== 0 ? "text-amber-500" : "text-gray-400")}>{fmt(l.adjustments)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} className="text-violet-500">{fmt(l.consolidated)}</td>
+                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-violet-500")}>{fmt(l.consolidated)}</td>
                   </tr>
                 ))}</tbody>
               </table>

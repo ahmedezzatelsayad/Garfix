@@ -82,7 +82,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
       name: client.name,
       email: client.email,
       phone: client.phone,
-      company: client.company,
+      company: client.clientCompany,
       address: client.address,
       notes: client.notes,
       companySlug: client.companySlug,

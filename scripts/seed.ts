@@ -71,11 +71,11 @@ async function main() {
   console.log(`  ✓ Company: ${company.nameAr} (${company.slug})`);
 
   const clients = await Promise.all([
-    db.client.create({ data: { name: "أحمد محمد", email: "ahmed@example.com", phone: "+965 5555 1111", company: "شركة النور", address: "الكويت - حولي", companySlug: "garfix-demo" } }),
-    db.client.create({ data: { name: "سارة عبدالله", email: "sara@example.com", phone: "+965 5555 2222", company: "مؤسسة الفجر", address: "الكويت - السالمية", companySlug: "garfix-demo" } }),
-    db.client.create({ data: { name: "خالد العلي", email: "khaled@example.com", phone: "+965 5555 3333", company: "شركة المستقبل", address: "الكويت - الفروانية", companySlug: "garfix-demo" } }),
-    db.client.create({ data: { name: "نورة السالم", email: "noura@example.com", phone: "+965 5555 4444", company: "متجر اللؤلؤ", address: "الكويت - الجهراء", companySlug: "garfix-demo" } }),
-    db.client.create({ data: { name: "Mohammed Ali", email: "mohammed@example.com", phone: "+965 5555 5555", company: "Global Tech", address: "Kuwait - Sharq", companySlug: "garfix-demo" } }),
+    db.client.create({ data: { name: "أحمد محمد", email: "ahmed@example.com", phone: "+965 5555 1111", clientCompany: "شركة النور", address: "الكويت - حولي", companySlug: "garfix-demo" } }),
+    db.client.create({ data: { name: "سارة عبدالله", email: "sara@example.com", phone: "+965 5555 2222", clientCompany: "مؤسسة الفجر", address: "الكويت - السالمية", companySlug: "garfix-demo" } }),
+    db.client.create({ data: { name: "خالد العلي", email: "khaled@example.com", phone: "+965 5555 3333", clientCompany: "شركة المستقبل", address: "الكويت - الفروانية", companySlug: "garfix-demo" } }),
+    db.client.create({ data: { name: "نورة السالم", email: "noura@example.com", phone: "+965 5555 4444", clientCompany: "متجر اللؤلؤ", address: "الكويت - الجهراء", companySlug: "garfix-demo" } }),
+    db.client.create({ data: { name: "Mohammed Ali", email: "mohammed@example.com", phone: "+965 5555 5555", clientCompany: "Global Tech", address: "Kuwait - Sharq", companySlug: "garfix-demo" } }),
   ]);
   console.log(`  ✓ ${clients.length} clients created`);
 
@@ -159,7 +159,7 @@ async function main() {
 
   const currentMonth = today.toISOString().slice(0, 7);
   await Promise.all(employees.map((e, i) => {
-    const base = parseFloat(e.baseSalary);
+    const base = parseFloat(String(e.baseSalary));
     const allowances = 50;
     const deductions = i === 1 ? 20 : 0;
     const bonus = i === 0 ? 100 : 0;

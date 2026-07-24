@@ -27,6 +27,8 @@ type Direction = "receivable" | "payable";
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+const accentBadge = "bg-muted";
+const accentText = "";
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
@@ -151,12 +153,12 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
             <div><div className="text-[11px] text-muted-foreground">إجمالي {direction === "receivable" ? "الذمم المدينة" : "الذمم الدائنة"}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandTotal)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">حالي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandCurrent)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
-            <div><div className="text-[11px] text-muted-foreground">فوق 90 يوم</div><div className="text-lg font-extrabold [direction:ltr] text-end" className="text-red-500">{fmt(data.grandNinetyPlus)}</div></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
+            <div><div className="text-[11px] text-muted-foreground">فوق 90 يوم</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(data.grandNinetyPlus)}</div></div>
           </div>
         </div>
       )}
@@ -191,7 +193,7 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandCurrent)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandThirty)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandSixty)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-red-500">{fmt(data.grandNinetyPlus)}</td>
+                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(data.grandNinetyPlus)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", accentText)}>{fmt(data.grandTotal)}</td>
                 </tr>
               </tfoot>
@@ -256,15 +258,15 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">{data.clientName}</div><div className="text-[13px] font-bold">رصيد افتتاحي: {fmt(data.openingBalance)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي مدين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDebit)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي دائن</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCredit)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
@@ -296,8 +298,8 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
                   <tfoot>
                     <tr className="border-t-2 border-border bg-muted font-extrabold">
                       <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>رصيد إقفالي</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-violet-500">{fmt(totalDebit)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} className="text-red-500">{fmt(totalCredit)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-violet-500")}>{fmt(totalDebit)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(totalCredit)}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", data.closingBalance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(data.closingBalance)}</td>
                     </tr>
                   </tfoot>
@@ -345,12 +347,12 @@ function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: s
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الشيكات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAmount)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-amber-500/20 text-amber-500"><Clock size={18} /></div>
-          <div><div className="text-[11px] text-muted-foreground">المعلّقة</div><div className="text-lg font-extrabold [direction:ltr] text-end" className="text-amber-500">{fmt(pendingTotal)}</div></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><Clock size={18} /></div>
+          <div><div className="text-[11px] text-muted-foreground">المعلّقة</div><div className="text-lg font-extrabold [direction:ltr] text-end text-amber-500">{fmt(pendingTotal)}</div></div>
         </div>
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
@@ -452,11 +454,11 @@ function InstallmentList({ installments }: { installments: Installment[] }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-emerald-500/20 text-emerald-500"><CalendarDays size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><CalendarDays size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">أقساط نشطة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalActive)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center" className="bg-blue-500/20 text-blue-500"><CheckCircle2 size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><CheckCircle2 size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">عدد الاتفاقات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{installments.length}</div></div>
         </div>
       </div>
