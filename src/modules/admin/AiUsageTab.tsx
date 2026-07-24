@@ -91,7 +91,7 @@ export function AiUsageTab() {
           <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات استهلاك AI بعد — استخدم المساعد الذكي أو رفع فاتورة لبدء التسجيل</div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <table className="w-full [border-collapse:collapse]">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">Endpoint</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النداءات</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">معدل النجاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">p50</th>
@@ -104,11 +104,11 @@ export function AiUsageTab() {
                   <tr className="border-b border-b-[var(--border)]" key={e.endpoint}>
                     <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right font-bold">{e.endpoint}</td>
                     <td className="px-3 py-2.5 text-[13px]">{e.calls}</td>
-                    <td className="px-3 py-2.5 text-[13px] font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: e.successRate === null ? "var(--muted-foreground)" : (e.successRate >= 95 ? "#10b981" : e.successRate >= 80 ? "#f59e0b" : "#ef4444") }}>
+                    <td className={`px-3 py-2.5 text-[13px] font-bold ${e.successRate === null ? "text-[var(--muted-foreground)]" : e.successRate >= 95 ? "text-emerald-500" : e.successRate >= 80 ? "text-amber-500" : "text-red-500"}`}>
                       {e.successRate !== null ? `${e.successRate}%` : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{fmtMs(e.p50Ms)}</td>
-                    <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: (e.p95Ms ?? 0) > 5000 ? "#ef4444" : (e.p95Ms ?? 0) > 2000 ? "#f59e0b" : "var(--foreground)" }}>{fmtMs(e.p95Ms)}</td>
+                    <td className={`px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold ${(e.p95Ms ?? 0) > 5000 ? "text-red-500" : (e.p95Ms ?? 0) > 2000 ? "text-amber-500" : "text-[var(--foreground)]"}`}>{fmtMs(e.p95Ms)}</td>
                     <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right text-[var(--muted-foreground)]">{fmtMs(e.minMs)}</td>
                     <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right text-[var(--muted-foreground)]">{fmtMs(e.maxMs)}</td>
                     <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">{fmtMs(e.avgMs)}</td>
@@ -162,7 +162,7 @@ export function AiUsageTab() {
           <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات استهلاك AI بعد</div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <table className="w-full [border-collapse:collapse]">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشهر</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">نداءات AI</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الرموز</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التكلفة</th>
@@ -191,7 +191,7 @@ export function AiUsageTab() {
             </h3>
           </div>
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <table className="w-full [border-collapse:collapse]">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المزود</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الموديل</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الخطأ</th>
@@ -203,7 +203,7 @@ export function AiUsageTab() {
                     <td className="px-3 py-2.5 text-[13px]">{e.provider}</td>
                     <td className="px-3 py-2.5 font-mono text-[11px]">{e.model}</td>
                     <td className="px-3 py-2.5 font-mono text-[11px]">{e.companySlug || "—"}</td>
-                    <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right" /* TAILWINDBREAK: dynamic color */ style={{ color: "#fca5a5" }}>{(e.errorMessage || "").slice(0, 200)}</td>
+                    <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right text-red-300">{(e.errorMessage || "").slice(0, 200)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -225,7 +225,7 @@ function UsageTable({ title, headers, rows }: { title: string; headers: string[]
         <div className="p-4 text-center text-[var(--muted-foreground)] text-[11px]">لا توجد بيانات</div>
       ) : (
         <div className="garfix-scroll overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+          <table className="w-full [border-collapse:collapse]">
             <thead><tr className="bg-[var(--muted)]">
               {headers.map((h) => <th scope="col" key={h} className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">{h}</th>)}
             </tr></thead>

@@ -172,7 +172,7 @@ export function AiProviderSettings() {
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-muted-foreground">
+      <div className="p-8 sm:p-12 text-center text-muted-foreground">
         <Loader2 size={24} className="animate-spin block mx-auto mb-3" />
         جارٍ تحميل إعدادات مزودي الذكاء الاصطناعي…
       </div>
@@ -181,15 +181,15 @@ export function AiProviderSettings() {
 
   if (!providers || providers.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
+      <div className="p-6 sm:p-8 text-center text-muted-foreground">
         تعذّر تحميل المزودين. تحقّق من صلاحيات المؤسس.
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-card border border-border">
+    <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex items-center gap-2.5 px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-card border border-border">
         <img src="/logo.svg" alt="" className="w-5 h-5 rounded shrink-0" />
         <div className="flex-1">
           <div className="text-sm font-extrabold">إعدادات مزودي الذكاء الاصطناعي</div>
@@ -199,7 +199,7 @@ export function AiProviderSettings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {providers.map((p) => {
           const c = cards[p.type];
           if (!c) return null;
@@ -209,7 +209,7 @@ export function AiProviderSettings() {
             <div
               key={p.type}
               className={cn(
-                "bg-card rounded-[14px] p-[18px] flex flex-col gap-3 transition-all duration-200",
+                "bg-card rounded-[14px] p-3 sm:p-[18px] flex flex-col gap-3 transition-all duration-200",
                 p.isEnabled ? "border border-purple-500/35 opacity-100 shadow-[0_4px_16px_rgba(124,58,237,0.08)]" : "border border-border opacity-[0.85] shadow-none"
               )}
             >
@@ -316,7 +316,7 @@ export function AiProviderSettings() {
               )}
 
               {/* Priority field */}
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
                 <div>
                   <label className={labelCls}>الأولوية (1 = أساسي)</label>
                   <input

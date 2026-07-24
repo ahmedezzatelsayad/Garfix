@@ -96,7 +96,7 @@ export function BackupsTab() {
         <button
           onClick={() => setConfirmingTrigger(true)}
           disabled={triggering}
-          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[13px] font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: triggering ? "not-allowed" : "pointer", opacity: triggering ? 0.7 : 1 }}
+          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[13px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
         >
           {triggering ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           {triggering ? "جارٍ الإنشاء…" : "نسخة احتياطية جديدة"}
@@ -114,7 +114,7 @@ export function BackupsTab() {
         </div>
       ) : (
         <div className="garfix-scroll overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+          <table className="w-full [border-collapse:collapse]">
             <thead>
               <tr>
                 <th scope="col" className={backupThClass}>اسم الملف</th>
@@ -158,14 +158,14 @@ export function BackupsTab() {
               <button
                 onClick={() => setConfirmingTrigger(false)}
                 disabled={triggering}
-                className="px-4 py-2 rounded-lg border border-[var(--border)] bg-transparent text-[var(--foreground)] font-inherit text-[13px] font-semibold" /* TAILWINDBREAK: dynamic cursor */ style={{ cursor: triggering ? "not-allowed" : "pointer" }}
+                className="px-4 py-2 rounded-lg border border-[var(--border)] bg-transparent text-[var(--foreground)] font-inherit text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed"
               >
                 إلغاء
               </button>
               <button
                 onClick={triggerBackup}
                 disabled={triggering}
-                className="px-4 py-2 rounded-lg border-none bg-[var(--primary)] text-[var(--primary-foreground)] font-inherit text-[13px] font-bold inline-flex items-center gap-1.5" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: triggering ? "not-allowed" : "pointer", opacity: triggering ? 0.7 : 1 }}
+                className="px-4 py-2 rounded-lg border-none bg-[var(--primary)] text-[var(--primary-foreground)] font-inherit text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {triggering ? <Loader2 size={14} className="animate-spin" /> : <HardDriveDownload size={14} />}
                 {triggering ? "جارٍ…" : "تأكيد الإنشاء"}

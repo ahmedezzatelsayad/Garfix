@@ -200,11 +200,11 @@ export function EnhancedAuditView() {
   const hasFilters = filters.action || filters.companySlug || filters.userEmail || filters.startDate || filters.endDate;
 
   return (
-    <div dir="rtl" className="flex flex-col gap-4">
+    <div dir="rtl" className="flex flex-col gap-3 sm:gap-4">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold flex items-center gap-2">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold flex items-center gap-2">
             <History size={20} />
             سجل التدقيق
           </h1>
@@ -212,7 +212,7 @@ export function EnhancedAuditView() {
             {filteredLogs.length} سجل {hasFilters ? `(مفلتر من ${logs.length})` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* Real-time status indicator */}
           <Badge
             variant="outline"
@@ -250,7 +250,7 @@ export function EnhancedAuditView() {
               value={filters.action}
               onValueChange={(v) => setFilters((f) => ({ ...f, action: v }))}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="كل الإجراءات" />
               </SelectTrigger>
               <SelectContent>
@@ -266,7 +266,7 @@ export function EnhancedAuditView() {
               value={filters.companySlug || "__all__"}
               onValueChange={(v) => setFilters((f) => ({ ...f, companySlug: v === "__all__" ? "" : v }))}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="كل الشركات" />
               </SelectTrigger>
               <SelectContent>
@@ -277,7 +277,7 @@ export function EnhancedAuditView() {
               </SelectContent>
             </Select>
 
-            <div className="relative flex-1 min-w-[180px] max-w-[260px]">
+            <div className="relative flex-1 min-w-0 sm:min-w-[180px] sm:max-w-[260px]">
               <Search size={14} className="absolute start-3 top-[50%] -translate-y-[50%] text-[var(--muted-foreground)]" />
               <Input
                 placeholder="بحث بالبريد الإلكتروني..."
@@ -292,14 +292,14 @@ export function EnhancedAuditView() {
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
               placeholder="من تاريخ"
             />
             <Input
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
               placeholder="إلى تاريخ"
             />
 
@@ -348,8 +348,8 @@ export function EnhancedAuditView() {
                       <Shield size={12} className="inline ms-1" />
                       الإجراء
                     </TableHead>
-                    <TableHead className="text-right text-[11px] font-bold">الكيان</TableHead>
-                    <TableHead className="text-right text-[11px] font-bold">المعرّف</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold hidden md:table-cell">الكيان</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold hidden md:table-cell">المعرّف</TableHead>
                     <TableHead className="text-right text-[11px] font-bold">
                       <Building2 size={12} className="inline ms-1" />
                       الشركة
@@ -367,8 +367,8 @@ export function EnhancedAuditView() {
                           {l.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-[13px]">{l.entity}</TableCell>
-                      <TableCell className="text-[13px] font-mono">{l.entityId || "—"}</TableCell>
+                      <TableCell className="text-[13px] hidden md:table-cell">{l.entity}</TableCell>
+                      <TableCell className="text-[13px] font-mono hidden md:table-cell">{l.entityId || "—"}</TableCell>
                       <TableCell className="text-[13px] font-mono">{l.companySlug || "—"}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedLog(l)}>
@@ -417,7 +417,7 @@ export function EnhancedAuditView() {
 
       {/* ── Detail Modal ───────────────────────────────────────────── */}
       <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-        <DialogContent className="max-w-[560px]" dir="rtl">
+        <DialogContent className="sm:max-w-[560px]" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield size={16} />
@@ -430,7 +430,7 @@ export function EnhancedAuditView() {
 
           {selectedLog && (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-[var(--muted-foreground)] font-bold">
                     <Clock size={12} className="inline ms-1" />

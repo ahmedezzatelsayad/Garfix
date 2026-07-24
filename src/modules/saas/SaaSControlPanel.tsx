@@ -82,9 +82,9 @@ export function SaaSControlPanel() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div>
-        <h1 className="text-2xl font-extrabold flex items-center gap-2"><Building2 size={20} /> لوحة تحكم المنصة</h1>
+        <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold flex items-center gap-2"><Building2 size={20} /> لوحة تحكم المنصة</h1>
         <p className="text-[13px] text-muted-foreground">إدارة المستخدمين والشركات والمدفوعات</p>
       </div>
       <div className="flex gap-1.5 overflow-x-auto garfix-scroll">
@@ -99,7 +99,7 @@ export function SaaSControlPanel() {
         <div className="bg-card rounded-[14px] border border-border overflow-hidden">
           {tab === "users" && (
             <>
-              <div className="py-3 px-4 border-b border-border flex justify-between items-center">
+              <div className="py-2 sm:py-3 px-3 sm:px-4 border-b border-border flex justify-between items-center">
                 <h3 className="text-sm font-bold">المستخدمون ({users.length})</h3>
                 <button onClick={() => setShowUserForm(true)} className="inline-flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-[11px] font-bold cursor-pointer"><Plus size={12} /> مستخدم جديد</button>
               </div>
@@ -122,7 +122,7 @@ export function SaaSControlPanel() {
                 <table className="w-full border-collapse">
                   <thead><tr className="bg-muted">
                     <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الاسم</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">البريد</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الدور</th>
-                    <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركات</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">المؤسس</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">إجراءات</th>
+                    <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركات</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold hidden md:table-cell">المؤسس</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">إجراءات</th>
                   </tr></thead>
                   <tbody>
                     {currentPageUsers.map((u) => (
@@ -131,7 +131,7 @@ export function SaaSControlPanel() {
                         <td className="py-2.5 px-3 text-[13px] text-right" dir="ltr">{u.email}</td>
                         <td className="py-2.5 px-3 text-[13px]">{u.role}</td>
                         <td className="py-2.5 px-3 text-[13px]">{u.companies?.length || 0}</td>
-                        <td className="py-2.5 px-3 text-[13px]">{u.isFounder ? "✓" : "—"}</td>
+                        <td className="py-2.5 px-3 text-[13px] hidden md:table-cell">{u.isFounder ? "✓" : "—"}</td>
                         <td className="py-2.5 px-3 text-[13px]">
                           <div className="flex gap-1">
                             <button
@@ -280,12 +280,12 @@ function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSav
   };
 
   return (
-    <div className="p-4 border-b border-border bg-muted flex flex-col gap-2.5">
+    <div className="p-3 sm:p-4 border-b border-border bg-muted flex flex-col gap-2.5">
       <div className="flex justify-between items-center">
         <h4 className="text-[13px] font-bold">{isEdit ? "تعديل مستخدم" : "مستخدم جديد"}</h4>
         <button onClick={onClose} className="bg-transparent border-none text-muted-foreground cursor-pointer p-1"><X size={14} /></button>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2 sm:gap-2.5">
         <div>
           <label className={labelTW}>الاسم</label>
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputTW} />

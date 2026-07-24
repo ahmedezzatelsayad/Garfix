@@ -67,6 +67,11 @@ model Company {
   financialPeriods  FinancialPeriod[]
   companyRuntime    CompanyRuntime?
   employees         Employee[]
+  bankAccounts      BankAccount[]
+  fixedAssets       FixedAsset[]
+  quotations        Quotation[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseInvoices  PurchaseInvoice[]
 }
 
 // ─── Chart of Accounts ───
@@ -81,7 +86,7 @@ model Account {
   balance     Decimal  @default(0)
   currency    String   @default("USD")
   companySlug String   @default("default")
-  parentId    String?
+  parentId    Int?
   companyId   String
   isActive    Boolean  @default(true)
   version     Int      @default(0) // P0-8: Optimistic locking / row versioning for balance updates
@@ -92,7 +97,6 @@ model Account {
   children    Account[] @relation("AccountHierarchy")
   openingBalances      OpeningBalance[]
   voucherLines         VoucherLine[]
-  bankAccounts         BankAccount[]
   fixedAssetsGl        FixedAsset[] @relation("FixedAssetGL")
   fixedAssetsDep       FixedAsset[] @relation("FixedAssetDep")
   fixedAssetsExp       FixedAsset[] @relation("FixedAssetExp")
@@ -171,7 +175,7 @@ model ProductCatalog {
   updatedAt     DateTime @updatedAt
   company       Company? @relation(fields: [companyId], references: [id])
   inventoryItems InventoryItem[]
-  aliases       ProductAlias[]
+  productAliases ProductAlias[]
 }
 
 // ─── Inventory Items ───
@@ -237,12 +241,14 @@ model Voucher {
   reference     String?
   status        String   @default("draft") // draft, posted, cancelled
   voucherType   String   @default("general") // general, payment, receipt, transfer
+  bankAccountId Int?
   companySlug   String   @default("default")
   companyId     String?
   createdBy     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  company       Company? @relation(fields: [companyId], references: [id])
+  company       Company?  @relation(fields: [companyId], references: [id])
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
   lines         VoucherLine[]
   @@unique([number, companySlug])
 }
@@ -275,7 +281,7 @@ model PaymentVoucher {
   status        String   @default("draft") // draft, posted, cancelled
   description   String?
   reference     String?
-  clientId      Int?
+  clientId      String?
   supplierId    Int?
   bankAccountId Int?
   companySlug   String   @default("default")
@@ -612,6 +618,7 @@ model Invoice {
   deletedAt       DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  client          Client?  @relation(fields: [clientId], references: [id])
 }
 
 // ─── Feature Flag ───
@@ -854,4 +861,181 @@ model AIUsageLog {
   processingMs  Int      @default(0)
   success       Boolean  @default(true)
   createdAt     DateTime @default(now())
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Missing Models — Added Sprint 3 prerequisite (referenced by Account, Voucher, LetterOfCredit, Company)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Bank Account ───
+
+model BankAccount {
+  id            Int      @id @default(autoincrement())
+  accountName   String
+  accountNumber String
+  bankName      String?
+  branch        String?
+  iban          String?
+  swiftCode     String?
+  currency      String   @default("USD")
+  balance       Decimal  @default(0)
+  accountType   String   @default("checking") // checking, savings, investment
+  isActive      Boolean  @default(true)
+  companyId     String?
+  companySlug   String   @default("default")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company? @relation(fields: [companyId], references: [id])
+  vouchers      Voucher[]
+  paymentVouchers PaymentVoucher[]
+  lettersOfCredit LetterOfCredit[]
+}
+
+// ─── Fixed Asset ───
+
+model FixedAsset {
+  id              Int      @id @default(autoincrement())
+  assetCode       String
+  name            String
+  description     String?
+  purchaseDate    DateTime
+  purchaseCost    Decimal  @default(0)
+  salvageValue    Decimal  @default(0)
+  usefulLifeYears Int      @default(5)
+  depreciationMethod String @default("straight_line") // straight_line, declining_balance
+  accumulatedDep  Decimal  @default(0)
+  netBookValue    Decimal  @default(0)
+  status          String   @default("active") // active, disposed, fully_depreciated
+  companyId       String?
+  companySlug     String   @default("default")
+  glAccountId     Int?
+  depAccountId    Int?
+  expAccountId    Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  company         Company? @relation(fields: [companyId], references: [id])
+  glAccount       Account? @relation("FixedAssetGL", fields: [glAccountId], references: [id])
+  depAccount      Account? @relation("FixedAssetDep", fields: [depAccountId], references: [id])
+  expAccount      Account? @relation("FixedAssetExp", fields: [expAccountId], references: [id])
+}
+
+// ─── Journal Entry Line ───
+
+model JournalEntryLine {
+  id              Int      @id @default(autoincrement())
+  journalEntryId  Int
+  accountId       Int
+  debit           Decimal  @default(0)
+  credit          Decimal  @default(0)
+  description     String?
+  lineOrder       Int      @default(0)
+  companyId       String?
+  companySlug     String   @default("default")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  account         Account  @relation("JELAccount", fields: [accountId], references: [id])
+}
+
+// ─── Opening Balance Entry ───
+
+model OpeningBalanceEntry {
+  id            Int      @id @default(autoincrement())
+  accountId     Int
+  periodId      Int
+  debit         Decimal  @default(0)
+  credit        Decimal  @default(0)
+  companyId     String?
+  companySlug   String   @default("default")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  account       Account  @relation(fields: [accountId], references: [id])
+}
+
+// ─── Budget ───
+
+model Budget {
+  id            Int      @id @default(autoincrement())
+  name          String
+  periodId      Int?
+  fiscalYear    String
+  accountId     Int
+  plannedAmount Decimal  @default(0)
+  actualAmount  Decimal  @default(0)
+  variance      Decimal  @default(0)
+  status        String   @default("draft") // draft, approved, closed
+  companyId     String?
+  companySlug   String   @default("default")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  account       Account  @relation(fields: [accountId], references: [id])
+}
+
+// ─── Quotation (Sales) ───
+
+model Quotation {
+  id              Int      @id @default(autoincrement())
+  quotationNumber String
+  clientId        String?
+  clientName      String?
+  issueDate       String
+  expiryDate      String?
+  subtotal        Decimal  @default(0)
+  taxRate         Decimal  @default(0)
+  taxAmount       Decimal  @default(0)
+  total           Decimal  @default(0)
+  status          String   @default("draft") // draft, sent, accepted, rejected, expired
+  lineItems       String?  // JSON string
+  companyId       String?
+  companySlug     String   @default("default")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  company         Company? @relation(fields: [companyId], references: [id])
+  client          Client?  @relation(fields: [clientId], references: [id])
+}
+
+// ─── Purchase Order ───
+
+model PurchaseOrder {
+  id              Int      @id @default(autoincrement())
+  poNumber        String
+  supplierId      Int?
+  orderDate       String
+  expectedDate    String?
+  subtotal        Decimal  @default(0)
+  taxRate         Decimal  @default(0)
+  taxAmount       Decimal  @default(0)
+  total           Decimal  @default(0)
+  status          String   @default("draft") // draft, confirmed, received, cancelled
+  lineItems       String?  // JSON string
+  companyId       String?
+  companySlug     String   @default("default")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  company         Company? @relation(fields: [companyId], references: [id])
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+}
+
+// ─── Purchase Invoice ───
+
+model PurchaseInvoice {
+  id              Int      @id @default(autoincrement())
+  invoiceNumber   String
+  supplierId      Int?
+  invoiceDate     String
+  dueDate         String?
+  subtotal        Decimal  @default(0)
+  taxRate         Decimal  @default(0)
+  taxAmount       Decimal  @default(0)
+  total           Decimal  @default(0)
+  status          String   @default("draft") // draft, received, verified, paid, cancelled
+  lineItems       String?  // JSON string
+  companyId       String?
+  companySlug     String   @default("default")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  company         Company? @relation(fields: [companyId], references: [id])
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
 }

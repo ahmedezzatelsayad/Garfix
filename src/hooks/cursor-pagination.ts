@@ -226,6 +226,5 @@ export async function prefetchNextCursorPage<T>(
     queryFn: () => apiGet<CursorPage<T>>(`${url}?${sp.toString()}`),
     initialPageParam: null,
     staleTime: 30_000,
-    pages: 1, // Only prefetch one additional page
   });
 }

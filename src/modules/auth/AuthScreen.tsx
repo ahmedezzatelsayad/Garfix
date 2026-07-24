@@ -124,10 +124,10 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-gradient-to-br from-[#0f0a1e] via-[#1e1147] to-[#2d1b69] text-white flex items-center justify-center p-5 [font-family:var(--font-cairo),sans-serif]"
+      className="min-h-screen bg-gradient-to-br from-[#0f0a1e] via-[#1e1147] to-[#2d1b69] text-white flex items-center justify-center p-3 sm:p-5 [font-family:var(--font-cairo),sans-serif]"
     >
       <div
-        className="w-full max-w-[440px] bg-white/4 border border-white/8 rounded-[20px] py-10 px-8 backdrop-blur-[12px]"
+        className="w-full max-w-[440px] bg-white/4 border border-white/8 rounded-[20px] py-6 sm:py-10 px-5 sm:px-8 backdrop-blur-[12px]"
       >
         {/* Logo */}
         <div className="flex items-center gap-3 justify-center mb-8">
@@ -140,14 +140,14 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
           </div>
         </div>
 
-        <h1 className="text-[26px] font-extrabold text-center mb-1.5">
+        <h1 className="text-xl sm:text-[26px] font-extrabold text-center mb-1.5">
           {titles[mode].title}
         </h1>
         <p className="text-[13px] text-white/60 text-center mb-7">
           {titles[mode].sub}
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:gap-4">
           {mode === "register" && (
             <Field
               icon={<User size={16} />}
@@ -257,7 +257,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
             type="submit"
             disabled={loading}
             className={cn(
-              "py-3.5 rounded-[10px] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] text-white border-none font-inherit text-[15px] font-extrabold",
+              "py-3 sm:py-3.5 rounded-[10px] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] text-white border-none font-inherit text-sm sm:text-[15px] font-extrabold",
               "flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(124,58,237,0.4)] transition-all duration-200",
               loading ? "cursor-not-allowed opacity-70" : "cursor-pointer"
             )}

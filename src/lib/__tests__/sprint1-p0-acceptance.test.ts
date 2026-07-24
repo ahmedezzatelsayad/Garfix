@@ -38,7 +38,7 @@ describe("P0-1: Prisma Schema Sync", () => {
     expect(typeof (prisma as any).bankAccount).toBe("object");
     expect(typeof (prisma as any).fixedAsset).toBe("object");
     expect(typeof prisma.employee).toBe("object");
-    expect(typeof prisma.salary).toBe("object");
+    expect(typeof prisma.hRSalary).toBe("object");
     expect(typeof prisma.platformSettings).toBe("object");
     expect(typeof (prisma as any).mFASecret).toBe("object");
     expect(typeof (prisma as any).sessionRegistry).toBe("object");

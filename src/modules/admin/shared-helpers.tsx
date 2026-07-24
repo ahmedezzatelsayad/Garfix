@@ -10,7 +10,7 @@ export function IconBtn({ color, children, ...props }: { color: string; children
 
 export function KpiCard({ label, value, color }: { label: string; value: number | string; color: string }) {
   return (
-    <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
+    <div className="p-3 sm:p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)]">
       <div className="text-[11px] text-[var(--muted-foreground)] font-semibold mb-1.5">{label}</div>
       <div className="text-[22px] font-black" /* TAILWINDBREAK: dynamic color */ style={{ color }}>{value}</div>
     </div>

@@ -418,12 +418,12 @@ export function AICopilotBubble() {
             "garfix-ai-panel flex flex-col overflow-hidden z-[200] animate-[garfix-fade-up_0.25s_ease-out] [font-family:var(--font-cairo),sans-serif]",
             fullscreen
               ? "fixed inset-0 w-screen h-screen max-w-screen max-h-screen rounded-none border-none bg-[rgba(15,10,30,0.96)] shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]"
-              : "fixed bottom-[92px] left-6 w-[380px] max-w-[calc(100vw-48px)] h-[540px] max-h-[calc(100vh-130px)] rounded-2xl border border-border bg-card shadow-[0_24px_64px_rgba(0,0,0,0.2)]"
+              : "fixed bottom-[92px] left-6 w-[calc(100vw-24px)] sm:w-[380px] max-w-[calc(100vw-48px)] sm:max-w-[calc(100vw-48px)] h-[540px] max-h-[calc(100vh-130px)] rounded-2xl border border-border bg-card shadow-[0_24px_64px_rgba(0,0,0,0.2)]"
           )}
         >
           {/* Header */}
           <div
-            className="px-[18px] py-[14px] text-white flex items-center gap-2.5 shrink-0 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
+            className="px-3 sm:px-[18px] py-2 sm:py-[14px] text-white flex items-center gap-2.5 shrink-0 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
           >
             {/* Fullscreen toggle — top-left (RTL → visually right) */}
             <button
@@ -475,7 +475,7 @@ export function AICopilotBubble() {
             ref={scrollRef}
             className={cn(
               "garfix-scroll flex-1 overflow-y-auto flex flex-col gap-2.5 bg-transparent",
-              fullscreen ? "p-6" : "p-3.5"
+              fullscreen ? "p-3 sm:p-6" : "p-2 sm:p-3.5"
             )}
           >
             {messages.length === 0 && (
@@ -527,7 +527,7 @@ export function AICopilotBubble() {
                   className={cn(
                     "flex gap-2",
                     isUser ? "self-start flex-row" : "self-end flex-row-reverse",
-                    fullscreen ? "max-w-[80%]" : "max-w-full"
+                    fullscreen ? "max-w-[90%] sm:max-w-[80%]" : "max-w-full"
                   )}
                 >
                   <div
@@ -540,7 +540,7 @@ export function AICopilotBubble() {
                   </div>
                   <div
                     className={cn(
-                      "px-[14px] py-2.5 rounded-xl text-[13px] leading-[1.65] max-w-[320px] whitespace-pre-wrap",
+                      "px-[14px] py-2.5 rounded-xl text-[13px] leading-[1.65] max-w-[calc(100%-40px)] sm:max-w-[320px] whitespace-pre-wrap",
                       isAgent ? "border border-purple-500/25" : "border-none",
                       isUser && !fullscreen ? "bg-muted text-foreground" : "",
                       isUser && fullscreen ? "bg-white/8 text-white" : "",
@@ -704,7 +704,7 @@ export function AICopilotBubble() {
           {!confirmation && (
             <div
               className={cn(
-                "px-2.5 pt-2 pb-1 flex gap-1.5 flex-wrap shrink-0 border-t border-border",
+                "px-1.5 sm:px-2.5 pt-1 sm:pt-2 pb-1 flex gap-1 sm:gap-1.5 flex-wrap shrink-0 border-t border-border",
                 fullscreen ? "bg-black/20" : "bg-transparent"
               )}
             >
@@ -742,7 +742,7 @@ export function AICopilotBubble() {
           {/* Input */}
           <div
             className={cn(
-              "px-3 py-2.5 flex gap-2 shrink-0",
+              "px-2 sm:px-3 py-2 sm:py-2.5 flex gap-2 shrink-0",
               fullscreen ? "bg-black/20" : "bg-transparent"
             )}
           >

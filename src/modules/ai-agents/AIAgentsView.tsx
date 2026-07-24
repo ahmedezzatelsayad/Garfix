@@ -156,7 +156,7 @@ export function AIAgentsView() {
   return (
     <div className="flex flex-col gap-4 h-[calc(100vh-180px)] min-h-[500px]">
       <div>
-        <h1 className="text-2xl font-extrabold flex items-center gap-2">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold flex items-center gap-2">
           <Sparkles size={20} /> وكلاء الذكاء الاصطناعي
         </h1>
         <p className="text-[13px] text-muted-foreground">
@@ -165,7 +165,7 @@ export function AIAgentsView() {
       </div>
 
       {/* ─── Design note ────────────────────────────────────────────── */}
-      <div className="bg-muted/50 border border-border rounded-[12px] p-3 text-xs leading-relaxed text-muted-foreground">
+      <div className="bg-muted/50 border border-border rounded-[12px] p-2 sm:p-3 text-xs leading-relaxed text-muted-foreground">
         <strong className="text-foreground">قرار التصميم:</strong> اختيار الوكيل صريح (tab picker) وليس
         توجيهًا تلقائيًا. هذا أنسب لأنه يعطي شفافية أكبر ويختصر round-trip المصنّف. لو رغبت في
         التوجيه التلقائي، يحتاج الباك إند دعم <code className="font-mono text-[11px]">agentType="auto"</code> أولًا.
@@ -201,7 +201,7 @@ export function AIAgentsView() {
 
       {/* ─── Selected agent description ─────────────────────────────── */}
       {currentAgent && (
-        <div className="bg-card border border-border rounded-[12px] p-3 flex items-start gap-3">
+        <div className="bg-card border border-border rounded-[12px] p-2 sm:p-3 flex items-start gap-2 sm:gap-3">
           <div className="w-9 h-9 rounded-[10px] bg-primary/10 flex items-center justify-center text-lg shrink-0">
             {currentAgent.icon}
           </div>
@@ -226,7 +226,7 @@ export function AIAgentsView() {
       <div className="flex-1 bg-card rounded-[14px] border border-border flex flex-col overflow-hidden min-h-0">
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-4 garfix-scroll flex flex-col gap-3"
+          className="flex-1 overflow-y-auto p-3 sm:p-4 garfix-scroll flex flex-col gap-3"
         >
           {turns.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2 py-8">
@@ -286,7 +286,7 @@ export function AIAgentsView() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-border p-3 flex items-end gap-2 bg-card">
+        <div className="border-t border-border p-2 sm:p-3 flex items-end gap-2 bg-card">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
