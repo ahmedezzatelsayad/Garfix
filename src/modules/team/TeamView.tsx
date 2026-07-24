@@ -222,7 +222,7 @@ export function TeamView() {
                         <div className="flex items-center gap-2">
                           <div
                             className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0"
-                            style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }} /* TAILWINDBREAK: dynamic background */
+                            style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }}
                           >
                             {m.displayName.charAt(0).toUpperCase()}
                           </div>
@@ -245,7 +245,7 @@ export function TeamView() {
                       <td className={tdStyle}>
                         <span
                           className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                          style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }} /* TAILWINDBREAK: dynamic color */
+                          style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }}
                         >
                           {ROLE_LABEL[m.role] || m.role}
                         </span>
@@ -285,7 +285,7 @@ export function TeamView() {
                       <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
                       <div
                         className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0"
-                        style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }} /* TAILWINDBREAK: dynamic background */
+                        style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }}
                       >
                         {m.displayName.charAt(0).toUpperCase()}
                       </div>
@@ -312,7 +312,7 @@ export function TeamView() {
                       <span className="text-[11px] text-muted-foreground">الدور:</span>
                       <span
                         className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                        style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }} /* TAILWINDBREAK: dynamic color */
+                        style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }}
                       >
                         {ROLE_LABEL[m.role] || m.role}
                       </span>
@@ -451,12 +451,8 @@ function InviteDialog({
                 <button
                   key={r.value}
                   onClick={() => setRole(r.value)}
-                  className="max-md:min-h-[44px] py-2.5 px-3 rounded-[10px] font-inherit text-xs font-bold cursor-pointer text-right flex flex-col items-start gap-0.5"
-                  style={{
-                    background: role === r.value ? `${r.color}22` : "var(--background)",
-                    border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}`,
-                    color: role === r.value ? r.color : "var(--foreground)",
-                  }} /* TAILWINDBREAK: dynamic colors */
+                  className={`max-md:min-h-[44px] py-2.5 px-3 rounded-[10px] font-inherit text-xs font-bold cursor-pointer text-right flex flex-col items-start gap-0.5 ${role === r.value ? `[background:${r.color}22] text-[${r.color}]` : "bg-[var(--background)] text-[var(--foreground)]"}`}
+                  style={{ border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}` }}
                 >
                   <span>{r.label}</span>
                   <span className="text-[10px] font-normal opacity-80">{r.desc}</span>
@@ -535,12 +531,8 @@ function EditDialog({
                 <button
                   key={r.value}
                   onClick={() => setRole(r.value)}
-                  className="max-md:min-h-[44px] py-2 px-2.5 rounded-lg font-inherit text-[11px] font-bold cursor-pointer text-right"
-                  style={{
-                    background: role === r.value ? `${r.color}22` : "var(--background)",
-                    border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}`,
-                    color: role === r.value ? r.color : "var(--foreground)",
-                  }} /* TAILWINDBREAK: dynamic colors */
+                  className={`max-md:min-h-[44px] py-2 px-2.5 rounded-lg font-inherit text-[11px] font-bold cursor-pointer text-right ${role === r.value ? `[background:${r.color}22] text-[${r.color}]` : "bg-[var(--background)] text-[var(--foreground)]"}`}
+                  style={{ border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}` }}
                 >
                   {r.label}
                 </button>
@@ -601,23 +593,17 @@ function PermEditor({
                   <button
                     key={p.key}
                     onClick={() => onToggle(p.key)}
-                    className="max-md:min-h-[44px] flex items-center gap-2 py-2 px-2.5 rounded-lg font-inherit text-xs cursor-pointer text-right text-[var(--foreground)]"
-                    style={{
-                      background: on ? "var(--primary)15" : "var(--card)",
-                      border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
-                      opacity: locked ? 0.65 : 1,
-                    }} /* TAILWINDBREAK: dynamic background, border, opacity */
+                    className={`max-md:min-h-[44px] flex items-center gap-2 py-2 px-2.5 rounded-lg font-inherit text-xs cursor-pointer text-right text-[var(--foreground)] ${on ? "bg-[var(--primary)]/15" : "bg-[var(--card)]"} ${locked ? "opacity-65" : "opacity-100"}`}
+                    style={{ border: `1px solid ${on ? "var(--primary)" : "var(--border)"}` }}
                     title={locked ? "صلاحية إدارية — تمنح تلقائياً للمدير فقط" : p.label}
                   >
                     <span className="text-sm">{p.icon}</span>
                     <span className="flex-1">{p.label}</span>
                     <span
-                      className="w-8 h-[18px] rounded-full relative shrink-0 transition-[background] duration-[150ms]"
-                      style={{ background: on ? "var(--primary)" : "var(--muted)" }} /* TAILWINDBREAK: dynamic background */
+                      className={`w-8 h-[18px] rounded-full relative shrink-0 transition-[background] duration-[150ms] ${on ? "bg-[var(--primary)]" : "bg-[var(--muted)]"}`}
                     >
                       <span
-                        className="absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-[150ms]"
-                        style={{ left: on ? 2 : 16 }} /* TAILWINDBREAK: dynamic position */
+                        className={`absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-[150ms] ${on ? "left-0.5" : "left-4"}`}
                       />
                     </span>
                   </button>

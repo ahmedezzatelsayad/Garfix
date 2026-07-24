@@ -362,10 +362,9 @@ export function InvoicesView() {
                       </td>
                       <td className="py-3 px-3">
                         <span
-                          className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                          style={{ background: st.bg, color: st.color }} /* TAILWINDBREAK: dynamic color */
+                          className={`inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold [background:${st.bg}] [color:${st.color}]`}
                         >
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} /* TAILWINDBREAK: dynamic color */ />
+                          <span className={`w-1.5 h-1.5 rounded-full [background:${st.color}]`} />
                           {st.label}
                         </span>
                       </td>
@@ -422,8 +421,7 @@ export function InvoicesView() {
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-bold font-mono text-[13px] truncate leading-tight">{inv.invoiceNumber}</span>
                       <span
-                        className="inline-block py-0.5 px-2 rounded-[10px] text-[10px] font-bold flex-shrink-0"
-                        style={{ background: st.bg, color: st.color }} /* TAILWINDBREAK: dynamic color */
+                        className={`inline-block py-0.5 px-2 rounded-[10px] text-[10px] font-bold flex-shrink-0 [background:${st.bg}] [color:${st.color}]`}
                       >
                         {st.label}
                       </span>
@@ -522,14 +520,13 @@ function KpiCard({ label, value, sub, color, icon }: { label: string; value: str
   return (
     <div className="bg-white rounded-[14px] border border-gray-200 p-3.5 flex items-center gap-3 hover:shadow-card-hover transition-all shadow-card">
       <div
-        className="flex-shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center"
-        style={{ background: `${color}1a`, color }} /* TAILWINDBREAK: dynamic color */
+        className={`flex-shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center [background:${color}1a] [color:${color}]`}
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[11px] text-gray-500 font-medium truncate">{label}</div>
-        <div className="text-[16px] font-extrabold leading-tight [direction:ltr] truncate" style={{ color }} /* TAILWINDBREAK: dynamic color */>
+        <div className={`text-[16px] font-extrabold leading-tight [direction:ltr] truncate [color:${color}]`}>
           {value}
         </div>
         <div className="text-[10px] text-gray-400 truncate">{sub}</div>

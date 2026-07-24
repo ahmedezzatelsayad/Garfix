@@ -296,13 +296,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 color="#10b981"
               />
               <div
-                className="mt-1 p-3 rounded-[10px] flex justify-between items-center"
-                style={{
-                  background: outstanding > 0
-                    ? (fullyPaid ? "#10b98122" : "#ef444422")
-                    : "#10b98122",
-                  border: `1px solid ${outstanding > 0 && !fullyPaid ? "#ef4444" : "#10b981"}`,
-                }} /* TAILWINDBREAK: dynamic colors */
+                className={`mt-1 p-3 rounded-[10px] flex justify-between items-center ${outstanding > 0 && !fullyPaid ? "bg-red-500/10 [border:1px_solid_#ef4444]" : "bg-emerald-500/10 [border:1px_solid_#10b981]"}`}
               >
                 <div className="flex items-center gap-2">
                   {fullyPaid
@@ -324,8 +318,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                   {Object.entries(summary.byStatus).map(([status, count]) => {
                     const meta = STATUS_LABELS[status] || { label: status, color: "#6b7280", bg: "#6b728022" };
                     return (
-                      <span key={status} className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                        style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
+                      <span key={status} className={`inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold [background:${meta.bg}] [color:${meta.color}]`}>
                         {meta.label} × {count}
                       </span>
                     );
@@ -581,10 +574,10 @@ function SummaryRow({
   return (
     <div className="flex items-center justify-between p-2 px-2.5 rounded-sm bg-muted border border-border">
       <div className="flex items-center gap-2">
-        <span style={{ color }} /* TAILWINDBREAK: dynamic color */>{icon}</span>
+        <span style={{ color }}>{icon}</span>
         <span className="text-xs text-muted-foreground font-semibold">{label}</span>
       </div>
-      <span className="text-sm font-extrabold [direction:ltr]" style={{ color }} /* TAILWINDBREAK: dynamic color */>{value}</span>
+      <span className="text-sm font-extrabold [direction:ltr]" style={{ color }}>{value}</span>
     </div>
   );
 }

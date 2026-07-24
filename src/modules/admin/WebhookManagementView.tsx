@@ -281,10 +281,10 @@ export function WebhookManagementView() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold flex items-center gap-2">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold flex items-center gap-2">
           <Webhook size={20} /> إدارة Webhooks
         </h1>
         <p className="text-sm text-[var(--muted-foreground)]">
@@ -293,7 +293,7 @@ export function WebhookManagementView() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)] pb-2">
+      <div className="flex gap-1.5 sm:gap-2 border-b border-[var(--border)] pb-2 overflow-x-auto">
         <button className={tabClasses(tab === "endpoints")} onClick={() => setTab("endpoints")}>
           <ExternalLink size={14} className="inline ml-1" /> نقاط الربط ({endpoints.length})
         </button>
@@ -317,7 +317,7 @@ export function WebhookManagementView() {
         <>
           {/* Stats bar */}
           {stats && (
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 sm:gap-3 flex-wrap">
               <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
                 <span className="text-[var(--muted-foreground)]">معدل النجاح</span>
                 <br />
@@ -348,7 +348,7 @@ export function WebhookManagementView() {
 
           {/* Add/Edit form */}
           {showForm && (
-            <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+            <div className="p-3 sm:p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
               <h3 className="text-base font-bold mb-3">
                 {editingId ? "تعديل نقطة ربط" : "إضافة نقطة ربط جديدة"}
               </h3>
@@ -424,7 +424,7 @@ export function WebhookManagementView() {
                       <th className={thClasses}>URL</th>
                       <th className={thClasses}>الأحداث</th>
                       <th className={thClasses}>الحالة</th>
-                      <th className={thClasses}>تاريخ الإنشاء</th>
+                      <th className={`${thClasses} hidden md:table-cell`}>تاريخ الإنشاء</th>
                       <th className={thClasses}>إجراءات</th>
                     </tr>
                   </thead>
@@ -452,7 +452,7 @@ export function WebhookManagementView() {
                               <span className={badgeClasses("#ef4444")}>معطل</span>
                             )}
                           </td>
-                          <td className="py-2.5 px-3 text-xs">
+                          <td className="py-2.5 px-3 text-xs hidden md:table-cell">
                             {new Date(ep.createdAt).toLocaleString("ar-EG")}
                           </td>
                           <td className={tdClasses}>
@@ -481,7 +481,7 @@ export function WebhookManagementView() {
         <>
           {/* Stats */}
           {stats && (
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 sm:gap-3 flex-wrap">
               <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
                 <span className="text-green-500">✅ نجاح: {stats.succeeded}</span>
               </div>
@@ -504,7 +504,7 @@ export function WebhookManagementView() {
           )}
 
           {/* Filters */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-xs cursor-pointer">
               <option value="">كل الحالات</option>
               <option value="success">نجاح</option>
@@ -541,7 +541,7 @@ export function WebhookManagementView() {
                       <th className={thClasses}>الحدث</th>
                       <th className={thClasses}>نقطة الربط</th>
                       <th className={thClasses}>HTTP</th>
-                      <th className={thClasses}>المحاولات</th>
+                      <th className={`${thClasses} hidden md:table-cell`}>المحاولات</th>
                       <th className={thClasses}>الوقت</th>
                       <th className={thClasses}>إجراءات</th>
                     </tr>
@@ -569,7 +569,7 @@ export function WebhookManagementView() {
                             </span>
                           ) : "—"}
                         </td>
-                        <td className={tdClasses}>
+                        <td className={`${tdClasses} hidden md:table-cell`}>
                           {d.attempts}/{d.maxAttempts}
                         </td>
                         <td className="py-2.5 px-3 text-xs">
@@ -605,11 +605,11 @@ export function WebhookManagementView() {
       {tab === "events" && (
         <>
           {/* Test webhook */}
-          <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+          <div className="p-3 sm:p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
             <h3 className="text-base font-bold mb-3 flex items-center gap-2">
               <Send size={16} /> اختبار Webhook
             </h3>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <select
                 value={testEndpointId}
                 onChange={(e) => setTestEndpointId(e.target.value)}
@@ -654,7 +654,7 @@ export function WebhookManagementView() {
                     <tr className="bg-[var(--muted)]">
                       <th className={thClasses}>المعرّف</th>
                       <th className={thClasses}>الاسم</th>
-                      <th className={thClasses}>الوصف</th>
+                      <th className={`${thClasses} hidden md:table-cell`}>الوصف</th>
                       <th className={thClasses}>المجموعة</th>
                     </tr>
                   </thead>
@@ -663,7 +663,7 @@ export function WebhookManagementView() {
                       <tr key={evt.id} className="border-b border-[var(--border)]">
                         <td className="py-2.5 px-3 font-mono text-xs">{evt.id}</td>
                         <td className="py-2.5 px-3 font-semibold">{evt.labelAr}</td>
-                        <td className="py-2.5 px-3 text-xs text-[var(--muted-foreground)]">{evt.description}</td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--muted-foreground)] hidden md:table-cell">{evt.description}</td>
                         <td className={tdClasses}>
                           <span className="px-1.5 py-0.5 rounded-md bg-[var(--accent)] text-[var(--accent-foreground)] text-[10px]">
                             {evt.group}

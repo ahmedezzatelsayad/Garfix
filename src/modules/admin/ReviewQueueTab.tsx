@@ -69,7 +69,7 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
               <button
                 key={t.companySlug}
                 onClick={() => setTenantFilter(tenantFilter === t.companySlug ? "" : t.companySlug)}
-                className="px-2.5 py-1 rounded-full border border-[var(--border)] font-inherit text-[11px] font-bold cursor-pointer" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: tenantFilter === t.companySlug ? "var(--primary)" : "var(--muted)", color: tenantFilter === t.companySlug ? "var(--primary-foreground)" : "var(--foreground)" }}
+                className={`px-2.5 py-1 rounded-full border border-[var(--border)] font-inherit text-[11px] font-bold cursor-pointer ${tenantFilter === t.companySlug ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--muted)] text-[var(--foreground)]"}`}
               >
                 {t.companySlug}: {t.count}
               </button>
@@ -116,7 +116,7 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
           </div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+            <table className="w-full [border-collapse:collapse]">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النص المُدخل</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المنتج المُطابق</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الثقة</th>
@@ -140,12 +140,12 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: item.confidence >= 0.85 ? "rgba(16,185,129,0.15)" : item.confidence >= 0.7 ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)", color: item.confidence >= 0.85 ? "#10b981" : item.confidence >= 0.7 ? "#f59e0b" : "#ef4444" }}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.confidence >= 0.85 ? "bg-emerald-500/15 text-emerald-500" : item.confidence >= 0.7 ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500"}`}>
                         {(item.confidence * 100).toFixed(0)}%
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-[13px]">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: item.tier === "collision-recovery-failed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: item.tier === "collision-recovery-failed" ? "#ef4444" : "#f59e0b" }}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.tier === "collision-recovery-failed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500"}`}>
                         {item.tier}
                       </span>
                     </td>

@@ -135,7 +135,7 @@ export function FeatureFlagsTab() {
         <div className="p-4 md:p-8 text-center text-[var(--muted-foreground)]">لا توجد ميزات بعد</div>
       ) : (
         <div className="garfix-scroll overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: "collapse" }}>
+          <table className="w-full [border-collapse:collapse]">
             <thead><tr className="bg-[var(--muted)]">
               <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المفتاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التسمية</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الباقات</th>
               <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراءات</th>

@@ -84,7 +84,7 @@ export function TicketDetailDrawer({
       <SheetContent
         side="left"
         dir="rtl"
-        className="w-[min(640px,100vw)] max-w-none !gap-3.5 overflow-y-auto p-5"
+        className="w-full sm:w-[min(640px,100vw)] max-w-none !gap-3 sm:!gap-3.5 overflow-y-auto p-3 sm:p-5"
         aria-describedby={undefined}
       >
         <SheetHeader className="p-0 !gap-1">
@@ -109,7 +109,7 @@ export function TicketDetailDrawer({
         </div>
 
         {ticket.body && (
-          <div className="p-3 bg-[var(--muted)] rounded-[10px] text-[13px] leading-relaxed">
+          <div className="p-2 sm:p-3 bg-[var(--muted)] rounded-[10px] text-[13px] leading-relaxed">
             <div className="text-[10px] text-[var(--muted-foreground)] mb-1.5 font-bold">الرسالة الأصلية:</div>
             {ticket.body}
           </div>
@@ -121,7 +121,7 @@ export function TicketDetailDrawer({
             <div className="text-xs text-[var(--muted-foreground)] p-2">لا توجد ردود بعد</div>
           ) : (
             localReplies.map((r) => (
-              <div className="p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)]" key={r.id}>
+              <div className="p-2 sm:p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)]" key={r.id}>
                 <div className="flex justify-between mb-1 text-[10px] text-[var(--muted-foreground)]">
                   <span className="font-bold">{r.senderEmail} ({r.senderRole})</span>
                   <span>{new Date(r.createdAt).toLocaleString("ar-EG")}</span>

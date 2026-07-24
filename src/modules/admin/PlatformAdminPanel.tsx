@@ -189,7 +189,7 @@ export function PlatformAdminPanel() {
       </div>
       <div role="tablist" className="garfix-scroll flex gap-1.5 flex-wrap">
         {tabs.map((t) => (
-          <button key={t.key} role="tab" aria-selected={tab === t.key} id={`tab-${t.key}`} onClick={() => setTab(t.key)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] font-inherit text-xs font-bold cursor-pointer whitespace-nowrap" /* TAILWINDBREAK: dynamic bg/color */ style={{ background: tab === t.key ? "var(--primary)" : "var(--card)", color: tab === t.key ? "var(--primary-foreground)" : "var(--muted-foreground)" }}>
+          <button key={t.key} role="tab" aria-selected={tab === t.key} id={`tab-${t.key}`} onClick={() => setTab(t.key)} className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] font-inherit text-xs font-bold cursor-pointer whitespace-nowrap ${tab === t.key ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--card)] text-[var(--muted-foreground)]"}`}>
             {t.icon} {t.label}
           </button>
         ))}
@@ -249,7 +249,7 @@ export function PlatformAdminPanel() {
             <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               {/* Part 3: Desktop table (hidden on mobile) */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                <table className="w-full [border-collapse:collapse]">
                   <thead><tr className="bg-[var(--muted)]">
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الباقة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الفواتير</th>
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المستخدمون</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">العملاء</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الإيراد</th>
@@ -390,7 +390,7 @@ export function PlatformAdminPanel() {
               </div>
               {showAnnouncementForm && <AnnouncementForm onClose={() => setShowAnnouncementForm(false)} onSaved={() => { setShowAnnouncementForm(false); load(); }} />}
               <div className="garfix-scroll overflow-x-auto">
-                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                <table className="w-full [border-collapse:collapse]">
                   <thead><tr className="bg-[var(--muted)]">
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">العنوان</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التاريخ</th>
                   </tr></thead>
@@ -413,7 +413,7 @@ export function PlatformAdminPanel() {
           {tab === "tickets" && (
             <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               <div className="garfix-scroll overflow-x-auto">
-                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                <table className="w-full [border-collapse:collapse]">
                   <thead><tr className="bg-[var(--muted)]">
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المستخدم</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الموضوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الأولوية</th>
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التاريخ</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراء</th>
@@ -451,7 +451,7 @@ export function PlatformAdminPanel() {
           {tab === "audit" && (
             <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
               <div className="garfix-scroll overflow-x-auto">
-                <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                <table className="w-full [border-collapse:collapse]">
                   <thead><tr className="bg-[var(--muted)]">
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المدير</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الإجراء</th>
                     <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المعرّف</th>
@@ -510,7 +510,7 @@ export function PlatformAdminPanel() {
                 </div>
               ) : (
                 <div className="garfix-scroll overflow-x-auto">
-                  <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                  <table className="w-full [border-collapse:collapse]">
                     <thead><tr className="bg-[var(--muted)]">
                       <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الطابور</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النوع</th>
                       <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الخطأ</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المحاولات</th>
@@ -520,7 +520,7 @@ export function PlatformAdminPanel() {
                         <tr className="border-b border-b-[var(--border)]" key={f.id || i}>
                           <td className="px-3 py-2.5 font-mono text-[11px]">{f.queue}</td>
                           <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">{f.type || "—"}</td>
-                          <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right" /* TAILWINDBREAK: dynamic color */ style={{ color: "#fca5a5" }}>{f.error}</td>
+                          <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right text-red-300">{f.error}</td>
                           <td className="px-3 py-2.5 text-[13px]">{new Date(f.failedAt).toLocaleString("ar-EG")}</td>
                           <td className="px-3 py-2.5 text-[13px]">{f.attempts}</td>
                         </tr>
@@ -625,7 +625,7 @@ export function PlatformAdminPanel() {
                 </div>
               ) : (
                 <div className="garfix-scroll overflow-x-auto">
-                  <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                  <table className="w-full [border-collapse:collapse]">
                     <thead><tr className="bg-[var(--muted)]">
                       <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th>
                       <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th>
@@ -647,7 +647,7 @@ export function PlatformAdminPanel() {
                               <span className="text-[var(--muted-foreground)] font-mono text-[10px] mr-1"> ({m.productCode})</span>
                             )}
                           </td>
-                          <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold" /* TAILWINDBREAK: dynamic color */ style={{ color: m.qty < 0 ? "#fca5a5" : "#86efac" }}>{m.qty > 0 ? "+" : ""}{m.qty}</td>
+                          <td className={`px-3 py-2.5 text-[13px] [direction:ltr] text-right font-bold ${m.qty < 0 ? "text-red-300" : "text-green-300"}`}>{m.qty > 0 ? "+" : ""}{m.qty}</td>
                           <td className="px-3 py-2.5 text-[13px]"><span className="px-2 py-0.5 rounded-lg bg-[var(--muted)] text-[10px] font-bold">{m.sourceType}</span></td>
                           <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">
                             {m.sourceId != null ? `#${m.sourceId}` : "—"}
@@ -802,7 +802,7 @@ function UtilizationBar({ label, current, max, pct }: { label: string; current: 
         <span className="[direction:ltr]">{current} / {displayMax}</span>
       </div>
       <div className="h-1 bg-[var(--muted)] overflow-hidden rounded-sm">
-        <div className="h-full" /* TAILWINDBREAK: dynamic width/bg/transition */ style={{ width: `${Math.min(100, pct)}%`, background: color, transition: "width .2s" }} />
+        <div className="h-full [transition:width_.2s]" style={{ width: `${Math.min(100, pct)}%`, background: color }} />
       </div>
     </div>
   );
@@ -845,7 +845,7 @@ function AnnouncementForm({ onClose, onSaved }: { onClose: () => void; onSaved: 
         </div>
       </div>
       <div><label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المحتوى</label><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none resize-y" /></div>
-      <button onClick={submit} disabled={saving} className="self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "جارٍ…" : "نشر"}</button>
+      <button onClick={submit} disabled={saving} className={`self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold ${saving ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}>{saving ? "جارٍ…" : "نشر"}</button>
     </div>
   );
 }

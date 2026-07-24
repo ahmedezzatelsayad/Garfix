@@ -142,7 +142,7 @@ export function LandingContentTab() {
             <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">القيمة (نص أو JSON)</label>
             <Textarea value={newValue} onChange={(e) => setNewValue(e.target.value)} rows={3} placeholder="مرحباً بكم في GarfiX" className="resize-y" />
           </div>
-          <button onClick={create} disabled={savingKey === "__new__"} className="self-end inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer" /* TAILWINDBREAK: dynamic opacity */ style={{ opacity: savingKey === "__new__" ? 0.7 : 1 }}>
+          <button onClick={create} disabled={savingKey === "__new__"} className="self-end inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer disabled:opacity-70">
             <Save size={14} /> {savingKey === "__new__" ? "جارٍ…" : "إنشاء"}
           </button>
         </div>
@@ -168,15 +168,13 @@ export function LandingContentTab() {
                   value={drafts[it.key] ?? ""}
                   onChange={(e) => setDrafts({ ...drafts, [it.key]: e.target.value })}
                   rows={isJson ? 5 : 2}
-                  className="resize-y text-xs"
-                  dir="ltr"
-                  /* TAILWINDBREAK: dynamic fontFamily */ style={{ fontFamily: isJson ? "monospace" : "inherit" }}
+                  className={`resize-y text-xs ${isJson ? "font-mono" : "font-inherit"}`}
                 />
                 <div className="flex justify-end">
                   <button
                     onClick={() => save(it.key)}
                     disabled={savingKey === it.key}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer" /* TAILWINDBREAK: dynamic opacity */ style={{ opacity: savingKey === it.key ? 0.7 : 1 }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer disabled:opacity-70"
                   >
                     <Save size={12} /> {savingKey === it.key ? "جارٍ…" : "حفظ"}
                   </button>
