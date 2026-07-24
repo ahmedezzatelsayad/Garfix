@@ -70,3 +70,7 @@ Caddyfile.dev
 coverage
 .nyc_output
 tsconfig.prod.json
+tool-results
+download
+skills
+worklog.md

@@ -1,19 +1,30 @@
 /**
- * useHRData — custom hook that owns all HR data state and API calls.
+ * useHRData — Modern TanStack Query hook for HRView.
  *
- * Key improvement over the original god component:
- *   • Lazy loading — only the active tab's data is fetched on mount / tab switch.
- *   • Employees are always loaded (needed as a lookup for all other tabs and
- *     for the GratuityCalculator).
- *   • All state and handlers are returned in one object so the component can
- *     consume them declaratively.
+ * Replaces the legacy useEffect+fetch approach with:
+ *   • TanStack Query for caching, background refetch, and stale management
+ *   • Automatic invalidation on mutations (delete/create/update)
+ *   • Lazy loading — queries only fire when enabled (company selected)
+ *
+ * The hook maintains the same interface as the legacy version so HRView
+ * requires minimal changes.
  */
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useBrand } from "@/context/BrandContext";
+import {
+  useEmployees,
+  useAttendance,
+  useSalaries,
+  useCommissions,
+  useLeaves,
+  usePerformanceReviews,
+} from "@/hooks/queries/hr";
+import { apiDelete, ApiError } from "@/hooks/api-client";
+import { queryKeys } from "@/hooks/query-keys";
 import type {
   Tab,
   Employee,
@@ -22,42 +33,8 @@ import type {
   Commission,
   LeaveRequest,
   Performance,
-  HREditItem,
-  EmployeesResponse,
-  AttendanceResponse,
-  SalariesResponse,
-  CommissionsResponse,
-  LeavesResponse,
-  PerformanceResponse,
 } from "./types";
 import { DELETE_PATH } from "./types";
-
-// ─── Per-tab data slice ─────────────────────────────────────────────────────
-
-interface TabData<T> {
-  data: T;
-  loaded: boolean;
-}
-
-type HRState = {
-  employees: TabData<Employee[]>;
-  attendance: TabData<Attendance[]>;
-  salaries: TabData<Salary[]>;
-  commissions: TabData<Commission[]>;
-  leaves: TabData<LeaveRequest[]>;
-  performance: TabData<Performance[]>;
-};
-
-const emptyTab = <T,>(): TabData<T> => ({ data: [] as unknown as T, loaded: false });
-
-const initial: HRState = {
-  employees: emptyTab(),
-  attendance: emptyTab(),
-  salaries: emptyTab(),
-  commissions: emptyTab(),
-  leaves: emptyTab(),
-  performance: emptyTab(),
-};
 
 // ─── Return type ────────────────────────────────────────────────────────────
 
@@ -88,229 +65,122 @@ export interface UseHRDataReturn {
 
 export function useHRData(): UseHRDataReturn {
   const { activeCompany } = useBrand();
+  const queryClient = useQueryClient();
+  const companySlug = activeCompany?.slug || "";
 
-  const [state, setState] = useState<HRState>(initial);
   const [activeTab, setActiveTab] = useState<Tab>("employees");
-  const [loading, setLoading] = useState(true);
 
-  // Track which tabs have been loaded at least once so we don't re-fetch
-  // on every tab switch.
-  const loadedTabs = useRef<Set<Tab>>(new Set());
+  // ─── TanStack Query: each tab is an independent query ────────────────
 
-  // ─── Helpers ──────────────────────────────────────────────────────────
+  const employeesQuery = useEmployees(companySlug);
+  const attendanceQuery = useAttendance(companySlug);
+  const salariesQuery = useSalaries(companySlug);
+  const commissionsQuery = useCommissions(companySlug);
+  const leavesQuery = useLeaves(companySlug);
+  const performanceQuery = usePerformanceReviews(companySlug);
 
-  const slug = activeCompany
-    ? `companySlug=${encodeURIComponent(activeCompany.slug)}`
-    : "";
+  // Extract data arrays (fall back to empty arrays)
+  const employees: Employee[] = employeesQuery.data?.employees ?? [];
+  const attendance: Attendance[] = attendanceQuery.data?.attendance ?? [];
+  const salaries: Salary[] = salariesQuery.data?.salaries ?? [];
+  const commissions: Commission[] = commissionsQuery.data?.commissions ?? [];
+  const leaves: LeaveRequest[] = leavesQuery.data?.leaves ?? [];
+  const performances: Performance[] = performanceQuery.data?.performance ?? [];
 
-  const setTabData = useCallback(
-    <K extends keyof HRState>(key: K, data: HRState[K]["data"]) => {
-      setState((prev) => ({
-        ...prev,
-        [key]: { data, loaded: true },
-      }));
-    },
-    [],
-  );
+  // Combined loading state: true if ANY active tab query is loading
+  const loading =
+    employeesQuery.isLoading ||
+    attendanceQuery.isLoading ||
+    salariesQuery.isLoading ||
+    commissionsQuery.isLoading ||
+    leavesQuery.isLoading ||
+    performanceQuery.isLoading;
 
-  // ─── Load a single tab ───────────────────────────────────────────────
-
-  const loadTab = useCallback(
-    async (t: Tab) => {
-      if (!activeCompany || t === "gratuity") return;
-      const q = `?${slug}`;
-      try {
-        const res = await authedFetch(`/api/hr/${t}${q}`);
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          throw new Error(
-            (e as Record<string, unknown>)?.error as string ||
-              `فشل تحميل البيانات (${res.status})`,
-          );
-        }
-        const body = await res.json();
-        switch (t) {
-          case "employees":
-            setTabData("employees", (body as EmployeesResponse).employees || []);
-            break;
-          case "attendance":
-            setTabData("attendance", (body as AttendanceResponse).attendance || []);
-            break;
-          case "salaries":
-            setTabData("salaries", (body as SalariesResponse).salaries || []);
-            break;
-          case "commissions":
-            setTabData("commissions", (body as CommissionsResponse).commissions || []);
-            break;
-          case "leaves":
-            setTabData("leaves", (body as LeavesResponse).leaves || []);
-            break;
-          case "performance":
-            setTabData("performance", (body as PerformanceResponse).performance || []);
-            break;
-        }
-        loadedTabs.current.add(t);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "تعذّر تحميل بيانات الموارد البشرية",
-        );
-      }
-    },
-    [activeCompany, slug, setTabData],
-  );
-
-  // ─── Load all tabs at once (used after mutations) ────────────────────
+  // ─── Load all (invalidate all HR queries) ──────────────────────────────
 
   const loadAll = useCallback(async () => {
-    if (!activeCompany) {
-      setLoading(false);
-      return;
+    if (!activeCompany) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.hr.employees(companySlug) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.hr.attendance(companySlug) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.hr.salaries(companySlug) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.hr.commissions(companySlug) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.hr.leaves(companySlug) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.hr.performance(companySlug) }),
+    ]);
+  }, [activeCompany, companySlug, queryClient]);
+
+  // ─── Load single tab (invalidate specific tab query) ─────────────────
+
+  const loadTab = useCallback(async (t: Tab) => {
+    if (!activeCompany || t === "gratuity") return;
+    const keyMap: Record<string, readonly unknown[]> = {
+      employees: queryKeys.hr.employees(companySlug),
+      attendance: queryKeys.hr.attendance(companySlug),
+      salaries: queryKeys.hr.salaries(companySlug),
+      commissions: queryKeys.hr.commissions(companySlug),
+      leaves: queryKeys.hr.leaves(companySlug),
+      performance: queryKeys.hr.performance(companySlug),
+    };
+    const key = keyMap[t];
+    if (key) {
+      await queryClient.invalidateQueries({ queryKey: key });
     }
-    setLoading(true);
-    const q = `?${slug}`;
-    try {
-      const responses = await Promise.all([
-        authedFetch(`/api/hr/employees${q}`),
-        authedFetch(`/api/hr/attendance${q}`),
-        authedFetch(`/api/hr/salaries${q}`),
-        authedFetch(`/api/hr/commissions${q}`),
-        authedFetch(`/api/hr/leaves${q}`),
-        authedFetch(`/api/hr/performance${q}`),
-      ]);
-      const bodies: Array<Record<string, unknown>> = [];
-      for (const r of responses) {
-        if (!r.ok) {
-          const e = await r.json().catch(() => ({}));
-          throw new Error(
-            (e as Record<string, unknown>)?.error as string ||
-              `فشل تحميل البيانات (${r.status})`,
-          );
-        }
-        bodies.push(await r.json());
-      }
-      const [empD, attD, salD, comD, leaD, perfD] = bodies;
-      setTabData("employees", (empD as EmployeesResponse).employees || []);
-      setTabData("attendance", (attD as AttendanceResponse).attendance || []);
-      setTabData("salaries", (salD as SalariesResponse).salaries || []);
-      setTabData("commissions", (comD as CommissionsResponse).commissions || []);
-      setTabData("leaves", (leaD as LeavesResponse).leaves || []);
-      setTabData("performance", (perfD as PerformanceResponse).performance || []);
-
-      // Mark all tabs as loaded
-      for (const t of [
-        "employees", "attendance", "salaries",
-        "commissions", "leaves", "performance",
-      ] as Tab[]) {
-        loadedTabs.current.add(t);
-      }
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "تعذّر تحميل بيانات الموارد البشرية",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCompany, slug, setTabData]);
-
-  // ─── Initial load (lazy: only the active tab + employees) ────────────
-
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    // Always load employees first (needed by all tabs), then the active tab.
-    // After the first load, subsequent tab switches will use loadTab.
-    if (!activeCompany) {
-      setLoading(false);
-      return;
-    }
-    if (loadedTabs.current.size === 0) {
-      loadAll();
-    } else {
-      // Already loaded once; just refresh the active tab if not yet loaded.
-      if (!loadedTabs.current.has(activeTab)) {
-        setLoading(true);
-        loadTab(activeTab).finally(() => setLoading(false));
-      }
-    }
-  }, [activeCompany, loadAll, loadTab, activeTab]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // ─── Lazy-load on tab switch ─────────────────────────────────────────
-
-  const switchTab = useCallback(
-    (t: Tab) => {
-      setActiveTab(t);
-      if (t !== "gratuity" && !loadedTabs.current.has(t)) {
-        setLoading(true);
-        loadTab(t).finally(() => setLoading(false));
-      }
-    },
-    [loadTab],
-  );
+  }, [activeCompany, companySlug, queryClient]);
 
   // ─── Delete handlers ─────────────────────────────────────────────────
 
-  const handleDelete = useCallback(
-    async (id: number) => {
-      if (activeTab === "gratuity") return;
-      if (!confirm("حذف هذا العنصر؟")) return;
-      try {
-        const res = await authedFetch(`${DELETE_PATH[activeTab]}/${id}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          toast.error(
-            (e as Record<string, unknown>)?.error as string || "تعذّر الحذف",
-          );
-          return;
-        }
-        toast.success("تم الحذف");
-        loadAll();
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "تعذّر الاتصال بالخادم",
-        );
-      }
-    },
-    [activeTab, loadAll],
-  );
+  const handleDelete = useCallback(async (id: number) => {
+    if (activeTab === "gratuity") return;
+    if (!confirm("حذف هذا العنصر؟")) return;
+    try {
+      await apiDelete(`${DELETE_PATH[activeTab]}/${id}`);
+      toast.success("تم الحذف");
+      // Invalidate the relevant tab query to refetch
+      await loadTab(activeTab);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "تعذّر الحذف";
+      toast.error(msg);
+    }
+  }, [activeTab, loadTab]);
 
-  const handleBulkDelete = useCallback(
-    async (ids: Set<number>) => {
-      if (ids.size === 0 || activeTab === "gratuity") return;
-      if (!confirm(`حذف ${ids.size} عنصر؟`)) return;
-      let okCount = 0;
-      let failCount = 0;
-      const endpoint = DELETE_PATH[activeTab];
-      for (const id of ids) {
-        try {
-          const res = await authedFetch(`${endpoint}/${id}`, {
-            method: "DELETE",
-          });
-          if (res.ok) okCount++;
-          else failCount++;
-        } catch {
-          failCount++;
-        }
+  const handleBulkDelete = useCallback(async (ids: Set<number>) => {
+    if (ids.size === 0 || activeTab === "gratuity") return;
+    if (!confirm(`حذف ${ids.size} عنصر؟`)) return;
+    let okCount = 0;
+    let failCount = 0;
+    const endpoint = DELETE_PATH[activeTab];
+    for (const id of ids) {
+      try {
+        await apiDelete(`${endpoint}/${id}`);
+        okCount++;
+      } catch {
+        failCount++;
       }
-      if (okCount > 0) toast.success(`تم حذف ${okCount} عنصر`);
-      if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
-      loadAll();
-    },
-    [activeTab, loadAll],
-  );
+    }
+    if (okCount > 0) toast.success(`تم حذف ${okCount} عنصر`);
+    if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
+    // Invalidate the relevant tab query to refetch
+    await loadTab(activeTab);
+  }, [activeTab, loadTab]);
+
+  // ─── Tab switch ──────────────────────────────────────────────────────
+
+  const switchTab = useCallback((t: Tab) => {
+    setActiveTab(t);
+  }, []);
 
   // ─── Return ──────────────────────────────────────────────────────────
 
   return {
     activeTab,
     setActiveTab: switchTab,
-    employees: state.employees.data,
-    attendance: state.attendance.data,
-    salaries: state.salaries.data,
-    commissions: state.commissions.data,
-    leaves: state.leaves.data,
-    performances: state.performance.data,
+    employees,
+    attendance,
+    salaries,
+    commissions,
+    leaves,
+    performances,
     loading,
     loadAll,
     loadTab,

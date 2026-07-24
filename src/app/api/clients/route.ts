@@ -10,6 +10,7 @@ import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
 
 const CreateSchema = z.object({
   name: z.string().min(1, "اسم العميل مطلوب"),
@@ -33,9 +34,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "ليس لديك صلاحية: view_customers" }, { status: 403 });
   }
 
-  const sp = req.nextUrl.searchParams;
-  const companySlug = sp.get("companySlug") || undefined;
-  const search = sp.get("search") || undefined;
+  const { companySlug, search, cursor, limit } = parseCursorParams(req);
 
   if (companySlug && !assertCompanyAccess(user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -56,14 +55,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     ];
   }
 
-  const clients = await db.client.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 500,
-  });
+  const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
+  const allClients = await db.client.findMany({ where, ...pagination });
 
-  // RI-016 FIX: Add cursor info for pagination support
-  const nextCursor = clients.length >= 500 ? clients[clients.length - 1]?.id : null;
+  const { items: clients, nextCursor } = buildCursorResponse(allClients, limit);
   return NextResponse.json({ clients, nextCursor });
 });
 

@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -32,9 +33,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "ليس لديك صلاحية: view_catalog" }, { status: 403 });
   }
 
-  const sp = req.nextUrl.searchParams;
-  const companySlug = sp.get("companySlug") || undefined;
-  const search = sp.get("search") || undefined;
+  const { companySlug, search, cursor, limit } = parseCursorParams(req);
 
   if (companySlug && !assertCompanyAccess(user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -44,10 +43,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
   if (search) where.OR = [{ name: { contains: search } }, { code: { contains: search } }];
 
-  const products = await db.productCatalog.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+  const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
+  const allProducts = await db.productCatalog.findMany({ where, ...pagination });
 
-  // RI-016 FIX: Add cursor info for pagination support
-  const nextCursor = products.length >= 500 ? products[products.length - 1]?.id : null;
+  const { items: products, nextCursor } = buildCursorResponse(allProducts, limit);
 
   return NextResponse.json({
     products: products.map((p) => ({
