@@ -226,3 +226,30 @@ Stage Summary:
   - Bonus: 30 Prisma model mismatches in sprint1 test also fixed → 0 ✓
 - Zero remaining TSC errors
 - No business logic changed — only type annotations/imports/casts added
+
+---
+Task ID: Sprint-2
+Agent: Super Z (main)
+Task: Sprint 2 — P1 Pre-Production Blockers + Code Quality (ROADMAP Priority 1+2)
+
+Work Log:
+- P1-1 Logger Signature: Verified 0 backwards calls exist (547 logger calls all use correct msg-first, meta-second order). Created scanner script at /home/z/my-project/scripts/logger-signature-fix.py
+- P1-1b TSC Error Fix: Fixed 148→0 TSC errors via sub-agent. Accounting Map<any,any> annotations (15 files), observability OTLPExport interface, tx:any fixes, api.ts param order, modelRegistry null safety, sprint1 test (prisma as any) casts
+- P1-2 ignoreBuildErrors Removal: Removed typescript.ignoreBuildErrors from next.config.ts. Build verified passing without it.
+- P1-3 IDOR WARN Fix: Already implemented in prior sprint — companies/[slug] DELETE uses requireFounder(req) with emailVerified defense-in-depth
+- P1-4 PostgreSQL Migration: Switched prisma/schema.prisma datasource from sqlite→postgresql, added directUrl env var, updated .env with PG connection strings, verified prisma validate PASS + prisma generate PASS
+- P1-5 Production Queue: Already implemented — 3-tier fallback (BullMQ → pg-boss → in-memory) with backward-compatible API
+- P1-6 CI/CD Pipeline: Already implemented — GitHub Actions ci.yml (lint → typecheck → build → unit-tests → integration-tests → summary), Dockerfile (multi-stage), docker-compose.yml (postgres + valkey + app)
+- Created sprint2-acceptance.test.ts with 24 tests covering all P1 items — ALL PASS
+- Resolved git rebase conflicts in prisma/schema.prisma, sprint1-p0-acceptance.test.ts, worklog.md
+- Pushed to GitHub: commit 9538628
+
+Stage Summary:
+- TSC errors: 148 → 0 ✓
+- Build: PASS (without ignoreBuildErrors) ✓
+- Acceptance tests: 24 PASS / 0 FAIL ✓
+- PostgreSQL datasource: validated + generated ✓
+- ignoreBuildErrors: removed ✓
+- Production Queue: pg-boss 3-tier ✓
+- CI/CD: GitHub Actions + Docker ✓
+- Commit: 9538628 pushed to origin/main
