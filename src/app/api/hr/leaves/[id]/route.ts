@@ -23,7 +23,7 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.leaveRequest.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRLeaveRequest.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Leave request not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
@@ -48,7 +48,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     }
   }
 
-  const leave = await db.leaveRequest.update({ where: { id: existing.id }, data });
+  const leave = await db.hRLeaveRequest.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "update", entity: "leave", entityId: leave.id, companySlug: existing.companySlug,
@@ -59,14 +59,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.leaveRequest.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRLeaveRequest.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Leave request not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
 
-  await db.leaveRequest.delete({ where: { id: existing.id } });
+  await db.hRLeaveRequest.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "delete", entity: "leave", entityId: existing.id, companySlug: existing.companySlug,

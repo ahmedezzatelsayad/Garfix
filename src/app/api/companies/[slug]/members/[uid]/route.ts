@@ -37,7 +37,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if ("error" in access) return access.error;
   const admin = access.user;
 
-  const existing = await db.user.findUnique({ where: { uid } });
+  const existing = await db.appUser.findUnique({ where: { uid } });
   if (!existing) return apiError("User not found", 404);
 
   // Confirm this user is actually a member of this company
@@ -75,7 +75,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     updateData.permissions = JSON.stringify(perms);
   }
 
-  const updated = await db.user.update({
+  const updated = await db.appUser.update({
     where: { uid },
     data: updateData,
     select: { uid: true, email: true, displayName: true, role: true, companies: true, permissions: true },
@@ -123,7 +123,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if ("error" in access) return access.error;
   const admin = access.user;
 
-  const existing = await db.user.findUnique({ where: { uid } });
+  const existing = await db.appUser.findUnique({ where: { uid } });
   if (!existing) return apiError("User not found", 404);
 
   // Founder cannot be removed from a company
@@ -142,7 +142,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   // When a user loses access to a company, scrub any per-company permission
   // overrides so they don't leak across tenant boundaries. We keep the role
   // baseline intact.
-  await db.user.update({
+  await db.appUser.update({
     where: { uid },
     data: {
       companies: JSON.stringify(remaining),

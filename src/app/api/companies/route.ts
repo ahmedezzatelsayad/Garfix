@@ -150,7 +150,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Auto-assign the new company to the creator
   const newCompanies = [...new Set([...user.companies, slug])];
-  await db.user.update({
+  await db.appUser.update({
     where: { uid: user.uid },
     data: { companies: JSON.stringify(newCompanies) },
   });

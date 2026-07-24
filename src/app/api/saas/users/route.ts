@@ -35,10 +35,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   let users;
   if (isFounderEmail(user.email)) {
-    users = await db.user.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
+    users = await db.appUser.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
   } else {
     // Admin: list users that share at least one company
-    users = await db.user.findMany({
+    users = await db.appUser.findMany({
       where: { companies: { contains: user.companies[0] || "____" } },
       orderBy: { createdAt: "desc" },
       take: 200,
@@ -96,12 +96,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("لا يمكن للمدير العادي إنشاء حسابات مديرين — تواصل مع المؤسس", 403);
   }
 
-  const existing = await db.user.findUnique({ where: { email: data.email.toLowerCase() } });
+  const existing = await db.appUser.findUnique({ where: { email: data.email.toLowerCase() } });
   if (existing) return apiError("هذا البريد مسجّل مسبقاً", 409);
 
   const passwordHash = await hashPassword(data.password);
   const uid = randomUUID();
-  const user = await db.user.create({
+  const user = await db.appUser.create({
     data: {
       uid, email: data.email.toLowerCase(), passwordHash,
       displayName: data.displayName, role: data.role,

@@ -379,7 +379,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       }
     }
 
-    await db.aiProcessingLog.create({
+    await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug || null,
         endpoint: "smart-parse",
@@ -439,7 +439,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       errorMessage: err instanceof Error ? err.message : String(err),
     });
 
-    await db.aiProcessingLog.create({
+    await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug || null,
         endpoint: "smart-parse",

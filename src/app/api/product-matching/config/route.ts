@@ -35,7 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
 
   const flag = await db.featureFlag.findUnique({ where: { key: "product-auto-matching" } });
-  const settings = await db.platformSetting.findMany({ where: { key: { startsWith: `product.matching.${companySlug}.` } } });
+  const settings = await db.platformSettings.findMany({ where: { key: { startsWith: `product.matching.${companySlug}.` } } });
 
   let autoMatchThreshold = DEFAULT_AUTO_MATCH_THRESHOLD;
   let suggestedThreshold = DEFAULT_SUGGESTED_THRESHOLD;
@@ -122,7 +122,7 @@ export const PUT = withErrorHandler(async (req: NextRequest) => {
   }
 
   for (const u of updates) {
-    await db.platformSetting.upsert({
+    await db.platformSettings.upsert({
       where: { key: u.key },
       update: { value: u.value, updatedBy: user.email },
       create: u,

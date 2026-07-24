@@ -39,7 +39,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
   const email = parsed.data.email.trim().toLowerCase();
 
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await db.appUser.findUnique({ where: { email } });
 
   if (user) {
     // Generate 6-digit OTP

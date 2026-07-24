@@ -30,7 +30,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if ("error" in access) return access.error;
   const user = access.user;
 
-  const commission = await db.commission.findUnique({
+  const commission = await db.hRCommission.findUnique({
     where: { id: commissionId },
   });
   if (!commission) return apiError("Commission not found", 404);
@@ -58,7 +58,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   );
 
   // Mark commission as paid
-  await db.commission.update({
+  await db.hRCommission.update({
     where: { id: commissionId },
     data: { isPaid: true },
   });

@@ -39,7 +39,7 @@
  * MOCK STRATEGY
  * =============
  * We use the SAME monkey-patching pattern as `collision-recovery-audit.test.ts`:
- * import the real `db`, monkey-patch `db.featureFlag` + `db.platformSetting` in
+ * import the real `db`, monkey-patch `db.featureFlag` + `db.platformSettings` in
  * beforeAll, restore them in afterAll. We do NOT call `mock.module("@/lib/db")`
  * — that would leak into `productMatcher.test.ts` (Bun's mock.module is global
  * by default). The matcher's exact-match path calls `db.productAlias.findUnique`

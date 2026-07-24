@@ -217,21 +217,20 @@ export async function calculateAging(
         companySlug,
         deletedAt: null,
       },
-      include: { supplierEntity: true },
       orderBy: { date: "asc" },
     });
 
     // Group by supplier
-    const supplierMap = new Map<number, typeof purchases>();
+    const supplierMap = new Map<string, typeof purchases>();
     for (const pi of purchases) {
-      const supplierId = pi.supplierId || 0;
-      const existing = supplierMap.get(supplierId) || [];
+      const supplierKey = pi.supplier || "";
+      const existing = supplierMap.get(supplierKey) || [];
       existing.push(pi);
-      supplierMap.set(supplierId, existing);
+      supplierMap.set(supplierKey, existing);
     }
 
-    for (const [supplierId, supplierPurchases] of supplierMap) {
-      const supplierName = supplierPurchases[0]?.supplierEntity?.name || supplierPurchases[0]?.supplier || "Unknown";
+    for (const [supplierKey, supplierPurchases] of supplierMap) {
+      const supplierName = supplierPurchases[0]?.supplier || "Unknown";
 
       let current = 0;
       let days30 = 0;

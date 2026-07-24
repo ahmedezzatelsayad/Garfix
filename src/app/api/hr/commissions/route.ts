@@ -32,7 +32,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
-  const records = await db.commission.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+  const records = await db.hRCommission.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ commissions: records.map((r) => ({ ...r, amount: num(r.amount, 3) })) });
 });
 
@@ -47,7 +47,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
   const user = access.user;
 
-  const c = await db.commission.create({
+  const c = await db.hRCommission.create({
     data: {
       companySlug: data.companySlug, employeeId: data.employeeId, date: data.date,
       type: data.type, description: data.description || null,

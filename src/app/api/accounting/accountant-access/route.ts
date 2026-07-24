@@ -130,11 +130,11 @@ export const DELETE = withErrorHandler(async (req: NextRequest) => {
   });
 
   // Also remove the company from the accountant's companies list
-  const accountantUser = await db.user.findUnique({ where: { email: data.accountantEmail } });
+  const accountantUser = await db.appUser.findUnique({ where: { email: data.accountantEmail } });
   if (accountantUser) {
     const companies: string[] = JSON.parse(accountantUser.companies || "[]");
     const updated = companies.filter((c) => c !== data.companySlug);
-    await db.user.update({
+    await db.appUser.update({
       where: { email: data.accountantEmail },
       data: { companies: JSON.stringify(updated) },
     });

@@ -40,7 +40,7 @@ export async function requireFounder(user: AuthPayload): Promise<NextResponse | 
   }
   // SEC: Founder must have verified email — defense-in-depth
   const { db } = await import("@/lib/db");
-  const dbUser = await db.user.findUnique({
+  const dbUser = await db.appUser.findUnique({
     where: { uid: user.uid },
     select: { emailVerified: true },
   });

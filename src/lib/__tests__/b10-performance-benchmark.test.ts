@@ -60,7 +60,7 @@
  * MOCK STRATEGY
  * =============
  * Same monkey-patching pattern as the other test files: import the real
- * `db`, monkey-patch `db.featureFlag` + `db.platformSetting` +
+ * `db`, monkey-patch `db.featureFlag` + `db.platformSettings` +
  * `db.productAlias` + `db.productMatchAudit` in beforeAll, restore in
  * afterAll. The fake `tx` (built per-size) holds the in-memory alias
  * array; matchProduct's exact-match path uses `tx.productAlias.findUnique`

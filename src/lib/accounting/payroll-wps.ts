@@ -221,12 +221,12 @@ export async function calculateNetSalary(
   const otherAllowances = num(totalAllowances - housingAllowance - transportAllowance, decimals);
 
   // Get salary record for the month
-  const salaryRecord = await db.salary.findFirst({
+  const salaryRecord = await db.hRSalary.findFirst({
     where: { employeeId, month, companySlug: employee.companySlug },
   });
 
   // Get unpaid commissions for the month
-  const commissions = await db.commission.findMany({
+  const commissions = await db.hRCommission.findMany({
     where: {
       employeeId,
       companySlug: employee.companySlug,

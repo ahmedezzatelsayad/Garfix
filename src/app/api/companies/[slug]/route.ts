@@ -164,11 +164,11 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.inventoryItem.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.warehouse.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.productCatalog.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.attendance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.salary.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.commission.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.leaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.performance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRAttendance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRSalary.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRCommission.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRLeaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRPerformance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.employee.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.journalEntryLine.deleteMany({ where: { entry: { companySlug: slug } } }).catch(() => {});
     await tx.journalEntry.updateMany({

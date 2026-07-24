@@ -258,11 +258,11 @@ export async function maybePersistStats(): Promise<void> {
       counts: decisionCounts,
       updatedAt: new Date().toISOString(),
     });
-    const existing = await db.platformSetting.findUnique({ where: { key } });
+    const existing = await db.platformSettings.findUnique({ where: { key } });
     if (existing) {
-      await db.platformSetting.update({ where: { key }, data: { value, updatedAt: new Date() } });
+      await db.platformSettings.update({ where: { key }, data: { value, updatedAt: new Date() } });
     } else {
-      await db.platformSetting.create({
+      await db.platformSettings.create({
         data: { key, category: "ai", valueType: "string", value },
       });
     }

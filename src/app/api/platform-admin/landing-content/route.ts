@@ -73,11 +73,11 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   // a shadow PlatformSetting row at `landing.{key}` for audit purposes only;
   // the landing page itself reads from LandingContent (above).
   const settingKey = `landing.${key}`;
-  const platformExisting = await db.platformSetting.findUnique({ where: { key: settingKey } });
+  const platformExisting = await db.platformSettings.findUnique({ where: { key: settingKey } });
   const oldPlatformValue = platformExisting?.value ?? null;
 
   if (platformExisting) {
-    await db.platformSetting.update({
+    await db.platformSettings.update({
       where: { key: settingKey },
       data: {
         value: serialized,
@@ -86,7 +86,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
       },
     });
   } else {
-    await db.platformSetting.create({
+    await db.platformSettings.create({
       data: {
         key: settingKey,
         category: "landing_content",
@@ -98,7 +98,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   }
 
   // ── 3. Append to PlatformSettingHistory ─────────────────────────────────
-  await db.platformSettingHistory.create({
+  await db.platformSettingsHistory.create({
     data: {
       settingKey,
       oldValue: oldPlatformValue,

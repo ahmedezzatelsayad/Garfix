@@ -22,7 +22,7 @@ async function seed() {
   console.log(`✅ Company: ${company.name} (${company.id})`)
 
   // Create demo user
-  const user = await db.user.upsert({
+  const user = await db.appUser.upsert({
     where: { email: 'admin@garfix.com' },
     update: {},
     create: {
@@ -68,7 +68,7 @@ async function seed() {
   console.log(`✅ ${accounts.length} accounts created`)
 
   // Create financial period
-  const period = await db.financialPeriod.upsert({
+  const period = await db.fiscalPeriod.upsert({
     where: { name_companyId: { name: 'FY-2025', companyId: company.id } },
     update: {},
     create: {
@@ -260,7 +260,7 @@ async function seed() {
   ]
 
   for (const j of journalData) {
-    await db.voucher.upsert({
+    await db.paymentVoucher.upsert({
       where: { number_companyId: { number: j.number, companyId: company.id } },
       update: {},
       create: {
@@ -292,7 +292,7 @@ async function seed() {
   ]
 
   for (const b of balanceData) {
-    await db.openingBalance.upsert({
+    await db.openingBalanceEntry.upsert({
       where: { accountId_periodId: { accountId: b.accountId, periodId: period.id } },
       update: {},
       create: {

@@ -20,7 +20,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // the session instead of leaving a 30-minute zombie access token.
     await revokeAccessSession(req);
     // Increment token version to invalidate all outstanding refresh tokens
-    await db.user.update({
+    await db.appUser.update({
       where: { uid: result.user.uid },
       data: { tokenVersion: { increment: 1 } },
     });

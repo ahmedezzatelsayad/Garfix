@@ -52,7 +52,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Fetch the user's current password hash
-  const dbUser = await db.user.findUnique({ where: { uid: user.uid } });
+  const dbUser = await db.appUser.findUnique({ where: { uid: user.uid } });
   if (!dbUser) return apiError("المستخدم غير موجود", 404);
 
   // Verify current password
@@ -71,7 +71,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Set new password + invalidate all sessions (tokenVersion++)
   const newHash = await hashPassword(newPassword);
-  await db.user.update({
+  await db.appUser.update({
     where: { uid: user.uid },
     data: {
       passwordHash: newHash,

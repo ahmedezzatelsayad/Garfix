@@ -52,7 +52,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   // User counts: fetch all users and count per company from JSON
-  const allUsers = await db.user.findMany({ select: { companies: true } });
+  const allUsers = await db.appUser.findMany({ select: { companies: true } });
   const userCountMap = new Map<string, number>();
   for (const u of allUsers) {
     try {

@@ -218,7 +218,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       success: true,
     });
 
-    await db.aiProcessingLog.create({
+    await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug || null,
         endpoint: "parse-file",

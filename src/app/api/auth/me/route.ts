@@ -26,7 +26,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Fetch the latest user from DB (in case permissions/companies changed)
-  const dbUser = await db.user.findUnique({ where: { uid: result.user.uid } });
+  const dbUser = await db.appUser.findUnique({ where: { uid: result.user.uid } });
   if (!dbUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }

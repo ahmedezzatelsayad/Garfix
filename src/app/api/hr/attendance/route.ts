@@ -33,7 +33,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
   if (employeeId) where.employeeId = parseInt(employeeId);
-  const records = await db.attendance.findMany({ where, orderBy: { date: "desc" }, take: 500 });
+  const records = await db.hRAttendance.findMany({ where, orderBy: { date: "desc" }, take: 500 });
   return NextResponse.json({ attendance: records });
 });
 
@@ -48,7 +48,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
   const user = access.user;
 
-  const att = await db.attendance.create({
+  const att = await db.hRAttendance.create({
     data: {
       companySlug: data.companySlug,
       employeeId: data.employeeId,

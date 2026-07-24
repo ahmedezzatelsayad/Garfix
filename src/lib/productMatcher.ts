@@ -578,7 +578,7 @@ async function getTenantConfig(companySlug: string): Promise<TenantConfig> {
   const flag = await db.featureFlag.findUnique({ where: { key: "product-auto-matching" } });
   const autoMatchingEnabled = flag ? flag.isActive : true;
 
-  const settings = await db.platformSetting.findMany({
+  const settings = await db.platformSettings.findMany({
     where: { key: { startsWith: `product.matching.${companySlug}.` } },
   });
 

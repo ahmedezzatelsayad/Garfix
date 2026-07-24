@@ -23,7 +23,7 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { uid } = await params;
-  const existing = await db.user.findUnique({ where: { uid } });
+  const existing = await db.appUser.findUnique({ where: { uid } });
   if (!existing) return apiError("User not found", 404);
 
   const body = await parseJsonBody(req);
@@ -118,7 +118,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     }
   }
 
-  const updated = await db.user.update({ where: { uid }, data: updateData });
+  const updated = await db.appUser.update({ where: { uid }, data: updateData });
 
   // Audit-log role transitions to/from admin (sensitive privilege change)
   if (data.role !== undefined && data.role !== existing.role) {
@@ -155,7 +155,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const founder = founderAccess.user;
 
   const { uid } = await params;
-  const existing = await db.user.findUnique({ where: { uid } });
+  const existing = await db.appUser.findUnique({ where: { uid } });
   if (!existing) return apiError("User not found", 404);
 
   // The founder cannot delete their own account (would lock the system)
@@ -164,7 +164,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   }
 
   // Soft delete: set role to "inactive" and clear company access
-  await db.user.update({
+  await db.appUser.update({
     where: { uid },
     data: {
       role: "inactive",

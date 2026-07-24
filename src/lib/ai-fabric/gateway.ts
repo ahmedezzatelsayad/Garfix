@@ -35,19 +35,19 @@ async function cacheStage(
   req: GatewayRequest,
 ): Promise<{ hit: boolean; data: unknown; hitCount?: number }> {
   const key = fabricHash(`${req.companySlug}:${req.normalizedInput}`);
-  const entry = await db.cacheEntry.findUnique({ where: { key } });
+  const entry = await db.aIFabricCacheEntry.findUnique({ where: { key } });
 
   if (!entry) return { hit: false, data: null };
 
   // Check expiry
   if (entry.expiresAt < new Date()) {
     // Expired — clean up asynchronously (don't block the cascade)
-    db.cacheEntry.delete({ where: { key } }).catch(() => {});
+    db.aIFabricCacheEntry.delete({ where: { key } }).catch(() => {});
     return { hit: false, data: null };
   }
 
   // Hit — increment hitCount
-  const updated = await db.cacheEntry.update({
+  const updated = await db.aIFabricCacheEntry.update({
     where: { key },
     data: { hitCount: { increment: 1 } },
   });
@@ -57,7 +57,7 @@ async function cacheStage(
     parsed = JSON.parse(entry.value);
   } catch {
     // Corrupted JSON — delete and fall through
-    db.cacheEntry.delete({ where: { key } }).catch(() => {});
+    db.aIFabricCacheEntry.delete({ where: { key } }).catch(() => {});
     return { hit: false, data: null };
   }
 
@@ -78,7 +78,7 @@ async function cacheStore(
   const value = JSON.stringify(data);
   const expiresAt = new Date(Date.now() + ttlMs);
 
-  await db.cacheEntry.upsert({
+  await db.aIFabricCacheEntry.upsert({
     where: { key },
     create: { key, companySlug, value, expiresAt },
     update: { value, expiresAt },

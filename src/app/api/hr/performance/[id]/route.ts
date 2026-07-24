@@ -25,7 +25,7 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.performance.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRPerformance.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Performance review not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
@@ -46,7 +46,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (parsed.data.improvements !== undefined) data.improvements = parsed.data.improvements || null;
   if (parsed.data.reviewerNote !== undefined) data.reviewerNote = parsed.data.reviewerNote || null;
 
-  const performance = await db.performance.update({ where: { id: existing.id }, data });
+  const performance = await db.hRPerformance.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "update", entity: "performance", entityId: performance.id, companySlug: existing.companySlug,
@@ -57,14 +57,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.performance.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRPerformance.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Performance review not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
 
-  await db.performance.delete({ where: { id: existing.id } });
+  await db.hRPerformance.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "delete", entity: "performance", entityId: existing.id, companySlug: existing.companySlug,

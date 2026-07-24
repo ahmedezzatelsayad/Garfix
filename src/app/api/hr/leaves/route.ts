@@ -32,7 +32,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
-  const records = await db.leaveRequest.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+  const records = await db.hRLeaveRequest.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ leaves: records });
 });
 
@@ -47,7 +47,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
   const user = access.user;
 
-  const l = await db.leaveRequest.create({
+  const l = await db.hRLeaveRequest.create({
     data: {
       companySlug: data.companySlug, employeeId: data.employeeId, type: data.type,
       startDate: data.startDate, endDate: data.endDate, days: data.days,

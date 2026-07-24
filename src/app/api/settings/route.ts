@@ -23,7 +23,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;
-  const settings = await db.platformSetting.findMany();
+  const settings = await db.platformSettings.findMany();
   const map: Record<string, unknown> = {};
   // P2 fix (Phase 2 audit): the PUBLIC_SETTINGS allowlist was declared but
   // never enforced — any authenticated user (including non-founder tenants)
@@ -63,18 +63,18 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   const updates = body as Record<string, unknown>;
 
   for (const [key, value] of Object.entries(updates)) {
-    const existing = await db.platformSetting.findUnique({ where: { key } });
+    const existing = await db.platformSettings.findUnique({ where: { key } });
     const oldValue = existing?.value || null;
     const newValue = JSON.stringify(value);
     const valueType = typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : typeof value === "object" ? "json" : "string";
 
     if (existing) {
-      await db.platformSetting.update({
+      await db.platformSettings.update({
         where: { key },
         data: { value: newValue, valueType, updatedBy: result.user.email, updatedAt: new Date() },
       });
     } else {
-      await db.platformSetting.create({
+      await db.platformSettings.create({
         data: {
           key, category: key.split(".")[0] || "general",
           valueType, value: newValue, updatedBy: result.user.email,
@@ -82,7 +82,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
       });
     }
 
-    await db.platformSettingHistory.create({
+    await db.platformSettingsHistory.create({
       data: {
         settingKey: key,
         oldValue,

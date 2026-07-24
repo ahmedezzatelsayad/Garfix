@@ -271,7 +271,7 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   if (!refreshPayload) return { ok: false, error: "Unauthorized", status: 401 };
 
   // Look up user — verify token version matches (invalidates old sessions)
-  const user = await db.user.findUnique({ where: { uid: refreshPayload.uid } });
+  const user = await db.appUser.findUnique({ where: { uid: refreshPayload.uid } });
   if (!user) return { ok: false, error: "Unauthorized", status: 401 };
   if (user.tokenVersion !== refreshPayload.tv) {
     return { ok: false, error: "Session revoked", status: 401 };
@@ -403,7 +403,7 @@ export async function verifyPasswordAndMaybeRehash(
   const hashRounds = parseInt(hash.split("$")[2], 10);
   if (hashRounds < BCRYPT_ROUNDS) {
     const newHash = await hashPassword(plain);
-    await db.user.update({ where: { uid }, data: { passwordHash: newHash } });
+    await db.appUser.update({ where: { uid }, data: { passwordHash: newHash } });
     return { ok: true, rehashed: true };
   }
   return { ok: true, rehashed: false };

@@ -52,7 +52,7 @@
  * =============
  * Same monkey-patching pattern as `collision-recovery-audit.test.ts`:
  * - Use the REAL `matchProduct` (not mocked).
- * - Monkey-patch `db.featureFlag` + `db.platformSetting` so the matcher's
+ * - Monkey-patch `db.featureFlag` + `db.platformSettings` so the matcher's
  *   `getTenantConfig` sees kill-switch ON + no custom thresholds.
  * - Build a fresh fake `tx` per test via `makeTx(opts)` whose every Prisma
  *   method is a `mock()` so we can assert call counts + arg shapes.
@@ -63,7 +63,7 @@ import { db } from "@/lib/db";
 import { invalidateKillSwitchCache } from "@/lib/productMatcher";
 import { syncInventoryOnPurchase } from "@/lib/inventorySync";
 
-// ─── Monkey-patch db.featureFlag + db.platformSetting ─────────────────────────
+// ─── Monkey-patch db.featureFlag + db.platformSettings ─────────────────────────
 
 const _origFeatureFlag = (db as any).featureFlag;
 const _origPlatformSetting = (db as any).platformSetting;

@@ -22,7 +22,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (authResult instanceof NextResponse) return authResult;
 
   // Read all integration credential rows in one query
-  const rows = await db.platformSetting.findMany({
+  const rows = await db.platformSettings.findMany({
     where: { category: "integration" },
     select: { key: true, updatedAt: true },
   });

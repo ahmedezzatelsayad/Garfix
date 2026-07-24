@@ -51,7 +51,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const config = getCountryConfig(country);
   const decimals = config?.currencyDecimalPlaces ?? 3;
 
-  const payroll = await db.salary.findMany({
+  const payroll = await db.hRSalary.findMany({
     where: { companySlug: data.companySlug, month: data.month },
     include: { employee: { select: { id: true, name: true, nameEn: true, civilId: true } } },
     orderBy: { employeeId: "asc" },
@@ -161,7 +161,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Create/update Salary records for each employee
   for (const result of payrollResults) {
-    const existingSalary = await db.salary.findFirst({
+    const existingSalary = await db.hRSalary.findFirst({
       where: {
         employeeId: result.employeeId,
         month: data.month,
@@ -170,7 +170,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
 
     if (existingSalary) {
-      await db.salary.update({
+      await db.hRSalary.update({
         where: { id: existingSalary.id },
         data: {
           baseSalary: result.salaryBreakdown.basicSalary,
@@ -186,7 +186,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         },
       });
     } else {
-      await db.salary.create({
+      await db.hRSalary.create({
         data: {
           companySlug: data.companySlug,
           employeeId: result.employeeId,

@@ -86,9 +86,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
       return apiError(`عنوان base_url غير آمن: ${msg}`, 400);
     }
     const key = `ai.provider.${provider}.baseUrl`;
-    const existing = await db.platformSetting.findUnique({ where: { key } });
-    if (existing) await db.platformSetting.update({ where: { key }, data: { value: JSON.stringify(baseUrl) } });
-    else await db.platformSetting.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(baseUrl) } });
+    const existing = await db.platformSettings.findUnique({ where: { key } });
+    if (existing) await db.platformSettings.update({ where: { key }, data: { value: JSON.stringify(baseUrl) } });
+    else await db.platformSettings.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(baseUrl) } });
   }
 
   await logAdminAction({

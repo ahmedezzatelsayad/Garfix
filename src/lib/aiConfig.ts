@@ -47,7 +47,7 @@ let cacheExpiry = 0;
 async function getPlatformSettings(): Promise<Record<string, unknown>> {
   if (cachedPlatformConfig && Date.now() < cacheExpiry) return cachedPlatformConfig;
   try {
-    const settings = await db.platformSetting.findMany({
+    const settings = await db.platformSettings.findMany({
       where: {
         key: { startsWith: "ai." },
       },

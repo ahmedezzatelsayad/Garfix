@@ -181,7 +181,7 @@ export async function requireFounder(req: NextRequest): Promise<{ user: AuthPayl
   }
   // SEC-005 FIX: Founder must have verified email
   const { db } = await import("./db");
-  const dbUser = await db.user.findUnique({
+  const dbUser = await db.appUser.findUnique({
     where: { uid: authResult.user.uid },
     select: { emailVerified: true },
   });
@@ -293,10 +293,10 @@ export function withAudit<T>(
   return async (req, ctx) => {
     const response = await handler(req, ctx);
     // Only log if the request succeeded (2xx)
-    if (response.status >= 200 && response.status < 300 && ctx.user) {
+    if (response.status >= 200 && response.status < 300 && ctx.appUser) {
       await logAudit({
-        userEmail: ctx.user.email,
-        userUid: ctx.user.uid,
+        userEmail: ctx.appUser.email,
+        userUid: ctx.appUser.uid,
         action: auditInfo.action,
         entity: auditInfo.entity,
         companySlug: ctx.body && typeof ctx.body === "object" && "companySlug" in ctx.body

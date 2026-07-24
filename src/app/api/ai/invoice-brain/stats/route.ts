@@ -24,7 +24,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // aiProcessingLog.success=true rows are extractions that produced orders;
   // we approximate the ratio from audit_logs (richer detail) if available,
   // else from the processing log counts.
-  const recentLogs = await db.aiProcessingLog.findMany({
+  const recentLogs = await db.aIProcessingLog.findMany({
     where: { endpoint: "invoice-brain" },
     orderBy: { createdAt: "desc" },
     take: 100,

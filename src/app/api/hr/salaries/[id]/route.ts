@@ -24,7 +24,7 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.salary.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRSalary.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Salary record not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
@@ -57,7 +57,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   }
   if (parsed.data.notes !== undefined) data.notes = parsed.data.notes || null;
 
-  const salary = await db.salary.update({ where: { id: existing.id }, data });
+  const salary = await db.hRSalary.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "update", entity: "salary", entityId: salary.id, companySlug: existing.companySlug,
@@ -68,14 +68,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.salary.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.hRSalary.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Salary record not found", 404);
 
   const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
 
-  await db.salary.delete({ where: { id: existing.id } });
+  await db.hRSalary.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
     action: "delete", entity: "salary", entityId: existing.id, companySlug: existing.companySlug,
