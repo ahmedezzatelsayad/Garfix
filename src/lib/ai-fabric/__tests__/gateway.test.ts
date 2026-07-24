@@ -26,7 +26,7 @@ const TEST_SLUG = "test-cascade-co";
 
 async function cleanTestData() {
   await db.aIRequestLog.deleteMany({ where: { companySlug: TEST_SLUG } });
-  await db.aIFabricCacheEntry.deleteMany({ where: { companySlug: TEST_SLUG } });
+  await db.cacheEntry.deleteMany({ where: { companySlug: TEST_SLUG } });
   await db.aIMemoryEntry.deleteMany({ where: { companySlug: TEST_SLUG } });
 }
 

@@ -1,0 +1,1152 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * gateway-cascade.test.ts — Comprehensive tests for the AI Fabric 5-stage cascade gateway.
+     4→ *
+     5→ * All Prisma DB calls are mocked. Uses Bun test (it/describe/expect) with jest mocks.
+     6→ */
+     7→
+     8→import { describe, it, expect, beforeEach, jest } from "bun:test";
+     9→
+    10→// ─── Shared mock references (for module-level mocks that need per-test control) ───
+    11→
+    12→const mockLookupGlobalPattern = jest.fn().mockResolvedValue(null);
+    13→
+    14→// ─── Mock setup ──────────────────────────────────────────────────────────────
+    15→
+    16→const mockDb = {
+    17→  companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    18→  aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn() },
+    19→  cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    20→  budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+    21→  providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn() },
+    22→  ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
+    23→  aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    24→  profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
+    25→  globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
+    26→  company: { findMany: jest.fn(), findUnique: jest.fn() },
+    27→  notification: { create: jest.fn(), findMany: jest.fn() },
+    28→  aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn() },
+    29→  compiledRule: { create: jest.fn() },
+    30→  jobQueue: { findMany: jest.fn() },
+    31→};
+    32→
+    33→jest.mock("@/lib/db", () => ({ db: mockDb }));
+    34→jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
+    35→
+    36→// Shared mock store instance for invoice-brain patternStore
+    37→const mockPatternStoreGet = jest.fn().mockResolvedValue(null);
+    38→
+    39→jest.mock("@/lib/invoice-brain/fingerprint", () => ({
+    40→  fingerprintText: jest.fn().mockReturnValue("fp-hash-123"),
+    41→}));
+    42→jest.mock("@/lib/invoice-brain/patternStore", () => ({
+    43→  PrismaPatternStore: jest.fn().mockImplementation(() => ({
+    44→    get: (...args: unknown[]) => mockPatternStoreGet(...args),
+    45→  })),
+    46→}));
+    47→jest.mock("@/lib/invoice-brain/patternParser", () => ({
+    48→  extractWithTemplate: jest.fn(),
+    49→}));
+    50→jest.mock("@/lib/invoice-brain/schema", () => ({
+    51→  InvoiceSchema: { safeParse: jest.fn().mockReturnValue({ success: true, data: { invoice: "parsed" } }) },
+    52→}));
+    53→
+    54→// Mock cross-company-intelligence (used by patternStage)
+    55→jest.mock("@/lib/ai-fabric/cross-company-intelligence", () => ({
+    56→  lookupGlobalPattern: (...args: unknown[]) => mockLookupGlobalPattern(...args),
+    57→}));
+    58→
+    59→// Mock budget-engine
+    60→const mockCheckBudgetGate = jest.fn().mockResolvedValue(true);
+    61→const mockGetBudgetStatus = jest.fn().mockResolvedValue(null);
+    62→
+    63→jest.mock("@/lib/ai-fabric/budget-engine", () => ({
+    64→  checkBudgetGate: (...args: unknown[]) => mockCheckBudgetGate(...args),
+    65→  getBudgetStatus: (...args: unknown[]) => mockGetBudgetStatus(...args),
+    66→}));
+    67→
+    68→// Now import the modules under test (after mocks are set up)
+    69→import { executeCascade, storeAIMemory, cacheStore } from "@/lib/ai-fabric/gateway";
+    70→import { fabricHash } from "@/lib/ai-fabric/types";
+    71→
+    72→// ─── Helpers ──────────────────────────────────────────────────────────────────
+    73→
+    74→function makeReq(overrides?: Record<string, unknown>) {
+    75→  return {
+    76→    companySlug: "test-co",
+    77→    requestType: "other" as const,
+    78→    normalizedInput: "normalized-test-input",
+    79→    ...overrides,
+    80→  };
+    81→}
+    82→
+    83→const defaultAiFn = jest.fn().mockResolvedValue({
+    84→  data: { answer: "ai-answer" },
+    85→  provider: "test/model",
+    86→  tokensUsed: 100,
+    87→  costUsd: 0.001,
+    88→});
+    89→
+    90→/** Reset all mocks to clean state and set defaults for a typical "miss all stages" scenario. */
+    91→function resetToMissAll() {
+    92→  jest.clearAllMocks();
+    93→  // Re-set the default return values that bun:clearAllMocks wipes
+    94→  mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+    95→  mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+    96→  mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+    97→  mockLookupGlobalPattern.mockResolvedValue(null);
+    98→  mockPatternStoreGet.mockResolvedValue(null);
+    99→  mockCheckBudgetGate.mockResolvedValue(true);
+   100→  mockGetBudgetStatus.mockResolvedValue(null);
+   101→  defaultAiFn.mockResolvedValue({
+   102→    data: { answer: "ai-answer" },
+   103→    provider: "test/model",
+   104→    tokensUsed: 100,
+   105→    costUsd: 0.001,
+   106→  });
+   107→}
+   108→
+   109→// ─── Test Suite ───────────────────────────────────────────────────────────────
+   110→
+   111→describe("Gateway Cascade — cacheStage", () => {
+   112→  beforeEach(() => { resetToMissAll(); });
+   113→
+   114→  it("should hit cache with valid entry", async () => {
+   115→    const cacheData = { result: "cached-value" };
+   116→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   117→      key: "somekey",
+   118→      value: JSON.stringify(cacheData),
+   119→      expiresAt: new Date(Date.now() + 3600_000),
+   120→      hitCount: 5,
+   121→    });
+   122→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 6 });
+   123→
+   124→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   125→    expect(result.resolvedBy).toBe("cache");
+   126→    expect(result.data).toEqual(cacheData);
+   127→    expect(result.cacheHitCount).toBe(6);
+   128→  });
+   129→
+   130→  it("should miss cache when entry does not exist", async () => {
+   131→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   132→    expect(result.resolvedBy).toBe("ai");
+   133→  });
+   134→
+   135→  it("should miss cache and clean up expired entry", async () => {
+   136→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   137→      key: "somekey",
+   138→      value: JSON.stringify({ data: 1 }),
+   139→      expiresAt: new Date(Date.now() - 1000),
+   140→      hitCount: 0,
+   141→    });
+   142→    mockDb.cacheEntry.delete.mockResolvedValue({});
+   143→
+   144→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   145→    expect(result.resolvedBy).toBe("ai");
+   146→    expect(mockDb.cacheEntry.delete).toHaveBeenCalledWith({ where: { key: expect.any(String) } });
+   147→  });
+   148→
+   149→  it("should miss cache and clean up corrupted JSON entry", async () => {
+   150→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   151→      key: "somekey",
+   152→      value: "not-valid-json{{{",
+   153→      expiresAt: new Date(Date.now() + 3600_000),
+   154→      hitCount: 3,
+   155→    });
+   156→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 4 });
+   157→    mockDb.cacheEntry.delete.mockResolvedValue({});
+   158→
+   159→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   160→    expect(result.resolvedBy).toBe("ai");
+   161→    expect(mockDb.cacheEntry.delete).toHaveBeenCalled();
+   162→  });
+   163→
+   164→  it("should increment hitCount on cache hit", async () => {
+   165→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   166→      key: "k",
+   167→      value: JSON.stringify({ x: 1 }),
+   168→      expiresAt: new Date(Date.now() + 60_000),
+   169→      hitCount: 42,
+   170→    });
+   171→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 43 });
+   172→
+   173→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   174→    expect(result.cacheHitCount).toBe(43);
+   175→    expect(mockDb.cacheEntry.update).toHaveBeenCalledWith({
+   176→      where: { key: expect.any(String) },
+   177→      data: { hitCount: { increment: 1 } },
+   178→    });
+   179→  });
+   180→
+   181→  it("should use fabricHash for cache key", async () => {
+   182→    const slug = "hash-test-co";
+   183→    const input = "hash-test-input";
+   184→    await executeCascade(makeReq({ companySlug: slug, normalizedInput: input }), { aiFn: defaultAiFn });
+   185→    const expectedKey = fabricHash(`${slug}:${input}`);
+   186→    expect(mockDb.cacheEntry.findUnique).toHaveBeenCalledWith({ where: { key: expectedKey } });
+   187→  });
+   188→});
+   189→
+   190→describe("Gateway Cascade — patternStage", () => {
+   191→  beforeEach(() => { resetToMissAll(); });
+   192→
+   193→  it("should hit OCR pattern with fingerprint match", async () => {
+   194→    const mockTemplate = { headers: ["invoice"] };
+   195→    mockPatternStoreGet.mockResolvedValue(mockTemplate);
+   196→
+   197→    const { extractWithTemplate } = await import("@/lib/invoice-brain/patternParser");
+   198→    (extractWithTemplate as any).mockReturnValue({ total: 100 });
+   199→
+   200→    const { InvoiceSchema } = await import("@/lib/invoice-brain/schema");
+   201→    (InvoiceSchema.safeParse as any).mockReturnValue({ success: true, data: { total: 100 } });
+   202→
+   203→    const result = await executeCascade(
+   204→      makeReq({ requestType: "ocr", context: { text: "some invoice text" } }),
+   205→      { aiFn: defaultAiFn },
+   206→    );
+   207→    expect(result.resolvedBy).toBe("pattern");
+   208→    expect(result.data).toEqual({ total: 100 });
+   209→  });
+   210→
+   211→  it("should miss OCR pattern when no template found", async () => {
+   212→    mockPatternStoreGet.mockResolvedValue(null);
+   213→
+   214→    const result = await executeCascade(
+   215→      makeReq({ requestType: "ocr", context: { text: "invoice text" } }),
+   216→      { aiFn: defaultAiFn },
+   217→    );
+   218→    expect(result.resolvedBy).toBe("ai");
+   219→  });
+   220→
+   221→  it("should skip OCR pattern for non-OCR requestType", async () => {
+   222→    const result = await executeCascade(
+   223→      makeReq({ requestType: "whatsapp" }),
+   224→      { aiFn: defaultAiFn },
+   225→    );
+   226→    expect(result.resolvedBy).toBe("ai");
+   227→  });
+   228→
+   229→  it("should handle pattern engine error non-fatally", async () => {
+   230→    const { fingerprintText } = await import("@/lib/invoice-brain/fingerprint");
+   231→    (fingerprintText as any).mockImplementation(() => { throw new Error("fp error"); });
+   232→
+   233→    const result = await executeCascade(
+   234→      makeReq({ requestType: "ocr", context: { text: "invoice" } }),
+   235→      { aiFn: defaultAiFn },
+   236→    );
+   237→    expect(result.resolvedBy).toBe("ai");
+   238→  });
+   239→
+   240→  it("should attempt cross-company pattern lookup after OCR miss", async () => {
+   241→    mockPatternStoreGet.mockResolvedValue(null);
+   242→    mockLookupGlobalPattern.mockResolvedValue(null);
+   243→
+   244→    await executeCascade(
+   245→      makeReq({ requestType: "ocr", context: { text: "invoice" } }),
+   246→      { aiFn: defaultAiFn },
+   247→    );
+   248→    expect(mockLookupGlobalPattern).toHaveBeenCalled();
+   249→  });
+   250→
+   251→  it("should hit cross-company global pattern", async () => {
+   252→    mockLookupGlobalPattern.mockResolvedValue({
+   253→      patternKey: "apple-iphone",
+   254→      suggestedSku: "SKU-001",
+   255→      suggestedVatCategory: "standard",
+   256→      suggestedCategory: "electronics",
+   257→      contributingCompaniesCount: 5,
+   258→      confidence: 0.95,
+   259→    });
+   260→
+   261→    const result = await executeCascade(
+   262→      makeReq({ requestType: "matching" }),
+   263→      { aiFn: defaultAiFn },
+   264→    );
+   265→    expect(result.resolvedBy).toBe("pattern");
+   266→    expect(result.data).toBeDefined();
+   267→  });
+   268→
+   269→  it("should handle cross-company lookup error non-fatally", async () => {
+   270→    mockLookupGlobalPattern.mockRejectedValue(new Error("db error"));
+   271→
+   272→    const result = await executeCascade(
+   273→      makeReq({ requestType: "matching" }),
+   274→      { aiFn: defaultAiFn },
+   275→    );
+   276→    expect(result.resolvedBy).toBe("ai");
+   277→  });
+   278→});
+   279→
+   280→describe("Gateway Cascade — ruleStage", () => {
+   281→  beforeEach(() => { resetToMissAll(); });
+   282→
+   283→  it("should hit promoted rule match", async () => {
+   284→    const input = "rule-input-123";
+   285→    const inputHash = fabricHash(input);
+   286→    const ruleOutput = { classification: "electronics" };
+   287→
+   288→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   289→      {
+   290→        id: 1, companySlug: "test-co", requestType: "matching",
+   291→        patternSignature: inputHash, consistentOutput: JSON.stringify(ruleOutput),
+   292→        status: "promoted", sampleCount: 25, confidence: 0.98,
+   293→      },
+   294→    ]);
+   295→
+   296→    const result = await executeCascade(
+   297→      makeReq({ requestType: "matching", normalizedInput: input }),
+   298→      { aiFn: defaultAiFn },
+   299→    );
+   300→    expect(result.resolvedBy).toBe("rule");
+   301→    expect(result.data).toEqual(ruleOutput);
+   302→  });
+   303→
+   304→  it("should miss when no promoted rules exist", async () => {
+   305→    const result = await executeCascade(
+   306→      makeReq({ requestType: "matching" }),
+   307→      { aiFn: defaultAiFn },
+   308→    );
+   309→    expect(result.resolvedBy).toBe("ai");
+   310→  });
+   311→
+   312→  it("should match rule with correct pattern signature", async () => {
+   313→    const input = "exact-match-input";
+   314→    const inputHash = fabricHash(input);
+   315→
+   316→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   317→      {
+   318→        id: 2, companySlug: "test-co", requestType: "ocr",
+   319→        patternSignature: "wrong-hash", consistentOutput: JSON.stringify({ wrong: true }),
+   320→        status: "promoted", sampleCount: 30, confidence: 1.0,
+   321→      },
+   322→      {
+   323→        id: 3, companySlug: "test-co", requestType: "ocr",
+   324→        patternSignature: inputHash, consistentOutput: JSON.stringify({ correct: true }),
+   325→        status: "promoted", sampleCount: 30, confidence: 1.0,
+   326→      },
+   327→    ]);
+   328→
+   329→    const result = await executeCascade(
+   330→      makeReq({ requestType: "ocr", normalizedInput: input }),
+   331→      { aiFn: defaultAiFn },
+   332→    );
+   333→    expect(result.resolvedBy).toBe("rule");
+   334→    expect(result.data).toEqual({ correct: true });
+   335→  });
+   336→
+   337→  it("should skip rule with malformed JSON in consistentOutput", async () => {
+   338→    const input = "malformed-rule-input";
+   339→    const inputHash = fabricHash(input);
+   340→
+   341→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   342→      {
+   343→        id: 4, companySlug: "test-co", requestType: "ocr",
+   344→        patternSignature: inputHash, consistentOutput: "not-json{{{",
+   345→        status: "promoted", sampleCount: 20, confidence: 0.95,
+   346→      },
+   347→    ]);
+   348→
+   349→    const result = await executeCascade(
+   350→      makeReq({ requestType: "ocr", normalizedInput: input }),
+   351→      { aiFn: defaultAiFn },
+   352→    );
+   353→    expect(result.resolvedBy).toBe("ai");
+   354→  });
+   355→
+   356→  it("should filter rules by requestType", async () => {
+   357→    await executeCascade(
+   358→      makeReq({ requestType: "whatsapp", normalizedInput: "type-filter-input" }),
+   359→      { aiFn: defaultAiFn },
+   360→    );
+   361→    expect(mockDb.ruleCandidate.findMany).toHaveBeenCalledWith(
+   362→      expect.objectContaining({
+   363→        where: expect.objectContaining({ requestType: "whatsapp" }),
+   364→      }),
+   365→    );
+   366→  });
+   367→
+   368→  it("should skip rule without consistentOutput (null)", async () => {
+   369→    const input = "no-output-input";
+   370→    const inputHash = fabricHash(input);
+   371→
+   372→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   373→      {
+   374→        id: 6, companySlug: "test-co", requestType: "other",
+   375→        patternSignature: inputHash, consistentOutput: null,
+   376→        status: "promoted", sampleCount: 20, confidence: 0.95,
+   377→      },
+   378→    ]);
+   379→
+   380→    const result = await executeCascade(
+   381→      makeReq({ requestType: "other", normalizedInput: input }),
+   382→      { aiFn: defaultAiFn },
+   383→    );
+   384→    expect(result.resolvedBy).toBe("ai");
+   385→  });
+   386→
+   387→  it("should handle ruleStage DB error non-fatally", async () => {
+   388→    mockDb.ruleCandidate.findMany.mockRejectedValue(new Error("DB connection error"));
+   389→
+   390→    const result = await executeCascade(
+   391→      makeReq({ requestType: "matching" }),
+   392→      { aiFn: defaultAiFn },
+   393→    );
+   394→    expect(result.resolvedBy).toBe("ai");
+   395→  });
+   396→
+   397→  it("should match rule only when status is promoted", async () => {
+   398→    await executeCascade(
+   399→      makeReq({ requestType: "matching", normalizedInput: "status-check-input" }),
+   400→      { aiFn: defaultAiFn },
+   401→    );
+   402→    expect(mockDb.ruleCandidate.findMany).toHaveBeenCalledWith(
+   403→      expect.objectContaining({
+   404→        where: expect.objectContaining({ status: "promoted" }),
+   405→      }),
+   406→    );
+   407→  });
+   408→});
+   409→
+   410→describe("Gateway Cascade — memoryStage", () => {
+   411→  beforeEach(() => { resetToMissAll(); });
+   412→
+   413→  it("should hit memory with exact hash match", async () => {
+   414→    const input = "memory-hit-input";
+   415→    const inputHash = fabricHash(input);
+   416→
+   417→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   418→      {
+   419→        id: "mem-1", companySlug: "test-co", category: "decision",
+   420→        content: JSON.stringify({ inputHash, result: { action: "approve" } }),
+   421→        lastAccessedAt: new Date(),
+   422→      },
+   423→    ]);
+   424→    mockDb.aIMemoryEntry.update.mockResolvedValue({});
+   425→
+   426→    const result = await executeCascade(
+   427→      makeReq({ requestType: "financial_analysis", normalizedInput: input }),
+   428→      { aiFn: defaultAiFn },
+   429→    );
+   430→    expect(result.resolvedBy).toBe("memory");
+   431→    expect(result.data).toEqual({ action: "approve" });
+   432→  });
+   433→
+   434→  it("should miss when no matching memories found", async () => {
+   435→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   436→      {
+   437→        id: "mem-2", companySlug: "test-co", category: "decision",
+   438→        content: JSON.stringify({ inputHash: "different-hash", result: { x: 1 } }),
+   439→        lastAccessedAt: new Date(),
+   440→      },
+   441→    ]);
+   442→
+   443→    const result = await executeCascade(
+   444→      makeReq({ requestType: "other" }),
+   445→      { aiFn: defaultAiFn },
+   446→    );
+   447→    expect(result.resolvedBy).toBe("ai");
+   448→  });
+   449→
+   450→  it("should skip corrupted JSON entries", async () => {
+   451→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   452→      {
+   453→        id: "mem-3", companySlug: "test-co", category: "decision",
+   454→        content: "broken-json{{{", lastAccessedAt: new Date(),
+   455→      },
+   456→      {
+   457→        id: "mem-4", companySlug: "test-co", category: "decision",
+   458→        content: JSON.stringify({ inputHash: fabricHash("mem-4-input"), result: { ok: true } }),
+   459→        lastAccessedAt: new Date(),
+   460→      },
+   461→    ]);
+   462→    mockDb.aIMemoryEntry.update.mockResolvedValue({});
+   463→
+   464→    const result = await executeCascade(
+   465→      makeReq({ requestType: "other", normalizedInput: "mem-4-input" }),
+   466→      { aiFn: defaultAiFn },
+   467→    );
+   468→    expect(result.resolvedBy).toBe("memory");
+   469→  });
+   470→
+   471→  it("should map ocr requestType to invoice category", async () => {
+   472→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   473→    await executeCascade(makeReq({ requestType: "ocr" }), { aiFn: defaultAiFn });
+   474→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   475→      expect.objectContaining({ where: expect.objectContaining({ category: "invoice" }) }),
+   476→    );
+   477→  });
+   478→
+   479→  it("should map whatsapp requestType to customer category", async () => {
+   480→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   481→    await executeCascade(makeReq({ requestType: "whatsapp" }), { aiFn: defaultAiFn });
+   482→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   483→      expect.objectContaining({ where: expect.objectContaining({ category: "customer" }) }),
+   484→    );
+   485→  });
+   486→
+   487→  it("should map financial_analysis requestType to decision category", async () => {
+   488→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   489→    await executeCascade(makeReq({ requestType: "financial_analysis" }), { aiFn: defaultAiFn });
+   490→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   491→      expect.objectContaining({ where: expect.objectContaining({ category: "decision" }) }),
+   492→    );
+   493→  });
+   494→
+   495→  it("should map matching requestType to product category", async () => {
+   496→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   497→    await executeCascade(makeReq({ requestType: "matching" }), { aiFn: defaultAiFn });
+   498→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   499→      expect.objectContaining({ where: expect.objectContaining({ category: "product" }) }),
+   500→    );
+   501→  });
+   502→
+   503→  it("should map other requestType to decision category", async () => {
+   504→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   505→    await executeCascade(makeReq({ requestType: "other" }), { aiFn: defaultAiFn });
+   506→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   507→      expect.objectContaining({ where: expect.objectContaining({ category: "decision" }) }),
+   508→    );
+   509→  });
+   510→
+   511→  it("should update lastAccessedAt on memory hit", async () => {
+   512→    const input = "update-access-input";
+   513→    const inputHash = fabricHash(input);
+   514→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   515→      {
+   516→        id: "mem-5", companySlug: "test-co", category: "decision",
+   517→        content: JSON.stringify({ inputHash, result: { yes: true } }),
+   518→        lastAccessedAt: new Date(),
+   519→      },
+   520→    ]);
+   521→    mockDb.aIMemoryEntry.update.mockResolvedValue({});
+   522→
+   523→    await executeCascade(
+   524→      makeReq({ requestType: "other", normalizedInput: input }),
+   525→      { aiFn: defaultAiFn },
+   526→    );
+   527→    expect(mockDb.aIMemoryEntry.update).toHaveBeenCalledWith({
+   528→      where: { id: "mem-5" },
+   529→      data: { lastAccessedAt: expect.any(Date) },
+   530→    });
+   531→  });
+   532→
+   533→  it("should limit memory search to 10 entries", async () => {
+   534→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   535→    await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   536→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   537→      expect.objectContaining({ take: 10 }),
+   538→    );
+   539→  });
+   540→
+   541→  it("should handle memoryStage DB error non-fatally", async () => {
+   542→    mockDb.aIMemoryEntry.findMany.mockRejectedValue(new Error("DB error"));
+   543→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   544→    expect(result.resolvedBy).toBe("ai");
+   545→  });
+   546→});
+   547→
+   548→describe("Gateway Cascade — aiStage", () => {
+   549→  beforeEach(() => { resetToMissAll(); });
+   550→
+   551→  it("should call AI function and return result", async () => {
+   552→    const aiFn = jest.fn().mockResolvedValue({
+   553→      data: { extracted: true },
+   554→      provider: "openrouter/deepseek-chat",
+   555→      tokensUsed: 500,
+   556→      costUsd: 0.003,
+   557→    });
+   558→
+   559→    const result = await executeCascade(makeReq(), { aiFn });
+   560→    expect(result.resolvedBy).toBe("ai");
+   561→    expect(result.data).toEqual({ extracted: true });
+   562→    expect(result.provider).toBe("openrouter/deepseek-chat");
+   563→    expect(result.tokensUsed).toBe(500);
+   564→    expect(result.costUsd).toBe(0.003);
+   565→  });
+   566→
+   567→  it("should handle AI failure gracefully (returns null data)", async () => {
+   568→    const aiFn = jest.fn().mockRejectedValue(new Error("Model unavailable"));
+   569→
+   570→    const result = await executeCascade(makeReq(), { aiFn });
+   571→    expect(result.data).toBeNull();
+   572→    expect(result.resolvedBy).toBe("ai");
+   573→  });
+   574→
+   575→  it("should pass the correct request object to aiFn", async () => {
+   576→    const req = makeReq({ requestType: "ocr", normalizedInput: "fn-test-input" });
+   577→    const aiFn = jest.fn().mockResolvedValue({ data: null, provider: "p" });
+   578→
+   579→    await executeCascade(req, { aiFn });
+   580→    expect(aiFn).toHaveBeenCalledWith(
+   581→      expect.objectContaining({
+   582→        companySlug: "test-co",
+   583→        requestType: "ocr",
+   584→        normalizedInput: "fn-test-input",
+   585→      }),
+   586→    );
+   587→  });
+   588→
+   589→  it("should include latencyMs in result", async () => {
+   590→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   591→    expect(result.latencyMs).toBeGreaterThanOrEqual(0);
+   592→    expect(typeof result.latencyMs).toBe("number");
+   593→  });
+   594→});
+   595→
+   596→describe("Gateway Cascade — executeCascade full flow", () => {
+   597→  beforeEach(() => { resetToMissAll(); });
+   598→
+   599→  it("cache hit → resolvedBy='cache'", async () => {
+   600→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   601→      key: "k", value: JSON.stringify({ from: "cache" }),
+   602→      expiresAt: new Date(Date.now() + 60_000), hitCount: 1,
+   603→    });
+   604→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   605→
+   606→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   607→    expect(result.resolvedBy).toBe("cache");
+   608→    expect(result.data).toEqual({ from: "cache" });
+   609→  });
+   610→
+   611→  it("pattern hit → resolvedBy='pattern'", async () => {
+   612→    mockLookupGlobalPattern.mockResolvedValue({
+   613→      patternKey: "test-product", suggestedSku: "SKU-X",
+   614→      suggestedVatCategory: "standard", suggestedCategory: "general",
+   615→      contributingCompaniesCount: 3, confidence: 0.92,
+   616→    });
+   617→
+   618→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   619→    expect(result.resolvedBy).toBe("pattern");
+   620→    expect(result.data).toBeDefined();
+   621→  });
+   622→
+   623→  it("rule hit → resolvedBy='rule'", async () => {
+   624→    const inputHash = fabricHash("rule-flow-input");
+   625→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   626→      {
+   627→        id: 10, companySlug: "test-co", requestType: "other",
+   628→        patternSignature: inputHash, consistentOutput: JSON.stringify({ ruled: true }),
+   629→        status: "promoted", sampleCount: 25, confidence: 0.97,
+   630→      },
+   631→    ]);
+   632→
+   633→    const result = await executeCascade(
+   634→      makeReq({ normalizedInput: "rule-flow-input" }),
+   635→      { aiFn: defaultAiFn },
+   636→    );
+   637→    expect(result.resolvedBy).toBe("rule");
+   638→    expect(result.data).toEqual({ ruled: true });
+   639→  });
+   640→
+   641→  it("memory hit → resolvedBy='memory'", async () => {
+   642→    const input = "memory-flow-input";
+   643→    const inputHash = fabricHash(input);
+   644→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   645→      {
+   646→        id: "mem-flow", companySlug: "test-co", category: "decision",
+   647→        content: JSON.stringify({ inputHash, result: { from: "memory" } }),
+   648→        lastAccessedAt: new Date(),
+   649→      },
+   650→    ]);
+   651→    mockDb.aIMemoryEntry.update.mockResolvedValue({});
+   652→
+   653→    const result = await executeCascade(
+   654→      makeReq({ normalizedInput: input }),
+   655→      { aiFn: defaultAiFn },
+   656→    );
+   657→    expect(result.resolvedBy).toBe("memory");
+   658→    expect(result.data).toEqual({ from: "memory" });
+   659→  });
+   660→
+   661→  it("full cascade to AI → resolvedBy='ai'", async () => {
+   662→    const aiFn = jest.fn().mockResolvedValue({
+   663→      data: { from: "ai" }, provider: "test/model", tokensUsed: 200, costUsd: 0.002,
+   664→    });
+   665→
+   666→    const result = await executeCascade(makeReq(), { aiFn });
+   667→    expect(result.resolvedBy).toBe("ai");
+   668→    expect(result.data).toEqual({ from: "ai" });
+   669→  });
+   670→
+   671→  it("should store non-cache results in cache", async () => {
+   672→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+   673→
+   674→    const aiFn = jest.fn().mockResolvedValue({
+   675→      data: { cacheThis: true }, provider: "t/m",
+   676→    });
+   677→
+   678→    await executeCascade(makeReq(), { aiFn });
+   679→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalled();
+   680→  });
+   681→
+   682→  it("should NOT store cache results back in cache", async () => {
+   683→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   684→      key: "k", value: JSON.stringify({ cached: true }),
+   685→      expiresAt: new Date(Date.now() + 60_000), hitCount: 1,
+   686→    });
+   687→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   688→
+   689→    await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   690→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+   691→  });
+   692→
+   693→  it("should NOT store null results in cache", async () => {
+   694→    const aiFn = jest.fn().mockResolvedValue({ data: null, provider: "t/m" });
+   695→
+   696→    await executeCascade(makeReq(), { aiFn });
+   697→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+   698→  });
+   699→});
+   700→
+   701→describe("Gateway Cascade — budget gate integration", () => {
+   702→  beforeEach(() => { resetToMissAll(); });
+   703→
+   704→  it("allowed request passes through to AI", async () => {
+   705→    const aiFn = jest.fn().mockResolvedValue({
+   706→      data: { passed: true }, provider: "t/m",
+   707→    });
+   708→
+   709→    const result = await executeCascade(makeReq(), { aiFn });
+   710→    expect(result.resolvedBy).toBe("ai");
+   711→    expect(result.budgetBlocked).toBeFalsy();
+   712→  });
+   713→
+   714→  it("blocked request returns early with budgetBlocked=true", async () => {
+   715→    mockCheckBudgetGate.mockResolvedValue(false);
+   716→    mockGetBudgetStatus.mockResolvedValue({
+   717→      companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 105,
+   718→      spendPct: 105, alertTriggered: true, hardStopActive: true, forecastMonthlySpendUsd: 150,
+   719→    });
+   720→    mockDb.aIRequestLog.create.mockResolvedValue({});
+   721→
+   722→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   723→    expect(result.budgetBlocked).toBe(true);
+   724→    expect(result.data).toBeNull();
+   725→    expect(result.budgetReason).toBe("hard_stop");
+   726→  });
+   727→
+   728→  it("blocked request with budget exceeded (no hard stop)", async () => {
+   729→    mockCheckBudgetGate.mockResolvedValue(false);
+   730→    mockGetBudgetStatus.mockResolvedValue({
+   731→      companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 105,
+   732→      spendPct: 105, alertTriggered: true, hardStopActive: false, forecastMonthlySpendUsd: 150,
+   733→    });
+   734→
+   735→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   736→    expect(result.budgetBlocked).toBe(true);
+   737→    expect(result.budgetReason).toBe("budget_exceeded");
+   738→  });
+   739→
+   740→  it("budget gate check failure is non-fatal", async () => {
+   741→    mockCheckBudgetGate.mockRejectedValue(new Error("budget db error"));
+   742→
+   743→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   744→    expect(result.resolvedBy).toBe("ai");
+   745→    expect(result.budgetBlocked).toBeFalsy();
+   746→  });
+   747→
+   748→  it("budget gate is not checked when earlier stage resolves", async () => {
+   749→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   750→      key: "k", value: JSON.stringify({ data: 1 }),
+   751→      expiresAt: new Date(Date.now() + 60_000), hitCount: 1,
+   752→    });
+   753→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   754→
+   755→    await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   756→    expect(mockCheckBudgetGate).not.toHaveBeenCalled();
+   757→  });
+   758→});
+   759→
+   760→describe("Gateway Cascade — logRequest", () => {
+   761→  beforeEach(() => { resetToMissAll(); });
+   762→
+   763→  it("logs to AIRequestLog on every request", async () => {
+   764→    mockDb.aIRequestLog.create.mockResolvedValue({});
+   765→
+   766→    await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   767→    expect(mockDb.aIRequestLog.create).toHaveBeenCalledWith(
+   768→      expect.objectContaining({
+   769→        data: expect.objectContaining({
+   770→          companySlug: "test-co",
+   771→          resolvedBy: "ai",
+   772→        }),
+   773→      }),
+   774→    );
+   775→  });
+   776→
+   777→  it("logs resolvedBy=cache for cache hits", async () => {
+   778→    mockDb.aIRequestLog.create.mockResolvedValue({});
+   779→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   780→      key: "k", value: JSON.stringify({ d: 1 }),
+   781→      expiresAt: new Date(Date.now() + 60_000), hitCount: 0,
+   782→    });
+   783→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 1 });
+   784→
+   785→    await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   786→    expect(mockDb.aIRequestLog.create).toHaveBeenCalledWith(
+   787→      expect.objectContaining({
+   788→        data: expect.objectContaining({ resolvedBy: "cache" }),
+   789→      }),
+   790→    );
+   791→  });
+   792→
+   793→  it("handles logging failure non-fatally", async () => {
+   794→    mockDb.aIRequestLog.create.mockRejectedValue(new Error("log DB down"));
+   795→
+   796→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   797→    expect(result.resolvedBy).toBe("ai");
+   798→    expect(result.data).toBeDefined();
+   799→  });
+   800→
+   801→  it("logs latencyMs in the request log", async () => {
+   802→    mockDb.aIRequestLog.create.mockResolvedValue({});
+   803→
+   804→    await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   805→    expect(mockDb.aIRequestLog.create).toHaveBeenCalledWith(
+   806→      expect.objectContaining({
+   807→        data: expect.objectContaining({ latencyMs: expect.any(Number) }),
+   808→      }),
+   809→    );
+   810→  });
+   811→
+   812→  it("logs provider and tokens for AI-resolved requests", async () => {
+   813→    mockDb.aIRequestLog.create.mockResolvedValue({});
+   814→
+   815→    const aiFn = jest.fn().mockResolvedValue({
+   816→      data: { x: 1 }, provider: "deepseek/v3", tokensUsed: 999, costUsd: 0.005,
+   817→    });
+   818→
+   819→    await executeCascade(makeReq(), { aiFn });
+   820→    expect(mockDb.aIRequestLog.create).toHaveBeenCalledWith(
+   821→      expect.objectContaining({
+   822→        data: expect.objectContaining({
+   823→          provider: "deepseek/v3",
+   824→          tokensUsed: 999,
+   825→          costUsd: 0.005,
+   826→        }),
+   827→      }),
+   828→    );
+   829→  });
+   830→});
+   831→
+   832→describe("Gateway Cascade — cacheStore", () => {
+   833→  beforeEach(() => { resetToMissAll(); });
+   834→
+   835→  it("upserts cache entry with correct key and value", async () => {
+   836→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+   837→    await cacheStore("my-co", "my-input", { result: "yes" });
+   838→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalledWith(
+   839→      expect.objectContaining({
+   840→        create: expect.objectContaining({
+   841→          key: fabricHash("my-co:my-input"),
+   842→          companySlug: "my-co",
+   843→          value: JSON.stringify({ result: "yes" }),
+   844→        }),
+   845→      }),
+   846→    );
+   847→  });
+   848→
+   849→  it("respects custom TTL in expiresAt", async () => {
+   850→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+   851→    const ttlMs = 7200_000; // 2 hours
+   852→    await cacheStore("co", "input", { x: 1 }, ttlMs);
+   853→    const call = mockDb.cacheEntry.upsert.mock.calls[0][0];
+   854→    const expiresAt = call.create.expiresAt as Date;
+   855→    const expectedMin = Date.now() + ttlMs - 1000;
+   856→    const expectedMax = Date.now() + ttlMs + 1000;
+   857→    expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
+   858→    expect(expiresAt.getTime()).toBeLessThan(expectedMax);
+   859→  });
+   860→
+   861→  it("uses default 1 hour TTL when not specified", async () => {
+   862→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+   863→    await cacheStore("co", "input", { x: 1 });
+   864→    const call = mockDb.cacheEntry.upsert.mock.calls[0][0];
+   865→    const expiresAt = call.create.expiresAt as Date;
+   866→    const expectedMin = Date.now() + 3600_000 - 1000;
+   867→    const expectedMax = Date.now() + 3600_000 + 1000;
+   868→    expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
+   869→    expect(expiresAt.getTime()).toBeLessThan(expectedMax);
+   870→  });
+   871→
+   872→  it("serializes complex data to JSON for value", async () => {
+   873→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+   874→    const complexData = { nested: { array: [1, 2, 3], bool: true, nil: null } };
+   875→    await cacheStore("co", "in", complexData);
+   876→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalledWith(
+   877→      expect.objectContaining({
+   878→        create: expect.objectContaining({ value: JSON.stringify(complexData) }),
+   879→      }),
+   880→    );
+   881→  });
+   882→});
+   883→
+   884→describe("Gateway Cascade — skipStages and cacheTtlMs", () => {
+   885→  beforeEach(() => { resetToMissAll(); });
+   886→
+   887→  it("should skip cache when skipStages includes 'cache'", async () => {
+   888→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   889→      key: "k", value: JSON.stringify({ cached: true }),
+   890→      expiresAt: new Date(Date.now() + 60_000), hitCount: 5,
+   891→    });
+   892→
+   893→    const result = await executeCascade(makeReq(), {
+   894→      aiFn: defaultAiFn,
+   895→      skipStages: ["cache"],
+   896→    });
+   897→    expect(result.resolvedBy).toBe("ai");
+   898→  });
+   899→
+   900→  it("should skip pattern when skipStages includes 'pattern'", async () => {
+   901→    mockLookupGlobalPattern.mockResolvedValue({ hit: true } as any);
+   902→
+   903→    const result = await executeCascade(makeReq(), {
+   904→      aiFn: defaultAiFn,
+   905→      skipStages: ["pattern"],
+   906→    });
+   907→    expect(result.resolvedBy).toBe("ai");
+   908→  });
+   909→
+   910→  it("should skip multiple stages", async () => {
+   911→    const result = await executeCascade(makeReq(), {
+   912→      aiFn: defaultAiFn,
+   913→      skipStages: ["cache", "pattern", "rule", "memory"],
+   914→    });
+   915→    expect(result.resolvedBy).toBe("ai");
+   916→  });
+   917→
+   918→  it("cacheTtlMs=0 disables caching of results", async () => {
+   919→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+   920→
+   921→    await executeCascade(makeReq(), { aiFn: defaultAiFn, cacheTtlMs: 0 });
+   922→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+   923→  });
+   924→
+   925→  it("cacheTtlMs=0 with skipStages empty still runs all stages", async () => {
+   926→    const result = await executeCascade(makeReq(), {
+   927→      aiFn: defaultAiFn,
+   928→      cacheTtlMs: 0,
+   929→    });
+   930→    expect(result.resolvedBy).toBe("ai");
+   931→    expect(mockDb.cacheEntry.findUnique).toHaveBeenCalled();
+   932→  });
+   933→});
+   934→
+   935→describe("Gateway Cascade — storeAIMemory", () => {
+   936→  beforeEach(() => { resetToMissAll(); });
+   937→
+   938→  it("creates AIMemoryEntry with correct structure", async () => {
+   939→    mockDb.aIMemoryEntry.create.mockResolvedValue({});
+   940→    await storeAIMemory({
+   941→      companySlug: "mem-co", category: "invoice", inputHash: "hash-abc", result: { total: 500 },
+   942→    });
+   943→    expect(mockDb.aIMemoryEntry.create).toHaveBeenCalledWith({
+   944→      data: {
+   945→        companySlug: "mem-co",
+   946→        category: "invoice",
+   947→        content: JSON.stringify({ inputHash: "hash-abc", result: { total: 500 } }),
+   948→      },
+   949→    });
+   950→  });
+   951→
+   952→  it("serializes result to JSON in content field", async () => {
+   953→    mockDb.aIMemoryEntry.create.mockResolvedValue({});
+   954→    const result = { items: [{ name: "Widget" }], tax: 50 };
+   955→    await storeAIMemory({ companySlug: "co", category: "decision", inputHash: "h", result });
+   956→    const call = mockDb.aIMemoryEntry.create.mock.calls[0][0];
+   957→    const parsed = JSON.parse(call.data.content);
+   958→    expect(parsed.result).toEqual(result);
+   959→    expect(parsed.inputHash).toBe("h");
+   960→  });
+   961→});
+   962→
+   963→describe("Gateway Cascade — edge cases", () => {
+   964→  beforeEach(() => { resetToMissAll(); });
+   965→
+   966→  it("should handle empty normalizedInput", async () => {
+   967→    const result = await executeCascade(makeReq({ normalizedInput: "" }), { aiFn: defaultAiFn });
+   968→    expect(result.resolvedBy).toBe("ai");
+   969→  });
+   970→
+   971→  it("should handle very long normalizedInput", async () => {
+   972→    const longInput = "a".repeat(10000);
+   973→    const result = await executeCascade(makeReq({ normalizedInput: longInput }), { aiFn: defaultAiFn });
+   974→    expect(result.resolvedBy).toBe("ai");
+   975→  });
+   976→
+   977→  it("should return latencyMs >= 0", async () => {
+   978→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   979→    expect(result.latencyMs).toBeGreaterThanOrEqual(0);
+   980→  });
+   981→
+   982→  it("should not include provider/tokens/cost for non-AI resolution", async () => {
+   983→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   984→      key: "k", value: JSON.stringify({ d: 1 }),
+   985→      expiresAt: new Date(Date.now() + 60_000), hitCount: 1,
+   986→    });
+   987→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   988→
+   989→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+   990→    expect(result.provider).toBeUndefined();
+   991→    expect(result.tokensUsed).toBeUndefined();
+   992→    expect(result.costUsd).toBeUndefined();
+   993→  });
+   994→
+   995→  it("fabricHash produces consistent 16-char hex", () => {
+   996→    const h = fabricHash("consistent-test");
+   997→    expect(h).toHaveLength(16);
+   998→    expect(/^[0-9a-f]+$/.test(h)).toBe(true);
+   999→    expect(fabricHash("consistent-test")).toBe(h);
+  1000→  });
+  1001→
+  1002→  it("fabricHash differs for different inputs", () => {
+  1003→    expect(fabricHash("a")).not.toBe(fabricHash("b"));
+  1004→  });
+  1005→});
+  1006→
+  1007→describe("Gateway Cascade — additional cacheStage edge cases", () => {
+  1008→  beforeEach(() => { resetToMissAll(); });
+  1009→
+  1010→  it("cache hit with boundary expiry time (exactly now)", async () => {
+  1011→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+  1012→      key: "k", value: JSON.stringify({ d: 1 }),
+  1013→      expiresAt: new Date(Date.now()), // exactly now
+  1014→      hitCount: 0,
+  1015→    });
+  1016→    mockDb.cacheEntry.delete.mockResolvedValue({});
+  1017→
+  1018→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+  1019→    // expiresAt < new Date() → expired → miss
+  1020→    expect(result.resolvedBy).toBe("ai");
+  1021→  });
+  1022→
+  1023→  it("cache hit returns data field as-is after parse", async () => {
+  1024→    const nested = { a: { b: { c: [1, 2, 3] } }, d: true, e: null, f: 0 };
+  1025→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+  1026→      key: "k", value: JSON.stringify(nested),
+  1027→      expiresAt: new Date(Date.now() + 60_000), hitCount: 0,
+  1028→    });
+  1029→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 1 });
+  1030→
+  1031→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+  1032→    expect(result.data).toEqual(nested);
+  1033→  });
+  1034→
+  1035→  it("cache entry with null JSON value", async () => {
+  1036→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+  1037→      key: "k", value: "null",
+  1038→      expiresAt: new Date(Date.now() + 60_000), hitCount: 0,
+  1039→    });
+  1040→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 1 });
+  1041→
+  1042→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+  1043→    expect(result.resolvedBy).toBe("cache");
+  1044→    expect(result.data).toBeNull();
+  1045→  });
+  1046→});
+  1047→
+  1048→describe("Gateway Cascade — additional patternStage tests", () => {
+  1049→  beforeEach(() => { resetToMissAll(); });
+  1050→
+  1051→  it("OCR with schema parse failure falls through", async () => {
+  1052→    mockPatternStoreGet.mockResolvedValue({ headers: [] });
+  1053→    const { extractWithTemplate } = await import("@/lib/invoice-brain/patternParser");
+  1054→    (extractWithTemplate as any).mockReturnValue({ total: 100 });
+  1055→
+  1056→    const { InvoiceSchema } = await import("@/lib/invoice-brain/schema");
+  1057→    (InvoiceSchema.safeParse as any).mockReturnValue({ success: false, error: "bad data" });
+  1058→
+  1059→    const result = await executeCascade(
+  1060→      makeReq({ requestType: "ocr", context: { text: "invoice" } }),
+  1061→      { aiFn: defaultAiFn },
+  1062→    );
+  1063→    // Schema parse fails → pattern miss → goes to AI
+  1064→    expect(result.resolvedBy).toBe("ai");
+  1065→  });
+  1066→
+  1067→  it("OCR with extractWithTemplate returning null falls through", async () => {
+  1068→    mockPatternStoreGet.mockResolvedValue({ headers: [] });
+  1069→    const { extractWithTemplate } = await import("@/lib/invoice-brain/patternParser");
+  1070→    (extractWithTemplate as any).mockReturnValue(null);
+  1071→
+  1072→    const result = await executeCascade(
+  1073→      makeReq({ requestType: "ocr", context: { text: "invoice" } }),
+  1074→      { aiFn: defaultAiFn },
+  1075→    );
+  1076→    expect(result.resolvedBy).toBe("ai");
+  1077→  });
+  1078→});
+  1079→
+  1080→describe("Gateway Cascade — additional ruleStage tests", () => {
+  1081→  beforeEach(() => { resetToMissAll(); });
+  1082→
+  1083→  it("skips rule with no consistentOutput field at all", async () => {
+  1084→    const inputHash = fabricHash("no-field-input");
+  1085→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+  1086→      {
+  1087→        id: 7, companySlug: "test-co", requestType: "other",
+  1088→        patternSignature: inputHash,
+  1089→        // no consistentOutput field
+  1090→        status: "promoted", sampleCount: 20, confidence: 0.95,
+  1091→      },
+  1092→    ]);
+  1093→
+  1094→    const result = await executeCascade(
+  1095→      makeReq({ requestType: "other", normalizedInput: "no-field-input" }),
+  1096→      { aiFn: defaultAiFn },
+  1097→    );
+  1098→    expect(result.resolvedBy).toBe("ai");
+  1099→  });
+  1100→});
+  1101→
+  1102→describe("Gateway Cascade — additional memoryStage tests", () => {
+  1103→  beforeEach(() => { resetToMissAll(); });
+  1104→
+  1105→  it("handles empty memories array", async () => {
+  1106→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+  1107→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+  1108→    expect(result.resolvedBy).toBe("ai");
+  1109→  });
+  1110→
+  1111→  it("handles memory with missing inputHash field", async () => {
+  1112→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+  1113→      {
+  1114→        id: "mem-x", companySlug: "test-co", category: "decision",
+  1115→        content: JSON.stringify({ result: { action: "done" } }),
+  1116→        lastAccessedAt: new Date(),
+  1117→      },
+  1118→    ]);
+  1119→
+  1120→    const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
+  1121→    // No inputHash → no match → falls to AI
+  1122→    expect(result.resolvedBy).toBe("ai");
+  1123→  });
+  1124→});
+  1125→
+  1126→describe("Gateway Cascade — additional executeCascade flow tests", () => {
+  1127→  beforeEach(() => { resetToMissAll(); });
+  1128→
+  1129→  it("cache hit with custom cacheTtlMs stores nothing", async () => {
+  1130→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+  1131→      key: "k", value: JSON.stringify({ d: 1 }),
+  1132→      expiresAt: new Date(Date.now() + 60_000), hitCount: 0,
+  1133→    });
+  1134→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 1 });
+  1135→
+  1136→    await executeCascade(makeReq(), { aiFn: defaultAiFn, cacheTtlMs: 5000 });
+  1137→    // Cache hit → no store
+  1138→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+  1139→  });
+  1140→
+  1141→  it("AI result stored with custom TTL", async () => {
+  1142→    mockDb.cacheEntry.upsert.mockResolvedValue({});
+  1143→    await executeCascade(makeReq(), { aiFn: defaultAiFn, cacheTtlMs: 1800_000 });
+  1144→
+  1145→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalled();
+  1146→    const call = mockDb.cacheEntry.upsert.mock.calls[0][0];
+  1147→    const expiresAt = call.create.expiresAt as Date;
+  1148→    const expectedMin = Date.now() + 1800_000 - 1000;
+  1149→    expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
+  1150→  });
+  1151→});
+  1152→

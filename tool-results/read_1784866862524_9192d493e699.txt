@@ -1,0 +1,768 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * gateway-full-cascade.test.ts — 70 tests for the gateway cascade.
+     4→ * Uses mock.module from bun:test for DB and logger mocking.
+     5→ */
+     6→
+     7→import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
+     8→
+     9→// ─── Mock DB setup ─────────────────────────────────────────────────────────
+    10→
+    11→const m = () => ({
+    12→  findUnique: mock(() => Promise.resolve(null)),
+    13→  findMany: mock(() => Promise.resolve([])),
+    14→  create: mock(() => Promise.resolve({})),
+    15→  update: mock(() => Promise.resolve({})),
+    16→  delete: mock(() => Promise.resolve({})),
+    17→  deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    18→  upsert: mock(() => Promise.resolve({})),
+    19→  aggregate: mock(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })),
+    20→  groupBy: mock(() => Promise.resolve([])),
+    21→  count: mock(() => Promise.resolve(0)),
+    22→  findFirst: mock(() => Promise.resolve(null)),
+    23→});
+    24→
+    25→const mockDb: Record<string, any> = {
+    26→  cacheEntry: m(), aIRequestLog: m(), ruleCandidate: m(),
+    27→  aIMemoryEntry: m(), budgetConfig: m(), notification: m(),
+    28→  company: m(), companyRuntime: m(), providerConfig: m(),
+    29→  globalPattern: m(), profitSnapshot: m(), aIScoreSnapshot: m(),
+    30→  jobQueue: m(), inventoryItem: m(), productCatalog: m(), client: m(),
+    31→  compiledRule: m(),
+    32→};
+    33→
+    34→const mockLogger = {
+    35→  info: mock(() => {}), warn: mock(() => {}),
+    36→  error: mock(() => {}), debug: mock(() => {}),
+    37→};
+    38→
+    39→mock.module("@/lib/db", () => ({ db: mockDb }));
+    40→mock.module("@/lib/logger", () => ({ logger: mockLogger }));
+    41→mock.module("@/lib/ai-fabric/budget-engine", () => ({
+    42→  checkBudgetGate: mock(() => Promise.resolve(true)),
+    43→  getBudgetStatus: mock(() => Promise.resolve(null)),
+    44→  __resetAlertTracking: mock(() => {}),
+    45→}));
+    46→mock.module("@/lib/ai-fabric/cross-company-intelligence", () => ({
+    47→  lookupGlobalPattern: mock(() => Promise.resolve(null)),
+    48→  contributePattern: mock(() => Promise.resolve(true)),
+    49→  verifyNoSensitiveData: mock(() => true),
+    50→  getPatternStats: mock(() => Promise.resolve({ totalPatterns: 0, avgConfidence: 0, avgContributingCompanies: 0, topPatterns: [] })),
+    51→}));
+    52→
+    53→// ─── Imports after mocks ──────────────────────────────────────────────────
+    54→
+    55→import { executeCascade, storeAIMemory, cacheStore, type GatewayAIFn, type GatewayOptions } from "@/lib/ai-fabric/gateway";
+    56→import { fabricHash, type GatewayRequest } from "@/lib/ai-fabric/types";
+    57→
+    58→// ─── Helpers ──────────────────────────────────────────────────────────────
+    59→
+    60→function clearAll() {
+    61→  for (const table of Object.values(mockDb) as any[]) {
+    62→    for (const fn of Object.values(table)) {
+    63→      if (typeof fn === "function" && typeof fn.mockClear === "function") fn.mockClear();
+    64→    }
+    65→  }
+    66→  mockLogger.info.mockClear();
+    67→  mockLogger.warn.mockClear();
+    68→  mockLogger.error.mockClear();
+    69→}
+    70→
+    71→const req = (overrides?: Partial<GatewayRequest>): GatewayRequest => ({
+    72→  companySlug: "test-co",
+    73→  requestType: "other",
+    74→  normalizedInput: "test-input",
+    75→  ...overrides,
+    76→});
+    77→
+    78→const aiResult = { data: { answer: "ai" }, provider: "test/model", tokensUsed: 100, costUsd: 0.001 };
+    79→
+    80→// ─── cacheStage tests ────────────────────────────────────────────────────
+    81→
+    82→describe("gateway cacheStage", () => {
+    83→  beforeEach(clearAll);
+    84→
+    85→  it("returns miss when cache entry is null", async () => {
+    86→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+    87→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+    88→    expect(r.resolvedBy).toBe("ai");
+    89→  });
+    90→
+    91→  it("returns hit when valid cache entry exists", async () => {
+    92→    const key = fabricHash("test-co:test-input");
+    93→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+    94→      key, value: JSON.stringify({ cached: true }),
+    95→      expiresAt: new Date(Date.now() + 60000), hitCount: 5,
+    96→    });
+    97→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 6 });
+    98→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+    99→    expect(r.resolvedBy).toBe("cache");
+   100→    expect(r.data).toEqual({ cached: true });
+   101→  });
+   102→
+   103→  it("increments hitCount on cache hit", async () => {
+   104→    const key = fabricHash("test-co:test-input");
+   105→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   106→      key, value: JSON.stringify({ x: 1 }),
+   107→      expiresAt: new Date(Date.now() + 60000), hitCount: 3,
+   108→    });
+   109→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 4 });
+   110→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   111→    expect(r.cacheHitCount).toBe(4);
+   112→  });
+   113→
+   114→  it("cleans up expired cache entry", async () => {
+   115→    const key = fabricHash("test-co:test-input");
+   116→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   117→      key, value: JSON.stringify({ x: 1 }),
+   118→      expiresAt: new Date(Date.now() - 1000), hitCount: 1,
+   119→    });
+   120→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   121→    expect(r.resolvedBy).toBe("ai");
+   122→    expect(mockDb.cacheEntry.delete).toHaveBeenCalled();
+   123→  });
+   124→
+   125→  it("returns miss for expired entry", async () => {
+   126→    const key = fabricHash("test-co:test-input");
+   127→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   128→      key, value: JSON.stringify({ x: 1 }),
+   129→      expiresAt: new Date(0), hitCount: 1,
+   130→    });
+   131→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   132→    expect(r.resolvedBy).not.toBe("cache");
+   133→  });
+   134→
+   135→  it("returns miss for corrupted JSON", async () => {
+   136→    const key = fabricHash("test-co:test-input");
+   137→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   138→      key, value: "not-json{{{",
+   139→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   140→    });
+   141→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   142→    expect(r.resolvedBy).toBe("ai");
+   143→  });
+   144→
+   145→  it("deletes corrupted JSON entry", async () => {
+   146→    const key = fabricHash("test-co:test-input");
+   147→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   148→      key, value: "broken",
+   149→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   150→    });
+   151→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   152→    expect(mockDb.cacheEntry.delete).toHaveBeenCalled();
+   153→  });
+   154→
+   155→  it("parses complex JSON data from cache", async () => {
+   156→    const key = fabricHash("test-co:complex");
+   157→    const data = { items: [{ name: "a" }, { name: "b" }], total: 100 };
+   158→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   159→      key, value: JSON.stringify(data),
+   160→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   161→    });
+   162→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   163→    const r = await executeCascade(req({ normalizedInput: "complex" }), { aiFn: () => Promise.resolve(aiResult) });
+   164→    expect(r.data).toEqual(data);
+   165→  });
+   166→
+   167→  it("uses fabricHash for cache key", async () => {
+   168→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   169→    await executeCascade(req({ companySlug: "a", normalizedInput: "b" }), { aiFn: () => Promise.resolve(aiResult) });
+   170→    const expectedKey = fabricHash("a:b");
+   171→    expect(mockDb.cacheEntry.findUnique).toHaveBeenCalledWith({ where: { key: expectedKey } });
+   172→  });
+   173→
+   174→  it("returns data as parsed JSON object", async () => {
+   175→    const key = fabricHash("test-co:test-input");
+   176→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   177→      key, value: '{"num":42}',
+   178→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   179→    });
+   180→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   181→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   182→    expect(r.data).toEqual({ num: 42 });
+   183→  });
+   184→
+   185→  it("handles string JSON value in cache", async () => {
+   186→    const key = fabricHash("test-co:str");
+   187→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   188→      key, value: '"hello world"',
+   189→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   190→    });
+   191→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   192→    const r = await executeCascade(req({ normalizedInput: "str" }), { aiFn: () => Promise.resolve(aiResult) });
+   193→    expect(r.data).toBe("hello world");
+   194→  });
+   195→
+   196→  it("handles number JSON value in cache", async () => {
+   197→    const key = fabricHash("test-co:num");
+   198→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   199→      key, value: "99",
+   200→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   201→    });
+   202→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   203→    const r = await executeCascade(req({ normalizedInput: "num" }), { aiFn: () => Promise.resolve(aiResult) });
+   204→    expect(r.data).toBe(99);
+   205→  });
+   206→
+   207→  it("handles null JSON value in cache (cache hit with null data, AI fills data)", async () => {
+   208→    // JSON.parse('null') returns null; cacheStage reports hit, but null data
+   209→    // causes subsequent stages to run. When AI fills in data, resolvedBy becomes "ai".
+   210→    const key = fabricHash("test-co:null-val");
+   211→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   212→      key, value: "null",
+   213→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   214→    });
+   215→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   216→    const r = await executeCascade(req({ normalizedInput: "null-val" }), { aiFn: () => Promise.resolve(aiResult) });
+   217→    // null data falls through to AI, which fills data; resolvedBy correctly becomes "ai"
+   218→    expect(r.resolvedBy).toBe("ai");
+   219→    expect(r.data).toEqual({ answer: "ai" });
+   220→  });
+   221→
+   222→  it("calls findUnique with correct where clause", async () => {
+   223→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   224→    await executeCascade(req({ companySlug: "co1", normalizedInput: "inp1" }), { aiFn: () => Promise.resolve(aiResult) });
+   225→    expect(mockDb.cacheEntry.findUnique).toHaveBeenCalledWith({
+   226→      where: { key: fabricHash("co1:inp1") },
+   227→    });
+   228→  });
+   229→
+   230→  it("handles array JSON value in cache", async () => {
+   231→    const key = fabricHash("test-co:arr");
+   232→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   233→      key, value: "[1,2,3]",
+   234→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   235→    });
+   236→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   237→    const r = await executeCascade(req({ normalizedInput: "arr" }), { aiFn: () => Promise.resolve(aiResult) });
+   238→    expect(r.data).toEqual([1, 2, 3]);
+   239→  });
+   240→
+   241→  it("different companies have different cache keys", async () => {
+   242→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   243→    await executeCascade(req({ companySlug: "co-a", normalizedInput: "same" }), { aiFn: () => Promise.resolve(aiResult) });
+   244→    await executeCascade(req({ companySlug: "co-b", normalizedInput: "same" }), { aiFn: () => Promise.resolve(aiResult) });
+   245→    const calls = mockDb.cacheEntry.findUnique.mock.calls;
+   246→    expect(calls[0][0].where.key).not.toBe(calls[1][0].where.key);
+   247→  });
+   248→
+   249→  it("expired delete is fire-and-forget (catches errors)", async () => {
+   250→    const key = fabricHash("test-co:test-input");
+   251→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   252→      key, value: "{}", expiresAt: new Date(0), hitCount: 1,
+   253→    });
+   254→    mockDb.cacheEntry.delete.mockRejectedValue(new Error("db error"));
+   255→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   256→    expect(r.resolvedBy).toBe("ai");
+   257→  });
+   258→});
+   259→
+   260→// ─── patternStage tests ──────────────────────────────────────────────────
+   261→
+   262→describe("gateway patternStage", () => {
+   263→  beforeEach(clearAll);
+   264→
+   265→  it("returns hit: false for non-OCR request type by default", async () => {
+   266→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   267→    const r = await executeCascade(req({ requestType: "whatsapp" }), { aiFn: () => Promise.resolve(aiResult) });
+   268→    expect(r.resolvedBy).toBe("ai");
+   269→  });
+   270→
+   271→  it("returns hit: false for matching request type", async () => {
+   272→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   273→    const r = await executeCascade(req({ requestType: "matching" }), { aiFn: () => Promise.resolve(aiResult) });
+   274→    expect(r.resolvedBy).toBe("ai");
+   275→  });
+   276→
+   277→  it("returns hit: false for financial_analysis request type", async () => {
+   278→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   279→    const r = await executeCascade(req({ requestType: "financial_analysis" }), { aiFn: () => Promise.resolve(aiResult) });
+   280→    expect(r.resolvedBy).toBe("ai");
+   281→  });
+   282→
+   283→  it("returns hit: false for 'other' request type", async () => {
+   284→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   285→    const r = await executeCascade(req({ requestType: "other" }), { aiFn: () => Promise.resolve(aiResult) });
+   286→    expect(r.resolvedBy).toBe("ai");
+   287→  });
+   288→
+   289→  it("falls through to AI when no pattern matches", async () => {
+   290→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   291→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   292→    expect(r.resolvedBy).toBe("ai");
+   293→  });
+   294→
+   295→  it("OCR with no context.text falls through", async () => {
+   296→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   297→    const r = await executeCascade(req({ requestType: "ocr" }), { aiFn: () => Promise.resolve(aiResult) });
+   298→    expect(r.resolvedBy).toBe("ai");
+   299→  });
+   300→
+   301→  it("OCR with context.text but no global pattern falls through", async () => {
+   302→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   303→    const r = await executeCascade(req({ requestType: "ocr", context: { text: "some invoice" } }), { aiFn: () => Promise.resolve(aiResult) });
+   304→    expect(r.resolvedBy).toBe("ai");
+   305→  });
+   306→
+   307→  it("does not skip to AI prematurely when cache misses", async () => {
+   308→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   309→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   310→    // pattern, rule, and memory stages should all be attempted before AI
+   311→    expect(r.resolvedBy).toBe("ai");
+   312→  });
+   313→});
+   314→
+   315→// ─── ruleStage tests ─────────────────────────────────────────────────────
+   316→
+   317→describe("gateway ruleStage", () => {
+   318→  beforeEach(clearAll);
+   319→
+   320→  it("returns hit: false when no promoted rules exist", async () => {
+   321→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   322→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   323→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   324→    expect(r.resolvedBy).toBe("ai");
+   325→  });
+   326→
+   327→  it("returns hit: false when rules don't match input hash", async () => {
+   328→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   329→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   330→      { id: 1, companySlug: "test-co", requestType: "other", patternSignature: "wrong-hash", consistentOutput: "{}", sampleCount: 20, confidence: 0.95, status: "promoted" },
+   331→    ]);
+   332→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   333→    expect(r.resolvedBy).toBe("ai");
+   334→  });
+   335→
+   336→  it("returns hit: true when rule matches input hash", async () => {
+   337→    const inputHash = fabricHash("test-input");
+   338→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   339→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   340→      { id: 1, companySlug: "test-co", requestType: "other", patternSignature: inputHash, consistentOutput: JSON.stringify({ ruled: true }), sampleCount: 20, confidence: 0.95, status: "promoted" },
+   341→    ]);
+   342→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   343→    expect(r.resolvedBy).toBe("rule");
+   344→    expect(r.data).toEqual({ ruled: true });
+   345→  });
+   346→
+   347→  it("queries with correct companySlug and requestType", async () => {
+   348→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   349→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   350→    await executeCascade(req({ companySlug: "my-co", requestType: "ocr" }), { aiFn: () => Promise.resolve(aiResult) });
+   351→    expect(mockDb.ruleCandidate.findMany).toHaveBeenCalledWith(
+   352→      expect.objectContaining({
+   353→        where: expect.objectContaining({ companySlug: "my-co", requestType: "ocr", status: "promoted" }),
+   354→      }),
+   355→    );
+   356→  });
+   357→
+   358→  it("returns parsed data from consistentOutput", async () => {
+   359→    const inputHash = fabricHash("test-input");
+   360→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   361→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   362→      { id: 1, companySlug: "test-co", requestType: "other", patternSignature: inputHash, consistentOutput: '{"items":[1,2]}', sampleCount: 20, confidence: 0.95, status: "promoted" },
+   363→    ]);
+   364→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   365→    expect(r.data).toEqual({ items: [1, 2] });
+   366→  });
+   367→
+   368→  it("skips malformed consistentOutput", async () => {
+   369→    const inputHash = fabricHash("test-input");
+   370→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   371→    mockDb.ruleCandidate.findMany.mockResolvedValue([
+   372→      { id: 1, companySlug: "test-co", requestType: "other", patternSignature: inputHash, consistentOutput: "bad-json", sampleCount: 20, confidence: 0.95, status: "promoted" },
+   373→    ]);
+   374→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   375→    expect(r.resolvedBy).toBe("ai");
+   376→  });
+   377→
+   378→  it("only queries promoted rules (status=promoted)", async () => {
+   379→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   380→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   381→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   382→    expect(mockDb.ruleCandidate.findMany).toHaveBeenCalledWith(
+   383→      expect.objectContaining({ where: expect.objectContaining({ status: "promoted" }) }),
+   384→    );
+   385→  });
+   386→
+   387→  it("handles DB error in ruleStage gracefully", async () => {
+   388→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   389→    mockDb.ruleCandidate.findMany.mockRejectedValue(new Error("db error"));
+   390→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   391→    expect(r.resolvedBy).toBe("ai");
+   392→  });
+   393→});
+   394→
+   395→// ─── memoryStage tests ───────────────────────────────────────────────────
+   396→
+   397→describe("gateway memoryStage", () => {
+   398→  beforeEach(clearAll);
+   399→
+   400→  it("returns hit: false when no memories exist", async () => {
+   401→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   402→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   403→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   404→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   405→    expect(r.resolvedBy).toBe("ai");
+   406→  });
+   407→
+   408→  it("returns hit: false when memories don't match input hash", async () => {
+   409→    const inputHash = fabricHash("test-input");
+   410→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   411→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   412→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   413→      { id: 1, companySlug: "test-co", category: "decision", content: JSON.stringify({ inputHash: "other-hash", result: { x: 1 } }), lastAccessedAt: new Date() },
+   414→    ]);
+   415→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   416→    expect(r.resolvedBy).toBe("ai");
+   417→  });
+   418→
+   419→  it("returns hit: true when memory matches input hash", async () => {
+   420→    const inputHash = fabricHash("test-input");
+   421→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   422→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   423→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   424→      { id: 1, companySlug: "test-co", category: "decision", content: JSON.stringify({ inputHash, result: { memorized: true } }), lastAccessedAt: new Date() },
+   425→    ]);
+   426→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   427→    expect(r.resolvedBy).toBe("memory");
+   428→    expect(r.data).toEqual({ memorized: true });
+   429→  });
+   430→
+   431→  it("updates lastAccessedAt on memory hit", async () => {
+   432→    const inputHash = fabricHash("test-input");
+   433→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   434→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   435→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   436→      { id: 42, companySlug: "test-co", category: "decision", content: JSON.stringify({ inputHash, result: {} }), lastAccessedAt: new Date() },
+   437→    ]);
+   438→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   439→    expect(mockDb.aIMemoryEntry.update).toHaveBeenCalledWith(
+   440→      expect.objectContaining({ where: { id: 42 } }),
+   441→    );
+   442→  });
+   443→
+   444→  it("maps ocr requestType to invoice category", async () => {
+   445→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   446→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   447→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   448→    await executeCascade(req({ requestType: "ocr" }), { aiFn: () => Promise.resolve(aiResult) });
+   449→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   450→      expect.objectContaining({ where: expect.objectContaining({ category: "invoice" }) }),
+   451→    );
+   452→  });
+   453→
+   454→  it("maps whatsapp requestType to customer category", async () => {
+   455→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   456→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   457→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   458→    await executeCascade(req({ requestType: "whatsapp" }), { aiFn: () => Promise.resolve(aiResult) });
+   459→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   460→      expect.objectContaining({ where: expect.objectContaining({ category: "customer" }) }),
+   461→    );
+   462→  });
+   463→
+   464→  it("takes only last 10 memories", async () => {
+   465→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   466→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   467→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   468→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   469→    expect(mockDb.aIMemoryEntry.findMany).toHaveBeenCalledWith(
+   470→      expect.objectContaining({ take: 10 }),
+   471→    );
+   472→  });
+   473→
+   474→  it("handles corrupted memory content gracefully", async () => {
+   475→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   476→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   477→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([
+   478→      { id: 1, companySlug: "test-co", category: "decision", content: "not-json", lastAccessedAt: new Date() },
+   479→    ]);
+   480→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   481→    expect(r.resolvedBy).toBe("ai");
+   482→  });
+   483→});
+   484→
+   485→// ─── executeCascade integration ──────────────────────────────────────────
+   486→
+   487→describe("executeCascade integration", () => {
+   488→  beforeEach(clearAll);
+   489→
+   490→  it("falls through to AI when all stages miss", async () => {
+   491→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   492→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   493→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   494→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   495→    expect(r.resolvedBy).toBe("ai");
+   496→  });
+   497→
+   498→  it("returns data from AI call", async () => {
+   499→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   500→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   501→    expect(r.data).toEqual({ answer: "ai" });
+   502→  });
+   503→
+   504→  it("logs to AIRequestLog", async () => {
+   505→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   506→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   507→    expect(mockDb.aIRequestLog.create).toHaveBeenCalledWith(
+   508→      expect.objectContaining({
+   509→        data: expect.objectContaining({ companySlug: "test-co", resolvedBy: "ai" }),
+   510→      }),
+   511→    );
+   512→  });
+   513→
+   514→  it("stores result in cache after AI resolution", async () => {
+   515→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   516→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   517→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalled();
+   518→  });
+   519→
+   520→  it("does not store in cache when cacheTtlMs is 0", async () => {
+   521→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   522→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), cacheTtlMs: 0 });
+   523→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+   524→  });
+   525→
+   526→  it("returns latencyMs > 0", async () => {
+   527→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   528→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   529→    expect(r.latencyMs).toBeGreaterThanOrEqual(0);
+   530→  });
+   531→
+   532→  it("returns provider from AI result", async () => {
+   533→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   534→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   535→    expect(r.provider).toBe("test/model");
+   536→  });
+   537→
+   538→  it("returns tokensUsed from AI result", async () => {
+   539→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   540→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   541→    expect(r.tokensUsed).toBe(100);
+   542→  });
+   543→
+   544→  it("returns costUsd from AI result", async () => {
+   545→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   546→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   547→    expect(r.costUsd).toBe(0.001);
+   548→  });
+   549→
+   550→  it("handles AI failure gracefully (data: null)", async () => {
+   551→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   552→    const r = await executeCascade(req(), { aiFn: () => { throw new Error("AI fail"); } });
+   553→    expect(r.data).toBeNull();
+   554→  });
+   555→
+   556→  it("does not cache null results", async () => {
+   557→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   558→    await executeCascade(req(), { aiFn: () => { throw new Error("fail"); } });
+   559→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+   560→  });
+   561→
+   562→  it("AI result includes all GatewayResult fields", async () => {
+   563→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   564→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   565→    expect(r).toHaveProperty("data");
+   566→    expect(r).toHaveProperty("resolvedBy");
+   567→    expect(r).toHaveProperty("latencyMs");
+   568→    expect(r).toHaveProperty("provider");
+   569→    expect(r).toHaveProperty("tokensUsed");
+   570→    expect(r).toHaveProperty("costUsd");
+   571→  });
+   572→
+   573→  it("caches non-cache resolutions", async () => {
+   574→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   575→    mockDb.ruleCandidate.findMany.mockResolvedValue([]);
+   576→    mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
+   577→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   578→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalled();
+   579→  });
+   580→
+   581→  it("does not re-cache cache hits", async () => {
+   582→    const key = fabricHash("test-co:test-input");
+   583→    mockDb.cacheEntry.findUnique.mockResolvedValue({
+   584→      key, value: JSON.stringify({ x: 1 }),
+   585→      expiresAt: new Date(Date.now() + 60000), hitCount: 1,
+   586→    });
+   587→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   588→    await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   589→    expect(mockDb.cacheEntry.upsert).not.toHaveBeenCalled();
+   590→  });
+   591→});
+   592→
+   593→// ─── skipStages ──────────────────────────────────────────────────────────
+   594→
+   595→describe("executeCascade skipStages", () => {
+   596→  beforeEach(clearAll);
+   597→
+   598→  it("skips cache when in skipStages", async () => {
+   599→    mockDb.cacheEntry.findUnique.mockResolvedValue({ key: "k", value: "{}", expiresAt: new Date(Date.now() + 60000), hitCount: 1 });
+   600→    mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
+   601→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), skipStages: ["cache"] });
+   602→    expect(r.resolvedBy).toBe("ai");
+   603→  });
+   604→
+   605→  it("skips pattern when in skipStages", async () => {
+   606→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   607→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), skipStages: ["pattern"] });
+   608→    expect(r.resolvedBy).toBe("ai");
+   609→  });
+   610→
+   611→  it("skips rule when in skipStages", async () => {
+   612→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   613→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), skipStages: ["rule"] });
+   614→    expect(r.resolvedBy).toBe("ai");
+   615→  });
+   616→
+   617→  it("skips memory when in skipStages", async () => {
+   618→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   619→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), skipStages: ["memory"] });
+   620→    expect(r.resolvedBy).toBe("ai");
+   621→  });
+   622→
+   623→  it("skips multiple stages", async () => {
+   624→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   625→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), skipStages: ["cache", "pattern", "rule", "memory"] });
+   626→    expect(r.resolvedBy).toBe("ai");
+   627→  });
+   628→
+   629→  it("goes directly to AI when all early stages skipped", async () => {
+   630→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   631→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult), skipStages: ["cache", "pattern", "rule", "memory"] });
+   632→    expect(r.provider).toBe("test/model");
+   633→    expect(r.data).toEqual({ answer: "ai" });
+   634→  });
+   635→});
+   636→
+   637→// ─── Budget gate ─────────────────────────────────────────────────────────
+   638→
+   639→describe("executeCascade budget gate", () => {
+   640→  beforeEach(clearAll);
+   641→
+   642→  it("allows AI call when checkBudgetGate returns true", async () => {
+   643→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   644→    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
+   645→    (checkBudgetGate as any).mockResolvedValue(true);
+   646→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   647→    expect(r.resolvedBy).toBe("ai");
+   648→    expect(r.budgetBlocked).toBeFalsy();
+   649→  });
+   650→
+   651→  it("blocks AI call when checkBudgetGate returns false", async () => {
+   652→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   653→    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
+   654→    (checkBudgetGate as any).mockResolvedValue(false);
+   655→    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
+   656→    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: true, currentSpendUsd: 100, monthlyBudgetUsd: 100 });
+   657→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   658→    expect(r.budgetBlocked).toBe(true);
+   659→  });
+   660→
+   661→  it("returns budgetBlocked: true when blocked", async () => {
+   662→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   663→    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
+   664→    (checkBudgetGate as any).mockResolvedValue(false);
+   665→    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
+   666→    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: false });
+   667→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   668→    expect(r.budgetBlocked).toBe(true);
+   669→  });
+   670→
+   671→  it("returns budgetReason when blocked", async () => {
+   672→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   673→    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
+   674→    (checkBudgetGate as any).mockResolvedValue(false);
+   675→    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
+   676→    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: true });
+   677→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   678→    expect(r.budgetReason).toBe("hard_stop");
+   679→  });
+   680→
+   681→  it("returns resolvedBy: cache when budget-blocked", async () => {
+   682→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   683→    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
+   684→    (checkBudgetGate as any).mockResolvedValue(false);
+   685→    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
+   686→    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: false });
+   687→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   688→    expect(r.resolvedBy).toBe("cache");
+   689→  });
+   690→
+   691→  it("returns budget_exceeded reason when not hard stop", async () => {
+   692→    mockDb.cacheEntry.findUnique.mockResolvedValue(null);
+   693→    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
+   694→    (checkBudgetGate as any).mockResolvedValue(false);
+   695→    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
+   696→    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: false });
+   697→    const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
+   698→    expect(r.budgetReason).toBe("budget_exceeded");
+   699→  });
+   700→});
+   701→
+   702→// ─── Type exports ────────────────────────────────────────────────────────
+   703→
+   704→describe("type exports", () => {
+   705→  it("GatewayAIFn type is exported as a function type", () => {
+   706→    const fn: GatewayAIFn<string> = async (_req) => ({ data: "test", provider: "p" });
+   707→    expect(typeof fn).toBe("function");
+   708→  });
+   709→
+   710→  it("GatewayOptions type accepts valid options", () => {
+   711→    const opts: GatewayOptions<string> = {
+   712→      aiFn: async (_req) => ({ data: "x", provider: "p" }),
+   713→      cacheTtlMs: 1000,
+   714→      skipStages: ["cache"],
+   715→    };
+   716→    expect(opts.cacheTtlMs).toBe(1000);
+   717→    expect(opts.skipStages).toContain("cache");
+   718→  });
+   719→});
+   720→
+   721→// ─── cacheStore ──────────────────────────────────────────────────────────
+   722→
+   723→describe("cacheStore", () => {
+   724→  beforeEach(clearAll);
+   725→
+   726→  it("upserts cache entry with correct data", async () => {
+   727→    await cacheStore("co1", "input1", { result: 42 });
+   728→    expect(mockDb.cacheEntry.upsert).toHaveBeenCalledWith(
+   729→      expect.objectContaining({
+   730→        where: { key: fabricHash("co1:input1") },
+   731→        create: expect.objectContaining({ companySlug: "co1", key: fabricHash("co1:input1") }),
+   732→      }),
+   733→    );
+   734→  });
+   735→
+   736→  it("uses default TTL of 1 hour", async () => {
+   737→    await cacheStore("co", "inp", {});
+   738→    const createData = mockDb.cacheEntry.upsert.mock.calls[0][0].create;
+   739→    const ttlMs = createData.expiresAt.getTime() - Date.now();
+   740→    expect(ttlMs).toBeGreaterThan(3590000);
+   741→    expect(ttlMs).toBeLessThanOrEqual(3600000);
+   742→  });
+   743→});
+   744→
+   745→// ─── storeAIMemory ───────────────────────────────────────────────────────
+   746→
+   747→describe("storeAIMemory", () => {
+   748→  beforeEach(clearAll);
+   749→
+   750→  it("creates AIMemoryEntry with correct data", async () => {
+   751→    await storeAIMemory({ companySlug: "co", category: "decision", inputHash: "h1", result: { action: "approve" } });
+   752→    expect(mockDb.aIMemoryEntry.create).toHaveBeenCalledWith(
+   753→      expect.objectContaining({
+   754→        data: expect.objectContaining({ companySlug: "co", category: "decision" }),
+   755→      }),
+   756→    );
+   757→  });
+   758→
+   759→  it("serializes result as JSON in content", async () => {
+   760→    await storeAIMemory({ companySlug: "co", category: "product", inputHash: "h2", result: { name: "widget" } });
+   761→    const callData = mockDb.aIMemoryEntry.create.mock.calls[0][0].data;
+   762→    const parsed = JSON.parse(callData.content);
+   763→    expect(parsed.inputHash).toBe("h2");
+   764→    expect(parsed.result.name).toBe("widget");
+   765→  });
+   766→});
+   767→
+   768→afterAll(() => { mock.restore(); });

@@ -28,7 +28,7 @@ const mockDb: Record<string, any> = {
   company: m(), companyRuntime: m(), providerConfig: m(),
   globalPattern: m(), profitSnapshot: m(), aIScoreSnapshot: m(),
   jobQueue: m(), inventoryItem: m(), productCatalog: m(), client: m(),
-  compiledRule: m(),
+  compiledRule: m(), platformSettings: m(), featureFlag: m(),
 };
 
 const mockLogger = {

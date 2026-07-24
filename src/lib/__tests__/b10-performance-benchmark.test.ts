@@ -60,7 +60,7 @@
  * MOCK STRATEGY
  * =============
  * Same monkey-patching pattern as the other test files: import the real
- * `db`, monkey-patch `db.featureFlag` + `db.platformSettings` +
+ * `db`, monkey-patch `db.featureFlag` + `db.platformSettingss` +
  * `db.productAlias` + `db.productMatchAudit` in beforeAll, restore in
  * afterAll. The fake `tx` (built per-size) holds the in-memory alias
  * array; matchProduct's exact-match path uses `tx.productAlias.findUnique`
@@ -144,15 +144,15 @@ const _orig: Record<string, any> = {};
 
 beforeAll(() => {
   _orig.featureFlag = (db as any).featureFlag;
-  _orig.platformSetting = (db as any).platformSetting;
+  _orig.platformSettings = (db as any).platformSettings;
   (db as any).featureFlag = { findUnique: async () => ({ key: "product-auto-matching", isActive: true }) };
-  (db as any).platformSetting = { findMany: async () => [] };
+  (db as any).platformSettings = { findMany: async () => [] };
   invalidateKillSwitchCache();
 });
 
 afterAll(() => {
   (db as any).featureFlag = _orig.featureFlag;
-  (db as any).platformSetting = _orig.platformSetting;
+  (db as any).platformSettings = _orig.platformSettings;
 });
 
 // ─── Benchmark harness ───────────────────────────────────────────────────────

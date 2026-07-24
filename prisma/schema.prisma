@@ -1,13 +1,10 @@
-// ═══════════════════════════════════════════════════════════════════════════════
-// GarfiX ERP — Prisma Schema v2 (P0-1: Full Runtime Model Sync)
-// ═══════════════════════════════════════════════════════════════════════════════
-//
 // NOTE: Financial fields use Decimal instead of Float for production accuracy.
 // SQLite doesn't support Decimal, so in dev it falls back to Float-like behavior.
 // For PostgreSQL production, Decimal ensures exact precision (no floating-point errors).
-//
-// This schema aligns model names with db.xxx calls in the runtime code.
-// All models referenced in src/ are now defined here.
+// This prevents issues like 0.1 + 0.2 = 0.30000000000000004
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -18,32 +15,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Core Business Models
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── AppUser (replaces User — matches db.appUser) ───
-
-model AppUser {
-  uid           String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  password      String?
-  role          String   @default("user")  // user, admin, accountant, viewer
-  companyId     String?
-  companySlug   String?
-  emailVerified Boolean  @default(true)
-  tokenVersion  Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company? @relation(fields: [companyId], references: [id])
-
-  mFASecrets    MFASecret[]
-  sessions      SessionRegistry[]
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      String   @default("user")
+  companyId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company? @relation(fields: [companyId], references: [id])
 }
-
-
-// ─── Company (matches db.company) ───
 
 model Company {
   id                String   @id @default(cuid())
@@ -55,35 +37,24 @@ model Company {
   currency          String   @default("USD")
   taxId             String?
   address           String?
-  deletedAt         DateTime?  // P0-3: Soft Delete
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-
-  users             AppUser[]
+  users             User[]
   accounts          Account[]
   clients           Client[]
   suppliers         Supplier[]
-  journalEntries    JournalEntry[]
+  vouchers          Voucher[]
   paymentVouchers   PaymentVoucher[]
-  fiscalPeriods     FiscalPeriod[]
-  openingBalances   OpeningBalanceEntry[]
+  openingBalances   OpeningBalance[]
   profitDistributions ProfitDistribution[]
   lettersOfCredit   LetterOfCredit[]
   productCatalogs   ProductCatalog[]
   inventoryItems    InventoryItem[]
-  warehouses        Warehouse[]
-  fixedAssets       FixedAsset[]
-  bankAccounts      BankAccount[]
-  budgets           Budget[]
-  costCenters       CostCenter[]
-  employees         Employee[]
-  purchaseInvoices  PurchaseInvoice[]
-  invoices          Invoice[]
-  quotations        Quotation[]
-  purchaseOrders    PurchaseOrder[]
+  financialPeriods  FinancialPeriod[]
+  companyRuntime    CompanyRuntime?
 }
 
-// ─── Account (Chart of Accounts — matches db.account) ───
+// ─── Chart of Accounts ───
 
 model Account {
   id          String   @id @default(cuid())
@@ -92,21 +63,18 @@ model Account {
   type        String   // asset, liability, equity, revenue, expense
   parentId    String?
   companyId   String
-  companySlug String   @default("default")
-  balance     Decimal  @default(0)  // Running balance — updated on JE posting
   isActive    Boolean  @default(true)
-  version     Int      @default(0)  // P0-8: Optimistic Locking for balance updates
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   company     Company  @relation(fields: [companyId], references: [id])
   parent      Account? @relation("AccountHierarchy", fields: [parentId], references: [id])
   children    Account[] @relation("AccountHierarchy")
-  openingBalances OpeningBalanceEntry[]
-  journalEntryLines JournalEntryLine[]
+  openingBalances OpeningBalance[]
+  voucherLines    VoucherLine[]
   @@unique([code, companyId])
 }
 
-// ─── Client (Accounts Receivable — matches db.client) ───
+// ─── Clients (Accounts Receivable) ───
 
 model Client {
   id          String   @id @default(cuid())
@@ -119,15 +87,15 @@ model Client {
   companySlug String   @default("default")
   companyId   String?
   isActive    Boolean  @default(true)
-  deletedAt   DateTime?  // P0-3: Soft Delete
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   company     Company?  @relation(fields: [companyId], references: [id])
   paymentVouchers PaymentVoucher[]
-  invoices     Invoice[]
 }
 
-// ─── Supplier (Accounts Payable — matches db.supplier) ───
+// ─── Suppliers (Accounts Payable) ───
+
 
 model Supplier {
   id          String   @id @default(cuid())
@@ -138,18 +106,16 @@ model Supplier {
   address     String?
   taxId       String?
   companyId   String
-  companySlug String   @default("default")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   company     Company  @relation(fields: [companyId], references: [id])
   paymentVouchers PaymentVoucher[]
   lettersOfCredit  LetterOfCredit[]
-  purchaseInvoices PurchaseInvoice[]
   @@unique([code, companyId])
 }
 
-// ─── Product Catalog (matches db.productCatalog) ───
+// ─── Product Catalog ───
 
 model ProductCatalog {
   id            String   @id @default(cuid())
@@ -157,7 +123,7 @@ model ProductCatalog {
   sku           String   @default("")
   code          String?
   category      String?
-  purchasePrice Decimal  @default(0)
+  purchasePrice Decimal  @default(0)  // NOT "cost" — this is the correct field name
   sellingPrice  Decimal  @default(0)
   unit          String   @default("piece")
   description   String?
@@ -168,18 +134,15 @@ model ProductCatalog {
   updatedAt     DateTime @updatedAt
   company       Company?  @relation(fields: [companyId], references: [id])
   inventoryItems InventoryItem[]
-  productAliases ProductAlias[]
-  productMatchAudits ProductMatchAudit[]
-  matchOverrides   MatchOverride[]
 }
 
-// ─── Inventory Item (matches db.inventoryItem) ───
+// ─── Inventory Items ───
 
 model InventoryItem {
   id            String   @id @default(cuid())
   productId     String
-  quantity      Decimal  @default(0)
-  reorderLevel  Decimal  @default(0)
+  quantity      String   @default("0")
+  reorderLevel  String   @default("0")
   warehouseId   String?
   warehouse     String?
   batchNumber   String?
@@ -193,84 +156,66 @@ model InventoryItem {
   warehouseRef  Warehouse? @relation(fields: [warehouseId], references: [id])
 }
 
-// ─── Warehouse (matches db.warehouse) ───
+// ─── Warehouse ───
 
 model Warehouse {
   id          String   @id @default(cuid())
   name        String
   code        String
   companySlug String
-  companyId   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   inventoryItems InventoryItem[]
-  company     Company? @relation(fields: [companyId], references: [id])
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Accounting Core Models (P0-2, P0-4, P0-5, P0-8)
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Financial Periods ───
 
-// ─── Fiscal Period (matches db.fiscalPeriod — renamed from FinancialPeriod) ───
-
-model FiscalPeriod {
+model FinancialPeriod {
   id          String   @id @default(cuid())
   name        String
   startDate   DateTime
   endDate     DateTime
   status      String   @default("open") // open, closed, locked
   companyId   String
-  companySlug String   @default("default")
-  closedBy    String?
-  closedAt    DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   company     Company  @relation(fields: [companyId], references: [id])
-  openingBalances OpeningBalanceEntry[]
+  openingBalances OpeningBalance[]
   @@unique([name, companyId])
 }
 
-// ─── Journal Entry (matches db.journalEntry — renamed from Voucher) ───
-// P0-2: Posted entries are IMMUTABLE — cannot be deleted/modified
-// P0-4: Cannot post to closed/locked periods
-// P0-5: Minimum 2 lines, balanced debit/credit, accounts must exist
-// P0-8: Version field for optimistic locking
+// ─── Vouchers (Journal Entries) ───
 
-model JournalEntry {
+model Voucher {
   id            String   @id @default(cuid())
   number        String
   date          DateTime
   description   String?
   reference     String?
   status        String   @default("draft") // draft, posted, cancelled
-  entryType     String   @default("general") // general, payment, receipt, transfer
+  voucherType   String   @default("general") // general, payment, receipt, transfer
   companyId     String
-  companySlug   String   @default("default")
   createdBy     String?
-  version       Int      @default(0)  // P0-8: Optimistic Locking
-  deletedAt     DateTime?  // P0-3: Soft Delete
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   company       Company  @relation(fields: [companyId], references: [id])
-  lines         JournalEntryLine[]
+  lines         VoucherLine[]
   @@unique([number, companyId])
 }
 
-// ─── Journal Entry Line (matches db.journalEntryLine — renamed from VoucherLine) ───
-
-model JournalEntryLine {
+model VoucherLine {
   id           String   @id @default(cuid())
   accountId    String
   debit        Decimal  @default(0)
   credit       Decimal  @default(0)
   description  String?
   sortOrder    Int      @default(0)
-  journalEntryId String
+  voucherId    String
   account      Account  @relation(fields: [accountId], references: [id])
-  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  voucher      Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
 }
 
-// ─── Payment Voucher (matches db.paymentVoucher) ───
+// ─── Payment Vouchers (AR/AP) ───
 
 model PaymentVoucher {
   id            String   @id @default(cuid())
@@ -285,19 +230,17 @@ model PaymentVoucher {
   clientId      String?
   supplierId    String?
   companyId     String
-  companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  // NOTE: No deletedAt field — PaymentVoucher does not support soft-delete
   client        Client?  @relation(fields: [clientId], references: [id])
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
   company       Company  @relation(fields: [companyId], references: [id])
-  installmentSchedules InstallmentSchedule[]
+  installments  Installment[]
   @@unique([number, companyId])
 }
 
-// ─── Installment Schedule (matches db.installmentSchedule) ───
-
-model InstallmentSchedule {
+model Installment {
   id              String   @id @default(cuid())
   paymentVoucherId String
   amount          Decimal
@@ -310,25 +253,24 @@ model InstallmentSchedule {
   paymentVoucher  PaymentVoucher @relation(fields: [paymentVoucherId], references: [id], onDelete: Cascade)
 }
 
-// ─── Opening Balance Entry (matches db.openingBalanceEntry) ───
+// ─── Opening Balances ───
 
-model OpeningBalanceEntry {
+model OpeningBalance {
   id            String   @id @default(cuid())
   accountId     String
   periodId      String
   debit         Decimal  @default(0)
   credit        Decimal  @default(0)
   companyId     String
-  companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   account       Account  @relation(fields: [accountId], references: [id])
-  period        FiscalPeriod @relation(fields: [periodId], references: [id])
+  period        FinancialPeriod @relation(fields: [periodId], references: [id])
   company       Company  @relation(fields: [companyId], references: [id])
   @@unique([accountId, periodId])
 }
 
-// ─── Profit Distribution (matches existing) ───
+// ─── Profit Distribution ───
 
 model ProfitDistribution {
   id            String   @id @default(cuid())
@@ -336,7 +278,7 @@ model ProfitDistribution {
   totalProfit   Decimal  @default(0)
   retained      Decimal  @default(0)
   distributed   Decimal  @default(0)
-  distributionType String @default("proportional")
+  distributionType String @default("proportional") // proportional, equal, custom
   status        String   @default("draft") // draft, approved, executed
   notes         String?
   companyId     String
@@ -357,15 +299,15 @@ model ProfitDistributionEntry {
   distribution  ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
 }
 
-// ─── Letter of Credit (matches db.letterOfCredit) ───
+// ─── Letters of Credit (Trade Finance) ───
 
 model LetterOfCredit {
   id            String   @id @default(cuid())
   number        String
-  type          String   @default("import")
+  type          String   @default("import") // import, export
   amount        Decimal
   currency      String   @default("USD")
-  status        String   @default("draft")
+  status        String   @default("draft") // draft, issued, confirmed, utilized, expired, cancelled
   issueDate     DateTime?
   expiryDate    DateTime?
   beneficiary   String?
@@ -385,748 +327,29 @@ model LetterOfCredit {
 model LetterOfCreditDocument {
   id            String   @id @default(cuid())
   letterOfCreditId String
-  documentType  String
+  documentType  String  // invoice, bill_of_lading, packing_list, insurance, certificate
   fileName      String
   fileUrl       String?
   uploadedAt    DateTime @default(now())
   letterOfCredit LetterOfCredit @relation(fields: [letterOfCreditId], references: [id], onDelete: Cascade)
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Extended Accounting Models
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── Bank Account (matches db.bankAccount) ───
-
-model BankAccount {
-  id            String   @id @default(cuid())
-  name          String
-  accountNumber String
-  bankName      String
-  branch        String?
-  iban          String?
-  currency      String   @default("USD")
-  balance       Decimal  @default(0)
-  companyId     String
-  companySlug   String   @default("default")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id])
-  bankTransactions    BankTransaction[]
-  bankReconciliations BankReconciliation[]
-}
-
-// ─── Bank Transaction (matches db.bankTransaction) ───
-
-model BankTransaction {
-  id            String   @id @default(cuid())
-  bankAccountId String
-  type          String   // deposit, withdrawal, transfer, fee
-  amount        Decimal
-  reference     String?
-  description   String?
-  date          DateTime
-  reconciled    Boolean  @default(false)
-  reconciliationId String?
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
-  bankReconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id])
-}
-
-// ─── Bank Reconciliation (matches db.bankReconciliation) ───
-
-model BankReconciliation {
-  id            String   @id @default(cuid())
-  bankAccountId String
-  periodId      String?
-  status        String   @default("draft") // draft, in_progress, completed
-  startDate     DateTime
-  endDate       DateTime
-  openingBalance Decimal
-  closingBalance Decimal
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
-  bankTransactions BankTransaction[]
-}
-
-// ─── Fixed Asset (matches db.fixedAsset) ───
-
-model FixedAsset {
-  id            String   @id @default(cuid())
-  name          String
-  code          String
-  category      String
-  purchaseDate  DateTime
-  purchasePrice Decimal
-  currentValue  Decimal
-  depreciationRate Decimal @default(0)
-  accumulatedDepreciation Decimal @default(0)
-  usefulLifeYears Int
-  status        String   @default("active") // active, disposed, written_off
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id])
-  depreciationEntries DepreciationEntry[]
-  @@unique([code, companyId])
-}
-
-// ─── Depreciation Entry (matches db.depreciationEntry) ───
-
-model DepreciationEntry {
-  id            String   @id @default(cuid())
-  assetId       String
-  periodId      String?
-  amount        Decimal
-  date          DateTime
-  description   String?
-  companyId     String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  fixedAsset    FixedAsset @relation(fields: [assetId], references: [id])
-}
-
-// ─── Budget (matches db.budget) ───
-
-model Budget {
-  id            String   @id @default(cuid())
-  name          String
-  periodId      String?
-  totalAmount   Decimal @default(0)
-  status        String   @default("draft") // draft, approved, revised
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id])
-  budgetLines   BudgetLine[]
-}
-
-model BudgetLine {
-  id            String   @id @default(cuid())
-  budgetId      String
-  accountId     String
-  costCenterId  String?
-  plannedAmount Decimal @default(0)
-  actualAmount  Decimal @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  budget        Budget     @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  costCenter    CostCenter? @relation(fields: [costCenterId], references: [id])
-}
-
-// ─── Cost Center (matches db.costCenter) ───
-
-model CostCenter {
-  id            String   @id @default(cuid())
-  name          String
-  code          String
-  description   String?
-  companyId     String
-  companySlug   String   @default("default")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id])
-  budgetLines   BudgetLine[]
-  @@unique([code, companyId])
-}
-
-// ─── FX Revaluation (matches db.fxRevaluation) ───
-
-model FxRevaluation {
-  id            String   @id @default(cuid())
-  fromCurrency  String
-  toCurrency    String
-  rate          Decimal
-  date          DateTime
-  status        String   @default("draft") // draft, posted, cancelled
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Inter-Company Transaction (matches db.interCompanyTransaction) ───
-
-model InterCompanyTransaction {
-  id            String   @id @default(cuid())
-  type          String   // transfer, invoice, payment
-  amount        Decimal
-  fromCompanyId String
-  toCompanyId   String
-  status        String   @default("draft") // draft, posted, settled
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Landed Cost Allocation (matches db.landedCostAllocation/landedCostLine) ───
-
-model LandedCostAllocation {
-  id            String   @id @default(cuid())
-  purchaseInvoiceId String?
-  description   String?
-  totalCost     Decimal @default(0)
-  status        String   @default("draft")
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  lines         LandedCostLine[]
-}
-
-model LandedCostLine {
-  id                 String   @id @default(cuid())
-  allocationId       String
-  costType           String   // freight, insurance, customs, handling
-  amount             Decimal  @default(0)
-  allocationMethod   String   @default("quantity") // quantity, weight, value, manual
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  landedCostAllocation LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+// Keep the existing Post model for compatibility
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// HR Models (matches db.hR*, db.employee)
+// AI Fabric Models (Phases 1-16)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── Employee (matches db.employee) ───
-
-model Employee {
-  id            String   @id @default(cuid())
-  name          String
-  code          String
-  department    String?
-  position      String?
-  hireDate      DateTime?
-  salary        Decimal  @default(0)
-  companyId     String
-  companySlug   String   @default("default")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id])
-  salaries      HRSalary[]
-  commissions   HRCommission[]
-  attendances   HRAttendance[]
-  leaveRequests HRLeaveRequest[]
-  performances  HRPerformance[]
-  @@unique([code, companyId])
-}
-
-// ─── HR Salary (matches db.hRSalary) ───
-
-model HRSalary {
-  id            String   @id @default(cuid())
-  employeeId    String
-  amount        Decimal
-  month         String   // "2026-01"
-  status        String   @default("draft") // draft, paid, cancelled
-  paidDate      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  employee      Employee @relation(fields: [employeeId], references: [id])
-}
-
-// ─── HR Commission (matches db.hRCommission) ───
-
-model HRCommission {
-  id            String   @id @default(cuid())
-  employeeId    String
-  amount        Decimal
-  period        String
-  status        String   @default("draft")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  employee      Employee @relation(fields: [employeeId], references: [id])
-}
-
-// ─── HR Attendance (matches db.hRAttendance) ───
-
-model HRAttendance {
-  id            String   @id @default(cuid())
-  employeeId    String
-  date          DateTime
-  checkIn       DateTime?
-  checkOut      DateTime?
-  status        String   @default("present") // present, absent, late, excused
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  employee      Employee @relation(fields: [employeeId], references: [id])
-}
-
-// ─── HR Leave Request (matches db.hRLeaveRequest) ───
-
-model HRLeaveRequest {
-  id            String   @id @default(cuid())
-  employeeId    String
-  type          String   // annual, sick, maternity, emergency
-  startDate     DateTime
-  endDate       DateTime
-  status        String   @default("pending") // pending, approved, rejected
-  approvedBy    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  employee      Employee @relation(fields: [employeeId], references: [id])
-}
-
-// ─── HR Performance (matches db.hRPerformance) ───
-
-model HRPerformance {
-  id            String   @id @default(cuid())
-  employeeId    String
-  period        String
-  rating        Decimal  @default(0)
-  goals         String?
-  feedback      String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  employee      Employee @relation(fields: [employeeId], references: [id])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Invoice & Sales Models
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── Invoice (matches db.invoice) ───
-
-model Invoice {
-  id            Int      @id @default(autoincrement())
-  invoiceNumber String
-  clientName    String?
-  clientId      String?
-  issueDate     DateTime @default(now())
-  dueDate       DateTime?
-  total         Decimal  @default(0)
-  subtotal      Decimal  @default(0)
-  taxAmount     Decimal  @default(0)
-  status        String   @default("draft") // draft, sent, paid, cancelled
-  source        String?
-  eInvoiceAuthority String?  // zatca, uae_fta, kuwait_decree_10_2026, etc.
-  companySlug   String   @default("default")
-  companyId     String?
-  version       Int      @default(0)  // P0-8: Optimistic Locking
-  deletedAt     DateTime?  // P0-3: Soft Delete
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company?  @relation(fields: [companyId], references: [id])
-  client        Client?   @relation(fields: [clientId], references: [id])
-  eInvoice      EInvoice?
-  paymentTransactions PaymentTransaction[]
-}
-
-// ─── Purchase Invoice (matches db.purchaseInvoice) ───
-
-model PurchaseInvoice {
-  id            String   @id @default(cuid())
-  invoiceNumber String
-  supplierId    String?
-  issueDate     DateTime @default(now())
-  dueDate       DateTime?
-  total         Decimal  @default(0)
-  status        String   @default("draft") // draft, received, paid, cancelled
-  companySlug   String   @default("default")
-  companyId     String?
-  deletedAt     DateTime?  // P0-3: Soft Delete
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  company       Company?  @relation(fields: [companyId], references: [id])
-}
-
-
-// ─── Quotation (matches db.quotation) ───
-
-model Quotation {
-  id            String   @id @default(cuid())
-  number        String
-  clientId      String?
-  issueDate     DateTime @default(now())
-  expiryDate    DateTime?
-  total         Decimal  @default(0)
-  status        String   @default("draft") // draft, sent, accepted, rejected, converted
-  companySlug   String   @default("default")
-  companyId     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company? @relation(fields: [companyId], references: [id])
-}
-
-// ─── Purchase Order (matches db.purchaseOrder) ───
-
-model PurchaseOrder {
-  id            String   @id @default(cuid())
-  number        String
-  supplierId    String?
-  orderDate     DateTime @default(now())
-  expectedDelivery DateTime?
-  total         Decimal  @default(0)
-  status        String   @default("draft") // draft, confirmed, received, cancelled
-  companySlug   String   @default("default")
-  companyId     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company? @relation(fields: [companyId], references: [id])
-}
-
-// ─── Stock Movement (matches db.stockMovement) ───
-
-model StockMovement {
-  id            String   @id @default(cuid())
-  productId     String
-  type          String   // in, out, transfer, adjustment, initial_stock
-  quantity      Decimal
-  reference     String?
-  cost          Decimal  @default(0)
-  date          DateTime @default(now())
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-
-// ─── Payment Transaction (matches db.paymentTransaction) ───
-
-model PaymentTransaction {
-  id            String   @id @default(cuid())
-  invoiceId     Int?
-  amount        Decimal
-  method        String   // cash, bank_transfer, card, online
-  reference     String?
-  date          DateTime @default(now())
-  status        String   @default("completed") // completed, pending, failed, reversed
-  companySlug   String   @default("default")
-  companyId     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
-}
-
-// ─── Refund Transaction (matches db.refundTransaction) ───
-
-model RefundTransaction {
-  id            String   @id @default(cuid())
-  originalTransactionId String?
-  amount        Decimal
-  reason        String?
-  date          DateTime @default(now())
-  status        String   @default("draft") // draft, approved, processed
-  companySlug   String   @default("default")
-  companyId     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Post-Dated Check (matches db.postDatedCheck) ───
-
-model PostDatedCheck {
-  id            String   @id @default(cuid())
-  checkNumber   String
-  amount        Decimal
-  dueDate       DateTime
-  status        String   @default("pending") // pending, deposited, cancelled, bounced
-  bankName      String?
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Tax Filing (matches db.taxFiling) ───
-
-model TaxFiling {
-  id            String   @id @default(cuid())
-  period        String
-  authority     String   // zatca, uae_fta, kuwait, etc.
-  totalTax      Decimal  @default(0)
-  status        String   @default("draft") // draft, filed, approved, rejected
-  filingDate    DateTime?
-  companyId     String
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// E-Invoicing Models (P0-7: ZATCA/MENA compliance)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── E-Invoice (matches db.eInvoice) ───
-
-model EInvoice {
-  id                String   @id @default(cuid())
-  invoiceId         Int      @unique
-  authorityType     String   @default("none") // none, zatca, uae_fta, bahrain_nbr, oman_tax, kuwait_decree_10_2026, eta_egypt
-  submissionStatus  String   @default("pending") // pending, submitted, accepted, rejected, cleared
-  uuid              String?
-  xmlHash           String?
-  signedXml         String?
-  rawXml            String?
-  qrCodeBase64      String?  // P0-7: ZATCA TLV QR
-  rejectionReason   String?
-  submittedAt       DateTime?
-  clearedAt         DateTime?
-  companySlug       String   @default("default")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  invoice           Invoice  @relation(fields: [invoiceId], references: [id])
-}
-
-// ─── ZATCA Certificate (matches db.zatcaCertificate) ───
-
-model ZatcaCertificate {
-  id                String   @id @default(cuid())
-  companySlug       String
-  certificateType   String   // csid, ccd
-  certificateDataEnc String?  // AES-256-GCM encrypted X.509 PEM
-  privateKeyDataEnc  String?  // AES-256-GCM encrypted private key
-  serialNumber      String?
-  expiryDate        DateTime?
-  status            String   @default("active") // active, expired, revoked, pending
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  @@unique([companySlug, certificateType])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Product Matching Models (matches db.productMatchAudit, productAlias, matchOverride)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-model ProductAlias {
-  id            String   @id @default(cuid())
-  productId     String
-  alias         String
-  language      String   @default("ar") // ar, en
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  product       ProductCatalog @relation(fields: [productId], references: [id])
-  @@unique([alias, companySlug, language])
-}
-
-model ProductMatchAudit {
-  id            String   @id @default(cuid())
-  inputText     String
-  matchedProductId String?
-  matchTier     String   // exact, normalized, fuzzy, ai_zone, no_match
-  confidence    Float    @default(0)
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  product       ProductCatalog? @relation(fields: [matchedProductId], references: [id])
-}
-
-model MatchOverride {
-  id            String   @id @default(cuid())
-  inputText     String
-  productId     String
-  companySlug   String   @default("default")
-  overriddenBy  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  product       ProductCatalog @relation(fields: [productId], references: [id])
-  @@unique([inputText, companySlug])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Security & Auth Models (matches db.mFASecret, sessionRegistry, rolePermission)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── MFA Secret (matches db.mFASecret) ───
-
-model MFASecret {
-  id            String   @id @default(cuid())
-  userId        String
-  secret        String
-  verified      Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          AppUser  @relation(fields: [userId], references: [uid], onDelete: Cascade)
-  @@unique([userId])
-}
-
-// ─── Session Registry (matches db.sessionRegistry) ───
-
-model SessionRegistry {
-  id            String   @id @default(cuid())
-  userId        String
-  tokenHash     String
-  deviceInfo    String?
-  ipAddress     String?
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          AppUser  @relation(fields: [userId], references: [uid], onDelete: Cascade)
-}
-
-// ─── Role Permission (matches db.rolePermission) ───
-
-model RolePermission {
-  id            String   @id @default(cuid())
-  role          String
-  permissionKey String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  // Note: RolePermission.role is not a FK to AppUser.role — it's a standalone mapping
-  @@unique([role, permissionKey])
-}
-
-// ─── Email Verification (matches db.emailVerification) ───
-
-model EmailVerification {
-  id            String   @id @default(cuid())
-  email         String
-  code          String
-  expiresAt     DateTime
-  verified      Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@unique([email, code])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Platform Admin Models (matches db.platformSettings, platformSettingsHistory, etc.)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── Platform Settings (matches db.platformSettings) ───
-
-model PlatformSettings {
-  id            Int      @id @default(autoincrement())
-  key           String   @unique
-  value         String
-  category      String   @default("general") // general, ai, billing, security, e-invoicing
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  history       PlatformSettingsHistory[]
-}
-
-// ─── Platform Settings History (matches db.platformSettingsHistory) ───
-
-model PlatformSettingsHistory {
-  id            Int      @id @default(autoincrement())
-  settingId     Int
-  oldValue      String?
-  newValue      String
-  changedBy     String?
-  createdAt     DateTime @default(now())
-  setting       PlatformSettings @relation(fields: [settingId], references: [id])
-}
-
-// ─── Feature Flag (matches db.featureFlag) ───
-
-model FeatureFlag {
-  id            String   @id @default(cuid())
-  key           String   @unique
-  name          String
-  description   String?
-  enabled       Boolean  @default(false)
-  rolloutPct    Int      @default(0) // 0-100
-  targetSlugs   String?  // JSON array of company slugs, null = all
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Support Ticket (matches db.supportTicket) ───
-
-model SupportTicket {
-  id            String   @id @default(cuid())
-  subject       String
-  description   String?
-  status        String   @default("open") // open, in_progress, resolved, closed
-  priority      String   @default("medium") // low, medium, high, critical
-  companySlug   String
-  createdBy     String?
-  assignedTo    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Landing Content (matches db.landingContent) ───
-
-model LandingContent {
-  id            Int      @id @default(autoincrement())
-  section       String   @unique
-  title         String?
-  subtitle      String?
-  body          String?
-  ctaText       String?
-  ctaLink       String?
-  imageUrl      String?
-  sortOrder     Int      @default(0)
-  locale        String   @default("ar")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Audit & Logging Models (matches db.auditLog, accountingAuditLog, adminAuditLog)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── Audit Log (matches db.auditLog) ───
-
-model AuditLog {
-  id            Int      @id @default(autoincrement())
-  userUid       String?
-  userEmail     String?
-  action        String
-  entity        String?
-  entityId      String?
-  companySlug   String?
-  details       String?  // JSON
-  createdAt     DateTime @default(now())
-}
-
-// ─── Accounting Audit Log (matches db.accountingAuditLog) ───
-
-model AccountingAuditLog {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  action        String   // post, reverse, close_period, reopen_period, adjust
-  entity        String   // journal_entry, fiscal_period, account
-  entityId      String?
-  performedBy   String?
-  details       String?
-  createdAt     DateTime @default(now())
-}
-
-// ─── Admin Audit Log (matches db.adminAuditLog) ───
-
-model AdminAuditLog {
-  id            Int      @id @default(autoincrement())
-  adminEmail    String
-  action        String
-  targetSlug    String?
-  details       String?
-  createdAt     DateTime @default(now())
-}
-
-// ─── Tamper Evidence Chain (matches db.tamperEvidenceChain) ───
-
-model TamperEvidenceChain {
-  id            String   @id @default(cuid())
-  entityType    String   // journal_entry, fiscal_period
-  entityId      String
-  hash          String
-  previousHash  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// AI Fabric Models (matches db.aI*, db.companyRuntime, etc.)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── AI Request Log (matches db.aIRequestLog) ───
+// ─── AI Request Log (Phase 1) ───
 
 model AIRequestLog {
   id          Int      @id @default(autoincrement())
@@ -1135,94 +358,14 @@ model AIRequestLog {
   resolvedBy  String   // cache, pattern, rule, memory, ai
   provider    String?
   tokensUsed  Int?
-  costUsd     Decimal  @default(0)
-  latencyMs   Int      @default(0)
-  createdAt   DateTime @default(now())
-}
-
-// ─── AI Usage Log (matches db.aIUsageLog) ───
-
-model AIUsageLog {
-  id          Int      @id @default(autoincrement())
-  companySlug String
-  provider    String?
-  model       String?
-  tokensIn    Int      @default(0)
-  tokensOut   Int      @default(0)
-  costUsd     Decimal  @default(0)
-  requestType String?
-  createdAt   DateTime @default(now())
-}
-
-// ─── AI Memory Entry (matches db.aIMemoryEntry) ───
-
-model AIMemoryEntry {
-  id             Int      @id @default(autoincrement())
-  companySlug    String
-  category       String   // decision, invoice, customer, product, digital-twin
-  content        String
-  lastAccessedAt DateTime @default(now())
-  createdAt      DateTime @default(now())
-}
-
-// ─── AI Memory Note (matches db.aIMemoryNote) ───
-
-model AIMemoryNote {
-  id             Int      @id @default(autoincrement())
-  companySlug    String
-  category       String
-  content        String
-  confidence     Float    @default(1.0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-// ─── AI Model Registry (matches db.aIModelRegistry) ───
-
-model AIModelRegistry {
-  id          Int      @id @default(autoincrement())
-  provider    String
-  model       String
-  costPerTokenIn Float  @default(0)
-  costPerTokenOut Float @default(0)
-  maxTokens   Int?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ─── AI Benchmark Result (matches db.aIBenchmarkResult) ───
-
-model AIBenchmarkResult {
-  id          Int      @id @default(autoincrement())
-  provider    String
-  model       String
-  taskType    String
-  score       Float    @default(0)
-  latencyMs   Int      @default(0)
   costUsd     Float    @default(0)
-  createdAt   DateTime @default(now())
-}
-
-// ─── AI Processing Log (matches db.aIProcessingLog) ───
-
-model AIProcessingLog {
-  id          Int      @id @default(autoincrement())
-  companySlug String
-  requestType String
-  provider    String?
-  model       String?
-  resolvedBy  String?
-  tokensUsed  Int?
-  costUsd     Decimal  @default(0)
   latencyMs   Int      @default(0)
-  success     Boolean  @default(true)
   createdAt   DateTime @default(now())
 }
 
-// ─── AI Fabric Cache Entry (matches db.aIFabricCacheEntry) ───
+// ─── Cache Entry (Phase 1) ───
 
-model AIFabricCacheEntry {
+model CacheEntry {
   key        String   @id
   companySlug String
   value      String
@@ -1232,19 +375,30 @@ model AIFabricCacheEntry {
   updatedAt  DateTime @updatedAt
 }
 
-// ─── Budget Config (matches db.budgetConfig) ───
+// ─── AI Memory Entry (Phase 1/7) ───
+
+model AIMemoryEntry {
+  id             Int      @id @default(autoincrement())
+  companySlug    String
+  category       String   // decision, invoice, customer, product, digital-twin, decision_trace
+  content        String
+  lastAccessedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+// ─── Budget Config (Phase 6) ───
 
 model BudgetConfig {
   companySlug      String   @id
-  monthlyBudgetUsd Decimal  @default(0)
-  currentSpendUsd  Decimal  @default(0)
+  monthlyBudgetUsd Float    @default(0)
+  currentSpendUsd  Float    @default(0)
   alertThresholdPct Int     @default(80)
   hardStopEnabled  Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
 
-// ─── Company Runtime (matches db.companyRuntime) ───
+// ─── Company Runtime (Phase 4) ───
 
 model CompanyRuntime {
   id                   Int      @id @default(autoincrement())
@@ -1255,9 +409,10 @@ model CompanyRuntime {
   maxAcceptableLatencyMs Int?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  company              Company  @relation(fields: [companyId], references: [id])
 }
 
-// ─── Notification (matches db.notification) ───
+// ─── Notification (Phase 6) ───
 
 model Notification {
   id          Int      @id @default(autoincrement())
@@ -1269,7 +424,7 @@ model Notification {
   createdAt   DateTime @default(now())
 }
 
-// ─── Job Queue (matches db.jobQueue) ───
+// ─── Job Queue (Phase 4/5) ───
 
 model JobQueue {
   id          Int      @id @default(autoincrement())
@@ -1285,7 +440,7 @@ model JobQueue {
   createdAt   DateTime @default(now())
 }
 
-// ─── Provider Config (matches db.providerConfig) ───
+// ─── Provider Config (Phase 3) ───
 
 model ProviderConfig {
   taskType         String   @id
@@ -1295,7 +450,7 @@ model ProviderConfig {
   updatedAt        DateTime @updatedAt
 }
 
-// ─── Rule Candidate (matches db.ruleCandidate) ───
+// ─── Rule Candidate (Phase 11) ───
 
 model RuleCandidate {
   id               Int      @id @default(autoincrement())
@@ -1310,7 +465,7 @@ model RuleCandidate {
   updatedAt        DateTime @updatedAt
 }
 
-// ─── Global Pattern (matches db.globalPattern) ───
+// ─── Global Pattern (Phase 12) ───
 
 model GlobalPattern {
   patternKey              String   @id
@@ -1323,28 +478,28 @@ model GlobalPattern {
   updatedAt               DateTime @updatedAt
 }
 
-// ─── Profit Snapshot (matches db.profitSnapshot) ───
+// ─── Profit Snapshot (Phase 8) ───
 
 model ProfitSnapshot {
   id            Int      @id @default(autoincrement())
   companySlug   String
   periodStart   DateTime
   periodEnd     DateTime
-  revenueUsd    Decimal  @default(0)
-  infraCostUsd  Decimal  @default(0)
-  aiCostUsd     Decimal  @default(0)
-  workerCostUsd Decimal  @default(0)
-  profitUsd     Decimal  @default(0)
+  revenueUsd    Float    @default(0)
+  infraCostUsd  Float    @default(0)
+  aiCostUsd     Float    @default(0)
+  workerCostUsd Float    @default(0)
+  profitUsd     Float    @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
-// ─── AI Score Snapshot (matches db.aiScoreSnapshot) ───
+// ─── AI Score Snapshot (Phase 14) ───
 
 model AIScoreSnapshot {
   id               Int      @id @default(autoincrement())
   companySlug      String
-  period           String
+  period           String   // "YYYY-MM-DD"
   score            Float
   cacheHitPct      Float    @default(0)
   ruleHitPct       Float    @default(0)
@@ -1355,7 +510,7 @@ model AIScoreSnapshot {
   @@unique([companySlug, period])
 }
 
-// ─── Compiled Rule (matches db.compiledRule) ───
+// ─── Compiled Rule (Phase 16a) ───
 
 model CompiledRule {
   id                      Int      @id @default(autoincrement())
@@ -1364,216 +519,141 @@ model CompiledRule {
   clusterKey              String
   compiledOutput          String?
   sourceCandidateCount    Int      @default(0)
-  estimatedAnnualSavingsUsd Decimal @default(0)
+  estimatedAnnualSavingsUsd Float  @default(0)
   status                  String   @default("pending_review")
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Automation Models (matches db.automationRule, automationExecutionLog)
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Invoice (Phase 15) ───
 
-model AutomationRule {
-  id            String   @id @default(cuid())
-  name          String
-  triggerType   String   // event, schedule, threshold
-  condition     String?  // JSON
-  action        String?  // JSON
-  isActive      Boolean  @default(true)
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  companySlug   String
+  invoiceNumber String
+  clientName    String?
+  issueDate     String
+  dueDate       String?
+  total         String   @default("0")
+  status        String   @default("draft")
+  source        String?
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Feature Flag ───
+
+model FeatureFlag {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  label       String
+  description String?
+  plans       String   @default("[]")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Platform Settings ───
+
+model PlatformSettings {
+  key        String   @id
+  category   String   @default("general")
+  valueType  String   @default("string")
+  value      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── Platform Settings History ───
+
+model PlatformSettingsHistory {
+  id         Int      @id @default(autoincrement())
+  settingKey String
+  newValue   String   @default("")
+  changedBy  String   @default("system")
+  createdAt  DateTime @default(now())
+}
+
+// ─── App User ───
+
+model AppUser {
+  uid           String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  displayName   String   @default("")
+  role          String   @default("employee")
+  companies     String   @default("[]")
+  permissions   String   @default("{}")
+  emailVerified Boolean  @default(false)
+  tokenVersion  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Product Alias (matching) ───
+
+model ProductAlias {
+  id              Int      @id @default(autoincrement())
+  productCatalogId Int
+  companySlug     String   @default("default")
+  alias           String
+  source          String   @default("manual") // manual, ai, import
+  confidence      Float    @default(1.0)
+  isVerified      Boolean  @default(false)
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([companySlug, alias])
+}
+
+// ─── Product Match Audit ───
+
+model ProductMatchAudit {
+  id               Int      @id @default(autoincrement())
+  companySlug      String   @default("default")
+  invoiceId        Int?
+  inputText        String
+  matchedProductId Int?
+  matchedAlias     String?
+  tier             String   @default("auto-match") // auto-match, suggested, new-product
+  action           String   @default("auto-matched")
+  confidence       Float    @default(1.0)
+  resolvedBy       String?
+  isUndone         Boolean  @default(false)
+  undoneBy         String?
+  undoneAt         DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── Match Override (learning) ───
+
+model MatchOverride {
+  id              Int      @id @default(autoincrement())
+  companySlug     String
+  inputText       String
+  inputNormalized String?
+  fromProductId   Int?
+  toProductId     Int?
+  chosenAlias     String?
+  auditId         Int?
+  reason          String?
+  overriddenBy    String
+  createdAt       DateTime @default(now())
+}
+
+// ─── Stock Movement ───
+
+model StockMovement {
+  id            Int      @id @default(autoincrement())
   companySlug   String   @default("default")
+  productId     Int
+  quantity      String   @default("0")
+  movementType  String   @default("adjustment") // sale, purchase, adjustment, return, collision-recovery
+  sourceType    String?
+  sourceId      String?
+  reference     String?
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  executionLogs AutomationExecutionLog[]
-}
-
-model AutomationExecutionLog {
-  id            String   @id @default(cuid())
-  ruleId        String
-  triggeredAt   DateTime @default(now())
-  completedAt   DateTime?
-  status        String   @default("running") // running, success, failed
-  result        String?  // JSON
-  error         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  rule          AutomationRule @relation(fields: [ruleId], references: [id])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Webhook & Integration Models (matches db.webhookEndpoint, webhookDelivery)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-model WebhookEndpoint {
-  id            String   @id @default(cuid())
-  url           String
-  events        String   // JSON array: ["invoice.created", "payment.completed"]
-  secret        String?
-  isActive      Boolean  @default(true)
-  companyId     String?
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deliveries    WebhookDelivery[]
-}
-
-model WebhookDelivery {
-  id            String   @id @default(cuid())
-  endpointId    String
-  event         String
-  payload       String   // JSON
-  statusCode    Int?
-  response      String?
-  attempts      Int      @default(0)
-  status        String   @default("pending") // pending, delivered, failed
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id])
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Invoice Brain & Template Models (matches db.invoiceBrain*, invoiceTemplate*)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-model InvoiceBrainHeaderMap {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  headerName    String
-  mappedField   String
-  language      String   @default("ar")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@unique([companySlug, headerName, language])
-}
-
-model InvoiceBrainTemplate {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  templateName  String
-  columnMap     String?  // JSON
-  delimiter     String   @default(",")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@unique([companySlug, templateName])
-}
-
-model InvoiceTemplate {
-  id            String   @id @default(cuid())
-  name          String
-  layout        String?  // JSON
-  companySlug   String   @default("default")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model InvoiceTemplateSettings {
-  id            Int      @id @default(autoincrement())
-  companySlug   String   @unique
-  defaultTemplateId String?
-  showLogo      Boolean  @default(true)
-  showPaymentTerms Boolean @default(true)
-  footerText    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Misc Models (matches remaining db.xxx references)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ─── Announcement (matches db.announcement) ───
-
-model Announcement {
-  id            Int      @id @default(autoincrement())
-  title         String
-  body          String?
-  type          String   @default("info") // info, warning, critical
-  targetSlug    String?  // null = all tenants
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Chat History (matches db.chatHistory) ───
-
-model ChatHistory {
-  id            Int      @id @default(autoincrement())
-  userUid       String
-  companySlug   String
-  role          String   // user, assistant, system
-  content       String
-  sessionId     String?
-  createdAt     DateTime @default(now())
-}
-
-// ─── Idempotency Key (matches db.idempotencyKey) ───
-
-model IdempotencyKey {
-  id            String   @id @default(cuid())
-  key           String   @unique
-  method        String   // POST, PATCH
-  path          String
-  statusCode    Int?
-  responseBody  String?
-  createdAt     DateTime @default(now())
-  expiresAt     DateTime
-}
-
-// ─── Setup Wizard Progress (matches db.setupWizardProgress) ───
-
-model SetupWizardProgress {
-  id            Int      @id @default(autoincrement())
-  companySlug   String   @unique
-  currentStep   Int      @default(0)
-  completed     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── Subscription Schedule (matches db.subscriptionSchedule) ───
-
-model SubscriptionSchedule {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  plan          String
-  startDate     DateTime
-  endDate       DateTime?
-  autoRenew     Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ─── WPS File (matches db.wpsFile) ───
-
-model WPSFile {
-  id            Int      @id @default(autoincrement())
-  companySlug   String
-  fileName      String
-  uploadDate    DateTime @default(now())
-  processed     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-}
-
-// ─── Module (matches db.module) ───
-
-model Module {
-  id            String   @id @default(cuid())
-  key           String   @unique
-  name          String
-  description   String?
-  isActive      Boolean  @default(true)
-  requiredPlan  String   @default("trial")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// Keep the existing Post model for compatibility
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

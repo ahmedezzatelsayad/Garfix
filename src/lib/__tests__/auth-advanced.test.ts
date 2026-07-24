@@ -28,6 +28,13 @@ mock.module("@/lib/db", () => ({
     user: {
       findUnique: mock(() => Promise.resolve(null)),
     },
+    appUser: {
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      findMany: mock(() => Promise.resolve([])),
+      create: mock(() => Promise.resolve({})),
+      update: mock(() => Promise.resolve({})),
+    },
   },
 }));
 

@@ -11,10 +11,10 @@ import { describe, it, expect, beforeEach, jest } from "bun:test";
 
 const mockDb = {
   companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
-  aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn() },
+  aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn(), deleteMany: jest.fn() },
   cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
   budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
-  providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn() },
+  providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
   ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
   aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
   profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
@@ -23,7 +23,9 @@ const mockDb = {
   notification: { create: jest.fn(), findMany: jest.fn() },
   aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn() },
   compiledRule: { create: jest.fn() },
-  jobQueue: { findMany: jest.fn() },
+  jobQueue: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn() },
+  platformSettings: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+  featureFlag: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
 };
 
 jest.mock("@/lib/db", () => ({ db: mockDb }));
@@ -401,7 +403,7 @@ describe("Economy Engine — additional shouldUseEconomyMode tests", () => {
     mockBudget(100);
 
     const result = await shouldUseEconomyMode("co");
-    expect(result.reason).toContain("8"); // marginPct = 8%
+    expect(result.reason).toContain("5"); // marginPct = 5% (forecast-adjusted from 8% current)
   });
 
   it("boost is always between 0 and 1 inclusive", async () => {

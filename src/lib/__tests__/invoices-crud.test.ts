@@ -19,7 +19,7 @@
  *    the real syncInventoryOnSale) and productMatcher.test.ts (which needs
  *    the real matchProduct via its own @/lib/db mock). Instead, we
  *    monkey-patch the shared `db` object's properties (invoice, auditLog,
- *    company, $transaction, featureFlag, platformSetting) in beforeAll and
+ *    company, $transaction, featureFlag, platformSettings) in beforeAll and
  *    restore them in afterAll.
  *  - The real syncInventoryOnSale is exercised on the POST happy path via
  *    db.$transaction, which passes a rich fake `tx` that supports the sync
@@ -313,7 +313,7 @@ beforeAll(() => {
   _orig.auditLog = (db as any).auditLog;
   _orig.company = (db as any).company;
   _orig.featureFlag = (db as any).featureFlag;
-  _orig.platformSetting = (db as any).platformSetting;
+  _orig.platformSettings = (db as any).platformSettings;
   _orig.$transaction = (db as any).$transaction;
   _orig.idempotencyKey = (db as any).idempotencyKey;
   _orig.adminAuditLog = (db as any).adminAuditLog;
@@ -338,7 +338,7 @@ beforeAll(() => {
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSetting = { findMany: async () => [] };
+  (db as any).platformSettings = { findMany: async () => [] };
   (db as any).$transaction = async (fn: any) => fn(RICH_TX);
   // H5 FIX: idempotencyKey mock for payment idempotency tests
   (db as any).idempotencyKey = {
@@ -364,7 +364,7 @@ afterAll(() => {
   (db as any).auditLog = _orig.auditLog;
   (db as any).company = _orig.company;
   (db as any).featureFlag = _orig.featureFlag;
-  (db as any).platformSetting = _orig.platformSetting;
+  (db as any).platformSettings = _orig.platformSettings;
   (db as any).$transaction = _orig.$transaction;
   (db as any).idempotencyKey = _orig.idempotencyKey;
   (db as any).adminAuditLog = _orig.adminAuditLog;
