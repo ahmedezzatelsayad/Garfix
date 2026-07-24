@@ -166,3 +166,74 @@ export function parseJsonField<T = unknown>(s: string | null | undefined, fallba
     return fallback;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rate Limit Middleware — P0 API Policy Enforcement
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { rateLimitResponse, getClientIp, LIMITS, type RateLimitConfig } from "@/lib/rateLimit";
+import { trackApiRequest } from "@/lib/observability";
+
+/**
+ * withRateLimit — Enforce rate limiting on any API route handler.
+ *
+ * Wraps a route handler with rate limit checking before the handler executes.
+ * If the rate limit is exceeded, returns 429 immediately without calling the handler.
+ *
+ * Usage:
+ *   export const GET = withRateLimit<[NextRequest, RouteParams]>(
+ *     LIMITS.API_READ,
+ *     async (req, { params }) => { ... }
+ *   );
+ *
+ * Rate limit categories (from LIMITS):
+ *   - LOGIN: 5 per 15min (lockout)
+ *   - REGISTER: 3 per hour
+ *   - OTP_VERIFY: 5 per 5min
+ *   - PASSWORD_RESET: 3 per hour
+ *   - AI_CHAT: 10 per minute
+ *   - AI_BULK: 3 per minute
+ *   - API_READ: 60 per minute (default for GET routes)
+ *   - API_WRITE: 30 per minute (default for POST/PUT/PATCH/DELETE routes)
+ */
+export function withRateLimit<T extends unknown[]>(
+  config: RateLimitConfig,
+  keyPrefix?: string,
+  fn: (...args: T) => Promise<NextResponse>,
+): (...args: T) => Promise<NextResponse> {
+  return async (...args: T) => {
+    // Extract the request from the first argument
+    const req = args[0] as NextRequest;
+
+    // Rate limit key: prefix + route path + client IP
+    const route = req.nextUrl.pathname;
+    const prefix = keyPrefix || `api:${route}`;
+    const rlResponse = await rateLimitResponse(req, prefix, config);
+
+    if (rlResponse) {
+      // Rate limit exceeded — track as error and return 429
+      trackApiRequest(route, req.method, 0, 429);
+      return rlResponse;
+    }
+
+    // Rate limit OK — add headers and proceed to handler
+    const start = Date.now();
+    try {
+      const response = await fn(...args);
+
+      // Add rate limit headers to successful responses
+      const remaining = config.maxAttempts; // Approximate — actual count is per-window
+      response.headers.set("X-RateLimit-Limit", String(config.maxAttempts));
+      response.headers.set("X-RateLimit-Window", String(Math.ceil(config.windowMs / 1000)));
+
+      // Track successful request
+      trackApiRequest(route, req.method, Date.now() - start, response.status);
+
+      return response;
+    } catch (err) {
+      // Track error request
+      trackApiRequest(route, req.method, Date.now() - start, 500);
+      throw err;
+    }
+  };
+}
