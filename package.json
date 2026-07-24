@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "bun test --isolate",
     "test:ci": "bun test --isolate --coverage",
+    "openapi:generate": "bun run scripts/generate-openapi-spec.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
