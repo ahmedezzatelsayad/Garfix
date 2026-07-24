@@ -1,9 +1,8 @@
 /**
  * /api/accounting/journal-entries/[id]
- * DELETE — hard-delete a journal entry (only drafts can be safely deleted).
- *          Posted entries should be reversed (see reverse/ route) but if the
- *          user explicitly chooses to delete, we also undo the balance impact
- *          before removing.
+ * DELETE — P0-2: Posted journal entries are IMMUTABLE. Only draft/cancelled entries can be deleted.
+ *          Posted entries must be reversed (see /reverse/ route), never deleted.
+ *          P0-4: Cannot delete entries in closed/locked fiscal periods.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -11,6 +10,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { preventPostingToClosedPeriod } from "@/lib/accounting/period-close";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -26,49 +26,42 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if ("error" in access) return access.error;
   const user = access.user;
 
-  // Wrap balance rollback + deletion in a transaction for atomicity
-  // (prevents data inconsistency if delete fails after balances are rolled back)
-  await db.$transaction(async (tx) => {
-    // If the entry was posted, roll back its impact on account balances first
-    if (existing.status === "posted") {
-      const accountIds = [...new Set(existing.lines.map((l) => l.accountId))];
-      const accounts = await tx.account.findMany({
-        where: { id: { in: accountIds } },
-      });
-      const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  // P0-2: IMMUTABLE LEDGER — posted entries cannot be deleted.
+  // This is the core financial integrity rule: once an entry is posted,
+  // it becomes part of the permanent accounting record and must not be
+  // removed. The only valid operation on a posted entry is reversal
+  // (via /reverse/ endpoint), which creates a mirror entry with opposite
+  // amounts while preserving the original for audit trail.
+  if (existing.status === "posted") {
+    return NextResponse.json(
+      {
+        error: "لا يمكن حذف قيد مرحّل — القيود المرحّلة ثابتة ولا يمكن تعديلها أو حذفها. استخدم عملية العكس بدلاً من ذلك.",
+        code: "IMMUTABLE_LEDGER",
+        hint: "POST /api/accounting/journal-entries/{id}/reverse",
+      },
+      { status: 403 },
+    );
+  }
 
-      const deltas = new Map<number, number>();
-      for (const line of existing.lines) {
-        const acc = accountMap.get(line.accountId);
-        if (!acc) continue;
-        const isDebitNormal = acc.type === "asset" || acc.type === "expense";
-        // Reverse the original delta: subtract what was originally added.
-        const delta = isDebitNormal
-          ? num(line.credit, 3) - num(line.debit, 3)
-          : num(line.debit, 3) - num(line.credit, 3);
-        deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
-      }
+  // P0-4: Check fiscal period — cannot modify entries in closed/locked periods
+  try {
+    await preventPostingToClosedPeriod(existing.companySlug, new Date(existing.date).toISOString().split("T")[0]);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg, code: "CLOSED_PERIOD" }, { status: 403 });
+  }
 
-      for (const [accountId, delta] of deltas) {
-        const acc = accountMap.get(accountId)!;
-        const currentBalance = num(acc.balance, 3);
-        await tx.account.update({
-          where: { id: accountId },
-          data: { balance: (currentBalance + delta).toFixed(3) },
-        });
-      }
-    }
-
-    // Delete the entry and its lines (lines cascade via Prisma schema)
-    await tx.journalEntry.delete({ where: { id: existing.id } });
+  // P0-3: Soft-delete for draft/cancelled entries — set deletedAt instead of physical delete
+  await db.journalEntry.update({
+    where: { id: existing.id },
+    data: { deletedAt: new Date() },
   });
 
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "delete", entity: "journal_entry", entityId: existing.id, companySlug: existing.companySlug,
-    details: { priorStatus: existing.status, linesRemoved: existing.lines.length },
+    action: "soft_delete", entity: "journal_entry", entityId: existing.id, companySlug: existing.companySlug,
+    details: { priorStatus: existing.status, linesCount: existing.lines.length },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, status: existing.status, note: "Draft entry soft-deleted" });
 });
-

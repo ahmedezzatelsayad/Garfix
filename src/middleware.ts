@@ -65,6 +65,29 @@ const GENERAL_API_LIMIT: RateLimitConfig = {
 //   don't send CORP headers — monitor for breakage after deploy.
 
 const SECURITY_HEADERS: Record<string, string> = {
+  // P0-6: Content-Security-Policy — restricts all resource loading to same-origin
+  // except for: fonts (Google Fonts for Arabic), styles (inline for RTL), images (data: for QR),
+  // scripts (self + unsafe-evals for Next.js runtime), connect (self + api endpoints).
+  // This is the primary XSS defense — all other headers are supplementary.
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",  // Next.js requires unsafe-eval for HMR; unsafe-inline for hydration
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",  // Tailwind + RTL + Google Fonts
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",  // data: for QR codes, blob: for uploads, https: for external images
+    "connect-src 'self' https://api.openrouter.ai",  // AI API calls
+    "frame-src 'none'",  // No iframes allowed — matches X-Frame-Options: DENY
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",  // Prevents clickjacking — same as X-Frame-Options: DENY
+  ].join("; "),
+  // P0-6: HSTS — Force HTTPS for 1 year with subdomain inclusion.
+  // Only set when the request is HTTPS (proxied through Caddy/nginx in production).
+  // In dev (HTTP) we skip HSTS to avoid browser caching the header and breaking localhost.
+  ...(process.env.NODE_ENV === "production" ? {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+  } : {}),
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "X-XSS-Protection": "0",
@@ -184,5 +207,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 // dependency explicit and removes any ambiguity for Turbopack.
 export const config = {
   runtime: "nodejs",
-  matcher: ["/api/:path*"],
+  // P0-6: Apply security headers (CSP, HSTS, etc.) to ALL routes, not just /api/*
+  // Page routes also need CSP to prevent XSS in the SPA shell.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
