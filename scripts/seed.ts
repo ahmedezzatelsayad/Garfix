@@ -186,7 +186,7 @@ async function main() {
     { code: "5100", nameAr: "الإيجار", nameEn: "Rent", type: "expense", balance: "600" },
   ];
   for (const a of accounts) {
-    await db.account.create({ data: { ...a, companySlug: "garfix-demo", currency: "KWD" } });
+    await db.account.create({ data: { code: a.code, name: a.nameEn, nameAr: a.nameAr, nameEn: a.nameEn, type: a.type, balance: a.balance, companySlug: "garfix-demo", currency: "KWD", companyId: company.id } });
   }
   console.log(`  ✓ ${accounts.length} accounts created`);
 

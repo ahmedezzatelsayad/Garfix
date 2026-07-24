@@ -119,11 +119,11 @@ export interface AssetDisposalData {
  * Throws if not found.
  */
 async function getAccountByCode(
-  tx: typeof db | Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  tx: any,
   companySlug: string,
   code: string,
-): Promise<{ id: number; type: string; balance: string }> {
-  const acc = await tx.account.findFirst({
+): Promise<{ id: any; type: string; balance: string }> {
+  const acc: any = await tx.account.findFirst({
     where: { companySlug, code },
   });
   if (!acc) {
@@ -137,7 +137,7 @@ async function getAccountByCode(
  * Uses the isDebitNormal check exactly like the existing journal-entries POST route.
  */
 async function updateAccountBalances(
-  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  tx: any,
   lines: { accountId: number; debit: string; credit: string }[],
   companySlug: string,
 ): Promise<void> {
@@ -145,7 +145,7 @@ async function updateAccountBalances(
   const accounts = await tx.account.findMany({
     where: { id: { in: accountIds }, companySlug },
   });
-  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
   const deltas = new Map<number, number>();
   for (const line of lines) {

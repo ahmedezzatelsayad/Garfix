@@ -57,6 +57,27 @@ export interface HistogramSummary {
   buckets: HistogramBucket[];
 }
 
+export interface OTLPExportMetric {
+  name: string;
+  kind: string;
+  unit: string;
+  value: number;
+  labels: Record<string, string | undefined>;
+  timestamp: string;
+  summary?: HistogramSummary;
+}
+
+export interface OTLPExport {
+  resource: {
+    attributes: Record<string, string>;
+  };
+  scopeMetrics: Array<{
+    scope: { name: string; version: string };
+    metrics: OTLPExportMetric[];
+  }>;
+  exportedAt: string;
+}
+
 const DEFAULT_HISTOGRAM_BUCKETS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
 // Cardinality limit — prevent label explosion from high-cardinality fields
@@ -152,7 +173,7 @@ class MetricsRegistry {
   }
 
   /** Export all metrics as OTLP-compatible JSON */
-  exportOTLP(): object {
+  exportOTLP(): OTLPExport {
     const now = new Date().toISOString();
 
     const counterMetrics = Array.from(this.counters.entries()).map(([key, data]) => ({
@@ -195,7 +216,7 @@ class MetricsRegistry {
       scopeMetrics: [
         {
           scope: { name: "garfix.metrics", version: "1.0.0" },
-          metrics: [...counterMetrics, ...gaugeMetrics, ...histogramMetrics],
+          metrics: [...counterMetrics, ...gaugeMetrics, ...histogramMetrics] as OTLPExportMetric[],
         },
       ],
       exportedAt: now,

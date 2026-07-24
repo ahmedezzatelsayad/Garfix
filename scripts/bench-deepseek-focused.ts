@@ -183,7 +183,7 @@ Notes: urgent delivery`;
   for (const log of logs) {
     const isDeepSeek = log.model?.includes("deepseek");
     console.log(
-      `   ${isDeepSeek ? "🌟" : "  "} id=${log.id} ep=${log.endpoint.padEnd(15)} ` +
+      `   ${isDeepSeek ? "🌟" : "  "} id=${log.id} ep=${(log.endpoint ?? "unknown").padEnd(15)} ` +
       `${log.provider}/${log.model} tok=${log.tokensIn}/${log.tokensOut} ` +
       `cost=$${log.estimatedCost} ms=${log.processingMs} ok=${log.success}`,
     );
@@ -210,7 +210,7 @@ Notes: urgent delivery`;
 
   console.log("\n--- ai_usage_logs (proof) ---");
   for (const log of logs.slice(0, 6)) {
-    console.log(`  id=${log.id} ${log.endpoint} ${log.provider}/${log.model} tok=${log.tokensIn}/${log.tokensOut} cost=$${log.estimatedCost} ms=${log.processingMs} ok=${log.success} at=${log.createdAt.toISOString()}`);
+    console.log(`  id=${log.id} ${log.endpoint ?? "unknown"} ${log.provider ?? "?"}/${log.model ?? "?"} tok=${log.tokensIn}/${log.tokensOut} cost=$${log.estimatedCost} ms=${log.processingMs} ok=${log.success} at=${log.createdAt.toISOString()}`);
   }
 
   console.log(`\n--- Verdict ---`);

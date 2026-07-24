@@ -444,7 +444,7 @@ export async function recordInventoryAdjustment(
   const accounts = await db.account.findMany({
     where: { id: { in: accountIds }, companySlug: input.companySlug },
   });
-  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
   for (const line of entry.lines) {
     const acc = accountMap.get(line.accountId);

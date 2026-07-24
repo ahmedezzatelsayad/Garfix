@@ -183,7 +183,8 @@ import { trackApiRequest } from "@/lib/observability";
  * Usage:
  *   export const GET = withRateLimit<[NextRequest, RouteParams]>(
  *     LIMITS.API_READ,
- *     async (req, { params }) => { ... }
+ *     async (req, { params }) => { ... },
+ *     "optional-prefix"
  *   );
  *
  * Rate limit categories (from LIMITS):
@@ -198,8 +199,8 @@ import { trackApiRequest } from "@/lib/observability";
  */
 export function withRateLimit<T extends unknown[]>(
   config: RateLimitConfig,
-  keyPrefix?: string,
   fn: (...args: T) => Promise<NextResponse>,
+  keyPrefix?: string,
 ): (...args: T) => Promise<NextResponse> {
   return async (...args: T) => {
     // Extract the request from the first argument

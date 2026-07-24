@@ -66,7 +66,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     // 2. Update account balances for the reversal — batch fetch + aggregate deltas
     const accountIds = [...new Set(swappedLines.map((l) => l.accountId))];
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
-    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
     const deltas = new Map<number, number>();
     for (const line of swappedLines) {
