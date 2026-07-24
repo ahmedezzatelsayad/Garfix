@@ -13,7 +13,8 @@ COPY package.json bun.lock ./
 COPY prisma ./prisma
 
 # Bun's --production flag is a boolean switch (no =value). Omit it to install devDeps.
-RUN bun install --frozen-lockfile
+# P1 FIX: Use --no-cache to ensure clean reproducible builds
+RUN bun install --frozen-lockfile --no-cache
 
 # ── Stage 2: Build ──────────────────────────────────────────────────────
 FROM oven/bun:1.3.14 AS builder
@@ -22,8 +23,10 @@ WORKDIR /app
 # Build-time environment variables (needed for `next build` to succeed)
 # These are CI-only test values — production secrets come from the runtime env.
 ARG NODE_ENV=test
-ARG DATABASE_URL=postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test
-ARG DATABASE_DIRECT_URL=postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test
+# P1 FIX: Use SQLite for Docker build verification (dev-compatible)
+# Production deployments override this to PostgreSQL via runtime env
+ARG DATABASE_URL=file:/app/db/build-test.db
+ARG DATABASE_DIRECT_URL=file:/app/db/build-test.db
 ARG JWT_SECRET=ci-build-jwt-secret-at-least-32-characters-long!!
 ARG JWT_REFRESH_SECRET=ci-build-refresh-secret-at-least-32-chars!!
 ARG FOUNDER_EMAIL=founder@test.com

@@ -34,6 +34,9 @@ export const queryKeys = {
     lists: () => [...queryKeys.invoices.all, "list"] as const,
     list: (filters: { companySlug: string; search?: string }) =>
       [...queryKeys.invoices.lists(), filters] as const,
+    /** Cursor-based pagination key — includes cursor for infinite scroll */
+    cursor: (filters: { companySlug: string; search?: string; status?: string }) =>
+      [...queryKeys.invoices.all, "cursor", filters] as const,
     details: () => [...queryKeys.invoices.all, "detail"] as const,
     detail: (id: number) => [...queryKeys.invoices.details(), id] as const,
   },
