@@ -10,9 +10,12 @@
  * Backend: /api/companies/[slug]/members (GET/POST) and
  *          /api/companies/[slug]/members/[uid] (PATCH/DELETE)
  */
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import {
+  useCompanyMembers, useRemoveCompanyMember,
+  useAddCompanyMember, useUpdateCompanyMember,
+} from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Users, Trash2, Edit2, X, Mail, Crown, UserPlus, Key,
@@ -65,35 +68,15 @@ const ghostBtn = "px-5 py-2.5 rounded-md bg-transparent text-muted-foreground bo
 
 export function TeamView() {
   const { activeCompany } = useBrand();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const removeMemberMutation = useRemoveCompanyMember();
+  const { data: membersData, isLoading: loading, refetch } = useCompanyMembers(activeCompany?.slug || "");
+  const members: Member[] = (membersData?.members ?? []) as unknown as Member[];
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const pageSize = 20;
-
-  const load = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/companies/${activeCompany.slug}/members`);
-      if (res.ok) {
-        const data = await res.json();
-        setMembers(data.members || []);
-        setCurrentPage(1);
-        setSelectedIds(new Set());
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "تعذّر تحميل الأعضاء");
-      }
-    } finally { setLoading(false); }
-  }, [activeCompany]);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(members.length / pageSize));
   const pageMembers = members.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -119,29 +102,27 @@ export function TeamView() {
     let okCount = 0, failCount = 0;
     for (const uid of selectedIds) {
       try {
-        const res = await authedFetch(`/api/companies/${activeCompany.slug}/members/${uid}`, { method: "DELETE" });
-        if (res.ok) okCount++; else failCount++;
+        await removeMemberMutation.mutateAsync({ slug: activeCompany.slug, uid });
+        okCount++;
       } catch { failCount++; }
     }
     setBulkDeleting(false);
     setSelectedIds(new Set());
     if (okCount > 0) toast.success(`تمت إزالة ${okCount} عضو`);
     if (failCount > 0) toast.error(`تعذّرت إزالة ${failCount} عضو`);
-    load();
   };
 
   const handleRemove = async (m: Member) => {
     if (!activeCompany) return;
     if (m.isFounder) { toast.error("لا يمكن إزالة المؤسس"); return; }
     if (!confirm(`إزالة ${m.displayName} من شركة "${activeCompany.nameAr || activeCompany.name}"؟\n(لن يتم حذف حساب المستخدم)`)) return;
-    const res = await authedFetch(`/api/companies/${activeCompany.slug}/members/${m.uid}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("تمت إزالة العضو من الشركة");
-      load();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "تعذّرت الإزالة");
-    }
+    removeMemberMutation.mutate(
+      { slug: activeCompany.slug, uid: m.uid },
+      {
+        onSuccess: () => toast.success("تمت إزالة العضو من الشركة"),
+        onError: (err) => toast.error(err.message || "تعذّرت الإزالة"),
+      },
+    );
   };
 
   if (!activeCompany) {
@@ -341,7 +322,7 @@ export function TeamView() {
         <InviteDialog
           companySlug={activeCompany.slug}
           onClose={() => setShowInvite(false)}
-          onSaved={() => { setShowInvite(false); load(); }}
+          onSaved={() => { setShowInvite(false); refetch(); }}
         />
       )}
 
@@ -350,7 +331,7 @@ export function TeamView() {
           member={editing}
           companySlug={activeCompany.slug}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }}
+          onSaved={() => { setEditing(null); refetch(); }}
         />
       )}
     </div>
@@ -366,7 +347,7 @@ function InviteDialog({
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<string>("employee");
   const [perms, setPerms] = useState<Record<string, number>>({});
-  const [saving, setSaving] = useState(false);
+  const addMemberMutation = useAddCompanyMember();
   const [result, setResult] = useState<{ temporaryPassword?: string | null; created?: boolean; email?: string } | null>(null);
 
   const togglePerm = (key: string) => {
@@ -375,32 +356,36 @@ function InviteDialog({
 
   const submit = async () => {
     if (!email) { toast.error("البريد الإلكتروني مطلوب"); return; }
-    setSaving(true);
     try {
-      const res = await authedFetch(`/api/companies/${companySlug}/members`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, displayName: displayName || undefined, role, permissions: perms }),
+      const raw = await addMemberMutation.mutateAsync({
+        slug: companySlug,
+        uid: email, // API accepts email as uid for invite
+        role,
+        permissions: perms,
+        email,
+        displayName: displayName || undefined,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed");
-      }
-      const data = await res.json();
+      const data = raw as unknown as Record<string, unknown>;
       if (data.created) {
         toast.success("تم إنشاء الحساب وإضافته للشركة");
       } else {
         toast.success("تمت إضافة العضو للشركة");
       }
-      setResult({ temporaryPassword: data.temporaryPassword, created: data.created, email: data.member?.email });
+      setResult({
+        temporaryPassword: data.temporaryPassword as string | null | undefined,
+        created: data.created as boolean | undefined,
+        email: (data.member as Record<string, unknown> | undefined)?.email as string | undefined,
+      });
       // Don't close immediately if a temp password was returned — let admin copy it
       if (!data.temporaryPassword) {
         onSaved();
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally { setSaving(false); }
+    }
   };
+
+  const saving = addMemberMutation.isPending;
 
   return (
     <DialogShell title="دعوة عضو جديد" icon={<UserPlus size={18} />} onClose={onClose}>
@@ -482,32 +467,27 @@ function InviteDialog({
 function EditDialog({
   member, companySlug, onClose, onSaved,
 }: { member: Member; companySlug: string; onClose: () => void; onSaved: () => void }) {
+  const updateMemberMutation = useUpdateCompanyMember();
   const [role, setRole] = useState<string>(member.role);
   const [perms, setPerms] = useState<Record<string, number>>({ ...member.permissions });
-  const [saving, setSaving] = useState(false);
 
   const togglePerm = (key: string) => {
     setPerms((p) => ({ ...p, [key]: p[key] ? 0 : 1 }));
   };
 
   const save = async () => {
-    setSaving(true);
     try {
-      const res = await authedFetch(`/api/companies/${companySlug}/members/${member.uid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, permissions: perms }),
+      await updateMemberMutation.mutateAsync({
+        slug: companySlug, uid: member.uid, role, permissions: perms,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed");
-      }
       toast.success("تم تحديث العضو");
       onSaved();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
-    } finally { setSaving(false); }
+    }
   };
+
+  const saving = updateMemberMutation.isPending;
 
   const isFounder = member.isFounder;
 

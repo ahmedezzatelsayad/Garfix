@@ -35,7 +35,7 @@ interface CatalogItemResponse {
   item: CatalogItem;
 }
 
-interface CreateCatalogItemPayload {
+export interface CreateCatalogItemPayload {
   name: string;
   sku: string;
   unitPrice: number;

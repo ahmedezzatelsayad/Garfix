@@ -1,10 +1,10 @@
 /**
- * clients.ts — React Query hooks for client CRUD operations.
+ * clients.ts — React Query hooks for client and supplier CRUD operations.
  *
  * Provides typed query and mutation hooks for listing, fetching, creating,
- * updating, deleting, and bulk-deleting clients. All hooks use the centralized
- * `queryKeys` factory for granular cache invalidation and the typed
- * `apiGet`/`apiPost`/`apiPatch`/`apiDelete` helpers for consistent requests.
+ * updating, deleting, and bulk-deleting clients and suppliers. All hooks use
+ * the centralized `queryKeys` factory for granular cache invalidation and the
+ * typed `apiGet`/`apiPost`/`apiPatch`/`apiDelete` helpers for consistent requests.
  */
 "use client";
 
@@ -220,5 +220,49 @@ export function useBulkDeleteClients() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.clients.lists() });
     },
+  });
+}
+
+// ─── Supplier Hooks ────────────────────────────────────────────────────────
+
+/** Shape of a supplier record returned by the API. */
+export interface Supplier {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  address?: string;
+  notes?: string;
+  companySlug: string;
+  [key: string]: unknown;
+}
+
+/** Response shape for the supplier list endpoint. */
+interface SupplierListResponse {
+  suppliers: Supplier[];
+}
+
+/**
+ * Fetch a paginated / filtered list of suppliers for a given company.
+ *
+ * The query is disabled when `companySlug` is empty, preventing
+ * unnecessary requests before the active company is known.
+ *
+ * @param companySlug - Slug of the company whose suppliers to fetch.
+ * @param search      - Optional search string to filter results.
+ */
+export function useSuppliers(companySlug: string, search?: string) {
+  return useQuery<SupplierListResponse, ApiError>({
+    queryKey: queryKeys.suppliers.list({ companySlug, search }),
+    queryFn: () => {
+      const params = new URLSearchParams({ companySlug });
+      if (search) {
+        params.set("search", search);
+      }
+      return apiGet<SupplierListResponse>(`/api/suppliers?${params.toString()}`);
+    },
+    enabled: !!companySlug,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }

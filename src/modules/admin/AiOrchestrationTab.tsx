@@ -1,11 +1,43 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Network, RefreshCw, Zap, Gauge, Activity } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { KpiCard } from "./shared-helpers";
+import {
+  useAIOrchestration,
+  useRunBenchmark,
+  useUpdateAIOrchestration,
+} from "@/hooks/queries";
+
+// ─── Types for orchestration data ───────────────────────────────────────────
+
+interface OrchestrationData {
+  registry: Array<{
+    id: number; provider: string; model: string; displayName: string;
+    capabilities: string[]; tier: string; costPer1kIn: number; costPer1kOut: number;
+    maxTokens: number; contextWindow: number; isEnabled: boolean; isHealthy: boolean;
+    healthScore: number; successRate: number; avgLatencyMs: number; p95LatencyMs: number;
+    avgQualityScore: number; totalBenchmarks: number;
+    lastBenchmarkAt: string | null; lastError: string | null;
+  }>;
+  routingMatrix: Array<{
+    capability: string;
+    primary: { provider: string; model: string; displayName: string; healthScore: number; tier: string } | null;
+    candidateCount: number;
+  }>;
+  optimizerStats: {
+    counts: { "use-pattern": number; "use-cache": number; "route-free": number; "route-best": number };
+    callsAvoided: number;
+    estSavingsUsd: number;
+  };
+  recentBenchmarks: Array<{
+    id: number; modelRegistryId: number; capability: string; success: boolean;
+    latencyMs: number; tokensIn: number; tokensOut: number; responseQuality: number;
+    errorMessage: string | null; createdAt: string;
+  }>;
+}
 
 /**
  * AI Orchestration Layer — Model Registry + Smart Router + Health Score +
@@ -17,84 +49,35 @@ import { KpiCard } from "./shared-helpers";
  * and a "Run Benchmark Now" button that re-tests every enabled model.
  */
 export function AiOrchestrationTab() {
-  const [data, setData] = useState<null | {
-    registry: Array<{
-      id: number; provider: string; model: string; displayName: string;
-      capabilities: string[]; tier: string; costPer1kIn: number; costPer1kOut: number;
-      maxTokens: number; contextWindow: number; isEnabled: boolean; isHealthy: boolean;
-      healthScore: number; successRate: number; avgLatencyMs: number; p95LatencyMs: number;
-      avgQualityScore: number; totalBenchmarks: number;
-      lastBenchmarkAt: string | null; lastError: string | null;
-    }>;
-    routingMatrix: Array<{
-      capability: string;
-      primary: { provider: string; model: string; displayName: string; healthScore: number; tier: string } | null;
-      candidateCount: number;
-    }>;
-    optimizerStats: {
-      counts: { "use-pattern": number; "use-cache": number; "route-free": number; "route-best": number };
-      callsAvoided: number;
-      estSavingsUsd: number;
-    };
-    recentBenchmarks: Array<{
-      id: number; modelRegistryId: number; capability: string; success: boolean;
-      latencyMs: number; tokensIn: number; tokensOut: number; responseQuality: number;
-      errorMessage: string | null; createdAt: string;
-    }>;
-  }>(null);
-  const [loading, setLoading] = useState(true);
+  const orchestrationQuery = useAIOrchestration();
+  const benchmarkMutation = useRunBenchmark();
+  const updateOrchestrationMutation = useUpdateAIOrchestration();
   const [running, setRunning] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/platform-admin/ai-orchestration");
-      const d = await res.json();
-      if (res.ok) setData(d);
-      else toast.error(d.error || "تعذّر التحميل");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const data = orchestrationQuery.data as OrchestrationData | null | undefined;
+  const loading = orchestrationQuery.isLoading;
 
   const runBenchmark = useCallback(async () => {
     setRunning(true);
     try {
-      const res = await authedFetch("/api/platform-admin/ai-orchestration/run-benchmark", { method: "POST" });
-      const d = await res.json();
-      if (res.ok) {
-        toast.success(`اكتمل الاختبار: ${d.passed}/${d.totalTests} اختبار ناجح`);
-        await load();
-      } else {
-        toast.error(d.error || "فشل تشغيل الاختبار");
-      }
+      const result = await benchmarkMutation.mutateAsync({});
+      toast.success(`اكتمل الاختبار: ${result.passed}/${result.totalTests} اختبار ناجح`);
+      orchestrationQuery.refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "فشل الاتصال");
     } finally {
       setRunning(false);
     }
-  }, [load]);
+  }, [benchmarkMutation, orchestrationQuery]);
 
   const toggleModel = useCallback(async (provider: string, model: string, isEnabled: boolean) => {
     try {
-      const res = await authedFetch("/api/platform-admin/ai-orchestration", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, model, isEnabled }),
-      });
-      if (res.ok) {
-        toast.success(isEnabled ? "تم تفعيل النموذج" : "تم تعطيل النموذج");
-        await load();
-      } else {
-        toast.error("فشل التحديث");
-      }
+      await updateOrchestrationMutation.mutateAsync({ provider, model, isEnabled });
+      toast.success(isEnabled ? "تم تفعيل النموذج" : "تم تعطيل النموذج");
     } catch {
       toast.error("فشل الاتصال");
     }
-  }, [load]);
+  }, [updateOrchestrationMutation]);
 
   if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
   if (!data) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">تعذّر تحميل البيانات</div>;
@@ -249,7 +232,7 @@ export function AiOrchestrationTab() {
                       <td className="px-3 py-2.5 text-[13px] font-bold">{m.totalBenchmarks > 0 ? m.avgQualityScore.toFixed(1) : "—"}</td>
                       <td className="px-3 py-2.5 text-[11px] [direction:ltr] text-right">{costStr}</td>
                       <td className="px-3 py-2.5 text-[13px]">{m.totalBenchmarks}</td>
-                      <td className="px-3 py-2.5 text-[11px] text-[var(--muted-foreground)]">{last}</td>
+                      <td className="px-3 py-2.5 text-[13px]">{last}</td>
                       <td className="px-3 py-2.5 text-[13px]">
                         <div className="flex items-center gap-1.5">
                           {!m.isHealthy && m.isEnabled && (

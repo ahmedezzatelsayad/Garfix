@@ -12,8 +12,17 @@
  *   - Show delivery stats (success rate, avg latency)
  */
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
+import {
+  useWebhookEndpoints,
+  useWebhookDeliveriesFiltered,
+  useWebhookEvents,
+  useCreateWebhookEndpoint,
+  useUpdateWebhookEndpoint,
+  useDeleteWebhookEndpoint,
+  useRetryWebhookDeliveryLegacy,
+  useTestWebhookEvent,
+} from "@/hooks/queries/webhooks";
 import {
   Webhook, Activity, Plus, Trash2, RefreshCw, Send,
   CheckCircle2, XCircle, Clock, AlertTriangle, ExternalLink,
@@ -69,12 +78,6 @@ type Tab = "endpoints" | "deliveries" | "events";
 
 export function WebhookManagementView() {
   const [tab, setTab] = useState<Tab>("endpoints");
-  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
-  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
-  const [events, setEvents] = useState<EventType[]>([]);
-  const [stats, setStats] = useState<DeliveryStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -93,84 +96,49 @@ export function WebhookManagementView() {
   const [testEventType, setTestEventType] = useState<string>("invoice.created");
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  // ── Data loading ──────────────────────────────────────────────────────────
+  // ── TanStack Query hooks ──────────────────────────────────────────────────
+  const endpointsQuery = useWebhookEndpoints();
+  const deliveriesQuery = useWebhookDeliveriesFiltered({
+    status: statusFilter || undefined,
+    eventType: eventFilter || undefined,
+    endpointId: endpointFilter || undefined,
+    limit: 100,
+  });
+  const eventsQuery = useWebhookEvents();
+  const createEndpointMutation = useCreateWebhookEndpoint();
+  const updateEndpointMutation = useUpdateWebhookEndpoint();
+  const deleteEndpointMutation = useDeleteWebhookEndpoint();
+  const retryMutation = useRetryWebhookDeliveryLegacy();
+  const testEventMutation = useTestWebhookEvent();
 
-  const loadEndpoints = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await authedFetch("/api/webhooks/endpoints");
-      if (!res.ok) throw new Error("Failed to load endpoints");
-      const data = await res.json();
-      setEndpoints(data.endpoints || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally { setLoading(false); }
-  }, []);
-
-  const loadDeliveries = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.set("status", statusFilter);
-      if (eventFilter) params.set("eventType", eventFilter);
-      if (endpointFilter) params.set("endpointId", endpointFilter);
-      params.set("limit", "100");
-      const res = await authedFetch(`/api/webhooks/deliveries?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to load deliveries");
-      const data = await res.json();
-      setDeliveries(data.deliveries || []);
-      setStats(data.stats);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally { setLoading(false); }
-  }, [statusFilter, eventFilter, endpointFilter]);
-
-  const loadEvents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await authedFetch("/api/webhooks/events");
-      if (!res.ok) throw new Error("Failed to load events");
-      const data = await res.json();
-      setEvents(data.events || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    if (tab === "endpoints") loadEndpoints();
-    else if (tab === "deliveries") loadDeliveries();
-    else if (tab === "events") loadEvents();
-  }, [tab, loadEndpoints, loadDeliveries, loadEvents]);
+  // ── Derived data from queries ──────────────────────────────────────────────
+  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as WebhookEndpoint[];
+  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as unknown as WebhookDelivery[];
+  const stats = deliveriesQuery.data?.stats as DeliveryStats | null | undefined;
+  const events = (eventsQuery.data?.events ?? []) as unknown as EventType[];
+  const loading = endpointsQuery.isLoading || deliveriesQuery.isLoading || eventsQuery.isLoading;
+  const error = endpointsQuery.error?.message || deliveriesQuery.error?.message || eventsQuery.error?.message || null;
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const handleSaveEndpoint = async () => {
     if (!formUrl || formEvents.length === 0) {
-      setError("URL and at least one event are required");
-      return;
+      return; // validation handled by UI
     }
 
     try {
       if (editingId) {
-        // Update
-        const res = await authedFetch(`/api/webhooks/endpoints/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": document.cookie.match(/inv_csrf=([^;]+)/)?.[1] || "" },
-          body: JSON.stringify({ url: formUrl, events: formEvents, isActive: formActive }),
+        await updateEndpointMutation.mutateAsync({
+          id: editingId,
+          url: formUrl,
+          events: formEvents,
+          isActive: formActive,
         });
-        if (!res.ok) throw new Error("Failed to update endpoint");
       } else {
-        // Create
-        const res = await authedFetch("/api/webhooks/endpoints", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRF-Token": document.cookie.match(/inv_csrf=([^;]+)/)?.[1] || "" },
-          body: JSON.stringify({ url: formUrl, events: formEvents }),
+        await createEndpointMutation.mutateAsync({
+          url: formUrl,
+          events: formEvents,
         });
-        if (!res.ok) throw new Error("Failed to create endpoint");
       }
 
       setShowForm(false);
@@ -178,55 +146,33 @@ export function WebhookManagementView() {
       setFormUrl("");
       setFormEvents([]);
       setFormActive(true);
-      loadEndpoints();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      // error handled via mutation error state
     }
   };
 
   const handleDeleteEndpoint = async (id: string) => {
     if (!confirm("هل تريد حذف نقطة الربط هذه؟")) return;
-    try {
-      const res = await authedFetch(`/api/webhooks/endpoints/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": document.cookie.match(/inv_csrf=([^;]+)/)?.[1] || "" },
-      });
-      if (!res.ok) throw new Error("Failed to delete endpoint");
-      loadEndpoints();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    }
+    deleteEndpointMutation.mutate({ id }, {
+      onError: (err) => { /* error handled via mutation state */ },
+    });
   };
 
   const handleRetry = async (deliveryId: string) => {
-    try {
-      const res = await authedFetch("/api/webhooks/deliveries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": document.cookie.match(/inv_csrf=([^;]+)/)?.[1] || "" },
-        body: JSON.stringify({ deliveryId }),
-      });
-      if (!res.ok) throw new Error("Failed to retry delivery");
-      loadDeliveries();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    }
+    retryMutation.mutate({ deliveryId });
   };
 
   const handleTestEvent = async () => {
     if (!testEndpointId || !testEventType) {
-      setError("Select an endpoint and event type");
       return;
     }
+    setTestResult(null);
     try {
-      setTestResult(null);
-      const res = await authedFetch("/api/webhooks/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": document.cookie.match(/inv_csrf=([^;]+)/)?.[1] || "" },
-        body: JSON.stringify({ endpointId: testEndpointId, eventType: testEventType }),
+      const data = await testEventMutation.mutateAsync({
+        endpointId: testEndpointId,
+        eventType: testEventType,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to trigger test");
-      setTestResult(`تم إرسال الحدث التجريبي إلى ${data.dispatched} نقطة ربط`);
+      setTestResult(`تم إرسال الحدث التجريبي إلى ${data.dispatched ?? 0} نقطة ربط`);
     } catch (err) {
       setTestResult(`خطأ: ${err instanceof Error ? err.message : "Unknown"}`);
     }

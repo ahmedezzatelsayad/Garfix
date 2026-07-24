@@ -1,11 +1,12 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
+import { useAuditLogFiltered, type AuditLogFilterParams } from "@/hooks/queries";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Use AuditLogEntry type from dashboard hooks
 interface AuditLog {
   id: number;
   userEmail: string;
@@ -16,31 +17,23 @@ interface AuditLog {
   companySlug?: string | null;
   details?: Record<string, unknown> | null;
   createdAt: string;
+  [key: string]: unknown;
 }
 
 const ACTION_FILTERS = ["", "create", "update", "delete", "login_success", "login_failure", "logout", "register", "payment", "status_change", "ai_chat"];
 
 export function AuditView() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (actionFilter) params.set("action", actionFilter);
-      if (companyFilter) params.set("companySlug", companyFilter);
-      params.set("limit", "200");
-      const res = await authedFetch(`/api/audit?${params.toString()}`);
-      if (res.ok) setLogs((await res.json()).logs || []);
-    } finally { setLoading(false); }
-  }, [actionFilter, companyFilter]);
+  const params: AuditLogFilterParams = {
+    action: actionFilter || undefined,
+    companySlug: companyFilter || undefined,
+    limit: 200,
+  };
 
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const { data, isLoading } = useAuditLogFiltered(params);
+  const logs = (data?.logs ?? []) as unknown as AuditLog[];
 
   const thClass = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
   const tdClass = "py-2.5 px-3 text-[13px]";
@@ -62,7 +55,7 @@ export function AuditView() {
       </div>
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : logs.length === 0 ? (
+        {isLoading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : logs.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">لا توجد سجلات</div>
         ) : (
           <div className="overflow-x-auto garfix-scroll">

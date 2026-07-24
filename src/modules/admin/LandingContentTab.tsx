@@ -1,62 +1,46 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
 import { toast } from "sonner";
 import { FileText, Plus, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  useLandingContentAdmin,
+  useUpdateLandingContent,
+} from "@/hooks/queries";
+import type { LandingContentItem } from "@/hooks/queries/platform-admin";
 
 /**
  * Admin P2 — Landing Content tab.
- * Wires the previously-orphaned /api/platform-admin/landing-content
- * (GET/PATCH) endpoints into a founder-facing CMS UI. Lists every
- * LandingContent row (key + JSON value + last-updated metadata) and
- * lets the founder inline-edit scalar values (hero title/subtitle/CTA)
- * and JSON-array values (features list). Save calls PATCH with
- * { key, value }.
- *
- * Note: the backend is generic (any key, any JSON value) so this UI
- * stays generic — it renders a key→value editor. The landing page
- * module reads whatever keys it needs; this panel just writes them.
+ * Wires the /api/platform-admin/landing-content endpoints via TanStack Query.
+ * Lists every LandingContent row and lets the founder inline-edit.
  */
 export function LandingContentTab() {
-  const [items, setItems] = useState<Array<{
-    key: string;
-    value: unknown;
-    updatedAt: string;
-    updatedBy: string | null;
-  }>>([]);
+  const contentQuery = useLandingContentAdmin();
+  const updateMutation = useUpdateLandingContent();
+
+  const items: LandingContentItem[] = contentQuery.data?.items || [];
+  const loading = contentQuery.isLoading;
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/platform-admin/landing-content");
-      const d = await res.json();
-      if (res.ok) {
-        setItems(d.items || []);
-        // Seed drafts: stringify objects/arrays as pretty JSON; leave strings as-is.
-        const seed: Record<string, string> = {};
-        for (const it of (d.items || []) as Array<{ key: string; value: unknown }>) {
-          seed[it.key] = typeof it.value === "string" ? it.value : JSON.stringify(it.value, null, 2);
-        }
-        setDrafts(seed);
-      } else {
-        toast.error(d.error || "تعذّر التحميل");
-      }
-    } finally {
-      setLoading(false);
+  // Seed drafts when data arrives
+  const prevItemsRef = useState<LandingContentItem[] | null>(null);
+  const [prevItems, setPrevItems] = prevItemsRef;
+  if (items.length > 0 && prevItems !== items) {
+    setPrevItems(items);
+    const seed: Record<string, string> = {};
+    for (const it of items) {
+      seed[it.key] = typeof it.value === "string" ? it.value : JSON.stringify(it.value, null, 2);
     }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+    if (Object.keys(seed).length !== Object.keys(drafts).length) {
+      setDrafts(seed);
+    }
+  }
 
   const save = async (key: string) => {
     const raw = drafts[key];
@@ -74,15 +58,8 @@ export function LandingContentTab() {
     }
     setSavingKey(key);
     try {
-      const res = await authedFetch("/api/platform-admin/landing-content", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, value }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Failed");
+      await updateMutation.mutateAsync({ key, value });
       toast.success("تم حفظ المحتوى");
-      load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     } finally {
@@ -101,16 +78,9 @@ export function LandingContentTab() {
           toast.error("JSON غير صالح"); setSavingKey(null); return;
         }
       }
-      const res = await authedFetch("/api/platform-admin/landing-content", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: newKey.trim(), value }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Failed");
+      await updateMutation.mutateAsync({ key: newKey.trim(), value });
       toast.success("تم إنشاء المحتوى");
       setNewKey(""); setNewValue(""); setShowCreate(false);
-      load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     } finally {

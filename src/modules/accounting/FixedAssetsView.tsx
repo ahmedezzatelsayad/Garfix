@@ -1,10 +1,13 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useFixedAssets, useDepreciation, useAssetDisposals,
+  useCreateFixedAsset, useRunDepreciation, useDisposeAsset,
+} from "@/hooks/queries";
 import {
   Building2, Plus, X, Trash2, Calculator, TrendingDown,
   CheckCircle2, Clock, FileText, Filter, DollarSign,
@@ -56,54 +59,20 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function FixedAssetsView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("assets");
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [depEntries, setDepEntries] = useState<DepEntry[]>([]);
-  const [disposals, setDisposals] = useState<DisposalRecord[]>([]);
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadAssets = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/fixed-assets?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setAssets(d.assets || []); }
-      else setAssets([]);
-    } catch { setAssets([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
+  // TanStack Query hooks for data fetching
+  const assetsQuery = useFixedAssets(slug);
+  const depQuery = useDepreciation(slug);
+  const disposalsQuery = useAssetDisposals(slug);
 
-  const loadDep = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/depreciation?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setDepEntries(d.entries || []); }
-      else setDepEntries([]);
-    } catch { setDepEntries([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  const loadDisposals = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/asset-disposals?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setDisposals(d.disposals || []); }
-      else setDisposals([]);
-    } catch { setDisposals([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "assets") loadAssets();
-    if (tab === "depreciation") loadDep();
-    if (tab === "disposal") loadDisposals();
-  }, [tab, loadAssets, loadDep, loadDisposals]);
+  const assets = assetsQuery.data?.assets ?? [];
+  const depEntries = depQuery.data?.entries ?? [];
+  const disposals = disposalsQuery.data?.disposals ?? [];
+  const loading = (tab === "assets" && assetsQuery.isLoading) || (tab === "depreciation" && depQuery.isLoading) || (tab === "disposal" && disposalsQuery.isLoading);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -146,7 +115,7 @@ export function FixedAssetsView() {
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "assets" ? (
-        showForm ? <AssetForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAssets(); }} /> : (
+        showForm ? <AssetForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => setShowForm(false)} /> : (
           <>
             <div className="flex items-center gap-2">
               <Filter size={14} className="text-muted-foreground" />
@@ -159,9 +128,9 @@ export function FixedAssetsView() {
           </>
         )
       ) : tab === "depreciation" ? (
-        <DepreciationView entries={depEntries} company={activeCompany} onRefresh={loadDep} />
+        <DepreciationView entries={depEntries} company={activeCompany} onRefresh={() => depQuery.refetch()} />
       ) : (
-        <DisposalView disposals={disposals} assets={assets} company={activeCompany} onRefresh={loadDisposals} />
+        <DisposalView disposals={disposals} assets={assets} company={activeCompany} onRefresh={() => disposalsQuery.refetch()} />
       )}
     </div>
   );
@@ -225,28 +194,27 @@ function AssetForm({ company, onClose, onSaved }: { company: { slug: string; cur
   const [salvageValue, setSalvageValue] = useState(0);
   const [usefulLifeYears, setUsefulLifeYears] = useState(5);
   const [depreciationMethod, setDepreciationMethod] = useState("straight-line");
-  const [glAccountId, setGlAccountId] = useState<number | null>(null);
-  const [depreciationAccountId, setDepreciationAccountId] = useState<number | null>(null);
-  const [expenseAccountId, setExpenseAccountId] = useState<number | null>(null);
+  const [glAccountId, setGlAccountId] = useState<number | undefined>(undefined);
+  const [depreciationAccountId, setDepreciationAccountId] = useState<number | undefined>(undefined);
+  const [expenseAccountId, setExpenseAccountId] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  const createAssetMutation = useCreateFixedAsset();
 
-  const submit = async () => {
+  const submit = () => {
     if (!nameAr || !acquisitionDate || acquisitionCost <= 0) { toast.error("جميع الحقول المطلوبة"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/fixed-assets", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nameAr, nameEn, category, acquisitionDate, acquisitionCost,
-          salvageValue, usefulLifeYears, depreciationMethod,
-          glAccountId, depreciationAccountId, expenseAccountId,
-          companySlug: company.slug,
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string || "Failed"); }
-      toast.success("تم إنشاء الأصل"); onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createAssetMutation.mutate(
+      {
+        nameAr, nameEn, category, acquisitionDate, acquisitionCost,
+        salvageValue, usefulLifeYears, depreciationMethod,
+        glAccountId, depreciationAccountId, expenseAccountId,
+        companySlug: company.slug,
+      },
+      {
+        onSuccess: () => { toast.success("تم إنشاء الأصل"); setSaving(false); onSaved(); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   const annualDep = depreciationMethod === "straight-line" && usefulLifeYears > 0
@@ -272,9 +240,9 @@ function AssetForm({ company, onClose, onSaved }: { company: { slug: string; cur
             {DEP_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
         </div>
-        <div><label className={labelStyle}>حساب الأصل</label><input type="number" value={glAccountId ?? ""} onChange={(e) => setGlAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
-        <div><label className={labelStyle}>حساب الإهلاك</label><input type="number" value={depreciationAccountId ?? ""} onChange={(e) => setDepreciationAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
-        <div><label className={labelStyle}>حساب المصروف</label><input type="number" value={expenseAccountId ?? ""} onChange={(e) => setExpenseAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
+        <div><label className={labelStyle}>حساب الأصل</label><input type="number" value={glAccountId ?? ""} onChange={(e) => setGlAccountId(e.target.value ? Number(e.target.value) : undefined)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
+        <div><label className={labelStyle}>حساب الإهلاك</label><input type="number" value={depreciationAccountId ?? ""} onChange={(e) => setDepreciationAccountId(e.target.value ? Number(e.target.value) : undefined)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
+        <div><label className={labelStyle}>حساب المصروف</label><input type="number" value={expenseAccountId ?? ""} onChange={(e) => setExpenseAccountId(e.target.value ? Number(e.target.value) : undefined)} className={inputStyle} dir="ltr" placeholder="ID الحساب" /></div>
       </div>
       {annualDep > 0 && <div className="text-[12px] text-muted-foreground">الإهلاك السنوي (خط مستقيم): <span className="font-bold text-amber-500">{fmt(annualDep)}</span></div>}
       <div className="flex gap-2.5 justify-end">
@@ -289,18 +257,17 @@ function AssetForm({ company, onClose, onSaved }: { company: { slug: string; cur
 function DepreciationView({ entries, company, onRefresh }: { entries: DepEntry[]; company: { slug: string }; onRefresh: () => void }) {
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [running, setRunning] = useState(false);
+  const runDepMutation = useRunDepreciation();
 
-  const handleRun = async () => {
+  const handleRun = () => {
     setRunning(true);
-    try {
-      const res = await authedFetch(`/api/accounting/depreciation?companySlug=${encodeURIComponent(company.slug)}&period=${period}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period, companySlug: company.slug }),
-      });
-      if (res.ok) { toast.success("تم حساب الإهلاك"); onRefresh(); }
-      else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر حساب الإهلاك"); }
-    } catch { toast.error("خطأ"); }
-    finally { setRunning(false); }
+    runDepMutation.mutate(
+      { period, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم حساب الإهلاك"); setRunning(false); onRefresh(); },
+        onError: (err) => { toast.error(err.message || "تعذّر حساب الإهلاك"); setRunning(false); },
+      },
+    );
   };
 
   return (
@@ -383,21 +350,20 @@ function DisposalForm({ assets, company, onClose, onSaved }: { assets: Asset[]; 
   const [disposalAmount, setDisposalAmount] = useState(0);
   const [disposalDate, setDisposalDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
+  const disposeMutation = useDisposeAsset();
 
   const selected = assets.find(a => a.id === assetId);
 
-  const submit = async () => {
+  const submit = () => {
     if (!assetId) { toast.error("اختر الأصل"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch(`/api/accounting/fixed-assets/${assetId}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "dispose", disposalType, disposalAmount, disposalDate, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string || "Failed"); }
-      toast.success("تم تسجيل التخلص"); onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    disposeMutation.mutate(
+      { id: assetId, action: "dispose", disposalType, disposalAmount, disposalDate, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم تسجيل التخلص"); setSaving(false); onSaved(); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   return (

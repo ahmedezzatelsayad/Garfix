@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import {
+  useAccountantAccess, useCreateAccountantAccess, useRevokeAccountantAccess,
+  useAccountingAudit, useExportExcel,
+} from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Plus, X, Shield, Download, FileSpreadsheet, Clock,
@@ -53,9 +56,19 @@ const EXPORT_TYPE_MAP: Record<string, { label: string; desc: string }> = {
 export function AccountantCollabView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("access");
-  const [accessList, setAccessList] = useState<AccountantAccess[]>([]);
-  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // TanStack Query hooks
+  const companySlug = activeCompany?.slug || "";
+  const accessQuery = useAccountantAccess(companySlug);
+  const auditQuery = useAccountingAudit(companySlug);
+  const grantAccessMutation = useCreateAccountantAccess();
+  const revokeAccessMutation = useRevokeAccountantAccess();
+  const exportExcelMutation = useExportExcel();
+
+  const accessList = (accessQuery.data?.accesses ?? []) as unknown as AccountantAccess[];
+  const auditEntries = (auditQuery.data?.entries ?? []) as unknown as AuditEntry[];
+  const loading = (tab === "access" && accessQuery.isLoading) || (tab === "audit-trail" && auditQuery.isLoading);
+
   const [showGrantForm, setShowGrantForm] = useState(false);
 
   /* Grant form state */
@@ -66,84 +79,61 @@ export function AccountantCollabView() {
   /* Export state */
   const [exportType, setExportType] = useState<ExportType>("trial_balance");
   const [exportPeriod, setExportPeriod] = useState("Q1");
-  const [exporting, setExporting] = useState(false);
+  // exporting state removed — use exportExcelMutation.isPending instead
 
   /* Audit search */
   const [auditSearch, setAuditSearch] = useState("");
 
-  const slug = activeCompany ? `companySlug=${encodeURIComponent(activeCompany.slug)}` : "";
-
-  /* ── Loaders ──────────────────────────────────────────────────────────────── */
-  const loadAccess = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/accountant-access?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل الوصول"); }
-      const d = await res.json(); setAccessList(d.accesses || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل صلاحيات المحاسب"); setAccessList([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  const loadAudit = useCallback(async () => {
-    if (!activeCompany) return; setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/accounting-audit?${slug}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل سجل التدقيق"); }
-      const d = await res.json(); setAuditEntries(d.entries || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل سجل التدقيق"); setAuditEntries([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  useEffect(() => {
-    if (tab === "access" && activeCompany) loadAccess();
-    if (tab === "audit-trail" && activeCompany) loadAudit();
-  }, [tab, activeCompany, loadAccess, loadAudit]);
+  // slug removed — TanStack hooks use companySlug directly
 
   const switchTab = (t: Tab) => { setTab(t); setShowGrantForm(false); };
 
   /* ── Grant Access ──────────────────────────────────────────────────────── */
-  const handleGrant = async () => {
+  const handleGrant = () => {
     if (!activeCompany || !accName || !accEmail) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
-    try {
-      const res = await authedFetch("/api/accounting/accountant-access", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: activeCompany.slug, accountantName: accName, accountantEmail: accEmail, accessLevel: accLevel }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل منح الوصول"); }
-      toast.success("تم منح صلاحية الوصول للمحاسب");
-      setShowGrantForm(false); setAccName(""); setAccEmail(""); setAccLevel("read_only"); loadAccess();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر منح صلاحية الوصول"); }
+    grantAccessMutation.mutate(
+      { companySlug: activeCompany.slug, accountantName: accName, accountantEmail: accEmail, accessLevel: accLevel },
+      {
+        onSuccess: () => {
+          toast.success("تم منح صلاحية الوصول للمحاسب");
+          setShowGrantForm(false); setAccName(""); setAccEmail(""); setAccLevel("read_only");
+        },
+        onError: (err) => { toast.error(err.message || "تعذّر منح صلاحية الوصول"); },
+      },
+    );
   };
 
   /* ── Revoke Access ─────────────────────────────────────────────────────── */
-  const handleRevoke = async (id: number) => {
+  const handleRevoke = (id: number) => {
     if (!activeCompany) return;
     if (!confirm("إلغاء صلاحية الوصول للمحاسب؟")) return;
-    try {
-      const res = await authedFetch(`/api/accounting/accountant-access/${id}/revoke?${slug}`, { method: "POST" });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل إلغاء الوصول"); }
-      toast.success("تم إلغاء صلاحية الوصول"); loadAccess();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إلغاء صلاحية الوصول"); }
+    revokeAccessMutation.mutate(
+      { id, companySlug: activeCompany.slug },
+      {
+        onSuccess: () => { toast.success("تم إلغاء صلاحية الوصول"); },
+        onError: (err) => { toast.error(err.message || "تعذّر إلغاء صلاحية الوصول"); },
+      },
+    );
   };
 
   /* ── Export ──────────────────────────────────────────────────────────────── */
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!activeCompany) return;
-    setExporting(true);
-    try {
-      const res = await authedFetch(`/api/accounting/export-excel?${slug}&type=${exportType}&period=${exportPeriod}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل التصدير"); }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url;
-      const fn = EXPORT_TYPE_MAP[exportType]?.label || exportType;
-      a.download = `${fn}-${activeCompany.slug}-${exportPeriod}.xlsx`;
-      document.body.appendChild(a); a.click(); a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("تم تصدير الملف بنجاح");
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر التصدير"); }
-    finally { setExporting(false); }
+    exportExcelMutation.mutate(
+      { companySlug: activeCompany.slug, type: exportType, period: exportPeriod },
+      {
+        onSuccess: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url;
+          const fn = EXPORT_TYPE_MAP[exportType]?.label || exportType;
+          a.download = `${fn}-${activeCompany!.slug}-${exportPeriod}.xlsx`;
+          document.body.appendChild(a); a.click(); a.remove();
+          window.URL.revokeObjectURL(url);
+          toast.success("تم تصدير الملف بنجاح");
+        },
+        onError: (err) => { toast.error(err.message || "تعذّر التصدير"); },
+      },
+    );
   };
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
@@ -285,8 +275,8 @@ export function AccountantCollabView() {
             </select>
           </div>
           <div className="flex justify-end">
-            <button onClick={handleExport} disabled={exporting} className="px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
-              <Download size={14} /> {exporting ? "جارٍ التصدير…" : "تصدير"}
+            <button onClick={handleExport} disabled={exportExcelMutation.isPending} className="px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
+              <Download size={14} /> {exportExcelMutation.isPending ? "جارٍ التصدير…" : "تصدير"}
             </button>
           </div>
         </div>

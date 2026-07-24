@@ -2,8 +2,11 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useSmartParse, useExtractInvoice, useParseImageJson,
+  useParseFileJson, useBulkImport,
+} from "@/hooks/queries";
 import {
   Sparkles, Image as ImageIcon, FileText, Upload, X, Check, Loader2,
   Trash2, Edit2, Plus, Save, AlertCircle, ChevronDown, ChevronUp, FileSpreadsheet,
@@ -29,6 +32,7 @@ interface ParsedOrder {
   shipping: number;
   discount: number;
   notes: string;
+  [key: string]: unknown;
 }
 
 interface Meta {
@@ -96,7 +100,13 @@ export function BulkInputView() {
   const [showReviewQueue, setShowReviewQueue] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleParseText = useCallback(async () => {
+  const smartParseMutation = useSmartParse();
+  const extractInvoiceMutation = useExtractInvoice();
+  const parseImageMutation = useParseImageJson();
+  const parseFileMutation = useParseFileJson();
+  const bulkImportMutation = useBulkImport();
+
+  const handleParseText = useCallback(() => {
     if (!activeCompany) {
       toast.error("اختر شركة أولاً");
       return;
@@ -108,46 +118,43 @@ export function BulkInputView() {
     setLoading(true);
     setOrders([]);
     setMeta(null);
-    // GATE 5 fix — clear stale warnings from the previous batch when the user
-    // starts a new parse. They belong to the previous invoice set, not the new one.
     setReviewQueueWarnings([]);
     setShowWarningsBanner(true);
-    try {
-      // 🧠 brain mode: pattern-first (free) + AI fallback that learns templates.
-      // legacy mode: /api/ai/smart-parse (AI every time).
-      const endpoint = brainMode ? "/api/ai/invoice-brain/extract" : "/api/ai/smart-parse";
-      const payload = brainMode
-        ? { rawText, companySlug: activeCompany.slug }
-        : { rawText, companySlug: activeCompany.slug, autoAddProducts };
-      const res = await authedFetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل التحليل");
-      setOrders(data.orders || []);
-      setMeta(data.meta || null);
-      if ((data.orders || []).length === 0) {
+
+    const extractPayload = { rawText, companySlug: activeCompany.slug, autoAddProducts };
+    const smartParsePayload = { content: rawText, rawText, companySlug: activeCompany.slug, autoAddProducts };
+
+    const onSuccess = (data: Record<string, unknown>) => {
+      setOrders((data as { orders?: ParsedOrder[] }).orders || []);
+      setMeta((data as { meta?: Meta }).meta || null);
+      const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
+      if (ordersList.length === 0) {
         toast.warning("لم يتم استخراج أي طلبات من النص");
       } else {
-        const src = data.meta?.source;
+        const src = (data as { meta?: Meta }).meta?.source;
         const badge = brainMode && src
           ? src === "pattern" ? " (بدون ذكاء اصطناعي ✓)"
           : src === "ai" ? " (ذكاء اصطناعي + تعلّم قالب جديد)"
           : src === "mixed" ? " (مختلط)"
           : ""
           : "";
-        toast.success(`تم استخراج ${data.orders.length} طلب${badge}`);
+        toast.success(`تم استخراج ${ordersList.length} طلب${badge}`);
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ في المعالجة");
-    } finally {
       setLoading(false);
-    }
-  }, [activeCompany, rawText, autoAddProducts, brainMode]);
+    };
+    const onError = (err: Error) => {
+      toast.error(err.message || "خطأ في المعالجة");
+      setLoading(false);
+    };
 
-  const handleParseImage = useCallback(async () => {
+    if (brainMode) {
+      extractInvoiceMutation.mutate(extractPayload, { onSuccess, onError });
+    } else {
+      smartParseMutation.mutate(smartParsePayload, { onSuccess, onError });
+    }
+  }, [activeCompany, rawText, autoAddProducts, brainMode, smartParseMutation, extractInvoiceMutation]);
+
+  const handleParseImage = useCallback(() => {
     if (!activeCompany) {
       toast.error("اختر شركة أولاً");
       return;
@@ -159,66 +166,61 @@ export function BulkInputView() {
     setLoading(true);
     setOrders([]);
     setMeta(null);
-    // GATE 5 fix — clear stale warnings from a previous batch when starting a new parse.
     setReviewQueueWarnings([]);
     setShowWarningsBanner(true);
-    try {
-      const res = await authedFetch("/api/ai/parse-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64,
-          mimeType: "image/jpeg",
-          companySlug: activeCompany.slug,
-          autoAddProducts,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تحليل الصورة");
-      setOrders(data.orders || []);
-      setMeta(data.meta || null);
-      if ((data.orders || []).length === 0) {
-        toast.warning("لم يتم استخراج أي طلبات من الصورة");
-      } else {
-        toast.success(`تم استخراج ${data.orders.length} طلب من الصورة`);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ في المعالجة");
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCompany, imageBase64, autoAddProducts]);
 
-  const handleParseFile = useCallback(async () => {
+    parseImageMutation.mutate(
+      { imageBase64, mimeType: "image/jpeg", companySlug: activeCompany.slug, autoAddProducts },
+      {
+        onSuccess: (data: Record<string, unknown>) => {
+          const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
+          setOrders(ordersList);
+          setMeta((data as { meta?: Meta }).meta || null);
+          if (ordersList.length === 0) {
+            toast.warning("لم يتم استخراج أي طلبات من الصورة");
+          } else {
+            toast.success(`تم استخراج ${ordersList.length} طلب من الصورة`);
+          }
+          setLoading(false);
+        },
+        onError: (err: Error) => {
+          toast.error(err.message || "خطأ في المعالجة");
+          setLoading(false);
+        },
+      },
+    );
+  }, [activeCompany, imageBase64, autoAddProducts, parseImageMutation]);
+
+  const handleParseFile = useCallback(() => {
     if (!activeCompany) { toast.error("اختر شركة أولاً"); return; }
     if (!fileBase64 || !fileName) { toast.error("ارفع ملف أولاً"); return; }
     setLoading(true);
     setOrders([]);
     setMeta(null);
-    // GATE 5 fix — clear stale warnings from a previous batch when starting a new parse.
     setReviewQueueWarnings([]);
     setShowWarningsBanner(true);
-    try {
-      const res = await authedFetch("/api/ai/parse-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileBase64, fileName, companySlug: activeCompany.slug }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تحليل الملف");
-      setOrders(data.orders || []);
-      setMeta(data.meta || null);
-      if ((data.orders || []).length === 0) {
-        toast.warning("لم يتم استخراج أي طلبات من الملف");
-      } else {
-        toast.success(`تم استخراج ${data.orders.length} طلب من الملف`);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ في المعالجة");
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCompany, fileBase64, fileName]);
+
+    parseFileMutation.mutate(
+      { fileBase64, fileName, companySlug: activeCompany.slug },
+      {
+        onSuccess: (data: Record<string, unknown>) => {
+          const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
+          setOrders(ordersList);
+          setMeta((data as { meta?: Meta }).meta || null);
+          if (ordersList.length === 0) {
+            toast.warning("لم يتم استخراج أي طلبات من الملف");
+          } else {
+            toast.success(`تم استخراج ${ordersList.length} طلب من الملف`);
+          }
+          setLoading(false);
+        },
+        onError: (err: Error) => {
+          toast.error(err.message || "خطأ في المعالجة");
+          setLoading(false);
+        },
+      },
+    );
+  }, [activeCompany, fileBase64, fileName, parseFileMutation]);
 
   const handleImageUpload = useCallback((file: File) => {
     if (file.size > 5 * 1024 * 1024) {
@@ -236,55 +238,48 @@ export function BulkInputView() {
     reader.readAsDataURL(file);
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
     if (!activeCompany || orders.length === 0) return;
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/ai/bulk-import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: activeCompany.slug,
-          orders,
-          createJournalEntries,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل الحفظ");
-      const created = data.created?.length || 0;
-      const errors = data.errors?.length || 0;
-      // GATE 5 fix — capture review-queue / oversell warnings into persistent banner.
-      const newWarnings: string[] = Array.isArray(data.reviewQueueWarnings) ? data.reviewQueueWarnings : [];
-      if (newWarnings.length > 0) {
-        setReviewQueueWarnings(newWarnings);
-        setShowWarningsBanner(true);
-      }
-      if (created > 0 && errors === 0) {
-        toast.success(`تم إنشاء ${created} فاتورة بنجاح`);
-      } else if (created > 0 && errors > 0) {
-        toast.warning(`تم إنشاء ${created} فاتورة، فشل ${errors}`);
-      } else {
-        toast.error(`فشل إنشاء كل الفواتير (${errors})`);
-      }
-      if (newWarnings.length > 0) {
-        toast.warning(`⚠️ ${newWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
-      }
-      // Reset on success
-      if (created > 0) {
-        setOrders([]);
-        setMeta(null);
-        setRawText("");
-        setImageBase64(null);
-        setImagePreview(null);
-        setFileBase64(null);
-        setFileName(null);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ في الحفظ");
-    } finally {
-      setSaving(false);
-    }
-  }, [activeCompany, orders, createJournalEntries]);
+    bulkImportMutation.mutate(
+      { companySlug: activeCompany.slug, orders, createJournalEntries },
+      {
+        onSuccess: (data: Record<string, unknown>) => {
+          const created = (data as { created?: unknown[] }).created?.length || 0;
+          const errors = (data as { errors?: unknown[] }).errors?.length || 0;
+          const newWarnings: string[] = Array.isArray((data as { reviewQueueWarnings?: unknown }).reviewQueueWarnings) ? (data as { reviewQueueWarnings: string[] }).reviewQueueWarnings : [];
+          if (newWarnings.length > 0) {
+            setReviewQueueWarnings(newWarnings);
+            setShowWarningsBanner(true);
+          }
+          if (created > 0 && errors === 0) {
+            toast.success(`تم إنشاء ${created} فاتورة بنجاح`);
+          } else if (created > 0 && errors > 0) {
+            toast.warning(`تم إنشاء ${created} فاتورة، فشل ${errors}`);
+          } else {
+            toast.error(`فشل إنشاء كل الفواتير (${errors})`);
+          }
+          if (newWarnings.length > 0) {
+            toast.warning(`⚠️ ${newWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
+          }
+          if (created > 0) {
+            setOrders([]);
+            setMeta(null);
+            setRawText("");
+            setImageBase64(null);
+            setImagePreview(null);
+            setFileBase64(null);
+            setFileName(null);
+          }
+          setSaving(false);
+        },
+        onError: (err: Error) => {
+          toast.error(err.message || "خطأ في الحفظ");
+          setSaving(false);
+        },
+      },
+    );
+  }, [activeCompany, orders, createJournalEntries, bulkImportMutation]);
 
   const updateOrder = (idx: number, updates: Partial<ParsedOrder>) => {
     setOrders((arr) => arr.map((o, i) => (i === idx ? { ...o, ...updates } : o)));

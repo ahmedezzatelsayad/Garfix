@@ -278,3 +278,335 @@ export function useParseFile() {
       apiUpload<Record<string, unknown>>("/api/ai/parse-file", formData),
   });
 }
+
+/**
+ * Parse an image using the AI service.
+ *
+ * Uses `apiUpload` for multipart/form-data image upload. This is a
+ * fire-and-forget style mutation — it does not invalidate any query
+ * caches automatically.
+ */
+export function useParseImage() {
+  return useMutation<Record<string, unknown>, ApiError, FormData>({
+    mutationFn: (formData) =>
+      apiUpload<Record<string, unknown>>("/api/ai/parse-image", formData),
+  });
+}
+
+/**
+ * Bulk-import parsed orders as invoices.
+ *
+ * Sends parsed order data to the bulk-import endpoint. On success,
+ * invoice list queries are invalidated so the new invoices appear
+ * in all mounted list views.
+ *
+ * @param variables - Object containing parsed orders and company context.
+ */
+export interface BulkImportPayload {
+  orders: Array<Record<string, unknown>>;
+  companySlug: string;
+  autoAddProducts?: boolean;
+  createJournalEntries?: boolean;
+  [key: string]: unknown;
+}
+
+/** Shape of a parsed order from smart parse / invoice brain. */
+export interface ParsedOrder {
+  clientName: string;
+  clientPhone: string;
+  clientAddress: string;
+  clientEmail?: string;
+  items: Array<{ name: string; qty: number; unitPrice: number }>;
+  taxRate: number;
+  shipping: number;
+  discount: number;
+  notes: string;
+  [key: string]: unknown;
+}
+
+export function useBulkImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Record<string, unknown>, ApiError, BulkImportPayload>({
+    mutationFn: (payload) =>
+      apiPost<BulkImportPayload, Record<string, unknown>>("/api/ai/bulk-import", payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.invoices.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Fetch AI memory notes scoped to a specific entity (e.g. a client).
+ *
+ * @param companySlug - Slug of the company.
+ * @param entityType  - Type of the entity (e.g. "client").
+ * @param entityId    - ID of the entity.
+ */
+interface EntityMemoryNote {
+  id: number;
+  companySlug: string;
+  entityType: string;
+  entityId: number;
+  note: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+interface EntityMemoryListResponse {
+  notes: EntityMemoryNote[];
+}
+
+export function useEntityMemoryNotes(companySlug: string, entityType: string, entityId: number) {
+  return useQuery<EntityMemoryListResponse, ApiError>({
+    queryKey: [...queryKeys.ai.all, "entity-memory", companySlug, entityType, entityId] as const,
+    queryFn: () =>
+      apiGet<EntityMemoryListResponse>(
+        `/api/ai/memory?companySlug=${encodeURIComponent(companySlug)}&entityType=${encodeURIComponent(entityType)}&entityId=${entityId}`,
+      ),
+    enabled: !!companySlug && !!entityType && entityId > 0,
+  });
+}
+
+/**
+ * Create a memory note scoped to a specific entity.
+ *
+ * On success the entity memory notes query is invalidated so
+ * the new note appears in the list.
+ */
+interface CreateEntityMemoryNotePayload {
+  companySlug: string;
+  entityType: string;
+  entityId: number;
+  note: string;
+}
+
+export function useCreateEntityMemoryNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation<EntityMemoryNote, ApiError, CreateEntityMemoryNotePayload>({
+    mutationFn: (payload) =>
+      apiPost<CreateEntityMemoryNotePayload, EntityMemoryNote>("/api/ai/memory", payload),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.ai.all, "entity-memory", variables.companySlug, variables.entityType, variables.entityId],
+      });
+    },
+  });
+}
+
+// ─── AI Agent Messaging Hook ─────────────────────────────────────────────────
+
+/** Payload for sending a message to a specific AI agent. */
+interface AgentMessagePayload {
+  agentType: string;
+  message: string;
+  companySlug: string;
+}
+
+/** Response from an AI agent message. */
+interface AgentMessageResponse {
+  ok: boolean;
+  inScope: boolean;
+  agentName: string;
+  response: string;
+  allowedIntents?: string[];
+}
+
+/**
+ * Send a message to a specific AI agent (accounting / sales / inventory).
+ *
+ * This is a fire-and-forget style mutation — it returns the agent's
+ * response directly. Callers manage chat state locally.
+ */
+export function useAIAgentMessage() {
+  return useMutation<AgentMessageResponse, ApiError, AgentMessagePayload>({
+    mutationFn: (payload) =>
+      apiPost<AgentMessagePayload, AgentMessageResponse>("/api/ai/agents", payload),
+  });
+}
+
+// ─── AI Tools Hooks ──────────────────────────────────────────────────────────
+
+/** Response from listing available AI tools. */
+interface AIToolsResponse {
+  tools: Array<{
+    intent: string;
+    description: string;
+    parameters: Array<Record<string, unknown>>;
+  }>;
+}
+
+/**
+ * Fetch the list of available AI tools/intents.
+ *
+ * @param companySlug - Slug of the company whose tools to list.
+ */
+export function useAITools(companySlug: string) {
+  return useQuery<AIToolsResponse, ApiError>({
+    queryKey: [...queryKeys.ai.all, "tools", companySlug] as const,
+    queryFn: () =>
+      apiGet<AIToolsResponse>(
+        `/api/ai/tools?companySlug=${encodeURIComponent(companySlug)}`,
+      ),
+    enabled: !!companySlug,
+  });
+}
+
+/** Payload for executing/confirming an AI tool action. */
+interface AIToolsExecutePayload {
+  intent: string;
+  params: Record<string, unknown>;
+  confirmToken?: string;
+  companySlug: string;
+}
+
+/** Response from executing an AI tool. */
+interface AIToolsExecuteResponse {
+  ok: boolean;
+  result?: Record<string, unknown>;
+  preview?: string;
+  confirmToken?: string;
+  warning?: string;
+  affectedRecords?: Array<{ type: string; id?: string | number; name?: string }>;
+}
+
+/**
+ * Execute or confirm an AI tool action.
+ *
+ * This is a fire-and-forget style mutation — it returns the tool's
+ * result directly. Callers manage chat/confirmation state locally.
+ */
+export function useAIToolsExecute() {
+  return useMutation<AIToolsExecuteResponse, ApiError, AIToolsExecutePayload>({
+    mutationFn: (payload) =>
+      apiPost<AIToolsExecutePayload, AIToolsExecuteResponse>("/api/ai/tools", payload),
+  });
+}
+
+// ─── AI Chat History Hook ───────────────────────────────────────────────────
+
+/** Shape of a chat message in history. */
+export interface ChatHistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+  conversationId?: string;
+  [key: string]: unknown;
+}
+
+/** Response shape for the AI chat history endpoint. */
+interface ChatHistoryResponse {
+  messages: ChatHistoryMessage[];
+}
+
+/**
+ * Fetch AI chat history for a given company.
+ *
+ * Returns prior conversation messages so the caller can restore
+ * a previous chat session.
+ *
+ * @param companySlug - Optional slug of the company to scope the history.
+ */
+export function useAIChatHistory(companySlug?: string) {
+  return useQuery<ChatHistoryResponse, ApiError>({
+    queryKey: queryKeys.ai.chatHistory(companySlug),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (companySlug) params.set("companySlug", companySlug);
+      const url = params.toString() ? `/api/ai/chat?${params.toString()}` : "/api/ai/chat";
+      return apiGet<ChatHistoryResponse>(url);
+    },
+    enabled: !!companySlug || true, // always enabled; companySlug is optional
+    staleTime: 0, // always fresh — chat history can change quickly
+  });
+}
+
+// ─── AI Chat Messages Hook ──────────────────────────────────────────────────
+
+/** Payload for sending a conversation-style message to the AI chat endpoint. */
+export interface AIChatMessagesPayload {
+  messages: Array<{ role: string; content: string }>;
+  companySlug?: string;
+  conversationId?: string;
+  [key: string]: unknown;
+}
+
+/** Response shape for the conversation-style chat endpoint. */
+interface AIChatMessagesResponse {
+  reply: string;
+  conversationId?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Send a conversation-style message to the AI chat endpoint.
+ *
+ * Unlike `useAIChat` (which sends a single message), this hook sends
+ * an array of recent messages for multi-turn conversation context.
+ * This is a fire-and-forget style mutation — it returns the AI's
+ * reply directly. Callers manage chat state locally.
+ */
+export function useAIChatMessages() {
+  return useMutation<AIChatMessagesResponse, ApiError, AIChatMessagesPayload>({
+    mutationFn: (payload) =>
+      apiPost<AIChatMessagesPayload, AIChatMessagesResponse>("/api/ai/chat", payload),
+  });
+}
+
+// ─── Parse Image JSON Hook ──────────────────────────────────────────────────
+
+/** Payload for parsing an image via JSON (base64-encoded). */
+export interface ParseImageJsonPayload {
+  imageBase64: string;
+  mimeType?: string;
+  companySlug: string;
+  autoAddProducts?: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Parse an image using the AI service via JSON payload (base64-encoded).
+ *
+ * Unlike `useParseImage` (which uses FormData upload), this hook sends
+ * a JSON body with a base64-encoded image string. This is useful when
+ * the image data is already available in base64 format (e.g. from
+ * a FileReader).
+ *
+ * This is a fire-and-forget style mutation — it does not invalidate
+ * any query caches automatically.
+ */
+export function useParseImageJson() {
+  return useMutation<Record<string, unknown>, ApiError, ParseImageJsonPayload>({
+    mutationFn: (payload) =>
+      apiPost<ParseImageJsonPayload, Record<string, unknown>>("/api/ai/parse-image", payload),
+  });
+}
+
+// ─── Parse File JSON Hook ───────────────────────────────────────────────────
+
+/** Payload for parsing a file via JSON (base64-encoded). */
+export interface ParseFileJsonPayload {
+  fileBase64: string;
+  fileName: string;
+  companySlug: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Parse a file using the AI service via JSON payload (base64-encoded).
+ *
+ * Unlike `useParseFile` (which uses FormData upload), this hook sends
+ * a JSON body with a base64-encoded file string. This is useful when
+ * the file data is already available in base64 format.
+ *
+ * This is a fire-and-forget style mutation — it does not invalidate
+ * any query caches automatically.
+ */
+export function useParseFileJson() {
+  return useMutation<Record<string, unknown>, ApiError, ParseFileJsonPayload>({
+    mutationFn: (payload) =>
+      apiPost<ParseFileJsonPayload, Record<string, unknown>>("/api/ai/parse-file", payload),
+  });
+}

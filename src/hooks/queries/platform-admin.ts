@@ -400,6 +400,26 @@ export function useQueueFailures() {
 }
 
 /**
+ * Clear all queue failures.
+ *
+ * On success the queue failures list cache is invalidated so the
+ * cleared failures no longer appear in any mounted view.
+ */
+export function useClearQueueFailures() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ ok: boolean }, ApiError, void>({
+    mutationFn: () =>
+      apiPost<Record<string, unknown>, { ok: boolean }>("/api/platform-admin/queue-failures?clear=1", {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.platformAdmin.queueFailures(),
+      });
+    },
+  });
+}
+
+/**
  * Fetch all support tickets visible to platform administrators.
  *
  * Returns a list of tickets with their subject, status, priority,
@@ -845,6 +865,34 @@ export function useLandingContent() {
 // ─── SaaS Mutation Hooks ────────────────────────────────────────────────────
 
 /**
+ * Create a new SaaS user.
+ *
+ * On success the SaaS users list cache is invalidated so every mounted
+ * list view refetches with the new entry.
+ */
+interface CreateSaaSUserPayload {
+  email: string;
+  displayName: string;
+  password: string;
+  role: string;
+  companies: string[];
+}
+
+export function useCreateSaaSUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SaaSUser, ApiError, CreateSaaSUserPayload>({
+    mutationFn: (payload) =>
+      apiPost<CreateSaaSUserPayload, SaaSUser>("/api/saas/users", payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.saas.users(),
+      });
+    },
+  });
+}
+
+/**
  * Update a SaaS user.
  *
  * Accepts the user uid plus any updatable fields. On success
@@ -914,14 +962,198 @@ export function useInitiatePayment() {
  * Update the landing page content.
  *
  * Sends a partial update to the landing page content managed
- * by platform administrators. This is a fire-and-forget style
- * mutation — it does not invalidate any query caches
- * automatically. Callers may wish to invalidate the
- * `useLandingContent` query after the update succeeds.
+ * by platform administrators. On success the landing-content-admin
+ * cache is invalidated so the admin CMS view picks up the changes.
+ *
+ * Variables shape: `{ key: string, value: unknown }`
  */
 export function useUpdateLandingContent() {
+  const queryClient = useQueryClient();
+
   return useMutation<void, ApiError, Record<string, unknown>>({
     mutationFn: (data) =>
       apiPatch<Record<string, unknown>, void>("/api/platform-admin/landing-content", data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.platformAdmin.landingContentAdmin(),
+      });
+    },
+  });
+}
+
+// ─── Platform-level Backup Hooks ────────────────────────────────────────────
+
+/** Shape of a platform-level backup record. */
+export interface PlatformBackup {
+  name: string;
+  size: number;
+  createdAt: string;
+  [key: string]: unknown;
+}
+
+/** Response shape for the platform-level backups list endpoint. */
+interface PlatformBackupListResponse {
+  backups: PlatformBackup[];
+}
+
+/** Response shape for creating a platform-level backup. */
+interface PlatformBackupCreateResponse {
+  backupName?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Fetch platform-level backups (founder-only, no companySlug needed).
+ *
+ * Returns a list of all encrypted SQLite backups for the entire platform.
+ */
+export function usePlatformBackups() {
+  return useQuery<PlatformBackupListResponse, ApiError>({
+    queryKey: queryKeys.platformAdmin.backups(),
+    queryFn: () =>
+      apiGet<PlatformBackupListResponse>("/api/backups"),
+  });
+}
+
+/**
+ * Create a new platform-level backup (founder-only).
+ *
+ * On success the platform backups cache is invalidated so the
+ * list view picks up the newly created backup.
+ */
+export function useCreatePlatformBackup() {
+  const queryClient = useQueryClient();
+
+  return useMutation<PlatformBackupCreateResponse, ApiError, void>({
+    mutationFn: () =>
+      apiPost<void, PlatformBackupCreateResponse>("/api/backups"),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.platformAdmin.backups(),
+      });
+    },
+  });
+}
+
+// ─── Platform-level Settings Hooks ──────────────────────────────────────────
+
+/** Shape of the platform settings response. */
+interface PlatformSettingsResponse {
+  settings: Record<string, unknown>;
+  defaults?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/**
+ * Fetch platform-level settings (founder-only, no companySlug needed).
+ *
+ * Returns the global settings including the plan catalog and
+ * other platform-wide configuration keys.
+ */
+export function usePlatformSettings() {
+  return useQuery<PlatformSettingsResponse, ApiError>({
+    queryKey: queryKeys.platformAdmin.settings(),
+    queryFn: () => apiGet<PlatformSettingsResponse>("/api/settings"),
+  });
+}
+
+/**
+ * Update platform-level settings (founder-only).
+ *
+ * Sends a partial update to the global settings. On success the
+ * platform settings cache is invalidated.
+ */
+export function useUpdatePlatformSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation<PlatformSettingsResponse, ApiError, Record<string, unknown>>({
+    mutationFn: (data) =>
+      apiPatch<Record<string, unknown>, PlatformSettingsResponse>("/api/settings", data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.platformAdmin.settings(),
+      });
+    },
+  });
+}
+
+// ─── Landing Content Admin Hooks ────────────────────────────────────────────
+
+/** Shape of a landing content item from the admin CMS endpoint. */
+export interface LandingContentItem {
+  key: string;
+  value: unknown;
+  updatedAt: string;
+  updatedBy: string | null;
+  [key: string]: unknown;
+}
+
+/** Response shape for the landing content admin endpoint. */
+interface LandingContentAdminResponse {
+  items: LandingContentItem[];
+  [key: string]: unknown;
+}
+
+/**
+ * Fetch landing content items from the admin CMS endpoint.
+ *
+ * Returns the full list of key→value pairs managed by platform
+ * administrators. This is a different endpoint from the public
+ * `useLandingContent` hook — it returns raw items with metadata.
+ */
+export function useLandingContentAdmin() {
+  return useQuery<LandingContentAdminResponse, ApiError>({
+    queryKey: queryKeys.platformAdmin.landingContentAdmin(),
+    queryFn: () =>
+      apiGet<LandingContentAdminResponse>("/api/platform-admin/landing-content"),
+  });
+}
+
+// ─── Review Queue Filtered Hook ─────────────────────────────────────────────
+
+/** Shape of the filtered review queue response. */
+interface ReviewQueueFilteredResponse {
+  items: Array<{
+    id: number;
+    companySlug: string;
+    inputText: string;
+    matchedProductId: number | null;
+    matchedAlias: string | null;
+    confidence: number;
+    tier: string;
+    action: string;
+    invoiceId: number | null;
+    productName: string | null;
+    productCode: string | null;
+    createdAt: string;
+  }>;
+  count: number;
+  byTenant: Array<{ companySlug: string; count: number }>;
+}
+
+/**
+ * Fetch the review queue with optional filters.
+ *
+ * Supports filtering by tier (e.g. "suggested" or
+ * "collision-recovery-failed") and by tenant companySlug.
+ * The query is disabled when filters are empty strings to
+ * avoid unnecessary requests.
+ *
+ * @param filters - Optional tier and companySlug filters.
+ */
+export function useReviewQueueFiltered(
+  filters: { tier?: string; companySlug?: string } = {},
+) {
+  const params = new URLSearchParams({ limit: "200" });
+  if (filters.tier) params.set("tier", filters.tier);
+  if (filters.companySlug) params.set("companySlug", filters.companySlug);
+
+  return useQuery<ReviewQueueFilteredResponse, ApiError>({
+    queryKey: queryKeys.platformAdmin.reviewQueueFiltered(filters),
+    queryFn: () =>
+      apiGet<ReviewQueueFilteredResponse>(
+        `/api/platform-admin/review-queue?${params.toString()}`,
+      ),
   });
 }

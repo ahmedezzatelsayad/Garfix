@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useAccountingDashboard } from '@/hooks/queries/dashboard'
 import {
   Card,
   CardContent,
@@ -45,83 +45,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 
-interface DashboardData {
-  financial: {
-    totalRevenue: number
-    totalExpenses: number
-    netProfit: number
-    totalAROutstanding: number
-    totalAPOutstanding: number
-    inventoryValue: number
-    topProducts: {
-      productId: string
-      productName: string
-      sku: string
-      totalQuantity: number
-      unitPrice: number
-      totalValue: number
-      purchasePrice: number
-    }[]
-    recentTransactions: {
-      id: string
-      number: string
-      date: string
-      amount: number
-      type: string
-      status: string
-      description: string | null
-    }[]
-    arBreakdown: {
-      current: number
-      overdue30: number
-      overdue60: number
-      overdue90: number
-      total: number
-    }
-    apBreakdown: {
-      current: number
-      overdue30: number
-      overdue60: number
-      overdue90: number
-      total: number
-    }
-  }
-  ar: {
-    clientId: string
-    clientName: string
-    clientCode: string
-    totalOutstanding: number
-    totalOverdue: number
-    totalReceived: number
-  }[]
-  ap: {
-    supplierId: string
-    supplierName: string
-    supplierCode: string
-    totalOutstanding: number
-    totalOverdue: number
-    totalPaid: number
-  }[]
-  tradeFinance: {
-    totalLCAmount: number
-    activeLCs: number
-    expiredLCs: number
-    lcByType: { import: number; export: number }
-    lcByStatus: Record<string, number>
-    productCosts: {
-      productId: string
-      productName: string
-      sku: string
-      purchasePrice: number
-      sellingPrice: number
-      margin: number
-      quantityOnHand: number
-      totalInventoryCost: number
-    }[]
-    totalProductCost: number
-  }
-}
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -160,28 +83,9 @@ function getStatusColor(status: string): string {
 }
 
 export default function AccountingDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useAccountingDashboard()
 
-  useEffect(() => {
-    fetch('/api/accounting/dashboard')
-      .then(res => res.json())
-      .then(json => {
-        if (json.error) {
-          setError(json.error)
-        } else {
-          setData(json)
-        }
-        setLoading(false)
-      })
-      .catch(err => {
-        setError(err.message)
-        setLoading(false)
-      })
-  }, [])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <header className="border-b px-6 py-4">
@@ -228,7 +132,7 @@ export default function AccountingDashboard() {
           <Card className="max-w-md">
             <CardContent className="p-6 text-center">
               <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <p className="text-lg font-medium">{error ?? 'No data available'}</p>
+              <p className="text-lg font-medium">{error?.message ?? 'No data available'}</p>
               <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
                 Retry
               </Button>

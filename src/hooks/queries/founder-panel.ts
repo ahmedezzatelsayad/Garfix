@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiGet, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
 
@@ -92,9 +92,7 @@ interface AIFabricData {
   [key: string]: unknown;
 }
 
-interface MissionControlResponse { data: MissionControlData }
-interface FinOpsResponse { data: FinOpsData }
-interface AIFabricResponse { data: AIFabricData }
+// APIs return data directly (not wrapped in { data: ... })
 
 // ─── useMissionControl ─────────────────────────────────────────────────────
 
@@ -105,9 +103,9 @@ interface AIFabricResponse { data: AIFabricData }
  * refetchInterval: 10s matches the original POLLING_INTERVAL_MS.
  */
 export function useMissionControl() {
-  return useQuery<MissionControlResponse, ApiError>({
+  return useQuery<MissionControlData, ApiError>({
     queryKey: queryKeys.founderPanel.missionControl(),
-    queryFn: () => apiGet<MissionControlResponse>("/api/founder-panel/mission-control"),
+    queryFn: () => apiGet<MissionControlData>("/api/founder-panel/mission-control"),
     refetchInterval: 10_000,
     staleTime: 5_000,
   });
@@ -121,9 +119,9 @@ export function useMissionControl() {
  * Replaces raw fetch in the finops page.
  */
 export function useFinOps() {
-  return useQuery<FinOpsResponse, ApiError>({
+  return useQuery<FinOpsData, ApiError>({
     queryKey: queryKeys.founderPanel.finops(),
-    queryFn: () => apiGet<FinOpsResponse>("/api/founder-panel/finops"),
+    queryFn: () => apiGet<FinOpsData>("/api/founder-panel/finops"),
     staleTime: 30_000,
   });
 }
@@ -136,9 +134,9 @@ export function useFinOps() {
  * Replaces raw fetch in the ai-fabric page.
  */
 export function useAIFabric() {
-  return useQuery<AIFabricResponse, ApiError>({
+  return useQuery<AIFabricData, ApiError>({
     queryKey: queryKeys.founderPanel.aiFabric(),
-    queryFn: () => apiGet<AIFabricResponse>("/api/founder-panel/ai-fabric"),
+    queryFn: () => apiGet<AIFabricData>("/api/founder-panel/ai-fabric"),
     staleTime: 30_000,
   });
 }

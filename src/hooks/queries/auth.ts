@@ -9,7 +9,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, ApiError } from "@/hooks/api-client";
+import { apiGet, apiPost, apiPatch, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -187,6 +187,33 @@ export function useRegister() {
   return useMutation<UserProfile, ApiError, RegisterPayload>({
     mutationFn: (payload) =>
       apiPost<RegisterPayload, UserProfile>("/api/auth/register", payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+    },
+  });
+}
+
+// ─── SaaS User Update Hook ──────────────────────────────────────────────────
+
+/** Payload for updating a SaaS user's profile. */
+interface UpdateSaasUserPayload {
+  uid: string;
+  displayName?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Update a SaaS user's profile fields (e.g. displayName).
+ *
+ * On success the `queryKeys.auth.me()` cache is invalidated so that
+ * `useUser()` refetches the updated profile.
+ */
+export function useUpdateSaasUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UserProfile, ApiError, UpdateSaasUserPayload>({
+    mutationFn: ({ uid, ...body }) =>
+      apiPatch<typeof body, UserProfile>(`/api/saas/users/${uid}`, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
     },

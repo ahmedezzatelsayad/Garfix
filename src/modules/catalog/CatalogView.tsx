@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { useCatalog, useDeleteCatalogItem, useUpdateCatalogItem, useCreateCatalogItem } from "@/hooks/queries";
+import type { CreateCatalogItemPayload } from "@/hooks/queries/catalog";
 import { toast } from "sonner";
-import { Plus, Search, Package, Trash2, Edit2, X } from "lucide-react";
+import { Plus, Search, Package, Trash2, Edit2, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -25,40 +26,16 @@ const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border tex
 
 export function CatalogView() {
   const { activeCompany } = useBrand();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { data, isLoading, refetch } = useCatalog(activeCompany?.slug || "");
+  const deleteMutation = useDeleteCatalogItem();
+
+  const products: Product[] = (data?.items ?? []) as unknown as Product[];
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const url = `/api/catalog?companySlug=${encodeURIComponent(activeCompany.slug)}${search ? `&search=${encodeURIComponent(search)}` : ""}`;
-      const res = await authedFetch(url);
-      if (res.ok) {
-        setProducts((await res.json()).products || []);
-        setCurrentPage(1);
-        setSelectedIds(new Set());
-      } else toast.error("تعذّر تحميل المنتجات");
-    } catch { toast.error("تعذّر تحميل المنتجات"); }
-    finally { setLoading(false); }
-  }, [activeCompany, search]);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
-
-  // Reset page when search changes (render-time adjustment, no cascading render).
-  const [prevSearch, setPrevSearch] = useState(search);
-  if (search !== prevSearch) {
-    setPrevSearch(search);
-    setCurrentPage(1);
-  }
 
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
   const pageProducts = products.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -76,6 +53,7 @@ export function CatalogView() {
       return next;
     });
   };
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`حذف ${selectedIds.size} منتج؟`)) return;
@@ -83,31 +61,25 @@ export function CatalogView() {
     let okCount = 0, failCount = 0;
     for (const id of selectedIds) {
       try {
-        const res = await authedFetch(`/api/catalog/${id}`, { method: "DELETE" });
-        if (res.ok) okCount++; else failCount++;
+        await deleteMutation.mutateAsync({ id: String(id) });
+        okCount++;
       } catch { failCount++; }
     }
     setBulkDeleting(false);
     setSelectedIds(new Set());
     if (okCount > 0) toast.success(`تم حذف ${okCount} منتج`);
     if (failCount > 0) toast.error(`تعذّر حذف ${failCount} منتج`);
-    load();
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("حذف هذا المنتج؟")) return;
-    try {
-      const res = await authedFetch(`/api/catalog/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success("تم الحذف"); load(); }
-      else {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "تعذّر الحذف");
-      }
-    } catch { toast.error("تعذّر الحذف"); }
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate({ id: String(id) }, {
+      onSuccess: () => toast.success("تم الحذف"),
+      onError: (err) => toast.error(err.message || "تعذّر الحذف"),
+    });
   };
 
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
-  if (showForm || editing) return <ProductForm company={activeCompany} editing={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); load(); }} />;
+  if (showForm || editing) return <ProductForm company={activeCompany} editing={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); refetch(); }} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -131,7 +103,7 @@ export function CatalogView() {
       )}
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {loading ? <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : products.length === 0 ? (
+        {isLoading ? <div className="p-8 md:p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : products.length === 0 ? (
           <div className="p-8 md:p-12 text-center text-muted-foreground"><Package size={36} className="opacity-30 mb-2" /><div>لا توجد منتجات بعد</div></div>
         ) : (
           <>
@@ -163,7 +135,7 @@ export function CatalogView() {
                       <td className="px-3 py-2.5">
                         <div className="flex gap-1">
                           <button onClick={() => setEditing(p)} title="تعديل" className={iconBtnStyle}><Edit2 size={14} /></button>
-                          <button onClick={() => handleDelete(p.id)} title="حذف" className={cn(iconBtnStyle, "text-destructive")}><Trash2 size={14} /></button>
+                          <button onClick={() => handleDelete(p.id)} title="حذف" disabled={deleteMutation.isPending && deleteMutation.variables?.id === String(p.id)} className={cn(iconBtnStyle, "text-destructive")}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -217,30 +189,32 @@ function ProductForm({ company, editing, onClose, onSaved }: { company: { slug: 
   const [aliases, setAliases] = useState((editing?.aliases || []).join(", "));
   const [purchasePrice, setPurchasePrice] = useState(editing?.purchasePrice?.toString() || "");
   const [sellingPrice, setSellingPrice] = useState(editing?.sellingPrice?.toString() || "");
-  const [saving, setSaving] = useState(false);
+
+  const createMutation = useCreateCatalogItem();
+  const updateMutation = useUpdateCatalogItem();
 
   const submit = async () => {
     if (!name) { toast.error("الاسم مطلوب"); return; }
-    setSaving(true);
+    const payload: Record<string, unknown> = {
+      code, name,
+      aliases: aliases.split(",").map((s) => s.trim()).filter(Boolean),
+      purchasePrice: purchasePrice || undefined,
+      sellingPrice: sellingPrice || undefined,
+      companySlug: company.slug,
+    };
     try {
-      const url = editing ? `/api/catalog/${editing.id}` : "/api/catalog";
-      const method = editing ? "PATCH" : "POST";
-      const res = await authedFetch(url, {
-        method, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code, name,
-          aliases: aliases.split(",").map((s) => s.trim()).filter(Boolean),
-          purchasePrice: purchasePrice || undefined,
-          sellingPrice: sellingPrice || undefined,
-          companySlug: company.slug,
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-      toast.success(editing ? "تم التحديث" : "تم الإنشاء");
+      if (editing) {
+        await updateMutation.mutateAsync({ id: String(editing.id), ...payload });
+        toast.success("تم التحديث");
+      } else {
+        await createMutation.mutateAsync(payload as CreateCatalogItemPayload);
+        toast.success("تم الإنشاء");
+      }
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
   };
+
+  const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="flex flex-col gap-4">

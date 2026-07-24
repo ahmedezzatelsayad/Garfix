@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import {
+  useWarehouses, useInventoryItems, useCatalog,
+  useDeleteWarehouse, useCreateWarehouse, useCreateInventoryItem,
+} from "@/hooks/queries";
+import type { CreateInventoryItemPayload } from "@/hooks/queries/inventory";
 import { toast } from "sonner";
 import {
   Package, Plus, Trash2, Boxes, AlertTriangle, CheckCircle2,
@@ -48,55 +52,24 @@ const PAGE_SIZE = 20;
 
 export function InventoryView() {
   const { activeCompany } = useBrand();
+  const slug = activeCompany?.slug || "";
   const [tab, setTab] = useState<Tab>("warehouses");
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [summary, setSummary] = useState<{ total: number; ok: number; low: number; out: number } | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // ── TanStack Query hooks ──────────────────────────────────────────────────
+  const warehousesQuery = useWarehouses(slug);
+  const itemsQuery = useInventoryItems(slug);
+  const catalogQuery = useCatalog(slug);
+  const deleteWarehouseMutation = useDeleteWarehouse();
+
+  // ── Derived data from queries ──────────────────────────────────────────────
+  const warehouses = (warehousesQuery.data?.warehouses ?? []) as unknown as Warehouse[];
+  const items = (itemsQuery.data?.items ?? []) as unknown as InventoryItem[];
+  const summary = (itemsQuery.data as unknown as Record<string, unknown> | undefined)?.summary as { total: number; ok: number; low: number; out: number } | null | undefined;
+  const products = ((catalogQuery.data as unknown as Record<string, unknown> | undefined)?.products ?? (catalogQuery.data?.items ?? [])) as unknown as Product[];
+  const loading = tab === "warehouses" ? warehousesQuery.isLoading : itemsQuery.isLoading;
+
   const [showForm, setShowForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const loadWarehouses = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/inventory/warehouses?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) setWarehouses((await res.json()).warehouses || []);
-      else toast.error("تعذّر تحميل المستودعات");
-    } catch { toast.error("تعذّر تحميل المستودعات"); }
-    finally { setLoading(false); }
-  }, [activeCompany]);
-
-  const loadItems = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/inventory/items?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items || []);
-        setSummary(data.summary || null);
-      } else toast.error("تعذّر تحميل أصناف المخزون");
-    } catch { toast.error("تعذّر تحميل أصناف المخزون"); }
-    finally { setLoading(false); }
-  }, [activeCompany]);
-
-  const loadProducts = useCallback(async () => {
-    if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/catalog?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) setProducts((await res.json()).products || []);
-      else toast.error("تعذّر تحميل قائمة المنتجات");
-    } catch { toast.error("تعذّر تحميل قائمة المنتجات"); }
-  }, [activeCompany]);
-
-  // setState runs inside async .then() callbacks in loadWarehouses/loadItems/loadProducts (after await authedFetch) — not synchronous in effect body; no cascading render.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "warehouses") loadWarehouses();
-    else { loadItems(); loadProducts(); }
-  }, [tab, activeCompany, loadWarehouses, loadItems, loadProducts]);
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -106,14 +79,10 @@ export function InventoryView() {
 
   const handleDeleteWarehouse = async (id: number) => {
     if (!confirm("حذف هذا المستودع؟ لا يمكن الحذف إذا كان يحتوي على أصناف.")) return;
-    try {
-      const res = await authedFetch(`/api/inventory/warehouses/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success("تم حذف المستودع"); loadWarehouses(); }
-      else {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "تعذّر الحذف");
-      }
-    } catch { toast.error("تعذّر الحذف"); }
+    deleteWarehouseMutation.mutate(id, {
+      onSuccess: () => toast.success("تم حذف المستودع"),
+      onError: (err) => toast.error(err.message || "تعذّر الحذف"),
+    });
   };
 
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
@@ -181,7 +150,7 @@ export function InventoryView() {
           <WarehouseForm
             company={activeCompany}
             onClose={() => setShowForm(false)}
-            onSaved={() => { setShowForm(false); loadWarehouses(); }}
+            onSaved={() => { setShowForm(false); warehousesQuery.refetch(); }}
           />
         ) : (
           <AdjustStockForm
@@ -189,7 +158,7 @@ export function InventoryView() {
             warehouses={warehouses}
             products={products}
             onClose={() => setShowForm(false)}
-            onSaved={() => { setShowForm(false); loadItems(); }}
+            onSaved={() => { setShowForm(false); itemsQuery.refetch(); }}
           />
         )
       ) : (
@@ -436,27 +405,22 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; lab
 }
 
 function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+  const createWarehouseMutation = useCreateWarehouse();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [address, setAddress] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     if (!name || !code) { toast.error("الاسم والكود مطلوبان"); return; }
-    setSaving(true);
     try {
-      const res = await authedFetch("/api/inventory/warehouses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: company.slug, name, code, address, isActive }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createWarehouseMutation.mutateAsync({ companySlug: company.slug, name, code, address, isActive });
       toast.success("تم إنشاء المستودع");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
   };
+
+  const saving = createWarehouseMutation.isPending;
 
   return (
     <div className="flex flex-col gap-4">
@@ -503,6 +467,7 @@ function AdjustStockForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const createItemMutation = useCreateInventoryItem();
   const [warehouseId, setWarehouseId] = useState<number | null>(warehouses[0]?.id ?? null);
   const [productId, setProductId] = useState<number | null>(products[0]?.id ?? null);
   const [mode, setMode] = useState<"set" | "adjust">("set");
@@ -511,33 +476,27 @@ function AdjustStockForm({
   const [reorderQty, setReorderQty] = useState("0");
   const [batchNumber, setBatchNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     if (!warehouseId || !productId) { toast.error("اختر المستودع والمنتج"); return; }
-    setSaving(true);
     try {
-      const res = await authedFetch("/api/inventory/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: company.slug,
-          warehouseId,
-          productId,
-          mode,
-          quantity,
-          reorderLevel,
-          reorderQty,
-          batchNumber: batchNumber || null,
-          expiryDate: expiryDate || null,
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createItemMutation.mutateAsync({
+        companySlug: company.slug,
+        warehouseId,
+        productId,
+        mode,
+        quantity,
+        reorderLevel,
+        reorderQty,
+        batchNumber: batchNumber || null,
+        expiryDate: expiryDate || null,
+      } as unknown as CreateInventoryItemPayload);
       toast.success(mode === "set" ? "تم تحديد المخزون" : "تم تعديل المخزون");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
   };
+
+  const saving = createItemMutation.isPending;
 
   if (warehouses.length === 0) {
     return (

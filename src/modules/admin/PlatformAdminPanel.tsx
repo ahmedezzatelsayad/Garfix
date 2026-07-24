@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { authedFetch } from "@/context/AuthContext";
+import {
+  usePlatformStats, usePlatformTenants, usePlatformAnnouncements,
+  usePlatformTickets, usePlatformAudit, useQueueFailures,
+  useClearQueueFailures, useDeletePlatformTenant, useCreateAnnouncement,
+} from "@/hooks/queries";
+import { useInventoryMovementsFiltered } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Shield, Megaphone, Ticket as TicketIcon, BarChart3, Building2, Plus, X, Sparkles,
@@ -34,114 +39,61 @@ const BackupsTab = dynamic(() => import("./BackupsTab").then(m => ({ default: m.
 
 export function PlatformAdminPanel() {
   const [tab, setTab] = useState<Tab>("stats");
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [audit, setAudit] = useState<AdminAudit[]>([]);
-  const [queueFailures, setQueueFailures] = useState<QueueFailure[]>([]);
-  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
-  const [loading, setLoading] = useState(true);
+  // TanStack Query hooks
+  const statsQuery = usePlatformStats();
+  const tenantsQuery = usePlatformTenants();
+  const announcementsQuery = usePlatformAnnouncements();
+  const ticketsQuery = usePlatformTickets();
+  const auditQuery = usePlatformAudit();
+  const queueFailuresQuery = useQueueFailures();
+  const clearQueueFailuresMutation = useClearQueueFailures();
+  const deleteTenantMutation = useDeletePlatformTenant();
+
+  const stats = (statsQuery.data ?? null) as unknown as Stats | null;
+  const tenants = (tenantsQuery.data ?? []) as unknown as Tenant[];
+  const announcements = (announcementsQuery.data ?? []) as unknown as Announcement[];
+  const tickets = (ticketsQuery.data ?? []) as unknown as Ticket[];
+  const audit = (auditQuery.data ?? []) as unknown as AdminAudit[];
+  const queueFailures = (queueFailuresQuery.data ?? []) as unknown as QueueFailure[];
+  const loading = statsQuery.isLoading || tenantsQuery.isLoading;
+
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [tenantsPage, setTenantsPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
   const adminPageSize = 10;
 
   // Founder-panel feature state (GATE 4):
-  // - selectedTicketId opens a detail drawer with reply + status change
-  // - selectedTenantSlug opens a Support-View drawer with operational overview
-  // - stockLedgerSlug holds the tenant currently being viewed in the ledger tab
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedTenantSlug, setSelectedTenantSlug] = useState<string | null>(null);
   const [stockLedgerSlug, setStockLedgerSlug] = useState<string>("");
-  // GATE 4 Task 6: stock-ledger filter state — product name (contains),
-  // date range (from/to ISO date inputs), populated on the ledger tab.
+  // Stock-ledger filter state (raw inputs) — applied on explicit button click only.
   const [stockLedgerProductName, setStockLedgerProductName] = useState<string>("");
   const [stockLedgerFrom, setStockLedgerFrom] = useState<string>("");
   const [stockLedgerTo, setStockLedgerTo] = useState<string>("");
+  // Applied filters for TanStack Query — only updated on button click.
+  const [stockLedgerApplied, setStockLedgerApplied] = useState<{ companySlug: string; productName?: string; from?: string; to?: string } | null>(null);
+  const stockMovementsQuery = useInventoryMovementsFiltered(stockLedgerApplied ?? { companySlug: "" });
+  const stockMovements = (stockMovementsQuery.data as any)?.movements ?? [] as StockMovement[];
   const [reviewQueueSlug, setReviewQueueSlug] = useState<string | null>(null);
-  // GATE 4 Task 1: company soft-delete confirmation dialog target.
   const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [s, t, a, tk, au] = await Promise.all([
-        authedFetch("/api/platform-admin/stats"),
-        authedFetch("/api/platform-admin/tenants"),
-        authedFetch("/api/platform-admin/announcements"),
-        authedFetch("/api/platform-admin/tickets"),
-        authedFetch("/api/platform-admin/audit?limit=50"),
-      ]);
-      const [sD, tD, aD, tkD, auD] = await Promise.all([s.json(), t.json(), a.json(), tk.json(), au.json()]);
-      if (s.ok) setStats(sD);
-      if (t.ok) setTenants(tD.tenants || []);
-      if (a.ok) setAnnouncements(aD.announcements || []);
-      if (tk.ok) setTickets(tkD.tickets || []);
-      if (au.ok) setAudit(auD.logs || []);
-    } finally { setLoading(false); }
-  }, []);
+  // TanStack Query replaces load(), loadQueueFailures(), loadStockMovements()
+  // and the useEffect hooks that called them. Data is fetched automatically
+  // on mount and managed by the query cache. The queue-failures query is
+  // always enabled (but lazy-loaded by TanStack's staleTime). The stock-ledger
+  // query uses applied filters that only update on explicit button clicks.
 
-  const loadQueueFailures = useCallback(async () => {
-    try {
-      const res = await authedFetch("/api/platform-admin/queue-failures");
-      const data = await res.json();
-      if (res.ok) setQueueFailures(data.failures || []);
-    } catch {
-      /* founder-only endpoint; ignore if 403 */
-    }
-  }, []);
-
-  const loadStockMovements = useCallback(async (
-    slug: string,
-    opts?: { productName?: string; from?: string; to?: string },
-  ) => {
-    if (!slug) { setStockMovements([]); return; }
-    try {
-      const params = new URLSearchParams({ limit: "300" });
-      params.set("companySlug", slug);
-      if (opts?.productName && opts.productName.trim()) params.set("productName", opts.productName.trim());
-      // Convert yyyy-mm-dd input value → ISO start-of-day / end-of-day bounds.
-      if (opts?.from) {
-        const from = new Date(`${opts.from}T00:00:00.000Z`);
-        if (!isNaN(from.getTime())) params.set("from", from.toISOString());
-      }
-      if (opts?.to) {
-        const to = new Date(`${opts.to}T23:59:59.999Z`);
-        if (!isNaN(to.getTime())) params.set("to", to.toISOString());
-      }
-      const res = await authedFetch(`/api/inventory/movements?${params}`);
-      const data = await res.json();
-      if (res.ok) setStockMovements(data.movements || []);
-      else toast.error(data.error || "تعذّر تحميل حركات المخزون");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    }
-  }, []);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
-
-  // Lazy-load queue failures only when the tab is opened
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (tab === "queue-failures") loadQueueFailures(); }, [tab, loadQueueFailures]);
-
-  // Lazy-load stock movements for the selected slug when the ledger tab is active.
-  // Filters (productName / from / to) intentionally NOT in the dependency array —
-  // they're applied on explicit "Apply filters" button click (not on every keystroke).
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (tab === "stock-ledger" && stockLedgerSlug) {
-      loadStockMovements(stockLedgerSlug, {
-        productName: stockLedgerProductName,
-        from: stockLedgerFrom,
-        to: stockLedgerTo,
+  const applyStockLedgerFilters = useCallback(() => {
+    if (stockLedgerSlug) {
+      setStockLedgerApplied({
+        companySlug: stockLedgerSlug,
+        productName: stockLedgerProductName || undefined,
+        from: stockLedgerFrom || undefined,
+        to: stockLedgerTo || undefined,
       });
     }
-  }, [tab, stockLedgerSlug, loadStockMovements]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [stockLedgerSlug, stockLedgerProductName, stockLedgerFrom, stockLedgerTo]);
 
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode }> = [
     { key: "stats", label: "الإحصائيات", icon: <BarChart3 size={14} /> },
@@ -388,7 +340,7 @@ export function PlatformAdminPanel() {
                 <h3 className="text-sm font-bold">الإعلانات ({announcements.length})</h3>
                 <button onClick={() => setShowAnnouncementForm(true)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer"><Plus size={12} /> إعلان جديد</button>
               </div>
-              {showAnnouncementForm && <AnnouncementForm onClose={() => setShowAnnouncementForm(false)} onSaved={() => { setShowAnnouncementForm(false); load(); }} />}
+              {showAnnouncementForm && <AnnouncementForm onClose={() => setShowAnnouncementForm(false)} onSaved={() => setShowAnnouncementForm(false)} />}
               <div className="garfix-scroll overflow-x-auto">
                 <table className="w-full [border-collapse:collapse]">
                   <thead><tr className="bg-[var(--muted)]">
@@ -443,7 +395,7 @@ export function PlatformAdminPanel() {
                   ticketId={selectedTicketId}
                   tickets={tickets}
                   onClose={() => setSelectedTicketId(null)}
-                  onUpdated={() => { load(); }}
+                  onUpdated={() => { /* TanStack auto-invalidates */ }}
                 />
               )}
             </div>
@@ -490,13 +442,13 @@ export function PlatformAdminPanel() {
                   أعطال الطوابير ({queueFailures.length})
                 </h3>
                 <div className="flex gap-2">
-                  <IconBtn color="#3b82f6" onClick={loadQueueFailures} aria-label="تحديث الطوابير"><Activity size={14} /> تحديث</IconBtn>
+                  <IconBtn color="#3b82f6" onClick={() => queueFailuresQuery.refetch()} aria-label="تحديث الطوابير"><Activity size={14} /> تحديث</IconBtn>
                   {queueFailures.length > 0 && (
-                    <IconBtn color="#ef4444" aria-label="مسح" onClick={async () => {
+                    <IconBtn color="#ef4444" aria-label="مسح" onClick={() => {
                         if (!confirm("مسح سجل الأعطال؟")) return;
-                        await authedFetch("/api/platform-admin/queue-failures?clear=1");
-                        setQueueFailures([]);
-                        toast.success("تم مسح السجل");
+                        clearQueueFailuresMutation.mutate(undefined, {
+                          onSuccess: () => { toast.success("تم مسح السجل"); },
+                        });
                       }}
                     >
                       <Trash2 size={14} /> مسح
@@ -554,11 +506,7 @@ export function PlatformAdminPanel() {
                     ))}
                   </select>
                   {stockLedgerSlug && (
-                    <IconBtn color="#7c3aed" aria-label="تحديث" onClick={() => loadStockMovements(stockLedgerSlug, {
-                        productName: stockLedgerProductName,
-                        from: stockLedgerFrom,
-                        to: stockLedgerTo,
-                      })}
+                    <IconBtn color="#7c3aed" aria-label="تحديث" onClick={applyStockLedgerFilters}
                       title="تحديث"
                     >
                       <Activity size={14} /> تحديث
@@ -590,11 +538,7 @@ export function PlatformAdminPanel() {
                   />
                   {stockLedgerSlug && (
                     <button
-                      onClick={() => loadStockMovements(stockLedgerSlug, {
-                        productName: stockLedgerProductName,
-                        from: stockLedgerFrom,
-                        to: stockLedgerTo,
-                      })}
+                      onClick={applyStockLedgerFilters}
                       className="px-3 py-1.5 rounded-lg bg-violet-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer"
                     >
                       تطبيق الفلاتر
@@ -606,7 +550,7 @@ export function PlatformAdminPanel() {
                         setStockLedgerFrom("");
                         setStockLedgerTo("");
                         if (stockLedgerSlug) {
-                          loadStockMovements(stockLedgerSlug, {});
+                          setStockLedgerApplied({ companySlug: stockLedgerSlug });
                         }
                       }}
                     >
@@ -720,29 +664,24 @@ export function PlatformAdminPanel() {
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting}
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
                 if (!deleteTarget) return;
                 setDeleting(true);
-                try {
-                  const res = await authedFetch(
-                    `/api/platform-admin/tenants/${encodeURIComponent(deleteTarget.slug)}`,
-                    {
-                      method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ hardDelete: false }),
+                deleteTenantMutation.mutate(
+                  { slug: deleteTarget.slug },
+                  {
+                    onSuccess: () => {
+                      toast.success(`تم إيقاف "${deleteTarget.nameAr || deleteTarget.name}"`);
+                      setDeleteTarget(null);
+                      setDeleting(false);
                     },
-                  );
-                  const data = await res.json().catch(() => ({}));
-                  if (!res.ok) throw new Error(data.error || "فشل الحذف");
-                  toast.success(data.message || `تم إيقاف "${deleteTarget.nameAr || deleteTarget.name}"`);
-                  setDeleteTarget(null);
-                  await load();
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "خطأ");
-                } finally {
-                  setDeleting(false);
-                }
+                    onError: (err) => {
+                      toast.error(err.message || "خطأ");
+                      setDeleting(false);
+                    },
+                  },
+                );
               }}
               className="bg-amber-500 hover:bg-amber-600 text-white"
             >
@@ -754,28 +693,6 @@ export function PlatformAdminPanel() {
     </div>
   );
 
-  // Retained for hard-delete path (type-to-confirm flow) — kept for future
-  // destructive-confirmation UI; the soft-delete button now uses AlertDialog
-  // above instead of browser confirm().
-  async function handleDeleteTenant(slug: string, hard: boolean) {
-    try {
-      const body = hard
-        ? { hardDelete: true, typeToConfirm: prompt(`اكتب اسم الشركة بالكامل للحذف النهائي:`) || "" }
-        : { hardDelete: false };
-      if (hard && !(body as { typeToConfirm: string }).typeToConfirm) return;
-      const res = await authedFetch(`/api/platform-admin/tenants/${encodeURIComponent(slug)}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل الحذف");
-      toast.success(data.message || "تم");
-      load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
-    }
-  }
 }
 
 function StatusBadge({ active, activeText, inactiveText }: { active: boolean; activeText?: string; inactiveText?: string }) {
@@ -812,21 +729,17 @@ function AnnouncementForm({ onClose, onSaved }: { onClose: () => void; onSaved: 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [type, setType] = useState("info");
-  const [saving, setSaving] = useState(false);
+  const createAnnouncementMutation = useCreateAnnouncement();
 
-  const submit = async () => {
+  const submit = () => {
     if (!title || !body) { toast.error("العنوان والمحتوى مطلوبان"); return; }
-    setSaving(true);
-    try {
-      const res = await authedFetch("/api/platform-admin/announcements", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, type, targetPlans: [], isActive: true }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-      toast.success("تم إنشاء الإعلان");
-      onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createAnnouncementMutation.mutate(
+      { title, body, type, targetPlans: [], isActive: true },
+      {
+        onSuccess: () => { toast.success("تم إنشاء الإعلان"); onSaved(); },
+        onError: (err) => { toast.error(err.message || "خطأ"); },
+      },
+    );
   };
 
   return (
@@ -845,7 +758,7 @@ function AnnouncementForm({ onClose, onSaved }: { onClose: () => void; onSaved: 
         </div>
       </div>
       <div><label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المحتوى</label><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none resize-y" /></div>
-      <button onClick={submit} disabled={saving} className={`self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold ${saving ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}>{saving ? "جارٍ…" : "نشر"}</button>
+      <button onClick={submit} disabled={createAnnouncementMutation.isPending} className={`self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold ${createAnnouncementMutation.isPending ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}>{createAnnouncementMutation.isPending ? "جارٍ…" : "نشر"}</button>
     </div>
   );
 }

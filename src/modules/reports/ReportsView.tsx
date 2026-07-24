@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { useReportsFiltered, useDownloadReportCsv, type ReportFilterParams } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Loader2, FileText, Download, Calendar, TrendingUp, DollarSign,
@@ -35,7 +35,7 @@ interface ReportSummary {
   invoiceCount?: number;
 }
 
-interface ReportResponse {
+interface ReportData {
   type: ReportType;
   companySlug: string;
   dateRange: { from: string; to: string };
@@ -57,7 +57,6 @@ const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-[5p
 export function ReportsView() {
   const { activeCompany } = useBrand();
 
-  // Default date range: start of current month → today
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const firstOfMonth = useMemo(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
@@ -67,36 +66,30 @@ export function ReportsView() {
   const [from, setFrom] = useState(firstOfMonth);
   const [to, setTo] = useState(today);
   const [type, setType] = useState<ReportType>("sales");
-  const [data, setData] = useState<ReportResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [generateClicked, setGenerateClicked] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const generate = useCallback(async () => {
+  // Only query when the user clicks "generate" and company exists
+  const reportParams: ReportFilterParams | null = generateClicked && activeCompany
+    ? { companySlug: activeCompany.slug, type, from, to }
+    : null;
+
+  const { data: reportData, isLoading: loading } = useReportsFiltered(reportParams || { companySlug: "", type: "", from: "", to: "" });
+
+  // Only show report data after user has clicked generate
+  const data: ReportData | null = generateClicked ? (reportData as ReportData | null) ?? null : null;
+
+  const generate = useCallback(() => {
     if (!activeCompany) {
       toast.error("اختر شركة أولاً");
       return;
     }
-    setLoading(true);
-    try {
-      const url =
-        `/api/reports?companySlug=${encodeURIComponent(activeCompany.slug)}` +
-        `&type=${type}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-      const res = await authedFetch(url);
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error((e as Record<string, unknown>)?.error as string || "تعذّر توليد التقرير");
-      }
-      const json = (await res.json()) as ReportResponse;
-      setData(json);
-      toast.success(`تم توليد تقرير ${REPORT_TYPES.find((t) => t.key === json.type)?.label || json.type} (${json.count} صف)`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ غير معروف");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCompany, from, to, type]);
+    setGenerateClicked(true);
+  }, [activeCompany]);
 
+  const downloadCsvMutation = useDownloadReportCsv();
+
+  // CSV export uses the TanStack Query mutation hook which returns a Blob
   const exportCsv = useCallback(async () => {
     if (!activeCompany) {
       toast.error("اختر شركة أولاً");
@@ -104,23 +97,14 @@ export function ReportsView() {
     }
     setExporting(true);
     try {
-      const url =
-        `/api/reports?companySlug=${encodeURIComponent(activeCompany.slug)}` +
-        `&type=${type}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=csv`;
-      const res = await authedFetch(url);
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error((e as Record<string, unknown>)?.error as string || "تعذّر تصدير CSV");
-      }
-      const blob = await res.blob();
+      const blob = await downloadCsvMutation.mutateAsync({
+        companySlug: activeCompany.slug, type, from, to,
+      });
       const filename = `garfix-${type}-report-${from}-to-${to}.csv`;
-      const disp = res.headers.get("content-disposition");
-      const match = disp?.match(/filename="?([^";]+)"?/i);
-      const finalName = match?.[1] || filename;
       const urlObj = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = urlObj;
-      a.download = finalName;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -131,7 +115,7 @@ export function ReportsView() {
     } finally {
       setExporting(false);
     }
-  }, [activeCompany, from, to, type]);
+  }, [activeCompany, from, to, type, downloadCsvMutation]);
 
   if (!activeCompany) {
     return (
@@ -258,7 +242,7 @@ export function ReportsView() {
   );
 }
 
-function SummaryCards({ data, currency }: { data: ReportResponse; currency: string }) {
+function SummaryCards({ data, currency }: { data: ReportData; currency: string }) {
   const cards: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
 
   const fmt = (n: unknown) => Number(n || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 });
@@ -351,7 +335,6 @@ function ReportTable({ rows }: { rows: Array<Record<string, unknown>> }) {
 
   const isNumeric = (val: unknown) => typeof val === "number";
 
-  // Table: overflow-x-auto + vertical scroll with sticky header (card conversion deferred — dynamic columns vary per report type).
   return (
     <div className="overflow-auto max-h-[480px] garfix-scroll">
       <table className="w-full border-collapse text-xs min-w-[640px]">

@@ -1,10 +1,18 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useAccounts, useJournalEntries, useTrialBalance,
+  useFiscalPeriods, useCostCenters, useAging,
+  useBankAccountsList, useFinancialDashboard,
+  useCloseFiscalPeriod, useReopenFiscalPeriod, useCreateFiscalPeriod,
+  useCreateCostCenter, useCreateBankAccount, useDeleteAccount, useDeleteJournalEntry,
+  useCreateJournalEntry, useCreateAccount, useReverseJournalEntry,
+  useProfitLoss, useBalanceSheet, useCashFlow,
+} from "@/hooks/queries";
 import {
   Plus, Calculator, X, Trash2, Scale, FileBarChart,
   TrendingUp, TrendingDown, Wallet, Download, RotateCcw,
@@ -85,16 +93,8 @@ export function AccountingView() {
   const { activeCompany } = useBrand();
   const [moduleTab, setModuleTab] = useState<ModuleTab>("core");
 
-  /* ─── Core sub-module state (preserved exactly as-is) ────────────────── */
+  /* ─── Core sub-module state ───────────────────────────────────────────── */
   const [tab, setTab] = useState<Tab>("accounts");
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [trial, setTrial] = useState<{ accounts: TrialRow[]; grandDebit: number; grandCredit: number; isBalanced: boolean } | null>(null);
-  const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriod[]>([]);
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
-  const [agingData, setAgingData] = useState<AgingBucket[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -102,82 +102,46 @@ export function AccountingView() {
   const [reversingId, setReversingId] = useState<number | null>(null);
   const [reverseConfirm, setReverseConfirm] = useState<JournalEntry | null>(null);
 
-  const load = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    const slug = `companySlug=${encodeURIComponent(activeCompany.slug)}`;
-    try {
-      const [a, j] = await Promise.all([
-        authedFetch(`/api/accounting/accounts?${slug}`),
-        authedFetch(`/api/accounting/journal-entries?${slug}`),
-      ]);
-      if (!a.ok || !j.ok) {
-        const failed = !a.ok ? a : j;
-        const e = await failed.json().catch(() => ({}));
-        throw new Error((e as Record<string, unknown>)?.error as string || `فشل تحميل البيانات (${failed.status})`);
-      }
-      const [aD, jD] = await Promise.all([a.json(), j.json()]);
-      setAccounts((aD as { accounts?: Account[] }).accounts || []);
-      setEntries((jD as { entries?: JournalEntry[] }).entries || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل بيانات المحاسبة");
-    } finally { setLoading(false); }
-  }, [activeCompany]);
+  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadTrial = useCallback(async () => {
-    if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/trial-balance?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل ميزان المراجعة");
-        setTrial(null);
-        return;
-      }
-      setTrial(await res.json());
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل ميزان المراجعة");
-      setTrial(null);
-    }
-  }, [activeCompany]);
+  // TanStack Query hooks for data fetching
+  const accountsQuery = useAccounts(slug);
+  const journalEntriesQuery = useJournalEntries(slug);
+  const trialBalanceQuery = useTrialBalance(slug);
+  const fiscalPeriodsQuery = useFiscalPeriods(slug);
+  const costCentersQuery = useCostCenters(slug);
+  const agingQuery = useAging(slug);
+  const bankAccountsListQuery = useBankAccountsList(slug);
 
-  const loadFiscalPeriods = useCallback(async () => {
-    if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/fiscal-periods?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) { const d = await res.json(); setFiscalPeriods(d.periods || []); }
-      else { setFiscalPeriods([]); }
-    } catch { setFiscalPeriods([]); }
-  }, [activeCompany]);
+  const accounts = accountsQuery.data?.accounts ?? [];
+  const entries = (journalEntriesQuery.data as { entries?: JournalEntry[] } | undefined)?.entries ?? (journalEntriesQuery.data?.journalEntries ?? []);
+  const trial = (trialBalanceQuery.data as { accounts?: TrialRow[]; grandDebit?: number; grandCredit?: number; isBalanced?: boolean } | null) ?? null;
+  const fiscalPeriods = (fiscalPeriodsQuery.data as { periods?: FiscalPeriod[] } | undefined)?.periods ?? [];
+  const costCenters = (costCentersQuery.data as { costCenters?: CostCenter[] } | undefined)?.costCenters ?? [];
+  const agingData = (agingQuery.data as { buckets?: AgingBucket[] } | undefined)?.buckets ?? [];
+  const bankAccounts = (bankAccountsListQuery.data as { accounts?: BankAccount[] } | undefined)?.accounts ?? [];
 
-  const loadCostCenters = useCallback(async () => {
-    if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/cost-centers?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) { const d = await res.json(); setCostCenters(d.costCenters || []); }
-      else { setCostCenters([]); }
-    } catch { setCostCenters([]); }
-  }, [activeCompany]);
+  const loading = accountsQuery.isLoading || journalEntriesQuery.isLoading;
 
-  const loadAging = useCallback(async () => {
-    if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/aging?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) { const d = await res.json(); setAgingData(d.buckets || []); }
-      else { setAgingData([]); }
-    } catch { setAgingData([]); }
-  }, [activeCompany]);
+  // Mutation hooks
+  const deleteAccountMutation = useDeleteAccount();
+  const deleteJournalEntryMutation = useDeleteJournalEntry();
+  const reverseJournalEntryMutation = useReverseJournalEntry();
+  const createAccountMutation = useCreateAccount();
+  const createJournalEntryMutation = useCreateJournalEntry();
+  const closeFiscalPeriodMutation = useCloseFiscalPeriod();
+  const reopenFiscalPeriodMutation = useReopenFiscalPeriod();
+  const createFiscalPeriodMutation = useCreateFiscalPeriod();
+  const createCostCenterMutation = useCreateCostCenter();
+  const createBankAccountMutation = useCreateBankAccount();
 
-  const loadBankAccounts = useCallback(async () => {
-    if (!activeCompany) return;
-    try {
-      const res = await authedFetch(`/api/accounting/bank-accounts?companySlug=${encodeURIComponent(activeCompany.slug)}`);
-      if (res.ok) { const d = await res.json(); setBankAccounts(d.accounts || []); }
-      else { setBankAccounts([]); }
-    } catch { setBankAccounts([]); }
-  }, [activeCompany]);
+  const load = () => { accountsQuery.refetch(); journalEntriesQuery.refetch(); };
+  const loadTrial = () => { trialBalanceQuery.refetch(); };
+  const loadFiscalPeriods = () => { fiscalPeriodsQuery.refetch(); };
+  const loadCostCenters = () => { costCentersQuery.refetch(); };
+  const loadAging = () => { agingQuery.refetch(); };
+  const loadBankAccounts = () => { bankAccountsListQuery.refetch(); };
 
-  useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (tab === "trial" && activeCompany) loadTrial();
     if (tab === "fiscal-periods" && activeCompany) loadFiscalPeriods();
@@ -185,7 +149,7 @@ export function AccountingView() {
     if (tab === "aging" && activeCompany) loadAging();
     if (tab === "banking" && activeCompany) loadBankAccounts();
     if (tab === "dashboard" && activeCompany) { load(); loadAging(); loadBankAccounts(); }
-  }, [tab, activeCompany, loadTrial, loadFiscalPeriods, loadCostCenters, loadAging, loadBankAccounts, load]);
+  }, [tab, activeCompany]);
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -216,14 +180,13 @@ export function AccountingView() {
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
-    const endpoint = tab === "accounts" ? "/api/accounting/accounts" : "/api/accounting/journal-entries";
     setBulkDeleting(true);
     let okCount = 0, failCount = 0;
+    const mutation = tab === "accounts" ? deleteAccountMutation : deleteJournalEntryMutation;
     for (const id of selectedIds) {
       try {
-        const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
-        if (res.ok) okCount++;
-        else { failCount++; }
+        await mutation.mutateAsync({ id, companySlug: activeCompany!.slug });
+        okCount++;
       } catch { failCount++; }
     }
     setBulkDeleting(false);
@@ -232,12 +195,16 @@ export function AccountingView() {
     if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
     load();
   };
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!confirm("حذف هذا العنصر؟")) return;
-    const endpoint = tab === "accounts" ? "/api/accounting/accounts" : "/api/accounting/journal-entries";
-    const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
-    if (res.ok) { toast.success("تم الحذف"); load(); }
-    else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الحذف"); }
+    const mutation = tab === "accounts" ? deleteAccountMutation : deleteJournalEntryMutation;
+    mutation.mutate(
+      { id, companySlug: activeCompany!.slug },
+      {
+        onSuccess: () => { toast.success("تم الحذف"); load(); },
+        onError: (err) => { toast.error(err.message || "تعذّر الحذف"); },
+      },
+    );
   };
 
   const handleReverse = async (entry: JournalEntry) => {
@@ -245,25 +212,25 @@ export function AccountingView() {
     setReverseConfirm(entry);
   };
 
-  const confirmReverse = async () => {
+  const confirmReverse = () => {
     if (!reverseConfirm || !activeCompany) return;
     const entry = reverseConfirm;
     setReversingId(entry.id);
-    try {
-      const url = `/api/accounting/journal-entries/${entry.id}/reverse?companySlug=${encodeURIComponent(activeCompany.slug)}`;
-      const res = await authedFetch(url, { method: "POST" });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "تعذّر العكس");
-      }
-      const data = await res.json().catch(() => ({}));
-      const reversalId = data?.reversal?.id;
-      toast.success(reversalId ? `تم إنشاء قيد عكسي #${reversalId}` : "تم عكس القيد");
-      setReverseConfirm(null);
-      await load();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ أثناء العكس");
-    } finally { setReversingId(null); }
+    reverseJournalEntryMutation.mutate(
+      { id: entry.id, reason: "عكس القيد", companySlug: activeCompany.slug },
+      {
+        onSuccess: () => {
+          toast.success("تم عكس القيد");
+          setReverseConfirm(null);
+          load();
+          setReversingId(null);
+        },
+        onError: (err) => {
+          toast.error(err.message || "خطأ أثناء العكس");
+          setReversingId(null);
+        },
+      },
+    );
   };
 
   const pageBtnStyle = (disabled: boolean): string =>
@@ -555,31 +522,17 @@ interface DashboardMetrics {
 
 function FinancialDashboardApiView() {
   const { activeCompany } = useBrand();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
-  const [loading, setLoading] = useState(false);
   const [from, setFrom] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10));
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
 
-  const loadDashboard = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/financial-dashboard?companySlug=${encodeURIComponent(activeCompany.slug)}&from=${from}&to=${to}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMetrics(data.metrics);
-        setPeriod(data.period);
-      } else {
-        const e = await res.json().catch(() => ({}));
-        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل لوحة التحكم المالية");
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر تحميل لوحة التحكم المالية");
-    } finally { setLoading(false); }
-  }, [activeCompany, from, to]);
+  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
+  const dashboardQuery = useFinancialDashboard(slug, from, to);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  const metrics = (dashboardQuery.data as { metrics?: DashboardMetrics } | undefined)?.metrics ?? null;
+  const period = (dashboardQuery.data as { period?: { from: string; to: string } } | undefined)?.period ?? null;
+  const loading = dashboardQuery.isLoading;
+
+  const loadDashboard = () => { dashboardQuery.refetch(); };
 
   const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
   const fmtPct = (n: number | null) => {
@@ -722,15 +675,16 @@ function DashboardCard({ label, value, color, icon, trend }: { label: string; va
 function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPeriod[]; company: { slug: string }; onRefresh: () => void }) {
   const [closingId, setClosingId] = useState<number | null>(null);
   const [openingId, setOpeningId] = useState<number | null>(null);
+  const closePeriodMutation = useCloseFiscalPeriod();
+  const reopenPeriodMutation = useReopenFiscalPeriod();
 
   const handleClose = async (p: FiscalPeriod) => {
     if (!confirm(`قفل الفترة "${p.name}"؟ لا يمكن التراجع.`)) return;
     setClosingId(p.id);
     try {
-      const res = await authedFetch(`/api/accounting/fiscal-periods/${p.id}/close?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
-      if (res.ok) { toast.success("تم قفل الفترة"); onRefresh(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر قفل الفترة"); }
-    } catch { toast.error("خطأ في الاتصال"); }
+      await closePeriodMutation.mutateAsync({ id: p.id, companySlug: company.slug });
+      toast.success("تم قفل الفترة"); onRefresh();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر قفل الفترة"); }
     finally { setClosingId(null); }
   };
 
@@ -738,10 +692,9 @@ function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPe
     if (!confirm(`إعادة فتح الفترة "${p.name}"؟`)) return;
     setOpeningId(p.id);
     try {
-      const res = await authedFetch(`/api/accounting/fiscal-periods/${p.id}/reopen?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
-      if (res.ok) { toast.success("تم إعادة الفتح"); onRefresh(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إعادة الفتح"); }
-    } catch { toast.error("خطأ في الاتصال"); }
+      await reopenPeriodMutation.mutateAsync({ id: p.id, companySlug: company.slug });
+      toast.success("تم إعادة الفتح"); onRefresh();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر إعادة الفتح"); }
     finally { setOpeningId(null); }
   };
 
@@ -789,16 +742,13 @@ function FiscalPeriodForm({ company, onClose, onSaved }: { company: { slug: stri
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
+  const createPeriodMutation = useCreateFiscalPeriod();
 
   const submit = async () => {
     if (!name || !startDate || !endDate) { toast.error("جميع الحقول مطلوبة"); return; }
     setSaving(true);
     try {
-      const res = await authedFetch("/api/accounting/fiscal-periods", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, startDate, endDate, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createPeriodMutation.mutateAsync({ name, startDate, endDate, companySlug: company.slug });
       toast.success("تم إنشاء الفترة المالية");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
@@ -861,16 +811,13 @@ function CostCenterForm({ company, costCenters, onClose, onSaved }: { company: {
   const [parentId, setParentId] = useState<number | null>(null);
   const [budget, setBudget] = useState(0);
   const [saving, setSaving] = useState(false);
+  const createCostCenterMutation = useCreateCostCenter();
 
   const submit = async () => {
     if (!code || !nameAr) { toast.error("الكود والاسم مطلوبان"); return; }
     setSaving(true);
     try {
-      const res = await authedFetch("/api/accounting/cost-centers", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, nameAr, type, parentId, budget, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createCostCenterMutation.mutateAsync({ code, nameAr, type, parentId: parentId ?? undefined, budget, companySlug: company.slug });
       toast.success("تم إنشاء مركز التكلفة");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
@@ -1002,16 +949,13 @@ function BankAccountForm({ company, onClose, onSaved }: { company: { slug: strin
   const [currency, setCurrency] = useState(company.slug.includes("kw") ? "KWD" : company.slug.includes("sa") ? "SAR" : "AED");
   const [balance, setBalance] = useState(0);
   const [saving, setSaving] = useState(false);
+  const createBankAccountMutation = useCreateBankAccount();
 
   const submit = async () => {
     if (!name || !bankName || !accountNumber) { toast.error("الاسم والبنك ورقم الحساب مطلوبة"); return; }
     setSaving(true);
     try {
-      const res = await authedFetch("/api/accounting/bank-accounts", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, bankName, accountNumber, iban, currency, balance, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createBankAccountMutation.mutateAsync({ name, accountName: name, bankName, accountNumber, iban, currency, balance, companySlug: company.slug });
       toast.success("تم إنشاء الحساب البنكي");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
@@ -1042,9 +986,9 @@ function BankAccountForm({ company, onClose, onSaved }: { company: { slug: strin
 }
 
 /* ─── Trial Balance Table ──────────────────────────────────────────────────── */
-function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; grandDebit: number; grandCredit: number; isBalanced: boolean } | null; loading: boolean }) {
+function TrialBalanceTable({ data, loading }: { data: { accounts?: TrialRow[]; grandDebit?: number; grandCredit?: number; isBalanced?: boolean } | null; loading: boolean }) {
   if (loading && !data) return <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>;
-  if (!data || data.accounts.length === 0) return (
+  if (!data || !data.accounts || data.accounts.length === 0) return (
     <div className="bg-card rounded-[14px] border border-border p-12 text-center text-muted-foreground">
       <Scale size={36} className="opacity-30 mb-2" /><div>لا توجد بيانات لميزان المراجعة</div>
     </div>
@@ -1058,7 +1002,7 @@ function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; gr
             <th className={cn(thStyle, "text-end")}>مدين</th><th className={cn(thStyle, "text-end")}>دائن</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
           </tr></thead>
           <tbody>
-            {data.accounts.map((r) => (
+            {data.accounts!.map((r) => (
               <tr key={r.id} className="border-b border-border">
                 <td className={cn(tdStyle, "font-mono")}>{r.code}</td>
                 <td className={cn(tdStyle, "font-bold")}>{r.nameAr}</td>
@@ -1072,8 +1016,8 @@ function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; gr
           <tfoot>
             <tr className="border-t-2 border-border bg-muted font-extrabold">
               <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>الإجمالي</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{data.grandDebit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{data.grandCredit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+              <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{(data.grandDebit ?? 0).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+              <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{(data.grandCredit ?? 0).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
               <td className={cn(tdStyle, "font-extrabold")}>
                 <span className={cn("inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
                   {data.isBalanced ? "متوازن ✓" : "غير متوازن ✗"}
@@ -1138,24 +1082,27 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
   const [from, setFrom] = useState(yearStart);
   const [to, setTo] = useState(today);
   const [asOf, setAsOf] = useState(today);
-  const [data, setData] = useState<ProfitLossData | BalanceSheetData | CashFlowData | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true); setData(null);
-    try {
-      let url = "";
-      if (statementType === "profit-loss") url = `/api/accounting/profit-loss?companySlug=${encodeURIComponent(company.slug)}&from=${from}&to=${to}`;
-      else if (statementType === "balance-sheet") url = `/api/accounting/balance-sheet?companySlug=${encodeURIComponent(company.slug)}&asOf=${asOf}`;
-      else url = `/api/accounting/cash-flow?companySlug=${encodeURIComponent(company.slug)}&from=${from}&to=${to}`;
-      const res = await authedFetch(url);
-      if (res.ok) setData(await res.json());
-      else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل القائمة"); }
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم"); }
-    finally { setLoading(false); }
-  }, [company.slug, statementType, from, to, asOf]);
+  const profitLossQuery = useProfitLoss(company.slug, from, to);
+  const balanceSheetQuery = useBalanceSheet(company.slug, asOf);
+  const cashFlowQuery = useCashFlow(company.slug, from, to);
 
-  useEffect(() => { load(); }, [load]);
+  const loading = statementType === "profit-loss" ? profitLossQuery.isLoading
+    : statementType === "balance-sheet" ? balanceSheetQuery.isLoading
+    : cashFlowQuery.isLoading;
+  const queryError = statementType === "profit-loss" ? profitLossQuery.error
+    : statementType === "balance-sheet" ? balanceSheetQuery.error
+    : cashFlowQuery.error;
+  const data: ProfitLossData | BalanceSheetData | CashFlowData | null =
+    statementType === "profit-loss" ? (profitLossQuery.data as unknown as ProfitLossData | null ?? null)
+    : statementType === "balance-sheet" ? (balanceSheetQuery.data as unknown as BalanceSheetData | null ?? null)
+    : (cashFlowQuery.data as unknown as CashFlowData | null ?? null);
+
+  const refetch = () => {
+    if (statementType === "profit-loss") profitLossQuery.refetch();
+    else if (statementType === "balance-sheet") balanceSheetQuery.refetch();
+    else cashFlowQuery.refetch();
+  };
 
   const statementTabs: Array<{ key: StatementType; label: string; icon: React.ComponentType<{ size?: number }> }> = [
     { key: "profit-loss", label: "قائمة الدخل", icon: TrendingUp },
@@ -1215,7 +1162,7 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
             <div className="flex items-center gap-1.5"><label className="text-[11px] font-bold text-muted-foreground">إلى</label><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" /></div>
           </>
         )}
-        <button onClick={load} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">{loading ? "جارٍ…" : "تحديث"}</button>
+        <button onClick={refetch} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">{loading ? "جارٍ…" : "تحديث"}</button>
         <button onClick={exportCsv} disabled={!data || loading} className="py-2 px-4 rounded-sm bg-primary text-primary-foreground border-none text-[12px] font-bold cursor-pointer disabled:opacity-60 inline-flex items-center gap-1.5"><Download size={14} /> تصدير CSV</button>
       </div>
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : !data ? <div className="p-12 text-center text-muted-foreground">لا توجد بيانات</div> :
@@ -1358,16 +1305,13 @@ function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug:
   const [parentId, setParentId] = useState<number | null>(null);
   const [balance, setBalance] = useState(0);
   const [saving, setSaving] = useState(false);
+  const createAccountMutation = useCreateAccount();
 
   const submit = async () => {
     if (!code || !nameAr) { toast.error("الكود والاسم مطلوبان"); return; }
     setSaving(true);
     try {
-      const res = await authedFetch("/api/accounting/accounts", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, nameAr, nameEn, type, parentId, balance, currency: "KWD", companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      await createAccountMutation.mutateAsync({ code, name: nameAr, nameAr, nameEn, type, parentId: parentId ?? undefined, balance, currency: "KWD", companySlug: company.slug });
       toast.success("تم إنشاء الحساب"); onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
     finally { setSaving(false); }
@@ -1410,6 +1354,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
   const [status, setStatus] = useState("draft");
   const [lines, setLines] = useState<Array<{ accountId: number | null; debit: number; credit: number; description?: string }>>([{ accountId: null, debit: 0, credit: 0 }]);
   const [saving, setSaving] = useState(false);
+  const createJournalEntryMutation = useCreateJournalEntry();
 
   const totalDebit = lines.reduce((s, l) => s + Number(l.debit || 0), 0);
   const totalCredit = lines.reduce((s, l) => s + Number(l.credit || 0), 0);
@@ -1425,11 +1370,10 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
     if (lines.some((l) => !l.accountId)) { toast.error("كل بند يجب أن يحدد حساباً"); return; }
     setSaving(true);
     try {
-      const res = await authedFetch("/api/accounting/journal-entries", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, description, reference, status, lines, companySlug: company.slug }),
+      await createJournalEntryMutation.mutateAsync({
+        date, description, reference, status, companySlug: company.slug,
+        lines: lines.filter((l) => l.accountId !== null).map((l) => ({ accountId: l.accountId!, debit: Number(l.debit || 0), credit: Number(l.credit || 0), description: l.description })),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
       toast.success("تم إنشاء القيد"); onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
     finally { setSaving(false); }

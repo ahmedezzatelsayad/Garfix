@@ -1,9 +1,6 @@
 "use client";
 
-// Surgical fix: requires auth + client-side data fetching — must be dynamic to avoid SSG failure
-export const dynamic = "force-dynamic";
-
-import { useState, useEffect, useCallback } from "react";
+import { useFinOps } from "@/hooks/queries/founder-panel";
 import {
   Card,
   CardContent,
@@ -24,6 +21,7 @@ import {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+// Re-exported from hook for chart data compatibility
 interface FinOpsData {
   totalMonthlyRevenue: number;
   activeRuntimeCount: number;
@@ -133,55 +131,12 @@ function KPICard({
 // ─── Main Page Component ───────────────────────────────────────────────────
 
 export default function FinOpsDashboard() {
-  const [data, setData] = useState<FinOpsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch data (pure function)
-  const fetchFinOpsData = useCallback(async (): Promise<FinOpsData> => {
-    const res = await fetch("/api/founder-panel/finops");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }, []);
-
-  // State updaters
-  const updateData = useCallback((result: FinOpsData) => {
-    setData(result);
-    setLoading(false);
-    setError(null);
-  }, []);
-
-  const handleError = useCallback((err: unknown) => {
-    setError(err instanceof Error ? err.message : "Unknown error");
-    setLoading(false);
-  }, []);
-
-  // Effect with setState in async callback
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const result = await fetchFinOpsData();
-        updateData(result);
-      } catch (err) {
-        handleError(err);
-      }
-    };
-    load();
-  }, [fetchFinOpsData, updateData, handleError]);
-
-  // Manual refresh handler
-  const handleRefresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await fetchFinOpsData();
-      updateData(result);
-    } catch (err) {
-      handleError(err);
-    }
-  }, [fetchFinOpsData, updateData, handleError]);
+  const { data: rawData, isLoading, error, refetch } = useFinOps();
+  // Cast chart data fields to proper chart types (hook uses unknown[] for generality)
+  const data = rawData as FinOpsData | undefined;
 
   // Loading state
-  if (loading && !data) {
+  if (isLoading && !data) {
     return (
       <main className="min-h-screen bg-gray-50 p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
@@ -197,9 +152,9 @@ export default function FinOpsDashboard() {
     return (
       <main className="min-h-screen bg-gray-50 p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">Error: {error}</p>
+          <p className="text-red-500 mb-4">Error: {error?.message ?? "Unknown error"}</p>
           <button
-            onClick={handleRefresh}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry
@@ -405,7 +360,7 @@ export default function FinOpsDashboard() {
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-gray-200 flex justify-between text-xs text-gray-400">
           <span>Data sourced from Prisma queries · N/A = no data for period</span>
-          <button onClick={handleRefresh} className="hover:text-gray-600">↻ Refresh</button>
+          <button onClick={() => refetch()} className="hover:text-gray-600">↻ Refresh</button>
         </div>
       </div>
     </main>

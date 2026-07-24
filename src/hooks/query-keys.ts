@@ -28,6 +28,14 @@ export const queryKeys = {
       [...queryKeys.clients.all, "profile", id] as const,
   },
 
+  // ─── Suppliers ────────────────────────────────────────────────────────
+  suppliers: {
+    all: ["suppliers"] as const,
+    lists: () => [...queryKeys.suppliers.all, "list"] as const,
+    list: (filters: { companySlug: string; search?: string }) =>
+      [...queryKeys.suppliers.lists(), filters] as const,
+  },
+
   // ─── Invoices ──────────────────────────────────────────────────────────
   invoices: {
     all: ["invoices"] as const,
@@ -185,6 +193,8 @@ export const queryKeys = {
       [...queryKeys.accounting.all, "asset-disposals", companySlug] as const,
     bankImport: (companySlug: string) =>
       [...queryKeys.accounting.all, "bank-import", companySlug] as const,
+    dashboard: (companySlug?: string) =>
+      [...queryKeys.accounting.all, "dashboard", companySlug ?? "default"] as const,
   },
 
   // ─── Inventory ────────────────────────────────────────────────────────
@@ -194,6 +204,8 @@ export const queryKeys = {
       [...queryKeys.inventory.all, "items", companySlug] as const,
     movements: (companySlug: string) =>
       [...queryKeys.inventory.all, "movements", companySlug] as const,
+    movementsFiltered: (filters: { companySlug: string; productName?: string; from?: string; to?: string; limit?: number }) =>
+      [...queryKeys.inventory.all, "movements", "filtered", filters] as const,
     warehouses: (companySlug: string) =>
       [...queryKeys.inventory.all, "warehouses", companySlug] as const,
   },
@@ -227,6 +239,8 @@ export const queryKeys = {
       [...queryKeys.ai.all, "memory", companySlug] as const,
     invoiceBrainStats: (companySlug: string) =>
       [...queryKeys.ai.all, "invoice-brain-stats", companySlug] as const,
+    chatHistory: (companySlug?: string) =>
+      [...queryKeys.ai.all, "chat-history", companySlug ?? ""] as const,
   },
 
   // ─── Dashboard ────────────────────────────────────────────────────────
@@ -287,11 +301,17 @@ export const queryKeys = {
       [...queryKeys.platformAdmin.all, "integrations"] as const,
     reviewQueue: () =>
       [...queryKeys.platformAdmin.all, "review-queue"] as const,
+    reviewQueueFiltered: (filters: { tier?: string; companySlug?: string }) =>
+      [...queryKeys.platformAdmin.all, "review-queue", filters] as const,
     queueFailures: () =>
       [...queryKeys.platformAdmin.all, "queue-failures"] as const,
     tickets: () => [...queryKeys.platformAdmin.all, "tickets"] as const,
     ticketDetail: (id: number) =>
       [...queryKeys.platformAdmin.all, "tickets", id] as const,
+    backups: () => [...queryKeys.platformAdmin.all, "backups"] as const,
+    settings: () => [...queryKeys.platformAdmin.all, "settings"] as const,
+    landingContentAdmin: () =>
+      [...queryKeys.platformAdmin.all, "landing-content-admin"] as const,
   },
 
   // ─── SaaS ─────────────────────────────────────────────────────────────

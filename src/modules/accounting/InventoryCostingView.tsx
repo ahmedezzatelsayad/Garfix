@@ -1,10 +1,13 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useInventoryValuation, useCalculateCOGS,
+  useLandedCost, useCreateLandedCost,
+} from "@/hooks/queries";
 import {
   Package, TrendingDown, Calculator, Plus, X, DollarSign,
   Calendar, ArrowUpDown,
@@ -53,42 +56,19 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function InventoryCostingView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("valuation");
-  const [valuation, setValuation] = useState<ValuationItem[]>([]);
-  const [landedCosts, setLandedCosts] = useState<LandedCostItem[]>([]);
-  const [loading, setLoading] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [cogsResult, setCogsResult] = useState<COGSResult | null>(null);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadValuation = useCallback(async (asOfDate?: string) => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const dateParam = asOfDate ? `&asOfDate=${asOfDate}` : "";
-      const res = await authedFetch(`/api/accounting/inventory-valuation?companySlug=${slug}${dateParam}`);
-      if (res.ok) { const d = await res.json(); setValuation(d.items || []); }
-      else setValuation([]);
-    } catch { setValuation([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
+  // TanStack Query hooks for data fetching
+  const valuationQuery = useInventoryValuation(slug);
+  const landedQuery = useLandedCost(slug);
 
-  const loadLanded = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/landed-cost?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setLandedCosts(d.items || []); }
-      else setLandedCosts([]);
-    } catch { setLandedCosts([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "valuation") loadValuation();
-    if (tab === "landed-cost") loadLanded();
-  }, [tab, loadValuation, loadLanded]);
+  const valuation = valuationQuery.data?.items ?? [];
+  const landedCosts = landedQuery.data?.items ?? [];
+  const loading = valuationQuery.isLoading || landedQuery.isLoading;
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -117,11 +97,11 @@ export function InventoryCostingView() {
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "valuation" ? (
-        <ValuationView items={valuation} totalValue={totalValue} company={activeCompany} onRefresh={loadValuation} />
+        <ValuationView items={valuation} totalValue={totalValue} company={activeCompany} onRefresh={() => valuationQuery.refetch()} />
       ) : tab === "cogs" ? (
         <COGSView result={cogsResult} setResult={setCogsResult} company={activeCompany} valuation={valuation} />
       ) : tab === "landed-cost" ? (
-        showForm ? <LandedCostForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadLanded(); }} /> : <LandedCostView items={landedCosts} />
+        showForm ? <LandedCostForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); landedQuery.refetch(); }} /> : <LandedCostView items={landedCosts} />
       ) : null}
     </div>
   );
@@ -189,22 +169,18 @@ function COGSView({ result, setResult, company, valuation }: {
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [quantitySold, setQuantitySold] = useState(1);
   const [calculating, setCalculating] = useState(false);
+  const cogsMutation = useCalculateCOGS();
 
-  const handleCalculate = async () => {
+  const handleCalculate = () => {
     if (!selectedItem) { toast.error("اختر صنف"); return; }
     setCalculating(true);
-    try {
-      const res = await authedFetch("/api/accounting/inventory-valuation", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cogs", itemId: selectedItem, quantitySold, companySlug: company.slug }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setResult(d.result as COGSResult);
-        toast.success("تم حساب COGS");
-      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر حساب COGS"); }
-    } catch { toast.error("خطأ"); }
-    finally { setCalculating(false); }
+    cogsMutation.mutate(
+      { action: "cogs", itemId: selectedItem, quantitySold, companySlug: company.slug },
+      {
+        onSuccess: (data) => { setResult(data.result); toast.success("تم حساب COGS"); setCalculating(false); },
+        onError: (err) => { toast.error(err.message || "تعذّر حساب COGS"); setCalculating(false); },
+      },
+    );
   };
 
   return (
@@ -282,19 +258,18 @@ function LandedCostForm({ company, onClose, onSaved }: { company: { slug: string
   const [totalCost, setTotalCost] = useState(0);
   const [allocationMethod, setAllocationMethod] = useState("value");
   const [saving, setSaving] = useState(false);
+  const createLandedMutation = useCreateLandedCost();
 
-  const submit = async () => {
+  const submit = () => {
     if (!purchaseInvoiceId || totalCost <= 0) { toast.error("المرجع والتكلفة مطلوبة"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/landed-cost", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purchaseInvoiceId, costType, totalCost, allocationMethod, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string || "Failed"); }
-      toast.success("تم إنشاء التكلفة الواقعية"); onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createLandedMutation.mutate(
+      { purchaseInvoiceId, costType, totalCost, allocationMethod, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إنشاء التكلفة الواقعية"); setSaving(false); onSaved(); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   return (

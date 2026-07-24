@@ -465,10 +465,227 @@ function validateMetricPointDTO(obj: Record<string, unknown>, errors: ContractEr
 
 function validateStartupCheckResultDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
   validateBooleanField(obj, "ok", true, errors, prefix);
-  // IMPORTANT: Use validateStringArrayField for "fatal" and "warnings"
-  // (NOT validateArrayField which expects objects)
   validateStringArrayField(obj, "fatal", true, errors, prefix);
   validateStringArrayField(obj, "warnings", true, errors, prefix);
+}
+
+function validateAIProviderDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "name", true, errors, prefix);
+  validateEnumField(obj, "provider", ["openai", "anthropic", "google", "deepseek", "openrouter"], true, errors, prefix);
+  validateStringField(obj, "modelId", true, errors, prefix);
+  validateBooleanField(obj, "isEnabled", true, errors, prefix);
+}
+
+// ── Sprint 3 Domain Validators ───────────────────────────────────────────────
+
+function validatePerformanceDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "employeeId", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateEnumField(obj, "rating", ["excellent", "good", "average", "below_average", "poor"], true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateQuotationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "number", true, errors, prefix);
+  validateEnumField(obj, "status", ["draft", "sent", "accepted", "rejected", "expired"], true, errors, prefix);
+  validateNumberField(obj, "total", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validatePurchaseOrderDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "number", true, errors, prefix);
+  validateEnumField(obj, "status", ["draft", "approved", "received", "cancelled"], true, errors, prefix);
+  validateNumberField(obj, "total", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateInstallmentDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "invoiceId", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "dueDate", true, errors, prefix);
+  validateEnumField(obj, "status", ["pending", "paid", "overdue"], true, errors, prefix);
+}
+
+function validatePostDatedCheckDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "checkNumber", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "dueDate", true, errors, prefix);
+  validateEnumField(obj, "status", ["pending", "deposited", "cancelled", "cleared"], true, errors, prefix);
+}
+
+function validateProfitDistributionDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateNumberField(obj, "totalProfit", true, errors, prefix);
+  validateNumberField(obj, "distributedAmount", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateBankReconciliationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "bankAccountId", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateEnumField(obj, "status", ["draft", "in_progress", "completed"], true, errors, prefix);
+  validateNumberField(obj, "matchedCount", true, errors, prefix);
+}
+
+function validateBankTransferDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "fromAccountId", true, errors, prefix);
+  validateStringField(obj, "toAccountId", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateFixedAssetDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "name", true, errors, prefix);
+  validateStringField(obj, "assetCode", true, errors, prefix);
+  validateNumberField(obj, "purchaseCost", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateFxRevaluationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "currency", true, errors, prefix);
+  validateNumberField(obj, "revaluationAmount", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateDepreciationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "assetId", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateAssetDisposalDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "assetId", true, errors, prefix);
+  validateNumberField(obj, "disposalAmount", true, errors, prefix);
+  validateStringField(obj, "date", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateOpeningBalanceDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "accountId", true, errors, prefix);
+  validateNumberField(obj, "balance", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateLandedCostDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "name", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateInterCompanyDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "fromCompany", true, errors, prefix);
+  validateStringField(obj, "toCompany", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateLetterOfCreditDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "lcNumber", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateEnumField(obj, "status", ["draft", "issued", "confirmed", "expired"], true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateInventoryValuationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "itemId", true, errors, prefix);
+  validateNumberField(obj, "unitCost", true, errors, prefix);
+  validateNumberField(obj, "totalValue", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateWpsDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateEnumField(obj, "status", ["draft", "submitted", "approved", "rejected"], true, errors, prefix);
+}
+
+function validateTaxFilingDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+  validateEnumField(obj, "status", ["draft", "submitted", "accepted", "rejected"], true, errors, prefix);
+}
+
+function validateConsolidationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "period", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateSaaSPaymentDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateNumberField(obj, "amount", true, errors, prefix);
+  validateStringField(obj, "status", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validateSaaSUserDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "uid", true, errors, prefix);
+  validateStringField(obj, "email", true, errors, prefix);
+  validateStringField(obj, "role", true, errors, prefix);
+}
+
+function validateStorageObjectDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "key", true, errors, prefix);
+  validateNumberField(obj, "size", true, errors, prefix);
+  validateStringField(obj, "contentType", true, errors, prefix);
+}
+
+function validateWebhookDeliveryDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "endpointId", true, errors, prefix);
+  validateEnumField(obj, "status", ["pending", "success", "failed"], true, errors, prefix);
+  validateNumberField(obj, "attempts", true, errors, prefix);
+}
+
+function validateWebhookEventDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "type", true, errors, prefix);
+  validateStringField(obj, "timestamp", true, errors, prefix);
+}
+
+function validateCatalogDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "name", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+}
+
+function validatePermissionRoleDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "name", true, errors, prefix);
+  validateStringArrayField(obj, "permissions", true, errors, prefix);
+}
+
+function validateFounderValidationDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateBooleanField(obj, "ok", true, errors, prefix);
+  validateStringField(obj, "type", true, errors, prefix);
+}
+
+function validateAccountantAccessDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+  validateStringField(obj, "id", true, errors, prefix);
+  validateStringField(obj, "accountantId", true, errors, prefix);
+  validateStringField(obj, "companySlug", true, errors, prefix);
+  validateEnumField(obj, "status", ["active", "revoked"], true, errors, prefix);
 }
 
 // ── Paginated Response Helper ────────────────────────────────────────────────
@@ -489,9 +706,59 @@ function validatePaginatedResponse(
   validateBooleanField(body, "hasMore", true, errors, prefix);
 }
 
+// ── Simple Object Validators (for financial reports and generic endpoints) ────
+
+function validateFinancialReportResponse(body: unknown, errors: ContractError[]): void {
+  if (!isObject(body)) {
+    errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" });
+    return;
+  }
+  // Financial reports have a status or ok/data pattern
+  if (!hasField(body, "ok") && !hasField(body, "data") && !hasField(body, "status") && !hasField(body, "error")) {
+    // At minimum, they should have some financial data fields
+    const hasFinancialData = Object.keys(body).length > 0;
+    if (!hasFinancialData) {
+      errors.push({ path: "root", expected: "non-empty object", actual: "empty object", message: "Financial report response must have content" });
+    }
+  }
+}
+
+function validateMutationResponse(body: unknown, errors: ContractError[]): void {
+  if (!isObject(body)) {
+    errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" });
+    return;
+  }
+  // Mutation responses typically have ok, data, or error
+  if (!hasField(body, "ok") && !hasField(body, "data") && !hasField(body, "error") && !hasField(body, "status")) {
+    errors.push({ path: "root", expected: "contract-compliant object", actual: "unstructured object", message: "Mutation response does not match any known contract pattern (ok, data, error, status)" });
+  }
+}
+
+function validateOkResponse(body: unknown, errors: ContractError[]): void {
+  if (!isObject(body)) {
+    errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" });
+    return;
+  }
+  validateBooleanField(body, "ok", true, errors, "OkResponse");
+}
+
 // ── Route-Specific Validators ────────────────────────────────────────────────
 
 const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: ContractError[]) => void>> = {
+  // ── Root ──
+  "/api": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateStringField(body, "version", true, errors, "APIRoot");
+      validateStringField(body, "name", true, errors, "APIRoot");
+    },
+  },
+  "/api/docs": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+    },
+  },
+
   // ── Auth ──
   "/api/auth/login": {
     post: (body, errors) => {
@@ -512,6 +779,38 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be UserDTO" }); return; }
       validateUserDTO(body, errors, "UserDTO");
+    },
+  },
+  "/api/auth/logout": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/auth/refresh": {
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be AuthResult" }); return; }
+      validateBooleanField(body, "ok", true, errors, "AuthResult");
+    },
+  },
+  "/api/auth/forgot-password": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/auth/reset-password": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/auth/csrf": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateStringField(body, "token", true, errors, "CsrfResponse");
+    },
+  },
+  "/api/auth/change-password": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
     },
   },
 
@@ -536,20 +835,92 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateVoucherDTO, errors, "PaginatedResponse<VoucherDTO>");
     },
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateVoucherDTO(body, errors, "VoucherDTO");
+    },
+  },
+  "/api/accounting/journal-entries/{id}": {
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/journal-entries/{id}/reverse": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/accounting/accounts": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateAccountDTO, errors, "PaginatedResponse<AccountDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/accounts/{id}": {
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/accounting/fiscal-periods": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateFinancialPeriodDTO, errors, "PaginatedResponse<FinancialPeriodDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/fiscal-periods/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be FinancialPeriodDTO" }); return; }
+      validateFinancialPeriodDTO(body, errors, "FinancialPeriodDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/fiscal-periods/{id}/close": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/fiscal-periods/{id}/reopen": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
   },
   "/api/accounting/vouchers": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateVoucherDTO, errors, "PaginatedResponse<VoucherDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/vouchers/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be VoucherDTO" }); return; }
+      validateVoucherDTO(body, errors, "VoucherDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/vouchers/{id}/approve": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/vouchers/{id}/cancel": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
     },
   },
   "/api/accounting/bank-accounts": {
@@ -560,6 +931,62 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
         validateStringField(item, "companySlug", true, errs, pfx);
       }, errors, "PaginatedResponse");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-accounts/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateNumberField(body, "id", true, errors, "BankAccountDTO");
+      validateStringField(body, "name", true, errors, "BankAccountDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-transfer": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateBankTransferDTO, errors, "PaginatedResponse<BankTransferDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-import": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-reconciliation": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateBankReconciliationDTO, errors, "PaginatedResponse<BankReconciliationDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-reconciliation/complete": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-reconciliation/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be BankReconciliationDTO" }); return; }
+      validateBankReconciliationDTO(body, errors, "BankReconciliationDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/bank-reconciliation/{id}/match": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/accounting/budgets": {
     get: (body, errors) => {
@@ -568,6 +995,27 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
         validateStringField(item, "name", true, errs, pfx);
         validateStringField(item, "companySlug", true, errs, pfx);
       }, errors, "PaginatedResponse");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/budgets/{id}/approve": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/budgets/{id}/revise": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/budget-vs-actual": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
     },
   },
   "/api/accounting/cost-centers": {
@@ -578,6 +1026,17 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
         validateStringField(item, "companySlug", true, errs, pfx);
       }, errors, "PaginatedResponse");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/cost-centers/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/accounting/payroll": {
     get: (body, errors) => {
@@ -586,54 +1045,128 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
         validateStringField(item, "companySlug", true, errs, pfx);
       }, errors, "PaginatedResponse");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/accounting/wps": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, (item, errs, pfx) => {
-        validateStringField(item, "id", true, errs, pfx);
-        validateStringField(item, "companySlug", true, errs, pfx);
-      }, errors, "PaginatedResponse");
+      validatePaginatedResponse(body, validateWpsDTO, errors, "PaginatedResponse<WpsDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/wps/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be WpsDTO" }); return; }
+      validateWpsDTO(body, errors, "WpsDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/wps/{id}/download": {
+    get: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/wps/{id}/submit": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/accounting/tax-filing": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, (item, errs, pfx) => {
-        validateStringField(item, "id", true, errs, pfx);
-        validateStringField(item, "companySlug", true, errs, pfx);
-      }, errors, "PaginatedResponse");
+      validatePaginatedResponse(body, validateTaxFilingDTO, errors, "PaginatedResponse<TaxFilingDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/tax-filing/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be TaxFilingDTO" }); return; }
+      validateTaxFilingDTO(body, errors, "TaxFilingDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/accounting/fixed-assets": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, (item, errs, pfx) => {
-        validateStringField(item, "id", true, errs, pfx);
-        validateStringField(item, "name", true, errs, pfx);
-        validateStringField(item, "companySlug", true, errs, pfx);
-      }, errors, "PaginatedResponse");
+      validatePaginatedResponse(body, validateFixedAssetDTO, errors, "PaginatedResponse<FixedAssetDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/fixed-assets/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be FixedAssetDTO" }); return; }
+      validateFixedAssetDTO(body, errors, "FixedAssetDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/accounting/landed-cost": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, (item, errs, pfx) => {
-        validateStringField(item, "id", true, errs, pfx);
-        validateStringField(item, "companySlug", true, errs, pfx);
-      }, errors, "PaginatedResponse");
+      validatePaginatedResponse(body, validateLandedCostDTO, errors, "PaginatedResponse<LandedCostDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/landed-cost/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be LandedCostDTO" }); return; }
+      validateLandedCostDTO(body, errors, "LandedCostDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/accounting/inter-company": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, (item, errs, pfx) => {
-        validateStringField(item, "id", true, errs, pfx);
-        validateStringField(item, "companySlug", true, errs, pfx);
-      }, errors, "PaginatedResponse");
+      validatePaginatedResponse(body, validateInterCompanyDTO, errors, "PaginatedResponse<InterCompanyDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/inter-company/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be InterCompanyDTO" }); return; }
+      validateInterCompanyDTO(body, errors, "InterCompanyDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/inter-company/{id}/settle": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
     },
   },
   "/api/accounting/letters-of-credit": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, (item, errs, pfx) => {
-        validateStringField(item, "id", true, errs, pfx);
-        validateStringField(item, "companySlug", true, errs, pfx);
-      }, errors, "PaginatedResponse");
+      validatePaginatedResponse(body, validateLetterOfCreditDTO, errors, "PaginatedResponse<LetterOfCreditDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/letters-of-credit/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be LetterOfCreditDTO" }); return; }
+      validateLetterOfCreditDTO(body, errors, "LetterOfCreditDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/accounting/payment-methods": {
@@ -648,10 +1181,261 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateCommissionDTO, errors, "PaginatedResponse<CommissionDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/commissions/{id}/post-as-journal-entry": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/accounting/accounting-audit": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateAuditLogDTO, errors, "PaginatedResponse<AuditLogDTO>");
+    },
+  },
+  "/api/accounting/profit-loss": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/balance-sheet": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/cash-flow": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/trial-balance": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/aging": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/dashboard": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/financial-dashboard": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/depreciation": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateDepreciationDTO, errors, "PaginatedResponse<DepreciationDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/asset-disposals": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateAssetDisposalDTO, errors, "PaginatedResponse<AssetDisposalDTO>");
+    },
+  },
+  "/api/accounting/export-excel": {
+    get: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/filing-reminders": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/client-statement": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/supplier-statement": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/period-comparison": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/opening-balances": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateOpeningBalanceDTO, errors, "PaginatedResponse<OpeningBalanceDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/opening-balances/post": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/installments": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateInstallmentDTO, errors, "PaginatedResponse<InstallmentDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/post-dated-checks": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validatePostDatedCheckDTO, errors, "PaginatedResponse<PostDatedCheckDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/post-dated-checks/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be PostDatedCheckDTO" }); return; }
+      validatePostDatedCheckDTO(body, errors, "PostDatedCheckDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/post-dated-checks/{id}/cancel": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/post-dated-checks/{id}/deposit": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/accounting/profit-distribution": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateProfitDistributionDTO, errors, "PaginatedResponse<ProfitDistributionDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/profit-distribution/{id}/post-as-journal-entry": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/quotations": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateQuotationDTO, errors, "PaginatedResponse<QuotationDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/quotations/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be QuotationDTO" }); return; }
+      validateQuotationDTO(body, errors, "QuotationDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/quotations/{id}/convert-to-invoice": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/purchase-orders": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validatePurchaseOrderDTO, errors, "PaginatedResponse<PurchaseOrderDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/purchase-orders/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be PurchaseOrderDTO" }); return; }
+      validatePurchaseOrderDTO(body, errors, "PurchaseOrderDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/consolidation": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateConsolidationDTO, errors, "PaginatedResponse<ConsolidationDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/fx-revaluation": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateFxRevaluationDTO, errors, "PaginatedResponse<FxRevaluationDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/fx-revaluation/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be FxRevaluationDTO" }); return; }
+      validateFxRevaluationDTO(body, errors, "FxRevaluationDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/inventory-valuation": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateInventoryValuationDTO, errors, "PaginatedResponse<InventoryValuationDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/initiate-payment": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/verify-payment": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/retention-check": {
+    get: (body, errors) => {
+      validateFinancialReportResponse(body, errors);
+    },
+  },
+  "/api/accounting/accountant-access": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateAccountantAccessDTO, errors, "PaginatedResponse<AccountantAccessDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/accounting/accountant-access/{id}/revoke": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
     },
   },
 
@@ -660,10 +1444,49 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateInvoiceDTO, errors, "PaginatedResponse<InvoiceDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/invoices/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be InvoiceDTO" }); return; }
+      validateInvoiceDTO(body, errors, "InvoiceDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/invoices/{id}/payment": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/invoices/{id}/status": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/invoice-templates": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateInvoiceTemplateDTO, errors, "PaginatedResponse<InvoiceTemplateDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/invoice-templates/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -672,12 +1495,69 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateClientDTO, errors, "PaginatedResponse<ClientDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/clients/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be ClientDTO" }); return; }
+      validateClientDTO(body, errors, "ClientDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/clients/{id}/profile": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateStringField(body, "clientId", true, errors, "ClientProfileDTO");
+      validateStringField(body, "companySlug", true, errors, "ClientProfileDTO");
+    },
   },
 
   // ── Company ──
   "/api/companies": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateCompanyDTO, errors, "PaginatedResponse<CompanyDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/companies/{slug}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be CompanyDTO" }); return; }
+      validateCompanyDTO(body, errors, "CompanyDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/companies/{slug}/members": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "uid", true, errs, pfx);
+        validateStringField(item, "email", true, errs, pfx);
+        validateStringField(item, "role", true, errs, pfx);
+      }, errors, "PaginatedResponse<CompanyMemberDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/companies/{slug}/members/{uid}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -686,30 +1566,105 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateEmployeeDTO, errors, "PaginatedResponse<EmployeeDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/employees/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be EmployeeDTO" }); return; }
+      validateEmployeeDTO(body, errors, "EmployeeDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/hr/attendance": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateAttendanceDTO, errors, "PaginatedResponse<AttendanceDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/attendance/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/hr/salaries": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateSalaryDTO, errors, "PaginatedResponse<SalaryDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/salaries/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/hr/leaves": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateLeaveRequestDTO, errors, "PaginatedResponse<LeaveRequestDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/leaves/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/hr/commissions": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateCommissionDTO, errors, "PaginatedResponse<CommissionDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/commissions/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/hr/gratuity": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/performance": {
     get: (body, errors) => {
-      validatePaginatedResponse(body, validateGratuityRecordDTO, errors, "PaginatedResponse<GratuityRecordDTO>");
+      validatePaginatedResponse(body, validatePerformanceDTO, errors, "PaginatedResponse<PerformanceDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/hr/performance/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -718,10 +1673,24 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateInventoryItemDTO, errors, "PaginatedResponse<InventoryItemDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/inventory/warehouses": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateWarehouseDTO, errors, "PaginatedResponse<WarehouseDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/inventory/warehouses/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/inventory/movements": {
@@ -732,9 +1701,93 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
 
   // ── AI ──
   "/api/ai/agents": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "name", true, errs, pfx);
+        validateEnumField(item, "type", ["ocr", "matching", "financial_analysis", "chat", "whatsapp"], true, errs, pfx);
+        validateBooleanField(item, "isActive", true, errs, pfx);
+      }, errors, "PaginatedResponse<AIAgentDTO>");
+    },
     post: (body, errors) => {
       if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be AIResponseDTO" }); return; }
       validateAIResponseDTO(body, errors, "AIResponseDTO");
+    },
+  },
+  "/api/ai/chat": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "input", true, errs, pfx);
+        validateStringField(item, "response", true, errs, pfx);
+        validateStringField(item, "createdAt", true, errs, pfx);
+      }, errors, "PaginatedResponse<AIChatDTO>");
+    },
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be AIResponseDTO" }); return; }
+      validateAIResponseDTO(body, errors, "AIResponseDTO");
+    },
+  },
+  "/api/ai/chat/stream": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/ai/parse-image": {
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be AIResponseDTO" }); return; }
+      validateAIResponseDTO(body, errors, "AIResponseDTO");
+    },
+  },
+  "/api/ai/parse-file": {
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be AIResponseDTO" }); return; }
+      validateAIResponseDTO(body, errors, "AIResponseDTO");
+    },
+  },
+  "/api/ai/smart-parse": {
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be AIResponseDTO" }); return; }
+      validateAIResponseDTO(body, errors, "AIResponseDTO");
+    },
+  },
+  "/api/ai/invoice-brain/extract": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/ai/invoice-brain/stats": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateNumberField(body, "totalProcessed", true, errors, "InvoiceBrainStats");
+      validateNumberField(body, "successRate", true, errors, "InvoiceBrainStats");
+    },
+  },
+  "/api/ai/memory": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "query", true, errs, pfx);
+        validateStringField(item, "response", true, errs, pfx);
+      }, errors, "PaginatedResponse<AIMemoryDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/ai/memory/{id}": {
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/ai/bulk-import": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/ai/tools": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -750,15 +1803,16 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
   "/api/notifications": {
     get: (body, errors) => {
       if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
-      // Notifications may come in various shapes
       if (hasField(body, "notifications")) {
         validateArrayField(body, "notifications", validateNotificationDTO, true, errors, "NotificationListResponse");
       } else if (Array.isArray(body)) {
-        // Direct array
         (body as unknown as Record<string, unknown>[]).forEach((item, i) => {
           if (isObject(item)) validateNotificationDTO(item, errors, `NotificationDTO[${i}]`);
         });
       }
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -777,6 +1831,9 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
         validateArrayField(body, "backups", validateBackupDTO, true, errors, "BackupListResponse");
       }
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
 
   // ── Purchases ──
@@ -786,6 +1843,17 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
       if (hasField(body, "purchases")) {
         validateArrayField(body, "purchases", validatePurchaseDTO, true, errors, "PurchaseListResponse");
       }
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/purchases/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -824,6 +1892,22 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
     get: (body, errors) => {
       validatePaginatedResponse(body, validateAutomationRuleDTO, errors, "PaginatedResponse<AutomationRuleDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/automation/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/automation/{id}/logs": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateAuditLogDTO, errors, "PaginatedResponse<AuditLogDTO>");
+    },
   },
 
   // ── Webhooks ──
@@ -837,6 +1921,47 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
           validateBooleanField(item, "isActive", true, errs, pfx);
         }, true, errors, "WebhookEndpointListResponse");
       }
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/webhooks/endpoints/{id}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be WebhookEndpointDTO" }); return; }
+      validateStringField(body, "id", true, errors, "WebhookEndpointDTO");
+      validateStringField(body, "url", true, errors, "WebhookEndpointDTO");
+      validateBooleanField(body, "isActive", true, errors, "WebhookEndpointDTO");
+    },
+    put: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/webhooks/deliveries": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateWebhookDeliveryDTO, errors, "PaginatedResponse<WebhookDeliveryDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/webhooks/events": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateWebhookEventDTO, errors, "PaginatedResponse<WebhookEventDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/webhooks/whatsapp": {
+    get: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -852,19 +1977,66 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
       validatePaginatedResponse(body, validatePlatformTenantDTO, errors, "PaginatedResponse<PlatformTenantDTO>");
     },
   },
+  "/api/platform-admin/tenants/{slug}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be PlatformTenantDTO" }); return; }
+      validatePlatformTenantDTO(body, errors, "PlatformTenantDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
   "/api/platform-admin/feature-flags": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validatePlatformFeatureFlagDTO, errors, "PaginatedResponse<PlatformFeatureFlagDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/feature-flags/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/platform-admin/announcements": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateAnnouncementDTO, errors, "PaginatedResponse<AnnouncementDTO>");
     },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/announcements/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
   },
   "/api/platform-admin/tickets": {
     get: (body, errors) => {
       validatePaginatedResponse(body, validateTicketDTO, errors, "PaginatedResponse<TicketDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/tickets/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/tickets/{id}/replies": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
   "/api/platform-admin/audit": {
@@ -872,8 +2044,89 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
       validatePaginatedResponse(body, validateAuditLogDTO, errors, "PaginatedResponse<AuditLogDTO>");
     },
   },
+  "/api/platform-admin/ai-usage": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateNumberField(body, "totalCost", true, errors, "AIUsageDTO");
+      validateNumberField(body, "totalRequests", true, errors, "AIUsageDTO");
+      validateStringField(body, "period", true, errors, "AIUsageDTO");
+    },
+  },
+  "/api/platform-admin/ai-providers": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateAIProviderDTO, errors, "PaginatedResponse<AIProviderDTO>");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/ai-orchestration": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateStringField(body, "strategy", true, errors, "AIOrchestrationDTO");
+      validateBooleanField(body, "autoFallback", true, errors, "AIOrchestrationDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/ai-orchestration/run-benchmark": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/integrations": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateStringField(body, "provider", true, errors, "IntegrationDTO");
+      validateBooleanField(body, "isEnabled", true, errors, "IntegrationDTO");
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/review-queue": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "type", true, errs, pfx);
+        validateEnumField(item, "status", ["pending", "approved", "rejected"], true, errs, pfx);
+      }, errors, "PaginatedResponse<ReviewQueueItemDTO>");
+    },
+  },
+  "/api/platform-admin/queue-failures": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "queueName", true, errs, pfx);
+        validateStringField(item, "error", true, errs, pfx);
+        validateStringField(item, "createdAt", true, errs, pfx);
+      }, errors, "PaginatedResponse<QueueFailureDTO>");
+    },
+  },
+  "/api/platform-admin/retention-cleanup": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/platform-admin/landing-content": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
 
   // ── Metrics ──
+  "/api/metrics": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      if (hasField(body, "metrics")) {
+        validateArrayField(body, "metrics", validateMetricPointDTO, true, errors, "MetricsResponse");
+      }
+    },
+  },
   "/api/metrics/slo": {
     get: (body, errors) => {
       if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
@@ -888,6 +2141,11 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
       }
     },
   },
+  "/api/metrics/observability": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+    },
+  },
 
   // ── Product Matching ──
   "/api/product-matching/config": {
@@ -898,12 +2156,50 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
       validateEnumField(body, "algorithm", ["fuzzy", "exact", "semantic"], true, errors, "ProductMatchConfigDTO");
       validateStringField(body, "companySlug", true, errors, "ProductMatchConfigDTO");
     },
+    put: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/product-matching/confirm": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/product-matching/match-override": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "originalProduct", true, errs, pfx);
+        validateStringField(item, "matchedProduct", true, errs, pfx);
+      }, errors, "PaginatedResponse<MatchOverrideDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/product-matching/review": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, (item, errs, pfx) => {
+        validateStringField(item, "id", true, errs, pfx);
+        validateStringField(item, "invoiceLine", true, errs, pfx);
+        validateStringField(item, "matchedProduct", true, errs, pfx);
+        validateEnumField(item, "status", ["pending", "confirmed", "rejected"], true, errs, pfx);
+      }, errors, "PaginatedResponse<ProductMatchReviewDTO>");
+    },
+  },
+  "/api/product-matching/undo": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
   },
 
   // ── Settings ──
   "/api/settings": {
     get: (body, errors) => {
       if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+    },
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
     },
   },
 
@@ -919,6 +2215,159 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
           validateBooleanField(item, "isCompleted", true, errs, pfx);
         }, true, errors, "OnboardingStepListResponse");
       }
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+
+  // ── Catalog ──
+  "/api/catalog": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateCatalogDTO, errors, "PaginatedResponse<CatalogDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/catalog/{id}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+
+  // ── SaaS ──
+  "/api/saas/payments": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateSaaSPaymentDTO, errors, "PaginatedResponse<SaaSPaymentDTO>");
+    },
+  },
+  "/api/saas/payments/callback": {
+    get: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/saas/payments/initiate": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/saas/users": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validateSaaSUserDTO, errors, "PaginatedResponse<SaaSUserDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/saas/users/{uid}": {
+    patch: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+
+  // ── Permissions ──
+  "/api/permissions/catalog": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+    },
+  },
+  "/api/permissions/check": {
+    post: (body, errors) => {
+      validateOkResponse(body, errors);
+    },
+  },
+  "/api/permissions/roles": {
+    get: (body, errors) => {
+      validatePaginatedResponse(body, validatePermissionRoleDTO, errors, "PaginatedResponse<PermissionRoleDTO>");
+    },
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    put: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+    delete: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+
+  // ── Founder Panel ──
+  "/api/founder-panel/mission-control": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateBooleanField(body, "ok", true, errors, "MissionControlDTO");
+    },
+  },
+  "/api/founder-panel/finops": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateNumberField(body, "totalCost", true, errors, "FinOpsDTO");
+      validateNumberField(body, "totalRevenue", true, errors, "FinOpsDTO");
+    },
+  },
+  "/api/founder-panel/ai-fabric": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateNumberField(body, "totalRequests", true, errors, "AiFabricDTO");
+      validateNumberField(body, "avgLatencyMs", true, errors, "AiFabricDTO");
+    },
+  },
+
+  // ── Founder Validation ──
+  "/api/founder-validation": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be FounderValidationDTO" }); return; }
+      validateFounderValidationDTO(body, errors, "FounderValidationDTO");
+    },
+    post: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be FounderValidationDTO" }); return; }
+      validateFounderValidationDTO(body, errors, "FounderValidationDTO");
+    },
+  },
+  "/api/founder-validation/ai-test": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/founder-validation/report": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+  "/api/founder-validation/seed": {
+    post: (body, errors) => {
+      validateMutationResponse(body, errors);
+    },
+  },
+
+  // ── Landing Content ──
+  "/api/landing-content": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+    },
+  },
+
+  // ── Storage ──
+  "/api/storage/{key}": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be StorageObjectDTO" }); return; }
+      validateStorageObjectDTO(body, errors, "StorageObjectDTO");
+    },
+  },
+
+  // ── Internal ──
+  "/api/internal/ai-fabric/savings": {
+    get: (body, errors) => {
+      if (!isObject(body)) { errors.push({ path: "root", expected: "object", actual: typeof body, message: "Response must be object" }); return; }
+      validateNumberField(body, "savingsUsd", true, errors, "AiFabricSavingsDTO");
+      validateNumberField(body, "savingsPct", true, errors, "AiFabricSavingsDTO");
     },
   },
 };

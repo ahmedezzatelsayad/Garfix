@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState, useMemo, useCallback } from "react";
+import { useAuditLogFiltered, type AuditLogFilterParams } from "@/hooks/queries";
 import {
   History, Search, Download, Filter, RefreshCw, ChevronLeft, ChevronRight,
   Eye, Wifi, WifiOff, X, FileSpreadsheet, User, Building2, Calendar,
   Shield, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ interface AuditLog {
   companySlug?: string | null;
   details?: Record<string, unknown> | null;
   createdAt: string;
+  [key: string]: unknown;
 }
 
 interface FilterState {
@@ -76,8 +77,6 @@ function getActionColor(action: string): string {
 /* ── Component ────────────────────────────────────────────────────────── */
 
 export function EnhancedAuditView() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     action: "",
     companySlug: "",
@@ -88,10 +87,9 @@ export function EnhancedAuditView() {
   const [page, setPage] = useState(1);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [isOnline, setIsOnline] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Online status
-  useEffect(() => {
+  useState(() => {
     setIsOnline(navigator.onLine);
     const onOffline = () => setIsOnline(false);
     const onOnline = () => setIsOnline(true);
@@ -101,34 +99,20 @@ export function EnhancedAuditView() {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onOnline);
     };
-  }, []);
+  });
 
-  const load = useCallback(async () => {
-    setIsRefreshing(true);
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filters.action) params.set("action", filters.action);
-      if (filters.companySlug) params.set("companySlug", filters.companySlug);
-      if (filters.userEmail) params.set("userEmail", filters.userEmail);
-      if (filters.startDate) params.set("startDate", filters.startDate);
-      if (filters.endDate) params.set("endDate", filters.endDate);
-      params.set("limit", "500");
-      const res = await authedFetch(`/api/audit?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data.logs || []);
-      }
-    } catch {
-      // Graceful error handling
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [filters.action, filters.companySlug, filters.userEmail, filters.startDate, filters.endDate]);
+  // Build query params from filters
+  const queryParams: AuditLogFilterParams = useMemo(() => ({
+    action: filters.action || undefined,
+    companySlug: filters.companySlug || undefined,
+    userEmail: filters.userEmail || undefined,
+    startDate: filters.startDate || undefined,
+    endDate: filters.endDate || undefined,
+    limit: 500,
+  }), [filters]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const { data, isLoading, isRefetching, refetch } = useAuditLogFiltered(queryParams);
+  const logs = (data?.logs ?? []) as unknown as AuditLog[];
 
   // Client-side filtering + pagination
   const filteredLogs = useMemo(() => {
@@ -226,8 +210,8 @@ export function EnhancedAuditView() {
             {isOnline ? <Wifi size={12} className="ms-1" /> : <WifiOff size={12} className="ms-1" />}
             {isOnline ? "متصل" : "غير متصل"}
           </Badge>
-          <Button variant="outline" size="sm" onClick={load} disabled={isRefreshing}>
-            <RefreshCw size={14} className={cn("ms-1", isRefreshing && "animate-spin")} />
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
+            <RefreshCw size={14} className={cn("ms-1", isRefetching && "animate-spin")} />
             تحديث
           </Button>
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={filteredLogs.length === 0}>
@@ -316,7 +300,7 @@ export function EnhancedAuditView() {
       {/* ── Table ──────────────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-0">
-          {loading ? (
+          {isLoading ? (
             <div className="py-12 text-center text-[var(--muted-foreground)]">
               <RefreshCw size={24} className="animate-spin mx-auto mb-3" />
               جارٍ التحميل…
@@ -385,7 +369,7 @@ export function EnhancedAuditView() {
       </Card>
 
       {/* ── Pagination ─────────────────────────────────────────────── */}
-      {!loading && filteredLogs.length > 0 && (
+      {!isLoading && filteredLogs.length > 0 && (
         <div className="flex items-center justify-between gap-3">
           <p className="text-[13px] text-[var(--muted-foreground)]">
             عرض {(page - 1) * PAGE_SIZE + 1} — {Math.min(page * PAGE_SIZE, filteredLogs.length)} من {filteredLogs.length}

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
 import { toast } from "sonner";
 import { HardDriveDownload, Plus, Loader2 } from "lucide-react";
+import { usePlatformBackups, useCreatePlatformBackup } from "@/hooks/queries";
 
 // ─── Item 6: Backups tab (manual backup trigger + list) ──────────────────
 // Calls GET /api/backups (list) and POST /api/backups (trigger manual).
@@ -15,46 +15,21 @@ interface BackupRow {
 }
 
 export function BackupsTab() {
-  const [backups, setBackups] = useState<BackupRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [triggering, setTriggering] = useState(false);
+  const backupsQuery = usePlatformBackups();
+  const createMutation = useCreatePlatformBackup();
   const [confirmingTrigger, setConfirmingTrigger] = useState(false);
+  const [triggering, setTriggering] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/backups");
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "تعذّر تحميل النسخ");
-        setBackups([]);
-        return;
-      }
-      const data = await res.json();
-      setBackups(Array.isArray(data.backups) ? data.backups : []);
-    } catch {
-      setBackups([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const backups: BackupRow[] = backupsQuery.data?.backups || [];
+  const loading = backupsQuery.isLoading;
 
   const triggerBackup = async () => {
     setTriggering(true);
     try {
-      const res = await authedFetch("/api/backups", { method: "POST" });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "فشل إنشاء النسخة");
-      }
-      const data = await res.json().catch(() => ({}));
+      const data = await createMutation.mutateAsync();
       const name = data?.backupName || data?.name;
       toast.success(name ? `تم إنشاء نسخة احتياطية: ${name}` : "تم إنشاء النسخة الاحتياطية");
       setConfirmingTrigger(false);
-      await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "خطأ");
     } finally {

@@ -10,10 +10,88 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/hooks/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete, apiDownloadBlob, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
+
+/** Shape of the accounting dashboard data returned by the API. */
+export interface AccountingDashboardData {
+  financial: {
+    totalRevenue: number;
+    totalExpenses: number;
+    netProfit: number;
+    totalAROutstanding: number;
+    totalAPOutstanding: number;
+    inventoryValue: number;
+    topProducts: {
+      productId: string;
+      productName: string;
+      sku: string;
+      totalQuantity: number;
+      unitPrice: number;
+      totalValue: number;
+      purchasePrice: number;
+    }[];
+    recentTransactions: {
+      id: string;
+      number: string;
+      date: string;
+      amount: number;
+      type: string;
+      status: string;
+      description: string | null;
+    }[];
+    arBreakdown: {
+      current: number;
+      overdue30: number;
+      overdue60: number;
+      overdue90: number;
+      total: number;
+    };
+    apBreakdown: {
+      current: number;
+      overdue30: number;
+      overdue60: number;
+      overdue90: number;
+      total: number;
+    };
+  };
+  ar: {
+    clientId: string;
+    clientName: string;
+    clientCode: string;
+    totalOutstanding: number;
+    totalOverdue: number;
+    totalReceived: number;
+  }[];
+  ap: {
+    supplierId: string;
+    supplierName: string;
+    supplierCode: string;
+    totalOutstanding: number;
+    totalOverdue: number;
+    totalPaid: number;
+  }[];
+  tradeFinance: {
+    totalLCAmount: number;
+    activeLCs: number;
+    expiredLCs: number;
+    lcByType: { import: number; export: number };
+    lcByStatus: Record<string, number>;
+    productCosts: {
+      productId: string;
+      productName: string;
+      sku: string;
+      purchasePrice: number;
+      sellingPrice: number;
+      margin: number;
+      quantityOnHand: number;
+      totalInventoryCost: number;
+    }[];
+    totalProductCost: number;
+  };
+}
 
 /** Shape of the dashboard statistics returned by the API. */
 export interface DashboardStats {
@@ -23,7 +101,15 @@ export interface DashboardStats {
   totalInvoices: number;
   paidCount: number;
   overdueCount: number;
-  [key: string]: unknown;
+  totalPaid: number;
+  totalOutstanding: number;
+  clientsCount: number;
+  byStatus: Record<string, number>;
+  monthly: Array<{ month: string; revenue: number; count: number }>;
+  recent: Array<{
+    id: number; invoiceNumber: string; clientName: string; status: string;
+    total: number; paid: number; issueDate: string; companySlug: string;
+  }>;
 }
 
 /** Shape of a notification record returned by the API. */
@@ -32,8 +118,14 @@ export interface Notification {
   title: string;
   message: string;
   read: boolean;
+  isRead: boolean;
   companySlug: string;
-  [key: string]: unknown;
+  type: string;
+  body: string;
+  link: string | null;
+  createdAt: string;
+  readAt: string | null;
+  userUid: string;
 }
 
 /** Shape of an audit log entry returned by the API. */
@@ -221,6 +313,26 @@ interface ModuleListResponse {
 // ─── Dashboard Query Hooks ──────────────────────────────────────────────────
 
 /**
+ * Fetch accounting dashboard data for a given company.
+ *
+ * Replaces raw fetch + useEffect in the accounting dashboard page (src/app/page.tsx).
+ * The API returns data directly (not wrapped in { data: ... }).
+ *
+ * @param companySlug - Slug of the company whose accounting dashboard to fetch.
+ *                      Defaults to "demo-company-1" if not provided.
+ */
+export function useAccountingDashboard(companySlug?: string) {
+  const slug = companySlug ?? "demo-company-1";
+  return useQuery<AccountingDashboardData, ApiError>({
+    queryKey: queryKeys.accounting.dashboard(slug),
+    queryFn: () =>
+      apiGet<AccountingDashboardData>(
+        `/api/accounting/dashboard?companySlug=${encodeURIComponent(slug)}`,
+      ),
+  });
+}
+
+/**
  * Fetch dashboard statistics for a given company.
  *
  * Uses a 1-minute stale time since dashboard stats are relatively
@@ -297,6 +409,39 @@ export function useAuditLog(companySlug: string) {
         `/api/audit?companySlug=${encodeURIComponent(companySlug)}`,
       ),
     enabled: !!companySlug,
+  });
+}
+
+/**
+ * Fetch audit log entries with advanced filtering.
+ *
+ * Supports filtering by action, company slug, user email, date range, and limit.
+ * Used by AuditView and EnhancedAuditView.
+ *
+ * @param params - Filter parameters for the audit log query.
+ */
+export interface AuditLogFilterParams {
+  action?: string;
+  companySlug?: string;
+  userEmail?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}
+
+export function useAuditLogFiltered(params: AuditLogFilterParams) {
+  return useQuery<AuditLogListResponse, ApiError>({
+    queryKey: [...queryKeys.audit.all, "filtered", params] as const,
+    queryFn: () => {
+      const searchParams = new URLSearchParams();
+      if (params.action) searchParams.set("action", params.action);
+      if (params.companySlug) searchParams.set("companySlug", params.companySlug);
+      if (params.userEmail) searchParams.set("userEmail", params.userEmail);
+      if (params.startDate) searchParams.set("startDate", params.startDate);
+      if (params.endDate) searchParams.set("endDate", params.endDate);
+      if (params.limit) searchParams.set("limit", String(params.limit));
+      return apiGet<AuditLogListResponse>(`/api/audit?${searchParams.toString()}`);
+    },
   });
 }
 
@@ -597,6 +742,48 @@ export function useReports(companySlug: string) {
   });
 }
 
+/**
+ * Fetch a filtered/generated report with type, date range, and optional format.
+ *
+ * Used by ReportsView for generating specific report types (sales, profit, etc.)
+ * within a date range. The `format` parameter defaults to JSON; when "csv" is
+ * specified the API returns a Blob instead — callers should use `authedFetch`
+ * directly for CSV downloads since TanStack Query expects JSON responses.
+ *
+ * @param params - Report filter parameters.
+ */
+export interface ReportFilterParams {
+  companySlug: string;
+  type: string;
+  from: string;
+  to: string;
+}
+
+export interface ReportResponse {
+  type: string;
+  companySlug: string;
+  dateRange: { from: string; to: string };
+  summary: Record<string, unknown>;
+  rows: Array<Record<string, unknown>>;
+  count: number;
+}
+
+export function useReportsFiltered(params: ReportFilterParams) {
+  return useQuery<ReportResponse, ApiError>({
+    queryKey: [...queryKeys.reports.all, "filtered", params] as const,
+    queryFn: () => {
+      const searchParams = new URLSearchParams({
+        companySlug: params.companySlug,
+        type: params.type,
+        from: params.from,
+        to: params.to,
+      });
+      return apiGet<ReportResponse>(`/api/reports?${searchParams.toString()}`);
+    },
+    enabled: !!params.companySlug && !!params.type,
+  });
+}
+
 // ─── Feature Flag Hooks ─────────────────────────────────────────────────────
 
 /**
@@ -631,7 +818,7 @@ export function useModules() {
 export function useMarkNotificationsRead() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ ok: boolean }, ApiError, { ids: number[] }>({
+  return useMutation<{ ok: boolean }, ApiError, { ids: number[]; action?: string }>({
     mutationFn: (payload) =>
       apiPost<{ ids: number[] }, { ok: boolean }>("/api/notifications", { action: "mark_read", ...payload }),
     onSuccess: () => {
@@ -661,20 +848,49 @@ export function useMarkAllNotificationsRead() {
   });
 }
 
-// ─── Landing Content Hook ─────────────────────────────────────────────────────
-
-interface LandingContentResponse {
-  content: Record<string, unknown>;
-}
+// ─── Limited Audit Log Hook ──────────────────────────────────────────────────
 
 /**
- * Fetch landing page content.
+ * Fetch a limited set of audit log entries (for the Account page).
  *
- * This replaces raw fetch in the LandingPage component.
+ * @param limit - Maximum number of entries to return.
  */
-export function useLandingContent() {
-  return useQuery<LandingContentResponse, ApiError>({
-    queryKey: queryKeys.dashboard.all,
-    queryFn: () => apiGet<LandingContentResponse>("/api/landing-content"),
+export function useAuditLogLimited(limit: number = 10) {
+  return useQuery<{ logs: AuditLogEntry[] }, ApiError>({
+    queryKey: [...queryKeys.audit.all, "limited", limit] as const,
+    queryFn: () =>
+      apiGet<{ logs: AuditLogEntry[] }>(`/api/audit?limit=${limit}`),
+  });
+}
+
+// ─── Report CSV Download Hook ──────────────────────────────────────────────
+
+/**
+ * Download a report as a CSV file.
+ *
+ * Returns a Blob that the caller can convert to a download link.
+ * Since TanStack Query expects JSON responses by default, this
+ * mutation uses `apiDownloadBlob` to handle the binary response.
+ *
+ * This is a fire-and-forget style mutation — it does not invalidate
+ * any query caches automatically since it produces a file download,
+ * not a data change.
+ *
+ * @param variables - Object containing companySlug, report type, and date range.
+ */
+export function useDownloadReportCsv() {
+  return useMutation<
+    Blob,
+    ApiError,
+    { companySlug: string; type: string; from: string; to: string }
+  >({
+    mutationFn: ({ companySlug, type, from, to }) =>
+      apiDownloadBlob(
+        `/api/reports?companySlug=${encodeURIComponent(companySlug)}` +
+        `&type=${encodeURIComponent(type)}` +
+        `&from=${encodeURIComponent(from)}` +
+        `&to=${encodeURIComponent(to)}` +
+        `&format=csv`,
+      ),
   });
 }

@@ -44,9 +44,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (search) where.OR = [{ name: { contains: search } }, { code: { contains: search } }];
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
-  const allProducts = await db.productCatalog.findMany({ where, ...pagination });
+  const allProducts: any[] = await db.productCatalog.findMany({ where, ...pagination });
 
-  const { items: products, nextCursor } = buildCursorResponse(allProducts, limit);
+  const { items, nextCursor } = buildCursorResponse(allProducts, limit);
+  const products: any[] = items;
 
   return NextResponse.json({
     products: products.map((p) => ({

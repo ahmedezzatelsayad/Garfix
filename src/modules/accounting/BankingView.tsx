@@ -1,10 +1,15 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useBankAccountsList, useCreateBankAccount,
+  useBankReconciliation, useMatchBankReconciliation, useCompleteBankReconciliation,
+  useBankImport, useBankTransfers, useCreateBankTransfer,
+  useAccounts,
+} from "@/hooks/queries";
 import {
   Landmark, Plus, X, Upload, ArrowRightLeft, CheckCircle2,
   FileText, Download, Trash2, RefreshCw, AlertTriangle,
@@ -30,41 +35,17 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function BankingView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("accounts");
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-  const [reconciliation, setReconciliation] = useState<ReconciliationItem[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadAccounts = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setBankAccounts(d.accounts || []); }
-      else setBankAccounts([]);
-    } catch { setBankAccounts([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
+  // TanStack Query hooks for data fetching
+  const bankAccountsQuery = useBankAccountsList(slug);
+  const bankTransfersQuery = useBankTransfers(slug);
 
-  const loadTransfers = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/bank-transfer?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setTransfers(d.transfers || []); }
-      else setTransfers([]);
-    } catch { setTransfers([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "accounts") loadAccounts();
-    if (tab === "transfer") loadTransfers();
-  }, [tab, loadAccounts, loadTransfers]);
+  const bankAccounts = bankAccountsQuery.data?.bankAccounts ?? [];
+  const transfers = bankTransfersQuery.data?.transfers ?? [];
+  const loading = (tab === "accounts" && bankAccountsQuery.isLoading) || (tab === "transfer" && bankTransfersQuery.isLoading);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -94,7 +75,7 @@ export function BankingView() {
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "accounts" ? (
-        showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAccounts(); }} /> : (
+        showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankAccountsQuery.refetch(); }} /> : (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
@@ -144,7 +125,7 @@ export function BankingView() {
       ) : tab === "import" ? (
         <CSVImportView company={activeCompany} />
       ) : tab === "transfer" ? (
-        showForm ? <TransferFormView accounts={bankAccounts} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadTransfers(); }} /> : (
+        showForm ? <TransferFormView accounts={bankAccounts} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankTransfersQuery.refetch(); }} /> : (
           <div className="bg-card rounded-[14px] border border-border overflow-hidden">
             {transfers.length === 0 ? <Empty label="تحويلات" /> : (
               <div className="overflow-x-auto garfix-scroll">
@@ -188,27 +169,21 @@ function BankAccountFormView({ company, onClose, onSaved }: { company: { slug: s
   const [glAccountId, setGlAccountId] = useState<number | null>(null);
   const [balance, setBalance] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [glAccounts, setGlAccounts] = useState<Array<{ id: number; code: string; nameAr: string }>>([]);
 
-  useEffect(() => {
-    authedFetch(`/api/accounting/accounts?companySlug=${encodeURIComponent(company.slug)}`)
-      .then(r => r.ok ? r.json() : { accounts: [] })
-      .then(d => setGlAccounts(d.accounts || []))
-      .catch(() => setGlAccounts([]));
-  }, [company.slug]);
+  const glAccountsQuery = useAccounts(company.slug);
+  const glAccounts = (glAccountsQuery.data?.accounts || []) as Array<{ id: number; code: string; name: string; nameAr?: string }>;
+  const createBankAccountMutation = useCreateBankAccount();
 
-  const submit = async () => {
+  const submit = () => {
     if (!bankName || !accountName || !accountNumber) { toast.error("البنك واسم الحساب ورقم الحساب مطلوبة"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/bank-accounts", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: accountName, bankName, accountName, accountNumber, iban, currency, accountType, glAccountId, balance, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-      toast.success("تم إنشاء الحساب البنكي"); onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createBankAccountMutation.mutate(
+      { name: accountName, bankName, accountName, accountNumber, iban, currency, accountType, glAccountId, balance, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إنشاء الحساب البنكي"); onSaved(); setSaving(false); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   return (
@@ -247,35 +222,21 @@ function BankAccountFormView({ company, onClose, onSaved }: { company: { slug: s
 
 /* ─── Reconciliation ─────────────────────────────────────────────────────────── */
 function ReconciliationView({ company }: { company: { slug: string } }) {
-  const [items, setItems] = useState<ReconciliationItem[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [completing, setCompleting] = useState(false);
 
   const slug = encodeURIComponent(company.slug);
 
-  useEffect(() => {
-    authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`)
-      .then(r => r.ok ? r.json() : { accounts: [] })
-      .then(d => setBankAccounts(d.accounts || []))
-      .catch(() => setBankAccounts([]));
-  }, [slug]);
+  const bankAccountsQuery = useBankAccountsList(slug);
+  const bankAccounts = bankAccountsQuery.data?.bankAccounts ?? [];
+  const reconciliationQuery = useBankReconciliation(slug, selectedAccountId);
+  const items = reconciliationQuery.data?.items ?? [];
+  const loading = reconciliationQuery.isLoading && !!selectedAccountId;
+  const matchMutation = useMatchBankReconciliation();
+  const completeMutation = useCompleteBankReconciliation();
 
-  const loadItems = useCallback(async () => {
-    if (!selectedAccountId) { setItems([]); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/bank-reconciliation?companySlug=${slug}&bankAccountId=${selectedAccountId}`);
-      if (res.ok) { const d = await res.json(); setItems(d.items || []); }
-      else setItems([]);
-    } catch { setItems([]); }
-    finally { setLoading(false); }
-  }, [selectedAccountId, slug]);
-
-  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadItems(); }, [loadItems]);
+  const loadItems = () => { reconciliationQuery.refetch(); };
 
   const totalBank = items.reduce((s, i) => s + i.bankAmount, 0);
   const totalBook = items.reduce((s, i) => s + i.bookAmount, 0);
@@ -283,26 +244,28 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
   const matchedCount = items.filter(i => i.status === "matched").length;
   const unmatchedCount = items.filter(i => i.status !== "matched").length;
 
-  const handleMatch = async (id: number) => {
+  const handleMatch = (id: number) => {
     setActionId(id);
-    try {
-      const res = await authedFetch(`/api/accounting/bank-reconciliation/${id}/match?companySlug=${slug}&bankAccountId=${selectedAccountId}`, { method: "POST" });
-      if (res.ok) { toast.success("تم المطابقة"); loadItems(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر المطابقة"); }
-    } catch { toast.error("خطأ"); }
-    finally { setActionId(null); }
+    matchMutation.mutate(
+      { id, companySlug: company.slug, bankAccountId: selectedAccountId! },
+      {
+        onSuccess: () => { toast.success("تم المطابقة"); reconciliationQuery.refetch(); setActionId(null); },
+        onError: (err) => { toast.error(err.message || "تعذّر المطابقة"); setActionId(null); },
+      },
+    );
   };
 
-  const handleComplete = async () => {
+  const handleComplete = () => {
     if (!selectedAccountId) return;
     if (unmatchedCount > 0 && !confirm(`هناك ${unmatchedCount} عنصر غير مطابق. إتمام المطابقة؟`)) return;
     setCompleting(true);
-    try {
-      const res = await authedFetch(`/api/accounting/bank-reconciliation/complete?companySlug=${slug}&bankAccountId=${selectedAccountId}`, { method: "POST" });
-      if (res.ok) { toast.success("تم إتمام المطابقة البنكية"); loadItems(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إتمام المطابقة"); }
-    } catch { toast.error("خطأ"); }
-    finally { setCompleting(false); }
+    completeMutation.mutate(
+      { companySlug: company.slug, bankAccountId: selectedAccountId },
+      {
+        onSuccess: () => { toast.success("تم إتمام المطابقة البنكية"); reconciliationQuery.refetch(); setCompleting(false); },
+        onError: (err) => { toast.error(err.message || "تعذّر إتمام المطابقة"); setCompleting(false); },
+      },
+    );
   };
 
   return (
@@ -381,33 +344,31 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
 /* ─── CSV Import ────────────────────────────────────────────────────────────── */
 function CSVImportView({ company }: { company: { slug: string } }) {
   const [accountId, setAccountId] = useState<number | null>(null);
-  const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [csvContent, setCsvContent] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
 
   const slug = encodeURIComponent(company.slug);
 
-  useEffect(() => {
-    authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`)
-      .then(r => r.ok ? r.json() : { accounts: [] })
-      .then(d => setAccounts(d.accounts || []))
-      .catch(() => setAccounts([]));
-  }, [slug]);
+  const bankAccountsQuery = useBankAccountsList(slug);
+  const accounts = bankAccountsQuery.data?.bankAccounts ?? [];
+  const bankImportMutation = useBankImport();
 
-  const handleImport = async () => {
+  const handleImport = () => {
     if (!accountId) { toast.error("اختر حساب بنكي"); return; }
     if (!csvContent.trim()) { toast.error("أدخل محتوى CSV"); return; }
     setImporting(true); setResult(null);
-    try {
-      const res = await authedFetch("/api/accounting/bank-import", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId, csvContent, companySlug: company.slug }),
-      });
-      if (res.ok) { const d = await res.json(); setResult(d); toast.success(`تم استيراد ${d.imported} حركة`); setCsvContent(""); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الاستيراد"); }
-    } catch { toast.error("خطأ في الاتصال"); }
-    finally { setImporting(false); }
+    const formData = new FormData();
+    formData.append("accountId", String(accountId));
+    formData.append("csvContent", csvContent);
+    formData.append("companySlug", company.slug);
+    bankImportMutation.mutate(
+      formData,
+      {
+        onSuccess: (data) => { setResult(data as { imported: number; skipped: number; errors: string[] }); toast.success(`تم استيراد ${(data as { imported: number }).imported} حركة`); setCsvContent(""); setImporting(false); },
+        onError: (err) => { toast.error(err.message || "تعذّر الاستيراد"); setImporting(false); },
+      },
+    );
   };
 
   const sampleCSV = `Date,Description,Amount
@@ -474,6 +435,7 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const createBankTransferMutation = useCreateBankTransfer();
 
   const fromAccount = accounts.find(a => a.id === fromAccountId);
   const toAccount = accounts.find(a => a.id === toAccountId);
@@ -484,19 +446,17 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
     if (fromAccount) setCurrency(fromAccount.currency);
   }, [fromAccount]);
 
-  const submit = async () => {
+  const submit = () => {
     if (!fromAccountId || !toAccountId || amount <= 0) { toast.error("اختر الحسابات والمبلغ"); return; }
     if (fromAccountId === toAccountId) { toast.error("لا يمكن التحويل إلى نفس الحساب"); return; }
     setSaving(true);
-    try {
-      const res = await authedFetch("/api/accounting/bank-transfer", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromAccountId, toAccountId, amount, currency, date, description, companySlug: company.slug }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
-      toast.success("تم إنشاء التحويل"); onSaved();
-    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
-    finally { setSaving(false); }
+    createBankTransferMutation.mutate(
+      { fromAccountId, toAccountId, amount, currency, date, description, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إنشاء التحويل"); onSaved(); setSaving(false); },
+        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+      },
+    );
   };
 
   return (

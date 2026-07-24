@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand, type CompanyInfo } from "@/context/BrandContext";
+import { useCreateCompany } from "@/hooks/queries";
 import type { ViewKey } from "./AppShell";
 import { cn } from "@/lib/utils";
 import {
@@ -67,7 +68,7 @@ export function Sidebar({
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanySlug, setNewCompanySlug] = useState("");
-  const [creating, setCreating] = useState(false);
+  const createCompanyMutation = useCreateCompany();
 
   const canSee = (item: typeof NAV_ITEMS[number]) => {
     if (item.founderOnly && !isFounder) return false;
@@ -78,32 +79,16 @@ export function Sidebar({
 
   const createCompany = async () => {
     if (!newCompanyName || !newCompanySlug) return;
-    setCreating(true);
     try {
-      const res = await fetch("/api/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name: newCompanyName, slug: newCompanySlug }),
-      });
-      if (res.ok) {
-        await reloadCompanies();
-        setShowCreateCompany(false);
-        setNewCompanyName("");
-        setNewCompanySlug("");
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to create company");
-      }
-    } finally {
-      setCreating(false);
+      await createCompanyMutation.mutateAsync({ name: newCompanyName, slug: newCompanySlug });
+      setShowCreateCompany(false);
+      setNewCompanyName("");
+      setNewCompanySlug("");
+      // Reload page so BrandContext re-hydrates with new company
+      if (typeof window !== "undefined") window.location.reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create company");
     }
-  };
-
-  const reloadCompanies = async () => {
-    // Trigger a re-fetch by toggling the slug — BrandContext's refresh is exposed via useBrand
-    // Simpler: reload the page so the context re-hydrates
-    if (typeof window !== "undefined") window.location.reload();
   };
 
   return (
@@ -225,10 +210,10 @@ export function Sidebar({
               <div className="flex gap-1.5">
                 <button
                   onClick={createCompany}
-                  disabled={creating || !newCompanyName || !newCompanySlug}
-                  className={cn("flex-1 py-2 rounded-md bg-primary text-primary-foreground border-none cursor-pointer font-inherit text-[11px", creating || !newCompanyName || !newCompanySlug ? "opacity-60" : "")}
+                  disabled={createCompanyMutation.isPending || !newCompanyName || !newCompanySlug}
+                  className={cn("flex-1 py-2 rounded-md bg-primary text-primary-foreground border-none cursor-pointer font-inherit text-[11px", createCompanyMutation.isPending || !newCompanyName || !newCompanySlug ? "opacity-60" : "")}
                 >
-                  {creating ? "جارٍ…" : "إنشاء"}
+                  {createCompanyMutation.isPending ? "جارٍ…" : "إنشاء"}
                 </button>
                 <button
                   onClick={() => setShowCreateCompany(false)}

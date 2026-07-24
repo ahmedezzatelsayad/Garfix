@@ -1,45 +1,40 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { authedFetch } from "@/context/AuthContext";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Gauge, Save, AlertTriangle } from "lucide-react";
 import { DEFAULT_PLANS, type PlanDef, type PlanCatalog } from "@/lib/plans";
+import { usePlatformSettings, useUpdatePlatformSettings } from "@/hooks/queries";
 
 /**
  * PlansTab — Manage the plan catalog (pricing, limits).
- * Reads current plans from GET /api/settings (key: "plans.catalog"),
- * allows editing name, priceMonthly, maxInvoicesPerMonth, maxCompanies, maxUsers,
- * and saves via PATCH /api/settings.
+ * Uses TanStack Query for reading/writing the plan catalog via
+ * the platform-level settings endpoints.
  */
 export function PlansTab() {
+  const settingsQuery = usePlatformSettings();
+  const updateMutation = useUpdatePlatformSettings();
+
   const [plans, setPlans] = useState<PlanCatalog>(() => ({ ...DEFAULT_PLANS }));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Load live catalog from settings API
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/settings");
-      const data = await res.json();
-      if (res.ok) {
-        const catalog = data.settings?.["plans.catalog"] || data.defaults?.["plans.catalog"] || DEFAULT_PLANS;
-        setPlans(catalog);
-        setDirty(false);
-      } else {
-        toast.error(data.error || "تعذّر تحميل الباقات");
-      }
-    } catch {
-      toast.error("خطأ في الاتصال");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  // Sync plans from query data
+  const prevDataRef = useState<unknown>(null);
+  const [prevData, setPrevData] = prevDataRef;
+  if (settingsQuery.data && prevData !== settingsQuery.data) {
+    setPrevData(settingsQuery.data);
+    const catalog = (settingsQuery.data.settings as Record<string, unknown>)?.["plans.catalog"] || (settingsQuery.data.defaults as Record<string, unknown>)?.["plans.catalog"] || DEFAULT_PLANS;
+    setPlans(catalog as PlanCatalog);
+    setDirty(false);
+    setLoading(false);
+  }
+  if (settingsQuery.isError && prevData !== "error") {
+    setPrevData("error");
+    toast.error("تعذّر تحميل الباقات");
+    setLoading(false);
+  }
 
   const updatePlan = (key: string, field: keyof PlanDef, value: string | number) => {
     setPlans((prev) => ({
@@ -68,13 +63,7 @@ export function PlansTab() {
           highlight: plan.highlight,
         };
       }
-      const res = await authedFetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ "plans.catalog": cleanCatalog }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "تعذّر الحفظ");
+      await updateMutation.mutateAsync({ "plans.catalog": cleanCatalog });
       toast.success("تم حفظ كتالوج الباقات بنجاح");
       setDirty(false);
     } catch (err) {

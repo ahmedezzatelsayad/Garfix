@@ -5,7 +5,8 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "./AuthContext";
-import { authedFetch } from "./AuthContext";
+import { useCompanies } from "@/hooks/queries";
+import type { Company as QueryCompany } from "@/hooks/queries/dashboard";
 
 export interface CompanyInfo {
   id: number;
@@ -43,6 +44,7 @@ const THEME_KEY = "garfix:theme";
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const companiesQuery = useCompanies();
   const [companies, setCompanies] = useState<CompanyInfo[]>([]);
   const [activeSlug, setActiveSlugState] = useState<string | null>(null);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
@@ -68,43 +70,56 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   }, []);
 
-  // Fetch companies when user logs in
-  const refreshCompanies = useCallback(async () => {
+  // Sync companies from TanStack Query to local state
+  useEffect(() => {
     if (!user) {
       setCompanies([]);
       setActiveSlugState(null);
+      setLoadingCompanies(false);
       return;
     }
-    setLoadingCompanies(true);
-    try {
-      const res = await authedFetch("/api/companies");
-      if (res.ok) {
-        const data = await res.json();
-        setCompanies(data.companies || []);
-        // Restore active slug from localStorage or pick first
-        if (typeof window !== "undefined") {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          if (stored && data.companies.some((c: CompanyInfo) => c.slug === stored)) {
-            setActiveSlugState(stored);
-          } else if (data.companies.length > 0) {
-            setActiveSlugState(data.companies[0].slug);
-          } else {
-            setActiveSlugState(null);
-          }
+    setLoadingCompanies(companiesQuery.isLoading);
+    if (companiesQuery.data?.companies) {
+      // Map QueryCompany → CompanyInfo (they share the same shape for most fields)
+      const mapped: CompanyInfo[] = companiesQuery.data.companies.map((c: QueryCompany) => ({
+        id: (c as Record<string, unknown>).id as number ?? 0,
+        name: c.name,
+        slug: c.slug,
+        nameAr: (c as Record<string, unknown>).nameAr as string | null | undefined ?? null,
+        emoji: (c as Record<string, unknown>).emoji as string | null | undefined ?? null,
+        color: (c as Record<string, unknown>).color as string | null | undefined ?? null,
+        phone: (c as Record<string, unknown>).phone as string | null | undefined ?? null,
+        email: (c as Record<string, unknown>).email as string | null | undefined ?? null,
+        address: (c as Record<string, unknown>).address as string | null | undefined ?? null,
+        vatNumber: (c as Record<string, unknown>).vatNumber as string | null | undefined ?? null,
+        currency: (c as Record<string, unknown>).currency as string ?? "SAR",
+        country: (c as Record<string, unknown>).country as string | null | undefined ?? null,
+        defaultTaxRate: (c as Record<string, unknown>).defaultTaxRate as string ?? "0",
+        plan: (c as Record<string, unknown>).plan as string ?? "trial",
+        subscriptionStatus: (c as Record<string, unknown>).subscriptionStatus as string ?? "active",
+        trialEndsAt: (c as Record<string, unknown>).trialEndsAt as string | null | undefined ?? null,
+      }));
+      setCompanies(mapped);
+      // Restore active slug from localStorage or pick first
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored && mapped.some((c: CompanyInfo) => c.slug === stored)) {
+          setActiveSlugState(stored);
+        } else if (mapped.length > 0) {
+          setActiveSlugState(mapped[0].slug);
+        } else {
+          setActiveSlugState(null);
         }
       }
-    } catch (err) {
-      console.error("[brand] failed to load companies:", err);
-    } finally {
-      setLoadingCompanies(false);
+    } else if (companiesQuery.isError) {
+      console.error("[brand] failed to load companies:", companiesQuery.error);
+      setCompanies([]);
     }
-  }, [user]);
+  }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);
 
-  // setState runs inside async .then() callback in refreshCompanies (after await authedFetch) — not synchronous in effect body; no cascading render.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refreshCompanies();
-  }, [refreshCompanies]);
+  const refreshCompanies = useCallback(async () => {
+    await companiesQuery.refetch();
+  }, [companiesQuery]);
 
   const setActiveSlug = useCallback((slug: string | null) => {
     setActiveSlugState(slug);

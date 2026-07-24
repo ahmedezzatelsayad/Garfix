@@ -1,10 +1,12 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  useTaxFiling, useCreateTaxFiling, useFilingReminders, useRetentionCheck,
+} from "@/hooks/queries";
 import {
   Scale, FileText, Clock, Shield, Plus, Download, Send,
   CheckCircle2, AlertTriangle, Calculator, MapPin, X,
@@ -48,67 +50,23 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function TaxComplianceView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("vat-return");
-  const [vatReturns, setVatReturns] = useState<VATReturn[]>([]);
-  const [zakatRecords, setZakatRecords] = useState<ZakatRecord[]>([]);
-  const [reminders, setReminders] = useState<FilingReminder[]>([]);
-  const [retentionChecks, setRetentionChecks] = useState<RetentionCheck[]>([]);
-  const [loading, setLoading] = useState(false);
+
   const [vatResult, setVatResult] = useState<VATReturn | null>(null);
   const [zakatResult, setZakatResult] = useState<ZakatRecord | null>(null);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadVAT = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/tax-filing?companySlug=${slug}&type=vat`);
-      if (res.ok) { const d = await res.json(); setVatReturns(d.returns || []); }
-      else setVatReturns([]);
-    } catch { setVatReturns([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
+  // TanStack Query hooks for data fetching
+  const vatQuery = useTaxFiling(slug, "vat");
+  const zakatQuery = useTaxFiling(slug, "zakat");
+  const remindersQuery = useFilingReminders(slug);
+  const retentionQuery = useRetentionCheck(slug);
 
-  const loadZakat = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/tax-filing?companySlug=${slug}&type=zakat`);
-      if (res.ok) { const d = await res.json(); setZakatRecords(d.records || []); }
-      else setZakatRecords([]);
-    } catch { setZakatRecords([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  const loadReminders = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/filing-reminders?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setReminders(d.reminders || []); }
-      else setReminders([]);
-    } catch { setReminders([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  const loadRetention = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/retention-check?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setRetentionChecks(d.checks || []); }
-      else setRetentionChecks([]);
-    } catch { setRetentionChecks([]); }
-    finally { setLoading(false); }
-  }, [slug, activeCompany]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "vat-return") loadVAT();
-    if (tab === "zakat") loadZakat();
-    if (tab === "reminders") loadReminders();
-    if (tab === "retention") loadRetention();
-  }, [tab, loadVAT, loadZakat, loadReminders, loadRetention]);
+  const vatReturns = vatQuery.data?.returns ?? [];
+  const zakatRecords = zakatQuery.data?.records ?? [];
+  const reminders = remindersQuery.data?.reminders ?? [];
+  const retentionChecks = retentionQuery.data?.checks ?? [];
+  const loading = (tab === "vat-return" ? vatQuery.isLoading : tab === "zakat" ? zakatQuery.isLoading : tab === "reminders" ? remindersQuery.isLoading : tab === "retention" ? retentionQuery.isLoading : false);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -133,9 +91,9 @@ export function TaxComplianceView() {
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "vat-return" ? (
-        <VATReturnView returns={vatReturns} result={vatResult} setResult={setVatResult} company={activeCompany} onRefresh={loadVAT} />
+        <VATReturnView returns={vatReturns} result={vatResult} setResult={setVatResult} company={activeCompany} onRefresh={() => vatQuery.refetch()} />
       ) : tab === "zakat" ? (
-        <ZakatView records={zakatRecords} result={zakatResult} setResult={setZakatResult} company={activeCompany} onRefresh={loadZakat} />
+        <ZakatView records={zakatRecords} result={zakatResult} setResult={setZakatResult} company={activeCompany} onRefresh={() => zakatQuery.refetch()} />
       ) : tab === "reminders" ? (
         <RemindersView reminders={reminders} />
       ) : (
@@ -154,22 +112,18 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
   const [generating, setGenerating] = useState(false);
+  const createTaxFilingMutation = useCreateTaxFiling();
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!periodFrom || !periodTo) { toast.error("حدد الفترة"); return; }
     setGenerating(true);
-    try {
-      const res = await authedFetch("/api/accounting/tax-filing", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "vat", country, periodFrom, periodTo, companySlug: company.slug }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setResult(d.return as VATReturn);
-        toast.success("تم إنشاء الإقرار"); onRefresh();
-      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر إنشاء الإقرار"); }
-    } catch { toast.error("خطأ"); }
-    finally { setGenerating(false); }
+    createTaxFilingMutation.mutate(
+      { type: "vat", country, periodFrom, periodTo, companySlug: company.slug },
+      {
+        onSuccess: (data) => { setResult((data as unknown as { return: VATReturn }).return); toast.success("تم إنشاء الإقرار"); setGenerating(false); onRefresh(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الإقرار"); setGenerating(false); },
+      },
+    );
   };
 
   const countryLabel = (c: string) => COUNTRIES.find(x => x.value === c)?.label || c;
@@ -244,21 +198,17 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
 }) {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [calculating, setCalculating] = useState(false);
+  const createZakatMutation = useCreateTaxFiling();
 
-  const handleCalculate = async () => {
+  const handleCalculate = () => {
     setCalculating(true);
-    try {
-      const res = await authedFetch("/api/accounting/tax-filing", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "zakat", year, companySlug: company.slug }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setResult(d.record as ZakatRecord);
-        toast.success("تم حساب الزكاة"); onRefresh();
-      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر حساب الزكاة"); }
-    } catch { toast.error("خطأ"); }
-    finally { setCalculating(false); }
+    createZakatMutation.mutate(
+      { type: "zakat", year, companySlug: company.slug },
+      {
+        onSuccess: (data) => { setResult((data as unknown as { record: ZakatRecord }).record); toast.success("تم حساب الزكاة"); setCalculating(false); onRefresh(); },
+        onError: (err) => { toast.error(err.message || "تعذّر حساب الزكاة"); setCalculating(false); },
+      },
+    );
   };
 
   return (

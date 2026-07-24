@@ -1,10 +1,13 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  usePayroll, useCalculatePayroll, useWPS, useGenerateWPS, useSubmitWPS,
+  useDownloadWPSFile,
+} from "@/hooks/queries";
 import {
   Banknote, FileText, Plus, X, Download, Send, Clock,
   CheckCircle2, Users, Calculator, RefreshCw, AlertTriangle,
@@ -29,41 +32,20 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function PayrollWpsView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("payroll");
-  const [salaries, setSalaries] = useState<EmployeeSalary[]>([]);
-  const [wpsFiles, setWpsFiles] = useState<WPSFile[]>([]);
-  const [loading, setLoading] = useState(false);
+
   const [calculating, setCalculating] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  const loadPayroll = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/payroll?companySlug=${slug}&month=${selectedMonth}`);
-      if (res.ok) { const d = await res.json(); setSalaries(d.salaries || []); }
-      else setSalaries([]);
-    } catch { setSalaries([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug, selectedMonth]);
+  // TanStack Query hooks for data fetching
+  const payrollQuery = usePayroll(slug, selectedMonth);
+  const wpsQuery = useWPS(slug);
+  const calculatePayrollMutation = useCalculatePayroll();
 
-  const loadWPS = useCallback(async () => {
-    if (!activeCompany) return;
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/wps?companySlug=${slug}`);
-      if (res.ok) { const d = await res.json(); setWpsFiles(d.files || []); }
-      else setWpsFiles([]);
-    } catch { setWpsFiles([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (tab === "payroll") loadPayroll();
-    if (tab === "wps") loadWPS();
-  }, [tab, loadPayroll, loadWPS]);
+  const salaries = payrollQuery.data?.salaries ?? [];
+  const wpsFiles = wpsQuery.data?.files ?? [];
+  const loading = tab === "payroll" ? payrollQuery.isLoading : tab === "wps" ? wpsQuery.isLoading : false;
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -103,10 +85,10 @@ export function PayrollWpsView() {
           onMonthChange={setSelectedMonth}
           company={activeCompany}
           calculating={calculating}
-          onCalculate={loadPayroll}
+          onCalculate={() => { setCalculating(true); calculatePayrollMutation.mutate({ month: selectedMonth, companySlug: activeCompany.slug }, { onSuccess: () => { payrollQuery.refetch(); setCalculating(false); }, onError: () => { setCalculating(false); } }); }}
         />
       ) : (
-        <WPSView wpsFiles={wpsFiles} company={activeCompany} selectedMonth={selectedMonth} onRefresh={loadWPS} />
+        <WPSView wpsFiles={wpsFiles} company={activeCompany} selectedMonth={selectedMonth} onRefresh={() => wpsQuery.refetch()} />
       )}
     </div>
   );
@@ -119,18 +101,17 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
   onMonthChange: (m: string) => void; company: { slug: string }; calculating: boolean; onCalculate: () => void;
 }) {
   const [calcLoading, setCalcLoading] = useState(false);
+  const calculatePayrollMutation = useCalculatePayroll();
 
-  const handleCalculate = async () => {
+  const handleCalculate = () => {
     setCalcLoading(true);
-    try {
-      const res = await authedFetch("/api/accounting/payroll", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: selectedMonth, companySlug: company.slug }),
-      });
-      if (res.ok) { toast.success("تم حساب الرواتب"); onCalculate(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر حساب الرواتب"); }
-    } catch { toast.error("خطأ في الاتصال"); }
-    finally { setCalcLoading(false); }
+    calculatePayrollMutation.mutate(
+      { month: selectedMonth, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم حساب الرواتب"); setCalcLoading(false); onCalculate(); },
+        onError: (err) => { toast.error(err.message || "تعذّر حساب الرواتب"); setCalcLoading(false); },
+      },
+    );
   };
 
   return (
@@ -230,41 +211,49 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
   const countryLabels: Record<string, string> = { KW: "الكويت", SA: "السعودية", AE: "الإمارات" };
   const countryCodes = ["KW", "SA", "AE"];
 
-  const handleGenerate = async (country: string) => {
+  const generateWpsMutation = useGenerateWPS();
+
+  const handleGenerate = (country: string) => {
     setGenerating(country);
-    try {
-      const res = await authedFetch("/api/accounting/wps", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country, month: localMonth, companySlug: company.slug }),
-      });
-      if (res.ok) { toast.success(`تم إنشاء ملف WPS ل${countryLabels[country]}`); onRefresh(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إنشاء الملف"); }
-    } catch { toast.error("خطأ"); }
-    finally { setGenerating(null); }
+    generateWpsMutation.mutate(
+      { country, month: localMonth, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success(`تم إنشاء ملف WPS ل${countryLabels[country]}`); setGenerating(null); onRefresh(); },
+        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الملف"); setGenerating(null); },
+      },
+    );
   };
 
-  const handleSubmit = async (fileId: number) => {
-    try {
-      const res = await authedFetch(`/api/accounting/wps/${fileId}/submit?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
-      if (res.ok) { toast.success("تم إرسال الملف"); onRefresh(); }
-      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الإرسال"); }
-    } catch { toast.error("خطأ"); }
+  const submitWpsMutation = useSubmitWPS();
+
+  const handleSubmit = (fileId: number) => {
+    submitWpsMutation.mutate(
+      { id: fileId, companySlug: company.slug },
+      {
+        onSuccess: () => { toast.success("تم إرسال الملف"); onRefresh(); },
+        onError: (err) => { toast.error(err.message || "تعذّر الإرسال"); },
+      },
+    );
   };
 
-  const handleDownload = async (fileId: number, country: string, month: string) => {
-    try {
-      const res = await authedFetch(`/api/accounting/wps/${fileId}/download?companySlug=${encodeURIComponent(company.slug)}`);
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `wps_${country}_${month}.txt`;
-        link.click();
-        URL.revokeObjectURL(url);
-        toast.success("تم تحميل الملف");
-      } else { toast.error("تعذّر التحميل"); }
-    } catch { toast.error("خطأ"); }
+  const downloadWpsMutation = useDownloadWPSFile();
+
+  const handleDownload = (fileId: number, country: string, month: string) => {
+    downloadWpsMutation.mutate(
+      { fileId, companySlug: company.slug },
+      {
+        onSuccess: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `wps_${country}_${month}.txt`;
+          link.click();
+          URL.revokeObjectURL(url);
+          toast.success("تم تحميل الملف");
+        },
+        onError: () => { toast.error("تعذّر التحميل"); },
+      },
+    );
   };
 
   // Group files by country

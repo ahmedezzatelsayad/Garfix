@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { useAuth, authedFetch } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import { useAIChatHistory, useAIChatMessages, useAITools, useAIToolsExecute } from "@/hooks/queries";
 import { cn } from "@/lib/utils";
 import {
   Bot, User, Send, X, Maximize2, Minimize2, ShieldAlert,
@@ -114,32 +115,30 @@ export function AICopilotBubble() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
-  // Load history on open
-  const loadHistory = useCallback(async () => {
-    try {
-      const res = await authedFetch("/api/ai/chat");
-      if (res.ok) {
-        const data = await res.json();
-        const msgs: ChatMessage[] = (data.messages || []).map((m: { role: string; content: string }) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        }));
-        if (msgs.length > 0) {
-          setMessages(msgs);
-          if (data.messages[0]?.conversationId) setConversationId(data.messages[0].conversationId);
-        }
-      }
-    } catch (err) {
-      console.error("[ai] history load failed:", err);
+  const chatHistoryQuery = useAIChatHistory(activeCompany?.slug);
+  const chatMessagesMutation = useAIChatMessages();
+  const toolsExecuteMutation = useAIToolsExecute();
+
+  // Load history on open via TanStack Query
+  const loadHistory = useCallback(() => {
+    if (!chatHistoryQuery.data) return;
+    const data = chatHistoryQuery.data;
+    const msgs: ChatMessage[] = (data.messages || []).map((m: { role: string; content: string }) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+    if (msgs.length > 0) {
+      setMessages(msgs);
+      if (data.messages[0]?.conversationId) setConversationId(data.messages[0].conversationId);
     }
-  }, []);
+  }, [chatHistoryQuery.data]);
 
   useEffect(() => {
-    if (open && !initRef.current && user) {
+    if (open && !initRef.current && user && chatHistoryQuery.isSuccess) {
       initRef.current = true;
       loadHistory();
     }
-  }, [open, user, loadHistory]);
+  }, [open, user, chatHistoryQuery.isSuccess, loadHistory]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -148,32 +147,27 @@ export function AICopilotBubble() {
   }, [messages, loading, confirmation]);
 
   /** Regular chat send (no AI tool execution). */
-  const send = async (text?: string) => {
+  const send = (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
     const newMessages: ChatMessage[] = [...messages, { role: "user", content }];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
-    try {
-      const res = await authedFetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages.slice(-10),
-          companySlug: activeCompany?.slug,
-          conversationId,
-        }),
-      });
-      if (!res.ok) throw new Error("AI request failed");
-      const data = await res.json();
-      setMessages([...newMessages, { role: "assistant", content: data.reply }]);
-      if (data.conversationId) setConversationId(data.conversationId);
-    } catch (err) {
-      setMessages([...newMessages, { role: "assistant", content: "عذراً، حدث خطأ. حاول مرة أخرى." }]);
-    } finally {
-      setLoading(false);
-    }
+    chatMessagesMutation.mutate(
+      { messages: newMessages.slice(-10), companySlug: activeCompany?.slug, conversationId },
+      {
+        onSuccess: (data) => {
+          setMessages([...newMessages, { role: "assistant", content: data.reply }]);
+          if (data.conversationId) setConversationId(data.conversationId);
+          setLoading(false);
+        },
+        onError: () => {
+          setMessages([...newMessages, { role: "assistant", content: "عذراً، حدث خطأ. حاول مرة أخرى." }]);
+          setLoading(false);
+        },
+      },
+    );
   };
 
   /**
@@ -181,7 +175,7 @@ export function AICopilotBubble() {
    * Step 1: preview (confirm=false) — server returns confirmToken + preview.
    * Step 2: user clicks "تنفيذ" → execute (confirm=true + token).
    */
-  const triggerAgentAction = async (action: QuickAction) => {
+  const triggerAgentAction = (action: QuickAction) => {
     if (loading || executing) return;
     if (!activeCompany?.slug) {
       toastWarn("يجب اختيار شركة نشطة أولاً");
@@ -197,130 +191,115 @@ export function AICopilotBubble() {
     setMessages(baseMessages);
     setLoading(true);
 
-    try {
-      const params = action.params(activeCompany.slug);
-      const res = await authedFetch("/api/ai/tools", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intent: action.intent, params, confirm: false }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "فشل الاتصال بـ AI tools");
-      }
-      if (data.needsConfirmation && data.confirmToken) {
-        const preview = data.preview || {};
-        const updatedContent = `🤖 إجراء الوكيل: ${action.label}\n\n${preview.description || "سيتم تنفيذ الإجراء"}${preview.warning ? `\n\n⚠️ ${preview.warning}` : ""}`;
-        const updatedMessages = baseMessages.slice();
-        updatedMessages[updatedMessages.length - 1] = {
-          role: "assistant",
-          content: updatedContent,
-          meta: {
-            intent: action.intent,
-            status: "pending_confirm",
-            confirmToken: data.confirmToken,
-            preview: preview.description,
-          },
-        };
-        setMessages(updatedMessages);
-        setConfirmation({
-          intent: action.intent,
-          params,
-          confirmToken: data.confirmToken,
-          description: preview.description || "سيتم تنفيذ الإجراء",
-          warning: preview.warning,
-          affectedRecords: preview.affectedRecords,
-          messageIndex: updatedMessages.length - 1,
-        });
-      } else {
-        // Direct result (no confirmation needed)
-        const summary = data.summary || "تم التنفيذ";
-        // P0.1: capture any review-queue / oversell warnings returned by the
-        // backend so we can render them as a banner under the message.
-        const directWarnings: string[] = Array.isArray(data.reviewQueueWarnings) ? data.reviewQueueWarnings : [];
-        const updatedMessages = baseMessages.slice();
-        updatedMessages[updatedMessages.length - 1] = {
-          role: "assistant",
-          content: `✅ ${summary}`,
-          meta: { intent: action.intent, status: "executed", reviewQueueWarnings: directWarnings.length > 0 ? directWarnings : undefined },
-        };
-        setMessages(updatedMessages);
-        if (directWarnings.length > 0) {
-          toastWarn(`⚠️ ${directWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
-        }
-      }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "خطأ غير معروف";
-      const updatedMessages = baseMessages.slice();
-      updatedMessages[updatedMessages.length - 1] = {
-        role: "assistant",
-        content: `❌ فشل الإجراء: ${errMsg}`,
-        meta: { intent: action.intent, status: "error" },
-      };
-      setMessages(updatedMessages);
-    } finally {
-      setLoading(false);
-    }
+    const params = action.params(activeCompany.slug);
+    toolsExecuteMutation.mutate(
+      { intent: action.intent, params, confirmToken: undefined, companySlug: activeCompany.slug },
+      {
+        onSuccess: (data) => {
+          if (data.confirmToken) {
+            const preview = data.preview || "";
+            const warning = data.warning;
+            const updatedContent = `🤖 إجراء الوكيل: ${action.label}\n\n${preview || "سيتم تنفيذ الإجراء"}${warning ? `\n\n⚠️ ${warning}` : ""}`;
+            const updatedMessages = baseMessages.slice();
+            updatedMessages[updatedMessages.length - 1] = {
+              role: "assistant",
+              content: updatedContent,
+              meta: {
+                intent: action.intent,
+                status: "pending_confirm",
+                confirmToken: data.confirmToken,
+                preview: preview,
+              },
+            };
+            setMessages(updatedMessages);
+            setConfirmation({
+              intent: action.intent,
+              params,
+              confirmToken: data.confirmToken,
+              description: preview || "سيتم تنفيذ الإجراء",
+              warning,
+              affectedRecords: data.affectedRecords,
+              messageIndex: updatedMessages.length - 1,
+            });
+          } else {
+            const summary = data.preview || "تم التنفيذ";
+            const updatedMessages = baseMessages.slice();
+            updatedMessages[updatedMessages.length - 1] = {
+              role: "assistant",
+              content: `✅ ${summary}`,
+              meta: { intent: action.intent, status: "executed" },
+            };
+            setMessages(updatedMessages);
+          }
+          setLoading(false);
+        },
+        onError: (err) => {
+          const errMsg = err.message || "خطأ غير معروف";
+          const updatedMessages = baseMessages.slice();
+          updatedMessages[updatedMessages.length - 1] = {
+            role: "assistant",
+            content: `❌ فشل الإجراء: ${errMsg}`,
+            meta: { intent: action.intent, status: "error" },
+          };
+          setMessages(updatedMessages);
+          setLoading(false);
+        },
+      },
+    );
   };
 
   /** Step 2: actually execute the confirmed action. */
-  const executeConfirmed = async () => {
+  const executeConfirmed = () => {
     if (!confirmation || executing) return;
     setExecuting(true);
-    try {
-      const res = await authedFetch("/api/ai/tools", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intent: confirmation.intent,
-          params: confirmation.params,
-          confirm: true,
-          confirmToken: confirmation.confirmToken,
-        }),
-      });
-      const data = await res.json();
-      const summary = data.ok
-        ? `✅ ${data.summary || "تم التنفيذ بنجاح"}`
-        : `❌ ${data.summary || data.error || "فشل التنفيذ"}`;
-      // P0.1: capture review-queue warnings from the confirmed execution too.
-      const execWarnings: string[] = Array.isArray(data.reviewQueueWarnings) ? data.reviewQueueWarnings : [];
-      setMessages((prev) => {
-        const next = prev.slice();
-        const idx = confirmation.messageIndex;
-        if (next[idx]) {
-          next[idx] = {
-            ...next[idx],
-            content: `${next[idx].content}\n\n— نتيجة التنفيذ —\n${summary}`,
-            meta: {
-              intent: confirmation.intent,
-              status: data.ok ? "executed" : "error",
-              reviewQueueWarnings: execWarnings.length > 0 ? execWarnings : undefined,
-            },
-          };
-        }
-        return next;
-      });
-      if (execWarnings.length > 0) {
-        toastWarn(`⚠️ ${execWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
-      }
-      setConfirmation(null);
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "خطأ في التنفيذ";
-      setMessages((prev) => {
-        const next = prev.slice();
-        const idx = confirmation.messageIndex;
-        if (next[idx]) {
-          next[idx] = {
-            ...next[idx],
-            content: `${next[idx].content}\n\n❌ خطأ في التنفيذ: ${errMsg}`,
-            meta: { intent: confirmation.intent, status: "error" },
-          };
-        }
-        return next;
-      });
-    } finally {
-      setExecuting(false);
-    }
+    toolsExecuteMutation.mutate(
+      {
+        intent: confirmation.intent,
+        params: confirmation.params,
+        confirmToken: confirmation.confirmToken,
+        companySlug: activeCompany?.slug || "",
+      },
+      {
+        onSuccess: (data) => {
+          const summary = data.ok
+            ? `✅ ${data.preview || "تم التنفيذ بنجاح"}`
+            : `❌ ${data.preview || "فشل التنفيذ"}`;
+          setMessages((prev) => {
+            const next = prev.slice();
+            const idx = confirmation.messageIndex;
+            if (next[idx]) {
+              next[idx] = {
+                ...next[idx],
+                content: `${next[idx].content}\n\n— نتيجة التنفيذ —\n${summary}`,
+                meta: {
+                  intent: confirmation.intent,
+                  status: data.ok ? "executed" : "error",
+                },
+              };
+            }
+            return next;
+          });
+          setConfirmation(null);
+          setExecuting(false);
+        },
+        onError: (err) => {
+          const errMsg = err.message || "خطأ في التنفيذ";
+          setMessages((prev) => {
+            const next = prev.slice();
+            const idx = confirmation.messageIndex;
+            if (next[idx]) {
+              next[idx] = {
+                ...next[idx],
+                content: `${next[idx].content}\n\n❌ خطأ في التنفيذ: ${errMsg}`,
+                meta: { intent: confirmation.intent, status: "error" },
+              };
+            }
+            return next;
+          });
+          setExecuting(false);
+        },
+      },
+    );
   };
 
   /** Cancel the confirmation dialog. */

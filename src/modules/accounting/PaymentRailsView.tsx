@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
+import {
+  usePaymentMethods, useAccountingInitiatePayment as useInitiatePayment, useVerifyPayment,
+} from "@/hooks/queries";
 import {
   Plus, X, CreditCard, Send, ShieldCheck, Search,
   Globe, DollarSign, CheckCircle2, XCircle, Clock,
@@ -45,8 +47,7 @@ const METHOD_TYPE_MAP: Record<string, { label: string; badge: string }> = {
 export function PaymentRailsView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("methods");
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
+
 
   /* Methods filter */
   const [countryFilter, setCountryFilter] = useState("KW");
@@ -68,20 +69,10 @@ export function PaymentRailsView() {
   const slug = activeCompany ? `companySlug=${encodeURIComponent(activeCompany.slug)}` : "";
 
   /* ── Loaders ──────────────────────────────────────────────────────────────── */
-  const loadMethods = useCallback(async () => {
-    if (!activeCompany) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await authedFetch(`/api/accounting/payment-methods?${slug}&country=${countryFilter}&amount=${amountFilter}`);
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل تحميل طرق الدفع"); }
-      const d = await res.json(); setMethods(d.methods || []);
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر تحميل طرق الدفع"); setMethods([]); }
-    finally { setLoading(false); }
-  }, [activeCompany, slug, countryFilter, amountFilter]);
-
-  useEffect(() => {
-    if (tab === "methods" && activeCompany) loadMethods();
-  }, [tab, activeCompany, loadMethods]);
+  // TanStack Query hooks for data fetching
+  const methodsQuery = usePaymentMethods(slug, countryFilter, amountFilter);
+  const methods = methodsQuery.data?.methods ?? [];
+  const loading = tab === "methods" ? methodsQuery.isLoading : false;
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -90,45 +81,41 @@ export function PaymentRailsView() {
   };
 
   /* ── Initiate Payment ────────────────────────────────────────────────────── */
-  const handleInitiate = async () => {
+  const initiatePaymentMutation = useInitiatePayment();
+
+  const handleInitiate = () => {
     if (!activeCompany) return;
     if (!initMethod || !initAmount) { toast.error("يرجى اختيار طريقة الدفع وإدخال المبلغ"); return; }
     setInitiating(true); setInitResult(null);
-    try {
-      const res = await authedFetch("/api/accounting/initiate-payment", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companySlug: activeCompany.slug,
-          methodId: parseInt(initMethod),
-          amount: parseFloat(initAmount),
-          currency: initCurrency,
-          invoiceId: initInvoiceId ? parseInt(initInvoiceId) : undefined,
-        }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل بدء الدفع"); }
-      const d = await res.json();
-      setInitResult(d.payment || d);
-      toast.success("تم بدء عملية الدفع");
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر بدء عملية الدفع"); }
-    finally { setInitiating(false); }
+    initiatePaymentMutation.mutate(
+      {
+        companySlug: activeCompany.slug,
+        methodId: parseInt(initMethod),
+        amount: parseFloat(initAmount),
+        currency: initCurrency,
+        invoiceId: initInvoiceId ? parseInt(initInvoiceId) : undefined,
+      },
+      {
+        onSuccess: (data) => { setInitResult(data.payment ?? null); toast.success("تم بدء عملية الدفع"); setInitiating(false); },
+        onError: (err) => { toast.error(err.message || "تعذّر بدء عملية الدفع"); setInitiating(false); },
+      },
+    );
   };
 
   /* ── Verify Payment ──────────────────────────────────────────────────────── */
-  const handleVerify = async () => {
+  const verifyPaymentMutation = useVerifyPayment();
+
+  const handleVerify = () => {
     if (!activeCompany) return;
     if (!verifyTxId) { toast.error("يرجى إدخال رقم المعاملة"); return; }
     setVerifying(true); setVerifyResult(null);
-    try {
-      const res = await authedFetch("/api/accounting/verify-payment", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companySlug: activeCompany.slug, transactionId: verifyTxId }),
-      });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "فشل التحقق من الدفع"); }
-      const d = await res.json();
-      setVerifyResult(d.payment || d);
-      toast.success("تم التحقق من حالة الدفع");
-    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر التحقق من الدفع"); }
-    finally { setVerifying(false); }
+    verifyPaymentMutation.mutate(
+      { companySlug: activeCompany.slug, transactionId: verifyTxId },
+      {
+        onSuccess: (data) => { setVerifyResult(data.payment || data); toast.success("تم التحقق من حالة الدفع"); setVerifying(false); },
+        onError: (err) => { toast.error(err.message || "تعذّر التحقق من الدفع"); setVerifying(false); },
+      },
+    );
   };
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
