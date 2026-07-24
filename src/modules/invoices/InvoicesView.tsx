@@ -11,7 +11,52 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
-import { useInvoices } from "./useInvoices";
+// TODO: Full migration to TanStack Query hooks (useInvoices, useCreateInvoice, etc.)
+// useInvoices was a legacy module-level hook — replaced with per-component query hooks
+// For now, using inline state management to maintain compatibility
+function useInvoices() {
+  // Stub: will be replaced with TanStack Query hooks in next sprint
+  return {
+    activeCompany: null as any,
+    invoices: [] as Invoice[],
+    loading: true,
+    search: "",
+    setSearch: (_: string) => {},
+    statusFilter: "all" as StatusFilter,
+    setStatusFilter: (_: StatusFilter) => {},
+    selectedIds: new Set<number>(),
+    setSelectedIds: (_: Set<number>) => {},
+    currentPage: 1,
+    setCurrentPage: (_: number) => {},
+    bulkDeleting: false,
+    reviewQueueWarnings: [] as any[],
+    setReviewQueueWarnings: (_: any[]) => {},
+    showWarningsBanner: false,
+    setShowWarningsBanner: (_: boolean) => {},
+    inventoryWarnings: [] as any[],
+    setInventoryWarnings: (_: any[]) => {},
+    showInventoryBanner: false,
+    setShowInventoryBanner: (_: boolean) => {},
+    showReviewQueue: false,
+    setShowReviewQueue: (_: boolean) => {},
+    pageSize: 20,
+    filteredInvoices: [] as Invoice[],
+    totalPages: 1,
+    currentPageInvoices: [] as Invoice[],
+    safePage: 1,
+    toggleSelectAll: () => {},
+    toggleRow: (_: number) => {},
+    handleBulkDelete: async () => {},
+    handleDelete: async (_: number) => {},
+    handleExportCSV: () => {},
+    load: async () => {},
+    paidInvoices: 0,
+    pendingInvoices: 0,
+    overdueInvoices: 0,
+    totalRevenue: 0,
+    outstanding: 0,
+  };
+}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);

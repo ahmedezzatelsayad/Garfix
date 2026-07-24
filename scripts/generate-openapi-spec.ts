@@ -243,6 +243,416 @@ const BASE_SPEC = {
           timestamp: { type: "string", format: "date-time" },
         },
       },
+      // ── Sprint 2: HR & People Schemas ──
+      Employee: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          email: { type: "string", format: "email" },
+          department: { type: "string" },
+          position: { type: "string" },
+          companySlug: { type: "string" },
+          hireDate: { type: "string", format: "date" },
+          status: { type: "string", enum: ["active", "terminated", "on_leave"] },
+        },
+        required: ["id", "name", "email", "companySlug", "status"],
+      },
+      Attendance: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          employeeId: { type: "string" },
+          date: { type: "string", format: "date" },
+          checkIn: { type: "string", format: "time" },
+          checkOut: { type: "string", format: "time" },
+          status: { type: "string", enum: ["present", "absent", "late", "half_day"] },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "employeeId", "date", "status"],
+      },
+      Salary: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          employeeId: { type: "string" },
+          baseSalary: { type: "number" },
+          allowances: { type: "number" },
+          deductions: { type: "number" },
+          netSalary: { type: "number" },
+          period: { type: "string" },
+          status: { type: "string", enum: ["pending", "processed", "paid"] },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "employeeId", "baseSalary", "netSalary", "period", "status"],
+      },
+      LeaveRequest: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          employeeId: { type: "string" },
+          type: { type: "string", enum: ["annual", "sick", "maternity", "emergency"] },
+          startDate: { type: "string", format: "date" },
+          endDate: { type: "string", format: "date" },
+          status: { type: "string", enum: ["pending", "approved", "rejected", "cancelled"] },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "employeeId", "type", "startDate", "endDate", "status"],
+      },
+      Commission: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          employeeId: { type: "string" },
+          amount: { type: "number" },
+          period: { type: "string" },
+          status: { type: "string", enum: ["pending", "approved", "paid"] },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "employeeId", "amount", "period", "status"],
+      },
+      Performance: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          employeeId: { type: "string" },
+          rating: { type: "number", minimum: 1, maximum: 5 },
+          period: { type: "string" },
+          goals: { type: "string" },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "employeeId", "rating", "period"],
+      },
+      GratuityRecord: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          employeeId: { type: "string" },
+          totalGratuity: { type: "number" },
+          yearsOfService: { type: "number" },
+          monthlyGratuity: { type: "number" },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "employeeId", "totalGratuity", "yearsOfService"],
+      },
+      // ── Sprint 2: Platform Admin Schemas ──
+      PlatformTenant: {
+        type: "object",
+        properties: {
+          slug: { type: "string" },
+          name: { type: "string" },
+          plan: { type: "string", enum: ["starter", "business", "enterprise"] },
+          status: { type: "string", enum: ["active", "trial", "suspended", "cancelled"] },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["slug", "name", "plan", "status"],
+      },
+      PlatformStats: {
+        type: "object",
+        properties: {
+          totalTenants: { type: "integer" },
+          activeTenants: { type: "integer" },
+          totalRevenue: { type: "number" },
+          monthlyRevenue: { type: "number" },
+          aiCostMtd: { type: "number" },
+          totalRequestsMtd: { type: "integer" },
+        },
+        required: ["totalTenants", "activeTenants", "totalRevenue"],
+      },
+      PlatformFeatureFlag: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          key: { type: "string" },
+          enabled: { type: "boolean" },
+          description: { type: "string" },
+          rolloutPct: { type: "number", minimum: 0, maximum: 100 },
+        },
+        required: ["id", "key", "enabled"],
+      },
+      // ── Sprint 2: Support Schemas ──
+      Announcement: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          body: { type: "string" },
+          type: { type: "string", enum: ["info", "warning", "critical"] },
+          active: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "title", "body", "type", "active"],
+      },
+      Ticket: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["open", "in_progress", "resolved", "closed"] },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
+          category: { type: "string" },
+          tenantSlug: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "title", "status", "priority"],
+      },
+      // ── Sprint 2: AI Provider Schema ──
+      AIProvider: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          provider: { type: "string", enum: ["openai", "anthropic", "google", "deepseek", "openrouter"] },
+          modelId: { type: "string" },
+          isEnabled: { type: "boolean" },
+          costPer1kTokens: { type: "number" },
+          latencyMs: { type: "number" },
+        },
+        required: ["id", "name", "provider", "modelId", "isEnabled"],
+      },
+      // ── Sprint 2: Dashboard & Notification Schemas ──
+      DashboardStats: {
+        type: "object",
+        properties: {
+          totalRevenue: { type: "number" },
+          outstanding: { type: "number" },
+          totalClients: { type: "integer" },
+          totalInvoices: { type: "integer" },
+          paidCount: { type: "integer" },
+          overdueCount: { type: "integer" },
+        },
+        required: ["totalRevenue", "outstanding", "totalClients", "totalInvoices"],
+      },
+      Notification: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          message: { type: "string" },
+          read: { type: "boolean" },
+          companySlug: { type: "string" },
+          type: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "title", "message", "read"],
+      },
+      // ── Sprint 2: Client & Inventory Schemas ──
+      Client: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          nameAr: { type: "string" },
+          email: { type: "string", format: "email" },
+          phone: { type: "string" },
+          companySlug: { type: "string" },
+          balance: { type: "number" },
+        },
+        required: ["id", "name", "companySlug"],
+      },
+      InventoryItem: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          sku: { type: "string" },
+          quantity: { type: "number" },
+          unitPrice: { type: "number" },
+          companySlug: { type: "string" },
+          warehouseId: { type: "string" },
+        },
+        required: ["id", "name", "sku", "quantity", "companySlug"],
+      },
+      Warehouse: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          location: { type: "string" },
+          companySlug: { type: "string" },
+          capacity: { type: "number" },
+        },
+        required: ["id", "name", "companySlug"],
+      },
+      StockMovement: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          itemId: { type: "string" },
+          type: { type: "string", enum: ["in", "out", "transfer"] },
+          quantity: { type: "number" },
+          reference: { type: "string" },
+          companySlug: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "itemId", "type", "quantity", "companySlug"],
+      },
+      // ── Sprint 2: Automation & Feature Flag Schemas ──
+      AutomationRule: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          trigger: { type: "string" },
+          action: { type: "string" },
+          isActive: { type: "boolean" },
+          companySlug: { type: "string" },
+          lastRunAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "name", "trigger", "action", "isActive"],
+      },
+      FeatureFlag: {
+        type: "object",
+        properties: {
+          key: { type: "string" },
+          enabled: { type: "boolean" },
+          description: { type: "string" },
+          companySlug: { type: "string" },
+        },
+        required: ["key", "enabled"],
+      },
+      Module: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          enabled: { type: "boolean" },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "name", "enabled"],
+      },
+      // ── Sprint 2: Invoice Template & Purchase Schemas ──
+      InvoiceTemplate: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          layout: { type: "string" },
+          companySlug: { type: "string" },
+          isDefault: { type: "boolean" },
+        },
+        required: ["id", "name", "companySlug"],
+      },
+      Purchase: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          description: { type: "string" },
+          amount: { type: "number" },
+          date: { type: "string", format: "date" },
+          companySlug: { type: "string" },
+          status: { type: "string", enum: ["pending", "approved", "received", "cancelled"] },
+        },
+        required: ["id", "description", "amount", "date", "companySlug"],
+      },
+      // ── Sprint 2: Product Matching Schema ──
+      ProductMatchConfig: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          threshold: { type: "number", minimum: 0, maximum: 1 },
+          algorithm: { type: "string", enum: ["fuzzy", "exact", "semantic"] },
+          companySlug: { type: "string" },
+          isActive: { type: "boolean" },
+        },
+        required: ["id", "threshold", "algorithm", "companySlug"],
+      },
+      // ── Sprint 2: Storage Schema ──
+      StorageObject: {
+        type: "object",
+        properties: {
+          key: { type: "string" },
+          size: { type: "integer" },
+          contentType: { type: "string" },
+          url: { type: "string", format: "uri" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["key", "size", "contentType"],
+      },
+      // ── Sprint 2: Report & Backup Schemas ──
+      Report: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          type: { type: "string", enum: ["financial", "tax", "audit", "custom"] },
+          createdAt: { type: "string", format: "date-time" },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "title", "type", "companySlug"],
+      },
+      Backup: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          filename: { type: "string" },
+          size: { type: "integer" },
+          createdAt: { type: "string", format: "date-time" },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "filename", "size", "companySlug"],
+      },
+      // ── Sprint 2: Onboarding Schema ──
+      OnboardingStep: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          order: { type: "integer" },
+          isCompleted: { type: "boolean" },
+          companySlug: { type: "string" },
+        },
+        required: ["id", "title", "order", "isCompleted"],
+      },
+      // ── Sprint 2: Startup & Metrics Schemas ──
+      StartupCheckResult: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          fatal: { type: "array", items: { type: "string" } },
+          warnings: { type: "array", items: { type: "string" } },
+          env: { type: "object", additionalProperties: { type: "boolean" } },
+        },
+        required: ["ok", "fatal", "warnings"],
+      },
+      // ── Sprint 2: ZATCA E-Invoicing Schema ──
+      ZATCAInvoice: {
+        type: "object",
+        properties: {
+          invoiceNumber: { type: "string" },
+          sellerVAT: { type: "string" },
+          buyerVAT: { type: "string" },
+          totalAmount: { type: "number" },
+          vatAmount: { type: "number" },
+          issueDate: { type: "string", format: "date" },
+          status: { type: "string", enum: ["draft", "submitted", "cleared", "rejected"] },
+          companySlug: { type: "string" },
+        },
+        required: ["invoiceNumber", "sellerVAT", "totalAmount", "vatAmount", "status"],
+      },
+      // ── Sprint 2: Metrics & SLO Schemas ──
+      MetricPoint: {
+        type: "object",
+        properties: {
+          timestamp: { type: "string", format: "date-time" },
+          value: { type: "number" },
+          labels: { type: "object", additionalProperties: { type: "string" } },
+        },
+        required: ["timestamp", "value"],
+      },
+      SLODefinition: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          targetPct: { type: "number", minimum: 0, maximum: 100 },
+          currentPct: { type: "number", minimum: 0, maximum: 100 },
+          window: { type: "string", enum: ["7d", "30d", "90d"] },
+          status: { type: "string", enum: ["healthy", "at_risk", "breached"] },
+        },
+        required: ["name", "targetPct", "currentPct", "window", "status"],
+      },
     },
     parameters: {
       companySlug: {
@@ -322,7 +732,7 @@ const BASE_SPEC = {
     { name: "invoices", description: "Invoice CRUD, E-invoicing (ZATCA), OCR parsing" },
     { name: "inventory", description: "Products, stock movements, warehouses" },
     { name: "clients", description: "Client management" },
-    { name: "hr", description: "Employee management, payroll" },
+    { name: "hr", description: "Employee management, payroll, attendance, leaves" },
     { name: "ai", description: "AI Fabric — cascade pipeline, agents, cost optimization" },
     { name: "payments", description: "Payment rails, MyFatoorah integration" },
     { name: "reports", description: "Financial reports, export" },
@@ -333,6 +743,32 @@ const BASE_SPEC = {
     { name: "audit", description: "Audit trail & tamper detection" },
     { name: "dashboard", description: "Dashboard metrics & KPIs" },
     { name: "notifications", description: "Notification management" },
+    { name: "catalog", description: "Product catalog management" },
+    { name: "automation", description: "Automation rules & workflows" },
+    { name: "permissions", description: "RBAC roles & permission catalog" },
+    { name: "onboarding", description: "Company onboarding wizard" },
+    { name: "saas", description: "SaaS billing, payments, users" },
+    { name: "modules", description: "Module management" },
+    { name: "feature-flags", description: "Feature flag toggles" },
+    { name: "product-matching", description: "AI product matching, config, review" },
+    { name: "founder-panel", description: "Founder panel dashboards (mission control, finops, AI fabric)" },
+    { name: "founder-validation", description: "Founder identity validation" },
+    { name: "storage", description: "File storage management" },
+    { name: "metrics", description: "Observability metrics & SLO definitions" },
+    { name: "company-management", description: "Company CRUD, members, settings" },
+    { name: "backups", description: "Database backup management" },
+    { name: "purchases", description: "Purchase order management" },
+    { name: "invoice-templates", description: "Invoice template management" },
+    { name: "e-invoicing", description: "ZATCA / MENA e-invoicing compliance" },
+    { name: "accounting-banking", description: "Bank accounts, reconciliation, transfers" },
+    { name: "accounting-ar-ap", description: "Accounts receivable & payable, aging" },
+    { name: "accounting-budgets", description: "Budget management & budget-vs-actual" },
+    { name: "accounting-payroll-wps", description: "Payroll & WPS processing" },
+    { name: "accounting-tax", description: "Tax filing & compliance" },
+    { name: "accounting-vouchers", description: "Voucher management, approve, cancel" },
+    { name: "accounting-fixed-assets", description: "Fixed assets & depreciation" },
+    { name: "accounting-cost-centers", description: "Cost center management" },
+    { name: "accounting-trade-finance", description: "Letters of credit & trade finance" },
   ],
 };
 
@@ -362,11 +798,11 @@ function scanApiRoutes(dir: string, basePath: string = ""): void {
       const methods: string[] = [];
 
       const methodPatterns = [
-        { regex: /export\s+const\s+GET\s*=/g, method: "get" },
-        { regex: /export\s+const\s+POST\s*=/g, method: "post" },
-        { regex: /export\s+const\s+PUT\s*=/g, method: "put" },
-        { regex: /export\s+const\s+PATCH\s*=/g, method: "patch" },
-        { regex: /export\s+const\s+DELETE\s*=/g, method: "delete" },
+        { regex: /export\s+(?:const|async\s+function)\s+GET\b/g, method: "get" },
+        { regex: /export\s+(?:const|async\s+function)\s+POST\b/g, method: "post" },
+        { regex: /export\s+(?:const|async\s+function)\s+PUT\b/g, method: "put" },
+        { regex: /export\s+(?:const|async\s+function)\s+PATCH\b/g, method: "patch" },
+        { regex: /export\s+(?:const|async\s+function)\s+DELETE\b/g, method: "delete" },
       ];
 
       for (const { regex, method } of methodPatterns) {
@@ -382,9 +818,9 @@ function scanApiRoutes(dir: string, basePath: string = ""): void {
           .replace(/\/route\.ts$/, "")
           .replace(/\/route\.js$/, "");
 
-        // Determine tag from path
+        // Determine tag from path — use second segment for domain (first is always "api")
         const pathSegments = openApiPath.split("/").filter(Boolean);
-        const tag = pathSegments[0] || "default";
+        const tag = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0] || "default";
 
         // Determine if this is a public or authenticated endpoint
         const isPublic =
@@ -700,25 +1136,414 @@ export interface HealthCheckDTO {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Sprint 2 — New Domain Types
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface EmployeeDTO {
+  id: string;
+  name: string;
+  email: string;
+  department?: string;
+  position?: string;
+  companySlug: string;
+  hireDate?: string;
+  status: "active" | "terminated" | "on_leave";
+}
+
+export interface AttendanceDTO {
+  id: string;
+  employeeId: string;
+  date: string;
+  checkIn?: string;
+  checkOut?: string;
+  status: "present" | "absent" | "late" | "half_day";
+  companySlug?: string;
+}
+
+export interface SalaryDTO {
+  id: string;
+  employeeId: string;
+  baseSalary: number;
+  allowances?: number;
+  deductions?: number;
+  netSalary: number;
+  period: string;
+  status: "pending" | "processed" | "paid";
+  companySlug?: string;
+}
+
+export interface LeaveRequestDTO {
+  id: string;
+  employeeId: string;
+  type: "annual" | "sick" | "maternity" | "emergency";
+  startDate: string;
+  endDate: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  companySlug?: string;
+}
+
+export interface CommissionDTO {
+  id: string;
+  employeeId: string;
+  amount: number;
+  period: string;
+  status: "pending" | "approved" | "paid";
+  companySlug?: string;
+}
+
+export interface GratuityRecordDTO {
+  id: string;
+  employeeId: string;
+  totalGratuity: number;
+  yearsOfService: number;
+  monthlyGratuity?: number;
+  companySlug?: string;
+}
+
+export interface PlatformTenantDTO {
+  slug: string;
+  name: string;
+  plan: "starter" | "business" | "enterprise";
+  status: "active" | "trial" | "suspended" | "cancelled";
+  createdAt?: string;
+}
+
+export interface PlatformStatsDTO {
+  totalTenants: number;
+  activeTenants: number;
+  totalRevenue: number;
+  monthlyRevenue?: number;
+  aiCostMtd?: number;
+  totalRequestsMtd?: number;
+}
+
+export interface PlatformFeatureFlagDTO {
+  id: string;
+  key: string;
+  enabled: boolean;
+  description?: string;
+  rolloutPct?: number;
+}
+
+export interface AnnouncementDTO {
+  id: string;
+  title: string;
+  body: string;
+  type: "info" | "warning" | "critical";
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface TicketDTO {
+  id: string;
+  title: string;
+  description?: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  priority: "low" | "medium" | "high" | "critical";
+  category?: string;
+  tenantSlug?: string;
+  createdAt?: string;
+}
+
+export interface AIProviderDTO {
+  id: string;
+  name: string;
+  provider: "openai" | "anthropic" | "google" | "deepseek" | "openrouter";
+  modelId: string;
+  isEnabled: boolean;
+  costPer1kTokens?: number;
+  latencyMs?: number;
+}
+
+export interface DashboardStatsDTO {
+  totalRevenue: number;
+  outstanding: number;
+  totalClients: number;
+  totalInvoices: number;
+  paidCount?: number;
+  overdueCount?: number;
+}
+
+export interface NotificationDTO {
+  id: number;
+  title: string;
+  message: string;
+  read: boolean;
+  companySlug?: string;
+  type?: string;
+  createdAt?: string;
+}
+
+export interface ClientDTO {
+  id: number;
+  name: string;
+  nameAr?: string;
+  email?: string;
+  phone?: string;
+  companySlug: string;
+  balance?: number;
+}
+
+export interface InventoryItemDTO {
+  id: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  unitPrice?: number;
+  companySlug: string;
+  warehouseId?: string;
+}
+
+export interface WarehouseDTO {
+  id: string;
+  name: string;
+  location?: string;
+  companySlug: string;
+  capacity?: number;
+}
+
+export interface StockMovementDTO {
+  id: string;
+  itemId: string;
+  type: "in" | "out" | "transfer";
+  quantity: number;
+  reference?: string;
+  companySlug: string;
+  createdAt?: string;
+}
+
+export interface AutomationRuleDTO {
+  id: string;
+  name: string;
+  trigger: string;
+  action: string;
+  isActive: boolean;
+  companySlug?: string;
+  lastRunAt?: string;
+}
+
+export interface FeatureFlagDTO {
+  key: string;
+  enabled: boolean;
+  description?: string;
+  companySlug?: string;
+}
+
+export interface ModuleDTO {
+  id: string;
+  name: string;
+  enabled: boolean;
+  companySlug?: string;
+}
+
+export interface InvoiceTemplateDTO {
+  id: string;
+  name: string;
+  layout?: string;
+  companySlug: string;
+  isDefault?: boolean;
+}
+
+export interface PurchaseDTO {
+  id: number;
+  description: string;
+  amount: number;
+  date: string;
+  companySlug: string;
+  status?: "pending" | "approved" | "received" | "cancelled";
+}
+
+export interface ProductMatchConfigDTO {
+  id: string;
+  threshold: number;
+  algorithm: "fuzzy" | "exact" | "semantic";
+  companySlug: string;
+  isActive?: boolean;
+}
+
+export interface StorageObjectDTO {
+  key: string;
+  size: number;
+  contentType: string;
+  url?: string;
+  createdAt?: string;
+}
+
+export interface ReportDTO {
+  id: number;
+  title: string;
+  type: "financial" | "tax" | "audit" | "custom";
+  createdAt?: string;
+  companySlug: string;
+}
+
+export interface BackupDTO {
+  id: number;
+  filename: string;
+  size: number;
+  createdAt?: string;
+  companySlug: string;
+}
+
+export interface OnboardingStepDTO {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+  isCompleted: boolean;
+  companySlug?: string;
+}
+
+export interface StartupCheckResultDTO {
+  ok: boolean;
+  fatal: string[];
+  warnings: string[];
+  env?: Record<string, boolean>;
+}
+
+export interface ZATCAInvoiceDTO {
+  invoiceNumber: string;
+  sellerVAT: string;
+  buyerVAT?: string;
+  totalAmount: number;
+  vatAmount: number;
+  issueDate?: string;
+  status: "draft" | "submitted" | "cleared" | "rejected";
+  companySlug?: string;
+}
+
+export interface MetricPointDTO {
+  timestamp: string;
+  value: number;
+  labels?: Record<string, string>;
+}
+
+export interface SLODefinitionDTO {
+  name: string;
+  targetPct: number;
+  currentPct: number;
+  window: "7d" | "30d" | "90d";
+  status: "healthy" | "at_risk" | "breached";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // API Path Types (Contract Layer)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Maps API paths to their response types for contract testing */
 export interface APIContractMap {
   "/api/health": { GET: HealthCheckDTO };
-  "/api/startup-check": { GET: { ok: boolean; fatal: string[]; warnings: string[]; env: Record<string, boolean> } };
+  "/api/startup-check": { GET: StartupCheckResultDTO };
+  "/api/metrics": { GET: { metrics: MetricPointDTO[] } };
+  "/api/metrics/slo": { GET: { slos: SLODefinitionDTO[] } };
   "/api/auth/login": { POST: AuthResult };
+  "/api/auth/register": { POST: AuthResult };
   "/api/auth/refresh": { POST: AuthResult };
   "/api/auth/logout": { POST: { ok: boolean } };
+  "/api/auth/me": { GET: UserDTO };
+  "/api/auth/change-password": { POST: { ok: boolean } };
+  "/api/auth/forgot-password": { POST: { ok: boolean } };
+  "/api/auth/reset-password": { POST: { ok: boolean } };
   "/api/accounting/journal-entries": { GET: PaginatedResponse<VoucherDTO>; POST: VoucherDTO };
   "/api/accounting/fiscal-periods": { GET: PaginatedResponse<FinancialPeriodDTO>; POST: FinancialPeriodDTO };
+  "/api/accounting/accounts": { GET: PaginatedResponse<Record<string, unknown>> };
   "/api/accounting/balance-sheet": { GET: Record<string, unknown> };
   "/api/accounting/profit-loss": { GET: Record<string, unknown> };
+  "/api/accounting/cash-flow": { GET: Record<string, unknown> };
+  "/api/accounting/trial-balance": { GET: Record<string, unknown> };
+  "/api/accounting/dashboard": { GET: Record<string, unknown> };
+  "/api/accounting/aging": { GET: Record<string, unknown> };
+  "/api/accounting/bank-accounts": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/bank-transfer": { POST: Record<string, unknown> };
+  "/api/accounting/bank-reconciliation": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/post-dated-checks": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/installments": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/budgets": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/cost-centers": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/payroll": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/wps": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/tax-filing": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/vouchers": { GET: PaginatedResponse<VoucherDTO> };
+  "/api/accounting/quotations": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/purchase-orders": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/fixed-assets": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/depreciation": { GET: Record<string, unknown> };
+  "/api/accounting/inventory-valuation": { GET: Record<string, unknown> };
+  "/api/accounting/landed-cost": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/inter-company": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/letters-of-credit": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/fx-revaluation": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/payment-methods": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/opening-balances": { GET: Record<string, unknown> };
+  "/api/accounting/consolidation": { GET: Record<string, unknown> };
+  "/api/accounting/commissions": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/profit-distribution": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/accounting/client-statement": { GET: Record<string, unknown> };
+  "/api/accounting/supplier-statement": { GET: Record<string, unknown> };
+  "/api/accounting/budget-vs-actual": { GET: Record<string, unknown> };
+  "/api/accounting/period-comparison": { GET: Record<string, unknown> };
+  "/api/accounting/cash-flow": { GET: Record<string, unknown> };
+  "/api/accounting/export-excel": { POST: Record<string, unknown> };
+  "/api/accounting/financial-dashboard": { GET: Record<string, unknown> };
+  "/api/accounting/accounting-audit": { GET: PaginatedResponse<AuditLogDTO> };
+  "/api/accounting/filing-reminders": { GET: Record<string, unknown> };
+  "/api/accounting/initiate-payment": { POST: Record<string, unknown> };
+  "/api/accounting/verify-payment": { POST: Record<string, unknown> };
+  "/api/accounting/retention-check": { GET: Record<string, unknown> };
+  "/api/accounting/asset-disposals": { GET: PaginatedResponse<Record<string, unknown>> };
   "/api/invoices": { GET: PaginatedResponse<InvoiceDTO>; POST: InvoiceDTO };
+  "/api/invoice-templates": { GET: PaginatedResponse<InvoiceTemplateDTO> };
+  "/api/clients": { GET: PaginatedResponse<ClientDTO>; POST: ClientDTO };
   "/api/companies": { GET: PaginatedResponse<CompanyDTO>; POST: CompanyDTO };
   "/api/ai/agents": { POST: AIResponseDTO };
+  "/api/ai/chat": { POST: AIResponseDTO };
+  "/api/ai/memory": { GET: Record<string, unknown> };
+  "/api/ai/smart-parse": { POST: AIResponseDTO };
+  "/api/ai/parse-file": { POST: AIResponseDTO };
+  "/api/ai/parse-image": { POST: AIResponseDTO };
+  "/api/ai/bulk-import": { POST: Record<string, unknown> };
+  "/api/ai/invoice-brain/stats": { GET: Record<string, unknown> };
   "/api/audit": { GET: PaginatedResponse<AuditLogDTO> };
   "/api/webhooks/endpoints": { GET: PaginatedResponse<WebhookEndpointDTO>; POST: WebhookEndpointDTO };
+  "/api/webhooks/events": { GET: Record<string, unknown> };
+  "/api/webhooks/deliveries": { GET: Record<string, unknown> };
+  "/api/dashboard/stats": { GET: DashboardStatsDTO };
+  "/api/notifications": { GET: NotificationDTO[] };
+  "/api/hr/employees": { GET: PaginatedResponse<EmployeeDTO> };
+  "/api/hr/attendance": { GET: PaginatedResponse<AttendanceDTO> };
+  "/api/hr/salaries": { GET: PaginatedResponse<SalaryDTO> };
+  "/api/hr/leaves": { GET: PaginatedResponse<LeaveRequestDTO> };
+  "/api/hr/commissions": { GET: PaginatedResponse<CommissionDTO> };
+  "/api/hr/performance": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/hr/gratuity": { GET: PaginatedResponse<GratuityRecordDTO> };
+  "/api/inventory/items": { GET: PaginatedResponse<InventoryItemDTO> };
+  "/api/inventory/warehouses": { GET: PaginatedResponse<WarehouseDTO> };
+  "/api/inventory/movements": { GET: PaginatedResponse<StockMovementDTO> };
+  "/api/catalog": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/automation": { GET: PaginatedResponse<AutomationRuleDTO> };
+  "/api/feature-flags": { GET: PaginatedResponse<FeatureFlagDTO> };
+  "/api/modules": { GET: PaginatedResponse<ModuleDTO> };
+  "/api/settings": { GET: Record<string, unknown> };
+  "/api/reports": { GET: PaginatedResponse<ReportDTO> };
+  "/api/backups": { GET: PaginatedResponse<BackupDTO> };
+  "/api/purchases": { GET: PaginatedResponse<PurchaseDTO> };
+  "/api/product-matching/review": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/product-matching/config": { GET: ProductMatchConfigDTO };
+  "/api/platform-admin/tenants": { GET: PaginatedResponse<PlatformTenantDTO> };
+  "/api/platform-admin/stats": { GET: PlatformStatsDTO };
+  "/api/platform-admin/feature-flags": { GET: PaginatedResponse<PlatformFeatureFlagDTO> };
+  "/api/platform-admin/announcements": { GET: PaginatedResponse<AnnouncementDTO> };
+  "/api/platform-admin/tickets": { GET: PaginatedResponse<TicketDTO> };
+  "/api/platform-admin/ai-providers": { GET: PaginatedResponse<AIProviderDTO> };
+  "/api/platform-admin/audit": { GET: PaginatedResponse<AuditLogDTO> };
+  "/api/founder-panel/mission-control": { GET: Record<string, unknown> };
+  "/api/founder-panel/finops": { GET: Record<string, unknown> };
+  "/api/founder-panel/ai-fabric": { GET: Record<string, unknown> };
+  "/api/onboarding": { GET: PaginatedResponse<OnboardingStepDTO> };
+  "/api/permissions/roles": { GET: Record<string, unknown> };
+  "/api/permissions/catalog": { GET: Record<string, unknown> };
+  "/api/saas/payments": { GET: PaginatedResponse<Record<string, unknown>> };
+  "/api/saas/users": { GET: PaginatedResponse<Record<string, unknown>> };
 }
 
 /** Type-safe API client — validates response shapes at compile time */

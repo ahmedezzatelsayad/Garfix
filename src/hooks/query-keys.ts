@@ -83,6 +83,8 @@ export const queryKeys = {
       [...queryKeys.hr.all, "leaves", companySlug] as const,
     performance: (companySlug: string) =>
       [...queryKeys.hr.all, "performance", companySlug] as const,
+    gratuity: (companySlug: string) =>
+      [...queryKeys.hr.all, "gratuity", companySlug] as const,
   },
 
   // ─── Accounting ───────────────────────────────────────────────────────
@@ -100,6 +102,89 @@ export const queryKeys = {
       [...queryKeys.accounting.all, "cash-flow", companySlug] as const,
     trialBalance: (companySlug: string) =>
       [...queryKeys.accounting.all, "trial-balance", companySlug] as const,
+    // ── Sprint 2: Accounting sub-domain keys ──
+    fiscalPeriods: (companySlug: string) =>
+      [...queryKeys.accounting.all, "fiscal-periods", companySlug] as const,
+    bankAccounts: (companySlug: string) =>
+      [...queryKeys.accounting.all, "bank-accounts", companySlug] as const,
+    bankTransfers: (companySlug: string) =>
+      [...queryKeys.accounting.all, "bank-transfers", companySlug] as const,
+    bankReconciliation: (companySlug: string) =>
+      [...queryKeys.accounting.all, "bank-reconciliation", companySlug] as const,
+    aging: (companySlug: string) =>
+      [...queryKeys.accounting.all, "aging", companySlug] as const,
+    postDatedChecks: (companySlug: string) =>
+      [...queryKeys.accounting.all, "post-dated-checks", companySlug] as const,
+    installments: (companySlug: string) =>
+      [...queryKeys.accounting.all, "installments", companySlug] as const,
+    budgets: (companySlug: string) =>
+      [...queryKeys.accounting.all, "budgets", companySlug] as const,
+    costCenters: (companySlug: string) =>
+      [...queryKeys.accounting.all, "cost-centers", companySlug] as const,
+    payroll: (companySlug: string) =>
+      [...queryKeys.accounting.all, "payroll", companySlug] as const,
+    wps: (companySlug: string) =>
+      [...queryKeys.accounting.all, "wps", companySlug] as const,
+    taxFiling: (companySlug: string) =>
+      [...queryKeys.accounting.all, "tax-filing", companySlug] as const,
+    vouchers: (companySlug: string) =>
+      [...queryKeys.accounting.all, "vouchers", companySlug] as const,
+    quotations: (companySlug: string) =>
+      [...queryKeys.accounting.all, "quotations", companySlug] as const,
+    purchaseOrders: (companySlug: string) =>
+      [...queryKeys.accounting.all, "purchase-orders", companySlug] as const,
+    fixedAssets: (companySlug: string) =>
+      [...queryKeys.accounting.all, "fixed-assets", companySlug] as const,
+    depreciation: (companySlug: string) =>
+      [...queryKeys.accounting.all, "depreciation", companySlug] as const,
+    inventoryValuation: (companySlug: string) =>
+      [...queryKeys.accounting.all, "inventory-valuation", companySlug] as const,
+    landedCost: (companySlug: string) =>
+      [...queryKeys.accounting.all, "landed-cost", companySlug] as const,
+    accountantAccess: (companySlug: string) =>
+      [...queryKeys.accounting.all, "accountant-access", companySlug] as const,
+    interCompany: (companySlug: string) =>
+      [...queryKeys.accounting.all, "inter-company", companySlug] as const,
+    lettersOfCredit: (companySlug: string) =>
+      [...queryKeys.accounting.all, "letters-of-credit", companySlug] as const,
+    fxRevaluation: (companySlug: string) =>
+      [...queryKeys.accounting.all, "fx-revaluation", companySlug] as const,
+    paymentMethods: (companySlug: string) =>
+      [...queryKeys.accounting.all, "payment-methods", companySlug] as const,
+    openingBalances: (companySlug: string) =>
+      [...queryKeys.accounting.all, "opening-balances", companySlug] as const,
+    consolidation: (companySlug: string) =>
+      [...queryKeys.accounting.all, "consolidation", companySlug] as const,
+    accountingAudit: (companySlug: string) =>
+      [...queryKeys.accounting.all, "accounting-audit", companySlug] as const,
+    filingReminders: (companySlug: string) =>
+      [...queryKeys.accounting.all, "filing-reminders", companySlug] as const,
+    commissions: (companySlug: string) =>
+      [...queryKeys.accounting.all, "commissions", companySlug] as const,
+    profitDistribution: (companySlug: string) =>
+      [...queryKeys.accounting.all, "profit-distribution", companySlug] as const,
+    clientStatement: (companySlug: string) =>
+      [...queryKeys.accounting.all, "client-statement", companySlug] as const,
+    supplierStatement: (companySlug: string) =>
+      [...queryKeys.accounting.all, "supplier-statement", companySlug] as const,
+    budgetVsActual: (companySlug: string) =>
+      [...queryKeys.accounting.all, "budget-vs-actual", companySlug] as const,
+    periodComparison: (companySlug: string) =>
+      [...queryKeys.accounting.all, "period-comparison", companySlug] as const,
+    exportExcel: (companySlug: string) =>
+      [...queryKeys.accounting.all, "export-excel", companySlug] as const,
+    financialDashboard: (companySlug: string) =>
+      [...queryKeys.accounting.all, "financial-dashboard", companySlug] as const,
+    initiatePayment: (companySlug: string) =>
+      [...queryKeys.accounting.all, "initiate-payment", companySlug] as const,
+    verifyPayment: (companySlug: string) =>
+      [...queryKeys.accounting.all, "verify-payment", companySlug] as const,
+    retentionCheck: (companySlug: string) =>
+      [...queryKeys.accounting.all, "retention-check", companySlug] as const,
+    assetDisposals: (companySlug: string) =>
+      [...queryKeys.accounting.all, "asset-disposals", companySlug] as const,
+    bankImport: (companySlug: string) =>
+      [...queryKeys.accounting.all, "bank-import", companySlug] as const,
   },
 
   // ─── Inventory ────────────────────────────────────────────────────────
@@ -118,6 +203,8 @@ export const queryKeys = {
     all: ["catalog"] as const,
     list: (companySlug: string) =>
       [...queryKeys.catalog.all, "list", companySlug] as const,
+    detail: (id: string) =>
+      [...queryKeys.catalog.all, "detail", id] as const,
   },
 
   // ─── Automation ───────────────────────────────────────────────────────
@@ -240,5 +327,29 @@ export const queryKeys = {
       [...queryKeys.productMatching.all, "review", companySlug] as const,
     config: (companySlug: string) =>
       [...queryKeys.productMatching.all, "config", companySlug] as const,
+  },
+
+  // ── Sprint 2: Founder Panel ─────────────────────────────────────────────
+  founderPanel: {
+    all: ["founder-panel"] as const,
+    missionControl: () =>
+      [...queryKeys.founderPanel.all, "mission-control"] as const,
+    finops: () =>
+      [...queryKeys.founderPanel.all, "finops"] as const,
+    aiFabric: () =>
+      [...queryKeys.founderPanel.all, "ai-fabric"] as const,
+  },
+
+  // ── Sprint 2: Webhooks ──────────────────────────────────────────────────
+  webhooks: {
+    all: ["webhooks"] as const,
+    endpoints: () =>
+      [...queryKeys.webhooks.all, "endpoints"] as const,
+    endpointDetail: (id: string) =>
+      [...queryKeys.webhooks.all, "endpoint-detail", id] as const,
+    deliveries: () =>
+      [...queryKeys.webhooks.all, "deliveries"] as const,
+    events: () =>
+      [...queryKeys.webhooks.all, "events"] as const,
   },
 } as const;

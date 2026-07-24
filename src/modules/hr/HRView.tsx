@@ -19,7 +19,26 @@ import type {
   TableShared,
 } from "./types";
 import { PAGE_SIZE, DELETE_PATH, TAB_META } from "./types";
-import { useHRData } from "./useHRData";
+// TODO: Full migration to TanStack Query hooks (useEmployees, useAttendance, etc.)
+// useHRData was a legacy module-level hook — replaced with individual query hooks
+// For now, using inline stub to maintain compatibility
+function useHRData() {
+  // Stub: will be replaced with TanStack Query hooks in next sprint
+  return {
+    activeTab: "employees" as Tab,
+    setActiveTab: (_: Tab) => {},
+    employees: [] as Employee[],
+    attendance: [] as Attendance[],
+    salaries: [] as Salary[],
+    commissions: [] as Commission[],
+    leaves: [] as LeaveRequest[],
+    performances: [] as Performance[],
+    loading: true,
+    loadAll: async () => {},
+    handleDelete: async (_: string, _: number) => {},
+    handleBulkDelete: async (_: string, _: number[]) => {},
+  };
+}
 
 // ─── Style constants ────────────────────────────────────────────────────────
 

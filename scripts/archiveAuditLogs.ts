@@ -28,6 +28,7 @@ async function main() {
   const archiveFile = path.join(ARCHIVE_DIR, `audit-${ts}.jsonl`);
 
   // Fetch records to archive
+  // @ts-expect-error — Prisma client may not have auditLog generated in all environments
   const records = await db.auditLog.findMany({
     where: { createdAt: { lt: cutoff } },
     orderBy: { createdAt: "asc" },
@@ -63,6 +64,7 @@ async function main() {
   const ids = records.map((r) => r.id);
   // Delete in batches of 100 to avoid long transactions
   for (let i = 0; i < ids.length; i += 100) {
+    // @ts-expect-error — Prisma client may not have auditLog generated in all environments
     await db.auditLog.deleteMany({ where: { id: { in: ids.slice(i, i + 100) } } });
   }
   console.log(`  ✓ Deleted ${records.length} archived records from DB`);

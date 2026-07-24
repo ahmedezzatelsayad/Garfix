@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { authedFetch } from "@/context/AuthContext";
+import { useDashboardStats } from "@/hooks/queries/dashboard";
 import {
   FileText, Users, DollarSign, TrendingUp, AlertCircle, ArrowLeft,
   CheckCircle2,
@@ -43,29 +43,8 @@ const tooltipStyle = {
 
 export function DashboardView() {
   const { activeCompany } = useBrand();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const url = activeCompany
-        ? `/api/dashboard/stats?companySlug=${encodeURIComponent(activeCompany.slug)}`
-        : `/api/dashboard/stats`;
-      const res = await authedFetch(url);
-      if (res.ok) {
-        setStats(await res.json());
-      }
-    } catch (err) {
-      console.error("[dashboard] failed:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCompany]);
-
-  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, [load]);
+  const { data: statsData, isLoading: loading, error: statsError } = useDashboardStats(activeCompany?.slug || "");
+  const stats = statsData?.stats ?? null;
 
   if (loading) {
     return (
