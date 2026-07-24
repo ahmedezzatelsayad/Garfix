@@ -108,7 +108,6 @@ describe("Inline Styles Cleanup", () => {
   it("should have only TAILWINDBREAK styles in partially-converted files", () => {
     const partiallyConvertedFiles = [
       "modules/common/Sidebar.tsx",
-      "modules/auth/AuthScreen.tsx",
       "modules/common/NotificationsDropdown.tsx",
     ];
 

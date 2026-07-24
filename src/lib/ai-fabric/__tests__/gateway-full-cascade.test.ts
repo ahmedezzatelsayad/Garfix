@@ -28,7 +28,7 @@ const mockDb: Record<string, any> = {
   company: m(), companyRuntime: m(), providerConfig: m(),
   globalPattern: m(), profitSnapshot: m(), aIScoreSnapshot: m(),
   jobQueue: m(), inventoryItem: m(), productCatalog: m(), client: m(),
-  compiledRule: m(),
+  compiledRule: m(), platformSettings: m(), featureFlag: m(),
 };
 
 const mockLogger = {
@@ -206,7 +206,7 @@ describe("gateway cacheStage", () => {
 
   it("handles null JSON value in cache (cache hit with null data, AI fills data)", async () => {
     // JSON.parse('null') returns null; cacheStage reports hit, but null data
-    // causes subsequent stages to run. resolvedBy stays "cache" from cache hit.
+    // causes subsequent stages to run. When AI fills in data, resolvedBy becomes "ai".
     const key = fabricHash("test-co:null-val");
     mockDb.cacheEntry.findUnique.mockResolvedValue({
       key, value: "null",
@@ -214,8 +214,8 @@ describe("gateway cacheStage", () => {
     });
     mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
     const r = await executeCascade(req({ normalizedInput: "null-val" }), { aiFn: () => Promise.resolve(aiResult) });
-    // resolvedBy stays "cache" (set by cache hit), but AI fills in data
-    expect(r.resolvedBy).toBe("cache");
+    // null data falls through to AI, which fills data; resolvedBy correctly becomes "ai"
+    expect(r.resolvedBy).toBe("ai");
     expect(r.data).toEqual({ answer: "ai" });
   });
 

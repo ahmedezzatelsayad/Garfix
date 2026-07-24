@@ -27,7 +27,7 @@
  * =============
  * Same monkey-patching pattern as `collision-recovery-audit.test.ts` + the
  * B.7e test file: import the real `db`, monkey-patch `db.featureFlag`,
- * `db.platformSettings`, `db.productAlias`, `db.productMatchAudit` in beforeAll,
+ * `db.platformSettingss`, `db.productAlias`, `db.productMatchAudit` in beforeAll,
  * restore them in afterAll. We do NOT call `mock.module("@/lib/db")` — that
  * would leak into `productMatcher.test.ts` (Bun's mock.module is global by
  * default).
@@ -112,14 +112,14 @@ const _orig: Record<string, any> = {};
 
 beforeAll(() => {
   _orig.featureFlag = (db as any).featureFlag;
-  _orig.platformSetting = (db as any).platformSetting;
+  _orig.platformSettings = (db as any).platformSettings;
   _orig.productAlias = (db as any).productAlias;
   _orig.productMatchAudit = (db as any).productMatchAudit;
 
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSetting = { findMany: async () => [] };
+  (db as any).platformSettings = { findMany: async () => [] };
 
   (db as any).productAlias = {
     findUnique: async (args: any) => {
@@ -142,7 +142,7 @@ beforeAll(() => {
 
 afterAll(() => {
   (db as any).featureFlag = _orig.featureFlag;
-  (db as any).platformSetting = _orig.platformSetting;
+  (db as any).platformSettings = _orig.platformSettings;
   (db as any).productAlias = _orig.productAlias;
   (db as any).productMatchAudit = _orig.productMatchAudit;
 });

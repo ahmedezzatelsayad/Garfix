@@ -46,7 +46,7 @@ const dbMock = {
   featureFlag: {
     findUnique: async () => ({ key: "product-auto-matching", isActive: killSwitchEnabled }),
   },
-  platformSetting: { findMany: async () => [] },
+  platformSettings: { findMany: async () => [] },
   productAlias: {
     findUnique: async (args: any) => {
       const { companySlug, alias } = args.where.companySlug_alias;

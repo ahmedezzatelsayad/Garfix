@@ -16,7 +16,7 @@
  *  - We control matchProduct's behavior via the `tx` argument that
  *    syncInventoryOnSale/Purchase pass to it. Specifically, `tx.productAlias.
  *    findUnique` is a stateful mock whose return values are queued per-test.
- *  - We monkey-patch `db.featureFlag` and `db.platformSettings` (used by
+ *  - We monkey-patch `db.featureFlag` and `db.platformSettingss` (used by
  *    matchProduct's getTenantConfig) in beforeAll/afterAll. We do NOT use
  *    `mock.module("@/lib/db", …)` because that would also leak into
  *    productMatcher.test.ts.
@@ -38,7 +38,7 @@
  */
 import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
 
-// Import db so we can monkey-patch its featureFlag / platformSetting.
+// Import db so we can monkey-patch its featureFlag / platformSettings.
 // We deliberately do NOT call mock.module("@/lib/db", …) here — that would
 // replace the db export globally and break productMatcher.test.ts (whose
 // dbMock supplies the productAlias fixture data its tests depend on).
@@ -48,7 +48,7 @@ import { invalidateKillSwitchCache } from "@/lib/productMatcher";
 // Import the sync entrypoints AFTER the db import is resolved.
 import { syncInventoryOnSale, syncInventoryOnPurchase } from "@/lib/inventorySync";
 
-// ─── Monkey-patch db.featureFlag + db.platformSettings ─────────────────────────
+// ─── Monkey-patch db.featureFlag + db.platformSettingss ─────────────────────────
 //
 // matchProduct's getTenantConfig reads the kill-switch flag + per-tenant
 // thresholds from the global `db` (not from `tx`). We need it to return
@@ -56,18 +56,18 @@ import { syncInventoryOnSale, syncInventoryOnPurchase } from "@/lib/inventorySyn
 // them in afterAll so other test files are unaffected.
 
 const _origFeatureFlag = (db as any).featureFlag;
-const _origPlatformSetting = (db as any).platformSetting;
+const _origPlatformSettings = (db as any).platformSettingss;
 
 beforeAll(() => {
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSetting = { findMany: async () => [] };
+  (db as any).platformSettingss = { findMany: async () => [] };
 });
 
 afterAll(() => {
   (db as any).featureFlag = _origFeatureFlag;
-  (db as any).platformSetting = _origPlatformSetting;
+  (db as any).platformSettingss = _origPlatformSettings;
 });
 
 // ─── tx mock factory ──────────────────────────────────────────────────────────

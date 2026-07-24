@@ -1,0 +1,1006 @@
+     1→// @ts-nocheck
+     2→/**
+     3→ * economics-p2.test.ts — Phase 13-16 integration tests.
+     4→ *
+     5→ * Tests:
+     6→ *   - Worker Prediction (Phase 13): event detection, pre-scaling trigger, data requirement
+     7→ *   - AI Score (Phase 14): computation from real data, score < 60 trigger, daily save
+     8→ *   - Cost Per Invoice (Phase 15): AI-resolved have real cost, cache-resolved have $0, trend
+     9→ *   - AI Compiler (Phase 16a): clustering groups similar requests, compilation assessment
+    10→ *
+    11→ * Uses real Prisma (SQLite) — no mocks for DB.
+    12→ */
+    13→
+    14→import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+    15→import { db } from "@/lib/db";
+    16→
+    17→// ─── Phase 13 imports ───────────────────────────────────────────────────────
+    18→import {
+    19→  KNOWN_EVENTS,
+    20→  getUpcomingEvents,
+    21→  shouldPreScale,
+    22→  getPostEventScaleDown,
+    23→  executePreScale,
+    24→  __resetPredictionState,
+    25→  __getPreScaledMap,
+    26→  __getScaleDownTargets,
+    27→  __setScaleDownIntervalMs,
+    28→  type KnownEvent,
+    29→} from "@/lib/ai-fabric/worker-prediction";
+    30→
+    31→// ─── Phase 14 imports ───────────────────────────────────────────────────────
+    32→import {
+    33→  computeAndSaveScore,
+    34→  getLatestScore,
+    35→  getAllScores,
+    36→} from "@/lib/ai-fabric/ai-score";
+    37→
+    38→// ─── Phase 15 imports ───────────────────────────────────────────────────────
+    39→import {
+    40→  getCostPerInvoice,
+    41→  getCostPerInvoiceTrend,
+    42→  linkInvoiceCost,
+    43→  parseInvoiceAiCost,
+    44→} from "@/lib/ai-fabric/cost-per-invoice";
+    45→
+    46→// ─── Phase 16 imports ───────────────────────────────────────────────────────
+    47→import {
+    48→  clusterAIRequests,
+    49→  assessClusterForCompilation,
+    50→  getCompilationCandidates,
+    51→} from "@/lib/ai-fabric/ai-compiler";
+    52→
+    53→// ─── Test Constants ─────────────────────────────────────────────────────────
+    54→
+    55→const SLUG_PRED = "test-pred-co";
+    56→const SLUG_SCORE = "test-score-co";
+    57→const SLUG_COST = "test-cost-co";
+    58→const SLUG_COMPILE = "test-compile-co";
+    59→
+    60→// ─── Helpers ────────────────────────────────────────────────────────────────
+    61→
+    62→/** Create a test company. */
+    63→async function createCompany(slug: string, plan = "business") {
+    64→  const company = await db.company.create({
+    65→    data: { name: `Test ${slug}`, slug, plan, subscriptionStatus: "active" },
+    66→  });
+    67→  return company;
+    68→}
+    69→
+    70→/** Create a CompanyRuntime for a company. */
+    71→async function createRuntime(companyId: number, poolSize: number, status = "active") {
+    72→  return db.companyRuntime.create({
+    73→    data: { companyId, workerPoolSize: poolSize, status },
+    74→  });
+    75→}
+    76→
+    77→/** Create an AIRequestLog entry. */
+    78→async function createLog(opts: {
+    79→  companySlug: string;
+    80→  requestType: string;
+    81→  resolvedBy: string;
+    82→  costUsd?: number;
+    83→  tokensUsed?: number;
+    84→  provider?: string;
+    85→  daysAgo?: number;
+    86→  createdAt?: Date;
+    87→}) {
+    88→  const createdAt = opts.createdAt ?? (opts.daysAgo
+    89→    ? new Date(Date.now() - opts.daysAgo * 86_400_000)
+    90→    : new Date());
+    91→
+    92→  return db.aIRequestLog.create({
+    93→    data: {
+    94→      companySlug: opts.companySlug,
+    95→      requestType: opts.requestType,
+    96→      resolvedBy: opts.resolvedBy,
+    97→      costUsd: opts.costUsd ?? 0,
+    98→      tokensUsed: opts.tokensUsed,
+    99→      provider: opts.provider,
+   100→      latencyMs: 100,
+   101→      createdAt,
+   102→    },
+   103→  });
+   104→}
+   105→
+   106→/** Create an Invoice for a company. */
+   107→async function createInvoice(companySlug: string, opts: { daysAgo?: number; source?: string } = {}) {
+   108→  const createdAt = opts.daysAgo
+   109→    ? new Date(Date.now() - opts.daysAgo * 86_400_000)
+   110→    : new Date();
+   111→
+   112→  return db.invoice.create({
+   113→    data: {
+   114→      companySlug,
+   115→      invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+   116→      clientName: "Test Client",
+   117→      issueDate: createdAt.toISOString().slice(0, 10),
+   118→      dueDate: createdAt.toISOString().slice(0, 10),
+   119→      total: "100",
+   120→      status: "draft",
+   121→      createdAt,
+   122→      source: opts.source,
+   123→    },
+   124→  });
+   125→}
+   126→
+   127→/** Full cleanup for test isolation. */
+   128→async function cleanAll() {
+   129→  const slugs = [SLUG_PRED, SLUG_SCORE, SLUG_COST, SLUG_COMPILE];
+   130→  await db.aIRequestLog.deleteMany({ where: { companySlug: { in: slugs } } });
+   131→  await db.aiScoreSnapshot.deleteMany({ where: { companySlug: { in: slugs } } });
+   132→  await db.notification.deleteMany({ where: { companySlug: { in: slugs } } });
+   133→  await db.ruleCandidate.deleteMany({ where: { companySlug: { in: slugs } } });
+   134→  await db.compiledRule.deleteMany({ where: {} });
+   135→  await db.invoice.deleteMany({ where: { companySlug: { in: slugs } } });
+   136→
+   137→  for (const slug of slugs) {
+   138→    const company = await db.company.findUnique({ where: { slug } });
+   139→    if (company) {
+   140→      await db.companyRuntime.deleteMany({ where: { companyId: company.id } });
+   141→    }
+   142→  }
+   143→  await db.company.deleteMany({ where: { slug: { in: slugs } } });
+   144→
+   145→  __resetPredictionState();
+   146→}
+   147→
+   148→// ═══════════════════════════════════════════════════════════════════════════════
+   149→// Phase 13: Worker Prediction
+   150→// ═══════════════════════════════════════════════════════════════════════════════
+   151→
+   152→describe("Worker Prediction — Phase 13", () => {
+   153→  beforeEach(async () => {
+   154→    await cleanAll();
+   155→  });
+   156→
+   157→  afterAll(async () => {
+   158→    await cleanAll();
+   159→  });
+   160→
+   161→  it("KNOWN_EVENTS should include month_start and month_end", () => {
+   162→    expect(KNOWN_EVENTS).toContain("month_start");
+   163→    expect(KNOWN_EVENTS).toContain("month_end");
+   164→    expect(KNOWN_EVENTS).toHaveLength(2);
+   165→  });
+   166→
+   167→  it("getUpcomingEvents should find events within the next 24 hours", () => {
+   168→    // Set now to be close to the end of the month to catch month_end
+   169→    // Since we can't control Date.now() easily, we just verify the function
+   170→    // returns an array of known event types
+   171→    const now = new Date();
+   172→    const events = getUpcomingEvents(now);
+   173→
+   174→    // All returned events should have valid types
+   175→    for (const event of events) {
+   176→      expect(KNOWN_EVENTS).toContain(event.type);
+   177→      expect(event.windowStart).toBeInstanceOf(Date);
+   178→      expect(event.windowEnd).toBeInstanceOf(Date);
+   179→      expect(event.msUntilWindow).toBeDefined();
+   180→    }
+   181→  });
+   182→
+   183→  it("getUpcomingEvents should include first day and last day of month boundaries", () => {
+   184→    // Create a date near the start of a month to ensure month_start is found
+   185→    const nearMonthStart = new Date(Date.UTC(2026, 6, 1, 0, 0, 0)); // July 1, 2026 00:00 UTC
+   186→
+   187→    // Should find month_start for July (window started 10 min before)
+   188→    const events = getUpcomingEvents(nearMonthStart);
+   189→
+   190→    const hasMonthStart = events.some((e) => e.type === "month_start");
+   191→    expect(hasMonthStart).toBe(true);
+   192→  });
+   193→
+   194→  it("shouldPreScale should return false when not in pre-scale window", async () => {
+   195→    const companyId = await (await createCompany(SLUG_PRED, "business")).id;
+   196→    await createRuntime(companyId, 2);
+   197→
+   198→    const event: KnownEvent = {
+   199→      type: "month_start",
+   200→      eventDate: new Date(Date.UTC(2026, 7, 1, 0, 0, 0)), // Aug 1
+   201→      windowStart: new Date(Date.UTC(2026, 6, 31, 23, 50, 0)),
+   202→      windowEnd: new Date(Date.UTC(2026, 8, 1, 2, 0, 0)),
+   203→    };
+   204→
+   205→    // Now is July 30 — way before the window
+   206→    const now = new Date(Date.UTC(2026, 6, 30, 0, 0, 0));
+   207→    const result = await shouldPreScale(event, SLUG_PRED, now);
+   208→    expect(result).toBe(false);
+   209→  });
+   210→
+   211→  it("shouldPreScale should return false when company lacks 2+ months of spike data", async () => {
+   212→    const companyId = await (await createCompany(SLUG_PRED, "business")).id;
+   213→    await createRuntime(companyId, 2);
+   214→
+   215→    const event: KnownEvent = {
+   216→      type: "month_start",
+   217→      eventDate: new Date(Date.UTC(2026, 7, 1, 0, 0, 0)),
+   218→      windowStart: new Date(Date.UTC(2026, 6, 31, 23, 50, 0)),
+   219→      windowEnd: new Date(Date.UTC(2026, 8, 1, 2, 0, 0)),
+   220→    };
+   221→
+   222→    // Now is in the pre-scale window
+   223→    const now = new Date(Date.UTC(2026, 7, 31, 23, 55, 0));
+   224→
+   225→    // No historical data → should return false
+   226→    const result = await shouldPreScale(event, SLUG_PRED, now);
+   227→    expect(result).toBe(false);
+   228→  });
+   229→
+   230→  it("shouldPreScale should return true when spike history exists and in window", async () => {
+   231→    const company = await createCompany(SLUG_PRED, "business");
+   232→    await createRuntime(company.id, 2);
+   233→
+   234→    // Seed spike data: create many logs on past month-start dates,
+   235→    // and fewer on normal days (15th)
+   236→    // now = Jul 31, 2026 → function looks at June (m=1) and May (m=2)
+   237→    const spikeProvider = "openrouter/deepseek/deepseek-chat";
+   238→
+   239→    // 2 months of month_start spike data
+   240→    // now is Jul 31 → m=1: June, m=2: May
+   241→    for (let m = 1; m <= 2; m++) {
+   242→      const lookbackMonth = 6 - m; // 6=Jul → 5=Jun, 4=May
+   243→      const monthStart = new Date(Date.UTC(2026, lookbackMonth, 1, 0, 0, 0));
+   244→      // 100 requests on month start day
+   245→      for (let i = 0; i < 100; i++) {
+   246→        await createLog({
+   247→          companySlug: SLUG_PRED,
+   248→          requestType: "ocr",
+   249→          resolvedBy: "ai",
+   250→          costUsd: 0.001,
+   251→          provider: spikeProvider,
+   252→          tokensUsed: 500,
+   253→          createdAt: new Date(monthStart.getTime() + i * 60000),
+   254→        });
+   255→      }
+   256→
+   257→      // 20 requests on the 15th (normal day)
+   258→      const normalDay = new Date(Date.UTC(2026, lookbackMonth, 15, 0, 0, 0));
+   259→      for (let i = 0; i < 20; i++) {
+   260→        await createLog({
+   261→          companySlug: SLUG_PRED,
+   262→          requestType: "ocr",
+   263→          resolvedBy: "ai",
+   264→          costUsd: 0.001,
+   265→          provider: spikeProvider,
+   266→          tokensUsed: 500,
+   267→          createdAt: new Date(normalDay.getTime() + i * 60000),
+   268→        });
+   269→      }
+   270→    }
+   271→
+   272→    // Event: Aug 1 month_start. Pre-scale window: Jul 31 23:50 → Aug 1 00:00
+   273→    const event: KnownEvent = {
+   274→      type: "month_start",
+   275→      eventDate: new Date(Date.UTC(2026, 7, 1, 0, 0, 0)),       // Aug 1
+   276→      windowStart: new Date(Date.UTC(2026, 6, 31, 23, 50, 0)),   // Jul 31 23:50
+   277→      windowEnd: new Date(Date.UTC(2026, 7, 1, 2, 0, 0)),
+   278→    };
+   279→
+   280→    // Now is in the pre-scale window (Jul 31 23:55)
+   281→    const now = new Date(Date.UTC(2026, 6, 31, 23, 55, 0));
+   282→    const result = await shouldPreScale(event, SLUG_PRED, now);
+   283→    expect(result).toBe(true);
+   284→  });
+   285→
+   286→  it("shouldPreScale should not double-pre-scale for same event", async () => {
+   287→    const company = await createCompany(SLUG_PRED, "business");
+   288→    await createRuntime(company.id, 2);
+   289→
+   290→    // Seed spike history at June 1 and May 1 (relative to now = Jul 31)
+   291→    for (let m = 1; m <= 2; m++) {
+   292→      const lookbackMonth = 6 - m;
+   293→      const monthStart = new Date(Date.UTC(2026, lookbackMonth, 1, 0, 0, 0));
+   294→      for (let i = 0; i < 100; i++) {
+   295→        await createLog({
+   296→          companySlug: SLUG_PRED,
+   297→          requestType: "ocr",
+   298→          resolvedBy: "ai",
+   299→          costUsd: 0.001,
+   300→          createdAt: new Date(monthStart.getTime() + i * 60000),
+   301→        });
+   302→      }
+   303→      const normalDay = new Date(Date.UTC(2026, lookbackMonth, 15, 0, 0, 0));
+   304→      for (let i = 0; i < 20; i++) {
+   305→        await createLog({
+   306→          companySlug: SLUG_PRED,
+   307→          requestType: "ocr",
+   308→          resolvedBy: "ai",
+   309→          costUsd: 0.001,
+   310→          createdAt: new Date(normalDay.getTime() + i * 60000),
+   311→        });
+   312→      }
+   313→    }
+   314→
+   315→    const event: KnownEvent = {
+   316→      type: "month_start",
+   317→      eventDate: new Date(Date.UTC(2026, 7, 1, 0, 0, 0)),
+   318→      windowStart: new Date(Date.UTC(2026, 6, 31, 23, 50, 0)),
+   319→      windowEnd: new Date(Date.UTC(2026, 7, 1, 2, 0, 0)),
+   320→    };
+   321→    const now = new Date(Date.UTC(2026, 6, 31, 23, 55, 0));
+   322→
+   323→    // First call → true
+   324→    const result1 = await shouldPreScale(event, SLUG_PRED, now);
+   325→    expect(result1).toBe(true);
+   326→
+   327→    // Mark as pre-scaled (as executePreScale would)
+   328→    __getPreScaledMap().set(`${SLUG_PRED}:2026-08-01`, "true");
+   329→
+   330→    // Second call → false (already pre-scaled)
+   331→    const result2 = await shouldPreScale(event, SLUG_PRED, now);
+   332→    expect(result2).toBe(false);
+   333→  });
+   334→
+   335→  it("executePreScale should increase worker pool and cap at tier ceiling", async () => {
+   336→    const company = await createCompany(SLUG_PRED, "business");
+   337→    await createRuntime(company.id, 2); // ceiling = 4, so +4 → capped at 4
+   338→
+   339→    const event: KnownEvent = {
+   340→      type: "month_start",
+   341→      eventDate: new Date(Date.UTC(2026, 7, 1, 0, 0, 0)),
+   342→      windowStart: new Date(Date.UTC(2026, 6, 31, 23, 50, 0)),
+   343→      windowEnd: new Date(Date.UTC(2026, 8, 1, 2, 0, 0)),
+   344→    };
+   345→
+   346→    await executePreScale(event, SLUG_PRED);
+   347→
+   348→    const runtime = await db.companyRuntime.findUniqueOrThrow({
+   349→      where: { companyId: company.id },
+   350→    });
+   351→    // 2 + 4 = 6, but business ceiling is 4
+   352→    expect(runtime.workerPoolSize).toBe(4);
+   353→
+   354→    // Should be marked as pre-scaled
+   355→    expect(__getPreScaledMap().has(`${SLUG_PRED}:2026-08-01`)).toBe(true);
+   356→
+   357→    // Scale-down target should exist
+   358→    const targets = __getScaleDownTargets();
+   359→    expect(targets.has(SLUG_PRED)).toBe(true);
+   360→    expect(targets.get(SLUG_PRED)!.targetPoolSize).toBe(2);
+   361→  });
+   362→
+   363→  it("getPostEventScaleDown should return scale-down targets and step down gradually", async () => {
+   364→    const company = await createCompany(SLUG_PRED, "business");
+   365→    await createRuntime(company.id, 4); // currently at 4
+   366→
+   367→    // Manually set a scale-down target
+   368→    __getScaleDownTargets().set(SLUG_PRED, {
+   369→      targetPoolSize: 2,
+   370→      lastStepAt: 0, // allow immediate step
+   371→    });
+   372→    // Override interval so steps happen immediately in tests
+   373→    __setScaleDownIntervalMs(0);
+   374→
+   375→    // First call: should step down from 4 → 3
+   376→    const results1 = await getPostEventScaleDown();
+   377→    const predResult = results1.find((r) => r.companySlug === SLUG_PRED);
+   378→    expect(predResult).toBeDefined();
+   379→    expect(predResult!.currentPoolSize).toBe(3);
+   380→    expect(predResult!.targetPoolSize).toBe(2);
+   381→    expect(predResult!.stepsRemaining).toBe(1);
+   382→
+   383→    // Verify DB was updated
+   384→    const rt1 = await db.companyRuntime.findUniqueOrThrow({ where: { companyId: company.id } });
+   385→    expect(rt1.workerPoolSize).toBe(3);
+   386→
+   387→    // Second call: should step down from 3 → 2
+   388→    const results2 = await getPostEventScaleDown();
+   389→    const predResult2 = results2.find((r) => r.companySlug === SLUG_PRED);
+   390→    // After reaching target, the entry should be cleaned up
+   391→    // But the result of this call may or may not include it depending on timing
+   392→    const rt2 = await db.companyRuntime.findUniqueOrThrow({ where: { companyId: company.id } });
+   393→    expect(rt2.workerPoolSize).toBe(2);
+   394→
+   395→    // Cleanup
+   396→    __setScaleDownIntervalMs(null);
+   397→  });
+   398→});
+   399→
+   400→// ═══════════════════════════════════════════════════════════════════════════════
+   401→// Phase 14: AI Score
+   402→// ═══════════════════════════════════════════════════════════════════════════════
+   403→
+   404→describe("AI Score — Phase 14", () => {
+   405→  beforeEach(async () => {
+   406→    await cleanAll();
+   407→  });
+   408→
+   409→  afterAll(async () => {
+   410→    await cleanAll();
+   411→  });
+   412→
+   413→  it("should compute score of ~100 when all requests resolved by cache", async () => {
+   414→    await createCompany(SLUG_SCORE, "business");
+   415→
+   416→    // 100 cache hits, 0 AI calls
+   417→    for (let i = 0; i < 100; i++) {
+   418→      await createLog({
+   419→        companySlug: SLUG_SCORE,
+   420→        requestType: "ocr",
+   421→        resolvedBy: "cache",
+   422→      });
+   423→    }
+   424→
+   425→    const result = await computeAndSaveScore(SLUG_SCORE);
+   426→
+   427→    expect(result.score).toBe(100);
+   428→    expect(result.cacheHitPct).toBe(100);
+   429→    expect(result.aiCallPct).toBe(0);
+   430→    expect(result.alerted).toBe(false);
+   431→  });
+   432→
+   433→  it("should compute score of 0 when all requests resolved by AI with high cost", async () => {
+   434→    await createCompany(SLUG_SCORE, "business");
+   435→
+   436→    // 100 AI calls with high cost
+   437→    for (let i = 0; i < 100; i++) {
+   438→      await createLog({
+   439→        companySlug: SLUG_SCORE,
+   440→        requestType: "ocr",
+   441→        resolvedBy: "ai",
+   442→        costUsd: 0.01,
+   443→      });
+   444→    }
+   445→
+   446→    const result = await computeAndSaveScore(SLUG_SCORE);
+   447→
+   448→    // score = 100 * (1 - 1.0) - 20 * (0.01 / 0.01) = 0 - 20 = -20 → clamped to 0
+   449→    expect(result.score).toBe(0);
+   450→    expect(result.aiCallPct).toBe(100);
+   451→    expect(result.avgCostPerRequest).toBe(0.01);
+   452→  });
+   453→
+   454→  it("should compute mixed score correctly", async () => {
+   455→    await createCompany(SLUG_SCORE, "business");
+   456→
+   457→    // 70 cache, 20 rule, 10 AI (with 0 cost)
+   458→    for (let i = 0; i < 70; i++) {
+   459→      await createLog({
+   460→        companySlug: SLUG_SCORE,
+   461→        requestType: "ocr",
+   462→        resolvedBy: "cache",
+   463→      });
+   464→    }
+   465→    for (let i = 0; i < 20; i++) {
+   466→      await createLog({
+   467→        companySlug: SLUG_SCORE,
+   468→        requestType: "ocr",
+   469→        resolvedBy: "rule",
+   470→      });
+   471→    }
+   472→    for (let i = 0; i < 10; i++) {
+   473→      await createLog({
+   474→        companySlug: SLUG_SCORE,
+   475→        requestType: "ocr",
+   476→        resolvedBy: "ai",
+   477→        costUsd: 0.005,
+   478→      });
+   479→    }
+   480→
+   481→    const result = await computeAndSaveScore(SLUG_SCORE);
+   482→
+   483→    // aiCallPct = 10%
+   484→    // avgCost = (10 * 0.005) / 100 = 0.0005
+   485→    // score = 100 * (1 - 0.1) - 20 * (0.0005 / 0.01)
+   486→    //       = 90 - 20 * 0.05
+   487→    //       = 90 - 1 = 89
+   488→    expect(result.score).toBe(89);
+   489→    expect(result.aiCallPct).toBe(10);
+   490→    expect(result.cacheHitPct).toBe(70);
+   491→    expect(result.ruleHitPct).toBe(20);
+   492→    expect(result.alerted).toBe(false);
+   493→  });
+   494→
+   495→  it("should trigger alerts when score < 60", async () => {
+   496→    await createCompany(SLUG_SCORE, "business");
+   497→
+   498→    // 50% AI calls with cost → score will be < 60
+   499→    for (let i = 0; i < 50; i++) {
+   500→      await createLog({
+   501→        companySlug: SLUG_SCORE,
+   502→        requestType: "ocr",
+   503→        resolvedBy: "cache",
+   504→      });
+   505→    }
+   506→    for (let i = 0; i < 50; i++) {
+   507→      await createLog({
+   508→        companySlug: SLUG_SCORE,
+   509→        requestType: "ocr",
+   510→        resolvedBy: "ai",
+   511→        costUsd: 0.01,
+   512→      });
+   513→    }
+   514→
+   515→    const result = await computeAndSaveScore(SLUG_SCORE);
+   516→
+   517→    // aiCallPct = 50%, avgCost = 0.005
+   518→    // score = 100 * 0.5 - 20 * 0.5 = 50 - 10 = 40
+   519→    expect(result.score).toBe(40);
+   520→    expect(result.alerted).toBe(true);
+   521→
+   522→    // Verify notifications were created
+   523→    const notifications = await db.notification.findMany({
+   524→      where: { companySlug: SLUG_SCORE },
+   525→    });
+   526→    expect(notifications.length).toBe(2);
+   527→    expect(notifications[0].title).toContain("AI Score Alert");
+   528→    expect(notifications[1].title).toContain("Cost Review Needed");
+   529→  });
+   530→
+   531→  it("should save score to AIScoreSnapshot and be retrievable via getLatestScore", async () => {
+   532→    await createCompany(SLUG_SCORE, "business");
+   533→
+   534→    for (let i = 0; i < 50; i++) {
+   535→      await createLog({
+   536→        companySlug: SLUG_SCORE,
+   537→        requestType: "ocr",
+   538→        resolvedBy: "cache",
+   539→      });
+   540→    }
+   541→    for (let i = 0; i < 50; i++) {
+   542→      await createLog({
+   543→        companySlug: SLUG_SCORE,
+   544→        requestType: "ocr",
+   545→        resolvedBy: "ai",
+   546→        costUsd: 0.01,
+   547→      });
+   548→    }
+   549→
+   550→    await computeAndSaveScore(SLUG_SCORE);
+   551→
+   552→    const latest = await getLatestScore(SLUG_SCORE);
+   553→    expect(latest).not.toBeNull();
+   554→    expect(latest!.score).toBe(40);
+   555→    expect(latest!.aiCallPct).toBe(50);
+   556→    expect(latest!.period).toBeTruthy();
+   557→  });
+   558→
+   559→  it("getLatestScore should return null for company with no scores", async () => {
+   560→    const latest = await getLatestScore("nonexistent-company");
+   561→    expect(latest).toBeNull();
+   562→  });
+   563→
+   564→  it("getAllScores should return all today's scores", async () => {
+   565→    await createCompany(SLUG_SCORE, "business");
+   566→
+   567→    for (let i = 0; i < 100; i++) {
+   568→      await createLog({
+   569→        companySlug: SLUG_SCORE,
+   570→        requestType: "ocr",
+   571→        resolvedBy: "cache",
+   572→      });
+   573→    }
+   574→
+   575→    await computeAndSaveScore(SLUG_SCORE);
+   576→
+   577→    const allScores = await getAllScores();
+   578→    expect(allScores.length).toBeGreaterThanOrEqual(1);
+   579→    const myScore = allScores.find((s) => s.companySlug === SLUG_SCORE);
+   580→    expect(myScore).toBeDefined();
+   581→    expect(myScore!.score).toBe(100);
+   582→  });
+   583→
+   584→  it("should upsert score if computed twice for same period", async () => {
+   585→    await createCompany(SLUG_SCORE, "business");
+   586→
+   587→    for (let i = 0; i < 100; i++) {
+   588→      await createLog({
+   589→        companySlug: SLUG_SCORE,
+   590→        requestType: "ocr",
+   591→        resolvedBy: "cache",
+   592→      });
+   593→    }
+   594→
+   595→    await computeAndSaveScore(SLUG_SCORE);
+   596→    await computeAndSaveScore(SLUG_SCORE);
+   597→
+   598→    // Should only have 1 snapshot for today
+   599→    const today = new Date().toISOString().slice(0, 10);
+   600→    const snapshots = await db.aiScoreSnapshot.findMany({
+   601→      where: { companySlug: SLUG_SCORE, period: today },
+   602→    });
+   603→    expect(snapshots).toHaveLength(1);
+   604→    expect(snapshots[0].score).toBe(100);
+   605→  });
+   606→
+   607→  it("should return score of 100 with 0 requests (no data)", async () => {
+   608→    await createCompany(SLUG_SCORE, "business");
+   609→
+   610→    // No logs at all
+   611→    const result = await computeAndSaveScore(SLUG_SCORE);
+   612→
+   613→    // aiCallPct = 0, avgCost = 0
+   614→    // score = 100 * 1 - 0 = 100
+   615→    expect(result.score).toBe(100);
+   616→    expect(result.alerted).toBe(false);
+   617→  });
+   618→});
+   619→
+   620→// ═══════════════════════════════════════════════════════════════════════════════
+   621→// Phase 15: Cost Per Invoice
+   622→// ═══════════════════════════════════════════════════════════════════════════════
+   623→
+   624→describe("Cost Per Invoice — Phase 15", () => {
+   625→  beforeEach(async () => {
+   626→    await cleanAll();
+   627→  });
+   628→
+   629→  afterAll(async () => {
+   630→    await cleanAll();
+   631→  });
+   632→
+   633→  it("AI-resolved requests should contribute real cost", async () => {
+   634→    await createCompany(SLUG_COST, "business");
+   635→
+   636→    const today = new Date();
+   637→    const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+   638→
+   639→    // 10 AI-resolved requests with $0.01 cost each
+   640→    for (let i = 0; i < 10; i++) {
+   641→      await createLog({
+   642→        companySlug: SLUG_COST,
+   643→        requestType: "ocr",
+   644→        resolvedBy: "ai",
+   645→        costUsd: 0.01,
+   646→        createdAt: new Date(dayStart.getTime() + i * 60000),
+   647→      });
+   648→    }
+   649→
+   650→    const result = await getCostPerInvoice(SLUG_COST, dayStart, new Date());
+   651→
+   652→    expect(result.aiResolvedCount).toBe(10);
+   653→    expect(result.nonAiResolvedCount).toBe(0);
+   654→    // Total AI cost = 10 * $0.01 = $0.10
+   655→    expect(result.totalAiCostUsd).toBe(0.1);
+   656→  });
+   657→
+   658→  it("cache-resolved requests should have $0 AI cost (only infra cost)", async () => {
+   659→    await createCompany(SLUG_COST, "business");
+   660→
+   661→    const today = new Date();
+   662→    const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+   663→
+   664→    // 10 cache-resolved requests (cost = 0 in AIRequestLog)
+   665→    for (let i = 0; i < 10; i++) {
+   666→      await createLog({
+   667→        companySlug: SLUG_COST,
+   668→        requestType: "ocr",
+   669→        resolvedBy: "cache",
+   670→        costUsd: 0,
+   671→        createdAt: new Date(dayStart.getTime() + i * 60000),
+   672→      });
+   673→    }
+   674→
+   675→    const result = await getCostPerInvoice(SLUG_COST, dayStart, new Date());
+   676→
+   677→    expect(result.aiResolvedCount).toBe(0);
+   678→    expect(result.nonAiResolvedCount).toBe(10);
+   679→    // Cache-resolved have only infra cost: 10 * $0.0001 = $0.001
+   680→    expect(result.totalAiCostUsd).toBe(0.001);
+   681→  });
+   682→
+   683→  it("should calculate average cost per invoice correctly", async () => {
+   684→    await createCompany(SLUG_COST, "business");
+   685→
+   686→    const today = new Date();
+   687→    const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+   688→
+   689→    // 5 AI-resolved ($0.01 each) + 5 cache-resolved ($0 each in DB)
+   690→    for (let i = 0; i < 5; i++) {
+   691→      await createLog({
+   692→        companySlug: SLUG_COST,
+   693→        requestType: "ocr",
+   694→        resolvedBy: "ai",
+   695→        costUsd: 0.01,
+   696→        createdAt: new Date(dayStart.getTime() + i * 60000),
+   697→      });
+   698→    }
+   699→    for (let i = 0; i < 5; i++) {
+   700→      await createLog({
+   701→        companySlug: SLUG_COST,
+   702→        requestType: "ocr",
+   703→        resolvedBy: "cache",
+   704→        costUsd: 0,
+   705→        createdAt: new Date(dayStart.getTime() + (5 + i) * 60000),
+   706→      });
+   707→    }
+   708→
+   709→    const result = await getCostPerInvoice(SLUG_COST, dayStart, new Date());
+   710→
+   711→    // Total: 5 * $0.01 + 5 * $0.0001 = $0.0505
+   712→    // No invoices created → falls back to log count = 10
+   713→    expect(result.totalInvoices).toBe(10);
+   714→    expect(result.avgCostPerInvoice).toBeCloseTo(0.00505, 6);
+   715→  });
+   716→
+   717→  it("linkInvoiceCost should store AI cost reference in invoice source", async () => {
+   718→    const company = await createCompany(SLUG_COST, "business");
+   719→    const invoice = await createInvoice(SLUG_COST);
+   720→
+   721→    // Create an AI request log
+   722→    const log = await createLog({
+   723→      companySlug: SLUG_COST,
+   724→      requestType: "ocr",
+   725→      resolvedBy: "ai",
+   726→      costUsd: 0.025,
+   727→      provider: "openrouter/deepseek/deepseek-chat",
+   728→    });
+   729→
+   730→    await linkInvoiceCost(invoice.id, log.id);
+   731→
+   732→    const updated = await db.invoice.findUniqueOrThrow({ where: { id: invoice.id } });
+   733→    expect(updated.source).toContain("ai-fabric");
+   734→    expect(updated.source).toContain(String(log.id));
+   735→    expect(updated.source).toContain("ai");
+   736→    expect(updated.source).toContain("0.025");
+   737→  });
+   738→
+   739→  it("parseInvoiceAiCost should extract cost from linked invoice", async () => {
+   740→    const parsed = parseInvoiceAiCost("ai-fabric:42:ai:0.015");
+   741→    expect(parsed).not.toBeNull();
+   742→    expect(parsed!.aiCostUsd).toBe(0.015);
+   743→    expect(parsed!.resolvedBy).toBe("ai");
+   744→  });
+   745→
+   746→  it("parseInvoiceAiCost should return null for unlinked invoice", () => {
+   747→    expect(parseInvoiceAiCost(null)).toBeNull();
+   748→    expect(parseInvoiceAiCost("whatsapp")).toBeNull();
+   749→    expect(parseInvoiceAiCost("manual-entry")).toBeNull();
+   750→  });
+   751→
+   752→  it("getCostPerInvoiceTrend should return daily data points", async () => {
+   753→    await createCompany(SLUG_COST, "business");
+   754→
+   755→    // Seed some data for the past 3 days
+   756→    for (let d = 0; d < 3; d++) {
+   757→      const dayStart = new Date(Date.now() - d * 86_400_000);
+   758→      for (let i = 0; i < 5; i++) {
+   759→        await createLog({
+   760→          companySlug: SLUG_COST,
+   761→          requestType: "ocr",
+   762→          resolvedBy: "ai",
+   763→          costUsd: 0.01,
+   764→          createdAt: new Date(dayStart.getTime() + i * 60000),
+   765→        });
+   766→      }
+   767→    }
+   768→
+   769→    const trend = await getCostPerInvoiceTrend(SLUG_COST, 3);
+   770→
+   771→    expect(trend).toHaveLength(3);
+   772→    // Each point should have required fields
+   773→    for (const point of trend) {
+   774→      expect(point.period).toBeTruthy();
+   775→      expect(typeof point.avgCostPerInvoice).toBe("number");
+   776→      expect(typeof point.totalInvoices).toBe("number");
+   777→      expect(typeof point.aiCostUsd).toBe("number");
+   778→    }
+   779→  });
+   780→
+   781→  it("getCostPerInvoiceTrend should return empty for no data", async () => {
+   782→    await createCompany(SLUG_COST, "business");
+   783→
+   784→    const trend = await getCostPerInvoiceTrend(SLUG_COST, 3);
+   785→    expect(trend).toHaveLength(3);
+   786→    // All zeros
+   787→    for (const point of trend) {
+   788→      expect(point.totalInvoices).toBe(0);
+   789→      expect(point.avgCostPerInvoice).toBe(0);
+   790→    }
+   791→  });
+   792→});
+   793→
+   794→// ═══════════════════════════════════════════════════════════════════════════════
+   795→// Phase 16a: AI Compiler (clustering + assessment only)
+   796→// ═══════════════════════════════════════════════════════════════════════════════
+   797→
+   798→describe("AI Compiler — Phase 16a", () => {
+   799→  beforeEach(async () => {
+   800→    await cleanAll();
+   801→  });
+   802→
+   803→  afterAll(async () => {
+   804→    await cleanAll();
+   805→  });
+   806→
+   807→  it("clusterAIRequests should group requests by requestType + clusterKey", async () => {
+   808→    await createCompany(SLUG_COMPILE, "business");
+   809→
+   810→    // 20 AI requests with same provider + tokens (same cluster)
+   811→    for (let i = 0; i < 20; i++) {
+   812→      await createLog({
+   813→        companySlug: SLUG_COMPILE,
+   814→        requestType: "ocr",
+   815→        resolvedBy: "ai",
+   816→        provider: "openrouter/deepseek/deepseek-chat",
+   817→        tokensUsed: 500,
+   818→        costUsd: 0.002,
+   819→      });
+   820→    }
+   821→
+   822→    // 10 AI requests with different tokens (different cluster)
+   823→    for (let i = 0; i < 10; i++) {
+   824→      await createLog({
+   825→        companySlug: SLUG_COMPILE,
+   826→        requestType: "ocr",
+   827→        resolvedBy: "ai",
+   828→        provider: "openrouter/deepseek/deepseek-chat",
+   829→        tokensUsed: 2000,
+   830→        costUsd: 0.005,
+   831→      });
+   832→    }
+   833→
+   834→    const clusters = await clusterAIRequests(SLUG_COMPILE, 30);
+   835→
+   836→    expect(clusters.length).toBeGreaterThanOrEqual(1);
+   837→
+   838→    // Should find at least one cluster with 20 items
+   839→    const bigCluster = clusters.find((c) => c.count === 20);
+   840→    expect(bigCluster).toBeDefined();
+   841→    expect(bigCluster!.requestType).toBe("ocr");
+   842→    expect(bigCluster!.mostCommonProvider).toBe("openrouter/deepseek/deepseek-chat");
+   843→    expect(bigCluster!.avgTokensUsed).toBe(500);
+   844→  });
+   845→
+   846→  it("clusterAIRequests should only include AI-resolved requests", async () => {
+   847→    await createCompany(SLUG_COMPILE, "business");
+   848→
+   849→    // 10 cache-resolved (should NOT be included)
+   850→    for (let i = 0; i < 10; i++) {
+   851→      await createLog({
+   852→        companySlug: SLUG_COMPILE,
+   853→        requestType: "ocr",
+   854→        resolvedBy: "cache",
+   855→      });
+   856→    }
+   857→
+   858→    // 5 AI-resolved
+   859→    for (let i = 0; i < 5; i++) {
+   860→      await createLog({
+   861→        companySlug: SLUG_COMPILE,
+   862→        requestType: "ocr",
+   863→        resolvedBy: "ai",
+   864→        provider: "test-model",
+   865→        tokensUsed: 100,
+   866→        costUsd: 0.001,
+   867→      });
+   868→    }
+   869→
+   870→    const clusters = await clusterAIRequests(SLUG_COMPILE, 30);
+   871→
+   872→    // Total count across all clusters should be 5 (only AI-resolved)
+   873→    const totalCount = clusters.reduce((sum, c) => sum + c.count, 0);
+   874→    expect(totalCount).toBe(5);
+   875→  });
+   876→
+   877→  it("clusterAIRequests should return empty for no AI requests", async () => {
+   878→    await createCompany(SLUG_COMPILE, "business");
+   879→
+   880→    const clusters = await clusterAIRequests(SLUG_COMPILE, 30);
+   881→    expect(clusters).toHaveLength(0);
+   882→  });
+   883→
+   884→  it("clusterAIRequests should return empty for company with only non-AI logs", async () => {
+   885→    await createCompany(SLUG_COMPILE, "business");
+   886→
+   887→    for (let i = 0; i < 10; i++) {
+   888→      await createLog({
+   889→        companySlug: SLUG_COMPILE,
+   890→        requestType: "ocr",
+   891→        resolvedBy: "cache",
+   892→      });
+   893→    }
+   894→
+   895→    const clusters = await clusterAIRequests(SLUG_COMPILE, 30);
+   896→    expect(clusters).toHaveLength(0);
+   897→  });
+   898→
+   899→  it("assessClusterForCompilation should reject clusters with count < 50", () => {
+   900→    const smallCluster = {
+   901→      clusterKey: "abc123",
+   902→      requestType: "ocr",
+   903→      count: 10,
+   904→      mostCommonProvider: "test-model",
+   905→      avgTokensUsed: 500,
+   906→      avgCostUsd: 0.002,
+   907→      totalCostUsd: 0.02,
+   908→      sampleIds: [1, 2, 3],
+   909→    };
+   910→
+   911→    const assessment = assessClusterForCompilation(smallCluster, 30);
+   912→
+   913→    expect(assessment.isCandidate).toBe(false);
+   914→    expect(assessment.reasons.some((r) => r.includes("below minimum threshold"))).toBe(true);
+   915→  });
+   916→
+   917→  it("assessClusterForCompilation should accept clusters with count >= 50", () => {
+   918→    const bigCluster = {
+   919→      clusterKey: "abc123",
+   920→      requestType: "ocr",
+   921→      count: 60,
+   922→      mostCommonProvider: "test-model",
+   923→      avgTokensUsed: 500,
+   924→      avgCostUsd: 0.002,
+   925→      totalCostUsd: 0.12,
+   926→      sampleIds: Array.from({ length: 10 }, (_, i) => i + 1),
+   927→    };
+   928→
+   929→    const assessment = assessClusterForCompilation(bigCluster, 30);
+   930→
+   931→    expect(assessment.isCandidate).toBe(true);
+   932→    expect(assessment.structuralSimilarity).toBe(0.9);
+   933→  });
+   934→
+   935→  it("assessClusterForCompilation should estimate annual savings", () => {
+   936→    const cluster = {
+   937→      clusterKey: "abc123",
+   938→      requestType: "ocr",
+   939→      count: 100,
+   940→      mostCommonProvider: "test-model",
+   941→      avgTokensUsed: 500,
+   942→      avgCostUsd: 0.005,
+   943→      totalCostUsd: 0.5, // $0.50 over 30 days → $6.05/year
+   944→      sampleIds: Array.from({ length: 10 }, (_, i) => i + 1),
+   945→    };
+   946→
+   947→    const assessment = assessClusterForCompilation(cluster, 30);
+   948→
+   949→    expect(assessment.isCandidate).toBe(true);
+   950→    // Daily cost = 0.50 / 30 = $0.0167, annual = $0.0167 * 365 ≈ $6.08
+   951→    expect(assessment.estimatedAnnualSavingsUsd).toBeGreaterThan(5);
+   952→    expect(assessment.estimatedAnnualSavingsUsd).toBeLessThan(10);
+   953→  });
+   954→
+   955→  it("getCompilationCandidates should only return clusters passing criteria", async () => {
+   956→    await createCompany(SLUG_COMPILE, "business");
+   957→
+   958→    // 60 requests in one cluster (passes) + 10 in another (fails)
+   959→    for (let i = 0; i < 60; i++) {
+   960→      await createLog({
+   961→        companySlug: SLUG_COMPILE,
+   962→        requestType: "ocr",
+   963→        resolvedBy: "ai",
+   964→        provider: "model-a",
+   965→        tokensUsed: 500,
+   966→        costUsd: 0.002,
+   967→      });
+   968→    }
+   969→    for (let i = 0; i < 10; i++) {
+   970→      await createLog({
+   971→        companySlug: SLUG_COMPILE,
+   972→        requestType: "matching",
+   973→        resolvedBy: "ai",
+   974→        provider: "model-b",
+   975→        tokensUsed: 1500,
+   976→        costUsd: 0.003,
+   977→      });
+   978→    }
+   979→
+   980→    const candidates = await getCompilationCandidates(SLUG_COMPILE, 30);
+   981→
+   982→    // Only the 60-count cluster should pass
+   983→    expect(candidates).toHaveLength(1);
+   984→    expect(candidates[0].cluster.count).toBe(60);
+   985→    expect(candidates[0].isCandidate).toBe(true);
+   986→  });
+   987→
+   988→  it("getCompilationCandidates should return empty when no clusters meet criteria", async () => {
+   989→    await createCompany(SLUG_COMPILE, "business");
+   990→
+   991→    // Only 30 requests (below 50 threshold)
+   992→    for (let i = 0; i < 30; i++) {
+   993→      await createLog({
+   994→        companySlug: SLUG_COMPILE,
+   995→        requestType: "ocr",
+   996→        resolvedBy: "ai",
+   997→        provider: "model-a",
+   998→        tokensUsed: 500,
+   999→        costUsd: 0.002,
+  1000→      });
+  1001→    }
+  1002→
+  1003→    const candidates = await getCompilationCandidates(SLUG_COMPILE, 30);
+  1004→    expect(candidates).toHaveLength(0);
+  1005→  });
+  1006→});

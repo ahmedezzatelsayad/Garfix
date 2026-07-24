@@ -128,7 +128,7 @@ async function createInvoice(companySlug: string, opts: { daysAgo?: number; sour
 async function cleanAll() {
   const slugs = [SLUG_PRED, SLUG_SCORE, SLUG_COST, SLUG_COMPILE];
   await db.aIRequestLog.deleteMany({ where: { companySlug: { in: slugs } } });
-  await db.aiScoreSnapshot.deleteMany({ where: { companySlug: { in: slugs } } });
+  await db.aIScoreSnapshot.deleteMany({ where: { companySlug: { in: slugs } } });
   await db.notification.deleteMany({ where: { companySlug: { in: slugs } } });
   await db.ruleCandidate.deleteMany({ where: { companySlug: { in: slugs } } });
   await db.compiledRule.deleteMany({ where: {} });
@@ -597,7 +597,7 @@ describe("AI Score — Phase 14", () => {
 
     // Should only have 1 snapshot for today
     const today = new Date().toISOString().slice(0, 10);
-    const snapshots = await db.aiScoreSnapshot.findMany({
+    const snapshots = await db.aIScoreSnapshot.findMany({
       where: { companySlug: SLUG_SCORE, period: today },
     });
     expect(snapshots).toHaveLength(1);
