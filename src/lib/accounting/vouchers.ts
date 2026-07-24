@@ -352,7 +352,7 @@ export async function cancelVoucher(
         // Update account balances for reversal
         const accountIds = [...new Set(originalJE.lines.map((l) => l.accountId))];
         const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
-        const accountMap = new Map(accounts.map((a) => [a.id, a]));
+        const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
         for (const line of originalJE.lines) {
           const acc = accountMap.get(line.accountId);
@@ -400,7 +400,7 @@ export async function cancelVoucher(
 
 // ─── Helper: Find default accounts ────────────────────────────────────────────
 
-async function findDefaultCashAccount(tx: Parameters<Parameters<typeof db.$transaction>[0]>[0], companySlug: string): Promise<number> {
+async function findDefaultCashAccount(tx: any, companySlug: string): Promise<number> {
   // Find the first asset account with code starting with "1" (cash/bank range)
   const cashAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", isActive: true },
@@ -410,7 +410,7 @@ async function findDefaultCashAccount(tx: Parameters<Parameters<typeof db.$trans
   return cashAccount.id;
 }
 
-async function findDefaultRevenueAccount(tx: Parameters<Parameters<typeof db.$transaction>[0]>[0], companySlug: string): Promise<number> {
+async function findDefaultRevenueAccount(tx: any, companySlug: string): Promise<number> {
   const revenueAccount = await tx.account.findFirst({
     where: { companySlug, type: "revenue", isActive: true },
     orderBy: { code: "asc" },
@@ -419,7 +419,7 @@ async function findDefaultRevenueAccount(tx: Parameters<Parameters<typeof db.$tr
   return revenueAccount.id;
 }
 
-async function findDefaultExpenseAccount(tx: Parameters<Parameters<typeof db.$transaction>[0]>[0], companySlug: string): Promise<number> {
+async function findDefaultExpenseAccount(tx: any, companySlug: string): Promise<number> {
   const expenseAccount = await tx.account.findFirst({
     where: { companySlug, type: "expense", isActive: true },
     orderBy: { code: "asc" },
@@ -428,7 +428,7 @@ async function findDefaultExpenseAccount(tx: Parameters<Parameters<typeof db.$tr
   return expenseAccount.id;
 }
 
-async function findClientARAccount(tx: Parameters<Parameters<typeof db.$transaction>[0]>[0], companySlug: string, clientId: number): Promise<number> {
+async function findClientARAccount(tx: any, companySlug: string, clientId: number): Promise<number> {
   // Find AR (Accounts Receivable) account — typically code 1200 or similar
   const arAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", code: { startsWith: "12" }, isActive: true },
@@ -441,7 +441,7 @@ async function findClientARAccount(tx: Parameters<Parameters<typeof db.$transact
   return arAccount.id;
 }
 
-async function findSupplierAPAccount(tx: Parameters<Parameters<typeof db.$transaction>[0]>[0], companySlug: string, supplierId: number): Promise<number> {
+async function findSupplierAPAccount(tx: any, companySlug: string, supplierId: number): Promise<number> {
   // Find AP (Accounts Payable) account — typically code 2100 or similar
   const apAccount = await tx.account.findFirst({
     where: { companySlug, type: "liability", code: { startsWith: "21" }, isActive: true },

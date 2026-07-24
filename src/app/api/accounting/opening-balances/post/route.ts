@@ -120,7 +120,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const accounts = await tx.account.findMany({
       where: { id: { in: accountIds }, companySlug: data.companySlug },
     });
-    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
     for (const line of lines) {
       const acc = accountMap.get(line.accountId);

@@ -42,8 +42,7 @@ async function main() {
   console.log(`  📝 Writing ${records.length} records to ${archiveFile}`);
   const lines = records.map((r) => JSON.stringify({
     id: r.id,
-    userEmail: r.userEmail,
-    userUid: r.userUid,
+    userId: r.userId,
     action: r.action,
     entity: r.entity,
     entityId: r.entityId,

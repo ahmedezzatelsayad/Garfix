@@ -57,13 +57,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const productIds = Array.from(new Set(
     items.map((i) => i.matchedProductId).filter((id): id is number => id != null),
   ));
-  const products = productIds.length > 0
+  const products: any = productIds.length > 0
     ? await db.productCatalog.findMany({
         where: { id: { in: productIds } },
         select: { id: true, name: true, code: true },
       })
     : [];
-  const productMap = new Map(products.map((p) => [p.id, p]));
+  const productMap: Map<any, any> = new Map(products.map((p: any) => [p.id, p]));
 
   // Group by tenant for the founder panel's "by tenant" view.
   const byTenant = new Map<string, number>();

@@ -18,10 +18,9 @@ const poolSize = isDev
   ? 5
   : (parseInt(process.env.DATABASE_POOL_SIZE || '20', 10) || 20);
 
-// P0-3: Models that support soft-delete
+// P0-3: Models that support soft-delete (must have deletedAt field in schema)
 const SOFT_DELETE_MODELS = new Set([
-  'Company', 'Client', 'Invoice', 'PurchaseInvoice',
-  'JournalEntry', 'EInvoice', 'Employee',
+  'Company', 'Client', 'Invoice',
 ]);
 
 // Create base client
@@ -42,14 +41,14 @@ const extendedPrisma = basePrisma.$extends({
   query: {
     $allModels: {
       async findMany({ args, query, model }) {
-        if (SOFT_DELETE_MODELS.has(model) && !args?.where?.deletedAt) {
-          args = { ...args, where: { ...args?.where, deletedAt: null } };
+        if (SOFT_DELETE_MODELS.has(model) && !(args as any)?.where?.deletedAt) {
+          args = { ...args, where: { ...(args as any)?.where, deletedAt: null } } as any;
         }
         return query(args);
       },
       async findFirst({ args, query, model }) {
-        if (SOFT_DELETE_MODELS.has(model) && !args?.where?.deletedAt) {
-          args = { ...args, where: { ...args?.where, deletedAt: null } };
+        if (SOFT_DELETE_MODELS.has(model) && !(args as any)?.where?.deletedAt) {
+          args = { ...args, where: { ...(args as any)?.where, deletedAt: null } } as any;
         }
         return query(args);
       },

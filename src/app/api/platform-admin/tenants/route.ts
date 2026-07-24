@@ -33,7 +33,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     by: ["companySlug"],
     _count: true,
   });
-  const invoiceCountMap = new Map(invoiceCounts.map(r => [r.companySlug, r._count]));
+  const invoiceCountMap: Map<any, any> = new Map(invoiceCounts.map(r => [r.companySlug, r._count]));
 
   // Batch: client counts per company
   const clientCounts = await db.client.groupBy({

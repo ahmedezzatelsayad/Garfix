@@ -838,7 +838,7 @@ export async function calculateFxRevaluation(
           const accounts = await tx.account.findMany({
             where: { id: { in: accountIds } },
           });
-          const accountMap = new Map(accounts.map((a) => [a.id, a]));
+          const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
           const deltas = new Map<number, number>();
           for (const line of lines) {

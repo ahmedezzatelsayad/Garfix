@@ -24,11 +24,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const dbModules = await db.module.findMany();
-  const dbMap = new Map(dbModules.map((m) => [m.identifier, m]));
+  const dbModules: any = await db.module.findMany();
+  const dbMap: Map<string, any> = new Map(dbModules.map((m: any) => [m.identifier, m]));
 
   const merged = BUILTIN_MODULES.map((b) => {
-    const dbM = dbMap.get(b.identifier);
+    const dbM: any = dbMap.get(b.identifier);
     return {
       ...b,
       id: dbM?.id,

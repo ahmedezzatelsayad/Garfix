@@ -288,7 +288,7 @@ export async function closeFiscalPeriod(
       // Update account balances for closing JE
       const accountIds = [...new Set(closingLines.map((l) => l.accountId))];
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
-      const accountMap = new Map(accounts.map((a) => [a.id, a]));
+      const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
       const deltas = new Map<number, number>();
       for (const line of closingLines) {
@@ -424,7 +424,7 @@ export async function reopenFiscalPeriod(
       // Update account balances for the reversal
       const accountIds = [...new Set(swappedLines.map((l) => l.accountId))];
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
-      const accountMap = new Map(accounts.map((a) => [a.id, a]));
+      const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
       const deltas = new Map<number, number>();
       for (const line of swappedLines) {

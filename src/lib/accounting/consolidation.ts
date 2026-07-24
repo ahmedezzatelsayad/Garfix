@@ -102,7 +102,7 @@ export async function consolidateGroup(
     where: { slug: { in: Array.from(companySlugs) } },
   });
 
-  const companyMap = new Map(companies.map((c) => [c.slug, c.name]));
+  const companyMap: Map<any, any> = new Map(companies.map((c) => [c.slug, c.name]));
 
   // Balance sheet accounts: asset, liability, equity (and contra types)
   const balanceSheetTypes = ["asset", "liability", "equity", "contra_asset", "contra_revenue"];

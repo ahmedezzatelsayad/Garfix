@@ -100,7 +100,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError(`P0-5: Accounts not found or inactive: IDs ${missingIds.join(", ")}`, 400);
   }
 
-  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
   // ── P0-4: Check fiscal period before posting ──
   if (data.status === "posted") {

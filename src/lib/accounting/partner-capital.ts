@@ -284,7 +284,7 @@ export async function postProfitDistributionJE(
     // Update account balances
     const accountIds = [...new Set(linesData.map((l) => l.accountId))];
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
-    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
     for (const line of linesData) {
       const acc = accountMap.get(line.accountId);

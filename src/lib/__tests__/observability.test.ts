@@ -90,16 +90,16 @@ describe("MetricsRegistry", () => {
     }
 
     const otlp = metrics.exportOTLP();
-    const histMetric = otlp.scopeMetrics[0].metrics.find((m: any) => m.kind === "HISTOGRAM");
+    const histMetric = otlp.scopeMetrics[0].metrics.find((m: any) => m.kind === "HISTOGRAM")!;
 
     expect(histMetric.summary).toBeTruthy();
-    expect(histMetric.summary.count).toBe(100);
-    expect(histMetric.summary.sum).toBe(5050);
-    expect(histMetric.summary.min).toBe(1);
-    expect(histMetric.summary.max).toBe(100);
-    expect(histMetric.summary.p50).toBe(50);
-    expect(histMetric.summary.p99).toBe(99);
-    expect(histMetric.summary.buckets.length).toBeGreaterThan(0);
+    expect(histMetric.summary!.count).toBe(100);
+    expect(histMetric.summary!.sum).toBe(5050);
+    expect(histMetric.summary!.min).toBe(1);
+    expect(histMetric.summary!.max).toBe(100);
+    expect(histMetric.summary!.p50).toBe(50);
+    expect(histMetric.summary!.p99).toBe(99);
+    expect(histMetric.summary!.buckets.length).toBeGreaterThan(0);
   });
 
   it("measure() records latency and handles errors", async () => {

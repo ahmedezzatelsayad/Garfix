@@ -111,7 +111,7 @@ export async function getRegistry(): Promise<RegistryEntry[]> {
     });
     cachedRegistry = rows.map(mapRow);
     cacheExpiry = Date.now() + CACHE_TTL_MS;
-    return cachedRegistry;
+    return cachedRegistry!;
   } catch (err) {
     logger.error("[modelRegistry] getRegistry failed", {
       err: err instanceof Error ? err.message : String(err),

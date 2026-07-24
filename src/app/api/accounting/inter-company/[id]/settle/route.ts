@@ -181,7 +181,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     // Fetch current balances
     const accountIds = [...new Set(allLineAccounts.map((l) => l.id))];
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
-    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
     for (const line of allLineAccounts) {
       const acc = accountMap.get(line.id);
