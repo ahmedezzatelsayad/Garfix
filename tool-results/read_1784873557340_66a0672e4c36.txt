@@ -1,0 +1,965 @@
+     1→/**
+     2→ * hr.ts — React Query hooks for HR (Human Resources) CRUD operations.
+     3→ *
+     4→ * Provides typed query and mutation hooks for all HR sub-domains:
+     5→ * employees, attendance, salaries, commissions, leave requests,
+     6→ * performance reviews, and gratuity calculations. All hooks use the
+     7→ * centralized `queryKeys` factory for granular cache invalidation and
+     8→ * the typed `apiGet`/`apiPost`/`apiPatch`/`apiDelete` helpers for
+     9→ * consistent requests.
+    10→ */
+    11→"use client";
+    12→
+    13→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+    14→import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/hooks/api-client";
+    15→import { queryKeys } from "@/hooks/query-keys";
+    16→
+    17→// ─── Types ──────────────────────────────────────────────────────────────────
+    18→
+    19→/** Shape of an employee record returned by the API. */
+    20→export interface Employee {
+    21→  id: number;
+    22→  name: string;
+    23→  email?: string;
+    24→  phone?: string;
+    25→  position?: string;
+    26→  department?: string;
+    27→  salary?: number;
+    28→  startDate?: string;
+    29→  companySlug: string;
+    30→  [key: string]: unknown;
+    31→}
+    32→
+    33→/** Shape of an attendance record returned by the API. */
+    34→export interface Attendance {
+    35→  id: number;
+    36→  employeeId: number;
+    37→  date: string;
+    38→  checkIn?: string;
+    39→  checkOut?: string;
+    40→  status?: string;
+    41→  companySlug: string;
+    42→  [key: string]: unknown;
+    43→}
+    44→
+    45→/** Shape of a salary record returned by the API. */
+    46→export interface Salary {
+    47→  id: number;
+    48→  employeeId: number;
+    49→  month: string;
+    50→  baseSalary: number;
+    51→  deductions: number;
+    52→  netSalary: number;
+    53→  companySlug: string;
+    54→  [key: string]: unknown;
+    55→}
+    56→
+    57→/** Shape of a commission record returned by the API. */
+    58→export interface Commission {
+    59→  id: number;
+    60→  employeeId: number;
+    61→  amount: number;
+    62→  description?: string;
+    63→  date: string;
+    64→  companySlug: string;
+    65→  [key: string]: unknown;
+    66→}
+    67→
+    68→/** Shape of a leave request record returned by the API. */
+    69→export interface LeaveRequest {
+    70→  id: number;
+    71→  employeeId: number;
+    72→  type: string;
+    73→  startDate: string;
+    74→  endDate: string;
+    75→  status: string;
+    76→  companySlug: string;
+    77→  [key: string]: unknown;
+    78→}
+    79→
+    80→/** Shape of a performance review record returned by the API. */
+    81→export interface Performance {
+    82→  id: number;
+    83→  employeeId: number;
+    84→  period: string;
+    85→  rating: number;
+    86→  notes?: string;
+    87→  companySlug: string;
+    88→  [key: string]: unknown;
+    89→}
+    90→
+    91→// ─── Payload Types ──────────────────────────────────────────────────────────
+    92→
+    93→/** Payload for creating a new employee. */
+    94→export interface CreateEmployeePayload {
+    95→  name: string;
+    96→  email?: string;
+    97→  phone?: string;
+    98→  position?: string;
+    99→  department?: string;
+   100→  salary?: number;
+   101→  startDate?: string;
+   102→  companySlug: string;
+   103→  [key: string]: unknown;
+   104→}
+   105→
+   106→/** Payload for updating an existing employee. */
+   107→export interface UpdateEmployeePayload {
+   108→  id: number;
+   109→  name?: string;
+   110→  email?: string;
+   111→  phone?: string;
+   112→  position?: string;
+   113→  department?: string;
+   114→  salary?: number;
+   115→  startDate?: string;
+   116→  [key: string]: unknown;
+   117→}
+   118→
+   119→/** Payload for creating a new attendance record. */
+   120→export interface CreateAttendancePayload {
+   121→  employeeId: number;
+   122→  date: string;
+   123→  checkIn?: string;
+   124→  checkOut?: string;
+   125→  status?: string;
+   126→  companySlug: string;
+   127→  [key: string]: unknown;
+   128→}
+   129→
+   130→/** Payload for updating an existing attendance record. */
+   131→export interface UpdateAttendancePayload {
+   132→  id: number;
+   133→  checkIn?: string;
+   134→  checkOut?: string;
+   135→  status?: string;
+   136→  [key: string]: unknown;
+   137→}
+   138→
+   139→/** Payload for creating a new salary record. */
+   140→export interface CreateSalaryPayload {
+   141→  employeeId: number;
+   142→  month: string;
+   143→  baseSalary: number;
+   144→  deductions: number;
+   145→  netSalary: number;
+   146→  companySlug: string;
+   147→  [key: string]: unknown;
+   148→}
+   149→
+   150→/** Payload for updating an existing salary record. */
+   151→export interface UpdateSalaryPayload {
+   152→  id: number;
+   153→  month?: string;
+   154→  baseSalary?: number;
+   155→  deductions?: number;
+   156→  netSalary?: number;
+   157→  [key: string]: unknown;
+   158→}
+   159→
+   160→/** Payload for creating a new commission record. */
+   161→export interface CreateCommissionPayload {
+   162→  employeeId: number;
+   163→  amount: number;
+   164→  description?: string;
+   165→  date: string;
+   166→  companySlug: string;
+   167→  [key: string]: unknown;
+   168→}
+   169→
+   170→/** Payload for updating an existing commission record. */
+   171→export interface UpdateCommissionPayload {
+   172→  id: number;
+   173→  amount?: number;
+   174→  description?: string;
+   175→  date?: string;
+   176→  [key: string]: unknown;
+   177→}
+   178→
+   179→/** Payload for creating a new leave request. */
+   180→export interface CreateLeavePayload {
+   181→  employeeId: number;
+   182→  type: string;
+   183→  startDate: string;
+   184→  endDate: string;
+   185→  status: string;
+   186→  companySlug: string;
+   187→  [key: string]: unknown;
+   188→}
+   189→
+   190→/** Payload for updating an existing leave request. */
+   191→export interface UpdateLeavePayload {
+   192→  id: number;
+   193→  type?: string;
+   194→  startDate?: string;
+   195→  endDate?: string;
+   196→  status?: string;
+   197→  [key: string]: unknown;
+   198→}
+   199→
+   200→/** Payload for creating a new performance review. */
+   201→export interface CreatePerformancePayload {
+   202→  employeeId: number;
+   203→  period: string;
+   204→  rating: number;
+   205→  notes?: string;
+   206→  companySlug: string;
+   207→  [key: string]: unknown;
+   208→}
+   209→
+   210→/** Payload for updating an existing performance review. */
+   211→export interface UpdatePerformancePayload {
+   212→  id: number;
+   213→  period?: string;
+   214→  rating?: number;
+   215→  notes?: string;
+   216→  [key: string]: unknown;
+   217→}
+   218→
+   219→/** Payload for calculating gratuity. */
+   220→export interface GratuityPayload {
+   221→  employeeId: number;
+   222→  companySlug: string;
+   223→  [key: string]: unknown;
+   224→}
+   225→
+   226→/** Response shape for gratuity calculation. */
+   227→export interface GratuityResponse {
+   228→  gratuity: number;
+   229→  employeeId: number;
+   230→  [key: string]: unknown;
+   231→}
+   232→
+   233→// ─── Response Types ─────────────────────────────────────────────────────────
+   234→
+   235→/** Response shape for the employee list endpoint. */
+   236→interface EmployeeListResponse {
+   237→  employees: Employee[];
+   238→}
+   239→
+   240→/** Response shape for a single employee endpoint. */
+   241→interface EmployeeResponse {
+   242→  employee: Employee;
+   243→}
+   244→
+   245→/** Response shape for the attendance list endpoint. */
+   246→interface AttendanceListResponse {
+   247→  attendance: Attendance[];
+   248→}
+   249→
+   250→/** Response shape for a single attendance record endpoint. */
+   251→interface AttendanceResponse {
+   252→  attendance: Attendance;
+   253→}
+   254→
+   255→/** Response shape for the salary list endpoint. */
+   256→interface SalaryListResponse {
+   257→  salaries: Salary[];
+   258→}
+   259→
+   260→/** Response shape for a single salary record endpoint. */
+   261→interface SalaryResponse {
+   262→  salary: Salary;
+   263→}
+   264→
+   265→/** Response shape for the commission list endpoint. */
+   266→interface CommissionListResponse {
+   267→  commissions: Commission[];
+   268→}
+   269→
+   270→/** Response shape for a single commission record endpoint. */
+   271→interface CommissionResponse {
+   272→  commission: Commission;
+   273→}
+   274→
+   275→/** Response shape for the leave request list endpoint. */
+   276→interface LeaveListResponse {
+   277→  leaves: LeaveRequest[];
+   278→}
+   279→
+   280→/** Response shape for a single leave request endpoint. */
+   281→interface LeaveResponse {
+   282→  leave: LeaveRequest;
+   283→}
+   284→
+   285→/** Response shape for the performance review list endpoint. */
+   286→interface PerformanceListResponse {
+   287→  performance: Performance[];
+   288→}
+   289→
+   290→/** Response shape for a single performance review endpoint. */
+   291→interface PerformanceResponse {
+   292→  performance: Performance;
+   293→}
+   294→
+   295→// ═══════════════════════════════════════════════════════════════════════════
+   296→// EMPLOYEE HOOKS
+   297→// ═══════════════════════════════════════════════════════════════════════════
+   298→
+   299→/**
+   300→ * Fetch the list of employees for a given company.
+   301→ *
+   302→ * The query is disabled when `companySlug` is empty, preventing
+   303→ * unnecessary requests before the active company is known.
+   304→ *
+   305→ * @param companySlug - Slug of the company whose employees to fetch.
+   306→ */
+   307→export function useEmployees(companySlug: string) {
+   308→  return useQuery<EmployeeListResponse, ApiError>({
+   309→    queryKey: queryKeys.hr.employees(companySlug),
+   310→    queryFn: () =>
+   311→      apiGet<EmployeeListResponse>(
+   312→        `/api/hr/employees?companySlug=${encodeURIComponent(companySlug)}`,
+   313→      ),
+   314→    enabled: !!companySlug,
+   315→  });
+   316→}
+   317→
+   318→/**
+   319→ * Create a new employee.
+   320→ *
+   321→ * On success all employee queries are invalidated so every mounted
+   322→ * list view refetches with the new entry.
+   323→ */
+   324→export function useCreateEmployee() {
+   325→  const queryClient = useQueryClient();
+   326→
+   327→  return useMutation<EmployeeResponse, ApiError, CreateEmployeePayload>({
+   328→    mutationFn: (payload) =>
+   329→      apiPost<CreateEmployeePayload, EmployeeResponse>(
+   330→        "/api/hr/employees",
+   331→        payload,
+   332→      ),
+   333→    onSuccess: (_data, variables) => {
+   334→      void queryClient.invalidateQueries({
+   335→        queryKey: queryKeys.hr.employees(variables.companySlug),
+   336→      });
+   337→    },
+   338→  });
+   339→}
+   340→
+   341→/**
+   342→ * Update an existing employee.
+   343→ *
+   344→ * On success all employee queries for the relevant company are
+   345→ * invalidated, ensuring all views reflect the updated data.
+   346→ */
+   347→export function useUpdateEmployee() {
+   348→  const queryClient = useQueryClient();
+   349→
+   350→  return useMutation<EmployeeResponse, ApiError, UpdateEmployeePayload>({
+   351→    mutationFn: (payload) => {
+   352→      const { id, ...body } = payload;
+   353→      return apiPatch<typeof body, EmployeeResponse>(
+   354→        `/api/hr/employees/${id}`,
+   355→        body,
+   356→      );
+   357→    },
+   358→    onSuccess: () => {
+   359→      // Invalidate all employee queries across all companies since
+   360→      // the update payload may not contain companySlug
+   361→      void queryClient.invalidateQueries({
+   362→        queryKey: queryKeys.hr.employees(""),
+   363→        exact: false,
+   364→        predicate: (query) => {
+   365→          const key = query.queryKey;
+   366→          return (
+   367→            Array.isArray(key) &&
+   368→            key[0] === "hr" &&
+   369→            key[1] === "employees"
+   370→          );
+   371→        },
+   372→      });
+   373→    },
+   374→  });
+   375→}
+   376→
+   377→/**
+   378→ * Delete a single employee.
+   379→ *
+   380→ * On success all employee queries are invalidated to ensure the
+   381→ * deleted entry no longer appears in any list.
+   382→ *
+   383→ * @param variables - The ID of the employee to delete.
+   384→ */
+   385→export function useDeleteEmployee() {
+   386→  const queryClient = useQueryClient();
+   387→
+   388→  return useMutation<void, ApiError, number>({
+   389→    mutationFn: (id) => apiDelete<void>(`/api/hr/employees/${id}`),
+   390→    onSuccess: () => {
+   391→      void queryClient.invalidateQueries({
+   392→        predicate: (query) => {
+   393→          const key = query.queryKey;
+   394→          return (
+   395→            Array.isArray(key) &&
+   396→            key[0] === "hr" &&
+   397→            key[1] === "employees"
+   398→          );
+   399→        },
+   400→      });
+   401→    },
+   402→  });
+   403→}
+   404→
+   405→// ═══════════════════════════════════════════════════════════════════════════
+   406→// ATTENDANCE HOOKS
+   407→// ═══════════════════════════════════════════════════════════════════════════
+   408→
+   409→/**
+   410→ * Fetch the list of attendance records for a given company.
+   411→ *
+   412→ * The query is disabled when `companySlug` is empty, preventing
+   413→ * unnecessary requests before the active company is known.
+   414→ *
+   415→ * @param companySlug - Slug of the company whose attendance records to fetch.
+   416→ */
+   417→export function useAttendance(companySlug: string) {
+   418→  return useQuery<AttendanceListResponse, ApiError>({
+   419→    queryKey: queryKeys.hr.attendance(companySlug),
+   420→    queryFn: () =>
+   421→      apiGet<AttendanceListResponse>(
+   422→        `/api/hr/attendance?companySlug=${encodeURIComponent(companySlug)}`,
+   423→      ),
+   424→    enabled: !!companySlug,
+   425→  });
+   426→}
+   427→
+   428→/**
+   429→ * Create a new attendance record.
+   430→ *
+   431→ * On success all attendance queries for the relevant company are
+   432→ * invalidated so every mounted list view refetches with the new entry.
+   433→ */
+   434→export function useCreateAttendance() {
+   435→  const queryClient = useQueryClient();
+   436→
+   437→  return useMutation<AttendanceResponse, ApiError, CreateAttendancePayload>({
+   438→    mutationFn: (payload) =>
+   439→      apiPost<CreateAttendancePayload, AttendanceResponse>(
+   440→        "/api/hr/attendance",
+   441→        payload,
+   442→      ),
+   443→    onSuccess: (_data, variables) => {
+   444→      void queryClient.invalidateQueries({
+   445→        queryKey: queryKeys.hr.attendance(variables.companySlug),
+   446→      });
+   447→    },
+   448→  });
+   449→}
+   450→
+   451→/**
+   452→ * Update an existing attendance record.
+   453→ *
+   454→ * On success all attendance queries are invalidated, ensuring all
+   455→ * views reflect the updated data.
+   456→ */
+   457→export function useUpdateAttendance() {
+   458→  const queryClient = useQueryClient();
+   459→
+   460→  return useMutation<AttendanceResponse, ApiError, UpdateAttendancePayload>({
+   461→    mutationFn: (payload) => {
+   462→      const { id, ...body } = payload;
+   463→      return apiPatch<typeof body, AttendanceResponse>(
+   464→        `/api/hr/attendance/${id}`,
+   465→        body,
+   466→      );
+   467→    },
+   468→    onSuccess: () => {
+   469→      void queryClient.invalidateQueries({
+   470→        predicate: (query) => {
+   471→          const key = query.queryKey;
+   472→          return (
+   473→            Array.isArray(key) &&
+   474→            key[0] === "hr" &&
+   475→            key[1] === "attendance"
+   476→          );
+   477→        },
+   478→      });
+   479→    },
+   480→  });
+   481→}
+   482→
+   483→/**
+   484→ * Delete a single attendance record.
+   485→ *
+   486→ * On success all attendance queries are invalidated to ensure the
+   487→ * deleted entry no longer appears in any list.
+   488→ *
+   489→ * @param variables - The ID of the attendance record to delete.
+   490→ */
+   491→export function useDeleteAttendance() {
+   492→  const queryClient = useQueryClient();
+   493→
+   494→  return useMutation<void, ApiError, number>({
+   495→    mutationFn: (id) => apiDelete<void>(`/api/hr/attendance/${id}`),
+   496→    onSuccess: () => {
+   497→      void queryClient.invalidateQueries({
+   498→        predicate: (query) => {
+   499→          const key = query.queryKey;
+   500→          return (
+   501→            Array.isArray(key) &&
+   502→            key[0] === "hr" &&
+   503→            key[1] === "attendance"
+   504→          );
+   505→        },
+   506→      });
+   507→    },
+   508→  });
+   509→}
+   510→
+   511→// ═══════════════════════════════════════════════════════════════════════════
+   512→// SALARY HOOKS
+   513→// ═══════════════════════════════════════════════════════════════════════════
+   514→
+   515→/**
+   516→ * Fetch the list of salary records for a given company.
+   517→ *
+   518→ * The query is disabled when `companySlug` is empty, preventing
+   519→ * unnecessary requests before the active company is known.
+   520→ *
+   521→ * @param companySlug - Slug of the company whose salary records to fetch.
+   522→ */
+   523→export function useSalaries(companySlug: string) {
+   524→  return useQuery<SalaryListResponse, ApiError>({
+   525→    queryKey: queryKeys.hr.salaries(companySlug),
+   526→    queryFn: () =>
+   527→      apiGet<SalaryListResponse>(
+   528→        `/api/hr/salaries?companySlug=${encodeURIComponent(companySlug)}`,
+   529→      ),
+   530→    enabled: !!companySlug,
+   531→  });
+   532→}
+   533→
+   534→/**
+   535→ * Create a new salary record.
+   536→ *
+   537→ * On success all salary queries for the relevant company are
+   538→ * invalidated so every mounted list view refetches with the new entry.
+   539→ */
+   540→export function useCreateSalary() {
+   541→  const queryClient = useQueryClient();
+   542→
+   543→  return useMutation<SalaryResponse, ApiError, CreateSalaryPayload>({
+   544→    mutationFn: (payload) =>
+   545→      apiPost<CreateSalaryPayload, SalaryResponse>(
+   546→        "/api/hr/salaries",
+   547→        payload,
+   548→      ),
+   549→    onSuccess: (_data, variables) => {
+   550→      void queryClient.invalidateQueries({
+   551→        queryKey: queryKeys.hr.salaries(variables.companySlug),
+   552→      });
+   553→    },
+   554→  });
+   555→}
+   556→
+   557→/**
+   558→ * Update an existing salary record.
+   559→ *
+   560→ * On success all salary queries are invalidated, ensuring all
+   561→ * views reflect the updated data.
+   562→ */
+   563→export function useUpdateSalary() {
+   564→  const queryClient = useQueryClient();
+   565→
+   566→  return useMutation<SalaryResponse, ApiError, UpdateSalaryPayload>({
+   567→    mutationFn: (payload) => {
+   568→      const { id, ...body } = payload;
+   569→      return apiPatch<typeof body, SalaryResponse>(
+   570→        `/api/hr/salaries/${id}`,
+   571→        body,
+   572→      );
+   573→    },
+   574→    onSuccess: () => {
+   575→      void queryClient.invalidateQueries({
+   576→        predicate: (query) => {
+   577→          const key = query.queryKey;
+   578→          return (
+   579→            Array.isArray(key) &&
+   580→            key[0] === "hr" &&
+   581→            key[1] === "salaries"
+   582→          );
+   583→        },
+   584→      });
+   585→    },
+   586→  });
+   587→}
+   588→
+   589→/**
+   590→ * Delete a single salary record.
+   591→ *
+   592→ * On success all salary queries are invalidated to ensure the
+   593→ * deleted entry no longer appears in any list.
+   594→ *
+   595→ * @param variables - The ID of the salary record to delete.
+   596→ */
+   597→export function useDeleteSalary() {
+   598→  const queryClient = useQueryClient();
+   599→
+   600→  return useMutation<void, ApiError, number>({
+   601→    mutationFn: (id) => apiDelete<void>(`/api/hr/salaries/${id}`),
+   602→    onSuccess: () => {
+   603→      void queryClient.invalidateQueries({
+   604→        predicate: (query) => {
+   605→          const key = query.queryKey;
+   606→          return (
+   607→            Array.isArray(key) &&
+   608→            key[0] === "hr" &&
+   609→            key[1] === "salaries"
+   610→          );
+   611→        },
+   612→      });
+   613→    },
+   614→  });
+   615→}
+   616→
+   617→// ═══════════════════════════════════════════════════════════════════════════
+   618→// COMMISSION HOOKS
+   619→// ═══════════════════════════════════════════════════════════════════════════
+   620→
+   621→/**
+   622→ * Fetch the list of commission records for a given company.
+   623→ *
+   624→ * The query is disabled when `companySlug` is empty, preventing
+   625→ * unnecessary requests before the active company is known.
+   626→ *
+   627→ * @param companySlug - Slug of the company whose commission records to fetch.
+   628→ */
+   629→export function useCommissions(companySlug: string) {
+   630→  return useQuery<CommissionListResponse, ApiError>({
+   631→    queryKey: queryKeys.hr.commissions(companySlug),
+   632→    queryFn: () =>
+   633→      apiGet<CommissionListResponse>(
+   634→        `/api/hr/commissions?companySlug=${encodeURIComponent(companySlug)}`,
+   635→      ),
+   636→    enabled: !!companySlug,
+   637→  });
+   638→}
+   639→
+   640→/**
+   641→ * Create a new commission record.
+   642→ *
+   643→ * On success all commission queries for the relevant company are
+   644→ * invalidated so every mounted list view refetches with the new entry.
+   645→ */
+   646→export function useCreateCommission() {
+   647→  const queryClient = useQueryClient();
+   648→
+   649→  return useMutation<CommissionResponse, ApiError, CreateCommissionPayload>({
+   650→    mutationFn: (payload) =>
+   651→      apiPost<CreateCommissionPayload, CommissionResponse>(
+   652→        "/api/hr/commissions",
+   653→        payload,
+   654→      ),
+   655→    onSuccess: (_data, variables) => {
+   656→      void queryClient.invalidateQueries({
+   657→        queryKey: queryKeys.hr.commissions(variables.companySlug),
+   658→      });
+   659→    },
+   660→  });
+   661→}
+   662→
+   663→/**
+   664→ * Update an existing commission record.
+   665→ *
+   666→ * On success all commission queries are invalidated, ensuring all
+   667→ * views reflect the updated data.
+   668→ */
+   669→export function useUpdateCommission() {
+   670→  const queryClient = useQueryClient();
+   671→
+   672→  return useMutation<CommissionResponse, ApiError, UpdateCommissionPayload>({
+   673→    mutationFn: (payload) => {
+   674→      const { id, ...body } = payload;
+   675→      return apiPatch<typeof body, CommissionResponse>(
+   676→        `/api/hr/commissions/${id}`,
+   677→        body,
+   678→      );
+   679→    },
+   680→    onSuccess: () => {
+   681→      void queryClient.invalidateQueries({
+   682→        predicate: (query) => {
+   683→          const key = query.queryKey;
+   684→          return (
+   685→            Array.isArray(key) &&
+   686→            key[0] === "hr" &&
+   687→            key[1] === "commissions"
+   688→          );
+   689→        },
+   690→      });
+   691→    },
+   692→  });
+   693→}
+   694→
+   695→/**
+   696→ * Delete a single commission record.
+   697→ *
+   698→ * On success all commission queries are invalidated to ensure the
+   699→ * deleted entry no longer appears in any list.
+   700→ *
+   701→ * @param variables - The ID of the commission record to delete.
+   702→ */
+   703→export function useDeleteCommission() {
+   704→  const queryClient = useQueryClient();
+   705→
+   706→  return useMutation<void, ApiError, number>({
+   707→    mutationFn: (id) => apiDelete<void>(`/api/hr/commissions/${id}`),
+   708→    onSuccess: () => {
+   709→      void queryClient.invalidateQueries({
+   710→        predicate: (query) => {
+   711→          const key = query.queryKey;
+   712→          return (
+   713→            Array.isArray(key) &&
+   714→            key[0] === "hr" &&
+   715→            key[1] === "commissions"
+   716→          );
+   717→        },
+   718→      });
+   719→    },
+   720→  });
+   721→}
+   722→
+   723→// ═══════════════════════════════════════════════════════════════════════════
+   724→// LEAVE REQUEST HOOKS
+   725→// ═══════════════════════════════════════════════════════════════════════════
+   726→
+   727→/**
+   728→ * Fetch the list of leave requests for a given company.
+   729→ *
+   730→ * The query is disabled when `companySlug` is empty, preventing
+   731→ * unnecessary requests before the active company is known.
+   732→ *
+   733→ * @param companySlug - Slug of the company whose leave requests to fetch.
+   734→ */
+   735→export function useLeaves(companySlug: string) {
+   736→  return useQuery<LeaveListResponse, ApiError>({
+   737→    queryKey: queryKeys.hr.leaves(companySlug),
+   738→    queryFn: () =>
+   739→      apiGet<LeaveListResponse>(
+   740→        `/api/hr/leaves?companySlug=${encodeURIComponent(companySlug)}`,
+   741→      ),
+   742→    enabled: !!companySlug,
+   743→  });
+   744→}
+   745→
+   746→/**
+   747→ * Create a new leave request.
+   748→ *
+   749→ * On success all leave queries for the relevant company are
+   750→ * invalidated so every mounted list view refetches with the new entry.
+   751→ */
+   752→export function useCreateLeave() {
+   753→  const queryClient = useQueryClient();
+   754→
+   755→  return useMutation<LeaveResponse, ApiError, CreateLeavePayload>({
+   756→    mutationFn: (payload) =>
+   757→      apiPost<CreateLeavePayload, LeaveResponse>(
+   758→        "/api/hr/leaves",
+   759→        payload,
+   760→      ),
+   761→    onSuccess: (_data, variables) => {
+   762→      void queryClient.invalidateQueries({
+   763→        queryKey: queryKeys.hr.leaves(variables.companySlug),
+   764→      });
+   765→    },
+   766→  });
+   767→}
+   768→
+   769→/**
+   770→ * Update an existing leave request.
+   771→ *
+   772→ * On success all leave queries are invalidated, ensuring all
+   773→ * views reflect the updated data.
+   774→ */
+   775→export function useUpdateLeave() {
+   776→  const queryClient = useQueryClient();
+   777→
+   778→  return useMutation<LeaveResponse, ApiError, UpdateLeavePayload>({
+   779→    mutationFn: (payload) => {
+   780→      const { id, ...body } = payload;
+   781→      return apiPatch<typeof body, LeaveResponse>(
+   782→        `/api/hr/leaves/${id}`,
+   783→        body,
+   784→      );
+   785→    },
+   786→    onSuccess: () => {
+   787→      void queryClient.invalidateQueries({
+   788→        predicate: (query) => {
+   789→          const key = query.queryKey;
+   790→          return (
+   791→            Array.isArray(key) &&
+   792→            key[0] === "hr" &&
+   793→            key[1] === "leaves"
+   794→          );
+   795→        },
+   796→      });
+   797→    },
+   798→  });
+   799→}
+   800→
+   801→/**
+   802→ * Delete a single leave request.
+   803→ *
+   804→ * On success all leave queries are invalidated to ensure the
+   805→ * deleted entry no longer appears in any list.
+   806→ *
+   807→ * @param variables - The ID of the leave request to delete.
+   808→ */
+   809→export function useDeleteLeave() {
+   810→  const queryClient = useQueryClient();
+   811→
+   812→  return useMutation<void, ApiError, number>({
+   813→    mutationFn: (id) => apiDelete<void>(`/api/hr/leaves/${id}`),
+   814→    onSuccess: () => {
+   815→      void queryClient.invalidateQueries({
+   816→        predicate: (query) => {
+   817→          const key = query.queryKey;
+   818→          return (
+   819→            Array.isArray(key) &&
+   820→            key[0] === "hr" &&
+   821→            key[1] === "leaves"
+   822→          );
+   823→        },
+   824→      });
+   825→    },
+   826→  });
+   827→}
+   828→
+   829→// ═══════════════════════════════════════════════════════════════════════════
+   830→// PERFORMANCE REVIEW HOOKS
+   831→// ═══════════════════════════════════════════════════════════════════════════
+   832→
+   833→/**
+   834→ * Fetch the list of performance reviews for a given company.
+   835→ *
+   836→ * The query is disabled when `companySlug` is empty, preventing
+   837→ * unnecessary requests before the active company is known.
+   838→ *
+   839→ * @param companySlug - Slug of the company whose performance reviews to fetch.
+   840→ */
+   841→export function usePerformanceReviews(companySlug: string) {
+   842→  return useQuery<PerformanceListResponse, ApiError>({
+   843→    queryKey: queryKeys.hr.performance(companySlug),
+   844→    queryFn: () =>
+   845→      apiGet<PerformanceListResponse>(
+   846→        `/api/hr/performance?companySlug=${encodeURIComponent(companySlug)}`,
+   847→      ),
+   848→    enabled: !!companySlug,
+   849→  });
+   850→}
+   851→
+   852→/**
+   853→ * Create a new performance review.
+   854→ *
+   855→ * On success all performance queries for the relevant company are
+   856→ * invalidated so every mounted list view refetches with the new entry.
+   857→ */
+   858→export function useCreatePerformance() {
+   859→  const queryClient = useQueryClient();
+   860→
+   861→  return useMutation<PerformanceResponse, ApiError, CreatePerformancePayload>({
+   862→    mutationFn: (payload) =>
+   863→      apiPost<CreatePerformancePayload, PerformanceResponse>(
+   864→        "/api/hr/performance",
+   865→        payload,
+   866→      ),
+   867→    onSuccess: (_data, variables) => {
+   868→      void queryClient.invalidateQueries({
+   869→        queryKey: queryKeys.hr.performance(variables.companySlug),
+   870→      });
+   871→    },
+   872→  });
+   873→}
+   874→
+   875→/**
+   876→ * Update an existing performance review.
+   877→ *
+   878→ * On success all performance queries are invalidated, ensuring all
+   879→ * views reflect the updated data.
+   880→ */
+   881→export function useUpdatePerformance() {
+   882→  const queryClient = useQueryClient();
+   883→
+   884→  return useMutation<PerformanceResponse, ApiError, UpdatePerformancePayload>({
+   885→    mutationFn: (payload) => {
+   886→      const { id, ...body } = payload;
+   887→      return apiPatch<typeof body, PerformanceResponse>(
+   888→        `/api/hr/performance/${id}`,
+   889→        body,
+   890→      );
+   891→    },
+   892→    onSuccess: () => {
+   893→      void queryClient.invalidateQueries({
+   894→        predicate: (query) => {
+   895→          const key = query.queryKey;
+   896→          return (
+   897→            Array.isArray(key) &&
+   898→            key[0] === "hr" &&
+   899→            key[1] === "performance"
+   900→          );
+   901→        },
+   902→      });
+   903→    },
+   904→  });
+   905→}
+   906→
+   907→/**
+   908→ * Delete a single performance review.
+   909→ *
+   910→ * On success all performance queries are invalidated to ensure the
+   911→ * deleted entry no longer appears in any list.
+   912→ *
+   913→ * @param variables - The ID of the performance review to delete.
+   914→ */
+   915→export function useDeletePerformance() {
+   916→  const queryClient = useQueryClient();
+   917→
+   918→  return useMutation<void, ApiError, number>({
+   919→    mutationFn: (id) => apiDelete<void>(`/api/hr/performance/${id}`),
+   920→    onSuccess: () => {
+   921→      void queryClient.invalidateQueries({
+   922→        predicate: (query) => {
+   923→          const key = query.queryKey;
+   924→          return (
+   925→            Array.isArray(key) &&
+   926→            key[0] === "hr" &&
+   927→            key[1] === "performance"
+   928→          );
+   929→        },
+   930→      });
+   931→    },
+   932→  });
+   933→}
+   934→
+   935→// ═══════════════════════════════════════════════════════════════════════════
+   936→// GRATUITY HOOK
+   937→// ═══════════════════════════════════════════════════════════════════════════
+   938→
+   939→/**
+   940→ * Calculate gratuity for an employee.
+   941→ *
+   942→ * Sends the employee and company details to the gratuity endpoint
+   943→ * and returns the calculated gratuity amount. This is a mutation
+   944→ * rather than a query because gratuity is computed on demand.
+   945→ *
+   946→ * On success all employee queries for the relevant company are
+   947→ * invalidated since gratuity calculations may affect salary data.
+   948→ */
+   949→export function useGratuity() {
+   950→  const queryClient = useQueryClient();
+   951→
+   952→  return useMutation<GratuityResponse, ApiError, GratuityPayload>({
+   953→    mutationFn: (payload) =>
+   954→      apiPost<GratuityPayload, GratuityResponse>(
+   955→        "/api/hr/gratuity",
+   956→        payload,
+   957→      ),
+   958→    onSuccess: (_data, variables) => {
+   959→      void queryClient.invalidateQueries({
+   960→        queryKey: queryKeys.hr.employees(variables.companySlug),
+   961→      });
+   962→    },
+   963→  });
+   964→}
+   965→

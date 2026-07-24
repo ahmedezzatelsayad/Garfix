@@ -1,0 +1,928 @@
+     1→/**
+     2→ * platform-admin.ts — React Query hooks for the platform-admin domain.
+     3→ *
+     4→ * Provides typed query and mutation hooks for tenant management, audit logs,
+     5→ * platform stats, AI provider configuration, AI usage & orchestration,
+     6→ * feature flags, announcements, integrations, review queue, queue failures,
+     7→ * retention cleanup, support tickets, SaaS user management, SaaS payments,
+     8→ * and landing content. All hooks use the centralized `queryKeys` factory
+     9→ * for granular cache invalidation and the typed `apiGet`/`apiPost`/
+    10→ * `apiPatch`/`apiDelete` helpers for consistent request handling.
+    11→ */
+    12→"use client";
+    13→
+    14→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+    15→import {
+    16→  apiGet,
+    17→  apiPost,
+    18→  apiPatch,
+    19→  apiDelete,
+    20→  ApiError,
+    21→} from "@/hooks/api-client";
+    22→import { queryKeys } from "@/hooks/query-keys";
+    23→
+    24→// ─── Types ──────────────────────────────────────────────────────────────────
+    25→
+    26→/** Shape of a tenant record returned by the platform-admin API. */
+    27→export interface PlatformTenant {
+    28→  slug: string;
+    29→  name: string;
+    30→  status: string;
+    31→  [key: string]: unknown;
+    32→}
+    33→
+    34→/** Shape of a platform audit log entry. */
+    35→export interface PlatformAuditEntry {
+    36→  id: number;
+    37→  action: string;
+    38→  actor: string;
+    39→  timestamp: string;
+    40→  [key: string]: unknown;
+    41→}
+    42→
+    43→/** Shape of the platform statistics response. */
+    44→export interface PlatformStats {
+    45→  totalTenants: number;
+    46→  activeUsers: number;
+    47→  revenue: number;
+    48→  [key: string]: unknown;
+    49→}
+    50→
+    51→/** Shape of an AI provider configuration record. */
+    52→export interface AIProvider {
+    53→  id: string;
+    54→  name: string;
+    55→  type: string;
+    56→  enabled: boolean;
+    57→  config: Record<string, unknown>;
+    58→  [key: string]: unknown;
+    59→}
+    60→
+    61→/** Shape of the AI usage statistics response. */
+    62→export interface AIUsage {
+    63→  totalTokens: number;
+    64→  totalRequests: number;
+    65→  costBreakdown: Record<string, number>;
+    66→  [key: string]: unknown;
+    67→}
+    68→
+    69→/** Shape of the AI orchestration configuration response. */
+    70→export interface AIOrchestration {
+    71→  routingStrategy: string;
+    72→  fallbackProvider: string;
+    73→  rules: Record<string, unknown>;
+    74→  [key: string]: unknown;
+    75→}
+    76→
+    77→/** Shape of a feature flag record. */
+    78→export interface PlatformFeatureFlag {
+    79→  id: number;
+    80→  key: string;
+    81→  name: string;
+    82→  enabled: boolean;
+    83→  description?: string;
+    84→  [key: string]: unknown;
+    85→}
+    86→
+    87→/** Payload for creating a new feature flag. */
+    88→export interface CreateFeatureFlagPayload {
+    89→  key: string;
+    90→  name: string;
+    91→  enabled: boolean;
+    92→  description?: string;
+    93→  [key: string]: unknown;
+    94→}
+    95→
+    96→/** Payload for updating an existing feature flag. */
+    97→export interface UpdateFeatureFlagPayload {
+    98→  id: number;
+    99→  [key: string]: unknown;
+   100→}
+   101→
+   102→/** Shape of an announcement record. */
+   103→export interface PlatformAnnouncement {
+   104→  id: number;
+   105→  title: string;
+   106→  body: string;
+   107→  type: string;
+   108→  publishedAt?: string;
+   109→  [key: string]: unknown;
+   110→}
+   111→
+   112→/** Payload for creating a new announcement. */
+   113→export interface CreateAnnouncementPayload {
+   114→  title: string;
+   115→  body: string;
+   116→  type: string;
+   117→  [key: string]: unknown;
+   118→}
+   119→
+   120→/** Payload for updating an existing announcement. */
+   121→export interface UpdateAnnouncementPayload {
+   122→  id: number;
+   123→  [key: string]: unknown;
+   124→}
+   125→
+   126→/** Shape of a platform integration record. */
+   127→export interface PlatformIntegration {
+   128→  id: string;
+   129→  name: string;
+   130→  type: string;
+   131→  enabled: boolean;
+   132→  config: Record<string, unknown>;
+   133→  [key: string]: unknown;
+   134→}
+   135→
+   136→/** Shape of a review queue entry. */
+   137→export interface ReviewQueueEntry {
+   138→  id: number;
+   139→  entityType: string;
+   140→  entityId: string;
+   141→  status: string;
+   142→  submittedAt: string;
+   143→  [key: string]: unknown;
+   144→}
+   145→
+   146→/** Shape of a queue failure record. */
+   147→export interface QueueFailure {
+   148→  id: number;
+   149→  queueName: string;
+   150→  errorMessage: string;
+   151→  failedAt: string;
+   152→  [key: string]: unknown;
+   153→}
+   154→
+   155→/** Shape of a support ticket record. */
+   156→export interface PlatformTicket {
+   157→  id: number;
+   158→  subject: string;
+   159→  status: string;
+   160→  priority: string;
+   161→  createdBy: string;
+   162→  [key: string]: unknown;
+   163→}
+   164→
+   165→/** Payload for updating a support ticket. */
+   166→export interface UpdateTicketPayload {
+   167→  id: number;
+   168→  [key: string]: unknown;
+   169→}
+   170→
+   171→/** Payload for replying to a support ticket. */
+   172→export interface ReplyToTicketPayload {
+   173→  id: number;
+   174→  message: string;
+   175→  [key: string]: unknown;
+   176→}
+   177→
+   178→/** Shape of a SaaS user record. */
+   179→export interface SaaSUser {
+   180→  uid: string;
+   181→  email: string;
+   182→  displayName: string;
+   183→  role: string;
+   184→  status: string;
+   185→  [key: string]: unknown;
+   186→}
+   187→
+   188→/** Payload for updating a SaaS user. */
+   189→export interface UpdateSaaSUserPayload {
+   190→  uid: string;
+   191→  [key: string]: unknown;
+   192→}
+   193→
+   194→/** Shape of a SaaS payment record. */
+   195→export interface SaaSPayment {
+   196→  id: number;
+   197→  userId: string;
+   198→  amount: number;
+   199→  currency: string;
+   200→  status: string;
+   201→  createdAt: string;
+   202→  [key: string]: unknown;
+   203→}
+   204→
+   205→/** Payload for initiating a SaaS payment. */
+   206→export interface InitiatePaymentPayload {
+   207→  userId: string;
+   208→  amount: number;
+   209→  currency: string;
+   210→  [key: string]: unknown;
+   211→}
+   212→
+   213→/** Shape of the landing page content response. */
+   214→export interface LandingContent {
+   215→  heroTitle: string;
+   216→  heroSubtitle: string;
+   217→  sections: Record<string, unknown>[];
+   218→  [key: string]: unknown;
+   219→}
+   220→
+   221→/** Payload for updating a tenant. */
+   222→export interface UpdateTenantPayload {
+   223→  slug: string;
+   224→  [key: string]: unknown;
+   225→}
+   226→
+   227→// ─── Platform Admin Query Hooks ─────────────────────────────────────────────
+   228→
+   229→/**
+   230→ * Fetch the list of all platform tenants.
+   231→ *
+   232→ * Returns every tenant registered on the platform including their
+   233→ * slug, name, and current status.
+   234→ */
+   235→export function usePlatformTenants() {
+   236→  return useQuery<PlatformTenant[], ApiError>({
+   237→    queryKey: queryKeys.platformAdmin.tenants(),
+   238→    queryFn: () =>
+   239→      apiGet<PlatformTenant[]>("/api/platform-admin/tenants"),
+   240→  });
+   241→}
+   242→
+   243→/**
+   244→ * Fetch a single platform tenant by its slug.
+   245→ *
+   246→ * The query is disabled when `slug` is empty, preventing
+   247→ * unnecessary requests before a tenant is selected.
+   248→ *
+   249→ * @param slug - Slug of the tenant to fetch.
+   250→ */
+   251→export function usePlatformTenant(slug: string) {
+   252→  return useQuery<PlatformTenant, ApiError>({
+   253→    queryKey: queryKeys.platformAdmin.tenantDetail(slug),
+   254→    queryFn: () =>
+   255→      apiGet<PlatformTenant>(`/api/platform-admin/tenants/${encodeURIComponent(slug)}`),
+   256→    enabled: !!slug,
+   257→  });
+   258→}
+   259→
+   260→/**
+   261→ * Fetch the platform audit log.
+   262→ *
+   263→ * Returns a list of all audit events recorded across the platform,
+   264→ * including actor, action, and timestamp.
+   265→ */
+   266→export function usePlatformAudit() {
+   267→  return useQuery<PlatformAuditEntry[], ApiError>({
+   268→    queryKey: queryKeys.platformAdmin.audit(),
+   269→    queryFn: () =>
+   270→      apiGet<PlatformAuditEntry[]>("/api/platform-admin/audit"),
+   271→  });
+   272→}
+   273→
+   274→/**
+   275→ * Fetch aggregated platform statistics.
+   276→ *
+   277→ * Returns high-level metrics such as total tenants, active users,
+   278→ * and revenue. Uses an extended `staleTime` of 2 minutes because
+   279→ * platform stats change infrequently and don't need real-time freshness.
+   280→ */
+   281→export function usePlatformStats() {
+   282→  return useQuery<PlatformStats, ApiError>({
+   283→    queryKey: queryKeys.platformAdmin.stats(),
+   284→    queryFn: () =>
+   285→      apiGet<PlatformStats>("/api/platform-admin/stats"),
+   286→    staleTime: 120_000,
+   287→  });
+   288→}
+   289→
+   290→/**
+   291→ * Fetch the list of configured AI providers.
+   292→ *
+   293→ * Returns all AI provider integrations available on the platform
+   294→ * with their configuration and enabled status.
+   295→ */
+   296→export function useAIProviders() {
+   297→  return useQuery<AIProvider[], ApiError>({
+   298→    queryKey: queryKeys.platformAdmin.aiProviders(),
+   299→    queryFn: () =>
+   300→      apiGet<AIProvider[]>("/api/platform-admin/ai-providers"),
+   301→  });
+   302→}
+   303→
+   304→/**
+   305→ * Fetch AI usage statistics across the platform.
+   306→ *
+   307→ * Returns token counts, request counts, and cost breakdowns
+   308→ * for all AI provider usage.
+   309→ */
+   310→export function useAIUsage() {
+   311→  return useQuery<AIUsage, ApiError>({
+   312→    queryKey: queryKeys.platformAdmin.aiUsage(),
+   313→    queryFn: () =>
+   314→      apiGet<AIUsage>("/api/platform-admin/ai-usage"),
+   315→  });
+   316→}
+   317→
+   318→/**
+   319→ * Fetch the AI orchestration configuration.
+   320→ *
+   321→ * Returns routing strategy, fallback provider, and rule set
+   322→ * that govern how AI requests are distributed across providers.
+   323→ */
+   324→export function useAIOrchestration() {
+   325→  return useQuery<AIOrchestration, ApiError>({
+   326→    queryKey: queryKeys.platformAdmin.aiOrchestration(),
+   327→    queryFn: () =>
+   328→      apiGet<AIOrchestration>("/api/platform-admin/ai-orchestration"),
+   329→  });
+   330→}
+   331→
+   332→/**
+   333→ * Fetch all platform feature flags.
+   334→ *
+   335→ * Returns the complete list of feature flags including their
+   336→ * key, name, enabled status, and description.
+   337→ */
+   338→export function usePlatformFeatureFlags() {
+   339→  return useQuery<PlatformFeatureFlag[], ApiError>({
+   340→    queryKey: queryKeys.platformAdmin.featureFlags(),
+   341→    queryFn: () =>
+   342→      apiGet<PlatformFeatureFlag[]>("/api/platform-admin/feature-flags"),
+   343→  });
+   344→}
+   345→
+   346→/**
+   347→ * Fetch all platform announcements.
+   348→ *
+   349→ * Returns published and draft announcements managed by platform
+   350→ * administrators for user-facing notifications.
+   351→ */
+   352→export function usePlatformAnnouncements() {
+   353→  return useQuery<PlatformAnnouncement[], ApiError>({
+   354→    queryKey: queryKeys.platformAdmin.announcements(),
+   355→    queryFn: () =>
+   356→      apiGet<PlatformAnnouncement[]>("/api/platform-admin/announcements"),
+   357→  });
+   358→}
+   359→
+   360→/**
+   361→ * Fetch all platform integrations.
+   362→ *
+   363→ * Returns the list of third-party integrations configured at the
+   364→ * platform level including their status and configuration.
+   365→ */
+   366→export function usePlatformIntegrations() {
+   367→  return useQuery<PlatformIntegration[], ApiError>({
+   368→    queryKey: queryKeys.platformAdmin.integrations(),
+   369→    queryFn: () =>
+   370→      apiGet<PlatformIntegration[]>("/api/platform-admin/integrations"),
+   371→  });
+   372→}
+   373→
+   374→/**
+   375→ * Fetch the review queue for platform administrators.
+   376→ *
+   377→ * Returns items pending admin review such as content submissions,
+   378→ * tenant applications, or flagged resources.
+   379→ */
+   380→export function useReviewQueue() {
+   381→  return useQuery<ReviewQueueEntry[], ApiError>({
+   382→    queryKey: queryKeys.platformAdmin.reviewQueue(),
+   383→    queryFn: () =>
+   384→      apiGet<ReviewQueueEntry[]>("/api/platform-admin/review-queue"),
+   385→  });
+   386→}
+   387→
+   388→/**
+   389→ * Fetch the list of queue processing failures.
+   390→ *
+   391→ * Returns records of background jobs that failed processing,
+   392→ * including error messages and timestamps for troubleshooting.
+   393→ */
+   394→export function useQueueFailures() {
+   395→  return useQuery<QueueFailure[], ApiError>({
+   396→    queryKey: queryKeys.platformAdmin.queueFailures(),
+   397→    queryFn: () =>
+   398→      apiGet<QueueFailure[]>("/api/platform-admin/queue-failures"),
+   399→  });
+   400→}
+   401→
+   402→/**
+   403→ * Fetch all support tickets visible to platform administrators.
+   404→ *
+   405→ * Returns a list of tickets with their subject, status, priority,
+   406→ * and creator information.
+   407→ */
+   408→export function usePlatformTickets() {
+   409→  return useQuery<PlatformTicket[], ApiError>({
+   410→    queryKey: queryKeys.platformAdmin.tickets(),
+   411→    queryFn: () =>
+   412→      apiGet<PlatformTicket[]>("/api/platform-admin/tickets"),
+   413→  });
+   414→}
+   415→
+   416→// ─── Platform Admin Mutation Hooks ──────────────────────────────────────────
+   417→
+   418→/**
+   419→ * Update an existing platform tenant.
+   420→ *
+   421→ * Accepts the tenant slug plus any updatable fields. On success
+   422→ * both the tenants list and the specific tenant detail caches
+   423→ * are invalidated so all views reflect the latest data.
+   424→ *
+   425→ * Variables shape: `{ slug: string, ...data }`
+   426→ */
+   427→export function useUpdatePlatformTenant() {
+   428→  const queryClient = useQueryClient();
+   429→
+   430→  return useMutation<PlatformTenant, ApiError, UpdateTenantPayload>({
+   431→    mutationFn: ({ slug, ...data }) =>
+   432→      apiPatch<Record<string, unknown>, PlatformTenant>(
+   433→        `/api/platform-admin/tenants/${encodeURIComponent(slug)}`,
+   434→        data,
+   435→      ),
+   436→    onSuccess: (_data, variables) => {
+   437→      void queryClient.invalidateQueries({
+   438→        queryKey: queryKeys.platformAdmin.tenants(),
+   439→      });
+   440→      void queryClient.invalidateQueries({
+   441→        queryKey: queryKeys.platformAdmin.tenantDetail(variables.slug),
+   442→      });
+   443→    },
+   444→  });
+   445→}
+   446→
+   447→/**
+   448→ * Delete a platform tenant by slug.
+   449→ *
+   450→ * On success the tenants list is invalidated and the specific
+   451→ * tenant detail cache entry is removed so stale data does not
+   452→ * persist for a deleted tenant.
+   453→ *
+   454→ * Variables shape: `{ slug: string }`
+   455→ */
+   456→export function useDeletePlatformTenant() {
+   457→  const queryClient = useQueryClient();
+   458→
+   459→  return useMutation<void, ApiError, { slug: string }>({
+   460→    mutationFn: ({ slug }) =>
+   461→      apiDelete<void>(`/api/platform-admin/tenants/${encodeURIComponent(slug)}`),
+   462→    onSuccess: (_data, variables) => {
+   463→      void queryClient.invalidateQueries({
+   464→        queryKey: queryKeys.platformAdmin.tenants(),
+   465→      });
+   466→      void queryClient.removeQueries({
+   467→        queryKey: queryKeys.platformAdmin.tenantDetail(variables.slug),
+   468→      });
+   469→    },
+   470→  });
+   471→}
+   472→
+   473→/**
+   474→ * Update the AI provider configuration.
+   475→ *
+   476→ * Sends a partial update to the AI providers settings. On success
+   477→ * the AI providers cache is invalidated so the updated configuration
+   478→ * is reflected in any mounted views.
+   479→ */
+   480→export function useUpdateAIProviders() {
+   481→  const queryClient = useQueryClient();
+   482→
+   483→  return useMutation<void, ApiError, Record<string, unknown>>({
+   484→    mutationFn: (data) =>
+   485→      apiPatch<Record<string, unknown>, void>("/api/platform-admin/ai-providers", data),
+   486→    onSuccess: () => {
+   487→      void queryClient.invalidateQueries({
+   488→        queryKey: queryKeys.platformAdmin.aiProviders(),
+   489→      });
+   490→    },
+   491→  });
+   492→}
+   493→
+   494→/**
+   495→ * Test an AI provider connection.
+   496→ *
+   497→ * Sends a test request to the specified AI provider to verify
+   498→ * connectivity and credentials. This is a fire-and-forget style
+   499→ * mutation — it does not invalidate any query caches automatically.
+   500→ */
+   501→export function useTestAIProvider() {
+   502→  return useMutation<Record<string, unknown>, ApiError, Record<string, unknown>>({
+   503→    mutationFn: (payload) =>
+   504→      apiPost<Record<string, unknown>, Record<string, unknown>>(
+   505→        "/api/platform-admin/ai-providers/test",
+   506→        payload,
+   507→      ),
+   508→  });
+   509→}
+   510→
+   511→/**
+   512→ * Update the AI orchestration configuration.
+   513→ *
+   514→ * Sends a partial update to the orchestration settings such as
+   515→ * routing strategy or fallback provider. On success the AI
+   516→ * orchestration cache is invalidated.
+   517→ */
+   518→export function useUpdateAIOrchestration() {
+   519→  const queryClient = useQueryClient();
+   520→
+   521→  return useMutation<void, ApiError, Record<string, unknown>>({
+   522→    mutationFn: (data) =>
+   523→      apiPatch<Record<string, unknown>, void>("/api/platform-admin/ai-orchestration", data),
+   524→    onSuccess: () => {
+   525→      void queryClient.invalidateQueries({
+   526→        queryKey: queryKeys.platformAdmin.aiOrchestration(),
+   527→      });
+   528→    },
+   529→  });
+   530→}
+   531→
+   532→/**
+   533→ * Run an AI benchmark across configured providers.
+   534→ *
+   535→ * Triggers a benchmark job that evaluates provider performance.
+   536→ * This is a fire-and-forget style mutation — it does not
+   537→ * invalidate any query caches automatically. Callers may wish to
+   538→ * poll or refetch AI usage/orchestration data after completion.
+   539→ */
+   540→export function useRunBenchmark() {
+   541→  return useMutation<Record<string, unknown>, ApiError, Record<string, unknown>>({
+   542→    mutationFn: (payload) =>
+   543→      apiPost<Record<string, unknown>, Record<string, unknown>>(
+   544→        "/api/platform-admin/ai-orchestration/run-benchmark",
+   545→        payload,
+   546→      ),
+   547→  });
+   548→}
+   549→
+   550→/**
+   551→ * Create a new platform feature flag.
+   552→ *
+   553→ * On success the feature flags list cache is invalidated so any
+   554→ * mounted views pick up the newly created flag.
+   555→ */
+   556→export function useCreatePlatformFeatureFlag() {
+   557→  const queryClient = useQueryClient();
+   558→
+   559→  return useMutation<PlatformFeatureFlag, ApiError, CreateFeatureFlagPayload>({
+   560→    mutationFn: (payload) =>
+   561→      apiPost<CreateFeatureFlagPayload, PlatformFeatureFlag>(
+   562→        "/api/platform-admin/feature-flags",
+   563→        payload,
+   564→      ),
+   565→    onSuccess: () => {
+   566→      void queryClient.invalidateQueries({
+   567→        queryKey: queryKeys.platformAdmin.featureFlags(),
+   568→      });
+   569→    },
+   570→  });
+   571→}
+   572→
+   573→/**
+   574→ * Update an existing platform feature flag.
+   575→ *
+   576→ * Accepts the flag ID plus any updatable fields. On success the
+   577→ * feature flags list cache is invalidated so all views reflect
+   578→ * the updated flag state.
+   579→ *
+   580→ * Variables shape: `{ id: number, ...data }`
+   581→ */
+   582→export function useUpdatePlatformFeatureFlag() {
+   583→  const queryClient = useQueryClient();
+   584→
+   585→  return useMutation<void, ApiError, UpdateFeatureFlagPayload>({
+   586→    mutationFn: ({ id, ...data }) =>
+   587→      apiPatch<Record<string, unknown>, void>(
+   588→        `/api/platform-admin/feature-flags/${id}`,
+   589→        data,
+   590→      ),
+   591→    onSuccess: () => {
+   592→      void queryClient.invalidateQueries({
+   593→        queryKey: queryKeys.platformAdmin.featureFlags(),
+   594→      });
+   595→    },
+   596→  });
+   597→}
+   598→
+   599→/**
+   600→ * Delete a platform feature flag by ID.
+   601→ *
+   602→ * On success the feature flags list cache is invalidated so the
+   603→ * deleted flag is removed from all mounted views.
+   604→ *
+   605→ * Variables shape: `{ id: number }`
+   606→ */
+   607→export function useDeletePlatformFeatureFlag() {
+   608→  const queryClient = useQueryClient();
+   609→
+   610→  return useMutation<void, ApiError, { id: number }>({
+   611→    mutationFn: ({ id }) =>
+   612→      apiDelete<void>(`/api/platform-admin/feature-flags/${id}`),
+   613→    onSuccess: () => {
+   614→      void queryClient.invalidateQueries({
+   615→        queryKey: queryKeys.platformAdmin.featureFlags(),
+   616→      });
+   617→    },
+   618→  });
+   619→}
+   620→
+   621→/**
+   622→ * Create a new platform announcement.
+   623→ *
+   624→ * On success the announcements list cache is invalidated so any
+   625→ * mounted views pick up the newly created announcement.
+   626→ */
+   627→export function useCreateAnnouncement() {
+   628→  const queryClient = useQueryClient();
+   629→
+   630→  return useMutation<PlatformAnnouncement, ApiError, CreateAnnouncementPayload>({
+   631→    mutationFn: (payload) =>
+   632→      apiPost<CreateAnnouncementPayload, PlatformAnnouncement>(
+   633→        "/api/platform-admin/announcements",
+   634→        payload,
+   635→      ),
+   636→    onSuccess: () => {
+   637→      void queryClient.invalidateQueries({
+   638→        queryKey: queryKeys.platformAdmin.announcements(),
+   639→      });
+   640→    },
+   641→  });
+   642→}
+   643→
+   644→/**
+   645→ * Update an existing platform announcement.
+   646→ *
+   647→ * Accepts the announcement ID plus any updatable fields. On success
+   648→ * the announcements list cache is invalidated so all views reflect
+   649→ * the updated announcement.
+   650→ *
+   651→ * Variables shape: `{ id: number, ...data }`
+   652→ */
+   653→export function useUpdateAnnouncement() {
+   654→  const queryClient = useQueryClient();
+   655→
+   656→  return useMutation<void, ApiError, UpdateAnnouncementPayload>({
+   657→    mutationFn: ({ id, ...data }) =>
+   658→      apiPatch<Record<string, unknown>, void>(
+   659→        `/api/platform-admin/announcements/${id}`,
+   660→        data,
+   661→      ),
+   662→    onSuccess: () => {
+   663→      void queryClient.invalidateQueries({
+   664→        queryKey: queryKeys.platformAdmin.announcements(),
+   665→      });
+   666→    },
+   667→  });
+   668→}
+   669→
+   670→/**
+   671→ * Delete a platform announcement by ID.
+   672→ *
+   673→ * On success the announcements list cache is invalidated so the
+   674→ * deleted announcement is removed from all mounted views.
+   675→ *
+   676→ * Variables shape: `{ id: number }`
+   677→ */
+   678→export function useDeleteAnnouncement() {
+   679→  const queryClient = useQueryClient();
+   680→
+   681→  return useMutation<void, ApiError, { id: number }>({
+   682→    mutationFn: ({ id }) =>
+   683→      apiDelete<void>(`/api/platform-admin/announcements/${id}`),
+   684→    onSuccess: () => {
+   685→      void queryClient.invalidateQueries({
+   686→        queryKey: queryKeys.platformAdmin.announcements(),
+   687→      });
+   688→    },
+   689→  });
+   690→}
+   691→
+   692→/**
+   693→ * Update the platform integrations configuration.
+   694→ *
+   695→ * Sends a partial update to the integrations settings. On success
+   696→ * the integrations cache is invalidated so the updated configuration
+   697→ * is reflected in any mounted views.
+   698→ */
+   699→export function useUpdatePlatformIntegrations() {
+   700→  const queryClient = useQueryClient();
+   701→
+   702→  return useMutation<void, ApiError, Record<string, unknown>>({
+   703→    mutationFn: (data) =>
+   704→      apiPatch<Record<string, unknown>, void>("/api/platform-admin/integrations", data),
+   705→    onSuccess: () => {
+   706→      void queryClient.invalidateQueries({
+   707→        queryKey: queryKeys.platformAdmin.integrations(),
+   708→      });
+   709→    },
+   710→  });
+   711→}
+   712→
+   713→/**
+   714→ * Test a platform integration connection.
+   715→ *
+   716→ * Sends a test request to verify connectivity and credentials
+   717→ * for a given integration. This is a fire-and-forget style
+   718→ * mutation — it does not invalidate any query caches automatically.
+   719→ */
+   720→export function useTestIntegration() {
+   721→  return useMutation<Record<string, unknown>, ApiError, Record<string, unknown>>({
+   722→    mutationFn: (payload) =>
+   723→      apiPost<Record<string, unknown>, Record<string, unknown>>(
+   724→        "/api/platform-admin/integrations/test",
+   725→        payload,
+   726→      ),
+   727→  });
+   728→}
+   729→
+   730→/**
+   731→ * Trigger a retention cleanup job across the platform.
+   732→ *
+   733→ * Initiates the data retention policy enforcement which purges
+   734→ * expired records according to configured rules. This is a
+   735→ * fire-and-forget style mutation — it does not invalidate any
+   736→ * query caches automatically. Callers may wish to invalidate
+   737→ * audit or stats queries after the job completes.
+   738→ */
+   739→export function useRetentionCleanup() {
+   740→  return useMutation<Record<string, unknown>, ApiError, Record<string, unknown>>({
+   741→    mutationFn: (payload) =>
+   742→      apiPost<Record<string, unknown>, Record<string, unknown>>(
+   743→        "/api/platform-admin/retention-cleanup",
+   744→        payload,
+   745→      ),
+   746→  });
+   747→}
+   748→
+   749→/**
+   750→ * Update a support ticket.
+   751→ *
+   752→ * Accepts the ticket ID plus any updatable fields such as status
+   753→ * or priority. On success the tickets list cache is invalidated
+   754→ * so all views reflect the updated ticket.
+   755→ *
+   756→ * Variables shape: `{ id: number, ...data }`
+   757→ */
+   758→export function useUpdatePlatformTicket() {
+   759→  const queryClient = useQueryClient();
+   760→
+   761→  return useMutation<void, ApiError, UpdateTicketPayload>({
+   762→    mutationFn: ({ id, ...data }) =>
+   763→      apiPatch<Record<string, unknown>, void>(
+   764→        `/api/platform-admin/tickets/${id}`,
+   765→        data,
+   766→      ),
+   767→    onSuccess: () => {
+   768→      void queryClient.invalidateQueries({
+   769→        queryKey: queryKeys.platformAdmin.tickets(),
+   770→      });
+   771→    },
+   772→  });
+   773→}
+   774→
+   775→/**
+   776→ * Reply to a support ticket.
+   777→ *
+   778→ * Appends a new reply from a platform administrator to the
+   779→ * specified ticket. On success the tickets list cache is
+   780→ * invalidated so any mounted views reflect the new reply.
+   781→ *
+   782→ * Variables shape: `{ id: number, message: string, ...data }`
+   783→ */
+   784→export function useReplyToTicket() {
+   785→  const queryClient = useQueryClient();
+   786→
+   787→  return useMutation<void, ApiError, ReplyToTicketPayload>({
+   788→    mutationFn: ({ id, ...data }) =>
+   789→      apiPost<Record<string, unknown>, void>(
+   790→        `/api/platform-admin/tickets/${id}/replies`,
+   791→        data,
+   792→      ),
+   793→    onSuccess: () => {
+   794→      void queryClient.invalidateQueries({
+   795→        queryKey: queryKeys.platformAdmin.tickets(),
+   796→      });
+   797→    },
+   798→  });
+   799→}
+   800→
+   801→// ─── SaaS Query Hooks ───────────────────────────────────────────────────────
+   802→
+   803→/**
+   804→ * Fetch the list of all SaaS users.
+   805→ *
+   806→ * Returns every user registered on the SaaS platform including
+   807→ * their uid, email, display name, role, and status.
+   808→ */
+   809→export function useSaaSUsers() {
+   810→  return useQuery<SaaSUser[], ApiError>({
+   811→    queryKey: queryKeys.saas.users(),
+   812→    queryFn: () =>
+   813→      apiGet<SaaSUser[]>("/api/saas/users"),
+   814→  });
+   815→}
+   816→
+   817→/**
+   818→ * Fetch the list of all SaaS payment records.
+   819→ *
+   820→ * Returns payment history including amounts, currencies,
+   821→ * statuses, and timestamps.
+   822→ */
+   823→export function useSaaSPayments() {
+   824→  return useQuery<SaaSPayment[], ApiError>({
+   825→    queryKey: queryKeys.saas.payments(),
+   826→    queryFn: () =>
+   827→      apiGet<SaaSPayment[]>("/api/saas/payments"),
+   828→  });
+   829→}
+   830→
+   831→/**
+   832→ * Fetch the public landing page content.
+   833→ *
+   834→ * Returns the hero section text, subtitle, and configurable
+   835→ * sections that make up the marketing landing page.
+   836→ */
+   837→export function useLandingContent() {
+   838→  return useQuery<LandingContent, ApiError>({
+   839→    queryKey: ["landing-content"] as const,
+   840→    queryFn: () =>
+   841→      apiGet<LandingContent>("/api/landing-content"),
+   842→  });
+   843→}
+   844→
+   845→// ─── SaaS Mutation Hooks ────────────────────────────────────────────────────
+   846→
+   847→/**
+   848→ * Update a SaaS user.
+   849→ *
+   850→ * Accepts the user uid plus any updatable fields. On success
+   851→ * the SaaS users list cache is invalidated so all views reflect
+   852→ * the updated user data.
+   853→ *
+   854→ * Variables shape: `{ uid: string, ...data }`
+   855→ */
+   856→export function useUpdateSaaSUser() {
+   857→  const queryClient = useQueryClient();
+   858→
+   859→  return useMutation<void, ApiError, UpdateSaaSUserPayload>({
+   860→    mutationFn: ({ uid, ...data }) =>
+   861→      apiPatch<Record<string, unknown>, void>(
+   862→        `/api/saas/users/${encodeURIComponent(uid)}`,
+   863→        data,
+   864→      ),
+   865→    onSuccess: () => {
+   866→      void queryClient.invalidateQueries({
+   867→        queryKey: queryKeys.saas.users(),
+   868→      });
+   869→    },
+   870→  });
+   871→}
+   872→
+   873→/**
+   874→ * Delete a SaaS user by uid.
+   875→ *
+   876→ * On success the SaaS users list cache is invalidated so the
+   877→ * deleted user is removed from all mounted views.
+   878→ *
+   879→ * Variables shape: `{ uid: string }`
+   880→ */
+   881→export function useDeleteSaaSUser() {
+   882→  const queryClient = useQueryClient();
+   883→
+   884→  return useMutation<void, ApiError, { uid: string }>({
+   885→    mutationFn: ({ uid }) =>
+   886→      apiDelete<void>(`/api/saas/users/${encodeURIComponent(uid)}`),
+   887→    onSuccess: () => {
+   888→      void queryClient.invalidateQueries({
+   889→        queryKey: queryKeys.saas.users(),
+   890→      });
+   891→    },
+   892→  });
+   893→}
+   894→
+   895→/**
+   896→ * Initiate a new SaaS payment.
+   897→ *
+   898→ * Sends payment details to the payment gateway. This is a
+   899→ * fire-and-forget style mutation — it does not invalidate any
+   900→ * query caches automatically. Callers may wish to invalidate
+   901→ * the SaaS payments query after the payment is processed.
+   902→ */
+   903→export function useInitiatePayment() {
+   904→  return useMutation<Record<string, unknown>, ApiError, InitiatePaymentPayload>({
+   905→    mutationFn: (payload) =>
+   906→      apiPost<InitiatePaymentPayload, Record<string, unknown>>(
+   907→        "/api/saas/payments/initiate",
+   908→        payload,
+   909→      ),
+   910→  });
+   911→}
+   912→
+   913→/**
+   914→ * Update the landing page content.
+   915→ *
+   916→ * Sends a partial update to the landing page content managed
+   917→ * by platform administrators. This is a fire-and-forget style
+   918→ * mutation — it does not invalidate any query caches
+   919→ * automatically. Callers may wish to invalidate the
+   920→ * `useLandingContent` query after the update succeeds.
+   921→ */
+   922→export function useUpdateLandingContent() {
+   923→  return useMutation<void, ApiError, Record<string, unknown>>({
+   924→    mutationFn: (data) =>
+   925→      apiPatch<Record<string, unknown>, void>("/api/platform-admin/landing-content", data),
+   926→  });
+   927→}
+   928→
