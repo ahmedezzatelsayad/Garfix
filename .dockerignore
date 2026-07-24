@@ -37,8 +37,9 @@ playwright.config.ts
 **/*.spec.ts
 **/__tests__/**
 
-# Scripts (not needed in Docker)
-scripts
+# Scripts (not needed in Docker — but keep verify script available)
+scripts/*.ts
+scripts/*.log
 
 # AI agent context
 agent-ctx
