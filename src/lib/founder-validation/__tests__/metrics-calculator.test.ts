@@ -12,7 +12,7 @@ import {
 
 function makeCompany(slug: string, overrides: Partial<SyntheticCompany> = {}): SyntheticCompany {
   return {
-    id: 1, name: 'Test', nameAr: 'اختبار', slug,
+    id: '00000001', name: 'Test', nameAr: 'اختبار', slug,
     email: `info@${slug}.com`, phone: '+966500000000', address: 'Riyadh',
     vatNumber: 'SA1234567890', commercialRegistration: 'CR-100',
     currency: 'SAR', country: 'SA', plan: 'business',
@@ -94,8 +94,8 @@ describe('calculateMetrics', () => {
 
   it('should count total invoices across companies', () => {
     const companies = [
-      makeCompany('a', { invoices: Array.from({ length: 10 }, (_, i) => ({ id: i, invoiceNumber: `INV-${i}`, companySlug: 'a', clientId: null, clientName: 'X', clientNameAr: 'Y', invoiceType: 'sales' as const, status: 'paid' as const, issueDate: '2024-01-01', dueDate: '2024-02-01', lineItems: [], subtotal: '0', taxRate: '15', taxAmount: '0', total: '100', shipping: '0', discount: '0', paid: '100', currency: 'SAR', source: null, createdByEmail: 'a@b.com', createdByName: 'A', createdAt: new Date() })) }),
-      makeCompany('b', { invoices: Array.from({ length: 20 }, (_, i) => ({ id: i + 100, invoiceNumber: `INV-${i + 100}`, companySlug: 'b', clientId: null, clientName: 'X', clientNameAr: 'Y', invoiceType: 'sales' as const, status: 'paid' as const, issueDate: '2024-01-01', dueDate: '2024-02-01', lineItems: [], subtotal: '0', taxRate: '15', taxAmount: '0', total: '200', shipping: '0', discount: '0', paid: '200', currency: 'SAR', source: null, createdByEmail: 'a@b.com', createdByName: 'A', createdAt: new Date() })) }),
+      makeCompany('a', { invoices: Array.from({ length: 10 }, (_, i) => ({ id: String(i).padStart(8, '0'), invoiceNumber: `INV-${i}`, companySlug: 'a', clientId: null, clientName: 'X', clientNameAr: 'Y', invoiceType: 'sales' as const, status: 'paid' as const, issueDate: '2024-01-01', dueDate: '2024-02-01', lineItems: [], subtotal: 0, taxRate: 15, taxAmount: 0, total: 100, shipping: 0, discount: 0, paid: 100, currency: 'SAR', source: null, createdByEmail: 'a@b.com', createdByName: 'A', createdAt: new Date() })) }),
+      makeCompany('b', { invoices: Array.from({ length: 20 }, (_, i) => ({ id: String(i + 100).padStart(8, '0'), invoiceNumber: `INV-${i + 100}`, companySlug: 'b', clientId: null, clientName: 'X', clientNameAr: 'Y', invoiceType: 'sales' as const, status: 'paid' as const, issueDate: '2024-01-01', dueDate: '2024-02-01', lineItems: [], subtotal: 0, taxRate: 15, taxAmount: 0, total: 200, shipping: 0, discount: 0, paid: 200, currency: 'SAR', source: null, createdByEmail: 'a@b.com', createdByName: 'A', createdAt: new Date() })) }),
     ];
     const m = calculateMetrics([], companies);
     // avgCostPerInvoice uses total invoices as denominator; with 0 cost, it's 0
@@ -104,7 +104,7 @@ describe('calculateMetrics', () => {
 
   it('should count total products across companies', () => {
     const companies = [
-      makeCompany('a', { products: Array.from({ length: 5 }, (_, i) => ({ id: i, companySlug: 'a', code: `SKU-${i}`, name: `P${i}`, nameAr: '', categoryId: 0, purchasePrice: '10', sellingPrice: '20', wholesalePrice: '15', currency: 'SAR', createdAt: new Date() })) }),
+      makeCompany('a', { products: Array.from({ length: 5 }, (_, i) => ({ id: String(i).padStart(8, '0'), companySlug: 'a', code: `SKU-${i}`, name: `P${i}`, nameAr: '', categoryId: 'unknown', purchasePrice: 10, sellingPrice: 20, wholesalePrice: 15, currency: 'SAR', createdAt: new Date() })) }),
     ];
     const m = calculateMetrics([], companies);
     expect(m).toBeDefined();
@@ -144,7 +144,7 @@ describe('calculateMetrics', () => {
 
   it('should calculate average cost per invoice', () => {
     const companies = [
-      makeCompany('a', { invoices: Array.from({ length: 10 }, (_, i) => ({ id: i, invoiceNumber: `INV-${i}`, companySlug: 'a', clientId: null, clientName: 'X', clientNameAr: 'Y', invoiceType: 'sales' as const, status: 'paid' as const, issueDate: '2024-01-01', dueDate: '2024-02-01', lineItems: [], subtotal: '0', taxRate: '15', taxAmount: '0', total: '100', shipping: '0', discount: '0', paid: '100', currency: 'SAR', source: null, createdByEmail: 'a@b.com', createdByName: 'A', createdAt: new Date() })) }),
+      makeCompany('a', { invoices: Array.from({ length: 10 }, (_, i) => ({ id: String(i).padStart(8, '0'), invoiceNumber: `INV-${i}`, companySlug: 'a', clientId: null, clientName: 'X', clientNameAr: 'Y', invoiceType: 'sales' as const, status: 'paid' as const, issueDate: '2024-01-01', dueDate: '2024-02-01', lineItems: [], subtotal: 0, taxRate: 15, taxAmount: 0, total: 100, shipping: 0, discount: 0, paid: 100, currency: 'SAR', source: null, createdByEmail: 'a@b.com', createdByName: 'A', createdAt: new Date() })) }),
     ];
     const entries = [makeEntry({ costUsd: 0.05 })];
     const m = calculateMetrics(entries as TelemetryEntry[], companies);
@@ -161,8 +161,8 @@ describe('calculateMetrics', () => {
     ];
     const m = calculateMetrics(entries as TelemetryEntry[], [makeCompany('co-1')]);
     expect(Object.keys(m.providerDistribution).length).toBe(2);
-    expect(m.providerDistribution['deepseek']).toBe(2);
-    expect(m.providerDistribution['google']).toBe(1);
+    expect(m.providerDistribution['deepseek'].requests).toBe(2);
+    expect(m.providerDistribution['google'].requests).toBe(1);
   });
 
   it('should have model distribution with entries', () => {
@@ -173,8 +173,8 @@ describe('calculateMetrics', () => {
       makeEntry({ model: 'model-a' }),
     ];
     const m = calculateMetrics(entries as TelemetryEntry[], [makeCompany('co-1')]);
-    expect(m.modelDistribution['model-a']).toBe(3);
-    expect(m.modelDistribution['model-b']).toBe(1);
+    expect(m.modelDistribution['model-a'].requests).toBe(3);
+    expect(m.modelDistribution['model-b'].requests).toBe(1);
   });
 
   it('should limit top expensive tenants to 20', () => {
@@ -198,7 +198,7 @@ describe('calculateMetrics', () => {
       makeEntry({ provider: i % 3 === 0 ? 'deepseek' : i % 3 === 1 ? 'google' : 'meta' })
     );
     const m = calculateMetrics(entries as TelemetryEntry[], [makeCompany('co-1')]);
-    const sum = Object.values(m.providerDistribution).reduce((a, b) => a + b, 0);
+    const sum = Object.values(m.providerDistribution).reduce((a, b) => a + b.requests, 0);
     expect(sum).toBe(100);
   });
 

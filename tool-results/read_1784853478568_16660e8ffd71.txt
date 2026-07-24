@@ -1,0 +1,2002 @@
+     1→bun test v1.3.14 (0d9b296a)
+     2→
+     3→e2e/api-health.spec.ts:
+     4→
+     5→# Unhandled error between tests
+     6→-------------------------------
+     7→2252 |     this.test = test;
+     8→2253 |   }
+     9→2254 |   _currentSuite(location, title) {
+    10→2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+    11→2256 |     if (!suite) {
+    12→2257 |       throw new Error([
+    13→                       ^
+    14→error: Playwright Test did not expect test.describe() to be called here.
+    15→Most common reasons include:
+    16→- You are calling test.describe() in a configuration file.
+    17→- You are calling test.describe() in a file that is imported by the configuration file.
+    18→- You have two different versions of @playwright/test. This usually happens
+    19→  when one of the dependencies in your package.json depends on @playwright/test.
+    20→- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+    21→      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+    22→      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+    23→      at /home/z/my-project/e2e/api-health.spec.ts:6:6
+    24→-------------------------------
+    25→
+    26→
+    27→e2e/invoices.spec.ts:
+    28→
+    29→# Unhandled error between tests
+    30→-------------------------------
+    31→2252 |     this.test = test;
+    32→2253 |   }
+    33→2254 |   _currentSuite(location, title) {
+    34→2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+    35→2256 |     if (!suite) {
+    36→2257 |       throw new Error([
+    37→                       ^
+    38→error: Playwright Test did not expect test.describe() to be called here.
+    39→Most common reasons include:
+    40→- You are calling test.describe() in a configuration file.
+    41→- You are calling test.describe() in a file that is imported by the configuration file.
+    42→- You have two different versions of @playwright/test. This usually happens
+    43→  when one of the dependencies in your package.json depends on @playwright/test.
+    44→- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+    45→      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+    46→      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+    47→      at /home/z/my-project/e2e/invoices.spec.ts:6:6
+    48→-------------------------------
+    49→
+    50→
+    51→e2e/auth.spec.ts:
+    52→
+    53→# Unhandled error between tests
+    54→-------------------------------
+    55→2252 |     this.test = test;
+    56→2253 |   }
+    57→2254 |   _currentSuite(location, title) {
+    58→2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+    59→2256 |     if (!suite) {
+    60→2257 |       throw new Error([
+    61→                       ^
+    62→error: Playwright Test did not expect test.describe() to be called here.
+    63→Most common reasons include:
+    64→- You are calling test.describe() in a configuration file.
+    65→- You are calling test.describe() in a file that is imported by the configuration file.
+    66→- You have two different versions of @playwright/test. This usually happens
+    67→  when one of the dependencies in your package.json depends on @playwright/test.
+    68→- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+    69→      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+    70→      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+    71→      at /home/z/my-project/e2e/auth.spec.ts:9:6
+    72→-------------------------------
+    73→
+    74→
+    75→e2e/settings.spec.ts:
+    76→
+    77→# Unhandled error between tests
+    78→-------------------------------
+    79→2252 |     this.test = test;
+    80→2253 |   }
+    81→2254 |   _currentSuite(location, title) {
+    82→2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+    83→2256 |     if (!suite) {
+    84→2257 |       throw new Error([
+    85→                       ^
+    86→error: Playwright Test did not expect test.describe() to be called here.
+    87→Most common reasons include:
+    88→- You are calling test.describe() in a configuration file.
+    89→- You are calling test.describe() in a file that is imported by the configuration file.
+    90→- You have two different versions of @playwright/test. This usually happens
+    91→  when one of the dependencies in your package.json depends on @playwright/test.
+    92→- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+    93→      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+    94→      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+    95→      at /home/z/my-project/e2e/settings.spec.ts:6:6
+    96→-------------------------------
+    97→
+    98→
+    99→e2e/dashboard.spec.ts:
+   100→
+   101→# Unhandled error between tests
+   102→-------------------------------
+   103→2252 |     this.test = test;
+   104→2253 |   }
+   105→2254 |   _currentSuite(location, title) {
+   106→2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+   107→2256 |     if (!suite) {
+   108→2257 |       throw new Error([
+   109→                       ^
+   110→error: Playwright Test did not expect test.describe() to be called here.
+   111→Most common reasons include:
+   112→- You are calling test.describe() in a configuration file.
+   113→- You are calling test.describe() in a file that is imported by the configuration file.
+   114→- You have two different versions of @playwright/test. This usually happens
+   115→  when one of the dependencies in your package.json depends on @playwright/test.
+   116→- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+   117→      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+   118→      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+   119→      at /home/z/my-project/e2e/dashboard.spec.ts:6:6
+   120→-------------------------------
+   121→
+   122→
+   123→e2e/clients.spec.ts:
+   124→
+   125→# Unhandled error between tests
+   126→-------------------------------
+   127→2252 |     this.test = test;
+   128→2253 |   }
+   129→2254 |   _currentSuite(location, title) {
+   130→2255 |     const suite = (0, import_globals2.currentlyLoadingFileSuite)();
+   131→2256 |     if (!suite) {
+   132→2257 |       throw new Error([
+   133→                       ^
+   134→error: Playwright Test did not expect test.describe() to be called here.
+   135→Most common reasons include:
+   136→- You are calling test.describe() in a configuration file.
+   137→- You are calling test.describe() in a file that is imported by the configuration file.
+   138→- You have two different versions of @playwright/test. This usually happens
+   139→  when one of the dependencies in your package.json depends on @playwright/test.
+   140→- You are calling test.describe() from an async test.describe() block. Only sync ones are supported.
+   141→      at _currentSuite (/home/z/my-project/node_modules/playwright/lib/common/index.js:2257:17)
+   142→      at _describe (/home/z/my-project/node_modules/playwright/lib/common/index.js:2298:24)
+   143→      at /home/z/my-project/e2e/clients.spec.ts:6:6
+   144→-------------------------------
+   145→
+   146→
+   147→src/lib/__tests__/secretsManager.test.ts:
+   148→(pass) Secrets Manager Module > getSecret > returns value when env var is set [0.22ms]
+   149→(pass) Secrets Manager Module > getSecret > throws in production for required secret not set [0.11ms]
+   150→(pass) Secrets Manager Module > getSecret > returns placeholder in non-production when not set [0.05ms]
+   151→(pass) Secrets Manager Module > getSecret > validates minimum length and throws if too short [0.05ms]
+   152→(pass) Secrets Manager Module > getSecret > returns value when length meets minimum [0.07ms]
+   153→(pass) Secrets Manager Module > getSecret > does not throw for optional secret not set in non-production [0.05ms]
+   154→(pass) Secrets Manager Module > getSecret > does not throw for optional secret not set in production (just warns) [0.03ms]
+   155→(pass) Secrets Manager Module > getSecret > returns dev-placeholder for unknown env key [0.06ms]
+   156→(pass) Secrets Manager Module > generateSecret > returns a string of the requested length [0.95ms]
+   157→(pass) Secrets Manager Module > generateSecret > returns a string of different length when requested [0.08ms]
+   158→(pass) Secrets Manager Module > generateSecret > uses default length of 32 when not specified [0.04ms]
+   159→(pass) Secrets Manager Module > generateSecret > is base64url safe (no +, /, =) [0.04ms]
+   160→(pass) Secrets Manager Module > generateSecret > generates different values on consecutive calls [0.03ms]
+   161→(pass) Secrets Manager Module > generateSecret > generates random-looking values (not predictable) [0.22ms]
+   162→(pass) Secrets Manager Module > getSecretInventory > lists all defined secrets [0.09ms]
+   163→(pass) Secrets Manager Module > getSecretInventory > masks values (never shows actual secret) [0.06ms]
+   164→(pass) Secrets Manager Module > getSecretInventory > shows isSet=false when secret not set [0.03ms]
+   165→(pass) Secrets Manager Module > getSecretInventory > shows isSet=true when secret is set [0.06ms]
+   166→(pass) Secrets Manager Module > getSecretInventory > shows isSet=false for dev-placeholder values [0.04ms]
+   167→(pass) Secrets Manager Module > getSecretInventory > shows correct required status [0.04ms]
+   168→(pass) Secrets Manager Module > validateSecrets > returns ok=true when all required secrets are set in production [0.09ms]
+   169→(pass) Secrets Manager Module > validateSecrets > returns errors for missing required secrets in production [0.04ms]
+   170→(pass) Secrets Manager Module > validateSecrets > returns warnings for missing required secrets in non-production [0.03ms]
+   171→(pass) Secrets Manager Module > validateSecrets > returns error for too-short secret [0.07ms]
+   172→(pass) Secrets Manager Module > validateSecrets > does not error for missing optional secrets [0.04ms]
+   173→(pass) Secrets Manager Module > validateSecrets > returns ok=false with error details for short secret [0.90ms]
+   174→(pass) Secrets Manager Module > rotateSecret > generates a new secret of correct length for known key [0.13ms]
+   175→(pass) Secrets Manager Module > rotateSecret > generates a new secret of correct length for DATABASE_URL [0.04ms]
+   176→(pass) Secrets Manager Module > rotateSecret > generates different values on consecutive calls [0.03ms]
+   177→(pass) Secrets Manager Module > rotateSecret > returns default length 32 for unknown key [0.03ms]
+   178→
+   179→src/lib/__tests__/task1-100-cases.test.ts:
+   180→(pass) Task 1 — 100-case product matching matrix > single-item cases > exact_match_ar — 15 cases all match expected tier + productId [2.93ms]
+   181→(pass) Task 1 — 100-case product matching matrix > single-item cases > exact_match_en — 10 cases all match expected tier + productId [0.59ms]
+   182→(pass) Task 1 — 100-case product matching matrix > single-item cases > arabic_normalization — 15 cases all match expected tier + productId [1.19ms]
+   183→(pass) Task 1 — 100-case product matching matrix > single-item cases > fuzzy_typo — 10 cases all match expected tier + productId [5.31ms]
+   184→(pass) Task 1 — 100-case product matching matrix > single-item cases > false_positive_trap — 15 cases all match expected tier + productId [0.43ms]
+   185→(pass) Task 1 — 100-case product matching matrix > single-item cases > new_product — 10 cases all match expected tier + productId [3.21ms]
+   186→(pass) Task 1 — 100-case product matching matrix > single-item cases > arabic_indic_numerals — 5 cases all match expected tier + productId [0.26ms]
+   187→(pass) Task 1 — 100-case product matching matrix > single-item cases > purchase_invoice — 5 cases all match expected tier + productId [0.13ms]
+   188→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #1: 3-item invoice: cola + pepsi + water (3 items) [0.24ms]
+   189→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #2: 3-item invoice: filters + spark plug (3 items) [0.07ms]
+   190→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #3: 3-item Arabic invoice: battery + tire + wiper (3 items) [0.07ms]
+   191→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #4: 3-item invoice: oil + brake fluid + charger (3 items) [0.06ms]
+   192→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #5: 4-item invoice: cooling parts (4 items) [0.10ms]
+   193→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #6: 3-item trap invoice: 500ml variants (3 items) [0.09ms]
+   194→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #7: 2-item premium trap invoice (2 items) [0.04ms]
+   195→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #8: 3-item Arabic staples invoice (3 items) [0.06ms]
+   196→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #9: 4-item mixed parts invoice (4 items) [0.16ms]
+   197→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > multi_item_invoice #10: 3-item tire + battery + filter invoice (3 items) [0.06ms]
+   198→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #11: mixed: English + Arabic beverages (3 items) [0.09ms]
+   199→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #12: mixed: English + Arabic filters (3 items) [0.07ms]
+   200→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #13: mixed: Arabic battery + English tire + Arabic wiper (3 items) [0.07ms]
+   201→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #14: mixed: English oil + Arabic brake fluid + English charger (3 items) [0.06ms]
+   202→(pass) Task 1 — 100-case product matching matrix > multi-item invoices > mixed_language #15: mixed: Arabic + English filter + battery (3 items) [0.07ms]
+   203→(pass) Task 1 — 100-case product matching matrix > total case count is exactly 100 (15+10+15+10+15+10+10+5+5 + 10+5 multi) [0.05ms]
+   204→
+   205→src/lib/__tests__/productMatcher-b7e.test.ts:
+   206→(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.1: 'زيت' (oil) vs 'زززيت' (gibberish) — same unique chars {ز,ي,ت}, different counts [0.42ms]
+   207→(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.2: 'ملح' (salt) vs 'ملللح' (gibberish) — same unique chars {م,ل,ح}, different counts [0.13ms]
+   208→(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.3: 'باب' (door) vs 'ببباب' (gibberish) — same unique chars {ب,ا}, different counts [0.12ms]
+   209→(pass) B.7e — charSetJaccard multiplicity false-positive trap > B.7e.4: 'شمس' (sun) vs 'شششمس' (gibberish) — same unique chars {ش,م,س}, different counts [0.10ms]
+   210→
+   211→src/lib/__tests__/mfa.test.ts:
+   212→⚠️ PAYMENTS_ENC_KEY not set — using dev-only key. DO NOT use in production.
+   213→(pass) MFA Module > setupMFA > generates a non-empty secret [58.93ms]
+   214→(pass) MFA Module > setupMFA > returns a valid otpauth URI [0.24ms]
+   215→(pass) MFA Module > setupMFA > URI encodes the userUid [0.17ms]
+   216→(pass) MFA Module > setupMFA > generates exactly 10 recovery codes [0.14ms]
+   217→(pass) MFA Module > setupMFA > recovery codes are in XXXX-XXXX format [0.17ms]
+   218→(pass) MFA Module > setupMFA > recovery codes are uppercase [0.18ms]
+   219→(pass) MFA Module > setupMFA > calls db.mFASecret.upsert with correct id [0.18ms]
+   220→(pass) MFA Module > setupMFA > stores encrypted secret in DB [0.19ms]
+   221→(pass) MFA Module > setupMFA > stores encrypted recovery codes in DB [0.12ms]
+   222→(pass) MFA Module > setupMFA > sets enabled=false on create [0.11ms]
+   223→(pass) MFA Module > setupMFA > sets enabled=false on update (re-setup) [0.14ms]
+   224→(pass) MFA Module > setupMFA > clears verifiedAt on update (re-setup) [0.12ms]
+   225→(pass) MFA Module > verifyAndEnableMFA > returns false when record does not exist [0.13ms]
+   226→(pass) MFA Module > verifyAndEnableMFA > returns false for an invalid TOTP code [0.71ms]
+   227→(pass) MFA Module > verifyAndEnableMFA > returns false for a wrong 6-digit code [0.24ms]
+   228→(pass) MFA Module > verifyAndEnableMFA > returns false when code has wrong length [0.20ms]
+   229→(pass) MFA Module > verifyAndEnableMFA > returns false for empty code [0.19ms]
+   230→(pass) MFA Module > verifyAndEnableMFA > does not call update when record not found [0.07ms]
+   231→(pass) MFA Module > verifyAndEnableMFA > does not call update when code is invalid [0.18ms]
+   232→(pass) MFA Module > verifyAndEnableMFA > queries with correct where clause [0.07ms]
+   233→(pass) MFA Module > verifyAndEnableMFA > handles decryption error gracefully (returns false) [0.09ms]
+   234→(pass) MFA Module > verifyAndEnableMFA > non-existent user returns false without throwing [0.04ms]
+   235→(pass) MFA Module > validateMFA > returns false when record does not exist [0.10ms]
+   236→(pass) MFA Module > validateMFA > returns false when MFA is not enabled [0.06ms]
+   237→(pass) MFA Module > validateMFA > returns false for an invalid code on enabled MFA [0.12ms]
+   238→(pass) MFA Module > validateMFA > returns false for wrong-length code [0.14ms]
+   239→(pass) MFA Module > validateMFA > returns false for empty code [0.12ms]
+   240→(pass) MFA Module > validateMFA > does not update lastUsedAt for invalid code [0.14ms]
+   241→(pass) MFA Module > validateMFA > queries with correct where clause [0.05ms]
+   242→(pass) MFA Module > validateMFA > handles decryption error gracefully [0.08ms]
+   243→(pass) MFA Module > validateMFA > non-existent user returns false [0.04ms]
+   244→(pass) MFA Module > validateMFA > disabled MFA returns false even with valid-looking code [0.06ms]
+   245→(pass) MFA Module > useRecoveryCode > returns false when record does not exist [0.12ms]
+   246→(pass) MFA Module > useRecoveryCode > returns false when MFA is not enabled [0.10ms]
+   247→(pass) MFA Module > useRecoveryCode > returns false for invalid recovery code [0.13ms]
+   248→(pass) MFA Module > useRecoveryCode > returns true for a valid recovery code [0.12ms]
+   249→(pass) MFA Module > useRecoveryCode > removes used code from the pool (one-time use) [0.15ms]
+   250→(pass) MFA Module > useRecoveryCode > second use of same code returns false [0.15ms]
+   251→(pass) MFA Module > useRecoveryCode > does not update DB when code is invalid [0.06ms]
+   252→(pass) MFA Module > useRecoveryCode > handles case-insensitive code matching (lowercase fails) [0.06ms]
+   253→(pass) MFA Module > useRecoveryCode > handles empty recovery code pool [0.06ms]
+   254→(pass) MFA Module > useRecoveryCode > queries with correct where clause [0.04ms]
+   255→(pass) MFA Module > isMFAEnabled > returns true when record exists and enabled=true [0.08ms]
+   256→(pass) MFA Module > isMFAEnabled > returns false when record exists and enabled=false [0.03ms]
+   257→(pass) MFA Module > isMFAEnabled > returns false when record does not exist [0.04ms]
+   258→(pass) MFA Module > isMFAEnabled > returns false when enabled is undefined [0.03ms]
+   259→(pass) MFA Module > isMFAEnabled > queries with correct where clause [0.03ms]
+   260→(pass) MFA Module > isMFARequired > returns true for admin role [0.02ms]
+   261→(pass) MFA Module > isMFARequired > returns true for founder (isFounder=true)
+   262→(pass) MFA Module > isMFARequired > returns true for admin founder
+   263→(pass) MFA Module > isMFARequired > returns false for employee (isFounder=false)
+   264→(pass) MFA Module > isMFARequired > returns false for editor (isFounder=false) [0.02ms]
+   265→(pass) MFA Module > disableMFA > calls db delete with correct id [0.09ms]
+   266→(pass) MFA Module > disableMFA > handles non-existent user (delete throws) gracefully [0.05ms]
+   267→(pass) MFA Module > disableMFA > handles Prisma not-found error gracefully [0.05ms]
+   268→(pass) MFA Module > disableMFA > resolves without error for valid user [0.03ms]
+   269→(pass) MFA Module > getRecoveryCodeCount > returns 0 for non-existent user [0.08ms]
+   270→(pass) MFA Module > getRecoveryCodeCount > returns correct count for user with 10 codes [0.16ms]
+   271→(pass) MFA Module > getRecoveryCodeCount > returns 0 when recovery codes have been exhausted [0.06ms]
+   272→(pass) MFA Module > getRecoveryCodeCount > returns 0 when recovery codes are corrupted [0.06ms]
+   273→(pass) MFA Module > Edge cases > consecutive setup calls generate different secrets [0.16ms]
+   274→(pass) MFA Module > Edge cases > consecutive setup calls generate different recovery codes [0.12ms]
+   275→(pass) MFA Module > Edge cases > recovery codes from setup are unique [0.11ms]
+   276→(pass) MFA Module > Edge cases > isMFARequired returns false for viewer role [0.02ms]
+   277→(pass) MFA Module > Edge cases > isMFARequired returns false for empty string role
+   278→(pass) MFA Module > Edge cases > disableMFA with empty string uid calls delete [0.05ms]
+   279→(pass) MFA Module > Edge cases > getRecoveryCodeCount for user with 3 codes returns 3 [0.09ms]
+   280→(pass) MFA Module > Edge cases > getRecoveryCodeCount after using 2 of 5 codes returns 3 [0.08ms]
+   281→(pass) MFA Module > Edge cases > verifyAndEnableMFA with non-string code returns false [0.24ms]
+   282→(pass) MFA Module > Edge cases > setupMFA for different users produces independent records [0.22ms]
+   283→
+   284→src/lib/__tests__/invoices-crud.test.ts:
+   285→(pass) POST /api/invoices > 1. happy path → 200 with { ok, invoice, reviewQueueWarnings } [5.71ms]
+   286→(pass) POST /api/invoices > 2. 403 forbidden — user lacks company access [0.23ms]
+   287→(pass) POST /api/invoices > 3. 409 duplicate invoice number — same companySlug_invoiceNumber exists [0.28ms]
+   288→(pass) POST /api/invoices > 4. 400 invalid input — missing required fields [0.61ms]
+   289→(pass) GET /api/invoices (list) > 5. happy path → 200 with array of invoices + parsed lineItems JSON [0.59ms]
+   290→(pass) GET /api/invoices (list) > 6. filters by status — passes `status` query param into the where clause [0.12ms]
+   291→(pass) GET /api/invoices/[id] > 7. happy path → 200 with single invoice [0.28ms]
+   292→(pass) GET /api/invoices/[id] > 8. 404 not found [0.08ms]
+   293→(pass) GET /api/invoices/[id] > 9. 403 cross-tenant — invoice exists but belongs to a different company [0.08ms]
+   294→(pass) PATCH /api/invoices/[id] > 10. happy path → updates invoice, increments version (PATCH does NOT accept `status` — security: payments go through /payment endpoint) [1.93ms]
+   295→(pass) PATCH /api/invoices/[id] > 10b. PATCH strips `status` from body — security: status changes require /status or /payment endpoint [0.26ms]
+   296→(pass) PATCH /api/invoices/[id] > 10c. PATCH optimistic-lock conflict — wrong expectedVersion returns 409 (C1 FIX: atomic via updateMany count=0) [0.18ms]
+   297→(pass) PATCH /api/invoices/[id] > 10d. C1 FIX: concurrent edit detected atomically — updateMany returns count=0 → 409 [0.16ms]
+   298→(pass) PATCH /api/invoices/[id] > 10e. H4 FIX: PATCH on soft-deleted invoice → 404 (not 200 with silent overwrite) [0.12ms]
+   299→(pass) DELETE /api/invoices/[id] > 11. soft delete → sets deletedAt, returns 200 [0.66ms]
+   300→(pass) DELETE /api/invoices/[id] > 11b. delete on already-deleted invoice → 400 [0.14ms]
+   301→(pass) PATCH /api/invoices/[id]/payment > 12. partial payment → status flips to 'partial', paid amount accumulates [1.06ms]
+   302→(pass) PATCH /api/invoices/[id]/payment > 13. full payment (paid >= total) → status flips to 'paid' [0.26ms]
+   303→(pass) PATCH /api/invoices/[id]/payment > 14. payment on a zero-total invoice → status unchanged (no divide-by-zero trap) [0.14ms]
+   304→(pass) PATCH /api/invoices/[id]/payment > 14b. H5 FIX: negative amount rejected (defense against `paid` reduction) [0.16ms]
+   305→(pass) PATCH /api/invoices/[id]/payment > 14c. H4 FIX: payment on soft-deleted invoice → 404 (not silent paid update) [0.09ms]
+   306→(pass) PATCH /api/invoices/[id]/payment > 14d. C1 FIX: concurrent payment → 409, no payment lost [0.14ms]
+   307→(pass) PATCH /api/invoices/[id]/payment > 14e. H5 FIX: idempotent payment — same key replays cached response, no double-charge [0.68ms]
+   308→(pass) PATCH /api/invoices/[id]/payment > 14f. H5 FIX: different idempotency keys → independent payments (no false cache hit) [0.39ms]
+   309→(pass) PATCH /api/invoices/[id]/status > 15. operational status transition: sent → overdue (allowed) [0.70ms]
+   310→(pass) PATCH /api/invoices/[id]/status > 16. SECURITY: status='paid' rejected on /status endpoint — must go through /payment [0.30ms]
+   311→(pass) PATCH /api/invoices/[id]/status > 16b. H4 FIX: status change on soft-deleted invoice → 404 [0.10ms]
+   312→(pass) PATCH /api/invoices/[id]/status > 16c. C1 FIX: concurrent status change → 409 atomic [0.12ms]
+   313→(pass) GET /api/invoices/[id] — soft-delete enforcement (H1 FIX) > 17. H1 FIX: GET on soft-deleted invoice → 404 (not silent leak of deleted data) [0.08ms]
+   314→
+   315→src/lib/__tests__/rateLimit-advanced.test.ts:
+   316→(pass) checkRateLimit — memory backend > allows first request under limit [0.34ms]
+   317→(pass) checkRateLimit — memory backend > allows up to maxAttempts [0.08ms]
+   318→(pass) checkRateLimit — memory backend > blocks request over maxAttempts [0.07ms]
+   319→(pass) checkRateLimit — memory backend > resets after window expires (simulated via different key) [0.06ms]
+   320→(pass) checkRateLimit — memory backend > sets lockout when lockoutMs is configured [0.09ms]
+   321→(pass) checkRateLimit — memory backend > continues blocking during lockout [0.07ms]
+   322→(pass) checkRateLimit — memory backend > remaining counts down correctly [0.07ms]
+   323→(pass) Rate limit per key — independent counters > different keys have independent counters [0.07ms]
+   324→(pass) Rate limit per key — independent counters > clearing one key does not affect another [0.19ms]
+   325→(pass) Rate limit per key — independent counters > three keys are fully independent [0.10ms]
+   326→(pass) Memory backend lockout > returns retryAfter when locked out [0.07ms]
+   327→(pass) Memory backend lockout > retryAfter is at least 1 second [0.08ms]
+   328→(pass) rateLimitResponse > returns null when under limit [0.34ms]
+   329→(pass) rateLimitResponse > returns 429 status when blocked [0.17ms]
+   330→(pass) rateLimitResponse > 429 response has Arabic error message [0.09ms]
+   331→(pass) rateLimitResponse > 429 response includes retryAfter in body [0.08ms]
+   332→(pass) rateLimitResponse > 429 response has Retry-After header [0.10ms]
+   333→(pass) rateLimitResponse > 429 response has X-RateLimit-Remaining: 0 header [0.06ms]
+   334→(pass) rateLimitResponse > 429 response has X-RateLimit-Reset header [0.08ms]
+   335→(pass) rateLimitResponse > uses identifier when provided [0.09ms]
+   336→(pass) getClientIp > extracts x-real-ip header [0.02ms]
+   337→(pass) getClientIp > returns 'unknown' when no IP headers present [0.02ms]
+   338→(pass) getClientIp > trims whitespace from x-real-ip [0.01ms]
+   339→(pass) getClientIp > prefers x-real-ip over x-forwarded-for when no trusted proxies [0.02ms]
+   340→(pass) getClientIp > returns 'unknown' for empty x-real-ip [0.01ms]
+   341→(pass) clearRateLimit > allows requests after clearing [0.09ms]
+   342→(pass) clearRateLimit > does not throw on clearing non-existent key [0.04ms]
+   343→(pass) LIMITS config > LOGIN has correct maxAttempts [0.01ms]
+   344→(pass) LIMITS config > LOGIN has lockoutMs configured [0.01ms]
+   345→(pass) LIMITS config > REGISTER has correct maxAttempts
+   346→(pass) LIMITS config > OTP_VERIFY has correct maxAttempts
+   347→(pass) LIMITS config > AI_CHAT has 10 max attempts per 60s
+   348→(pass) Edge cases > zero maxAttempts succeeds on first call then blocks [0.06ms]
+   349→(pass) Edge cases > concurrent requests increment counter [0.12ms]
+   350→(pass) Edge cases > same IP with different prefixes are independent [0.07ms]
+   351→(pass) Edge cases > large windowMs value works correctly [0.04ms]
+   352→(pass) Edge cases > very small windowMs value (1ms) [0.03ms]
+   353→(pass) Edge cases > retryAfter is always a positive number when blocked [0.07ms]
+   354→
+   355→src/lib/__tests__/decimal-migration.test.ts:
+   356→(pass) P1 Decimal migration: num() helper > handles Prisma Decimal (decimal.js) values [0.09ms]
+   357→(pass) P1 Decimal migration: num() helper > handles null and undefined gracefully [0.04ms]
+   358→(pass) P1 Decimal migration: num() helper > handles legacy string values (backward compat) [0.02ms]
+   359→(pass) P1 Decimal migration: num() helper > handles numeric values
+   360→(pass) P1 Decimal migration: num() helper > rounds to specified scale [0.01ms]
+   361→(pass) P1 Decimal migration: calcInvoiceTotals() > returns proper 3-decimal string values for Decimal columns [0.06ms]
+   362→(pass) P1 Decimal migration: calcInvoiceTotals() > handles zero items correctly [0.02ms]
+   363→(pass) P1 Decimal migration: calcInvoiceTotals() > handles KWD precision (3 decimals) correctly [0.02ms]
+   364→(pass) P1 Decimal migration: arithmetic helpers > addNums works with Decimal values [0.05ms]
+   365→(pass) P1 Decimal migration: arithmetic helpers > subNums works with Decimal values [0.03ms]
+   366→(pass) P1 Decimal migration: arithmetic helpers > mulNums works with Decimal values [0.02ms]
+   367→(pass) P1 Decimal migration: fmtMoney with Decimal > formats Decimal values correctly [0.13ms]
+   368→(pass) P1 Decimal migration: fmtMoney with Decimal > formats zero Decimal correctly [0.06ms]
+   369→(pass) P1 Decimal migration: invoice creation data > paid field should use numeric 0 (not string "0") for Decimal column [0.02ms]
+   370→(pass) P1 Decimal migration: invoice creation data > calcInvoiceTotals output can be directly used as Decimal column values [0.03ms]
+   371→(pass) P1 Decimal migration: payment arithmetic > computes newPaid correctly with Decimal source values [0.02ms]
+   372→(pass) P1 Decimal migration: payment arithmetic > correctly determines payment status with Decimal [0.03ms]
+   373→(pass) P1 Decimal migration: payment arithmetic > partial payment status works [0.02ms]
+   374→(pass) P1 Decimal migration: SQL cast validation > string monetary values can be cast to Decimal via PostgreSQL [0.05ms]
+   375→(pass) P1 Decimal migration: SQL cast validation > empty/null monetary strings default to 0 after migration [0.01ms]
+   376→
+   377→src/lib/__tests__/inventorySync.test.ts:
+   378→(pass) isReviewQueueWarning > recognizes the [REVIEW-QUEUE] prefix [0.04ms]
+   379→(pass) isReviewQueueWarning > recognizes an empty [REVIEW-QUEUE] tag (just the prefix) [0.01ms]
+   380→(pass) isReviewQueueWarning > rejects the [OVERSELL] prefix — oversell is a different warning class
+   381→(pass) isReviewQueueWarning > rejects arbitrary error messages [0.01ms]
+   382→(pass) isReviewQueueWarning > rejects empty / falsy input
+   383→(pass) isReviewQueueWarning > does NOT match if [REVIEW-QUEUE] appears later in the string (only prefix counts)
+   384→(pass) export smoke test > exports the three sync entrypoints as functions [0.02ms]
+   385→(pass) export smoke test > syncInventoryOnSale has arity 4 (tx, companySlug, items, invoiceId)
+   386→(pass) export smoke test > syncInventoryOnPurchase has arity 4 (tx, companySlug, items, purchaseInvoiceId)
+   387→(pass) export smoke test > recordStockMovement has arity 7+ (tx, companySlug, productId, warehouseId, signedQty, sourceType, sourceId, ...)
+   388→
+   389→src/lib/__tests__/passwordPolicy.test.ts:
+   390→(pass) Password Policy Module > validatePassword — minimum length > rejects password shorter than 10 chars [0.23ms]
+   391→(pass) Password Policy Module > validatePassword — minimum length > accepts exactly 10 chars [0.04ms]
+   392→(pass) Password Policy Module > validatePassword — minimum length > score gets +20 for length >= 10 [0.02ms]
+   393→(pass) Password Policy Module > validatePassword — minimum length > score gets +10 bonus for length >= 14 [0.01ms]
+   394→(pass) Password Policy Module > validatePassword — minimum length > score gets +5 bonus for length >= 20 [0.02ms]
+   395→(pass) Password Policy Module > validatePassword — character classes > requires lowercase letter [0.02ms]
+   396→(pass) Password Policy Module > validatePassword — character classes > gives +10 for lowercase [0.01ms]
+   397→(pass) Password Policy Module > validatePassword — character classes > requires uppercase letter [0.02ms]
+   398→(pass) Password Policy Module > validatePassword — character classes > gives +10 for uppercase [0.02ms]
+   399→(pass) Password Policy Module > validatePassword — character classes > requires digit [0.02ms]
+   400→(pass) Password Policy Module > validatePassword — character classes > gives +15 for digit [0.02ms]
+   401→(pass) Password Policy Module > validatePassword — character classes > requires special character [0.02ms]
+   402→(pass) Password Policy Module > validatePassword — character classes > gives +15 for special character [0.03ms]
+   403→(pass) Password Policy Module > validatePassword — score calculation > score is capped at 100 [0.02ms]
+   404→(pass) Password Policy Module > validatePassword — score calculation > score is floored at 0 [0.01ms]
+   405→(pass) Password Policy Module > validatePassword — score calculation > valid strong password has score >= 40 [0.01ms]
+   406→(pass) Password Policy Module > validatePassword — score calculation > password missing multiple classes has low score [0.02ms]
+   407→(pass) Password Policy Module > validatePassword — score calculation > perfect password scores 100 [0.01ms]
+   408→(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with '1234' [0.02ms]
+   409→(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'password' [0.01ms]
+   410→(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'admin' [0.03ms]
+   411→(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'qwer' [0.01ms]
+   412→(pass) Password Policy Module > validatePassword — common pattern penalties > penalizes password starting with 'abcd' [0.01ms]
+   413→(pass) Password Policy Module > validatePassword — repeated character penalty > penalizes 3+ repeated chars [0.01ms]
+   414→(pass) Password Policy Module > validatePassword — repeated character penalty > does not penalize 2 repeated chars [0.03ms]
+   415→(pass) Password Policy Module > validatePassword — repeated character penalty > penalizes repeated special chars too [0.01ms]
+   416→(pass) Password Policy Module > validatePassword — variety bonus > gives +10 bonus when unique chars >= 70% of length [0.01ms]
+   417→(pass) Password Policy Module > validatePassword — variety bonus > gives +5 extra bonus when unique chars >= 90% of length [0.02ms]
+   418→(pass) Password Policy Module > validatePassword — variety bonus > low variety password gets no variety bonus [0.02ms]
+   419→(pass) Password Policy Module > validatePassword — variety bonus > variety is case-insensitive [0.01ms]
+   420→(pass) Password Policy Module > registerSession > creates a session with correct userUid and jti [0.31ms]
+   421→(pass) Password Policy Module > registerSession > creates session with expiresAt in the future [0.08ms]
+   422→(pass) Password Policy Module > registerSession > stores ipAddress when provided [0.07ms]
+   423→(pass) Password Policy Module > registerSession > stores null ipAddress when not provided [0.06ms]
+   424→(pass) Password Policy Module > registerSession > stores userAgent when provided [0.04ms]
+   425→(pass) Password Policy Module > isSessionValid > returns true for valid non-expired session [0.11ms]
+   426→(pass) Password Policy Module > isSessionValid > returns false for non-existent session [0.03ms]
+   427→(pass) Password Policy Module > isSessionValid > returns false and deletes expired session [0.06ms]
+   428→(pass) Password Policy Module > isSessionValid > queries by jti [0.03ms]
+   429→(pass) Password Policy Module > isSessionValid > handles delete error gracefully for expired session [0.06ms]
+   430→(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeSession deletes by jti [0.06ms]
+   431→(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeSession handles not-found gracefully [0.04ms]
+   432→(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeAllSessions deletes many by userUid [0.08ms]
+   433→(pass) Password Policy Module > revokeSession / revokeAllSessions > revokeAllSessions handles error gracefully [0.03ms]
+   434→(pass) Password Policy Module > session limit enforcement > evicts oldest sessions when over limit (max 5) [0.13ms]
+   435→(pass) Password Policy Module > session limit enforcement > does not evict when below the limit [0.08ms]
+   436→(pass) Password Policy Module > session limit enforcement > queries sessions ordered by createdAt asc for eviction [0.04ms]
+   437→(pass) Password Policy Module > getActiveSessionCount > returns count of non-expired sessions [0.07ms]
+   438→(pass) Password Policy Module > getActiveSessionCount > queries with expiresAt greater than now [0.05ms]
+   439→(pass) Password Policy Module > cleanupExpiredSessions > deletes sessions with expiresAt in the past and returns count [0.07ms]
+   440→
+   441→src/lib/__tests__/responsive-design.test.ts:
+   442→(pass) Responsive Design Breakpoints > each module file contains responsive prefixes (sm/md/lg/xl) [0.66ms]
+   443→(pass) Responsive Design Breakpoints > grid layouts use responsive breakpoints (not bare grid-cols) [0.18ms]
+   444→(pass) Responsive Design Breakpoints > table views use responsive visibility toggles [0.30ms]
+   445→(pass) Responsive Design Breakpoints > views use responsive padding (sm/md/lg:p-) [0.08ms]
+   446→(pass) Responsive Design Breakpoints > views use responsive text sizes (sm/md/lg:text-) [0.21ms]
+   447→(pass) Responsive Design Breakpoints > DataTable uses overflow-x-auto for mobile table scrolling [0.02ms]
+   448→(pass) Responsive Design Breakpoints > AppShell uses responsive padding on main content [0.03ms]
+   449→(pass) Responsive Design Breakpoints > Sidebar uses responsive mobile/desktop layout [0.03ms]
+   450→(pass) Responsive Design Breakpoints > Topbar uses responsive layout (md:hidden, sm:inline, md:px-) [0.02ms]
+   451→
+   452→── Responsive Prefix Summary ──
+   453→  PlatformAdminPanel: 35 responsive prefixes
+   454→  InventoryView: 30 responsive prefixes
+   455→  InvoicesView: 25 responsive prefixes
+   456→  AccountingView: 23 responsive prefixes
+   457→  TeamView: 23 responsive prefixes
+   458→  DashboardView: 19 responsive prefixes
+   459→  PurchasesView: 19 responsive prefixes
+   460→  HRView: 19 responsive prefixes
+   461→  ReportsView: 18 responsive prefixes
+   462→  CatalogView: 17 responsive prefixes
+   463→  BulkInputView: 16 responsive prefixes
+   464→  AppShell: 10 responsive prefixes
+   465→  Topbar: 10 responsive prefixes
+   466→  DataTable: 8 responsive prefixes
+   467→  SettingsView: 5 responsive prefixes
+   468→  Sidebar: 5 responsive prefixes
+   469→  AutomationView: 4 responsive prefixes
+   470→  ClientsView: 2 responsive prefixes
+   471→── End Summary ──
+   472→
+   473→(pass) Responsive Design Breakpoints > summary: count responsive prefix occurrences per file [0.78ms]
+   474→
+   475→src/lib/__tests__/oversell-behavior.test.ts:
+   476→(pass) oversell warning category separation > isReviewQueueWarning returns FALSE for [OVERSELL] warnings [0.03ms]
+   477→(pass) oversell warning category separation > isReviewQueueWarning returns TRUE for [REVIEW-QUEUE] warnings [0.01ms]
+   478→(pass) oversell warning category separation > isReviewQueueWarning returns FALSE for non-prefixed strings [0.02ms]
+   479→(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > manual adjust (positive delta) records movement with source 'manual_adjustment' [0.15ms]
+   480→(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > manual adjust (negative delta) records movement with negative qty [0.05ms]
+   481→(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > manual set mode records movement with the delta (not absolute value) [0.04ms]
+   482→(pass) inventory-ledger P1 fix — manual adjustments record StockMovement > initial stock creation records movement with source 'initial_stock' [0.04ms]
+   483→(pass) AI Copilot inventory edit — same audit trail as manual > AI adjust records movement with source 'ai_adjustment' [0.04ms]
+   484→(pass) AI Copilot inventory edit — same audit trail as manual > AI initial stock records movement with source 'ai_initial_stock' [0.04ms]
+   485→(pass) oversell source types are distinct from sale/purchase > sale oversell block records zero-qty movement with source 'sale' [0.04ms]
+   486→(pass) oversell source types are distinct from sale/purchase > collision-recovery-failed records zero-qty movement with source 'collision-recovery' [0.04ms]
+   487→
+   488→src/lib/__tests__/productMatcher.test.ts:
+   489→(pass) normalizeArabic > lowercases + trims [0.06ms]
+   490→(pass) normalizeArabic > collapses internal whitespace [0.01ms]
+   491→(pass) normalizeArabic > strips Arabic diacritics (tashkeel) [0.03ms]
+   492→(pass) normalizeArabic > normalizes alef variants (أ إ آ → ا) [0.03ms]
+   493→(pass) normalizeArabic > normalizes ta-marbuta ة → ha ه
+   494→(pass) normalizeArabic > normalizes alef-maqsura ى → ya ي [0.03ms]
+   495→(pass) normalizeArabic > converts Arabic-Indic digits ٠-٩ to ASCII 0-9 [0.03ms]
+   496→(pass) normalizeArabic > strips leading definite article ال [0.01ms]
+   497→(pass) normalizeArabic > removes non-word non-Arabic punctuation [0.03ms]
+   498→(pass) normalizeArabic > returns empty string for empty input [0.02ms]
+   499→(pass) matchProduct > 1. Exact alias match → confidence 1.0, tier auto-match [0.26ms]
+   500→(pass) matchProduct > 2. Normalized match (case + whitespace difference) → confidence 0.99 (Path 2 cap, zero-cost steps only) [0.14ms]
+   501→(pass) matchProduct > 3. Arabic-to-English alias is found via exact alias lookup (بيبسي 330) [0.09ms]
+   502→(pass) matchProduct > 4. Arabic normalization: ta-marbuta variant matches the canonical alias [0.11ms]
+   503→(pass) matchProduct > 5. Fuzzy match: small typo within auto-match threshold [0.15ms]
+   504→(pass) matchProduct > 6. No match → productId null + tier 'new-product' [0.16ms]
+   505→(pass) matchProduct > 7. Low-similarity input below suggested threshold → still returns new-product [0.10ms]
+   506→(pass) matchProduct > 8. B.7d prefilter: very long unrelated input is NOT fuzzy-matched [0.10ms]
+   507→(pass) matchProduct > 9. Kill-switch OFF (autoMatchingEnabled=false): exact match still resolves, but tier drops to suggested [0.09ms]
+   508→(pass) matchProduct > 10. Confidence thresholds: just-above-suggested input lands in 'suggested' tier [0.13ms]
+   509→(pass) matchProduct > 11. Arabic-Indic digits in input normalize before matching [0.09ms]
+   510→(pass) matchProduct > 12. Default thresholds are exported and sane [0.02ms]
+   511→(pass) matchProduct > 13. AI-zone: fuzzy score in [0.70, 0.85) → tier 'new-product', action 'ai-queued-for-review' [0.18ms]
+   512→(pass) matchProduct > 14. AI-zone audit row: tier='suggested', action='ai-queued-for-review', resolvedBy=null [0.18ms]
+   513→(pass) matchProduct > 15. AI-zone with real invoiceId: audit row carries the real invoiceId (not null) [0.17ms]
+   514→(pass) matchProduct > 16. AI-zone kill-switch OFF: matcher STILL routes to AI zone (returns new-product, NOT suggested) [0.29ms]
+   515→
+   516→src/lib/__tests__/csrf.test.ts:
+   517→(pass) CSRF cookie module > generateCsrfToken returns a 64-char hex string [0.08ms]
+   518→(pass) CSRF cookie module > generateCsrfToken produces unique tokens on each call [0.02ms]
+   519→(pass) CSRF cookie module > CSRF_COOKIE is 'inv_csrf'
+   520→(pass) CSRF cookie module > CSRF_COOKIE_OPTS has httpOnly=false (JS must read it) [0.01ms]
+   521→(pass) CSRF cookie module > CSRF_COOKIE_OPTS has sameSite='lax'
+   522→(pass) CSRF cookie module > CSRF_TTL is 1800 seconds (30 min)
+   523→(pass) CSRF cookie module > CSRF_COOKIE_OPTS.maxAge matches CSRF_TTL
+   524→(pass) CSRF enforcement logic (SEC-010) > POST on /api/clients requires CSRF [0.03ms]
+   525→(pass) CSRF enforcement logic (SEC-010) > DELETE on /api/invoices/123 requires CSRF
+   526→(pass) CSRF enforcement logic (SEC-010) > PATCH on /api/settings requires CSRF
+   527→(pass) CSRF enforcement logic (SEC-010) > PUT on /api/catalog/456 requires CSRF
+   528→(pass) CSRF enforcement logic (SEC-010) > GET on /api/clients does NOT require CSRF [0.01ms]
+   529→(pass) CSRF enforcement logic (SEC-010) > HEAD on /api/health does NOT require CSRF
+   530→(pass) CSRF enforcement logic (SEC-010) > OPTIONS does NOT require CSRF [0.01ms]
+   531→(pass) CSRF enforcement logic (SEC-010) > POST on /api/auth/refresh is CSRF-exempt
+   532→(pass) CSRF enforcement logic (SEC-010) > POST on /api/auth/login is NOT CSRF-exempt (but is PUBLIC)
+   533→(pass) CSRF double-submit token matching > matching cookie and header passes verification [0.01ms]
+   534→(pass) CSRF double-submit token matching > mismatched cookie and header fails verification [0.01ms]
+   535→(pass) CSRF double-submit token matching > empty cookie fails verification [0.01ms]
+   536→(pass) CSRF double-submit token matching > empty header fails verification
+   537→(pass) CSRF double-submit token matching > undefined cookie fails verification
+   538→(pass) CSRF double-submit token matching > undefined header fails verification
+   539→(pass) Client-side getCsrfToken > returns undefined when cookie is not set [0.07ms]
+   540→(pass) Client-side getCsrfToken > returns the token value when cookie is set [0.03ms]
+   541→(pass) Client-side getCsrfToken > returns the token value when other cookies are present [0.02ms]
+   542→(pass) Client-side getCsrfToken > handles URL-encoded token values [0.01ms]
+   543→(pass) Client-side getCsrfToken > returns undefined for a cookie with a different name
+   544→
+   545→src/lib/__tests__/cryptoVault-advanced.test.ts:
+   546→(pass) encryptSecret / decryptSecret round-trip > round-trips a simple string [0.11ms]
+   547→(pass) encryptSecret / decryptSecret round-trip > round-trips a JSON string [0.06ms]
+   548→(pass) encryptSecret / decryptSecret round-trip > round-trips an API key [0.03ms]
+   549→(pass) encryptSecret / decryptSecret round-trip > round-trips a numeric string [0.02ms]
+   550→(pass) encryptSecret / decryptSecret round-trip > round-trips an Arabic string [0.03ms]
+   551→(pass) encryptSecret / decryptSecret round-trip > different inputs produce different outputs [0.02ms]
+   552→(pass) encryptSecret / decryptSecret round-trip > same input produces different outputs (random IV) [0.02ms]
+   553→(pass) encryptSecret / decryptSecret round-trip > encrypted format has three dot-separated segments [0.02ms]
+   554→(pass) encryptSecret / decryptSecret round-trip > encrypted format segments are valid base64 [0.08ms]
+   555→(pass) decryptSecret legacy plaintext > returns plaintext for non-encrypted format [0.02ms]
+   556→(pass) decryptSecret legacy plaintext > returns plaintext for random text
+   557→(pass) decryptSecret legacy plaintext > returns plaintext for API-key-like format (no dots) [0.02ms]
+   558→(pass) decryptSecret failure modes > throws on encrypted value with wrong key [0.12ms]
+   559→(pass) decryptSecret failure modes > throws on corrupted ciphertext [0.07ms]
+   560→(pass) decryptSecret failure modes > throws on tampered auth tag [0.07ms]
+   561→(pass) decryptSecret failure modes > NEVER returns ciphertext as plaintext [0.07ms]
+   562→(pass) decryptSecret failure modes > error message mentions wrong key possibility [0.05ms]
+   563→(pass) decryptSecret failure modes > throws on malformed encrypted format (two segments only) [0.02ms]
+   564→(pass) decryptSecret failure modes > returns empty string as-is
+   565→(pass) tryDecryptSecret > returns decrypted value for valid encrypted input [0.05ms]
+   566→(pass) tryDecryptSecret > returns null on decryption failure instead of throwing [0.05ms]
+   567→(pass) tryDecryptSecret > returns plaintext for non-encrypted input
+   568→(pass) isEncrypted > detects encrypted format [0.02ms]
+   569→(pass) isEncrypted > rejects plaintext
+   570→(pass) isEncrypted > rejects short strings
+   571→(pass) isEncrypted > rejects strings without dots
+   572→(pass) isEncrypted > rejects empty string
+   573→(pass) hashToken > produces consistent SHA-256 hash [0.02ms]
+   574→(pass) hashToken > produces 64-character hex string [0.11ms]
+   575→(pass) hashToken > different inputs produce different hashes [0.02ms]
+   576→(pass) hashToken > hashes empty string
+   577→(pass) safeCompare > returns true for equal strings [0.01ms]
+   578→(pass) safeCompare > returns false for different strings of same length
+   579→(pass) safeCompare > returns false for different lengths
+   580→(pass) safeCompare > returns true for empty strings [0.01ms]
+   581→(pass) safeCompare > returns false for empty vs non-empty
+   582→(pass) Edge cases > encrypts empty string but decryptSecret returns raw blob (empty ciphertext fails regex) [0.03ms]
+   583→(pass) Edge cases > encrypts and decrypts unicode characters [0.07ms]
+   584→(pass) Edge cases > encrypts and decrypts very long string (10KB) [0.13ms]
+   585→(pass) Edge cases > encrypts and decrypts special characters [0.03ms]
+   586→(pass) Edge cases > encrypts and decrypts JSON with special characters [0.05ms]
+   587→(pass) Edge cases > hashToken is deterministic for long input [0.03ms]
+   588→
+   589→src/lib/__tests__/permissions-advanced.test.ts:
+   590→(pass) Permission catalog > has 16 permissions defined [0.02ms]
+   591→(pass) Permission catalog > all permission keys are strings [0.04ms]
+   592→(pass) Permission catalog > all permissions have a label [0.02ms]
+   593→(pass) Permission catalog > all permissions have a group [0.02ms]
+   594→(pass) Permission catalog > all permissions have an icon [0.01ms]
+   595→(pass) Permission catalog > ALL_PERMISSION_KEYS has 16 entries
+   596→(pass) Permission catalog > ALL_PERMISSION_KEYS matches catalog keys [0.04ms]
+   597→(pass) Permission catalog > no duplicate keys in catalog [0.03ms]
+   598→(pass) Locked permissions > reports_access is locked [0.01ms]
+   599→(pass) Locked permissions > settings_access is locked
+   600→(pass) Locked permissions > finance_access is locked
+   601→(pass) Locked permissions > employee_management is locked
+   602→(pass) Locked permissions > e_invoicing_submit is locked [0.01ms]
+   603→(pass) Role presets > admin has all 16 permissions set to 1 [0.04ms]
+   604→(pass) Role presets > editor has create_invoice
+   605→(pass) Role presets > editor does NOT have settings_access [0.01ms]
+   606→(pass) Role presets > employee has create_invoice
+   607→(pass) Role presets > employee does NOT have export_data
+   608→(pass) Role presets > viewer has only view_customers [0.01ms]
+   609→(pass) Role presets > ROLE_PRESETS has 4 entries
+   610→(pass) Role presets > ROLE_PRESETS includes admin, editor, employee, viewer [0.02ms]
+   611→(pass) computeEffectivePermissions — founder override > founder gets all permissions regardless of role [0.06ms]
+   612→(pass) computeEffectivePermissions — founder override > founder gets employee_management [0.01ms]
+   613→(pass) computeEffectivePermissions — founder override > founder gets finance_access [0.01ms]
+   614→(pass) computeEffectivePermissions — founder override > founder override ignores custom permissions [0.01ms]
+   615→(pass) computeEffectivePermissions — founder override > founder gets reports_access
+   616→(pass) computeEffectivePermissions — role-based > admin role always returns full set [0.01ms]
+   617→(pass) computeEffectivePermissions — role-based > editor role has export_data
+   618→(pass) computeEffectivePermissions — role-based > employee role has print_invoice
+   619→(pass) computeEffectivePermissions — role-based > viewer role does not have create_invoice
+   620→(pass) computeEffectivePermissions — role-based > unknown role falls back to viewer
+   621→(pass) computeEffectivePermissions — custom permissions merge > non-locked custom permission overrides role default [0.02ms]
+   622→(pass) computeEffectivePermissions — custom permissions merge > custom 0 value removes a permission [0.02ms]
+   623→(pass) computeEffectivePermissions — custom permissions merge > locked permission in custom is ignored [0.01ms]
+   624→(pass) computeEffectivePermissions — custom permissions merge > custom permission not in catalog is ignored
+   625→(pass) computeEffectivePermissions — custom permissions merge > null permissions falls back to role defaults [0.01ms]
+   626→(pass) computeEffectivePermissions — custom permissions merge > undefined permissions falls back to role defaults
+   627→(pass) can() helper > returns true for permitted action [0.02ms]
+   628→(pass) can() helper > returns false for denied action
+   629→(pass) can() helper > returns false for unknown permission key
+   630→(pass) can() helper > returns true when value is truthy non-zero
+   631→(pass) can() helper > returns false when value is 0
+   632→(pass) can() helper > returns false for missing key in empty map
+   633→(pass) DB_KEY_TO_CATALOG_KEY mapping > maps invoices:create to create_invoice
+   634→(pass) DB_KEY_TO_CATALOG_KEY mapping > maps clients:view to view_customers
+   635→(pass) DB_KEY_TO_CATALOG_KEY mapping > maps settings:manage to settings_access
+   636→(pass) DB_KEY_TO_CATALOG_KEY mapping > all mapped values exist in catalog [0.03ms]
+   637→(pass) DB_KEY_TO_CATALOG_KEY mapping > has 12 mappings
+   638→(pass) Negative tests > missing permission key returns undefined (not in defaults) [0.03ms]
+   639→(pass) Negative tests > empty role string defaults to viewer [0.01ms]
+   640→
+   641→src/lib/__tests__/tamperAudit.test.ts:
+   642→(pass) Tamper Audit Module > appendToChain > creates first entry with GENESIS prevHash when chain is empty [0.22ms]
+   643→(pass) Tamper Audit Module > appendToChain > creates first entry with chainOrder 0 [0.12ms]
+   644→(pass) Tamper Audit Module > appendToChain > stores entryId correctly [0.08ms]
+   645→(pass) Tamper Audit Module > appendToChain > stores companySlug when provided [0.09ms]
+   646→(pass) Tamper Audit Module > appendToChain > stores null companySlug when not provided [0.07ms]
+   647→(pass) Tamper Audit Module > appendToChain > subsequent entry chains to previous contentHash [0.10ms]
+   648→(pass) Tamper Audit Module > appendToChain > subsequent entry has chainOrder incremented by 1 [0.08ms]
+   649→(pass) Tamper Audit Module > appendToChain > stores a computed contentHash (SHA-256 of content:prevHash) [0.09ms]
+   650→(pass) Tamper Audit Module > appendToChain > contentHash is deterministic for same content and prevHash [0.11ms]
+   651→(pass) Tamper Audit Module > appendToChain > contentHash changes when content changes [0.08ms]
+   652→(pass) Tamper Audit Module > appendToChain > contentHash changes when prevHash changes [0.08ms]
+   653→(pass) Tamper Audit Module > appendToChain > fetches last entry ordered by chainOrder desc [0.05ms]
+   654→(pass) Tamper Audit Module > appendToChain > calls create exactly once per append [0.04ms]
+   655→(pass) Tamper Audit Module > appendToChain > handles DB error gracefully without throwing [0.08ms]
+   656→(pass) Tamper Audit Module > appendToChain > handles create error gracefully without throwing [0.06ms]
+   657→(pass) Tamper Audit Module > verifyChain > returns valid=true for empty chain [0.23ms]
+   658→(pass) Tamper Audit Module > verifyChain > returns valid=true for single entry with GENESIS prevHash [0.10ms]
+   659→(pass) Tamper Audit Module > verifyChain > returns valid=true for valid two-entry chain [0.07ms]
+   660→(pass) Tamper Audit Module > verifyChain > returns valid=true for valid three-entry chain [0.08ms]
+   661→(pass) Tamper Audit Module > verifyChain > detects broken chain when prevHash is wrong [0.09ms]
+   662→(pass) Tamper Audit Module > verifyChain > detects broken chain when first entry prevHash is not GENESIS [0.05ms]
+   663→(pass) Tamper Audit Module > verifyChain > marks entry as invalid (isValid=false) when tampered [0.06ms]
+   664→(pass) Tamper Audit Module > verifyChain > marks all entries as verified (isValid=true) for valid chain [0.05ms]
+   665→(pass) Tamper Audit Module > verifyChain > does not call updateMany when chain is broken [0.04ms]
+   666→(pass) Tamper Audit Module > verifyChain > queries entries ordered by chainOrder asc [0.03ms]
+   667→(pass) Tamper Audit Module > verifyChain > filters by companySlug when provided [0.03ms]
+   668→(pass) Tamper Audit Module > verifyChain > partial company-scope verification only sees entries for that company [0.08ms]
+   669→(pass) Tamper Audit Module > verifyChain > reports correct totalEntries for broken chain [0.06ms]
+   670→(pass) Tamper Audit Module > verifyChain > breakAt reason includes expected and actual hash prefixes [0.08ms]
+   671→(pass) Tamper Audit Module > verifyChain > returns valid for 10-entry chain built correctly [0.13ms]
+   672→(pass) Tamper Audit Module > getChainStats > returns all zeros when no entries exist [0.14ms]
+   673→(pass) Tamper Audit Module > getChainStats > returns correct total entries [0.04ms]
+   674→(pass) Tamper Audit Module > getChainStats > returns correct verified count [0.03ms]
+   675→(pass) Tamper Audit Module > getChainStats > returns correct tampered count [0.04ms]
+   676→(pass) Tamper Audit Module > getChainStats > calculates unverified count as total - verified - tampered [0.05ms]
+   677→(pass) Tamper Audit Module > getChainStats > handles all entries verified [0.04ms]
+   678→(pass) Tamper Audit Module > getChainStats > handles all entries tampered [0.04ms]
+   679→(pass) Tamper Audit Module > getChainStats > calls count three times (total, verified, tampered) [0.03ms]
+   680→(pass) Tamper Audit Module > getChainStats > verified count query includes isValid=true and verifiedAt not null [0.04ms]
+   681→(pass) Tamper Audit Module > getChainStats > tampered count query includes isValid=false [0.03ms]
+   682→(pass) Tamper Audit Module > Edge cases > consecutive appends increment chainOrder correctly [0.13ms]
+   683→(pass) Tamper Audit Module > Edge cases > company isolation: append with companySlug creates company-scoped entry [0.06ms]
+   684→(pass) Tamper Audit Module > Edge cases > very long chain (100 entries) verifies correctly [0.27ms]
+   685→(pass) Tamper Audit Module > Edge cases > hash collision resistance: different content produces different hashes [0.11ms]
+   686→(pass) Tamper Audit Module > Edge cases > chain breaks at the exact tampered entry, not earlier [0.10ms]
+   687→(pass) Tamper Audit Module > Edge cases > getChainStats returns unverified=0 when all are verified or tampered [0.04ms]
+   688→(pass) Tamper Audit Module > Edge cases > verifyChain with company filter does not mark entries from other companies [0.08ms]
+   689→(pass) Tamper Audit Module > Edge cases > appendToChain with null companySlug stores null [0.08ms]
+   690→(pass) Tamper Audit Module > Edge cases > verifyChain handles undefined companySlug (global scope) [0.04ms]
+   691→(pass) Tamper Audit Module > Edge cases > different createdAt timestamps produce different contentHashes [0.12ms]
+   692→
+   693→src/lib/__tests__/valkey-integration.test.ts:
+   694→(pass) valkey.ts — Connection Manager > getValkeyUrl returns undefined when neither env var is set [0.55ms]
+   695→(pass) valkey.ts — Connection Manager > VALKEY_URL takes precedence over REDIS_URL [0.42ms]
+   696→(pass) valkey.ts — Connection Manager > falls back to REDIS_URL when VALKEY_URL is not set [0.32ms]
+   697→(pass) cache.ts — Cache (In-Memory Fallback) > cache miss returns null [1.24ms]
+   698→(pass) cache.ts — Cache (In-Memory Fallback) > cache set + get round-trip [0.13ms]
+   699→(pass) cache.ts — Cache (In-Memory Fallback) > cache TTL expiry [1202.17ms]
+   700→(pass) cache.ts — Cache (In-Memory Fallback) > cache invalidation by key [0.41ms]
+   701→(pass) cache.ts — Cache (In-Memory Fallback) > cache invalidation by pattern [0.41ms]
+   702→(pass) cache.ts — Cache (In-Memory Fallback) > cached() wrapper — hit/miss behavior [0.23ms]
+   703→(pass) cache.ts — Cache (In-Memory Fallback) > cacheStats returns L1 info [0.13ms]
+   704→(pass) cache.ts — Cache (In-Memory Fallback) > onCacheInvalidate callback fires [0.15ms]
+   705→(pass) pubSub.ts — Pub/Sub (Local Mode) > local publish/subscribe delivers message [2.54ms]
+   706→(pass) pubSub.ts — Pub/Sub (Local Mode) > multiple subscribers receive the same message [0.21ms]
+   707→(pass) pubSub.ts — Pub/Sub (Local Mode) > unsubscribe stops delivery [0.16ms]
+   708→(pass) pubSub.ts — Pub/Sub (Local Mode) > different channels are isolated [0.13ms]
+   709→(pass) rateLimit.ts — Rate Limiter (In-Memory Fallback) > allows requests under the limit [0.13ms]
+   710→(pass) rateLimit.ts — Rate Limiter (In-Memory Fallback) > blocks requests over the limit [0.14ms]
+   711→(pass) rateLimit.ts — Rate Limiter (In-Memory Fallback) > lockout expires after lockoutMs [600.74ms]
+   712→(pass) rateLimit.ts — Rate Limiter (In-Memory Fallback) > clearRateLimit resets the counter [0.47ms]
+   713→(pass) rateLimit.ts — Rate Limiter (In-Memory Fallback) > different keys are independent [0.10ms]
+   714→(pass) rateLimit.ts — Rate Limiter (In-Memory Fallback) > all predefined LIMITS are valid [0.16ms]
+   715→(pass) auth.ts — Token Blacklist (No Valkey) > returns false when no Valkey is configured (fail-open) [0.25ms]
+   716→(pass) auth.ts — Token Blacklist (No Valkey) > blacklistToken is no-op when no Valkey is configured [0.11ms]
+   717→(pass) queues.ts — Job Queue (In-Process Mode) > getWorkerId returns a non-empty string [0.16ms]
+   718→(pass) queues.ts — Job Queue (In-Process Mode) > enqueueBackground dead-letters when no handler registered [500.71ms]
+   719→(pass) queues.ts — Job Queue (In-Process Mode) > enqueueBackground executes handler successfully [0.41ms]
+   720→(pass) queues.ts — Job Queue (In-Process Mode) > getDeadLetters returns empty when no failures [0.04ms]
+   721→(pass) queues.ts — Job Queue (In-Process Mode) > clearDeadLetters removes entries [0.12ms]
+   722→(pass) queues.ts — Job Queue (In-Process Mode) > QUEUE_NAMES contains all expected queues [0.05ms]
+   723→[LOAD] 100 concurrent RL checks: 0.3ms
+   724→(pass) Load Tests — Rate Limiter > 100 concurrent rate limit checks complete in < 500ms [0.61ms]
+   725→[LOAD] 1,000 sequential RL checks: 1.2ms
+   726→(pass) Load Tests — Rate Limiter > 1,000 sequential rate limit checks complete in < 1000ms [1.33ms]
+   727→[LOAD] 1,000 cache round-trips: 1.8ms
+   728→(pass) Load Tests — Cache > 1,000 cache set+get round-trips in < 500ms [2.04ms]
+   729→[LOAD] Pattern invalidation of 100 keys: 0.3ms
+   730→(pass) Load Tests — Cache > cache pattern invalidation of 100 keys in < 100ms [0.98ms]
+   731→[LOAD] 1,000 pub/sub messages: 1.0ms
+   732→(pass) Load Tests — Pub/Sub > 1,000 publish/subscribe messages in < 500ms [1.27ms]
+   733→(pass) Chaos Tests — Graceful Degradation > cache operates normally when Valkey URL is invalid [0.95ms]
+   734→(pass) Chaos Tests — Graceful Degradation > rate limiter fails open when Valkey is unreachable [1.36ms]
+   735→(pass) Chaos Tests — Graceful Degradation > auth blacklist fails open (no Valkey = accept all) [1.08ms]
+   736→[CHAOS] Handler retried 3 times before dead-letter
+   737→(pass) Chaos Tests — Graceful Degradation > queue dead-letters job when handler throws [25003.53ms]
+   738→[CHAOS] 40 isolated RL checks (10 users x 4): 0.3ms
+   739→(pass) Chaos Tests — Graceful Degradation > different rate limit keys remain isolated under stress [1.83ms]
+   740→(pass) API Compatibility — No Breaking Changes > cache.ts exports all expected functions [0.19ms]
+   741→(pass) API Compatibility — No Breaking Changes > pubSub.ts exports all expected functions [0.10ms]
+   742→(pass) API Compatibility — No Breaking Changes > rateLimit.ts exports all expected functions [0.11ms]
+   743→(pass) API Compatibility — No Breaking Changes > auth.ts exports all expected functions [0.09ms]
+   744→(pass) API Compatibility — No Breaking Changes > queues.ts exports all expected functions [0.08ms]
+   745→(pass) API Compatibility — No Breaking Changes > valkey.ts exports all expected functions [0.05ms]
+   746→[BENCHMARK] Cache L1 hit — 10,000 reads: 2.4ms total, 0.2µs avg
+   747→(pass) Performance Benchmarks — Measured > Benchmark: cache hit latency (10,000 reads) [2.59ms]
+   748→[BENCHMARK] Rate limit (in-memory) — 10,000 checks: 7.7ms total, 0.8µs avg
+   749→(pass) Performance Benchmarks — Measured > Benchmark: rate limit check latency (10,000 checks) [8.08ms]
+   750→[BENCHMARK] Pub/Sub (local) — 10,000 messages: 4.1ms total, 2441455 msg/sec
+   751→(pass) Performance Benchmarks — Measured > Benchmark: pub/sub throughput (10,000 messages) [4.42ms]
+   752→
+   753→src/lib/__tests__/b10-performance-benchmark.test.ts:
+   754→[B.10] size=100  p50=0.50ms p95=0.67ms p99=0.69ms (threshold 50ms)
+   755→(pass) B.10 — ProductMatcher performance benchmark > benchmarks catalog size 100 aliases (50 products) [28.17ms]
+   756→[B.10] size=1000 p50=3.78ms p95=5.93ms p99=21.62ms (threshold 50ms)
+   757→(pass) B.10 — ProductMatcher performance benchmark > benchmarks catalog size 1,000 aliases (500 products) [142.30ms]
+   758→[B.10] size=5000 p50=24.87ms p95=28.81ms p99=28.81ms (threshold 200ms)
+   759→(pass) B.10 — ProductMatcher performance benchmark > benchmarks catalog size 5,000 aliases (2,500 products) [407.04ms]
+   760→[B.10] size=20000 p50=196.67ms p95=209.32ms p99=209.32ms (threshold 2100ms) — B.11 optimization required for production at this scale
+   761→(pass) B.10 — ProductMatcher performance benchmark > benchmarks catalog size 20,000 aliases (10,000 products) — B.11 trigger [1201.81ms]
+   762→(pass) B.10 — ProductMatcher performance benchmark > documents the B.10 → B.11 finding (linear scaling, full-table scan) [0.24ms]
+   763→
+   764→src/lib/__tests__/e2e-production-journey.test.ts:
+   765→(pass) Step 1: Company Signup & Tenant Provisioning > should provision a new company with defaults [0.13ms]
+   766→(pass) Step 1: Company Signup & Tenant Provisioning > should create CompanyRuntime with tier-based defaults [0.02ms]
+   767→(pass) Step 1: Company Signup & Tenant Provisioning > should set default budget config [0.02ms]
+   768→(pass) Step 1: Company Signup & Tenant Provisioning > should log the provisioning event in audit [0.04ms]
+   769→(pass) Step 1: Company Signup & Tenant Provisioning > should assign default permissions [0.02ms]
+   770→(pass) Step 1: Company Signup & Tenant Provisioning > should create initial session for the founder [0.02ms]
+   771→(pass) Step 2: Import Invoices > should import 1000 invoices in batch [0.38ms]
+   772→(pass) Step 2: Import Invoices > should queue AI processing for each invoice [0.30ms]
+   773→(pass) Step 2: Import Invoices > should not duplicate invoices on re-import [0.04ms]
+   774→(pass) Step 2: Import Invoices > should assign correct company slug to each invoice [0.01ms]
+   775→(pass) Step 2: Import Invoices > should handle partial import failures gracefully [0.02ms]
+   776→(pass) Step 2: Import Invoices > should log import activity in audit [0.04ms]
+   777→(pass) Step 3: AI Gateway Cascade > should have cache miss on first invoice [0.06ms]
+   778→(pass) Step 3: AI Gateway Cascade > should resolve via AI on cache miss [0.04ms]
+   779→(pass) Step 3: AI Gateway Cascade > should store result in cache after AI resolution [0.02ms]
+   780→(pass) Step 3: AI Gateway Cascade > should have cache hit on second identical request [0.02ms]
+   781→(pass) Step 3: AI Gateway Cascade > should cost 0 for cache hit vs 0.002 for AI call
+   782→(pass) Step 3: AI Gateway Cascade > should log every cascade resolution [0.02ms]
+   783→(pass) Step 3: AI Gateway Cascade > should track tokensUsed for AI calls [0.02ms]
+   784→(pass) Step 3: AI Gateway Cascade > should track latencyMs for every request [0.01ms]
+   785→(pass) Step 4: Worker Scaling > should start with tier-based pool size [0.02ms]
+   786→(pass) Step 4: Worker Scaling > should scale up when queue depth > 200 [0.01ms]
+   787→(pass) Step 4: Worker Scaling > should not exceed tier ceiling (business=16) [0.01ms]
+   788→(pass) Step 4: Worker Scaling > should scale down gradually when queue empty [0.03ms]
+   789→(pass) Step 4: Worker Scaling > should never scale below 1 worker [0.02ms]
+   790→(pass) Step 4: Worker Scaling > should track per-company worker count [0.03ms]
+   791→(pass) Step 4: Worker Scaling > should log scaling decisions [0.03ms]
+   792→(pass) Step 5: Cache Performance > should start with empty cache [0.11ms]
+   793→(pass) Step 5: Cache Performance > should fill cache as invoices are processed [0.08ms]
+   794→(pass) Step 5: Cache Performance > should increase hit ratio over time [0.39ms]
+   795→(pass) Step 5: Cache Performance > should handle cache eviction at capacity [0.41ms]
+   796→(pass) Step 5: Cache Performance > should track per-entry hit count [0.04ms]
+   797→(pass) Step 6: Budget Calculation > should track cumulative AI spend [0.06ms]
+   798→(pass) Step 6: Budget Calculation > should calculate spend percentage [0.10ms]
+   799→(pass) Step 6: Budget Calculation > should alert at 80% threshold [0.03ms]
+   800→(pass) Step 6: Budget Calculation > should hard-stop at 100% [0.03ms]
+   801→(pass) Step 6: Budget Calculation > should forecast end-of-month spend [0.02ms]
+   802→(pass) Step 6: Budget Calculation > should create notification on budget alert [0.04ms]
+   803→(pass) Step 7: Profit Calculation > should calculate profit = revenue - costs [0.02ms]
+   804→(pass) Step 7: Profit Calculation > should calculate profit margin percentage [0.02ms]
+   805→(pass) Step 7: Profit Calculation > should track AI cost from request logs [0.02ms]
+   806→(pass) Step 7: Profit Calculation > should estimate infrastructure cost [0.01ms]
+   807→(pass) Step 7: Profit Calculation > should save profit snapshots periodically [0.04ms]
+   808→(pass) Step 7: Profit Calculation > should handle negative profit (loss) [0.02ms]
+   809→(pass) Step 8: Dashboard Stats Update > should show correct invoice count [0.32ms]
+   810→(pass) Step 8: Dashboard Stats Update > should show AI processing stats [0.04ms]
+   811→(pass) Step 8: Dashboard Stats Update > should show cost savings from cascade [0.02ms]
+   812→(pass) Step 8: Dashboard Stats Update > should show active worker count [0.01ms]
+   813→(pass) Step 8: Dashboard Stats Update > should be scoped to the correct company [0.02ms]
+   814→(pass) Step 9: Worker Scale Down > should detect idle queue [0.01ms]
+   815→(pass) Step 9: Worker Scale Down > should reduce workers gradually [0.02ms]
+   816→(pass) Step 9: Worker Scale Down > should not scale below minimum (1) [0.02ms]
+   817→(pass) Step 9: Worker Scale Down > should preserve running jobs during scale down [0.01ms]
+   818→(pass) Step 10: Provider Failure Recovery > should detect provider failure [0.02ms]
+   819→(pass) Step 10: Provider Failure Recovery > should fallback to alternative provider [0.01ms]
+   820→(pass) Step 10: Provider Failure Recovery > should log the fallback decision [0.03ms]
+   821→(pass) Step 10: Provider Failure Recovery > should retry failed requests [0.04ms]
+   822→(pass) Step 10: Provider Failure Recovery > should move to dead letter queue after max retries [0.01ms]
+   823→(pass) Step 10: Provider Failure Recovery > should not lose data during recovery [0.03ms]
+   824→(pass) Step 11: Backup & Restore > should create backup snapshot [0.03ms]
+   825→(pass) Step 11: Backup & Restore > should verify backup integrity via checksum [0.01ms]
+   826→(pass) Step 11: Backup & Restore > should detect tampered backup [0.01ms]
+   827→(pass) Step 11: Backup & Restore > should restore from backup [0.02ms]
+   828→(pass) Step 11: Backup & Restore > should verify data consistency after restore [0.01ms]
+   829→(pass) Step 12: Tenant Deletion (GDPR) > should delete all company invoices [0.18ms]
+   830→(pass) Step 12: Tenant Deletion (GDPR) > should delete all AI request logs [0.21ms]
+   831→(pass) Step 12: Tenant Deletion (GDPR) > should clear all cache entries [0.17ms]
+   832→(pass) Step 12: Tenant Deletion (GDPR) > should delete the company record [0.02ms]
+   833→(pass) Step 12: Tenant Deletion (GDPR) > should delete CompanyRuntime [0.03ms]
+   834→(pass) Step 12: Tenant Deletion (GDPR) > should delete BudgetConfig [0.03ms]
+   835→(pass) Step 12: Tenant Deletion (GDPR) > should log deletion in admin audit (not tenant audit) [0.02ms]
+   836→(pass) Step 12: Tenant Deletion (GDPR) > should revoke all user sessions [0.03ms]
+   837→(pass) Step 12: Tenant Deletion (GDPR) > should be irreversible [0.02ms]
+   838→
+   839→src/lib/__tests__/decimal-migration-v2.test.ts:
+   840→(pass) Decimal Migration — Money Utilities > addMoney avoids floating-point errors: 0.1 + 0.2 = 0.30 [0.66ms]
+   841→(pass) Decimal Migration — Money Utilities > subtractMoney works correctly [0.25ms]
+   842→(pass) Decimal Migration — Money Utilities > multiplyMoney calculates tax correctly [0.12ms]
+   843→(pass) Decimal Migration — Money Utilities > divideMoney splits amounts [0.22ms]
+   844→(pass) Decimal Migration — Money Utilities > roundMoney rounds to 2 decimal places [0.06ms]
+   845→(pass) Decimal Migration — Money Utilities > formatMoney formats with currency [0.15ms]
+   846→(pass) Decimal Migration — Money Utilities > isZero detects zero values [0.05ms]
+   847→(pass) Decimal Migration — Money Utilities > calculatePercentage handles edge cases [0.12ms]
+   848→(pass) Decimal Migration — Money Utilities > Decimal preserves precision for large amounts [0.22ms]
+   849→
+   850→src/lib/__tests__/business-simulation-30day.test.ts:
+   851→(pass) 30-Day Simulation: Aggregate Metrics > should have exactly 30 days of metrics [0.23ms]
+   852→(pass) 30-Day Simulation: Aggregate Metrics > should have total requests > 1 million [0.18ms]
+   853→(pass) 30-Day Simulation: Aggregate Metrics > should have AI calls proportional to (1 - cascade hit ratio) [0.11ms]
+   854→(pass) 30-Day Simulation: Aggregate Metrics > should have total cost > $0 [0.05ms]
+   855→(pass) 30-Day Simulation: Aggregate Metrics > should have average latency within reasonable range [0.05ms]
+   856→(pass) 30-Day Simulation: Aggregate Metrics > should have more cache hits than AI calls by end of month [0.04ms]
+   857→(pass) 30-Day Simulation: Revenue & Profitability > should have positive revenue [0.03ms]
+   858→(pass) 30-Day Simulation: Revenue & Profitability > should calculate total revenue across companies [0.05ms]
+   859→(pass) 30-Day Simulation: Revenue & Profitability > should be profitable (revenue > cost) [0.08ms]
+   860→(pass) 30-Day Simulation: Revenue & Profitability > should calculate profit margin [0.06ms]
+   861→(pass) 30-Day Simulation: Revenue & Profitability > should track daily cost trend [0.07ms]
+   862→(pass) 30-Day Simulation: Response Times > should have P50 latency < 100ms by end of month [0.06ms]
+   863→(pass) 30-Day Simulation: Response Times > should have higher latency on peak days [0.11ms]
+   864→(pass) 30-Day Simulation: Response Times > should have elevated latency on provider failure day [0.05ms]
+   865→(pass) 30-Day Simulation: Response Times > should recover latency after provider failure [0.04ms]
+   866→(pass) 30-Day Simulation: Resource Consumption > should scale workers during peak periods [0.08ms]
+   867→(pass) 30-Day Simulation: Resource Consumption > should have queue depth spike during peak [0.05ms]
+   868→(pass) 30-Day Simulation: Resource Consumption > should drain queue during off-peak [0.10ms]
+   869→(pass) 30-Day Simulation: Resource Consumption > should have active companies > 0 daily [0.05ms]
+   870→(pass) 30-Day Simulation: Resource Consumption > should maintain error rate < 5% [0.06ms]
+   871→(pass) 30-Day Simulation: Cascade Efficiency > should improve cache hit ratio over time [0.06ms]
+   872→(pass) 30-Day Simulation: Cascade Efficiency > should have rule hits after day 10 (learning engine) [0.05ms]
+   873→(pass) 30-Day Simulation: Cascade Efficiency > should have higher pattern hits than rule hits [0.05ms]
+   874→(pass) 30-Day Simulation: Cascade Efficiency > should have AI dependency ratio decreasing over time [0.06ms]
+   875→(pass) 30-Day Simulation: Cascade Efficiency > should have total cascade savings > $0 [0.05ms]
+   876→(pass) 30-Day Simulation: Cascade Efficiency > should have memory hits consistently low but present [0.06ms]
+   877→(pass) 30-Day Simulation: Provider Failure (Day 15) > should show elevated error count on day 15 [0.04ms]
+   878→(pass) 30-Day Simulation: Provider Failure (Day 15) > should show increased cost on day 15 (retries + fallback) [0.04ms]
+   879→(pass) 30-Day Simulation: Provider Failure (Day 15) > should show fallback provider handling requests [0.04ms]
+   880→(pass) 30-Day Simulation: Provider Failure (Day 15) > should recover to normal error rate by day 17 [0.04ms]
+   881→(pass) 30-Day Simulation: Sudden Load Increase > should handle 2x load spike without crash [0.06ms]
+   882→(pass) 30-Day Simulation: Sudden Load Increase > should scale workers during load spike [0.05ms]
+   883→(pass) 30-Day Simulation: Sudden Load Increase > should drain the queue spike within 24 hours [0.06ms]
+   884→(pass) 30-Day Simulation: Temporal Patterns > should have higher request volume on weekdays [0.14ms]
+   885→(pass) 30-Day Simulation: Temporal Patterns > should have lower worker count on weekends [0.08ms]
+   886→(pass) 30-Day Simulation: Temporal Patterns > should have lower cost on weekends [0.08ms]
+   887→
+   888→src/lib/__tests__/disaster-recovery.test.ts:
+   889→(pass) Backup creation > records backup metadata with id [0.04ms]
+   890→(pass) Backup creation > records backup size [0.02ms]
+   891→(pass) Backup creation > records creation timestamp [0.02ms]
+   892→(pass) Backup creation > records encryption status as true [0.01ms]
+   893→(pass) Backup creation > uses default label when none provided [0.06ms]
+   894→(pass) Backup creation > trims and sanitizes custom label [0.04ms]
+   895→(pass) Backup verification > checksum is deterministic for same data [0.06ms]
+   896→(pass) Backup verification > checksum differs for different data [0.08ms]
+   897→(pass) Backup verification > empty data produces valid checksum [0.02ms]
+   898→(pass) Backup verification > large data produces checksum without error [1.24ms]
+   899→(pass) Backup verification > verification passes when checksums match [0.02ms]
+   900→(pass) Backup verification > verification fails when data is tampered [0.01ms]
+   901→(pass) Point-in-time recovery > finds latest backup before target time [0.07ms]
+   902→(pass) Point-in-time recovery > returns no backup if target is before all backups [0.02ms]
+   903→(pass) Point-in-time recovery > uses exact backup if target matches timestamp [0.04ms]
+   904→(pass) Point-in-time recovery > picks closest backup before target [0.03ms]
+   905→(pass) Point-in-time recovery > backups are sortable by creation time [0.29ms]
+   906→(pass) Failover logic > detects primary failure when health check fails [0.01ms]
+   907→(pass) Failover logic > detects primary is healthy [0.01ms]
+   908→(pass) Failover logic > promotes replica when primary fails [0.02ms]
+   909→(pass) Failover logic > does not promote when primary is healthy [0.01ms]
+   910→(pass) Failover logic > records failover event with timestamp [0.02ms]
+   911→(pass) Failover logic > latency above threshold marks degraded
+   912→(pass) Recovery drill > scheduled job execution records start time [0.02ms]
+   913→(pass) Recovery drill > successful drill records completion [0.01ms]
+   914→(pass) Recovery drill > failed drill records error [0.02ms]
+   915→(pass) Recovery drill > drill duration is calculated correctly [0.02ms]
+   916→(pass) Valkey persistence > RDB mode sets appendonly to no [0.02ms]
+   917→(pass) Valkey persistence > AOF mode enables appendonly [0.01ms]
+   918→(pass) Valkey persistence > AOF fsync everysec is valid [0.02ms]
+   919→(pass) Valkey persistence > RDB save intervals are parseable [0.03ms]
+   920→(pass) Snapshot cleanup > keeps all backups when under limit [0.04ms]
+   921→(pass) Snapshot cleanup > removes oldest when over limit [0.01ms]
+   922→(pass) Snapshot cleanup > keeps exactly max backups [0.02ms]
+   923→(pass) Snapshot cleanup > handles empty backup list
+   924→(pass) Snapshot cleanup > retention with max 30 from 50 [0.06ms]
+   925→(pass) Snapshot cleanup > sorted backups ensure oldest pruned first [0.03ms]
+   926→(pass) Snapshot cleanup > does not modify original array [0.02ms]
+   927→(pass) Snapshot cleanup > path traversal blocked for safe path [0.07ms]
+   928→(pass) Snapshot cleanup > path traversal blocked for escape attempt [0.01ms]
+   929→
+   930→src/lib/__tests__/inline-styles-cleanup.test.ts:
+   931→
+   932→=== Inline Styles Cleanup Summary ===
+   933→Original count: 1041
+   934→Current total inline styles: 96
+   935→TAILWINDBREAK (kept intentionally): 5
+   936→Still convertible (remaining work): 91
+   937→Reduction: 90.8%
+   938→
+   939→Files with remaining inline styles:
+   940→  modules/admin/PlatformAdminPanel.tsx: 52 total (0 TAILWINDBREAK, 52 convertible)
+   941→  modules/team/TeamView.tsx: 9 total (0 TAILWINDBREAK, 9 convertible)
+   942→  modules/clients/ClientProfile.tsx: 6 total (0 TAILWINDBREAK, 6 convertible)
+   943→  modules/invoices/InvoicesView.tsx: 5 total (0 TAILWINDBREAK, 5 convertible)
+   944→  modules/dashboard/DashboardView.tsx: 4 total (0 TAILWINDBREAK, 4 convertible)
+   945→  modules/reports/ReportsView.tsx: 2 total (0 TAILWINDBREAK, 2 convertible)
+   946→  modules/common/NotificationsDropdown.tsx: 2 total (2 TAILWINDBREAK, 0 convertible)
+   947→  modules/automation/AutomationView.tsx: 2 total (0 TAILWINDBREAK, 2 convertible)
+   948→  modules/inventory/InventoryView.tsx: 2 total (0 TAILWINDBREAK, 2 convertible)
+   949→  modules/hr/HRView.tsx: 2 total (0 TAILWINDBREAK, 2 convertible)
+   950→  app/api-docs/page.tsx: 2 total (0 TAILWINDBREAK, 2 convertible)
+   951→  modules/common/ReviewQueueModal.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   952→  modules/common/Sidebar.tsx: 1 total (3 TAILWINDBREAK, -2 convertible)
+   953→  modules/bulk-input/BulkInputView.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   954→  modules/settings/TemplateListManager.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   955→  modules/ai/AICopilotBubble.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   956→  modules/hr/GratuityCalculator.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   957→  components/ui/progress.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   958→  components/ui/chart.tsx: 1 total (0 TAILWINDBREAK, 1 convertible)
+   959→(pass) Inline Styles Cleanup > should have significantly reduced inline style occurrences from original ~1041 [34.21ms]
+   960→(pass) Inline Styles Cleanup > should have no convertible inline styles in fully-converted files [0.13ms]
+   961→117 |       const stats = countInlineStyles(filePath);
+   962→118 |       // All remaining inline styles should be annotated with TAILWINDBREAK
+   963→119 |       // convertible can be 0 or negative (TAILWINDBREAK comments may exceed style count
+   964→120 |       // if comments reference same pattern or are on separate lines)
+   965→121 |       expect(stats.convertible).toBeLessThanOrEqual(0);
+   966→122 |       expect(stats.tailwindbreak).toBeGreaterThan(0);
+   967→                                        ^
+   968→error: expect(received).toBeGreaterThan(expected)
+   969→
+   970→Expected: > 0
+   971→Received: 0
+   972→
+   973→      at <anonymous> (/home/z/my-project/src/lib/__tests__/inline-styles-cleanup.test.ts:122:35)
+   974→(fail) Inline Styles Cleanup > should have only TAILWINDBREAK styles in partially-converted files [0.17ms]
+   975→(pass) Inline Styles Cleanup > should mark all kept inline styles with TAILWINDBREAK comment [7.02ms]
+   976→
+   977→src/lib/__tests__/verifyExtraction.test.ts:
+   978→(pass) verifyExtractedFields > passes verification for a clean single-item extraction [1.21ms]
+   979→(pass) verifyExtractedFields > passes verification when total = price + tax - discount [0.04ms]
+   980→(pass) verifyExtractedFields > flags when price exceeds total without discount explaining it [0.07ms]
+   981→(pass) verifyExtractedFields > does NOT flag when price > total but discount explains the gap [0.03ms]
+   982→(pass) verifyExtractedFields > flags when total is far from price + tax - discount [0.10ms]
+   983→(pass) verifyExtractedFields > does not flag when total is within 25% tolerance of expected [0.02ms]
+   984→(pass) verifyExtractedFields > verifies quantity × price ≈ total when quantity is in text [0.03ms]
+   985→(pass) verifyExtractedFields > flags when quantity × price does not match total [0.03ms]
+   986→(pass) verifyExtractedFields > detects quantity from multiplier pattern like 3×50 [0.02ms]
+   987→(pass) verifyExtractedFields > flags when extracted price matches a phone number in text [0.11ms]
+   988→(pass) verifyExtractedFields > does not flag normal prices that are not phone-like [0.03ms]
+   989→(pass) verifyExtractedFields > reduces confidence by 0.2 per issue and triggers AI fallback at threshold [0.04ms]
+   990→(pass) verifyExtractedFields > does not trigger AI fallback for minor issues [0.02ms]
+   991→(pass) verifyExtractedFields > handles zero price and total gracefully [0.02ms]
+   992→(pass) verifyExtractedFields > handles the 'بسعر 50 و60 ريال' ambiguity scenario [0.05ms]
+   993→(pass) verifyExtractedFields > verifies correctly for the right extraction of the same text [0.02ms]
+   994→
+   995→src/lib/__tests__/webhooks.test.ts:
+   996→(pass) Webhooks Module > registerWebhook > creates an endpoint and returns its id [0.62ms]
+   997→(pass) Webhooks Module > registerWebhook > calls db.webhookEndpoint.create [0.17ms]
+   998→(pass) Webhooks Module > registerWebhook > passes companySlug correctly [0.09ms]
+   999→(pass) Webhooks Module > registerWebhook > passes URL correctly [0.05ms]
+  1000→(pass) Webhooks Module > registerWebhook > stores events as JSON string [0.06ms]
+  1001→(pass) Webhooks Module > registerWebhook > encrypts the signing secret [0.06ms]
+  1002→(pass) Webhooks Module > registerWebhook > secret can be decrypted back [0.13ms]
+  1003→(pass) Webhooks Module > registerWebhook > handles multiple events [0.08ms]
+  1004→(pass) Webhooks Module > registerWebhook > handles empty events array [0.05ms]
+  1005→(pass) Webhooks Module > registerWebhook > generates different secrets on each registration [0.12ms]
+  1006→(pass) Webhooks Module > dispatchWebhook > returns 0 when no endpoints exist [0.22ms]
+  1007→(pass) Webhooks Module > dispatchWebhook > dispatches to matching endpoint [0.15ms]
+  1008→(pass) Webhooks Module > dispatchWebhook > creates a delivery record for matched event [0.07ms]
+  1009→(pass) Webhooks Module > dispatchWebhook > sets delivery status to pending [0.04ms]
+  1010→(pass) Webhooks Module > dispatchWebhook > stores payload as JSON string [0.06ms]
+  1011→(pass) Webhooks Module > dispatchWebhook > skips endpoint when event does not match [0.05ms]
+  1012→(pass) Webhooks Module > dispatchWebhook > wildcard '*' matches any event [0.05ms]
+  1013→(pass) Webhooks Module > dispatchWebhook > dispatches to multiple matching endpoints [0.06ms]
+  1014→(pass) Webhooks Module > dispatchWebhook > queries endpoints by companySlug and isActive [0.04ms]
+  1015→(pass) Webhooks Module > dispatchWebhook > query filters by isActive=true (inactive endpoints excluded) [0.04ms]
+  1016→(pass) Webhooks Module > processPendingDeliveries > returns 0 processed when no pending deliveries [0.47ms]
+  1017→(pass) Webhooks Module > processPendingDeliveries > successfully delivers and marks as success [0.24ms]
+  1018→(pass) Webhooks Module > processPendingDeliveries > marks as failed when endpoint not found [0.08ms]
+  1019→(pass) Webhooks Module > processPendingDeliveries > retries on failure with backoff [0.32ms]
+  1020→(pass) Webhooks Module > processPendingDeliveries > marks as permanently failed after max attempts [0.13ms]
+  1021→(pass) Webhooks Module > processPendingDeliveries > sets backoff delay: 5^1 * 1000 = 5s for first retry [0.13ms]
+  1022→(pass) Webhooks Module > processPendingDeliveries > sends correct headers including signature [0.20ms]
+  1023→(pass) Webhooks Module > processPendingDeliveries > handles HTTP error response (non-2xx) [0.13ms]
+  1024→(pass) Webhooks Module > processPendingDeliveries > processes multiple pending deliveries [0.17ms]
+  1025→(pass) Webhooks Module > processPendingDeliveries > queries pending deliveries with nextRetryAt <= now [0.09ms]
+  1026→(pass) Webhooks Module > verifyWebhookSignature > returns true for correct signature [0.06ms]
+  1027→(pass) Webhooks Module > verifyWebhookSignature > returns false for incorrect signature [0.02ms]
+  1028→(pass) Webhooks Module > verifyWebhookSignature > returns false when signature prefix is wrong [0.03ms]
+  1029→(pass) Webhooks Module > verifyWebhookSignature > returns false for empty signature [0.02ms]
+  1030→(pass) Webhooks Module > verifyWebhookSignature > returns false for different payload with same signature [0.05ms]
+  1031→(pass) Webhooks Module > verifyWebhookSignature > returns false for different secret [0.03ms]
+  1032→(pass) Webhooks Module > verifyWebhookSignature > works with complex JSON payloads [0.06ms]
+  1033→(pass) Webhooks Module > verifyWebhookSignature > works with empty payload [0.02ms]
+  1034→(pass) Webhooks Module > verifyWebhookSignature > signature is deterministic for same input [0.05ms]
+  1035→(pass) Webhooks Module > verifyWebhookSignature > returns false for signature without sha256= prefix [0.02ms]
+  1036→(pass) Webhooks Module > getWebhookStats > returns activeEndpoints count [0.17ms]
+  1037→(pass) Webhooks Module > getWebhookStats > returns recent deliveries [0.05ms]
+  1038→(pass) Webhooks Module > getWebhookStats > counts only active endpoints for company [0.07ms]
+  1039→(pass) Webhooks Module > getWebhookStats > fetches at most 10 recent deliveries [0.06ms]
+  1040→(pass) Webhooks Module > getWebhookStats > orders recent deliveries by createdAt desc [0.04ms]
+  1041→(pass) Webhooks Module > Edge cases > dispatchWebhook handles endpoint with malformed events JSON gracefully [0.15ms]
+  1042→(pass) Webhooks Module > Edge cases > processPendingDeliveries handles missing endpoint gracefully [0.12ms]
+  1043→(pass) Webhooks Module > Edge cases > timeout during fetch triggers retry [0.20ms]
+  1044→(pass) Webhooks Module > Edge cases > dispatchWebhook with no matching events across multiple endpoints [0.10ms]
+  1045→(pass) Webhooks Module > Edge cases > getWebhookStats for company with no endpoints [0.05ms]
+  1046→
+  1047→src/lib/__tests__/collision-recovery-audit-purchase.test.ts:
+  1048→(pass) syncInventoryOnPurchase — collision recovery > 1. purchase-collision-recovery-success: create throws P2002 → retry match returns product → increment existing inventory [1.33ms]
+  1049→(pass) syncInventoryOnPurchase — collision recovery > 2. purchase-collision-recovery-fail: create throws, retry returns null → [REVIEW-QUEUE] + audit + qty:0 movement [0.35ms]
+  1050→(pass) syncInventoryOnPurchase — collision recovery > 3. purchase-collision-recovery-fail writes the REAL purchaseInvoiceId on the audit row (NOT null) [0.17ms]
+  1051→(pass) syncInventoryOnPurchase — collision recovery > 4. purchase-collision-recovery-fail surfaces the warning in result.warnings (caller's responsibility to forward as reviewQueueWarnings) [0.14ms]
+  1052→
+  1053→src/lib/__tests__/cache-isolation.test.ts:
+  1054→(pass) cacheGet > returns null for a key that was never set [0.09ms]
+  1055→(pass) cacheGet > returns the value for an existing key [0.06ms]
+  1056→(pass) cacheGet > returns null for an expired entry [5.59ms]
+  1057→(pass) cacheGet > returns value with correct type (object) [0.14ms]
+  1058→(pass) cacheGet > returns value with correct type (array) [0.05ms]
+  1059→(pass) cacheGet > returns value with correct type (number) [0.03ms]
+  1060→(pass) cacheGet > returns value with correct type (boolean) [0.04ms]
+  1061→(pass) cacheSet > stores value in L1 (visible via cacheGet) [0.03ms]
+  1062→(pass) cacheSet > overwrites existing key in L1 [0.03ms]
+  1063→(pass) cacheSet > stores value accessible via cacheStats keys [0.12ms]
+  1064→(pass) cacheSet > stores null value [0.09ms]
+  1065→(pass) cacheSet > stores undefined value [0.06ms]
+  1066→(pass) cacheSet > does not call valkeySet when VALKEY_CONFIGURED is false [0.04ms]
+  1067→(pass) cacheInvalidate > removes a key from L1 [0.10ms]
+  1068→(pass) cacheInvalidate > does not throw when invalidating a missing key [0.05ms]
+  1069→(pass) cacheInvalidate > fires onCacheInvalidate callback [0.10ms]
+  1070→(pass) cacheInvalidate > removes key from cacheStats keys after invalidation [0.10ms]
+  1071→(pass) cacheInvalidate > only invalidates the specified key, not others [0.06ms]
+  1072→(pass) cacheInvalidatePattern > removes all matching keys from L1 [0.17ms]
+  1073→(pass) cacheInvalidatePattern > fires onCacheInvalidatePattern callback [0.17ms]
+  1074→(pass) cacheInvalidatePattern > does not throw when no keys match the pattern [0.08ms]
+  1075→(pass) cacheInvalidatePattern > removes keys from cacheStats after pattern invalidation [0.15ms]
+  1076→(pass) cacheInvalidatePattern > does not affect keys with similar but non-matching prefix [0.09ms]
+  1077→(pass) onCacheInvalidate > returns an unsubscribe function [0.03ms]
+  1078→(pass) onCacheInvalidate > does not fire after unsubscribe [0.07ms]
+  1079→(pass) onCacheInvalidate > supports multiple simultaneous subscribers [0.10ms]
+  1080→(pass) onCacheInvalidate > subscriber receives the exact key string [0.09ms]
+  1081→(pass) onCacheInvalidatePattern > returns an unsubscribe function [0.03ms]
+  1082→(pass) onCacheInvalidatePattern > fires with the prefix on pattern invalidation [0.13ms]
+  1083→(pass) onCacheInvalidatePattern > does not fire for single-key invalidation [0.06ms]
+  1084→(pass) cached > calls fetcher on cache miss and stores result [0.08ms]
+  1085→(pass) cached > returns cached value on hit (does not call fetcher again) [0.06ms]
+  1086→(pass) cached > joins key parts with colon [0.11ms]
+  1087→(pass) cached > handles complex return types [0.07ms]
+  1088→(pass) cached > handles fetcher that returns different types on separate keys [0.09ms]
+  1089→(pass) cacheStats > returns correct l1Size for empty cache [0.06ms]
+  1090→(pass) cacheStats > returns correct l1Size after setting keys [0.08ms]
+  1091→(pass) cacheStats > l1Size decreases after invalidation [0.10ms]
+  1092→(pass) cacheStats > valkeyEnabled is false when VALKEY_CONFIGURED is false [0.02ms]
+  1093→(pass) cacheStats > keys array contains all set keys [0.10ms]
+  1094→(pass) Multi-tenant isolation > keys with different company prefixes do not interfere [0.06ms]
+  1095→(pass) Multi-tenant isolation > pattern invalidation is scoped to the correct company [0.15ms]
+  1096→(pass) Multi-tenant isolation > three tenants are fully isolated [0.07ms]
+  1097→(pass) Multi-tenant isolation > invalidating one tenant does not affect another [0.06ms]
+  1098→(pass) Multi-tenant isolation > pattern invalidation only removes exact prefix matches [0.11ms]
+  1099→(pass) Multi-tenant isolation > cached() with tenant-prefixed keys isolates data per tenant [0.11ms]
+  1100→(pass) Multi-tenant isolation > independent TTLs per tenant key [1101.41ms]
+  1101→(pass) Multi-tenant isolation > cacheStats l1Size reflects cross-tenant keys [0.63ms]
+  1102→
+  1103→src/lib/__tests__/inline-styles-cleanup-v2.test.ts:
+  1104→(pass) Inline Styles Cleanup — Module Views > WebhookManagementView.tsx > should have 0 inline style={{}} occurrences [0.16ms]
+  1105→(pass) Inline Styles Cleanup — Module Views > WebhookManagementView.tsx > should use Tailwind className helpers instead of style helpers [0.07ms]
+  1106→(pass) Inline Styles Cleanup — Module Views > WebhookManagementView.tsx > should use Tailwind utility classes for layout [0.11ms]
+  1107→(pass) Inline Styles Cleanup — Module Views > WebhookManagementView.tsx > should NOT have tabStyle/thStyle/tdStyle/badgeStyle functions [0.12ms]
+  1108→(pass) Inline Styles Cleanup — Module Views > AICopilotBubble.tsx > should have ≤4 remaining inline styles [0.04ms]
+  1109→(pass) Inline Styles Cleanup — Module Views > AICopilotBubble.tsx > should use Tailwind hover pseudo-classes instead of onMouseEnter/Leave [0.03ms]
+  1110→(pass) Inline Styles Cleanup — Module Views > AICopilotBubble.tsx > should use Tailwind shadow classes [0.04ms]
+  1111→(pass) Inline Styles Cleanup — Module Views > AICopilotBubble.tsx > should use Tailwind gradient classes [0.03ms]
+  1112→(pass) Inline Styles Cleanup — Module Views > CompanySettingsForm.tsx > should have ≤5 remaining inline styles [0.05ms]
+  1113→(pass) Inline Styles Cleanup — Module Views > CompanySettingsForm.tsx > should use responsive Tailwind grid classes [0.03ms]
+  1114→(pass) Inline Styles Cleanup — Module Views > AuditView.tsx > should have ≤5 remaining inline styles [0.03ms]
+  1115→(pass) Inline Styles Cleanup — Module Views > AuditView.tsx > should use Tailwind className helpers for table cells [0.03ms]
+  1116→(pass) Inline Styles Cleanup — Module Views > average inline style count per module view should be < 20 [0.37ms]
+  1117→
+  1118→src/lib/__tests__/multi-tenant-isolation.test.ts:
+  1119→(pass) buildTenantScope — admin unrestricted > returns empty where for admin with no companySlug [0.10ms]
+  1120→(pass) buildTenantScope — admin unrestricted > sets unrestricted=true for admin with no companySlug [0.01ms]
+  1121→(pass) buildTenantScope — admin unrestricted > sets forbidden=false for admin with no companySlug [0.01ms]
+  1122→(pass) buildTenantScope — admin unrestricted > returns companyId filter for admin requesting specific company [0.02ms]
+  1123→(pass) buildTenantScope — admin unrestricted > sets effectiveSlug for admin requesting specific company [0.02ms]
+  1124→(pass) buildTenantScope — admin unrestricted > admin requesting non-member company still gets it (unrestricted) [0.03ms]
+  1125→(pass) buildTenantScope — admin unrestricted > admin unrestricted=false when specific company requested [0.01ms]
+  1126→(pass) buildTenantScope — admin unrestricted > admin effectiveSlug is null when no company requested [0.02ms]
+  1127→(pass) buildTenantScope — founder unrestricted > returns empty where for founder with no companySlug [0.01ms]
+  1128→(pass) buildTenantScope — founder unrestricted > sets unrestricted=true for founder [0.02ms]
+  1129→(pass) buildTenantScope — founder unrestricted > founder can access any specific company [0.02ms]
+  1130→(pass) buildTenantScope — founder unrestricted > founder forbidden is always false [0.01ms]
+  1131→(pass) buildTenantScope — restricted employee > returns company filter for employee requesting own company [0.02ms]
+  1132→130 |     expect(scope.forbidden).toBe(false);
+  1133→131 |   });
+  1134→132 | 
+  1135→133 |   it("returns forbidden=true for employee requesting other company", () => {
+  1136→134 |     const scope = buildTenantScope(employeeUser, "co-b");
+  1137→135 |     expect(scope.forbidden).toBe(true);
+  1138→                                  ^
+  1139→error: expect(received).toBe(expected)
+  1140→
+  1141→Expected: true
+  1142→Received: false
+  1143→
+  1144→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:135:29)
+  1145→(fail) buildTenantScope — restricted employee > returns forbidden=true for employee requesting other company [0.09ms]
+  1146→135 |     expect(scope.forbidden).toBe(true);
+  1147→136 |   });
+  1148→137 | 
+  1149→138 |   it("returns intersection for restricted user with no slug", () => {
+  1150→139 |     const scope = buildTenantScope(employeeUser);
+  1151→140 |     expect(scope.where).toEqual({ companySlug: { in: ["co-a"] } });
+  1152→                              ^
+  1153→error: expect(received).toEqual(expected)
+  1154→
+  1155→- {
+  1156→-   "companySlug": {
+  1157→-     "in": [
+  1158→-       "co-a",
+  1159→-     ],
+  1160→-   },
+  1161→- }
+  1162→+ {}
+  1163→
+  1164→- Expected  - 7
+  1165→+ Received  + 1
+  1166→
+  1167→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:140:25)
+  1168→(fail) buildTenantScope — restricted employee > returns intersection for restricted user with no slug [0.10ms]
+  1169→140 |     expect(scope.where).toEqual({ companySlug: { in: ["co-a"] } });
+  1170→141 |   });
+  1171→142 | 
+  1172→143 |   it("multi-company user gets intersection of all companies", () => {
+  1173→144 |     const scope = buildTenantScope(multiCompanyUser);
+  1174→145 |     expect(scope.where).toEqual({ companySlug: { in: ["co-a", "co-b", "co-c"] } });
+  1175→                              ^
+  1176→error: expect(received).toEqual(expected)
+  1177→
+  1178→- {
+  1179→-   "companySlug": {
+  1180→-     "in": [
+  1181→-       "co-a",
+  1182→-       "co-b",
+  1183→-       "co-c",
+  1184→-     ],
+  1185→-   },
+  1186→- }
+  1187→+ {}
+  1188→
+  1189→- Expected  - 9
+  1190→+ Received  + 1
+  1191→
+  1192→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:145:25)
+  1193→(fail) buildTenantScope — restricted employee > multi-company user gets intersection of all companies [0.04ms]
+  1194→(pass) buildTenantScope — restricted employee > multi-company user can request any of their companies [0.02ms]
+  1195→151 |     expect(scope.where).toEqual({ companySlug: "co-b" });
+  1196→152 |   });
+  1197→153 | 
+  1198→154 |   it("multi-company user cannot request company not in their list", () => {
+  1199→155 |     const scope = buildTenantScope(multiCompanyUser, "co-z");
+  1200→156 |     expect(scope.forbidden).toBe(true);
+  1201→                                  ^
+  1202→error: expect(received).toBe(expected)
+  1203→
+  1204→Expected: true
+  1205→Received: false
+  1206→
+  1207→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:156:29)
+  1208→(fail) buildTenantScope — restricted employee > multi-company user cannot request company not in their list [0.03ms]
+  1209→156 |     expect(scope.forbidden).toBe(true);
+  1210→157 |   });
+  1211→158 | 
+  1212→159 |   it("user with no companies gets impossible condition", () => {
+  1213→160 |     const scope = buildTenantScope(noCompanyUser);
+  1214→161 |     expect(scope.where).toEqual({ companySlug: "__NO_COMPANIES_ASSIGNED__" });
+  1215→                              ^
+  1216→error: expect(received).toEqual(expected)
+  1217→
+  1218→- {
+  1219→-   "companySlug": "__NO_COMPANIES_ASSIGNED__",
+  1220→- }
+  1221→+ {}
+  1222→
+  1223→- Expected  - 3
+  1224→+ Received  + 1
+  1225→
+  1226→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:161:25)
+  1227→(fail) buildTenantScope — restricted employee > user with no companies gets impossible condition [0.04ms]
+  1228→(pass) buildTenantScope — restricted employee > user with no companies is not forbidden (just no results) [0.01ms]
+  1229→166 |     expect(scope.forbidden).toBe(false);
+  1230→167 |   });
+  1231→168 | 
+  1232→169 |   it("user with no companies requesting specific company is forbidden", () => {
+  1233→170 |     const scope = buildTenantScope(noCompanyUser, "co-a");
+  1234→171 |     expect(scope.forbidden).toBe(true);
+  1235→                                  ^
+  1236→error: expect(received).toBe(expected)
+  1237→
+  1238→Expected: true
+  1239→Received: false
+  1240→
+  1241→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:171:29)
+  1242→(fail) buildTenantScope — restricted employee > user with no companies requesting specific company is forbidden [0.03ms]
+  1243→171 |     expect(scope.forbidden).toBe(true);
+  1244→172 |   });
+  1245→173 | 
+  1246→174 |   it("restricted user unrestricted is always false", () => {
+  1247→175 |     const scope = buildTenantScope(employeeUser);
+  1248→176 |     expect(scope.unrestricted).toBe(false);
+  1249→                                     ^
+  1250→error: expect(received).toBe(expected)
+  1251→
+  1252→Expected: false
+  1253→Received: true
+  1254→
+  1255→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:176:32)
+  1256→(fail) buildTenantScope — restricted employee > restricted user unrestricted is always false [0.04ms]
+  1257→(pass) buildTenantScope — restricted employee > restricted user effectiveSlug is null when no slug requested [0.01ms]
+  1258→(pass) buildTenantScope — restricted employee > restricted user effectiveSlug matches requested slug [0.01ms]
+  1259→186 |     expect(scope.effectiveSlug).toBe("co-a");
+  1260→187 |   });
+  1261→188 | 
+  1262→189 |   it("restricted user effectiveSlug is null when forbidden", () => {
+  1263→190 |     const scope = buildTenantScope(employeeUser, "co-b");
+  1264→191 |     expect(scope.effectiveSlug).toBe(null);
+  1265→                                      ^
+  1266→error: expect(received).toBe(expected)
+  1267→
+  1268→Expected: null
+  1269→Received: "co-b"
+  1270→
+  1271→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:191:33)
+  1272→(fail) buildTenantScope — restricted employee > restricted user effectiveSlug is null when forbidden [0.03ms]
+  1273→(pass) buildTenantScope — custom slugField > uses custom slugField in where clause [0.02ms]
+  1274→202 |     expect(scope.where).toEqual({ companyId: "co-a" });
+  1275→203 |   });
+  1276→204 | 
+  1277→205 |   it("custom slugField in intersection mode", () => {
+  1278→206 |     const scope = buildTenantScope(employeeUser, undefined, "companyId");
+  1279→207 |     expect(scope.where).toEqual({ companyId: { in: ["co-a"] } });
+  1280→                              ^
+  1281→error: expect(received).toEqual(expected)
+  1282→
+  1283→- {
+  1284→-   "companyId": {
+  1285→-     "in": [
+  1286→-       "co-a",
+  1287→-     ],
+  1288→-   },
+  1289→- }
+  1290→+ {}
+  1291→
+  1292→- Expected  - 7
+  1293→+ Received  + 1
+  1294→
+  1295→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:207:25)
+  1296→(fail) buildTenantScope — custom slugField > custom slugField in intersection mode [0.06ms]
+  1297→207 |     expect(scope.where).toEqual({ companyId: { in: ["co-a"] } });
+  1298→208 |   });
+  1299→209 | 
+  1300→210 |   it("custom slugField in impossible condition", () => {
+  1301→211 |     const scope = buildTenantScope(noCompanyUser, undefined, "tenantId");
+  1302→212 |     expect(scope.where).toEqual({ tenantId: "__NO_COMPANIES_ASSIGNED__" });
+  1303→                              ^
+  1304→error: expect(received).toEqual(expected)
+  1305→
+  1306→- {
+  1307→-   "tenantId": "__NO_COMPANIES_ASSIGNED__",
+  1308→- }
+  1309→+ {}
+  1310→
+  1311→- Expected  - 3
+  1312→+ Received  + 1
+  1313→
+  1314→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:212:25)
+  1315→(fail) buildTenantScope — custom slugField > custom slugField in impossible condition [0.04ms]
+  1316→(pass) buildTenantScope — custom slugField > custom slugField with unrestricted admin returns empty [0.01ms]
+  1317→(pass) canAccessCompany > admin can access any company [0.03ms]
+  1318→(pass) canAccessCompany > admin can access company not in their list [0.01ms]
+  1319→(pass) canAccessCompany > founder can access any company [0.01ms]
+  1320→(pass) canAccessCompany > employee can access own company
+  1321→238 |   it("employee can access own company", () => {
+  1322→239 |     expect(canAccessCompany(employeeUser, "co-a")).toBe(true);
+  1323→240 |   });
+  1324→241 | 
+  1325→242 |   it("employee cannot access other company", () => {
+  1326→243 |     expect(canAccessCompany(employeeUser, "co-b")).toBe(false);
+  1327→                                                         ^
+  1328→error: expect(received).toBe(expected)
+  1329→
+  1330→Expected: false
+  1331→Received: true
+  1332→
+  1333→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:243:52)
+  1334→(fail) canAccessCompany > employee cannot access other company [0.07ms]
+  1335→242 |   it("employee cannot access other company", () => {
+  1336→243 |     expect(canAccessCompany(employeeUser, "co-b")).toBe(false);
+  1337→244 |   });
+  1338→245 | 
+  1339→246 |   it("employee cannot access nonexistent company", () => {
+  1340→247 |     expect(canAccessCompany(employeeUser, "co-nonexistent")).toBe(false);
+  1341→                                                                   ^
+  1342→error: expect(received).toBe(expected)
+  1343→
+  1344→Expected: false
+  1345→Received: true
+  1346→
+  1347→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:247:62)
+  1348→(fail) canAccessCompany > employee cannot access nonexistent company [0.04ms]
+  1349→(pass) canAccessCompany > multi-company user can access any assigned company [0.02ms]
+  1350→250 |   it("multi-company user can access any assigned company", () => {
+  1351→251 |     expect(canAccessCompany(multiCompanyUser, "co-c")).toBe(true);
+  1352→252 |   });
+  1353→253 | 
+  1354→254 |   it("multi-company user cannot access unassigned company", () => {
+  1355→255 |     expect(canAccessCompany(multiCompanyUser, "co-z")).toBe(false);
+  1356→                                                             ^
+  1357→error: expect(received).toBe(expected)
+  1358→
+  1359→Expected: false
+  1360→Received: true
+  1361→
+  1362→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:255:56)
+  1363→(fail) canAccessCompany > multi-company user cannot access unassigned company [0.03ms]
+  1364→254 |   it("multi-company user cannot access unassigned company", () => {
+  1365→255 |     expect(canAccessCompany(multiCompanyUser, "co-z")).toBe(false);
+  1366→256 |   });
+  1367→257 | 
+  1368→258 |   it("user with no companies cannot access any company", () => {
+  1369→259 |     expect(canAccessCompany(noCompanyUser, "co-a")).toBe(false);
+  1370→                                                          ^
+  1371→error: expect(received).toBe(expected)
+  1372→
+  1373→Expected: false
+  1374→Received: true
+  1375→
+  1376→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:259:53)
+  1377→(fail) canAccessCompany > user with no companies cannot access any company [0.03ms]
+  1378→(pass) Cache key isolation > cache keys include companySlug [0.03ms]
+  1379→(pass) Cache key isolation > different companies produce different keys [0.02ms]
+  1380→(pass) Cache key isolation > same company different resources produce different keys [0.02ms]
+  1381→(pass) Cache key isolation > keys are deterministic for same inputs [0.02ms]
+  1382→(pass) Cache key isolation > cache key isolation prevents cross-tenant reads [0.04ms]
+  1383→(pass) Cache key isolation > clearing one tenant's cache does not affect another [0.02ms]
+  1384→(pass) Cache key isolation > pattern invalidation scoped to company prefix [0.04ms]
+  1385→(pass) Queue isolation > queue names include companyId [0.02ms]
+  1386→(pass) Queue isolation > different companies get different queue names [0.01ms]
+  1387→(pass) Queue isolation > same company same base produces same queue name [0.02ms]
+  1388→(pass) Queue isolation > jobs in company A queue are not visible in company B [0.03ms]
+  1389→(pass) AI Memory isolation > AI memory entry query includes companySlug filter
+  1390→(pass) AI Memory isolation > company A memory entries are not visible to company B [0.04ms]
+  1391→(pass) AI Memory isolation > memory creation includes companySlug [0.02ms]
+  1392→(pass) AI Memory isolation > memory search is scoped by companySlug [0.07ms]
+  1393→(pass) Audit log isolation > audit log entries have companySlug [0.01ms]
+  1394→(pass) Audit log isolation > company A audit logs are not visible to company B users [0.05ms]
+  1395→(pass) Audit log isolation > admin sees all audit logs (unrestricted scope) [0.02ms]
+  1396→416 |     expect(logs).toHaveLength(2);
+  1397→417 |   });
+  1398→418 | 
+  1399→419 |   it("audit log query for restricted user uses company filter", () => {
+  1400→420 |     const scope = buildTenantScope(employeeUser);
+  1401→421 |     expect(scope.where).toHaveProperty("companySlug");
+  1402→                              ^
+  1403→error: expect(received).toHaveProperty(path)
+  1404→
+  1405→Expected path: "companySlug"
+  1406→
+  1407→Unable to find property
+  1408→
+  1409→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:421:25)
+  1410→(fail) Audit log isolation > audit log query for restricted user uses company filter [0.05ms]
+  1411→(pass) Metrics isolation > aggregate metrics filter by companySlug [0.04ms]
+  1412→(pass) Metrics isolation > company B metrics do not leak into company A [0.02ms]
+  1413→(pass) Metrics isolation > metrics per company are independent [0.02ms]
+  1414→(pass) Permission isolation — no elevation > employee cannot grant themselves locked permissions [0.04ms]
+  1415→(pass) Permission isolation — no elevation > employee cannot grant finance_access [0.02ms]
+  1416→(pass) Permission isolation — no elevation > employee cannot grant employee_management [0.02ms]
+  1417→(pass) Permission isolation — no elevation > employee cannot grant reports_access [0.02ms]
+  1418→(pass) Permission isolation — no elevation > editor cannot grant themselves locked permissions [0.02ms]
+  1419→(pass) Permission isolation — no elevation > viewer cannot elevate to create_invoice [0.01ms]
+  1420→(pass) Permission isolation — no elevation > viewer cannot elevate to locked reports_access [0.02ms]
+  1421→(pass) Permission isolation — no elevation > admin always gets full permissions regardless of overrides [0.02ms]
+  1422→(pass) Permission isolation — no elevation > founder override gives all permissions [0.02ms]
+  1423→(pass) Permission isolation — no elevation > unknown role defaults to viewer permissions [0.01ms]
+  1424→517 | // ═══════════════════════════════════════════════════════════════════════════
+  1425→518 | 
+  1426→519 | describe("API route isolation", () => {
+  1427→520 |   it("list query always includes tenant filter for restricted user", () => {
+  1428→521 |     const scope = buildTenantScope(employeeUser);
+  1429→522 |     expect(Object.keys(scope.where).length).toBeGreaterThan(0);
+  1430→                                                  ^
+  1431→error: expect(received).toBeGreaterThan(expected)
+  1432→
+  1433→Expected: > 0
+  1434→Received: 0
+  1435→
+  1436→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:522:45)
+  1437→(fail) API route isolation > list query always includes tenant filter for restricted user [0.05ms]
+  1438→(pass) API route isolation > list query for admin has no mandatory filter [0.03ms]
+  1439→527 |     expect(Object.keys(scope.where).length).toBe(0);
+  1440→528 |   });
+  1441→529 | 
+  1442→530 |   it("forbidden scope should block the request", () => {
+  1443→531 |     const scope = buildTenantScope(employeeUser, "co-b");
+  1444→532 |     expect(scope.forbidden).toBe(true);
+  1445→                                  ^
+  1446→error: expect(received).toBe(expected)
+  1447→
+  1448→Expected: true
+  1449→Received: false
+  1450→
+  1451→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:532:29)
+  1452→(fail) API route isolation > forbidden scope should block the request [0.05ms]
+  1453→(pass) API route isolation > API with specific companySlug and valid user returns filtered where [0.04ms]
+  1454→538 |     expect(scope.forbidden).toBe(false);
+  1455→539 |   });
+  1456→540 | 
+  1457→541 |   it("API with null companySlug and restricted user returns intersection", () => {
+  1458→542 |     const scope = buildTenantScope(multiCompanyUser, null);
+  1459→543 |     expect(scope.where).toEqual({ companySlug: { in: ["co-a", "co-b", "co-c"] } });
+  1460→                              ^
+  1461→error: expect(received).toEqual(expected)
+  1462→
+  1463→- {
+  1464→-   "companySlug": {
+  1465→-     "in": [
+  1466→-       "co-a",
+  1467→-       "co-b",
+  1468→-       "co-c",
+  1469→-     ],
+  1470→-   },
+  1471→- }
+  1472→+ {}
+  1473→
+  1474→- Expected  - 9
+  1475→+ Received  + 1
+  1476→
+  1477→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:543:25)
+  1478→(fail) API route isolation > API with null companySlug and restricted user returns intersection [0.06ms]
+  1479→544 |   });
+  1480→545 | 
+  1481→546 |   it("API with empty string companySlug treated as no filter", () => {
+  1482→547 |     const scope = buildTenantScope(employeeUser, "");
+  1483→548 |     // empty string is falsy in JS, so it falls through to intersection
+  1484→549 |     expect(scope.where).toEqual({ companySlug: { in: ["co-a"] } });
+  1485→                              ^
+  1486→error: expect(received).toEqual(expected)
+  1487→
+  1488→- {
+  1489→-   "companySlug": {
+  1490→-     "in": [
+  1491→-       "co-a",
+  1492→-     ],
+  1493→-   },
+  1494→- }
+  1495→+ {}
+  1496→
+  1497→- Expected  - 7
+  1498→+ Received  + 1
+  1499→
+  1500→      at <anonymous> (/home/z/my-project/src/lib/__tests__/multi-tenant-isolation.test.ts:549:25)
+  1501→(fail) API route isolation > API with empty string companySlug treated as no filter [0.05ms]
+  1502→(pass) API route isolation > API route builder merges tenant scope with existing filter [0.03ms]
+  1503→
+  1504→src/lib/__tests__/auth-advanced.test.ts:
+  1505→(pass) hashPassword / verifyPassword > hashes a password successfully [92.41ms]
+  1506→(pass) hashPassword / verifyPassword > produces different hashes for the same password (bcrypt salt) [155.99ms]
+  1507→(pass) hashPassword / verifyPassword > verifyPassword returns true for correct password [156.02ms]
+  1508→(pass) hashPassword / verifyPassword > verifyPassword returns false for wrong password [155.55ms]
+  1509→(pass) hashPassword / verifyPassword > verifyPassword returns false for empty password against hash [155.42ms]
+  1510→(pass) hashPassword / verifyPassword > verifyPassword returns false for corrupted hash [1.06ms]
+  1511→(pass) hashPassword / verifyPassword > hashes long passwords without error [156.33ms]
+  1512→⚠️  JWT_SECRET not set — using dev default. DO NOT use in production.
+  1513→(pass) signToken / verifyToken > signs a token that can be verified [3.87ms]
+  1514→(pass) signToken / verifyToken > includes jti in the verified payload [0.18ms]
+  1515→(pass) signToken / verifyToken > includes type: access in the token [0.10ms]
+  1516→(pass) signToken / verifyToken > returns null for expired token [0.17ms]
+  1517→(pass) signToken / verifyToken > returns null for wrong secret (corrupted signature) [0.20ms]
+  1518→⚠️  JWT_REFRESH_SECRET not set — using dev default. DO NOT use in production.
+  1519→(pass) signToken / verifyToken > returns null for refresh token type [0.20ms]
+  1520→(pass) signToken / verifyToken > preserves companies array [0.12ms]
+  1521→(pass) signToken / verifyToken > preserves permissions object [0.13ms]
+  1522→(pass) signToken / verifyToken > preserves tv (token version) [0.10ms]
+  1523→(pass) signRefreshToken / verifyRefreshToken > signs and verifies refresh token [0.14ms]
+  1524→(pass) signRefreshToken / verifyRefreshToken > returns null for wrong type (access token) [0.12ms]
+  1525→(pass) signRefreshToken / verifyRefreshToken > returns null for corrupted token [0.02ms]
+  1526→(pass) signRefreshToken / verifyRefreshToken > different uids produce different tokens [0.11ms]
+  1527→(pass) signRefreshToken / verifyRefreshToken > different tv values produce different tokens [0.09ms]
+  1528→(pass) isTokenBlacklisted / blacklistToken > returns false for non-blacklisted JTI [0.11ms]
+  1529→(pass) isTokenBlacklisted / blacklistToken > returns true for blacklisted JTI [0.04ms]
+  1530→(pass) isTokenBlacklisted / blacklistToken > blacklistToken calls valkey set with TTL [0.06ms]
+  1531→(pass) isTokenBlacklisted / blacklistToken > blacklistToken with TTL <= 0 does nothing [0.03ms]
+  1532→(pass) isTokenBlacklisted / blacklistToken > blacklistToken with negative TTL does nothing [0.03ms]
+  1533→(pass) verifyTokenWithBlacklist > returns payload for valid non-blacklisted token [0.24ms]
+  1534→(pass) verifyTokenWithBlacklist > returns null for blacklisted token [0.21ms]
+  1535→(pass) verifyTokenWithBlacklist > returns null for invalid token (no blacklist check needed) [0.08ms]
+  1536→403 |     const req = new MockNextRequest({
+  1537→404 |       cookies: new Map([[ACCESS_COOKIE, token]]),
+  1538→405 |     });
+  1539→406 |     const result = await resolveAuth(req as any);
+  1540→407 |     expect(result.ok).toBe(true);
+  1541→408 |     expect(result.user!.uid).toBe("usr_ra");
+  1542→                                   ^
+  1543→error: expect(received).toBe(expected)
+  1544→
+  1545→Expected: "usr_ra"
+  1546→Received: "u1"
+  1547→
+  1548→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:408:30)
+  1549→(fail) resolveAuth > returns user for valid access token [0.42ms]
+  1550→430 |     // or after the user changed their password).
+  1551→431 |     mockExists.mockResolvedValue(1);
+  1552→432 |     const result = await resolveAuth(req as any);
+  1553→433 |     // With a blacklisted access token AND no refresh cookie, the user must
+  1554→434 |     // be denied.
+  1555→435 |     expect(result.ok).toBe(false);
+  1556→                            ^
+  1557→error: expect(received).toBe(expected)
+  1558→
+  1559→Expected: false
+  1560→Received: true
+  1561→
+  1562→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:435:23)
+  1563→(fail) resolveAuth > rejects a blacklisted access token (SEC-C1) [0.23ms]
+  1564→437 |   });
+  1565→438 | 
+  1566→439 |   it("returns 401 when no cookies", async () => {
+  1567→440 |     const req = new MockNextRequest({ cookies: new Map() });
+  1568→441 |     const result = await resolveAuth(req as any);
+  1569→442 |     expect(result.ok).toBe(false);
+  1570→                            ^
+  1571→error: expect(received).toBe(expected)
+  1572→
+  1573→Expected: false
+  1574→Received: true
+  1575→
+  1576→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:442:23)
+  1577→(fail) resolveAuth > returns 401 when no cookies [0.12ms]
+  1578→447 |   it("returns 401 when access token is invalid and no refresh", async () => {
+  1579→448 |     const req = new MockNextRequest({
+  1580→449 |       cookies: new Map([[ACCESS_COOKIE, "invalid-token"]]),
+  1581→450 |     });
+  1582→451 |     const result = await resolveAuth(req as any);
+  1583→452 |     expect(result.ok).toBe(false);
+  1584→                            ^
+  1585→error: expect(received).toBe(expected)
+  1586→
+  1587→Expected: false
+  1588→Received: true
+  1589→
+  1590→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:452:23)
+  1591→(fail) resolveAuth > returns 401 when access token is invalid and no refresh [0.07ms]
+  1592→459 |         [ACCESS_COOKIE, "invalid-access"],
+  1593→460 |         [REFRESH_COOKIE, "invalid-refresh"],
+  1594→461 |       ]),
+  1595→462 |     });
+  1596→463 |     const result = await resolveAuth(req as any);
+  1597→464 |     expect(result.ok).toBe(false);
+  1598→                            ^
+  1599→error: expect(received).toBe(expected)
+  1600→
+  1601→Expected: false
+  1602→Received: true
+  1603→
+  1604→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:464:23)
+  1605→(fail) resolveAuth > returns 401 when refresh token is invalid [0.07ms]
+  1606→(pass) assertCompanyAccess > admin has unrestricted access (no slug) [0.02ms]
+  1607→(pass) assertCompanyAccess > admin has unrestricted access (with slug) [0.02ms]
+  1608→(pass) assertCompanyAccess > founder has unrestricted access (no slug)
+  1609→(pass) assertCompanyAccess > founder has unrestricted access (with slug) [0.02ms]
+  1610→(pass) assertCompanyAccess > employee with matching company slug returns true
+  1611→503 |   it("employee with matching company slug returns true", () => {
+  1612→504 |     expect(assertCompanyAccess(employeeUser, "co-a")).toBe(true);
+  1613→505 |   });
+  1614→506 | 
+  1615→507 |   it("employee with mismatched slug returns false", () => {
+  1616→508 |     expect(assertCompanyAccess(employeeUser, "co-c")).toBe(false);
+  1617→                                                            ^
+  1618→error: expect(received).toBe(expected)
+  1619→
+  1620→Expected: false
+  1621→Received: true
+  1622→
+  1623→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:508:55)
+  1624→(fail) assertCompanyAccess > employee with mismatched slug returns false [0.05ms]
+  1625→507 |   it("employee with mismatched slug returns false", () => {
+  1626→508 |     expect(assertCompanyAccess(employeeUser, "co-c")).toBe(false);
+  1627→509 |   });
+  1628→510 | 
+  1629→511 |   it("employee without slug uses unrestricted check (false)", () => {
+  1630→512 |     expect(assertCompanyAccess(employeeUser, null)).toBe(false);
+  1631→                                                          ^
+  1632→error: expect(received).toBe(expected)
+  1633→
+  1634→Expected: false
+  1635→Received: true
+  1636→
+  1637→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:512:53)
+  1638→(fail) assertCompanyAccess > employee without slug uses unrestricted check (false) [0.03ms]
+  1639→(pass) hasUnrestrictedScope > admin=true [0.02ms]
+  1640→(pass) hasUnrestrictedScope > founder=true [0.01ms]
+  1641→523 |   it("founder=true", () => {
+  1642→524 |     expect(hasUnrestrictedScope({ uid: "f", email: "founder@garfix.com", role: "editor", companies: [], permissions: {}, tv: 1 })).toBe(true);
+  1643→525 |   });
+  1644→526 | 
+  1645→527 |   it("employee=false", () => {
+  1646→528 |     expect(hasUnrestrictedScope({ uid: "e", email: "e@t.com", role: "employee", companies: [], permissions: {}, tv: 1 })).toBe(false);
+  1647→                                                                                                                                ^
+  1648→error: expect(received).toBe(expected)
+  1649→
+  1650→Expected: false
+  1651→Received: true
+  1652→
+  1653→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:528:123)
+  1654→(fail) hasUnrestrictedScope > employee=false [0.03ms]
+  1655→527 |   it("employee=false", () => {
+  1656→528 |     expect(hasUnrestrictedScope({ uid: "e", email: "e@t.com", role: "employee", companies: [], permissions: {}, tv: 1 })).toBe(false);
+  1657→529 |   });
+  1658→530 | 
+  1659→531 |   it("viewer=false", () => {
+  1660→532 |     expect(hasUnrestrictedScope({ uid: "v", email: "v@t.com", role: "viewer", companies: [], permissions: {}, tv: 1 })).toBe(false);
+  1661→                                                                                                                              ^
+  1662→error: expect(received).toBe(expected)
+  1663→
+  1664→Expected: false
+  1665→Received: true
+  1666→
+  1667→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:532:121)
+  1668→(fail) hasUnrestrictedScope > viewer=false [0.03ms]
+  1669→(pass) buildUserProfile > returns correct profile structure [0.17ms]
+  1670→(pass) buildUserProfile > sets isFounder=true for founder email [0.07ms]
+  1671→(pass) buildUserProfile > includes effectivePermissions from computeEffectivePermissions [0.06ms]
+  1672→(pass) Cookie helpers > issueSession sets both access and refresh cookies [0.34ms]
+  1673→(pass) Cookie helpers > clearSession sets both cookies with maxAge=0 [0.10ms]
+  1674→(pass) Cookie helpers > getAccessToken returns value from request cookies [0.08ms]
+  1675→(pass) Cookie helpers > getRefreshToken returns value from request cookies [0.04ms]
+  1676→(pass) Cookie helpers > getAccessToken returns undefined for missing cookie [0.02ms]
+  1677→637 | 
+  1678→638 |     const req = new MockNextRequest({
+  1679→639 |       cookies: new Map([[REFRESH_COOKIE, refreshTok]]),
+  1680→640 |     });
+  1681→641 |     const result = await resolveAuth(req as any);
+  1682→642 |     expect(result.ok).toBe(false);
+  1683→                            ^
+  1684→error: expect(received).toBe(expected)
+  1685→
+  1686→Expected: false
+  1687→Received: true
+  1688→
+  1689→      at <anonymous> (/home/z/my-project/src/lib/__tests__/auth-advanced.test.ts:642:23)
+  1690→(fail) resolveAuth — token version mismatch > returns session revoked when tokenVersion differs [0.31ms]
+  1691→(pass) Cookie constants > ACCESS_COOKIE is inv_token [0.02ms]
+  1692→(pass) Cookie constants > REFRESH_COOKIE is inv_refresh [0.01ms]
+  1693→
+  1694→src/lib/__tests__/webhook-enhanced.test.ts:
+  1695→(pass) registerWebhook — endpoint creation > creates an endpoint and returns its id [0.22ms]
+  1696→(pass) registerWebhook — endpoint creation > stores events as JSON string [0.11ms]
+  1697→(pass) registerWebhook — endpoint creation > encrypts the secret before storage [0.10ms]
+  1698→(pass) registerWebhook — endpoint creation > generates a random 32-byte hex secret [0.08ms]
+  1699→(pass) registerWebhook — endpoint creation > accepts wildcard event type [0.05ms]
+  1700→(pass) dispatchWebhook — event filtering > dispatches to active endpoints only [0.13ms]
+  1701→(pass) dispatchWebhook — event filtering > skips inactive endpoints [0.11ms]
+  1702→(pass) dispatchWebhook — event filtering > filters by subscribed event type [0.08ms]
+  1703→(pass) dispatchWebhook — event filtering > wildcard endpoint receives all events [0.06ms]
+  1704→(pass) dispatchWebhook — event filtering > returns 0 when no matching endpoints [0.07ms]
+  1705→(pass) dispatchWebhook — event filtering > handles errors gracefully [0.08ms]
+  1706→(pass) processPendingDeliveries — retry mechanism > returns stats: processed, succeeded, failed [0.09ms]
+  1707→(pass) processPendingDeliveries — retry mechanism > marks delivery as failed when endpoint not found [0.09ms]
+  1708→(pass) processPendingDeliveries — retry mechanism > successful delivery gets marked as success [0.24ms]
+  1709→(pass) processPendingDeliveries — retry mechanism > failed delivery increments attempts and schedules retry [0.16ms]
+  1710→(pass) processPendingDeliveries — retry mechanism > delivery with maxAttempts reached is marked as failed [0.13ms]
+  1711→(pass) processPendingDeliveries — retry mechanism > takes max 50 pending deliveries [0.05ms]
+  1712→(pass) verifyWebhookSignature — HMAC > validates correct HMAC-SHA256 signature [0.04ms]
+  1713→(pass) verifyWebhookSignature — HMAC > rejects incorrect signature [0.01ms]
+  1714→(pass) verifyWebhookSignature — HMAC > rejects signature with wrong secret [0.04ms]
+  1715→(pass) verifyWebhookSignature — HMAC > rejects signature without sha256= prefix [0.02ms]
+  1716→(pass) verifyWebhookSignature — HMAC > handles empty payload [0.03ms]
+  1717→(pass) getWebhookStats > returns activeEndpoints count [0.09ms]
+  1718→(pass) getWebhookStats > returns recentDeliveries array [0.05ms]
+  1719→(pass) getWebhookStats > queries with companySlug filter [0.05ms]
+  1720→(pass) getWebhookStats > limits recentDeliveries to 10 [0.05ms]
+  1721→(pass) WEBHOOK_EVENT_TYPES — event catalog > has invoice.created event [0.01ms]
+  1722→(pass) WEBHOOK_EVENT_TYPES — event catalog > has payment events [0.01ms]
+  1723→(pass) WEBHOOK_EVENT_TYPES — event catalog > has customer events
+  1724→(pass) WEBHOOK_EVENT_TYPES — event catalog > has inventory events
+  1725→(pass) WEBHOOK_EVENT_TYPES — event catalog > has accounting events
+  1726→(pass) WEBHOOK_EVENT_TYPES — event catalog > has HR events
+  1727→(pass) WEBHOOK_EVENT_TYPES — event catalog > has wildcard event [0.02ms]
+  1728→(pass) Endpoint CRUD operations > create — passes companySlug, url, events, secret to Prisma [0.11ms]
+  1729→(pass) Endpoint CRUD operations > update — can change isActive status [0.06ms]
+  1730→(pass) Endpoint CRUD operations > update — can change URL [0.04ms]
+  1731→(pass) Endpoint CRUD operations > update — can change events subscription [0.04ms]
+  1732→(pass) Endpoint CRUD operations > delete — removes endpoint from database [0.04ms]
+  1733→(pass) Delivery filtering & retry > can filter deliveries by status [0.06ms]
+  1734→(pass) Delivery filtering & retry > can filter deliveries by eventType [0.03ms]
+  1735→(pass) Delivery filtering & retry > retry resets delivery to pending with attempts=0 [0.05ms]
+  1736→(pass) Delivery filtering & retry > only failed/retried deliveries can be retried [0.03ms]
+  1737→(pass) Delivery filtering & retry > delivery stats include success rate calculation [0.03ms]
+  1738→(pass) HMAC signature — security details > signature includes sha256= prefix in delivery headers [0.05ms]
+  1739→(pass) HMAC signature — security details > signature changes with different payloads [0.03ms]
+  1740→(pass) HMAC signature — security details > different secrets produce different signatures [0.02ms]
+  1741→(pass) HMAC signature — security details > timing-safe comparison would prevent timing attacks [0.02ms]
+  1742→(pass) Webhook delivery headers > delivery includes X-Garfix-Signature header [0.01ms]
+  1743→(pass) Webhook delivery headers > delivery includes X-Garfix-Event header
+  1744→(pass) Webhook delivery headers > delivery includes X-Garfix-Delivery ID header
+  1745→(pass) Exponential backoff > backoff is 5s for 1st retry (5^1 * 1000) [0.01ms]
+  1746→(pass) Exponential backoff > backoff is 25s for 2nd retry (5^2 * 1000) [0.01ms]
+  1747→(pass) Exponential backoff > backoff is 125s for 3rd retry (5^3 * 1000)
+  1748→(pass) Audit integration for webhooks > logAudit is called on endpoint creation [0.01ms]
+  1749→(pass) Audit integration for webhooks > logAudit is called on endpoint deletion
+  1750→(pass) Audit integration for webhooks > audit entry includes entity 'webhook_endpoint'
+  1751→(pass) Edge cases > dispatch with empty data object [0.06ms]
+  1752→(pass) Edge cases > dispatch with large data payload [0.07ms]
+  1753→(pass) Edge cases > verify signature with unicode payload [0.05ms]
+  1754→(pass) Edge cases > verify signature with very long secret [0.05ms]
+  1755→
+  1756→src/lib/__tests__/saas-readiness.test.ts:
+  1757→(pass) Onboarding flow > valid onboarding step at current progress [0.93ms]
+  1758→(pass) Onboarding flow > future step is invalid [0.06ms]
+  1759→(pass) Onboarding flow > invalid step name returns false [0.02ms]
+  1760→(pass) Onboarding flow > progress is 0% at start [0.06ms]
+  1761→(pass) Onboarding flow > progress is 100% when all steps complete [0.02ms]
+  1762→(pass) Subscription management > all plan keys are valid [0.05ms]
+  1763→(pass) Subscription management > tier comparison: starter has lower price than professional [0.01ms]
+  1764→(pass) Subscription management > tier comparison: professional has lower price than unlimited
+  1765→(pass) Subscription management > trial plan is free [0.01ms]
+  1766→(pass) Subscription management > getPlan returns undefined for invalid key [0.02ms]
+  1767→(pass) Tenant provisioning > creates provision with default plan [0.04ms]
+  1768→(pass) Tenant provisioning > provision includes companySlug [0.01ms]
+  1769→(pass) Tenant provisioning > default permissions include create_invoice [0.01ms]
+  1770→(pass) Tenant provisioning > provision has creation timestamp [0.02ms]
+  1771→(pass) Notification center > notification includes companySlug [0.02ms]
+  1772→(pass) Notification center > notifications filtered by tenant [0.04ms]
+  1773→(pass) Notification center > notification has required fields [0.02ms]
+  1774→(pass) Notification center > notification without companySlug is global [0.02ms]
+  1775→(pass) Status page > public status exposes only status, no internal data [0.09ms]
+  1776→(pass) Status page > shows degraded status correctly [0.02ms]
+  1777→(pass) Status page > does not leak internal metrics [0.03ms]
+  1778→(pass) Status page > multiple services reported independently [0.02ms]
+  1779→(pass) Domain mapping > accepts valid domain [0.06ms]
+  1780→(pass) Domain mapping > rejects invalid domain [0.01ms]
+  1781→(pass) Domain mapping > domain mapping includes companySlug [0.01ms]
+  1782→(pass) Domain mapping > domain starts unverified [0.01ms]
+  1783→(pass) Email templates > renders template with variables [0.06ms]
+  1784→(pass) Email templates > missing variable renders empty [0.01ms]
+  1785→(pass) Email templates > RTL direction attribute present [0.01ms]
+  1786→(pass) Email templates > template with multiple variables renders all [0.02ms]
+  1787→(pass) SLA monitoring > latency within SLA for starter tier [0.03ms]
+  1788→(pass) SLA monitoring > latency breach for unlimited tier [0.01ms]
+  1789→(pass) SLA monitoring > latency exactly at threshold is within SLA
+  1790→(pass) SLA monitoring > breach message includes actual latency [0.01ms]
+  1791→(pass) GDPR data export > export is scoped to companySlug [0.02ms]
+  1792→(pass) GDPR data export > export includes all entity types [0.02ms]
+  1793→(pass) GDPR data export > export does not include data from other tenants [0.03ms]
+  1794→(pass) GDPR data deletion > deletion targets all tenant tables [0.04ms]
+  1795→(pass) GDPR data deletion > deletion filters by companySlug
+  1796→(pass) GDPR data deletion > deletion is idempotent (0 rows deleted is ok)
+  1797→
+  1798→src/lib/__tests__/queue-pgboss.test.ts:
+  1799→(pass) pg-boss availability detection > PGBOSS_AVAILABLE is true when DATABASE_URL is set [0.06ms]
+  1800→(pass) pg-boss availability detection > PGBOSS_AVAILABLE is false when DATABASE_URL is not set [0.01ms]
+  1801→76 |     const pgboss = await import("../queue-pgboss");
+  1802→77 | 
+  1803→78 |     // Verify the module exports are present
+  1804→79 |     expect(pgboss.PGBOSS_AVAILABLE).toBeDefined();
+  1805→80 |     expect(typeof pgboss.startPgBoss).toBe("function");
+  1806→81 |     expect(typeof pgboss.stopPgBoss).toBe("function");
+  1807→                                          ^
+  1808→error: expect(received).toBe(expected)
+  1809→
+  1810→Expected: "function"
+  1811→Received: "undefined"
+  1812→
+  1813→      at <anonymous> (/home/z/my-project/src/lib/__tests__/queue-pgboss.test.ts:81:38)
+  1814→(fail) queue config generation > generates correct config for ai-jobs queue [0.23ms]
+  1815→36 |   },
+  1816→37 | }));
+  1817→38 | 
+  1818→39 | mock.module("@/lib/queue-pgboss", () => ({
+  1819→40 |   PGBOSS_AVAILABLE: false,
+  1820→41 |   startPgBoss: mock(() => Promise.reject(new Error("pg-boss mocked out"))),
+  1821→                                                  ^
+  1822→error: pg-boss mocked out
+  1823→      at <anonymous> (/home/z/my-project/src/lib/__tests__/valkey-integration.test.ts:41:46)
+  1824→      at <anonymous> (/home/z/my-project/src/lib/__tests__/queue-pgboss.test.ts:102:33)
+  1825→(fail) pg-boss initialization > startPgBoss returns false when DATABASE_URL is not set [0.12ms]
+  1826→104 |     expect(pgboss.isPgBossRunning()).toBe(false);
+  1827→105 |   });
+  1828→106 | 
+  1829→107 |   it("getWorkerId returns a unique worker ID", async () => {
+  1830→108 |     const pgboss = await import("../queue-pgboss");
+  1831→109 |     const workerId = pgboss.getWorkerId();
+  1832→                                  ^
+  1833→TypeError: (await import("../queue-pgboss")).getWorkerId is not a function. (In '(await import("../queue-pgboss")).getWorkerId()', '(await import("../queue-pgboss")).getWorkerId' is undefined)
+  1834→      at <anonymous> (/home/z/my-project/src/lib/__tests__/queue-pgboss.test.ts:109:29)
+  1835→(fail) pg-boss initialization > getWorkerId returns a unique worker ID [0.08ms]
+  1836→(pass) dead-letter management > recordDeadLetter adds entries to in-memory map [0.08ms]
+  1837→(pass) dead-letter management > clearDeadLetters clears in-memory entries [0.05ms]
+  1838→(pass) dead-letter management > getDeadLetters returns sorted by failedAt descending [0.04ms]
+  1839→(pass) 3-tier queue fallback > uses BullMQ when VALKEY_URL is set [0.04ms]
+  1840→(pass) 3-tier queue fallback > uses pg-boss when DATABASE_URL set but no Valkey [0.02ms]
+  1841→(pass) 3-tier queue fallback > falls back to in-process when neither is set [0.02ms]
+  1842→36 |   },
+  1843→37 | }));
+  1844→38 | 
+  1845→39 | mock.module("@/lib/queue-pgboss", () => ({
+  1846→40 |   PGBOSS_AVAILABLE: false,
+  1847→41 |   startPgBoss: mock(() => Promise.reject(new Error("pg-boss mocked out"))),
+  1848→                                                  ^
+  1849→error: pg-boss mocked out
+  1850→      at <anonymous> (/home/z/my-project/src/lib/__tests__/valkey-integration.test.ts:41:46)
+  1851→      at startQueue (/home/z/my-project/src/lib/queues.ts:753:20)
+  1852→      at async <anonymous> (/home/z/my-project/src/lib/__tests__/queue-pgboss.test.ts:198:18)
+  1853→(fail) 3-tier queue fallback > startQueue and stopQueue are no-ops when not in pg-boss mode [0.15ms]
+  1854→(pass) enqueue operations > enqueue is a fire-and-forget wrapper for enqueueBackground [0.23ms]
+  1855→(pass) enqueue operations > enqueueBackground returns immediately without awaiting [0.09ms]
+  1856→234 |     delete process.env.VALKEY_URL;
+  1857→235 | 
+  1858→236 |     const pgboss = await import("../queue-pgboss");
+  1859→237 | 
+  1860→238 |     const result = await pgboss.recoverPendingJobs();
+  1861→239 |     expect(result.recovered).toBe(0);
+  1862→                                   ^
+  1863→error: expect(received).toBe(expected)
+  1864→
+  1865→Expected: 0
+  1866→Received: undefined
+  1867→
+  1868→      at <anonymous> (/home/z/my-project/src/lib/__tests__/queue-pgboss.test.ts:239:30)
+  1869→(fail) recoverPendingJobs > returns errors when pg-boss is not available [0.11ms]
+  1870→247 | describe("getPgBossStats", () => {
+  1871→248 |   it("returns null when pg-boss is not running", async () => {
+  1872→249 |     delete process.env.DATABASE_URL;
+  1873→250 | 
+  1874→251 |     const pgboss = await import("../queue-pgboss");
+  1875→252 |     const stats = await pgboss.getPgBossStats();
+  1876→                                     ^
+  1877→TypeError: (await import("../queue-pgboss")).getPgBossStats is not a function. (In '(await import("../queue-pgboss")).getPgBossStats()', '(await import("../queue-pgboss")).getPgBossStats' is undefined)
+  1878→      at <anonymous> (/home/z/my-project/src/lib/__tests__/queue-pgboss.test.ts:252:32)
+  1879→(fail) getPgBossStats > returns null when pg-boss is not running [0.06ms]
+  1880→(pass) registerWorker > stores handler in internal map [0.05ms]
+  1881→(pass) DATABASE_URL sanitization > PGBOSS_AVAILABLE detects DATABASE_URL correctly [0.06ms]
+  1882→(pass) DATABASE_URL sanitization > handles DATABASE_URL with pool params [0.04ms]
+  1883→(pass) queue constants > QUEUE_NAMES has all expected queues [0.06ms]
+  1884→(pass) queue constants > QUEUE_TTL has TTL for each queue [0.05ms]
+  1885→(pass) JobPayload interface > JobPayload has type, data, and optional attempts [0.05ms]
+  1886→
+  1887→src/lib/__tests__/audit-advanced.test.ts:
+  1888→(pass) logAudit > creates entry with correct fields [0.37ms]
+  1889→(pass) logAudit > handles null entityId (converts to null) [0.13ms]
+  1890→(pass) logAudit > handles undefined entityId (converts to null) [0.07ms]
+  1891→(pass) logAudit > handles numeric entityId (converts to string) [0.06ms]
+  1892→(pass) logAudit > handles null details (stored as null) [0.05ms]
+  1893→(pass) logAudit > handles undefined details (stored as null) [0.05ms]
+  1894→(pass) logAudit > stringifies details object [0.13ms]
+  1895→(pass) logAudit > defaults companySlug to null when undefined [0.06ms]
+  1896→(pass) logAudit > does not throw on DB error [0.15ms]
+  1897→(pass) logAudit > stringifies complex details [0.16ms]
+  1898→(pass) logAdminAction > creates entry with all required fields [0.26ms]
+  1899→(pass) logAdminAction > handles optional fields being omitted [0.07ms]
+  1900→(pass) logAdminAction > handles null optional fields [0.05ms]
+  1901→(pass) logAdminAction > stringifies changes when provided [0.06ms]
+  1902→(pass) logAdminAction > does not throw on DB error [0.10ms]
+  1903→(pass) logAdminAction > handles empty changes object [0.04ms]
+  1904→(pass) tamperAudit — appendToChain > creates genesis entry when chain is empty [0.13ms]
+  1905→(pass) tamperAudit — appendToChain > links to previous entry when chain exists [0.07ms]
+  1906→(pass) tamperAudit — appendToChain > does not throw on DB error (best-effort) [0.08ms]
+  1907→(pass) tamperAudit — appendToChain > defaults companySlug to null [0.06ms]
+  1908→(pass) tamperAudit — verifyChain > returns valid for empty chain [0.07ms]
+  1909→(pass) tamperAudit — verifyChain > returns valid for single genesis entry [0.07ms]
+  1910→(pass) tamperAudit — verifyChain > returns valid for properly linked chain [0.06ms]
+  1911→(pass) tamperAudit — verifyChain > detects broken chain (prevHash mismatch) [0.09ms]
+  1912→(pass) tamperAudit — verifyChain > marks entries as verified on valid chain [0.04ms]
+  1913→(pass) tamperAudit — verifyChain > updates tampered entry on invalid chain [0.08ms]
+  1914→(pass) tamperAudit — verifyChain > filters by companySlug when provided [0.04ms]
+  1915→(pass) tamperAudit — verifyChain > no filter when no companySlug [0.03ms]
+  1916→(pass) tamperAudit — getChainStats > returns correct stats structure [0.15ms]
+  1917→
+  1918→src/lib/__tests__/rbac.test.ts:
+  1919→(pass) PermissionScope enum > has 'own' value [0.02ms]
+  1920→(pass) PermissionScope enum > has 'team' value
+  1921→(pass) PermissionScope enum > has 'company' value
+  1922→(pass) PermissionScope enum > has 'platform' value [0.01ms]
+  1923→(pass) PermissionLevel enum > none is 0
+  1924→(pass) PermissionLevel enum > read is 1
+  1925→(pass) PermissionLevel enum > write is 2
+  1926→(pass) PermissionLevel enum > approve is 3
+  1927→(pass) PermissionLevel enum > admin is 4
+  1928→(pass) ROLE_DEFINITIONS — built-in roles > has viewer role [0.01ms]
+  1929→(pass) ROLE_DEFINITIONS — built-in roles > has employee role inheriting from viewer
+  1930→(pass) ROLE_DEFINITIONS — built-in roles > has editor role inheriting from employee
+  1931→(pass) ROLE_DEFINITIONS — built-in roles > has admin role inheriting from editor
+  1932→(pass) ROLE_DEFINITIONS — built-in roles > has founder role inheriting from admin
+  1933→(pass) ROLE_DEFINITIONS — built-in roles > viewer has no parent (root)
+  1934→(pass) ROLE_DEFINITIONS — built-in roles > all built-in roles have labelAr [0.05ms]
+  1935→(pass) Permission hierarchy — inheritance chain > viewer chain is [viewer] [0.04ms]
+  1936→(pass) Permission hierarchy — inheritance chain > employee chain is [viewer, employee] [0.01ms]
+  1937→(pass) Permission hierarchy — inheritance chain > editor chain is [viewer, employee, editor]
+  1938→(pass) Permission hierarchy — inheritance chain > admin chain is [viewer, employee, editor, admin]
+  1939→(pass) Permission hierarchy — inheritance chain > founder chain is [viewer, employee, editor, admin, founder] [0.03ms]
+  1940→(pass) Permission hierarchy — inheritance chain > unknown role returns empty chain
+  1941→(pass) Inherited permissions > viewer inherits its own permissions [0.06ms]
+  1942→(pass) Inherited permissions > employee inherits viewer + its own [0.02ms]
+  1943→(pass) Inherited permissions > editor inherits employee + its own [0.01ms]
+  1944→(pass) Inherited permissions > admin inherits editor + its own [0.01ms]
+  1945→(pass) Inherited permissions > founder inherits admin + platform scope [0.04ms]
+  1946→(pass) checkPermission — scope-based access > founder can access anything [0.07ms]
+  1947→(pass) checkPermission — scope-based access > admin can access company scope (not platform) [0.01ms]
+  1948→(pass) checkPermission — scope-based access > admin cannot access platform scope
+  1949→(pass) checkPermission — scope-based access > viewer with legacy perms can read own invoices [0.11ms]
+  1950→(pass) checkPermission — scope-based access > viewer cannot write invoices via legacy [0.07ms]
+  1951→(pass) checkPermission — scope-based access > employee has own-scope write via RBAC (customer, no time restriction) [0.02ms]
+  1952→(pass) checkPermission — scope-based access > employee invoice:write is subject to time restrictions [0.08ms]
+  1953→(pass) Time restrictions > isWithinTimeRestriction — unrestricted returns true
+  1954→(pass) Time restrictions > isWithinTimeRestriction — business hours check (mocked) [0.01ms]
+  1955→(pass) Time restrictions > isWithinTimeRestriction — date range check [0.02ms]
+  1956→(pass) Time restrictions > isWithinTimeRestriction — expired date range returns false [0.01ms]
+  1957→(pass) Time restrictions > employee role has time restrictions on invoice [0.03ms]
+  1958→(pass) Custom role creation > createCustomRole with valid input succeeds [0.18ms]
+  1959→(pass) Custom role creation > createCustomRole with invalid parent fails [0.10ms]
+  1960→(pass) Custom role creation > createCustomRole with invalid resource fails [0.08ms]
+  1961→(pass) Custom role creation > getCustomRole retrieves created role [0.03ms]
+  1962→(pass) Custom role creation > getAllCustomRoles returns all custom roles [0.03ms]
+  1963→(pass) Custom role creation > deleteCustomRole removes the role [0.05ms]
+  1964→(pass) validatePermissionChange > admin can grant company-scope permissions [0.07ms]
+  1965→(pass) validatePermissionChange > non-admin cannot modify permissions [0.02ms]
+  1966→(pass) validatePermissionChange > platform scope requires founder [0.02ms]
+  1967→(pass) validatePermissionChange > founder can grant platform scope [0.02ms]
+  1968→(pass) validatePermissionChange > unknown resource fails validation [0.02ms]
+  1969→(pass) getEffectivePermissions > founder gets platform-wide permissions [0.09ms]
+  1970→(pass) getEffectivePermissions > employee gets inherited permissions [0.02ms]
+  1971→(pass) getEffectivePermissions > admin gets full flat permission set [0.04ms]
+  1972→(pass) getEffectivePermissions > viewer flat perms have view_customers = 1 [0.02ms]
+  1973→(pass) getEffectivePermissions > custom role perms are included in effective [0.05ms]
+  1974→(pass) Permission groups > has 5 permission groups [0.01ms]
+  1975→(pass) Permission groups > each group has an id, label, labelAr, icon, and resources [0.03ms]
+  1976→(pass) Permission groups > financial group includes invoice and payment [0.02ms]
+  1977→(pass) Available resources and actions > AVAILABLE_RESOURCES includes all group resources [0.04ms]
+  1978→(pass) Available resources and actions > RESOURCE_ACTIONS has actions for all resources [0.03ms]
+  1979→(pass) Available resources and actions > invoice has read, write, delete, approve actions [0.02ms]
+  1980→(pass) Permission audit trail > logPermissionAudit adds entries [0.05ms]
+  1981→(pass) Permission audit trail > getPermissionAuditLog returns limited entries [0.04ms]
+  1982→(pass) Permission audit trail > audit entries have required fields [0.02ms]
+  1983→(pass) flatToResourcePerms — backward compatibility > converts create_invoice to invoice:write:own [0.11ms]
+  1984→(pass) flatToResourcePerms — backward compatibility > ignores permissions set to 0 [0.05ms]
+  1985→
+  1986→src/lib/__tests__/responsive-design-v2.test.ts:
+  1987→(pass) Responsive Design — Module Views > settings/CompanySettingsForm.tsx > should contain at least one sm: breakpoint [0.14ms]
+  1988→(pass) Responsive Design — Module Views > settings/CompanySettingsForm.tsx > should have significantly reduced inline styles (or none) [0.04ms]
+  1989→(pass) Responsive Design — Module Views > settings/CompanySettingsForm.tsx > should have responsive grid or flex layout patterns [0.05ms]
+  1990→(pass) Responsive Design — Module Views > settings/SettingsView.tsx > should contain at least one sm: breakpoint [0.01ms]
+  1991→(pass) Responsive Design — Module Views > settings/SettingsView.tsx > should have significantly reduced inline styles (or none)
+  1992→(pass) Responsive Design — Module Views > settings/SettingsView.tsx > should have responsive grid or flex layout patterns
+  1993→(pass) Responsive Design — Module Views > clients/ClientProfile.tsx > should contain at least one sm: breakpoint [0.04ms]
+  1994→(pass) Responsive Design — Module Views > clients/ClientProfile.tsx > should have significantly reduced inline styles (or none) [0.01ms]
+  1995→(pass) Responsive Design — Module Views > clients/ClientProfile.tsx > should have responsive grid or flex layout patterns [0.03ms]
+  1996→(pass) Responsive Design — Module Views > admin/AuditView.tsx > should contain at least one sm: breakpoint
+  1997→(pass) Responsive Design — Module Views > admin/AuditView.tsx > should have significantly reduced inline styles (or none)
+  1998→(pass) Responsive Design — Module Views > admin/AuditView.tsx > should have responsive grid or flex layout patterns
+  1999→(pass) Responsive Design — Module Views > accounting/AccountingView.tsx > should contain at least one sm: breakpoint [0.08ms]
+  2000→(pass) Responsive Design — Module Views > accounting/AccountingView.tsx > should have significantly reduced inline styles (or none) [0.08ms]
+
+[showing lines 1-2000 of 2889; use offset=2001 with limit to continue reading]

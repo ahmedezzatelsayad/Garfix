@@ -153,12 +153,12 @@ describe('Full Validation Runner', () => {
     });
 
     it('should have provider dist sum = total requests', () => {
-      const sum = Object.values(result.metrics.providerDistribution).reduce((s, v) => s + v, 0);
+      const sum = Object.values(result.metrics.providerDistribution).reduce((s, v) => s + v.requests, 0);
       expect(sum).toBe(result.metrics.totalRequests);
     });
 
     it('should have model dist sum = total requests', () => {
-      const sum = Object.values(result.metrics.modelDistribution).reduce((s, v) => s + v, 0);
+      const sum = Object.values(result.metrics.modelDistribution).reduce((s, v) => s + v.requests, 0);
       expect(sum).toBe(result.metrics.totalRequests);
     });
 

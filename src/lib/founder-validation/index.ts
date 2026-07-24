@@ -126,7 +126,7 @@ export interface SyntheticUser {
 
 export interface SyntheticEmployee {
   id: string;
-  companyId: number;
+  companyId: string;
   companySlug: string;
   nameAr: string;
   nameEn: string;
@@ -134,7 +134,7 @@ export interface SyntheticEmployee {
   phone: string;
   position: string;
   department: string;
-  baseSalary: string;
+  baseSalary: number;
   currency: Currency;
   joinDate: string;
   status: 'active' | 'inactive' | 'terminated';
@@ -142,7 +142,7 @@ export interface SyntheticEmployee {
 }
 
 export interface SyntheticClient {
-  id: number;
+  id: string;
   companySlug: string;
   name: string;
   nameAr: string;
@@ -154,7 +154,7 @@ export interface SyntheticClient {
 }
 
 export interface SyntheticSupplier {
-  id: number;
+  id: string;
   companySlug: string;
   name: string;
   nameAr: string;
@@ -166,7 +166,7 @@ export interface SyntheticSupplier {
 }
 
 export interface SyntheticWarehouse {
-  id: number;
+  id: string;
   companySlug: string;
   name: string;
   nameAr: string;
@@ -179,7 +179,7 @@ export interface SyntheticWarehouse {
 }
 
 export interface SyntheticCategory {
-  id: number;
+  id: string;
   companySlug: string;
   name: string;
   nameAr: string;
@@ -188,46 +188,46 @@ export interface SyntheticCategory {
 }
 
 export interface SyntheticProduct {
-  id: number;
+  id: string;
   companySlug: string;
   code: string;
   name: string;
   nameAr: string;
-  categoryId: number;
-  purchasePrice: string;
-  sellingPrice: string;
-  wholesalePrice: string;
+  categoryId: string;
+  purchasePrice: number;
+  sellingPrice: number;
+  wholesalePrice: number;
   currency: Currency;
   createdAt: Date;
 }
 
 export interface SyntheticInventoryItem {
-  id: number;
+  id: string;
   companySlug: string;
-  productId: number;
-  warehouseId: number;
+  productId: string;
+  warehouseId: string;
   quantity: number;
   minQuantity: number;
-  costPrice: string;
+  costPrice: number;
   currency: Currency;
   updatedAt: Date;
 }
 
 export interface SyntheticLineItem {
-  productId: number;
+  productId: string;
   productName: string;
   productNameAr: string;
   quantity: number;
-  unitPrice: string;
-  total: string;
-  discount: string;
+  unitPrice: number;
+  total: number;
+  discount: number;
 }
 
 export interface SyntheticInvoice {
-  id: number;
+  id: string;
   invoiceNumber: string;
   companySlug: string;
-  clientId: number | null;
+  clientId: string | null;
   clientName: string;
   clientNameAr: string;
   invoiceType: InvoiceType;
@@ -235,13 +235,13 @@ export interface SyntheticInvoice {
   issueDate: string;
   dueDate: string;
   lineItems: SyntheticLineItem[];
-  subtotal: string;
-  taxRate: string;
-  taxAmount: string;
-  total: string;
-  shipping: string;
-  discount: string;
-  paid: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  shipping: number;
+  discount: number;
+  paid: number;
   currency: Currency;
   source: string | null;
   createdByEmail: string;
@@ -250,20 +250,20 @@ export interface SyntheticInvoice {
 }
 
 export interface SyntheticPurchase {
-  id: number;
+  id: string;
   invoiceNumber: string;
   companySlug: string;
-  supplierId: number;
+  supplierId: string;
   supplierName: string;
   supplierNameAr: string;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;
   lineItems: SyntheticLineItem[];
-  subtotal: string;
-  taxRate: string;
-  taxAmount: string;
-  total: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
   currency: Currency;
   createdAt: Date;
 }
@@ -330,7 +330,7 @@ export interface SyntheticWorkerHistory {
 }
 
 export interface SyntheticCompany {
-  id: number;
+  id: string;
   name: string;
   nameAr: string;
   slug: string;
@@ -701,9 +701,9 @@ function slugify(text: string): string {
     .substring(0, 50);
 }
 
-function formatMoney(amount: number, currency: Currency): string {
+function formatMoney(amount: number, currency: Currency): number {
   const decimals = currency === 'KWD' || currency === 'BHD' ? 3 : 2;
-  return amount.toFixed(decimals);
+  return parseFloat(amount.toFixed(decimals));
 }
 
 function randomDateRange(rng: SeededRandom, start: Date, end: Date): { issueDate: string; dueDate: string } {
@@ -788,7 +788,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
       suffix.replace(/^ال/, '');
 
     const company: SyntheticCompany = {
-      id: c + 1,
+      id: String(c + 1).padStart(8, '0'),
       name: `${companyNameEn} Co.`,
       nameAr,
       slug,
@@ -875,7 +875,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
       const clientNameAr = `${rng.pick(ARABIC_COMPANY_PREFIXES)} ${rng.pick(ARABIC_COMPANY_SUFFIXES)}`;
       const clientCity = rng.pick(GULF_CITIES[country] || GULF_CITIES.SA);
       company.clients.push({
-        id: 1000 * (c + 1) + cl,
+        id: String(1000 * (c + 1) + cl).padStart(8, '0'),
         companySlug: slug,
         name: `Client-${cl + 1}`,
         nameAr: clientNameAr,
@@ -893,7 +893,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
       const suppNameAr = `${rng.pick(ARABIC_COMPANY_PREFIXES)} ${rng.pick(ARABIC_COMPANY_SUFFIXES)}`;
       const suppCountry = rng.pick([...countries]);
       company.suppliers.push({
-        id: 2000 * (c + 1) + s,
+        id: String(2000 * (c + 1) + s).padStart(8, '0'),
         companySlug: slug,
         name: `Supplier-${s + 1}`,
         nameAr: suppNameAr,
@@ -910,7 +910,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
     for (let w = 0; w < whCount; w++) {
       const city = rng.pick(GULF_CITIES[country] || GULF_CITIES.SA);
       company.warehouses.push({
-        id: 3000 * (c + 1) + w,
+        id: String(3000 * (c + 1) + w).padStart(8, '0'),
         companySlug: slug,
         name: `Warehouse ${w + 1}`,
         nameAr: `مستودع ${w + 1} - ${city}`,
@@ -928,7 +928,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
     const selectedCats = rng.pickN(ARABIC_CATEGORIES, catCount);
     for (let cat = 0; cat < selectedCats.length; cat++) {
       company.categories.push({
-        id: 4000 * (c + 1) + cat,
+        id: String(4000 * (c + 1) + cat).padStart(8, '0'),
         companySlug: slug,
         name: selectedCats[cat].nameEn,
         nameAr: selectedCats[cat].name,
@@ -941,10 +941,10 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
     const prodCount = rng.int(5, 40) + Math.floor(fullConfig.companyCount / 200);
     for (let p = 0; p < prodCount; p++) {
       const prodInfo = rng.pick(ARABIC_PRODUCTS);
-      const catId = company.categories.length > 0 ? rng.pick(company.categories).id : 0;
+      const catId = company.categories.length > 0 ? rng.pick(company.categories).id : 'unknown';
       const priceBase = currency === 'KWD' ? rng.float(0.5, 50) : currency === 'BHD' ? rng.float(0.5, 45) : rng.float(5, 500);
       company.products.push({
-        id: 5000 * (c + 1) + p,
+        id: String(5000 * (c + 1) + p).padStart(8, '0'),
         companySlug: slug,
         code: `SKU-${String(p + 1).padStart(4, '0')}`,
         name: prodInfo.nameEn,
@@ -959,13 +959,14 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
     }
 
     // ── Inventory (product × warehouse combos) ──
+    let invItemIdx = 0;
     for (const product of company.products) {
       const wh = rng.pick(company.warehouses);
       if (!wh) continue;
       const qty = rng.int(0, 500);
-      const costPrice = parseFloat(product.purchasePrice);
+      const costPrice = product.purchasePrice;
       company.inventory.push({
-        id: 6000 * (c + 1) + product.id,
+        id: String(6000 * (c + 1) + invItemIdx).padStart(8, '0'),
         companySlug: slug,
         productId: product.id,
         warehouseId: wh.id,
@@ -975,6 +976,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
         currency,
         updatedAt: rng.dateBetween(fullConfig.startDate, fullConfig.endDate),
       });
+      invItemIdx++;
     }
 
     // ── Invoices (5–200 per company) ──
@@ -1000,12 +1002,12 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
       for (let li = 0; li < lineItemCount; li++) {
         const prod = company.products.length > 0 ? rng.pick(company.products) : null;
         const qty = rng.int(1, 50);
-        const unitPrice = prod ? parseFloat(prod.sellingPrice) : rng.float(5, 500);
+        const unitPrice = prod ? prod.sellingPrice : rng.float(5, 500);
         const lineTotal = qty * unitPrice;
-        const lineDiscount = rng.bool(0.3) ? parseFloat(formatMoney(lineTotal * rng.float(0.01, 0.1), currency)) : 0;
+        const lineDiscount = rng.bool(0.3) ? formatMoney(lineTotal * rng.float(0.01, 0.1), currency) : 0;
         subtotal += lineTotal - lineDiscount;
         lineItems.push({
-          productId: prod?.id ?? 0,
+          productId: prod?.id ?? 'unknown',
           productName: prod?.name ?? `Product-${li + 1}`,
           productNameAr: prod?.nameAr ?? `منتج ${li + 1}`,
           quantity: qty,
@@ -1018,12 +1020,12 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
       const vatRate = country === 'SA' ? 15 : country === 'AE' ? 5 : country === 'BH' ? 10 : 0;
       const taxAmount = subtotal * (vatRate / 100);
       const total = subtotal + taxAmount;
-      const discount = parseFloat(formatMoney(subtotal * (rng.bool(0.2) ? rng.float(0.01, 0.05) : 0), currency));
+      const discount = formatMoney(subtotal * (rng.bool(0.2) ? rng.float(0.01, 0.05) : 0), currency);
       const finalTotal = total - discount;
       const paidAmount = status === 'paid' ? finalTotal : status === 'partial' ? finalTotal * rng.float(0.2, 0.8) : 0;
 
       company.invoices.push({
-        id: 7000 * (c + 1) + inv,
+        id: String(7000 * (c + 1) + inv).padStart(8, '0'),
         invoiceNumber: `INV-${String(inv + 1).padStart(5, '0')}`,
         companySlug: slug,
         clientId: client?.id ?? null,
@@ -1035,7 +1037,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
         dueDate: dates.dueDate,
         lineItems,
         subtotal: formatMoney(subtotal, currency),
-        taxRate: String(vatRate),
+        taxRate: vatRate,
         taxAmount: formatMoney(taxAmount, currency),
         total: formatMoney(finalTotal, currency),
         shipping: formatMoney(rng.bool(0.3) ? rng.float(5, 50) : 0, currency),
@@ -1061,27 +1063,27 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
       for (let li = 0; li < lineItemCount; li++) {
         const prod = company.products.length > 0 ? rng.pick(company.products) : null;
         const qty = rng.int(10, 200);
-        const unitPrice = prod ? parseFloat(prod.purchasePrice) : rng.float(2, 200);
+        const unitPrice = prod ? prod.purchasePrice : rng.float(2, 200);
         const lineTotal = qty * unitPrice;
         subtotal += lineTotal;
         lineItems.push({
-          productId: prod?.id ?? 0,
+          productId: prod?.id ?? 'unknown',
           productName: prod?.name ?? `PurchaseItem-${li + 1}`,
           productNameAr: prod?.nameAr ?? `بند شراء ${li + 1}`,
           quantity: qty,
           unitPrice: formatMoney(unitPrice, currency),
           total: formatMoney(lineTotal, currency),
-          discount: '0',
+          discount: 0,
         });
       }
 
       const vatRate = country === 'SA' ? 15 : country === 'AE' ? 5 : country === 'BH' ? 10 : 0;
 
       company.purchases.push({
-        id: 8000 * (c + 1) + p,
+        id: String(8000 * (c + 1) + p).padStart(8, '0'),
         invoiceNumber: `PO-${String(p + 1).padStart(5, '0')}`,
         companySlug: slug,
-        supplierId: supplier?.id ?? 0,
+        supplierId: supplier?.id ?? 'unknown',
         supplierName: supplier?.name ?? 'Unknown Supplier',
         supplierNameAr: supplier?.nameAr ?? 'مورد غير معروف',
         status: rng.weighted([['paid', 50], ['sent', 30], ['draft', 10], ['overdue', 10]] as [InvoiceStatus, number][]),
@@ -1089,7 +1091,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
         dueDate: dates.dueDate,
         lineItems,
         subtotal: formatMoney(subtotal, currency),
-        taxRate: String(vatRate),
+        taxRate: vatRate,
         taxAmount: formatMoney(subtotal * (vatRate / 100), currency),
         total: formatMoney(subtotal * (1 + vatRate / 100), currency),
         currency,
@@ -1294,7 +1296,7 @@ export function* generateBusinessActivities(
         case 'payment': {
           const invoice = company.invoices.length > 0 ? rng.pick(company.invoices) : null;
           description = `Payment recorded for ${invoice?.invoiceNumber ?? 'unknown'}`;
-          metadata = { invoiceId: invoice?.id, amount: invoice?.total ?? '0' };
+          metadata = { invoiceId: invoice?.id, amount: invoice?.total ?? 0 };
           break;
         }
         case 'refund': {
@@ -1465,7 +1467,7 @@ export class TelemetryCollector {
 
   /** Generate synthetic telemetry from a company's provider history */
   generateFromCompany(company: SyntheticCompany, rng?: SeededRandom): TelemetryEntry[] {
-    const rand = rng ?? new SeededRandom(company.id * 31);
+    const rand = rng ?? new SeededRandom(parseInt(company.id, 10) * 31);
     const entries: TelemetryEntry[] = [];
 
     for (const ph of company.providerHistory) {
@@ -1512,7 +1514,7 @@ export class TelemetryCollector {
         confidence,
         outputQualityScore: outputQuality,
         errors: ph.errorMessage ? [ph.errorMessage] : [],
-        recoveryPath: !ph.success ? rand.pick(['retry_succeeded', 'fallback_model', 'queue_reprocess', 'manual_review']) : null,
+        recoveryPath: (ph.errorMessage || !ph.success) ? rand.pick(['retry_succeeded', 'fallback_model', 'queue_reprocess', 'manual_review']) : null,
       }));
     }
 
@@ -1540,12 +1542,12 @@ export class TelemetryCollector {
   }
 
   getEntries(): TelemetryEntry[] {
-    return this.entries;
+    return [...this.entries];
   }
 
   /** Alias for getEntries() — used by metrics test helpers */
   getAll(): TelemetryEntry[] {
-    return this.entries;
+    return [...this.entries];
   }
 
   getEntriesForTenant(tenant: string): TelemetryEntry[] {
@@ -2101,7 +2103,7 @@ export async function simulateE2ETenantJourney(
   const s3Start = Date.now();
   try {
     if (company.products.length === 0) throw new Error('No products found');
-    const productsWithCategories = company.products.filter(p => p.categoryId > 0).length;
+    const productsWithCategories = company.products.filter(p => p.categoryId !== 'unknown').length;
     steps.push({ step: 3, name: 'Products Imported', status: 'passed', durationMs: Date.now() - s3Start, details: `${company.products.length} products, ${productsWithCategories} categorized`, errors: [] });
   } catch (e) {
     errors.push(`Step 3: ${e}`);
@@ -2139,7 +2141,7 @@ export async function simulateE2ETenantJourney(
   // Step 6: Product Matching
   const s6Start = Date.now();
   try {
-    const matchable = company.invoices.filter(i => i.lineItems.some(li => li.productId > 0)).length;
+    const matchable = company.invoices.filter(i => i.lineItems.some(li => li.productId !== 'unknown')).length;
     steps.push({ step: 6, name: 'Product Matching', status: 'passed', durationMs: Date.now() - s6Start, details: `${matchable} invoices with product matches`, errors: [] });
   } catch (e) {
     errors.push(`Step 6: ${e}`);
@@ -2161,7 +2163,7 @@ export async function simulateE2ETenantJourney(
   const s8Start = Date.now();
   try {
     const paidInvoices = company.invoices.filter(i => i.status === 'paid').length;
-    const totalRevenue = company.invoices.filter(i => i.status === 'paid').reduce((s, i) => s + parseFloat(i.total), 0);
+    const totalRevenue = company.invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0);
     steps.push({ step: 8, name: 'Reports Generated', status: 'passed', durationMs: Date.now() - s8Start, details: `${paidInvoices} paid invoices, ${company.currency} ${totalRevenue.toFixed(2)} revenue`, errors: [] });
   } catch (e) {
     errors.push(`Step 8: ${e}`);

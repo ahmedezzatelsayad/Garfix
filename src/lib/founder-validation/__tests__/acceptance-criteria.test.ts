@@ -90,14 +90,14 @@ describe('Acceptance Criteria — Final Gate', () => {
       }
     });
 
-    it('should have all invoice amounts as valid numeric strings', () => {
+    it('should have all invoice amounts as valid numeric values', () => {
       for (const c of companies.slice(0, 100)) {
         for (const inv of c.invoices) {
-          expect(typeof inv.total).toBe('string');
-          expect(typeof inv.subtotal).toBe('string');
-          expect(typeof inv.paid).toBe('string');
-          expect(parseFloat(inv.total)).not.toBeNaN();
-          expect(parseFloat(inv.paid)).not.toBeNaN();
+          expect(typeof inv.total).toBe('number');
+          expect(typeof inv.subtotal).toBe('number');
+          expect(typeof inv.paid).toBe('number');
+          expect(inv.total).not.toBeNaN();
+          expect(inv.paid).not.toBeNaN();
         }
       }
     });

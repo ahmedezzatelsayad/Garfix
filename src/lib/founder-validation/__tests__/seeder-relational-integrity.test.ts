@@ -267,12 +267,12 @@ describe('Enterprise Seeder — Relational Integrity (10 companies)', () => {
     }
   });
 
-  it('employee salary is a valid numeric string', () => {
+  it('employee salary is a valid numeric value', () => {
     for (const c of companies) {
       for (const emp of c.employees) {
-        expect(typeof emp.baseSalary).toBe('string');
-        expect(parseFloat(emp.baseSalary)).not.toBeNaN();
-        expect(parseFloat(emp.baseSalary)).toBeGreaterThan(0);
+        expect(typeof emp.baseSalary).toBe('number');
+        expect(emp.baseSalary).not.toBeNaN();
+        expect(emp.baseSalary).toBeGreaterThan(0);
       }
     }
   });

@@ -176,7 +176,7 @@ describe('AI Cost Validation', () => {
       const collector = new TelemetryCollector(companies);
       const telemetry = collector.generateAll(new SeededRandom(42));
       const metrics = calculateMetrics(telemetry, companies);
-      const sum = Object.values(metrics.providerDistribution).reduce((s, v) => s + v, 0);
+      const sum = Object.values(metrics.providerDistribution).reduce((s, v) => s + v.requests, 0);
       expect(sum).toBe(metrics.totalRequests);
     });
   });
@@ -187,7 +187,7 @@ describe('AI Cost Validation', () => {
       const collector = new TelemetryCollector(companies);
       const telemetry = collector.generateAll(new SeededRandom(42));
       const metrics = calculateMetrics(telemetry, companies);
-      const sum = Object.values(metrics.modelDistribution).reduce((s, v) => s + v, 0);
+      const sum = Object.values(metrics.modelDistribution).reduce((s, v) => s + v.requests, 0);
       expect(sum).toBe(metrics.totalRequests);
     });
 

@@ -1,0 +1,1426 @@
+bun test v1.3.14 (0d9b296a)
+
+src/lib/founder-validation/__tests__/seeder-edge-case-06.test.ts:
+(pass) Seeder Edge Case 06 > generates companies with valid IDs for edge case 06 [14.81ms]
+(pass) Seeder Edge Case 06 > each company has at least one user for edge case 06 [8.66ms]
+(pass) Seeder Edge Case 06 > all invoices have valid totals for edge case 06 [8.50ms]
+(pass) Seeder Edge Case 06 > products have valid pricing for edge case 06 [8.09ms]
+(pass) Seeder Edge Case 06 > deterministic output with same seed for edge case 06 [15.79ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-18.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 18', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 18);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-18.test.ts:12:27)
+(fail) Seeder Edge Case 18 > generates companies with valid IDs for edge case 18 [6.05ms]
+(pass) Seeder Edge Case 18 > each company has at least one user for edge case 18 [5.85ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 18', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 18);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-18.test.ts:25:27)
+(fail) Seeder Edge Case 18 > all invoices have valid totals for edge case 18 [5.70ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 18', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 18);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-18.test.ts:33:32)
+(fail) Seeder Edge Case 18 > products have valid pricing for edge case 18 [5.66ms]
+(pass) Seeder Edge Case 18 > deterministic output with same seed for edge case 18 [11.75ms]
+
+src/lib/founder-validation/__tests__/telemetry-get-entries-03.test.ts:
+(pass) TelemetryCollector getEntries > returns array of recorded entries [0.24ms]
+23 |   it("returns copy not reference", () => {
+24 |     const c = new TelemetryCollector("t");
+25 |     c.record(make("1"));
+26 |     const a = c.getEntries();
+27 |     const b = c.getEntries();
+28 |     expect(a).not.toBe(b);
+                       ^
+error: expect(received).not.toBe(expected)
+
+Expected: not [
+  {
+    id: "tel-mry8437z3jnwqpuo",
+    timestamp: 2026-07-24T00:50:10.895Z,
+    tenant: "t",
+    worker: "w",
+    queue: "q",
+    provider: "p",
+    model: "m",
+    latencyMs: 100,
+    promptTokens: 10,
+    completionTokens: 10,
+    totalTokens: 20,
+    costUsd: 0.01,
+    retries: 0,
+    queueWaitMs: 10,
+    executionTimeMs: 90,
+    cacheHit: false,
+    memoryHit: false,
+    ruleHit: false,
+    patternHit: false,
+    resolvedBy: "ai",
+    confidence: 0.9,
+    outputQualityScore: 0.8,
+    errors: [],
+    recoveryPath: null,
+  }
+]
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-get-entries-03.test.ts:28:19)
+(fail) TelemetryCollector getEntries > returns copy not reference [0.18ms]
+31 | 
+32 |   it("returns entries in insertion order", () => {
+33 |     const c = new TelemetryCollector("t");
+34 |     for (let i = 0; i < 10; i++) c.record(make(String(i)));
+35 |     const ids = c.getEntries().map(e => e.id);
+36 |     expect(ids).toEqual(["0","1","2","3","4","5","6","7","8","9"]);
+                     ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "0",
+-   "1",
+-   "2",
+-   "3",
+-   "4",
+-   "5",
+-   "6",
+-   "7",
+-   "8",
+-   "9",
++   "tel-mry8437zdgsuqwa0",
++   "tel-mry8437zmaftzjv9",
++   "tel-mry8437zr58cfz67",
++   "tel-mry8437zy1n323an",
++   "tel-mry8437z7l17pzkk",
++   "tel-mry8437zsc8nhs7e",
++   "tel-mry8437zja7qed7o",
++   "tel-mry8437zweqrp57t",
++   "tel-mry8437zmnxbbkj7",
++   "tel-mry8437zsmkf2iwg",
+  ]
+
+- Expected  - 10
++ Received  + 10
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-get-entries-03.test.ts:36:17)
+(fail) TelemetryCollector getEntries > returns entries in insertion order [0.27ms]
+
+src/lib/founder-validation/__tests__/telemetry-filter-tenant-7.test.ts:
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant works for 7 [4.04ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant handles empty for 7 [0.04ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant filters correctly for 7 [3.89ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant calculates totals for 7 [1.96ms]
+(pass) Telemetry: filter-tenant 7 > telemetry filter-tenant JSON roundtrip for 7 [1.29ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-04.test.ts:
+(pass) Seeder Edge Case 04 > generates companies with valid IDs for edge case 04 [9.33ms]
+(pass) Seeder Edge Case 04 > each company has at least one user for edge case 04 [7.57ms]
+(pass) Seeder Edge Case 04 > all invoices have valid totals for edge case 04 [7.25ms]
+(pass) Seeder Edge Case 04 > products have valid pricing for edge case 04 [7.21ms]
+(pass) Seeder Edge Case 04 > deterministic output with same seed for edge case 04 [11.58ms]
+
+src/lib/founder-validation/__tests__/cost-per-provider-3.test.ts:
+(pass) Cost: per-provider 3 > cost per-provider calculates correctly for 3 [10.58ms]
+(pass) Cost: per-provider 3 > cost per-provider per request for 3 [8.89ms]
+(pass) Cost: per-provider 3 > cost per-provider per invoice for 3 [8.64ms]
+(pass) Cost: per-provider 3 > cost per-provider model pricing for 3 [0.14ms]
+(pass) Cost: per-provider 3 > cost per-provider free model for 3 [0.02ms]
+
+src/lib/founder-validation/__tests__/cost-free-tier-savings-11.test.ts:
+(pass) Cost: free-tier-savings 11 > cost free-tier-savings calculates correctly for 11 [8.44ms]
+(pass) Cost: free-tier-savings 11 > cost free-tier-savings per request for 11 [8.60ms]
+(pass) Cost: free-tier-savings 11 > cost free-tier-savings per invoice for 11 [8.08ms]
+(pass) Cost: free-tier-savings 11 > cost free-tier-savings model pricing for 11 [0.06ms]
+(pass) Cost: free-tier-savings 11 > cost free-tier-savings free model for 11 [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-aggregate-tokens-17.test.ts:
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens works for 17 [3.01ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens handles empty for 17 [0.07ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens filters correctly for 17 [3.11ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens calculates totals for 17 [1.90ms]
+(pass) Telemetry: aggregate-tokens 17 > telemetry aggregate-tokens JSON roundtrip for 17 [1.29ms]
+
+src/lib/founder-validation/__tests__/validation-type-coverage-8.test.ts:
+(pass) Validation: type-coverage 8 > validates type-coverage for 8 [5.63ms]
+(pass) Validation: type-coverage 8 > validates type-coverage with 100 companies for 8 [99.96ms]
+(pass) Validation: type-coverage 8 > validates type-coverage relational integrity for 8 [7.05ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: type-coverage 8', () => {
+5 |   it('validates type-coverage for 8', () => { const c = seedEnterpriseData(10, 3800+8); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates type-coverage with 100 companies for 8', () => { const c = seedEnterpriseData(100, 3900+8); expect(c.length).toBe(100); });
+7 |   it('validates type-coverage relational integrity for 8', () => { const c = seedEnterpriseData(10, 4000+8); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates type-coverage financial accuracy for 8', () => { const c = seedEnterpriseData(10, 4100+8); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                  ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-type-coverage-8.test.ts:8:175)
+(fail) Validation: type-coverage 8 > validates type-coverage financial accuracy for 8 [6.74ms]
+(pass) Validation: type-coverage 8 > validates type-coverage determinism for 8 [11.47ms]
+
+src/lib/founder-validation/__tests__/report-scalability-0.test.ts:
+(pass) Report: scalability 0 > report includes scalability for 0 [15.38ms]
+(pass) Report: scalability 0 > report scalability has valid structure for 0 [4.19ms]
+(pass) Report: scalability 0 > report scalability scalability for 0 [9.26ms]
+(pass) Report: scalability 0 > report scalability cost projection for 0 [9.60ms]
+(pass) Report: scalability 0 > report scalability acceptance criteria for 0 [3.38ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-03.test.ts:
+(pass) Seeder Edge Case 03 > generates companies with valid IDs for edge case 03 [6.64ms]
+(pass) Seeder Edge Case 03 > each company has at least one user for edge case 03 [5.80ms]
+(pass) Seeder Edge Case 03 > all invoices have valid totals for edge case 03 [5.92ms]
+(pass) Seeder Edge Case 03 > products have valid pricing for edge case 03 [6.04ms]
+(pass) Seeder Edge Case 03 > deterministic output with same seed for edge case 03 [11.80ms]
+
+src/lib/founder-validation/__tests__/telemetry-export-json-15.test.ts:
+(pass) Telemetry: export-json 15 > telemetry export-json works for 15 [3.64ms]
+(pass) Telemetry: export-json 15 > telemetry export-json handles empty for 15 [0.10ms]
+(pass) Telemetry: export-json 15 > telemetry export-json filters correctly for 15 [2.93ms]
+(pass) Telemetry: export-json 15 > telemetry export-json calculates totals for 15 [1.62ms]
+(pass) Telemetry: export-json 15 > telemetry export-json JSON roundtrip for 15 [1.27ms]
+
+src/lib/founder-validation/__tests__/cost-per-token-5.test.ts:
+(pass) Cost: per-token 5 > cost per-token calculates correctly for 5 [8.26ms]
+(pass) Cost: per-token 5 > cost per-token per request for 5 [8.23ms]
+(pass) Cost: per-token 5 > cost per-token per invoice for 5 [8.38ms]
+(pass) Cost: per-token 5 > cost per-token model pricing for 5 [0.06ms]
+(pass) Cost: per-token 5 > cost per-token free model for 5 [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-percentile-p99-14.test.ts:
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 works for 14 [3.35ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 handles empty for 14 [0.10ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 filters correctly for 14 [2.91ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 calculates totals for 14 [1.94ms]
+(pass) Telemetry: percentile-p99 14 > telemetry percentile-p99 JSON roundtrip for 14 [1.40ms]
+
+src/lib/founder-validation/__tests__/telemetry-recovery-tracking-18.test.ts:
+(pass) TelemetryCollector recovery path tracking > null recovery path stored [0.13ms]
+(pass) TelemetryCollector recovery path tracking > string recovery path stored [0.02ms]
+(pass) TelemetryCollector recovery path tracking > filter entries with recovery paths [0.04ms]
+
+src/lib/founder-validation/__tests__/cost-margin-calculation-9.test.ts:
+(pass) Cost: margin-calculation 9 > cost margin-calculation calculates correctly for 9 [8.10ms]
+(pass) Cost: margin-calculation 9 > cost margin-calculation per request for 9 [8.06ms]
+(pass) Cost: margin-calculation 9 > cost margin-calculation per invoice for 9 [8.15ms]
+(pass) Cost: margin-calculation 9 > cost margin-calculation model pricing for 9 [0.06ms]
+(pass) Cost: margin-calculation 9 > cost margin-calculation free model for 9 [0.01ms]
+
+src/lib/founder-validation/__tests__/telemetry-cost-accumulation-15.test.ts:
+(pass) TelemetryCollector cost accumulation > sums total cost across entries [0.12ms]
+(pass) TelemetryCollector cost accumulation > zero cost entries contribute zero [0.03ms]
+(pass) TelemetryCollector cost accumulation > handles very small costs [0.02ms]
+
+src/lib/founder-validation/__tests__/cost-per-invoice-1.test.ts:
+(pass) Cost: per-invoice 1 > cost per-invoice calculates correctly for 1 [7.75ms]
+(pass) Cost: per-invoice 1 > cost per-invoice per request for 1 [7.72ms]
+(pass) Cost: per-invoice 1 > cost per-invoice per invoice for 1 [7.81ms]
+(pass) Cost: per-invoice 1 > cost per-invoice model pricing for 1 [0.06ms]
+(pass) Cost: per-invoice 1 > cost per-invoice free model for 1 [0.01ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-09.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 09', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 9);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-09.test.ts:12:27)
+(fail) Seeder Edge Case 09 > generates companies with valid IDs for edge case 09 [5.60ms]
+(pass) Seeder Edge Case 09 > each company has at least one user for edge case 09 [5.60ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 09', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 9);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-09.test.ts:25:27)
+(fail) Seeder Edge Case 09 > all invoices have valid totals for edge case 09 [5.42ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 09', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 9);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-09.test.ts:33:32)
+(fail) Seeder Edge Case 09 > products have valid pricing for edge case 09 [5.43ms]
+(pass) Seeder Edge Case 09 > deterministic output with same seed for edge case 09 [10.47ms]
+
+src/lib/founder-validation/__tests__/validation-date-consistency-3.test.ts:
+(pass) Validation: date-consistency 3 > validates date-consistency for 3 [5.79ms]
+(pass) Validation: date-consistency 3 > validates date-consistency with 100 companies for 3 [96.46ms]
+(pass) Validation: date-consistency 3 > validates date-consistency relational integrity for 3 [7.02ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: date-consistency 3', () => {
+5 |   it('validates date-consistency for 3', () => { const c = seedEnterpriseData(10, 3800+3); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates date-consistency with 100 companies for 3', () => { const c = seedEnterpriseData(100, 3900+3); expect(c.length).toBe(100); });
+7 |   it('validates date-consistency relational integrity for 3', () => { const c = seedEnterpriseData(10, 4000+3); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates date-consistency financial accuracy for 3', () => { const c = seedEnterpriseData(10, 4100+3); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                     ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-date-consistency-3.test.ts:8:178)
+(fail) Validation: date-consistency 3 > validates date-consistency financial accuracy for 3 [5.71ms]
+(pass) Validation: date-consistency 3 > validates date-consistency determinism for 3 [12.21ms]
+
+src/lib/founder-validation/__tests__/report-config-reflection-9.test.ts:
+(pass) Report: config-reflection 9 > report includes config-reflection for 9 [8.63ms]
+(pass) Report: config-reflection 9 > report config-reflection has valid structure for 9 [3.68ms]
+(pass) Report: config-reflection 9 > report config-reflection scalability for 9 [8.23ms]
+(pass) Report: config-reflection 9 > report config-reflection cost projection for 9 [8.42ms]
+(pass) Report: config-reflection 9 > report config-reflection acceptance criteria for 9 [3.75ms]
+
+src/lib/founder-validation/__tests__/validation-discount-logic-6.test.ts:
+(pass) Validation: discount-logic 6 > validates discount-logic for 6 [5.13ms]
+(pass) Validation: discount-logic 6 > validates discount-logic with 100 companies for 6 [92.69ms]
+(pass) Validation: discount-logic 6 > validates discount-logic relational integrity for 6 [6.30ms]
+(pass) Validation: discount-logic 6 > validates discount-logic financial accuracy for 6 [6.13ms]
+(pass) Validation: discount-logic 6 > validates discount-logic determinism for 6 [12.41ms]
+
+src/lib/founder-validation/__tests__/telemetry-percentile-p95-13.test.ts:
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 works for 13 [2.85ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 handles empty for 13 [0.08ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 filters correctly for 13 [2.94ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 calculates totals for 13 [1.79ms]
+(pass) Telemetry: percentile-p95 13 > telemetry percentile-p95 JSON roundtrip for 13 [1.66ms]
+
+src/lib/founder-validation/__tests__/telemetry-model-tracking-11.test.ts:
+(pass) TelemetryCollector model tracking > tracks different models [0.16ms]
+(pass) TelemetryCollector model tracking > model count matches entries [0.07ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-07.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 07', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 7);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-07.test.ts:12:27)
+(fail) Seeder Edge Case 07 > generates companies with valid IDs for edge case 07 [6.08ms]
+(pass) Seeder Edge Case 07 > each company has at least one user for edge case 07 [5.73ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 07', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 7);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-07.test.ts:25:27)
+(fail) Seeder Edge Case 07 > all invoices have valid totals for edge case 07 [5.84ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 07', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 7);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-07.test.ts:33:32)
+(fail) Seeder Edge Case 07 > products have valid pricing for edge case 07 [5.89ms]
+(pass) Seeder Edge Case 07 > deterministic output with same seed for edge case 07 [11.39ms]
+
+src/lib/founder-validation/__tests__/report-margin-analysis-17.test.ts:
+(pass) Report: margin-analysis 17 > report includes margin-analysis for 17 [8.16ms]
+(pass) Report: margin-analysis 17 > report margin-analysis has valid structure for 17 [3.32ms]
+(pass) Report: margin-analysis 17 > report margin-analysis scalability for 17 [8.32ms]
+(pass) Report: margin-analysis 17 > report margin-analysis cost projection for 17 [8.75ms]
+(pass) Report: margin-analysis 17 > report margin-analysis acceptance criteria for 17 [3.82ms]
+
+src/lib/founder-validation/__tests__/cost-per-model-4.test.ts:
+(pass) Cost: per-model 4 > cost per-model calculates correctly for 4 [7.70ms]
+(pass) Cost: per-model 4 > cost per-model per request for 4 [7.75ms]
+(pass) Cost: per-model 4 > cost per-model per invoice for 4 [8.02ms]
+(pass) Cost: per-model 4 > cost per-model model pricing for 4 [0.06ms]
+(pass) Cost: per-model 4 > cost per-model free model for 4 [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-cache-tracking-12.test.ts:
+(pass) TelemetryCollector cache hit tracking > tracks cache hit/miss ratio [0.20ms]
+
+src/lib/founder-validation/__tests__/cost-pattern-savings-18.test.ts:
+(pass) Cost: pattern-savings 18 > cost pattern-savings calculates correctly for 18 [8.06ms]
+(pass) Cost: pattern-savings 18 > cost pattern-savings per request for 18 [7.74ms]
+(pass) Cost: pattern-savings 18 > cost pattern-savings per invoice for 18 [7.41ms]
+(pass) Cost: pattern-savings 18 > cost pattern-savings model pricing for 18 [0.07ms]
+(pass) Cost: pattern-savings 18 > cost pattern-savings free model for 18 [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-provider-tracking-10.test.ts:
+(pass) TelemetryCollector provider tracking > tracks multiple providers [0.17ms]
+(pass) TelemetryCollector provider tracking > counts per provider [0.08ms]
+
+src/lib/founder-validation/__tests__/telemetry-constructor-01.test.ts:
+(pass) TelemetryCollector constructor > creates collector with tenant name [0.03ms]
+(pass) TelemetryCollector constructor > starts with zero entries [0.01ms]
+(pass) TelemetryCollector constructor > accepts any string as tenant name
+(pass) TelemetryCollector constructor > accepts empty string tenant [0.01ms]
+(pass) TelemetryCollector constructor > creates independent instances [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-summary-06.test.ts:
+(pass) TelemetryCollector summary methods > entry count matches recorded [0.14ms]
+(pass) TelemetryCollector summary methods > unique tenants in entries [0.06ms]
+(pass) TelemetryCollector summary methods > can filter by cacheHit [0.04ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-12.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 12', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 12);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-12.test.ts:12:27)
+(fail) Seeder Edge Case 12 > generates companies with valid IDs for edge case 12 [5.92ms]
+(pass) Seeder Edge Case 12 > each company has at least one user for edge case 12 [5.71ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 12', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 12);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-12.test.ts:25:27)
+(fail) Seeder Edge Case 12 > all invoices have valid totals for edge case 12 [5.75ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 12', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 12);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-12.test.ts:33:32)
+(fail) Seeder Edge Case 12 > products have valid pricing for edge case 12 [5.82ms]
+(pass) Seeder Edge Case 12 > deterministic output with same seed for edge case 12 [11.43ms]
+
+src/lib/founder-validation/__tests__/report-tenant-analysis-11.test.ts:
+(pass) Report: tenant-analysis 11 > report includes tenant-analysis for 11 [9.14ms]
+(pass) Report: tenant-analysis 11 > report tenant-analysis has valid structure for 11 [3.65ms]
+(pass) Report: tenant-analysis 11 > report tenant-analysis scalability for 11 [9.32ms]
+(pass) Report: tenant-analysis 11 > report tenant-analysis cost projection for 11 [8.28ms]
+(pass) Report: tenant-analysis 11 > report tenant-analysis acceptance criteria for 11 [3.36ms]
+
+src/lib/founder-validation/__tests__/report-structure-8.test.ts:
+(pass) Report: structure 8 > report includes structure for 8 [17.68ms]
+(pass) Report: structure 8 > report structure has valid structure for 8 [3.55ms]
+(pass) Report: structure 8 > report structure scalability for 8 [8.99ms]
+(pass) Report: structure 8 > report structure cost projection for 8 [8.63ms]
+(pass) Report: structure 8 > report structure acceptance criteria for 8 [3.77ms]
+
+src/lib/founder-validation/__tests__/validation-enum-validity-11.test.ts:
+(pass) Validation: enum-validity 11 > validates enum-validity for 11 [5.75ms]
+(pass) Validation: enum-validity 11 > validates enum-validity with 100 companies for 11 [123.11ms]
+(pass) Validation: enum-validity 11 > validates enum-validity relational integrity for 11 [7.08ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: enum-validity 11', () => {
+5 |   it('validates enum-validity for 11', () => { const c = seedEnterpriseData(10, 3800+11); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates enum-validity with 100 companies for 11', () => { const c = seedEnterpriseData(100, 3900+11); expect(c.length).toBe(100); });
+7 |   it('validates enum-validity relational integrity for 11', () => { const c = seedEnterpriseData(10, 4000+11); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates enum-validity financial accuracy for 11', () => { const c = seedEnterpriseData(10, 4100+11); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-enum-validity-11.test.ts:8:177)
+(fail) Validation: enum-validity 11 > validates enum-validity financial accuracy for 11 [32.47ms]
+(pass) Validation: enum-validity 11 > validates enum-validity determinism for 11 [11.69ms]
+
+src/lib/founder-validation/__tests__/cost-rule-savings-16.test.ts:
+(pass) Cost: rule-savings 16 > cost rule-savings calculates correctly for 16 [9.22ms]
+(pass) Cost: rule-savings 16 > cost rule-savings per request for 16 [8.07ms]
+(pass) Cost: rule-savings 16 > cost rule-savings per invoice for 16 [8.52ms]
+(pass) Cost: rule-savings 16 > cost rule-savings model pricing for 16 [0.15ms]
+(pass) Cost: rule-savings 16 > cost rule-savings free model for 16 [0.05ms]
+
+src/lib/founder-validation/__tests__/telemetry-timestamp-09.test.ts:
+16 | 
+17 |   it("entries preserve their timestamps", () => {
+18 |     const c = new TelemetryCollector("t");
+19 |     const now = new Date("2024-06-15T12:00:00Z");
+20 |     c.record(make("1", now));
+21 |     expect(c.getEntries()[0].timestamp).toEqual(now);
+                                             ^
+error: expect(received).toEqual(expected)
+
+Expected: 2024-06-15T12:00:00.000Z
+Received: 2026-07-24T00:50:12.160Z
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-timestamp-09.test.ts:21:41)
+(fail) TelemetryCollector timestamp tracking > entries preserve their timestamps [0.28ms]
+24 |   it("entries can have different timestamps", () => {
+25 |     const c = new TelemetryCollector("t");
+26 |     c.record(make("1", new Date("2024-01-01")));
+27 |     c.record(make("2", new Date("2024-12-31")));
+28 |     const ts = c.getEntries().map(e => e.timestamp.getTime());
+29 |     expect(ts[0]).toBeLessThan(ts[1]);
+                       ^
+error: expect(received).toBeLessThan(expected)
+
+Expected: < 1784854212160
+Received: 1784854212160
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-timestamp-09.test.ts:29:19)
+(fail) TelemetryCollector timestamp tracking > entries can have different timestamps [0.23ms]
+
+src/lib/founder-validation/__tests__/telemetry-collector.test.ts:
+(pass) TelemetryCollector > instance creation > should create an instance with empty entries [0.05ms]
+(pass) TelemetryCollector > instance creation > should create an instance with companies [0.27ms]
+(pass) TelemetryCollector > instance creation > should handle single company [0.07ms]
+(pass) TelemetryCollector > record > should record a basic telemetry entry [0.16ms]
+(pass) TelemetryCollector > record > should auto-generate a timestamp [0.04ms]
+(pass) TelemetryCollector > record > should record entries with cache hit [0.09ms]
+(pass) TelemetryCollector > record > should record entries with memory hit [0.06ms]
+(pass) TelemetryCollector > record > should record entries with rule hit [0.05ms]
+(pass) TelemetryCollector > record > should record entries with pattern hit [0.05ms]
+(pass) TelemetryCollector > record > should record entry with errors array [0.06ms]
+(pass) TelemetryCollector > record > should record entry with recovery path [0.05ms]
+(pass) TelemetryCollector > record > should record entry with retries [0.05ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate total tokens across all entries [0.10ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate total cost across all entries [0.08ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate average latency [0.07ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate P50 latency [0.12ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate P95 latency [0.31ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate cache hit rate [0.08ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate memory hit rate [0.05ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate rule hit rate [0.04ms]
+(pass) TelemetryCollector > computed metrics from entries > should calculate pattern hit rate [0.17ms]
+(pass) TelemetryCollector > filtering > should get entries by tenant [0.14ms]
+(pass) TelemetryCollector > filtering > should filter entries by provider [0.09ms]
+(pass) TelemetryCollector > filtering > should filter entries by model [0.07ms]
+(pass) TelemetryCollector > filtering > should get entries with errors [0.08ms]
+(pass) TelemetryCollector > filtering > should get entries sorted by cost descending [0.10ms]
+(pass) TelemetryCollector > filtering > should get entries sorted by latency descending [0.07ms]
+(pass) TelemetryCollector > edge cases > should handle empty collector - all computations return zero [0.06ms]
+(pass) TelemetryCollector > edge cases > should handle single entry [0.06ms]
+(pass) TelemetryCollector > edge cases > should handle 10000 entries without memory issues [8.70ms]
+(pass) TelemetryCollector > edge cases > should isolate entries by tenant [0.44ms]
+(pass) TelemetryCollector > JSON round-trip > should export entries to JSON [0.21ms]
+(pass) TelemetryCollector > JSON round-trip > should import entries from JSON into a new collector [0.19ms]
+(pass) TelemetryCollector > clear / reset > should reset collector to empty via clear() [0.10ms]
+(pass) TelemetryCollector > clear / reset > should allow recording after clear [0.09ms]
+(pass) TelemetryCollector > generateFromCompany > should generate entries from a company provider history [7.42ms]
+(pass) TelemetryCollector > generateFromCompany > should produce entries with correct structure [7.19ms]
+(pass) TelemetryCollector > generateFromCompany > should respect custom RNG for deterministic output [29.65ms]
+(pass) TelemetryCollector > generateFromCompany > should add generated entries to the collector [7.55ms]
+(pass) TelemetryCollector > generateAll > should generate telemetry for all companies [8.68ms]
+(pass) TelemetryCollector > generateAll > should produce entries spanning all tenants [9.00ms]
+(pass) TelemetryCollector > size property > should reflect the number of entries [0.08ms]
+
+src/lib/founder-validation/__tests__/telemetry-error-handling-08.test.ts:
+(pass) TelemetryCollector error entries > entries with empty error array are valid [0.15ms]
+(pass) TelemetryCollector error entries > entries with error strings are valid [0.04ms]
+(pass) TelemetryCollector error entries > filter entries with errors [0.05ms]
+
+src/lib/founder-validation/__tests__/validation-format-validity-12.test.ts:
+(pass) Validation: format-validity 12 > validates format-validity for 12 [5.28ms]
+(pass) Validation: format-validity 12 > validates format-validity with 100 companies for 12 [94.00ms]
+(pass) Validation: format-validity 12 > validates format-validity relational integrity for 12 [6.58ms]
+(pass) Validation: format-validity 12 > validates format-validity financial accuracy for 12 [5.04ms]
+(pass) Validation: format-validity 12 > validates format-validity determinism for 12 [11.58ms]
+
+src/lib/founder-validation/__tests__/report-optimization-roi-6.test.ts:
+(pass) Report: optimization-roi 6 > report includes optimization-roi for 6 [8.67ms]
+(pass) Report: optimization-roi 6 > report optimization-roi has valid structure for 6 [3.46ms]
+(pass) Report: optimization-roi 6 > report optimization-roi scalability for 6 [8.45ms]
+(pass) Report: optimization-roi 6 > report optimization-roi cost projection for 6 [8.21ms]
+(pass) Report: optimization-roi 6 > report optimization-roi acceptance criteria for 6 [3.44ms]
+
+src/lib/founder-validation/__tests__/cost-annual-projection-8.test.ts:
+(pass) Cost: annual-projection 8 > cost annual-projection calculates correctly for 8 [7.75ms]
+(pass) Cost: annual-projection 8 > cost annual-projection per request for 8 [8.08ms]
+(pass) Cost: annual-projection 8 > cost annual-projection per invoice for 8 [8.55ms]
+(pass) Cost: annual-projection 8 > cost annual-projection model pricing for 8 [0.06ms]
+(pass) Cost: annual-projection 8 > cost annual-projection free model for 8 [0.02ms]
+
+src/lib/founder-validation/__tests__/report-metrics-summary-10.test.ts:
+(pass) Report: metrics-summary 10 > report includes metrics-summary for 10 [8.94ms]
+(pass) Report: metrics-summary 10 > report metrics-summary has valid structure for 10 [3.76ms]
+(pass) Report: metrics-summary 10 > report metrics-summary scalability for 10 [9.03ms]
+(pass) Report: metrics-summary 10 > report metrics-summary cost projection for 10 [9.00ms]
+(pass) Report: metrics-summary 10 > report metrics-summary acceptance criteria for 10 [3.60ms]
+
+src/lib/founder-validation/__tests__/validation-null-safety-15.test.ts:
+(pass) Validation: null-safety 15 > validates null-safety for 15 [5.43ms]
+(pass) Validation: null-safety 15 > validates null-safety with 100 companies for 15 [94.35ms]
+(pass) Validation: null-safety 15 > validates null-safety relational integrity for 15 [6.17ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: null-safety 15', () => {
+5 |   it('validates null-safety for 15', () => { const c = seedEnterpriseData(10, 3800+15); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates null-safety with 100 companies for 15', () => { const c = seedEnterpriseData(100, 3900+15); expect(c.length).toBe(100); });
+7 |   it('validates null-safety relational integrity for 15', () => { const c = seedEnterpriseData(10, 4000+15); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates null-safety financial accuracy for 15', () => { const c = seedEnterpriseData(10, 4100+15); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                  ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-null-safety-15.test.ts:8:175)
+(fail) Validation: null-safety 15 > validates null-safety financial accuracy for 15 [5.73ms]
+(pass) Validation: null-safety 15 > validates null-safety determinism for 15 [11.13ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-retry-6.test.ts:
+(pass) Telemetry: record-retry 6 > telemetry record-retry works for 6 [3.40ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry handles empty for 6 [0.08ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry filters correctly for 6 [2.87ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry calculates totals for 6 [1.70ms]
+(pass) Telemetry: record-retry 6 > telemetry record-retry JSON roundtrip for 6 [1.40ms]
+
+src/lib/founder-validation/__tests__/cost-per-tenant-top10-6.test.ts:
+(pass) Cost: per-tenant-top10 6 > cost per-tenant-top10 calculates correctly for 6 [7.76ms]
+(pass) Cost: per-tenant-top10 6 > cost per-tenant-top10 per request for 6 [7.92ms]
+(pass) Cost: per-tenant-top10 6 > cost per-tenant-top10 per invoice for 6 [7.95ms]
+(pass) Cost: per-tenant-top10 6 > cost per-tenant-top10 model pricing for 6 [0.07ms]
+(pass) Cost: per-tenant-top10 6 > cost per-tenant-top10 free model for 6 [0.01ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-01.test.ts:
+(pass) Seeder Edge Case 01 > generates companies with valid IDs for edge case 01 [6.22ms]
+(pass) Seeder Edge Case 01 > each company has at least one user for edge case 01 [5.94ms]
+(pass) Seeder Edge Case 01 > all invoices have valid totals for edge case 01 [6.34ms]
+(pass) Seeder Edge Case 01 > products have valid pricing for edge case 01 [6.37ms]
+(pass) Seeder Edge Case 01 > deterministic output with same seed for edge case 01 [11.92ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-08.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 08', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 8);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-08.test.ts:12:27)
+(fail) Seeder Edge Case 08 > generates companies with valid IDs for edge case 08 [5.44ms]
+(pass) Seeder Edge Case 08 > each company has at least one user for edge case 08 [5.42ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 08', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 8);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-08.test.ts:25:27)
+(fail) Seeder Edge Case 08 > all invoices have valid totals for edge case 08 [5.32ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 08', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 8);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-08.test.ts:33:32)
+(fail) Seeder Edge Case 08 > products have valid pricing for edge case 08 [5.53ms]
+(pass) Seeder Edge Case 08 > deterministic output with same seed for edge case 08 [10.50ms]
+
+src/lib/founder-validation/__tests__/cost-per-company-2.test.ts:
+(pass) Cost: per-company 2 > cost per-company calculates correctly for 2 [7.66ms]
+(pass) Cost: per-company 2 > cost per-company per request for 2 [7.27ms]
+(pass) Cost: per-company 2 > cost per-company per invoice for 2 [8.22ms]
+(pass) Cost: per-company 2 > cost per-company model pricing for 2 [0.06ms]
+(pass) Cost: per-company 2 > cost per-company free model for 2 [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-import-json-16.test.ts:
+(pass) Telemetry: import-json 16 > telemetry import-json works for 16 [3.08ms]
+(pass) Telemetry: import-json 16 > telemetry import-json handles empty for 16 [0.08ms]
+(pass) Telemetry: import-json 16 > telemetry import-json filters correctly for 16 [2.88ms]
+(pass) Telemetry: import-json 16 > telemetry import-json calculates totals for 16 [1.66ms]
+(pass) Telemetry: import-json 16 > telemetry import-json JSON roundtrip for 16 [1.28ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-cache-hit-1.test.ts:
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit works for 1 [2.73ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit handles empty for 1 [0.07ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit filters correctly for 1 [3.12ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit calculates totals for 1 [1.61ms]
+(pass) Telemetry: record-cache-hit 1 > telemetry record-cache-hit JSON roundtrip for 1 [1.20ms]
+
+src/lib/founder-validation/__tests__/validation-range-validity-10.test.ts:
+(pass) Validation: range-validity 10 > validates range-validity for 10 [5.64ms]
+(pass) Validation: range-validity 10 > validates range-validity with 100 companies for 10 [90.61ms]
+(pass) Validation: range-validity 10 > validates range-validity relational integrity for 10 [6.18ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: range-validity 10', () => {
+5 |   it('validates range-validity for 10', () => { const c = seedEnterpriseData(10, 3800+10); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates range-validity with 100 companies for 10', () => { const c = seedEnterpriseData(100, 3900+10); expect(c.length).toBe(100); });
+7 |   it('validates range-validity relational integrity for 10', () => { const c = seedEnterpriseData(10, 4000+10); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates range-validity financial accuracy for 10', () => { const c = seedEnterpriseData(10, 4100+10); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                     ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-range-validity-10.test.ts:8:178)
+(fail) Validation: range-validity 10 > validates range-validity financial accuracy for 10 [6.00ms]
+(pass) Validation: range-validity 10 > validates range-validity determinism for 10 [10.93ms]
+
+src/lib/founder-validation/__tests__/telemetry-output-quality-20.test.ts:
+(pass) TelemetryCollector output quality scores > tracks quality from 0 to 1 [0.24ms]
+(pass) TelemetryCollector output quality scores > average quality is calculable [0.07ms]
+(pass) TelemetryCollector output quality scores > all perfect quality entries [0.06ms]
+
+src/lib/founder-validation/__tests__/report-acceptance-7.test.ts:
+(pass) Report: acceptance 7 > report includes acceptance for 7 [8.50ms]
+(pass) Report: acceptance 7 > report acceptance has valid structure for 7 [3.84ms]
+(pass) Report: acceptance 7 > report acceptance scalability for 7 [8.29ms]
+(pass) Report: acceptance 7 > report acceptance cost projection for 7 [8.74ms]
+(pass) Report: acceptance 7 > report acceptance acceptance criteria for 7 [3.71ms]
+
+src/lib/founder-validation/__tests__/telemetry-sort-latency-11.test.ts:
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency works for 11 [2.80ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency handles empty for 11 [0.09ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency filters correctly for 11 [2.96ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency calculates totals for 11 [1.51ms]
+(pass) Telemetry: sort-latency 11 > telemetry sort-latency JSON roundtrip for 11 [1.13ms]
+
+src/lib/founder-validation/__tests__/cost-monthly-projection-7.test.ts:
+(pass) Cost: monthly-projection 7 > cost monthly-projection calculates correctly for 7 [7.54ms]
+(pass) Cost: monthly-projection 7 > cost monthly-projection per request for 7 [7.89ms]
+(pass) Cost: monthly-projection 7 > cost monthly-projection per invoice for 7 [8.13ms]
+(pass) Cost: monthly-projection 7 > cost monthly-projection model pricing for 7 [0.06ms]
+(pass) Cost: monthly-projection 7 > cost monthly-projection free model for 7 [0.03ms]
+
+src/lib/founder-validation/__tests__/report-top-20-lists-19.test.ts:
+(pass) Report: top-20-lists 19 > report includes top-20-lists for 19 [8.43ms]
+(pass) Report: top-20-lists 19 > report top-20-lists has valid structure for 19 [3.64ms]
+(pass) Report: top-20-lists 19 > report top-20-lists scalability for 19 [9.00ms]
+(pass) Report: top-20-lists 19 > report top-20-lists cost projection for 19 [8.77ms]
+(pass) Report: top-20-lists 19 > report top-20-lists acceptance criteria for 19 [3.61ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-13.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 13', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 13);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-13.test.ts:12:27)
+(fail) Seeder Edge Case 13 > generates companies with valid IDs for edge case 13 [5.72ms]
+(pass) Seeder Edge Case 13 > each company has at least one user for edge case 13 [5.56ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 13', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 13);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-13.test.ts:25:27)
+(fail) Seeder Edge Case 13 > all invoices have valid totals for edge case 13 [5.52ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 13', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 13);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-13.test.ts:33:32)
+(fail) Seeder Edge Case 13 > products have valid pricing for edge case 13 [5.63ms]
+(pass) Seeder Edge Case 13 > deterministic output with same seed for edge case 13 [10.75ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-19.test.ts:
+(pass) Seeder Edge Case 19 > generates companies with valid IDs for edge case 19 [5.38ms]
+(pass) Seeder Edge Case 19 > each company has at least one user for edge case 19 [5.20ms]
+(pass) Seeder Edge Case 19 > all invoices have valid totals for edge case 19 [5.41ms]
+(pass) Seeder Edge Case 19 > products have valid pricing for edge case 19 [5.45ms]
+(pass) Seeder Edge Case 19 > deterministic output with same seed for edge case 19 [10.77ms]
+
+src/lib/founder-validation/__tests__/report-cost-projection-2.test.ts:
+(pass) Report: cost-projection 2 > report includes cost-projection for 2 [8.69ms]
+(pass) Report: cost-projection 2 > report cost-projection has valid structure for 2 [3.89ms]
+(pass) Report: cost-projection 2 > report cost-projection scalability for 2 [9.18ms]
+(pass) Report: cost-projection 2 > report cost-projection cost projection for 2 [8.46ms]
+(pass) Report: cost-projection 2 > report cost-projection acceptance criteria for 2 [3.92ms]
+
+src/lib/founder-validation/__tests__/report-model-analysis-13.test.ts:
+(pass) Report: model-analysis 13 > report includes model-analysis for 13 [8.98ms]
+(pass) Report: model-analysis 13 > report model-analysis has valid structure for 13 [3.77ms]
+(pass) Report: model-analysis 13 > report model-analysis scalability for 13 [8.37ms]
+(pass) Report: model-analysis 13 > report model-analysis cost projection for 13 [8.11ms]
+(pass) Report: model-analysis 13 > report model-analysis acceptance criteria for 13 [3.64ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-05.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 05', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 5);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-05.test.ts:12:27)
+(fail) Seeder Edge Case 05 > generates companies with valid IDs for edge case 05 [5.36ms]
+(pass) Seeder Edge Case 05 > each company has at least one user for edge case 05 [5.18ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 05', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 5);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-05.test.ts:25:27)
+(fail) Seeder Edge Case 05 > all invoices have valid totals for edge case 05 [5.37ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 05', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 5);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-05.test.ts:33:32)
+(fail) Seeder Edge Case 05 > products have valid pricing for edge case 05 [5.23ms]
+(pass) Seeder Edge Case 05 > deterministic output with same seed for edge case 05 [10.37ms]
+
+src/lib/founder-validation/__tests__/validation-amount-accuracy-4.test.ts:
+(pass) Validation: amount-accuracy 4 > validates amount-accuracy for 4 [5.84ms]
+(pass) Validation: amount-accuracy 4 > validates amount-accuracy with 100 companies for 4 [93.82ms]
+(pass) Validation: amount-accuracy 4 > validates amount-accuracy relational integrity for 4 [5.95ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: amount-accuracy 4', () => {
+5 |   it('validates amount-accuracy for 4', () => { const c = seedEnterpriseData(10, 3800+4); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates amount-accuracy with 100 companies for 4', () => { const c = seedEnterpriseData(100, 3900+4); expect(c.length).toBe(100); });
+7 |   it('validates amount-accuracy relational integrity for 4', () => { const c = seedEnterpriseData(10, 4000+4); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates amount-accuracy financial accuracy for 4', () => { const c = seedEnterpriseData(10, 4100+4); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-amount-accuracy-4.test.ts:8:177)
+(fail) Validation: amount-accuracy 4 > validates amount-accuracy financial accuracy for 4 [5.98ms]
+(pass) Validation: amount-accuracy 4 > validates amount-accuracy determinism for 4 [11.74ms]
+
+src/lib/founder-validation/__tests__/report-optimization-ai-4.test.ts:
+(pass) Report: optimization-ai 4 > report includes optimization-ai for 4 [9.00ms]
+(pass) Report: optimization-ai 4 > report optimization-ai has valid structure for 4 [3.71ms]
+(pass) Report: optimization-ai 4 > report optimization-ai scalability for 4 [8.90ms]
+(pass) Report: optimization-ai 4 > report optimization-ai cost projection for 4 [8.44ms]
+(pass) Report: optimization-ai 4 > report optimization-ai acceptance criteria for 4 [3.34ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-11.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 11', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 11);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-11.test.ts:12:27)
+(fail) Seeder Edge Case 11 > generates companies with valid IDs for edge case 11 [6.38ms]
+(pass) Seeder Edge Case 11 > each company has at least one user for edge case 11 [6.18ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 11', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 11);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-11.test.ts:25:27)
+(fail) Seeder Edge Case 11 > all invoices have valid totals for edge case 11 [6.26ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 11', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 11);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-11.test.ts:33:32)
+(fail) Seeder Edge Case 11 > products have valid pricing for edge case 11 [6.54ms]
+(pass) Seeder Edge Case 11 > deterministic output with same seed for edge case 11 [12.54ms]
+
+src/lib/founder-validation/__tests__/cost-per-request-0.test.ts:
+(pass) Cost: per-request 0 > cost per-request calculates correctly for 0 [7.66ms]
+(pass) Cost: per-request 0 > cost per-request per request for 0 [8.08ms]
+(pass) Cost: per-request 0 > cost per-request per invoice for 0 [7.07ms]
+(pass) Cost: per-request 0 > cost per-request model pricing for 0 [0.07ms]
+(pass) Cost: per-request 0 > cost per-request free model for 0 [0.03ms]
+
+src/lib/founder-validation/__tests__/cost-memory-savings-17.test.ts:
+(pass) Cost: memory-savings 17 > cost memory-savings calculates correctly for 17 [7.86ms]
+(pass) Cost: memory-savings 17 > cost memory-savings per request for 17 [7.78ms]
+(pass) Cost: memory-savings 17 > cost memory-savings per invoice for 17 [7.64ms]
+(pass) Cost: memory-savings 17 > cost memory-savings model pricing for 17 [0.06ms]
+(pass) Cost: memory-savings 17 > cost memory-savings free model for 17 [0.01ms]
+
+src/lib/founder-validation/__tests__/cost-token-efficiency-14.test.ts:
+(pass) Cost: token-efficiency 14 > cost token-efficiency calculates correctly for 14 [8.25ms]
+(pass) Cost: token-efficiency 14 > cost token-efficiency per request for 14 [7.73ms]
+(pass) Cost: token-efficiency 14 > cost token-efficiency per invoice for 14 [8.18ms]
+(pass) Cost: token-efficiency 14 > cost token-efficiency model pricing for 14 [0.06ms]
+(pass) Cost: token-efficiency 14 > cost token-efficiency free model for 14 [0.03ms]
+
+src/lib/founder-validation/__tests__/telemetry-filter-model-9.test.ts:
+(pass) Telemetry: filter-model 9 > telemetry filter-model works for 9 [2.99ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model handles empty for 9 [0.08ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model filters correctly for 9 [3.19ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model calculates totals for 9 [1.90ms]
+(pass) Telemetry: filter-model 9 > telemetry filter-model JSON roundtrip for 9 [1.82ms]
+
+src/lib/founder-validation/__tests__/telemetry-retry-counting-16.test.ts:
+(pass) TelemetryCollector retry counting > tracks retry counts [0.18ms]
+(pass) TelemetryCollector retry counting > high retries are stored correctly [0.03ms]
+
+src/lib/founder-validation/__tests__/telemetry-queue-metrics-17.test.ts:
+(pass) TelemetryCollector queue metrics > tracks different queues [0.14ms]
+(pass) TelemetryCollector queue metrics > queue wait times stored correctly [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-tenant-scope-05.test.ts:
+19 |     const b = new TelemetryCollector("tenant-b");
+20 |     a.record(make("1", "tenant-a"));
+21 |     b.record(make("2", "tenant-b"));
+22 |     expect(a.getEntries()).toHaveLength(1);
+23 |     expect(b.getEntries()).toHaveLength(1);
+24 |     expect(a.getEntries()[0].id).toBe("1");
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "1"
+Received: "tel-mry84564afytvjfj"
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-tenant-scope-05.test.ts:24:34)
+(fail) TelemetryCollector tenant isolation > each collector has its own entries [0.18ms]
+(pass) TelemetryCollector tenant isolation > clearing one does not affect the other [0.03ms]
+
+src/lib/founder-validation/__tests__/telemetry-confidence-range-14.test.ts:
+(pass) TelemetryCollector confidence range > records confidence from 0 to 1 [0.13ms]
+(pass) TelemetryCollector confidence range > average confidence is calculable [0.05ms]
+
+src/lib/founder-validation/__tests__/telemetry-sort-cost-10.test.ts:
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost works for 10 [2.91ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost handles empty for 10 [0.09ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost filters correctly for 10 [3.09ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost calculates totals for 10 [1.60ms]
+(pass) Telemetry: sort-cost 10 > telemetry sort-cost JSON roundtrip for 10 [1.50ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-10.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 10', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 10);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-10.test.ts:12:27)
+(fail) Seeder Edge Case 10 > generates companies with valid IDs for edge case 10 [5.86ms]
+(pass) Seeder Edge Case 10 > each company has at least one user for edge case 10 [5.66ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 10', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 10);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-10.test.ts:25:27)
+(fail) Seeder Edge Case 10 > all invoices have valid totals for edge case 10 [6.12ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 10', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 10);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-10.test.ts:33:32)
+(fail) Seeder Edge Case 10 > products have valid pricing for edge case 10 [5.99ms]
+(pass) Seeder Edge Case 10 > deterministic output with same seed for edge case 10 [11.40ms]
+
+src/lib/founder-validation/__tests__/report-revenue-analysis-16.test.ts:
+(pass) Report: revenue-analysis 16 > report includes revenue-analysis for 16 [8.81ms]
+(pass) Report: revenue-analysis 16 > report revenue-analysis has valid structure for 16 [3.82ms]
+(pass) Report: revenue-analysis 16 > report revenue-analysis scalability for 16 [8.35ms]
+(pass) Report: revenue-analysis 16 > report revenue-analysis cost projection for 16 [8.51ms]
+(pass) Report: revenue-analysis 16 > report revenue-analysis acceptance criteria for 16 [3.80ms]
+
+src/lib/founder-validation/__tests__/validation-status-validity-7.test.ts:
+(pass) Validation: status-validity 7 > validates status-validity for 7 [5.54ms]
+(pass) Validation: status-validity 7 > validates status-validity with 100 companies for 7 [91.79ms]
+(pass) Validation: status-validity 7 > validates status-validity relational integrity for 7 [6.37ms]
+(pass) Validation: status-validity 7 > validates status-validity financial accuracy for 7 [5.77ms]
+(pass) Validation: status-validity 7 > validates status-validity determinism for 7 [11.29ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-basic-0.test.ts:
+(pass) Telemetry: record-basic 0 > telemetry record-basic works for 0 [2.97ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic handles empty for 0 [0.07ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic filters correctly for 0 [2.92ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic calculates totals for 0 [1.68ms]
+(pass) Telemetry: record-basic 0 > telemetry record-basic JSON roundtrip for 0 [1.38ms]
+
+src/lib/founder-validation/__tests__/telemetry-aggregate-cost-18.test.ts:
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost works for 18 [2.85ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost handles empty for 18 [0.07ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost filters correctly for 18 [2.69ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost calculates totals for 18 [1.88ms]
+(pass) Telemetry: aggregate-cost 18 > telemetry aggregate-cost JSON roundtrip for 18 [1.55ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-14.test.ts:
+(pass) Seeder Edge Case 14 > generates companies with valid IDs for edge case 14 [5.77ms]
+(pass) Seeder Edge Case 14 > each company has at least one user for edge case 14 [5.82ms]
+(pass) Seeder Edge Case 14 > all invoices have valid totals for edge case 14 [6.05ms]
+(pass) Seeder Edge Case 14 > products have valid pricing for edge case 14 [5.77ms]
+(pass) Seeder Edge Case 14 > deterministic output with same seed for edge case 14 [11.34ms]
+
+src/lib/founder-validation/__tests__/validation-data-integrity-0.test.ts:
+(pass) Validation: data-integrity 0 > validates data-integrity for 0 [5.14ms]
+(pass) Validation: data-integrity 0 > validates data-integrity with 100 companies for 0 [91.17ms]
+(pass) Validation: data-integrity 0 > validates data-integrity relational integrity for 0 [6.92ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: data-integrity 0', () => {
+5 |   it('validates data-integrity for 0', () => { const c = seedEnterpriseData(10, 3800+0); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates data-integrity with 100 companies for 0', () => { const c = seedEnterpriseData(100, 3900+0); expect(c.length).toBe(100); });
+7 |   it('validates data-integrity relational integrity for 0', () => { const c = seedEnterpriseData(10, 4000+0); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates data-integrity financial accuracy for 0', () => { const c = seedEnterpriseData(10, 4100+0); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                   ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-data-integrity-0.test.ts:8:176)
+(fail) Validation: data-integrity 0 > validates data-integrity financial accuracy for 0 [5.44ms]
+(pass) Validation: data-integrity 0 > validates data-integrity determinism for 0 [11.21ms]
+
+src/lib/founder-validation/__tests__/telemetry-resolved-by-13.test.ts:
+(pass) TelemetryCollector resolvedBy tracking > all cascade stages represented [0.17ms]
+(pass) TelemetryCollector resolvedBy tracking > counts per stage [0.10ms]
+
+src/lib/founder-validation/__tests__/cost-cache-savings-15.test.ts:
+(pass) Cost: cache-savings 15 > cost cache-savings calculates correctly for 15 [7.93ms]
+(pass) Cost: cache-savings 15 > cost cache-savings per request for 15 [8.08ms]
+(pass) Cost: cache-savings 15 > cost cache-savings per invoice for 15 [8.12ms]
+(pass) Cost: cache-savings 15 > cost cache-savings model pricing for 15 [0.07ms]
+(pass) Cost: cache-savings 15 > cost cache-savings free model for 15 [0.02ms]
+
+src/lib/founder-validation/__tests__/validation-statistical-validity-18.test.ts:
+(pass) Validation: statistical-validity 18 > validates statistical-validity for 18 [5.63ms]
+(pass) Validation: statistical-validity 18 > validates statistical-validity with 100 companies for 18 [91.75ms]
+(pass) Validation: statistical-validity 18 > validates statistical-validity relational integrity for 18 [6.78ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: statistical-validity 18', () => {
+5 |   it('validates statistical-validity for 18', () => { const c = seedEnterpriseData(10, 3800+18); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates statistical-validity with 100 companies for 18', () => { const c = seedEnterpriseData(100, 3900+18); expect(c.length).toBe(100); });
+7 |   it('validates statistical-validity relational integrity for 18', () => { const c = seedEnterpriseData(10, 4000+18); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates statistical-validity financial accuracy for 18', () => { const c = seedEnterpriseData(10, 4100+18); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                           ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-statistical-validity-18.test.ts:8:184)
+(fail) Validation: statistical-validity 18 > validates statistical-validity financial accuracy for 18 [5.78ms]
+(pass) Validation: statistical-validity 18 > validates statistical-validity determinism for 18 [11.84ms]
+
+src/lib/founder-validation/__tests__/telemetry-filter-provider-8.test.ts:
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider works for 8 [4.98ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider handles empty for 8 [0.08ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider filters correctly for 8 [4.87ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider calculates totals for 8 [2.00ms]
+(pass) Telemetry: filter-provider 8 > telemetry filter-provider JSON roundtrip for 8 [1.47ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-memory-hit-2.test.ts:
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit works for 2 [3.04ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit handles empty for 2 [0.07ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit filters correctly for 2 [2.74ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit calculates totals for 2 [1.79ms]
+(pass) Telemetry: record-memory-hit 2 > telemetry record-memory-hit JSON roundtrip for 2 [1.42ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-error-5.test.ts:
+(pass) Telemetry: record-error 5 > telemetry record-error works for 5 [3.15ms]
+(pass) Telemetry: record-error 5 > telemetry record-error handles empty for 5 [0.06ms]
+(pass) Telemetry: record-error 5 > telemetry record-error filters correctly for 5 [2.61ms]
+(pass) Telemetry: record-error 5 > telemetry record-error calculates totals for 5 [1.36ms]
+(pass) Telemetry: record-error 5 > telemetry record-error JSON roundtrip for 5 [1.45ms]
+
+src/lib/founder-validation/__tests__/validation-cardinality-14.test.ts:
+(pass) Validation: cardinality 14 > validates cardinality for 14 [5.76ms]
+(pass) Validation: cardinality 14 > validates cardinality with 100 companies for 14 [93.06ms]
+(pass) Validation: cardinality 14 > validates cardinality relational integrity for 14 [6.01ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: cardinality 14', () => {
+5 |   it('validates cardinality for 14', () => { const c = seedEnterpriseData(10, 3800+14); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates cardinality with 100 companies for 14', () => { const c = seedEnterpriseData(100, 3900+14); expect(c.length).toBe(100); });
+7 |   it('validates cardinality relational integrity for 14', () => { const c = seedEnterpriseData(10, 4000+14); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates cardinality financial accuracy for 14', () => { const c = seedEnterpriseData(10, 4100+14); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                  ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-cardinality-14.test.ts:8:175)
+(fail) Validation: cardinality 14 > validates cardinality financial accuracy for 14 [6.05ms]
+(pass) Validation: cardinality 14 > validates cardinality determinism for 14 [10.89ms]
+
+src/lib/founder-validation/__tests__/validation-report-completeness-19.test.ts:
+(pass) Validation: report-completeness 19 > validates report-completeness for 19 [11.06ms]
+(pass) Validation: report-completeness 19 > validates report-completeness with 100 companies for 19 [92.09ms]
+(pass) Validation: report-completeness 19 > validates report-completeness relational integrity for 19 [7.22ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: report-completeness 19', () => {
+5 |   it('validates report-completeness for 19', () => { const c = seedEnterpriseData(10, 3800+19); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates report-completeness with 100 companies for 19', () => { const c = seedEnterpriseData(100, 3900+19); expect(c.length).toBe(100); });
+7 |   it('validates report-completeness relational integrity for 19', () => { const c = seedEnterpriseData(10, 4000+19); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates report-completeness financial accuracy for 19', () => { const c = seedEnterpriseData(10, 4100+19); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                          ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-report-completeness-19.test.ts:8:183)
+(fail) Validation: report-completeness 19 > validates report-completeness financial accuracy for 19 [6.16ms]
+(pass) Validation: report-completeness 19 > validates report-completeness determinism for 19 [12.60ms]
+
+src/lib/founder-validation/__tests__/telemetry-large-batch-07.test.ts:
+(pass) TelemetryCollector large batch recording > records 1000 entries [1.15ms]
+(pass) TelemetryCollector large batch recording > clears 1000 entries [0.78ms]
+(pass) TelemetryCollector large batch recording > unique IDs across 1000 entries [1.05ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-16.test.ts:
+(pass) Seeder Edge Case 16 > generates companies with valid IDs for edge case 16 [5.98ms]
+(pass) Seeder Edge Case 16 > each company has at least one user for edge case 16 [5.99ms]
+(pass) Seeder Edge Case 16 > all invoices have valid totals for edge case 16 [6.02ms]
+(pass) Seeder Edge Case 16 > products have valid pricing for edge case 16 [6.11ms]
+(pass) Seeder Edge Case 16 > deterministic output with same seed for edge case 16 [11.71ms]
+
+src/lib/founder-validation/__tests__/report-error-analysis-18.test.ts:
+(pass) Report: error-analysis 18 > report includes error-analysis for 18 [8.65ms]
+(pass) Report: error-analysis 18 > report error-analysis has valid structure for 18 [3.54ms]
+(pass) Report: error-analysis 18 > report error-analysis scalability for 18 [8.62ms]
+(pass) Report: error-analysis 18 > report error-analysis cost projection for 18 [8.72ms]
+(pass) Report: error-analysis 18 > report error-analysis acceptance criteria for 18 [3.34ms]
+
+src/lib/founder-validation/__tests__/validation-field-completeness-9.test.ts:
+(pass) Validation: field-completeness 9 > validates field-completeness for 9 [5.24ms]
+(pass) Validation: field-completeness 9 > validates field-completeness with 100 companies for 9 [92.07ms]
+(pass) Validation: field-completeness 9 > validates field-completeness relational integrity for 9 [6.48ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: field-completeness 9', () => {
+5 |   it('validates field-completeness for 9', () => { const c = seedEnterpriseData(10, 3800+9); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates field-completeness with 100 companies for 9', () => { const c = seedEnterpriseData(100, 3900+9); expect(c.length).toBe(100); });
+7 |   it('validates field-completeness relational integrity for 9', () => { const c = seedEnterpriseData(10, 4000+9); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates field-completeness financial accuracy for 9', () => { const c = seedEnterpriseData(10, 4100+9); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                       ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-field-completeness-9.test.ts:8:180)
+(fail) Validation: field-completeness 9 > validates field-completeness financial accuracy for 9 [5.71ms]
+(pass) Validation: field-completeness 9 > validates field-completeness determinism for 9 [12.01ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-rule-hit-3.test.ts:
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit works for 3 [2.87ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit handles empty for 3 [0.08ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit filters correctly for 3 [2.59ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit calculates totals for 3 [2.00ms]
+(pass) Telemetry: record-rule-hit 3 > telemetry record-rule-hit JSON roundtrip for 3 [1.68ms]
+
+src/lib/founder-validation/__tests__/cost-model-comparison-12.test.ts:
+(pass) Cost: model-comparison 12 > cost model-comparison calculates correctly for 12 [8.04ms]
+(pass) Cost: model-comparison 12 > cost model-comparison per request for 12 [8.05ms]
+(pass) Cost: model-comparison 12 > cost model-comparison per invoice for 12 [8.30ms]
+(pass) Cost: model-comparison 12 > cost model-comparison model pricing for 12 [0.07ms]
+(pass) Cost: model-comparison 12 > cost model-comparison free model for 12 [0.04ms]
+
+src/lib/founder-validation/__tests__/validation-relational-validity-1.test.ts:
+(pass) Validation: relational-validity 1 > validates relational-validity for 1 [5.55ms]
+(pass) Validation: relational-validity 1 > validates relational-validity with 100 companies for 1 [93.59ms]
+(pass) Validation: relational-validity 1 > validates relational-validity relational integrity for 1 [5.52ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: relational-validity 1', () => {
+5 |   it('validates relational-validity for 1', () => { const c = seedEnterpriseData(10, 3800+1); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates relational-validity with 100 companies for 1', () => { const c = seedEnterpriseData(100, 3900+1); expect(c.length).toBe(100); });
+7 |   it('validates relational-validity relational integrity for 1', () => { const c = seedEnterpriseData(10, 4000+1); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates relational-validity financial accuracy for 1', () => { const c = seedEnterpriseData(10, 4100+1); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                        ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-relational-validity-1.test.ts:8:181)
+(fail) Validation: relational-validity 1 > validates relational-validity financial accuracy for 1 [5.69ms]
+(pass) Validation: relational-validity 1 > validates relational-validity determinism for 1 [11.22ms]
+
+src/lib/founder-validation/__tests__/validation-reference-integrity-13.test.ts:
+(pass) Validation: reference-integrity 13 > validates reference-integrity for 13 [10.74ms]
+(pass) Validation: reference-integrity 13 > validates reference-integrity with 100 companies for 13 [92.28ms]
+(pass) Validation: reference-integrity 13 > validates reference-integrity relational integrity for 13 [6.19ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: reference-integrity 13', () => {
+5 |   it('validates reference-integrity for 13', () => { const c = seedEnterpriseData(10, 3800+13); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates reference-integrity with 100 companies for 13', () => { const c = seedEnterpriseData(100, 3900+13); expect(c.length).toBe(100); });
+7 |   it('validates reference-integrity relational integrity for 13', () => { const c = seedEnterpriseData(10, 4000+13); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates reference-integrity financial accuracy for 13', () => { const c = seedEnterpriseData(10, 4100+13); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                          ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-reference-integrity-13.test.ts:8:183)
+(fail) Validation: reference-integrity 13 > validates reference-integrity financial accuracy for 13 [5.79ms]
+(pass) Validation: reference-integrity 13 > validates reference-integrity determinism for 13 [11.68ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-pattern-hit-4.test.ts:
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit works for 4 [2.87ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit handles empty for 4 [0.08ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit filters correctly for 4 [3.16ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit calculates totals for 4 [1.80ms]
+(pass) Telemetry: record-pattern-hit 4 > telemetry record-pattern-hit JSON roundtrip for 4 [1.64ms]
+
+src/lib/founder-validation/__tests__/report-optimization-endpoints-3.test.ts:
+(pass) Report: optimization-endpoints 3 > report includes optimization-endpoints for 3 [8.65ms]
+(pass) Report: optimization-endpoints 3 > report optimization-endpoints has valid structure for 3 [3.52ms]
+(pass) Report: optimization-endpoints 3 > report optimization-endpoints scalability for 3 [8.13ms]
+(pass) Report: optimization-endpoints 3 > report optimization-endpoints cost projection for 3 [8.53ms]
+(pass) Report: optimization-endpoints 3 > report optimization-endpoints acceptance criteria for 3 [3.70ms]
+
+src/lib/founder-validation/__tests__/telemetry-clear-04.test.ts:
+(pass) TelemetryCollector clear > clear removes all entries [0.13ms]
+25 |     const c = new TelemetryCollector("t");
+26 |     c.record(make("1"));
+27 |     c.clear();
+28 |     c.record(make("2"));
+29 |     expect(c.getEntries()).toHaveLength(1);
+30 |     expect(c.getEntries()[0].id).toBe("2");
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "2"
+Received: "tel-mry8467nt8uy1e4s"
+
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/telemetry-clear-04.test.ts:30:34)
+(fail) TelemetryCollector clear > clear then record works [0.10ms]
+(pass) TelemetryCollector clear > clear on empty is safe [0.01ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-02.test.ts:
+(pass) Seeder Edge Case 02 > generates companies with valid IDs for edge case 02 [5.63ms]
+(pass) Seeder Edge Case 02 > each company has at least one user for edge case 02 [5.53ms]
+(pass) Seeder Edge Case 02 > all invoices have valid totals for edge case 02 [5.63ms]
+(pass) Seeder Edge Case 02 > products have valid pricing for edge case 02 [5.62ms]
+(pass) Seeder Edge Case 02 > deterministic output with same seed for edge case 02 [11.01ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-15.test.ts:
+(pass) Seeder Edge Case 15 > generates companies with valid IDs for edge case 15 [5.16ms]
+(pass) Seeder Edge Case 15 > each company has at least one user for edge case 15 [5.06ms]
+(pass) Seeder Edge Case 15 > all invoices have valid totals for edge case 15 [5.15ms]
+(pass) Seeder Edge Case 15 > products have valid pricing for edge case 15 [5.16ms]
+(pass) Seeder Edge Case 15 > deterministic output with same seed for edge case 15 [10.02ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-17.test.ts:
+ 7 |   it('generates companies with valid IDs for edge case 17', () => {
+ 8 |     const companies = seedEnterpriseData(10, 42 + 17);
+ 9 |     expect(companies.length).toBe(10);
+10 |     for (const c of companies) {
+11 |       expect(c.id).toBeTruthy();
+12 |       expect(c.id.length).toBeGreaterThan(5);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-17.test.ts:12:27)
+(fail) Seeder Edge Case 17 > generates companies with valid IDs for edge case 17 [5.89ms]
+(pass) Seeder Edge Case 17 > each company has at least one user for edge case 17 [5.66ms]
+20 |   });
+21 |   it('all invoices have valid totals for edge case 17', () => {
+22 |     const companies = seedEnterpriseData(10, 42 + 17);
+23 |     for (const c of companies) {
+24 |       for (const inv of c.invoices) {
+25 |         expect(inv.total).toBeGreaterThanOrEqual(0);
+                               ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-17.test.ts:25:27)
+(fail) Seeder Edge Case 17 > all invoices have valid totals for edge case 17 [5.70ms]
+28 |   });
+29 |   it('products have valid pricing for edge case 17', () => {
+30 |     const companies = seedEnterpriseData(10, 42 + 17);
+31 |     for (const c of companies) {
+32 |       for (const p of c.products) {
+33 |         expect(p.sellingPrice).toBeGreaterThanOrEqual(p.purchasePrice);
+                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/seeder-edge-case-17.test.ts:33:32)
+(fail) Seeder Edge Case 17 > products have valid pricing for edge case 17 [5.87ms]
+(pass) Seeder Edge Case 17 > deterministic output with same seed for edge case 17 [11.18ms]
+
+src/lib/founder-validation/__tests__/cost-total-ownership-19.test.ts:
+(pass) Cost: total-ownership 19 > cost total-ownership calculates correctly for 19 [8.21ms]
+(pass) Cost: total-ownership 19 > cost total-ownership per request for 19 [8.16ms]
+(pass) Cost: total-ownership 19 > cost total-ownership per invoice for 19 [7.96ms]
+(pass) Cost: total-ownership 19 > cost total-ownership model pricing for 19 [0.06ms]
+(pass) Cost: total-ownership 19 > cost total-ownership free model for 19 [0.03ms]
+
+src/lib/founder-validation/__tests__/telemetry-record-entry-02.test.ts:
+(pass) TelemetryCollector record > records single entry [0.10ms]
+(pass) TelemetryCollector record > records multiple entries [0.10ms]
+(pass) TelemetryCollector record > preserves entry data [0.02ms]
+
+src/lib/founder-validation/__tests__/telemetry-reset-clear-19.test.ts:
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear works for 19 [2.86ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear handles empty for 19 [0.08ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear filters correctly for 19 [3.04ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear calculates totals for 19 [1.45ms]
+(pass) Telemetry: reset-clear 19 > telemetry reset-clear JSON roundtrip for 19 [1.41ms]
+
+src/lib/founder-validation/__tests__/seeder-edge-case-20.test.ts:
+(pass) Seeder Edge Case 20 > generates companies with valid IDs for edge case 20 [5.39ms]
+(pass) Seeder Edge Case 20 > each company has at least one user for edge case 20 [5.23ms]
+(pass) Seeder Edge Case 20 > all invoices have valid totals for edge case 20 [5.46ms]
+(pass) Seeder Edge Case 20 > products have valid pricing for edge case 20 [5.44ms]
+(pass) Seeder Edge Case 20 > deterministic output with same seed for edge case 20 [10.56ms]
+
+src/lib/founder-validation/__tests__/report-learning-analysis-15.test.ts:
+(pass) Report: learning-analysis 15 > report includes learning-analysis for 15 [8.74ms]
+(pass) Report: learning-analysis 15 > report learning-analysis has valid structure for 15 [3.55ms]
+(pass) Report: learning-analysis 15 > report learning-analysis scalability for 15 [8.44ms]
+(pass) Report: learning-analysis 15 > report learning-analysis cost projection for 15 [9.02ms]
+(pass) Report: learning-analysis 15 > report learning-analysis acceptance criteria for 15 [3.58ms]
+
+src/lib/founder-validation/__tests__/report-provider-analysis-12.test.ts:
+(pass) Report: provider-analysis 12 > report includes provider-analysis for 12 [8.88ms]
+(pass) Report: provider-analysis 12 > report provider-analysis has valid structure for 12 [3.64ms]
+(pass) Report: provider-analysis 12 > report provider-analysis scalability for 12 [8.07ms]
+(pass) Report: provider-analysis 12 > report provider-analysis cost projection for 12 [8.14ms]
+(pass) Report: provider-analysis 12 > report provider-analysis acceptance criteria for 12 [3.43ms]
+
+src/lib/founder-validation/__tests__/validation-tax-calculation-5.test.ts:
+(pass) Validation: tax-calculation 5 > validates tax-calculation for 5 [5.63ms]
+(pass) Validation: tax-calculation 5 > validates tax-calculation with 100 companies for 5 [92.59ms]
+(pass) Validation: tax-calculation 5 > validates tax-calculation relational integrity for 5 [6.09ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: tax-calculation 5', () => {
+5 |   it('validates tax-calculation for 5', () => { const c = seedEnterpriseData(10, 3800+5); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates tax-calculation with 100 companies for 5', () => { const c = seedEnterpriseData(100, 3900+5); expect(c.length).toBe(100); });
+7 |   it('validates tax-calculation relational integrity for 5', () => { const c = seedEnterpriseData(10, 4000+5); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates tax-calculation financial accuracy for 5', () => { const c = seedEnterpriseData(10, 4100+5); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                    ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-tax-calculation-5.test.ts:8:177)
+(fail) Validation: tax-calculation 5 > validates tax-calculation financial accuracy for 5 [6.44ms]
+(pass) Validation: tax-calculation 5 > validates tax-calculation determinism for 5 [11.70ms]
+
+src/lib/founder-validation/__tests__/validation-boundary-values-17.test.ts:
+(pass) Validation: boundary-values 17 > validates boundary-values for 17 [5.74ms]
+(pass) Validation: boundary-values 17 > validates boundary-values with 100 companies for 17 [93.70ms]
+(pass) Validation: boundary-values 17 > validates boundary-values relational integrity for 17 [6.96ms]
+(pass) Validation: boundary-values 17 > validates boundary-values financial accuracy for 17 [5.46ms]
+(pass) Validation: boundary-values 17 > validates boundary-values determinism for 17 [11.95ms]
+
+src/lib/founder-validation/__tests__/cost-provider-comparison-13.test.ts:
+(pass) Cost: provider-comparison 13 > cost provider-comparison calculates correctly for 13 [13.43ms]
+(pass) Cost: provider-comparison 13 > cost provider-comparison per request for 13 [8.24ms]
+(pass) Cost: provider-comparison 13 > cost provider-comparison per invoice for 13 [8.07ms]
+(pass) Cost: provider-comparison 13 > cost provider-comparison model pricing for 13 [0.06ms]
+(pass) Cost: provider-comparison 13 > cost provider-comparison free model for 13 [0.02ms]
+
+src/lib/founder-validation/__tests__/report-bottlenecks-1.test.ts:
+(pass) Report: bottlenecks 1 > report includes bottlenecks for 1 [8.75ms]
+(pass) Report: bottlenecks 1 > report bottlenecks has valid structure for 1 [3.29ms]
+(pass) Report: bottlenecks 1 > report bottlenecks scalability for 1 [8.29ms]
+(pass) Report: bottlenecks 1 > report bottlenecks cost projection for 1 [8.55ms]
+(pass) Report: bottlenecks 1 > report bottlenecks acceptance criteria for 1 [3.78ms]
+
+src/lib/founder-validation/__tests__/validation-id-uniqueness-2.test.ts:
+(pass) Validation: id-uniqueness 2 > validates id-uniqueness for 2 [5.35ms]
+(pass) Validation: id-uniqueness 2 > validates id-uniqueness with 100 companies for 2 [91.50ms]
+(pass) Validation: id-uniqueness 2 > validates id-uniqueness relational integrity for 2 [6.29ms]
+3 | import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+4 | describe('Validation: id-uniqueness 2', () => {
+5 |   it('validates id-uniqueness for 2', () => { const c = seedEnterpriseData(10, 3800+2); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
+6 |   it('validates id-uniqueness with 100 companies for 2', () => { const c = seedEnterpriseData(100, 3900+2); expect(c.length).toBe(100); });
+7 |   it('validates id-uniqueness relational integrity for 2', () => { const c = seedEnterpriseData(10, 4000+2); for(const x of c) { const pids = new Set(x.products.map(p=>p.id)); for(const inv of x.invoices) for(const it of inv.lineItems) expect(pids.has(it.productId)).toBe(true); } });
+8 |   it('validates id-uniqueness financial accuracy for 2', () => { const c = seedEnterpriseData(10, 4100+2); for(const x of c) for(const inv of x.invoices) { expect(inv.total).toBeGreaterThanOrEqual(0); expect(inv.subtotal).toBeGreaterThan(0); } });
+                                                                                                                                                                                  ^
+error: Expected and actual values must be numbers or bigints
+      at <anonymous> (/home/z/my-project/src/lib/founder-validation/__tests__/validation-id-uniqueness-2.test.ts:8:175)
+(fail) Validation: id-uniqueness 2 > validates id-uniqueness financial accuracy for 2 [6.30ms]
+(pass) Validation: id-uniqueness 2 > validates id-uniqueness determinism for 2 [10.97ms]
+
+src/lib/founder-validation/__tests__/telemetry-multi-tenant-19.test.ts:
+(pass) TelemetryCollector multi-tenant isolation > 20 tenants each have their own collector [0.30ms]
+(pass) TelemetryCollector multi-tenant isolation > entries in one collector never appear in another [0.08ms]
+
+src/lib/founder-validation/__tests__/report-hit-rate-analysis-14.test.ts:
+(pass) Report: hit-rate-analysis 14 > report includes hit-rate-analysis for 14 [14.76ms]
+(pass) Report: hit-rate-analysis 14 > report hit-rate-analysis has valid structure for 14 [3.80ms]
+(pass) Report: hit-rate-analysis 14 > report hit-rate-analysis scalability for 14 [9.30ms]
+(pass) Report: hit-rate-analysis 14 > report hit-rate-analysis cost projection for 14 [8.08ms]
+(pass) Report: hit-rate-analysis 14 > report hit-rate-analysis acceptance criteria for 14 [3.65ms]
+
+src/lib/founder-validation/__tests__/validation-type-safety-16.test.ts:
+(pass) Validation: type-safety 16 > validates type-safety for 16 [5.71ms]
+(pass) Validation: type-safety 16 > validates type-safety with 100 companies for 16 [90.99ms]
+(pass) Validation: type-safety 16 > validates type-safety relational integrity for 16 [6.63ms]
+(pass) Validation: type-safety 16 > validates type-safety financial accuracy for 16 [5.88ms]
+(pass) Validation: type-safety 16 > validates type-safety determinism for 16 [10.47ms]
+
+src/lib/founder-validation/__tests__/telemetry-percentile-p50-12.test.ts:
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 works for 12 [3.19ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 handles empty for 12 [0.08ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 filters correctly for 12 [2.86ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 calculates totals for 12 [1.78ms]
+(pass) Telemetry: percentile-p50 12 > telemetry percentile-p50 JSON roundtrip for 12 [1.75ms]
+
+src/lib/founder-validation/__tests__/report-optimization-db-5.test.ts:
+(pass) Report: optimization-db 5 > report includes optimization-db for 5 [8.88ms]
+(pass) Report: optimization-db 5 > report optimization-db has valid structure for 5 [3.46ms]
+(pass) Report: optimization-db 5 > report optimization-db scalability for 5 [8.29ms]
+(pass) Report: optimization-db 5 > report optimization-db cost projection for 5 [8.58ms]
+(pass) Report: optimization-db 5 > report optimization-db acceptance criteria for 5 [3.20ms]
+
+src/lib/founder-validation/__tests__/cost-budget-validation-10.test.ts:
+(pass) Cost: budget-validation 10 > cost budget-validation calculates correctly for 10 [8.39ms]
+(pass) Cost: budget-validation 10 > cost budget-validation per request for 10 [7.39ms]
+(pass) Cost: budget-validation 10 > cost budget-validation per invoice for 10 [7.79ms]
+(pass) Cost: budget-validation 10 > cost budget-validation model pricing for 10 [0.07ms]
+(pass) Cost: budget-validation 10 > cost budget-validation free model for 10 [0.03ms]
+
+51 tests failed:
+(fail) Seeder Edge Case 18 > generates companies with valid IDs for edge case 18 [6.05ms]
+(fail) Seeder Edge Case 18 > all invoices have valid totals for edge case 18 [5.70ms]
+(fail) Seeder Edge Case 18 > products have valid pricing for edge case 18 [5.66ms]
+(fail) TelemetryCollector getEntries > returns copy not reference [0.18ms]
+(fail) TelemetryCollector getEntries > returns entries in insertion order [0.27ms]
+(fail) Validation: type-coverage 8 > validates type-coverage financial accuracy for 8 [6.74ms]
+(fail) Seeder Edge Case 09 > generates companies with valid IDs for edge case 09 [5.60ms]
+(fail) Seeder Edge Case 09 > all invoices have valid totals for edge case 09 [5.42ms]
+(fail) Seeder Edge Case 09 > products have valid pricing for edge case 09 [5.43ms]
+(fail) Validation: date-consistency 3 > validates date-consistency financial accuracy for 3 [5.71ms]
+(fail) Seeder Edge Case 07 > generates companies with valid IDs for edge case 07 [6.08ms]
+(fail) Seeder Edge Case 07 > all invoices have valid totals for edge case 07 [5.84ms]
+(fail) Seeder Edge Case 07 > products have valid pricing for edge case 07 [5.89ms]
+(fail) Seeder Edge Case 12 > generates companies with valid IDs for edge case 12 [5.92ms]
+(fail) Seeder Edge Case 12 > all invoices have valid totals for edge case 12 [5.75ms]
+(fail) Seeder Edge Case 12 > products have valid pricing for edge case 12 [5.82ms]
+(fail) Validation: enum-validity 11 > validates enum-validity financial accuracy for 11 [32.47ms]
+(fail) TelemetryCollector timestamp tracking > entries preserve their timestamps [0.28ms]
+(fail) TelemetryCollector timestamp tracking > entries can have different timestamps [0.23ms]
+(fail) Validation: null-safety 15 > validates null-safety financial accuracy for 15 [5.73ms]
+(fail) Seeder Edge Case 08 > generates companies with valid IDs for edge case 08 [5.44ms]
+(fail) Seeder Edge Case 08 > all invoices have valid totals for edge case 08 [5.32ms]
+(fail) Seeder Edge Case 08 > products have valid pricing for edge case 08 [5.53ms]
+(fail) Validation: range-validity 10 > validates range-validity financial accuracy for 10 [6.00ms]
+(fail) Seeder Edge Case 13 > generates companies with valid IDs for edge case 13 [5.72ms]
+(fail) Seeder Edge Case 13 > all invoices have valid totals for edge case 13 [5.52ms]
+(fail) Seeder Edge Case 13 > products have valid pricing for edge case 13 [5.63ms]
+(fail) Seeder Edge Case 05 > generates companies with valid IDs for edge case 05 [5.36ms]
+(fail) Seeder Edge Case 05 > all invoices have valid totals for edge case 05 [5.37ms]
+(fail) Seeder Edge Case 05 > products have valid pricing for edge case 05 [5.23ms]
+(fail) Validation: amount-accuracy 4 > validates amount-accuracy financial accuracy for 4 [5.98ms]
+(fail) Seeder Edge Case 11 > generates companies with valid IDs for edge case 11 [6.38ms]
+(fail) Seeder Edge Case 11 > all invoices have valid totals for edge case 11 [6.26ms]
+(fail) Seeder Edge Case 11 > products have valid pricing for edge case 11 [6.54ms]
+(fail) TelemetryCollector tenant isolation > each collector has its own entries [0.18ms]
+(fail) Seeder Edge Case 10 > generates companies with valid IDs for edge case 10 [5.86ms]
+(fail) Seeder Edge Case 10 > all invoices have valid totals for edge case 10 [6.12ms]
+(fail) Seeder Edge Case 10 > products have valid pricing for edge case 10 [5.99ms]
+(fail) Validation: data-integrity 0 > validates data-integrity financial accuracy for 0 [5.44ms]
+(fail) Validation: statistical-validity 18 > validates statistical-validity financial accuracy for 18 [5.78ms]
+(fail) Validation: cardinality 14 > validates cardinality financial accuracy for 14 [6.05ms]
+(fail) Validation: report-completeness 19 > validates report-completeness financial accuracy for 19 [6.16ms]
+(fail) Validation: field-completeness 9 > validates field-completeness financial accuracy for 9 [5.71ms]
+(fail) Validation: relational-validity 1 > validates relational-validity financial accuracy for 1 [5.69ms]
+(fail) Validation: reference-integrity 13 > validates reference-integrity financial accuracy for 13 [5.79ms]
+(fail) TelemetryCollector clear > clear then record works [0.10ms]
+(fail) Seeder Edge Case 17 > generates companies with valid IDs for edge case 17 [5.89ms]
+(fail) Seeder Edge Case 17 > all invoices have valid totals for edge case 17 [5.70ms]
+(fail) Seeder Edge Case 17 > products have valid pricing for edge case 17 [5.87ms]
+(fail) Validation: tax-calculation 5 > validates tax-calculation financial accuracy for 5 [6.44ms]
+(fail) Validation: id-uniqueness 2 > validates id-uniqueness financial accuracy for 2 [6.30ms]
+
+ 542 pass
+ 51 fail
+ 53155 expect() calls
+Ran 593 tests across 121 files. [4.94s]
