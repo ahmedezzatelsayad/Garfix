@@ -17,19 +17,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useBrand } from "@/context/BrandContext";
 import { useCursorPagination } from "@/hooks/cursor-pagination";
-import { useDeleteInvoice, useUpdateInvoiceStatus, useRecordPayment } from "@/hooks/queries/invoices";
+import { useDeleteInvoice } from "@/hooks/queries/invoices";
 import { queryKeys } from "@/hooks/query-keys";
-import { optimisticDelete, invalidateMany } from "@/hooks/optimistic";
+import { invalidateMany } from "@/hooks/optimistic";
 import { apiGet, apiDelete, ApiError } from "@/hooks/api-client";
 import { Invoice, StatusFilter } from "./types";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface InvoiceListPage {
-  items: Invoice[];
-  nextCursor: string | null;
-  totalCount?: number;
-}
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -77,8 +69,6 @@ export function useInvoices() {
   // ─── TanStack Query mutations ──────────────────────────────────────────
 
   const deleteMutation = useDeleteInvoice();
-  const statusMutation = useUpdateInvoiceStatus();
-  const paymentMutation = useRecordPayment();
 
   // ─── Derived data: status filtering + client-side pagination ───────────
 
@@ -158,27 +148,19 @@ export function useInvoices() {
     if (failCount > 0) toast.error(`تعذّر حذف ${failCount} فاتورة`);
   }, [selectedIds, queryClient, companySlug]);
 
-  // ─── Single Delete (optimistic) ────────────────────────────────────────
+  // ─── Single Delete (uses TanStack mutation + optimistic cache) ────────
 
   const handleDelete = useCallback(async (id: number) => {
     if (!confirm("هل أنت متأكد من حذف هذه الفاتورة؟")) return;
 
-    // Optimistic: remove from cache immediately
-    const listKey = queryKeys.invoices.lists();
-    const cursorKey = queryKeys.invoices.cursor({ companySlug });
-    await queryClient.cancelQueries({ queryKey: listKey });
-
-    const previousItems = allInvoices;
-    // Optimistically remove the item
-    const optimisticOpts = optimisticDelete<Invoice>(queryClient, listKey, "فشل حذف الفاتورة");
-
     try {
       await deleteMutation.mutateAsync(id);
       toast.success("تم حذف الفاتورة");
-    } catch {
-      // Error rollback handled by optimisticDelete
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "تعذّر الحذف";
+      toast.error(msg);
     }
-  }, [deleteMutation, queryClient, companySlug, allInvoices]);
+  }, [deleteMutation]);
 
   // ─── Export CSV ─────────────────────────────────────────────────────────
 

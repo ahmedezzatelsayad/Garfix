@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -37,22 +38,25 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "ليس لديك صلاحية: employee_management" }, { status: 403 });
   }
 
-  const sp = req.nextUrl.searchParams;
-  const companySlug = sp.get("companySlug") || undefined;
+  const { companySlug, cursor, limit } = parseCursorParams(req);
   if (companySlug && !assertCompanyAccess(user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
-  const employees = await db.employee.findMany({
-    where, orderBy: { createdAt: "desc" }, take: 500,
-  });
+
+  const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
+  const allEmployees = await db.employee.findMany({ where, ...pagination });
+
+  const { items: employees, nextCursor } = buildCursorResponse(allEmployees, limit);
+
   return NextResponse.json({
     employees: employees.map((e) => ({
       ...e,
       baseSalary: num(e.baseSalary, 3),
     })),
+    nextCursor,
   });
 });
 
