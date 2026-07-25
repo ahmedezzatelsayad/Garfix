@@ -140,7 +140,32 @@ export async function register(): Promise<void> {
       });
     });
 
-    // ── Step 5: Graceful Shutdown Hooks ──────────────────────────────────
+    // ── Step 4: Initialize Observability (Sprint 3) ────────────────────────
+    logger.info("[instrumentation] Initializing observability services...");
+    const { initTelemetry, shutdownTelemetry } = await import("@/lib/telemetry/tracing");
+    const { initPubSub } = await import("@/lib/pubSub");
+    await initTelemetry();
+    await initPubSub();
+    logger.info("[instrumentation] ✓ Observability services initialized");
+
+    // ── Step 5: Process-Level Error Handlers ─────────────────────────────
+    process.on("uncaughtException", (error: Error) => {
+      logger.error("[instrumentation] UNCAUGHT EXCEPTION", {
+        error: error.message,
+        stack: error.stack,
+      });
+      if (process.env.NODE_ENV === "production") {
+        setTimeout(() => process.exit(1), 1000);
+      }
+    });
+
+    process.on("unhandledRejection", (reason: unknown) => {
+      logger.error("[instrumentation] UNHANDLED REJECTION", {
+        reason: reason instanceof Error ? reason.message : String(reason),
+      });
+    });
+
+    // ── Step 6: Graceful Shutdown Hooks ──────────────────────────────────
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`[instrumentation] Received ${signal}, initiating graceful shutdown...`);
       const shutdownTimeout = setTimeout(() => {
@@ -148,6 +173,11 @@ export async function register(): Promise<void> {
         process.exit(1);
       }, 10000);
       try {
+        // Shutdown observability services
+        shutdownTelemetry();
+        const { shutdownAllBreakers } = await import("@/lib/circuit-breaker/circuit-breaker");
+        shutdownAllBreakers();
+
         logger.info("[instrumentation] Graceful shutdown complete");
       } catch (err) {
         logger.error("[instrumentation] Error during shutdown", {
