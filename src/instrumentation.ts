@@ -78,6 +78,51 @@ export async function register(): Promise<void> {
       });
     }
 
+    // ── Step 3b: Start Outbox Relay (P1.1) ────────────────────────────────
+    // Transactional outbox pattern — relays events appended inside Prisma
+    // transactions into the events queue with at-least-once delivery.
+    // See src/lib/outbox.ts for design rationale.
+    try {
+      const { startOutboxRelay } = await import("@/lib/outbox");
+      startOutboxRelay();
+      logger.info("[instrumentation] ✓ Outbox relay started");
+    } catch (err) {
+      logger.warn("[instrumentation] Outbox relay failed to start (non-fatal)", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // ── Step 3c: Start OpenTelemetry SDK (P1.2) ───────────────────────────
+    // Real OTel SDK with auto-instrumentations. Configured via standard
+    // OTEL_* env vars (OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, etc).
+    // No-op if OTEL_EXPORTER_OTLP_ENDPOINT is unset (dev / test).
+    // NOTE: imported from telemetry-sdk.ts (the real @opentelemetry/sdk-node
+    // wrapper). The legacy telemetry.ts (hand-rolled metrics) is preserved
+    // for backward compat with event-bus.ts.
+    try {
+      const { startTelemetry } = await import("@/lib/telemetry-sdk");
+      await startTelemetry();
+      logger.info("[instrumentation] ✓ OpenTelemetry SDK initialized");
+    } catch (err) {
+      logger.warn("[instrumentation] OpenTelemetry init failed (non-fatal)", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // ── Step 3d: Load AI provider scoring state (P1.4) ────────────────────
+    // Loads per-provider metrics + circuit breaker state from Valkey so
+    // that circuit decisions are consistent across instances after a
+    // restart. Non-fatal if Valkey is unavailable.
+    try {
+      const { loadProviderStateFromValkey } = await import("@/lib/ai-fabric/provider-scoring");
+      await loadProviderStateFromValkey();
+      logger.info("[instrumentation] ✓ AI provider scoring state loaded");
+    } catch (err) {
+      logger.warn("[instrumentation] AI provider scoring load failed (non-fatal)", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     // ── Step 4: Process-Level Error Handlers ─────────────────────────────
     process.on("uncaughtException", (error: Error) => {
       logger.error("[instrumentation] UNCAUGHT EXCEPTION", {

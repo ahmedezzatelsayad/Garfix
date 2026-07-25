@@ -1259,3 +1259,31 @@ export function autoPopulateUaeFtaFields(
 
   return result;
 }
+
+// ── P1.3: Retry Wrapper ───────────────────────────────────────────────────
+import { withRetry } from "./retry";
+
+/** Submit a UAE-FTA invoice with exponential-backoff retry on transient failures. */
+export async function submitUaeFtaInvoiceWithRetry(
+  signedXml: string,
+  invoiceType: UaeFtaInvoiceType,
+  companySlug: string,
+  retryOpts?: { maxAttempts?: number; baseDelayMs?: number },
+): Promise<UaeFtaSubmissionResult & { attempts: number }> {
+  let attempts = 0;
+  const result = await withRetry(async () => {
+    attempts++;
+    const r = await submitUaeFtaInvoice(signedXml, invoiceType, companySlug);
+    if (!r.ok && r.submissionStatus === "rejected") {
+      const err = new Error(r.rejectionReason || "UAE-FTA rejected invoice") as Error & { status: number };
+      err.status = 422;
+      throw err;
+    }
+    return r;
+  }, {
+    maxAttempts: retryOpts?.maxAttempts ?? 5,
+    baseDelayMs: retryOpts?.baseDelayMs ?? 500,
+    operationName: "uae-fta-submit",
+  });
+  return { ...result, attempts };
+}

@@ -33,6 +33,13 @@ import { logger } from "@/lib/logger";
 import { callAIWithFallback, type RoutedChatOptions } from "@/lib/ai/smartRouter";
 import type { AIRequestType, ProviderRoutingDecision } from "./types";
 import { getCostRates } from "@/lib/ai/costTracker";
+// P1.4: dynamic provider scoring + circuit breaker
+import {
+  selectProvider,
+  recordProviderOutcome,
+  getProviderScore,
+  type ProviderScore,
+} from "./provider-scoring";
 
 // ─── Task type → capability mapping (audited from actual code) ──────────────
 //
@@ -182,69 +189,107 @@ export async function callWithProviderRouting(
   const routing = await getProviderRouting(taskType);
   const capability = TASK_CAPABILITY_MAP[taskType] || "chat" as const;
 
+  // P1.4: pick the better of primary/fallback based on real metrics +
+  // circuit breaker state. If primary's circuit is OPEN, we skip it
+  // entirely and go straight to fallback (with a half-open trial if
+  // the cooldown has elapsed).
+  const candidates = [routing.primaryProvider, routing.fallbackProvider];
+  const selection = selectProvider(candidates);
+  const chosenProvider = selection.providerId;
+  if (chosenProvider !== routing.primaryProvider) {
+    routing.usedFallback = true;
+    routing.fallbackReason = `primary circuit ${selection.fallbackSkipped?.length ? "open" : "lower-scored"}`;
+  }
+
+  const callStart = Date.now();
+  let callSucceeded = false;
+  let callError: unknown = null;
+
   try {
-    // If primary is a smart-router reference, use callAIWithFallback
-    if (routing.primaryProvider.startsWith("smart-router:")) {
-      const result = await callAIWithFallback({
+    let result: { content: string; provider: string; tokensIn?: number; tokensOut?: number };
+
+    // If chosen is a smart-router reference, use callAIWithFallback
+    if (chosenProvider.startsWith("smart-router:")) {
+      const r = await callAIWithFallback({
         ...options,
         capability: capability as "chat" | "invoice-extraction" | "reasoning" | "vision",
       });
-
-      const provider = result.usedModel
-        ? `${result.usedModel.provider}/${result.usedModel.model}`
+      const provider = r.usedModel
+        ? `${r.usedModel.provider}/${r.usedModel.model}`
         : "legacy-fallback";
-
-      return {
-        content: result.content,
+      result = {
+        content: r.content,
         provider,
-        tokensIn: result.usage?.prompt_tokens,
-        tokensOut: result.usage?.completion_tokens,
-        routingDecision: routing,
+        tokensIn: r.usage?.prompt_tokens,
+        tokensOut: r.usage?.completion_tokens,
+      };
+    } else {
+      const { callAI } = await import("@/lib/aiProvider");
+      const r = await callAI(options as Parameters<typeof callAI>[0]);
+      result = {
+        content: r.content,
+        provider: `legacy:${r.model || "unknown"}`,
+        tokensIn: r.usage?.prompt_tokens,
+        tokensOut: r.usage?.completion_tokens,
       };
     }
 
-    // Otherwise use the legacy callAI
-    const { callAI } = await import("@/lib/aiProvider");
-    const result = await callAI(options as Parameters<typeof callAI>[0]);
-
+    callSucceeded = true;
     return {
-      content: result.content,
-      provider: `legacy:${result.model || "unknown"}`,
-      tokensIn: result.usage?.prompt_tokens,
-      tokensOut: result.usage?.completion_tokens,
+      ...result,
       routingDecision: routing,
     };
   } catch (err) {
-    // Primary failed — try fallback
+    callError = err;
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logger.warn("[provider-optimizer] primary failed, trying fallback", {
+    logger.warn("[provider-optimizer] chosen provider failed", {
       taskType,
-      primary: routing.primaryProvider,
+      chosen: chosenProvider,
       err: errorMsg.slice(0, 200),
     });
 
-    routing.usedFallback = true;
-    routing.fallbackReason = errorMsg.slice(0, 200);
-
+    // If chosen WAS the primary, try the fallback directly (bypassing
+    // the circuit, since this is the fallback path).
+    if (chosenProvider === routing.primaryProvider) {
+      routing.usedFallback = true;
+      routing.fallbackReason = errorMsg.slice(0, 200);
+      try {
+        const { callAI } = await import("@/lib/aiProvider");
+        const r = await callAI(options as Parameters<typeof callAI>[0]);
+        return {
+          content: r.content,
+          provider: `fallback:${r.model || "unknown"}`,
+          tokensIn: r.usage?.prompt_tokens,
+          tokensOut: r.usage?.completion_tokens,
+          routingDecision: routing,
+        };
+      } catch (fallbackErr) {
+        const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+        logger.error("[provider-optimizer] both primary and fallback failed", {
+          taskType,
+          fallback: routing.fallbackProvider,
+          err: fbMsg.slice(0, 200),
+        });
+        throw fallbackErr;
+      }
+    }
+    throw err;
+  } finally {
+    // P1.4: record the outcome for scoring + circuit breaker
+    const latencyMs = Date.now() - callStart;
     try {
-      const { callAI } = await import("@/lib/aiProvider");
-      const result = await callAI(options as Parameters<typeof callAI>[0]);
-
-      return {
-        content: result.content,
-        provider: `fallback:${result.model || "unknown"}`,
-        tokensIn: result.usage?.prompt_tokens,
-        tokensOut: result.usage?.completion_tokens,
-        routingDecision: routing,
-      };
-    } catch (fallbackErr) {
-      const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-      logger.error("[provider-optimizer] both primary and fallback failed", {
-        taskType,
-        fallback: routing.fallbackProvider,
-        err: fbMsg.slice(0, 200),
+      await recordProviderOutcome(chosenProvider, {
+        success: callSucceeded,
+        latencyMs,
+        // costUsd and confidence are not available here — they're
+        // populated by the costTracker integration in a future iteration.
       });
-      throw fallbackErr;
+    } catch (recordErr) {
+      // Recording failures MUST NOT affect the user-visible call result.
+      logger.debug("[provider-optimizer] outcome recording failed (non-fatal)", {
+        providerId: chosenProvider,
+        error: recordErr instanceof Error ? recordErr.message : String(recordErr),
+      });
     }
   }
 }

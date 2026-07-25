@@ -730,3 +730,29 @@ export function autoPopulateKuwaitFields(
 // ── Utility exports ────────────────────────────────────────────────────────
 
 export { KUWAIT_AUTHORITY, KUWAIT_CURRENCY, KUWAIT_DECIMAL_PLACES, KUWAIT_DECREE_REF, KUWAIT_MAX_FINE_KWD };
+
+// ── P1.3: Retry Wrapper ───────────────────────────────────────────────────
+import { withRetry } from "./retry";
+
+/** Submit a Kuwait invoice with exponential-backoff retry on transient failures. */
+export async function submitKuwaitInvoiceWithRetry(
+  payload: KuwaitInvoicePayload,
+  retryOpts?: { maxAttempts?: number; baseDelayMs?: number },
+): Promise<KuwaitSubmissionResult & { attempts: number }> {
+  let attempts = 0;
+  const result = await withRetry(async () => {
+    attempts++;
+    const r = await submitKuwaitInvoice(payload);
+    if (!r.ok && r.submissionStatus === "rejected") {
+      const err = new Error(r.rejectionReason || "Kuwait rejected invoice") as Error & { status: number };
+      err.status = 422;
+      throw err;
+    }
+    return r;
+  }, {
+    maxAttempts: retryOpts?.maxAttempts ?? 5,
+    baseDelayMs: retryOpts?.baseDelayMs ?? 500,
+    operationName: "kuwait-submit",
+  });
+  return { ...result, attempts };
+}

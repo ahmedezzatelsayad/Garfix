@@ -8,6 +8,81 @@ import { cn } from "@/lib/utils"
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
 
+// ── MED-004 FIX (re-applied): CSS sanitizer for dangerouslySetInnerHTML ──
+//
+// ChartStyle injects a <style> tag via dangerouslySetInnerHTML. Without
+// sanitization, a malicious chart config (e.g. a user-controlled color
+// value of `red;}</style><script>alert(1)</script>`) can break out of the
+// style block and execute arbitrary HTML. sanitizeChartCss enforces a
+// strict allowlist:
+//
+//   - Selector must be `IDENTIFIER [data-chart=IDENTIFIER]` or
+//     `.dark [data-chart=IDENTIFIER]` (the only two forms ChartStyle emits).
+//   - Declaration must be `--color-IDENTIFIER: <color>;` where <color>
+//     matches a strict hex / rgb / hsl / oklch pattern with NO nested
+//     parens or semicolons.
+//   - Identifier characters are limited to [A-Za-z0-9_-].
+//
+// Anything else is dropped. The function is deterministic and side-effect
+// free so it can be unit-tested in isolation.
+
+const IDENT_RE = /^[A-Za-z0-9_-]+$/;
+const COLOR_RE = /^(#[0-9a-fA-F]{3,8}|(?:rgb|hsl|oklch)\(\s*[^();]*\s*\))$/;
+const DECL_RE = new RegExp(
+  "^\\s*--color-(" + IDENT_RE.source.slice(1, -1) + ")\\s*:\\s*([^;]+);\\s*$"
+);
+
+/**
+ * Sanitize a chart CSS string. Returns a cleaned string containing ONLY
+ * allowlisted selector + declaration pairs. If the input contains a
+ * `</style>` sequence or any disallowed construct, those portions are
+ * stripped — the function never throws.
+ */
+export function sanitizeChartCss(raw: string): string {
+  if (!raw || typeof raw !== "string") return "";
+  // Reject early if a style-tag breakout is attempted — even if the rest
+  // would parse, the input is clearly hostile.
+  if (/<\/style|<style|<script|<!--|-->|expression\(|url\(/i.test(raw)) {
+    return "";
+  }
+  const out: string[] = [];
+  // Split on `}` to get selector+block chunks. Each chunk must look like
+  // `SELECTOR { DECLARATIONS }`.
+  const chunks = raw.split("}");
+  for (const chunk of chunks) {
+    const m = chunk.match(/^([^{}]+)\{([\s\S]*)$/);
+    if (!m) continue;
+    const selector = m[1].trim();
+    const body = m[2].trim();
+    // Selector must be exactly: `<ident> [data-chart=<ident>]` or
+    // `.dark [data-chart=<ident>]`. We accept the empty-string prefix
+    // (light theme) — selector "" + " " is normalised below.
+    const selMatch = selector.match(
+      /^(?:([A-Za-z0-9_-]*)\s+)?\[data-chart=([A-Za-z0-9_-]+)\]$/
+    );
+    if (!selMatch) continue;
+    const [, prefix, chartId] = selMatch;
+    // prefix must be empty or ".dark" (the only two THEMES entries).
+    if (prefix && prefix !== ".dark") continue;
+    if (!IDENT_RE.test(chartId)) continue;
+    // Body must be a sequence of `--color-IDENT: COLOR;` declarations.
+    const decls = body.split(";").map((d) => d.trim()).filter(Boolean);
+    const keptDecls: string[] = [];
+    for (const decl of decls) {
+      const dm = decl.match(DECL_RE);
+      if (!dm) continue;
+      const [, colorKey, colorVal] = dm;
+      if (!IDENT_RE.test(colorKey)) continue;
+      if (!COLOR_RE.test(colorVal.trim())) continue;
+      keptDecls.push(`  --color-${colorKey}: ${colorVal.trim()};`);
+    }
+    if (keptDecls.length === 0) continue;
+    const prefixStr = prefix ? `${prefix} ` : "";
+    out.push(`${prefixStr}[data-chart=${chartId}] {\n${keptDecls.join("\n")}\n}`);
+  }
+  return out.join("\n");
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode
@@ -81,9 +156,15 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+        // MED-004 FIX (re-applied): sanitize every value before injection.
+        // The constructed CSS is run through sanitizeChartCss which
+        // enforces a strict allowlist (only `--color-IDENT: COLOR;` pairs
+        // under `[data-chart=IDENT]` / `.dark [data-chart=IDENT]` selectors).
+        // Any hostile input (e.g. `</style><script>`) is dropped entirely.
+        __html: sanitizeChartCss(
+          Object.entries(THEMES)
+            .map(
+              ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
@@ -95,8 +176,9 @@ ${colorConfig
   .join("\n")}
 }
 `
-          )
-          .join("\n"),
+            )
+            .join("\n"),
+        ),
       }}
     />
   )

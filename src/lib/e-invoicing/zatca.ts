@@ -1244,3 +1244,90 @@ export {
   ZATCA_MAX_FINE_SAR,
   ZATCA_PORTAL_BASE_URL,
 };
+
+// ── P1.3: Retry + Ack-Polling Wrappers ────────────────────────────────────
+//
+// The base submitZatcaInvoice is a fire-and-forget call. These wrappers
+// add (a) exponential-backoff retry on transient failures and (b) ack
+// polling for the PENDING → PASS/FAIL transition that ZATCA's production
+// API requires. They wrap the existing submit function so all callers
+// continue to work; new callers can opt into retry/ack.
+
+import { withRetry, pollSubmissionAck } from "./retry";
+
+/**
+ * Submit a ZATCA invoice with exponential-backoff retry on transient
+ * failures (5xx, 429, network errors). Returns the same result shape
+ * as submitZatcaInvoice, with an added `attempts` field.
+ */
+export async function submitZatcaInvoiceWithRetry(
+  signedXml: string,
+  invoiceType: ZatcaInvoiceType,
+  certificate: string,
+  companySlug: string,
+  retryOpts?: { maxAttempts?: number; baseDelayMs?: number },
+): Promise<ZatcaSubmissionResult & { attempts: number }> {
+  let attempts = 0;
+  const result = await withRetry(async () => {
+    attempts++;
+    const r = await submitZatcaInvoice(signedXml, invoiceType, certificate, companySlug);
+    // The base function returns ok:false on ZATCA rejection — that's a
+    // business error, not a transient failure, so we throw with a non-
+    // retryable status to stop the retry loop.
+    if (!r.ok && r.submissionStatus === "rejected") {
+      const err = new Error(r.rejectionReason || "ZATCA rejected invoice") as Error & { status: number };
+      err.status = 422; // Unprocessable — not retryable
+      throw err;
+    }
+    return r;
+  }, {
+    maxAttempts: retryOpts?.maxAttempts ?? 5,
+    baseDelayMs: retryOpts?.baseDelayMs ?? 500,
+    operationName: "zatca-submit",
+  });
+  return { ...result, attempts };
+}
+
+/**
+ * Poll ZATCA for the clearance status of a submitted invoice.
+ *
+ * ZATCA's production API returns a PENDING state with a UUID immediately
+ * after submission, then expects the integrator to poll
+ *   GET /compliance/v1/invoices/{uuid}/status
+ * every ~2s until the state becomes PASS or FAIL. This function
+ * implements that polling loop with a configurable budget.
+ *
+ * In simulation mode (no ZATCA_PORTAL_BASE_URL reachable), it returns
+ * the local DB status immediately without polling.
+ */
+export async function pollZatcaAck(
+  eInvoiceId: number,
+  opts?: { maxAttempts?: number; pollIntervalMs?: number },
+): Promise<{
+  state: "cleared" | "reported" | "rejected" | "pending" | "TIMEOUT";
+  raw?: unknown;
+  attempts: number;
+}> {
+  // In the current simulation, getZatcaInvoiceStatus reads from the local
+  // DB. In production, this would call the ZATCA portal API directly.
+  const result = await pollSubmissionAck<"cleared" | "reported" | "rejected" | "pending">({
+    checkStatus: async () => {
+      const status = await getZatcaInvoiceStatus(eInvoiceId);
+      // Map the DB status string to our state union
+      const state = (
+        status.status === "cleared" ? "cleared"
+        : status.status === "reported" ? "reported"
+        : status.status === "rejected" ? "rejected"
+        : "pending"
+      ) as "cleared" | "reported" | "rejected" | "pending";
+      return { state, raw: status };
+    },
+    successStates: ["cleared", "reported"],
+    failureStates: ["rejected"],
+    pendingStates: ["pending"],
+    maxAttempts: opts?.maxAttempts ?? 30,
+    pollIntervalMs: opts?.pollIntervalMs ?? 2000,
+    operationName: "zatca-ack",
+  });
+  return result;
+}

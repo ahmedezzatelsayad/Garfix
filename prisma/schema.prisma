@@ -1039,3 +1039,45 @@ model PurchaseInvoice {
   company         Company? @relation(fields: [companyId], references: [id])
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
 }
+
+// ─── Session Registry (SEC-H4) ───────────────────────────────────────────
+// Tracks every active session JTI for forensic use, concurrent-session
+// limits, and immediate revocation. Populated by issueSession() in auth.ts
+// whenever an access token is issued (login or refresh). Enforced by
+// resolveAuth() when SESSION_REGISTRY_ENFORCED !== "false".
+
+model SessionRegistry {
+  id          String   @id @default(cuid())
+  userUid     String
+  jti         String   @unique
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([userUid, expiresAt])
+  @@index([expiresAt])
+}
+
+// ─── Outbox Event (Transactional Outbox Pattern, P1.1) ───────────────────
+// Written in the SAME Prisma transaction as the business write, then
+// relayed asynchronously by processOutbox() into BullMQ/pg-boss. This
+// guarantees at-least-once event delivery without XA transactions or
+// distributed 2PC. See src/lib/outbox.ts.
+
+model OutboxEvent {
+  id             String    @id @default(cuid())
+  aggregateType  String    // e.g. "invoice", "voucher", "payment"
+  aggregateId    String    // e.g. invoice id or voucher number
+  eventType      String    // e.g. "invoice.issued", "voucher.posted"
+  payload        String    // JSON-encoded event payload
+  headers        String?   // JSON-encoded metadata (correlationId, etc.)
+  createdAt      DateTime  @default(now())
+  publishedAt    DateTime?
+  attempts       Int       @default(0)
+  lastError      String?
+  status         String    @default("pending") // pending | published | failed | dead
+
+  @@index([status, createdAt])
+  @@index([aggregateType, aggregateId])
+}
