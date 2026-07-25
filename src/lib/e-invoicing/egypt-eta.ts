@@ -960,3 +960,29 @@ export function autoPopulateEgyptEtaFields(
 
   return result;
 }
+
+// ── P1.3: Retry Wrapper ───────────────────────────────────────────────────
+import { withRetry } from "./retry";
+
+/** Submit an Egypt-ETA invoice with exponential-backoff retry on transient failures. */
+export async function submitEgyptEtaInvoiceWithRetry(
+  payload: EgyptEtaInvoicePayload,
+  retryOpts?: { maxAttempts?: number; baseDelayMs?: number },
+): Promise<EgyptEtaSubmissionResult & { attempts: number }> {
+  let attempts = 0;
+  const result = await withRetry(async () => {
+    attempts++;
+    const r = await submitEgyptEtaInvoice(payload);
+    if (!r.ok && r.submissionStatus === "rejected") {
+      const err = new Error(r.rejectionReason || "Egypt-ETA rejected invoice") as Error & { status: number };
+      err.status = 422;
+      throw err;
+    }
+    return r;
+  }, {
+    maxAttempts: retryOpts?.maxAttempts ?? 5,
+    baseDelayMs: retryOpts?.baseDelayMs ?? 500,
+    operationName: "egypt-eta-submit",
+  });
+  return { ...result, attempts };
+}

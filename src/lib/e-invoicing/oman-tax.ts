@@ -739,3 +739,29 @@ export function autoPopulateOmanTaxFields(
 
   return result;
 }
+
+// ── P1.3: Retry Wrapper ───────────────────────────────────────────────────
+import { withRetry } from "./retry";
+
+/** Submit an Oman Tax invoice with exponential-backoff retry on transient failures. */
+export async function submitOmanTaxInvoiceWithRetry(
+  payload: OmanTaxInvoicePayload,
+  retryOpts?: { maxAttempts?: number; baseDelayMs?: number },
+): Promise<OmanTaxSubmissionResult & { attempts: number }> {
+  let attempts = 0;
+  const result = await withRetry(async () => {
+    attempts++;
+    const r = await submitOmanTaxInvoice(payload);
+    if (!r.ok && r.submissionStatus === "rejected") {
+      const err = new Error(r.rejectionReason || "Oman Tax rejected invoice") as Error & { status: number };
+      err.status = 422;
+      throw err;
+    }
+    return r;
+  }, {
+    maxAttempts: retryOpts?.maxAttempts ?? 5,
+    baseDelayMs: retryOpts?.baseDelayMs ?? 500,
+    operationName: "oman-tax-submit",
+  });
+  return { ...result, attempts };
+}

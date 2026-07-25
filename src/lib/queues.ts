@@ -50,6 +50,10 @@ export const QUEUE_NAMES = {
   WHATSAPP: "whatsapp-jobs",
   BACKUP: "backup-jobs",
   SCHEDULER: "scheduler-jobs",
+  // P1.1: Transactional Outbox relay target. Outbox events are appended
+  // inside a Prisma transaction (see src/lib/outbox.ts) and relayed here
+  // by the outbox worker with at-least-once delivery.
+  EVENTS: "events-jobs",
 } as const;
 
 export type QueueName = typeof QUEUE_NAMES[keyof typeof QUEUE_NAMES];
@@ -60,6 +64,7 @@ export const QUEUE_TTL = {
   [QUEUE_NAMES.WHATSAPP]: 30_000,
   [QUEUE_NAMES.BACKUP]: 600_000,
   [QUEUE_NAMES.SCHEDULER]: 5_000,
+  [QUEUE_NAMES.EVENTS]: 30_000,
 } as const;
 
 export interface JobPayload {
