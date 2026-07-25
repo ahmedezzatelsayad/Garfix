@@ -8,15 +8,21 @@
  * Driver selection:
  *   - VALKEY_URL / REDIS_URL set  → RedisPubSub (Valkey pub/sub, cross-process).
  *   - Not set (sandbox/dev)        → LocalPubSub (EventEmitter, single-instance).
+ *
+ * Sprint 3: Every published event is now recorded in the audit trail
+ * for compliance traceability and debugging. See telemetry/event-bus-audit.ts.
  */
 
 import { EventEmitter } from "node:events";
 import { logger } from "./logger";
 import { getValkeyClient, getValkeySubscriber, VALKEY_CONFIGURED } from "./valkey";
+import { recordAuditEvent, generateCorrelationId } from "./telemetry/event-bus-audit";
 
 export interface PubSubMessage {
   channel: string;
   payload: unknown;
+  correlationId?: string;
+  publisher?: string;
 }
 
 type MessageHandler = (payload: unknown) => void;
@@ -159,7 +165,15 @@ export const CHANNELS = {
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
-export async function publish(channel: string, payload: unknown): Promise<void> {
+export async function publish(channel: string, payload: unknown, publisher?: string): Promise<void> {
+  // Record event in the audit trail (Sprint 3)
+  const correlationId = generateCorrelationId();
+  try {
+    recordAuditEvent(channel, payload, publisher || "system", undefined, correlationId);
+  } catch {
+    // Non-critical — audit recording is best-effort
+  }
+
   await getDriver().publish(channel, payload);
 }
 
