@@ -32,7 +32,7 @@ import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { callAIWithFallback, type RoutedChatOptions } from "@/lib/ai/smartRouter";
 import type { AIRequestType, ProviderRoutingDecision } from "./types";
-import { getCostRates } from "@/lib/ai/costTracker";
+import { getCostRates, computeCallCostUsd } from "@/lib/ai/cost-rates";
 // P1.4: dynamic provider scoring + circuit breaker
 import {
   selectProvider,
@@ -204,6 +204,15 @@ export async function callWithProviderRouting(
   const callStart = Date.now();
   let callSucceeded = false;
   let callError: unknown = null;
+  // P2.1: capture the actual provider + token usage so the finally block
+  // can compute real costUsd and feed it into recordProviderOutcome.
+  // Previously the cost+confidence terms were omitted (left at cold-start
+  // default), which meant the scoring formula's cost/confidence weights
+  // contributed nothing — now they reflect actual call outcomes.
+  let actualProvider: string | null = null;
+  let actualModel: string | null = null;
+  let tokensIn: number | undefined = undefined;
+  let tokensOut: number | undefined = undefined;
 
   try {
     let result: { content: string; provider: string; tokensIn?: number; tokensOut?: number };
@@ -223,6 +232,10 @@ export async function callWithProviderRouting(
         tokensIn: r.usage?.prompt_tokens,
         tokensOut: r.usage?.completion_tokens,
       };
+      // Capture the model name for cost lookup — prefer the smart-router's
+      // usedModel.model (e.g. "gpt-4o-mini"), fall back to the provider
+      // string for legacy paths.
+      actualModel = r.usedModel?.model ?? null;
     } else {
       const { callAI } = await import("@/lib/aiProvider");
       const r = await callAI(options as Parameters<typeof callAI>[0]);
@@ -232,8 +245,12 @@ export async function callWithProviderRouting(
         tokensIn: r.usage?.prompt_tokens,
         tokensOut: r.usage?.completion_tokens,
       };
+      actualModel = r.model ?? null;
     }
 
+    actualProvider = result.provider;
+    tokensIn = result.tokensIn;
+    tokensOut = result.tokensOut;
     callSucceeded = true;
     return {
       ...result,
@@ -256,9 +273,13 @@ export async function callWithProviderRouting(
       try {
         const { callAI } = await import("@/lib/aiProvider");
         const r = await callAI(options as Parameters<typeof callAI>[0]);
+        actualProvider = `fallback:${r.model || "unknown"}`;
+        actualModel = r.model ?? null;
+        tokensIn = r.usage?.prompt_tokens;
+        tokensOut = r.usage?.completion_tokens;
         return {
           content: r.content,
-          provider: `fallback:${r.model || "unknown"}`,
+          provider: actualProvider,
           tokensIn: r.usage?.prompt_tokens,
           tokensOut: r.usage?.completion_tokens,
           routingDecision: routing,
@@ -275,14 +296,23 @@ export async function callWithProviderRouting(
     }
     throw err;
   } finally {
-    // P1.4: record the outcome for scoring + circuit breaker
+    // P1.4 + P2.1: record the outcome for scoring + circuit breaker.
+    //
+    // P2.1 wiring: now that we capture actualModel + tokensIn/Out from
+    // both call paths (smart-router and legacy callAI), we can compute
+    // real costUsd via computeCallCostUsd() and feed it into the EMA.
+    // The confidence term is set to 1.0 on success (the call produced
+    // output) and omitted on failure (cold-start preserves prior EMA).
+    // This is conservative — a future P3 could surface real confidence
+    // from verifyExtraction() for invoice-extraction calls.
     const latencyMs = Date.now() - callStart;
     try {
+      const costUsd = computeCallCostUsd(actualModel, tokensIn, tokensOut);
       await recordProviderOutcome(chosenProvider, {
         success: callSucceeded,
         latencyMs,
-        // costUsd and confidence are not available here — they're
-        // populated by the costTracker integration in a future iteration.
+        costUsd,
+        confidence: callSucceeded ? 1.0 : undefined,
       });
     } catch (recordErr) {
       // Recording failures MUST NOT affect the user-visible call result.
