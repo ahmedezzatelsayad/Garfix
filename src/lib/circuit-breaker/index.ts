@@ -1,5 +1,7 @@
 /**
  * circuit-breaker/index.ts — Barrel export for Circuit Breaker module.
+ *
+ * Merges Sprint 2 (simple breaker) + Sprint 3 (health dashboard + registry).
  */
 
 export {
@@ -8,8 +10,15 @@ export {
   getHealthDashboard,
   shutdownAllBreakers,
   externalBreakers,
-  CircuitOpenError,
+  CircuitOpenError as CircuitBreakerOpenError, // Sprint 2 alias
+  // Sprint 2 legacy aliases
+  aiCircuitBreaker,
+  paymentCircuitBreaker,
+  externalApiCircuitBreaker,
 } from "./circuit-breaker";
+
+// Re-export the CircuitBreaker class itself
+export { CircuitBreaker } from "./circuit-breaker";
 
 export type {
   CircuitState,

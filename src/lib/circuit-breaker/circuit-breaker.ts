@@ -54,7 +54,7 @@ export interface CircuitBreakerMetrics {
 
 // ─── Circuit Breaker Implementation ─────────────────────────────────────
 
-class CircuitBreaker {
+export class CircuitBreaker {
   private state: CircuitState = "closed";
   private failures = 0;
   private successes = 0;
@@ -205,6 +205,9 @@ class CircuitBreaker {
       this.transitionTo("open");
     }
   }
+
+  /** Get current state (Sprint 2 compatibility). */
+  getState(): CircuitState { return this.state; }
 
   /** Get current metrics snapshot. */
   getMetrics(): CircuitBreakerMetrics {
@@ -424,3 +427,14 @@ export const externalBreakers = {
     successThreshold: 3,
   }),
 };
+
+// ─── Sprint 2 Legacy Aliases ────────────────────────────────────────────
+
+/** Alias for AI service breaker (Sprint 2 compatibility). */
+export const aiCircuitBreaker = externalBreakers.openrouter;
+
+/** Alias for payment service breaker (Sprint 2 compatibility). */
+export const paymentCircuitBreaker = externalBreakers.myFatoorah;
+
+/** Alias for generic external API breaker (Sprint 2 compatibility). */
+export const externalApiCircuitBreaker = externalBreakers.openrouter;

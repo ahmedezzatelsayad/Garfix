@@ -71,6 +71,12 @@ export interface JobPayload {
   type: string;
   data: Record<string, unknown>;
   attempts?: number;
+  outboxEventId?: number;
+  aggregateType?: string;
+  aggregateId?: string;
+  eventType?: string;
+  payload?: Record<string, unknown>;
+  headers?: Record<string, string> | null;
 }
 
 export interface FailedJobRecord {

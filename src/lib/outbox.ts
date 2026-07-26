@@ -214,6 +214,8 @@ export async function processOutboxBatch(): Promise<{
     try {
       // Publish to the events queue. Consumers register on QUEUE_NAMES.EVENTS.
       await enqueue(QUEUE_NAMES.EVENTS, {
+        type: evt.eventType,
+        data: JSON.parse(evt.payload),
         outboxEventId: evt.id,
         aggregateType: evt.aggregateType,
         aggregateId: evt.aggregateId,
