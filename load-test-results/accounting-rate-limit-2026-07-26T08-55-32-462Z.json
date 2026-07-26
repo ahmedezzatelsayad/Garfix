@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "version": "12.1.0",
+    "timestamp": "2026-07-26T08:55:32.462Z",
+    "config": {
+      "baseUrl": "http://localhost:3000",
+      "concurrency": 1,
+      "skipRead": false,
+      "skipWrite": false,
+      "skipReport": true,
+      "verbose": true
+    }
+  },
+  "results": [
+    {
+      "name": "ACCOUNTING_READ",
+      "endpoint": "/api/accounting/test-rate-limit",
+      "method": "GET",
+      "totalRequests": 50,
+      "successfulRequests": 39,
+      "rateLimitedRequests": 11,
+      "authFailures": 0,
+      "otherErrors": 0,
+      "first429AtRequest": 40,
+      "limitConfig": {
+        "maxAttempts": 40,
+        "windowMs": 60000
+      },
+      "avgLatencyMs": 5.71040860000001,
+      "p50LatencyMs": 4.495474000000286,
+      "p95LatencyMs": 16.892537000000175,
+      "p99LatencyMs": 24.317540999999892
+    },
+    {
+      "name": "ACCOUNTING_WRITE",
+      "endpoint": "/api/accounting/test-rate-limit",
+      "method": "POST",
+      "totalRequests": 20,
+      "successfulRequests": 15,
+      "rateLimitedRequests": 5,
+      "authFailures": 0,
+      "otherErrors": 0,
+      "first429AtRequest": 16,
+      "limitConfig": {
+        "maxAttempts": 15,
+        "windowMs": 60000
+      },
+      "avgLatencyMs": 4.177759500000684,
+      "p50LatencyMs": 4.1343060000072,
+      "p95LatencyMs": 5.94128999998793,
+      "p99LatencyMs": 7.764143000007607
+    }
+  ],
+  "overallPass": true
+}

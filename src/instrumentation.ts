@@ -1,33 +1,17 @@
 /**
- * instrumentation.ts — Next.js Server Entry Point
+ * instrumentation.ts — Next.js Server Entry Point (Edge-compatible stub)
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * NEXT.JS SPECIFIC: This file is automatically executed by Next.js when:
- *   - `next start` is called (production server starts)
- *   - The dev server initializes
+ * NEXT.JS 16 FIX: This file is intentionally minimal (Edge-compatible).
+ * Next.js 16 traces instrumentation.ts as Edge Runtime, causing crashes
+ * when it encounters node:fs/path imports in dynamically imported workers.
  *
- * It does NOT run during `next build` — this is the critical distinction.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * KEY FIX (P0): All worker imports are now DYNAMIC inside register().
- * Static imports of bootstrap.ts caused Next.js to trace backup.ts,
- * backupWorker.ts, schedulerWorker.ts — all of which use node:fs/path.
- * This created Edge Runtime errors and NFT trace warnings during build.
- *
- * Dynamic imports inside register() only execute at server startup,
- * AFTER the build completes. This prevents Turbopack/Webpack from
- * tracing these Node-only modules during the build phase.
+ * The actual runtime bootstrap is handled by instrumentation.node.ts,
+ * which runs in Node.js runtime and can safely import Prisma, pg-boss,
+ * and other Node-only modules.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import { logger } from "@/lib/logger";
-
-/**
- * register — Called by Next.js on server startup.
- *
- * All runtime initialization is deferred to dynamic imports inside
- * this function to prevent build-time tracing of Node-only modules.
- */
 export async function register(): Promise<void> {
   const startTime = Date.now();
 

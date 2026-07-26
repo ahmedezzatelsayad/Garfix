@@ -1,5 +1,5 @@
 /**
- * accounting-rate-limit-load-test.ts
+ * accounting-rate-limit-load-test.mjs
  *
  * Load test for ACCOUNTING_READ (40/min), ACCOUNTING_WRITE (15/min),
  * and REPORT_GENERATION (5/5min) rate limits.
@@ -12,29 +12,44 @@
  *      expected limits.
  *   4. Measure latency distribution (p50, p95, p99).
  *
+ * Uses Node.js `http` module directly (NOT fetch) because Bun's fetch()
+ * strips Cookie headers (forbidden per Fetch spec).
+ *
  * Usage:
- *   bun scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000
- *   bun scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000 --concurrency=5
- *   bun scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000 --skip-read
+ *   node scripts/accounting-rate-limit-load-test.mjs --url=http://localhost:3000
+ *   node scripts/accounting-rate-limit-load-test.mjs --url=http://localhost:3000 --concurrency=5
+ *   node scripts/accounting-rate-limit-load-test.mjs --url=http://localhost:3000 --skip-read
  */
 
-// ── Imports ──────────────────────────────────────────────────────────────────
+// ── ESM-compatible require via createRequire ──────────────────────────────────
 
-import jwt from "jsonwebtoken";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+
+const jwt = require("jsonwebtoken");
+const http = require("node:http");
+const fs = require("node:fs");
+const path = require("node:path");
+const { URL } = require("node:url");
 
 // ── CLI argument parsing ─────────────────────────────────────────────────────
 
-interface TestConfig {
-  baseUrl: string;
-  concurrency: number;
-  skipRead: boolean;
-  skipWrite: boolean;
-  skipReport: boolean;
-  verbose: boolean;
-}
+/**
+ * @typedef {Object} TestConfig
+ * @property {string} baseUrl
+ * @property {number} concurrency
+ * @property {boolean} skipRead
+ * @property {boolean} skipWrite
+ * @property {boolean} skipReport
+ * @property {boolean} verbose
+ */
 
-function parseArgs(args: string[]): TestConfig {
-  const config: TestConfig = {
+/**
+ * @param {string[]} args
+ * @returns {TestConfig}
+ */
+function parseArgs(args) {
+  const config = {
     baseUrl: "http://localhost:3000",
     concurrency: 1,
     skipRead: false,
@@ -57,22 +72,11 @@ const config = parseArgs(process.argv.slice(2));
 
 // ── JWT crafting (dev mode) ──────────────────────────────────────────────────
 
-// In dev, the JWT_SECRET is: "dev-only-jwt_secret-not-for-production-static-key"
-const DEV_JWT_SECRET = "dev-only-jwt_secret-not-for-production-static-key";
+const DEV_JWT_SECRET = "dev-only-jwt_secret-not-for-production-static-key-min-32chars-padding";
 const DEV_JWT_REFRESH_SECRET = "dev-only-jwt_refresh_secret-not-for-production-static-key";
 
-interface AuthPayload {
-  uid: string;
-  email: string;
-  role: string;
-  companies: string[];
-  permissions: Record<string, number>;
-  tv: number;
-  jti?: string;
-}
-
-function craftAccessToken(): string {
-  const payload: AuthPayload & { type: string } = {
+function craftAccessToken() {
+  const payload = {
     uid: "load-test-user-001",
     email: "admin@garfix.com",
     role: "admin",
@@ -85,142 +89,160 @@ function craftAccessToken(): string {
   return jwt.sign(payload, DEV_JWT_SECRET, { expiresIn: 1800 });
 }
 
-// ── HTTP helpers ─────────────────────────────────────────────────────────────
+// ── HTTP helpers (using Node.js http module, NOT fetch) ──────────────────────
 
-interface RequestResult {
-  status: number;
-  latencyMs: number;
-  headers: Record<string, string>;
-  body: string;
-  error?: string;
-}
+/**
+ * @typedef {Object} RequestResult
+ * @property {number} status
+ * @property {number} latencyMs
+ * @property {Record<string, string>} headers
+ * @property {string} body
+ * @property {string} [error]
+ */
 
-async function makeRequest(
-  url: string,
-  method: string = "GET",
-  token: string,
-  csrfValue: string,
-  body?: Record<string, unknown>,
-): Promise<RequestResult> {
+/**
+ * Make an HTTP request using Node.js `http` module.
+ * This ensures Cookie headers are NOT stripped (unlike fetch/Bun).
+ *
+ * @param {string} urlStr
+ * @param {string} method
+ * @param {string} token
+ * @param {string} csrfValue
+ * @param {Record<string, unknown>} [body]
+ * @returns {Promise<RequestResult>}
+ */
+function makeRequest(urlStr, method, token, csrfValue, body) {
   const start = performance.now();
-  try {
-    // Build cookie string — Bun's fetch() strips Cookie header (forbidden per Fetch spec),
-    // so we use Node.js http module directly for request sending.
-    const mutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
-    let cookieStr = `inv_token=${token}`;
-    if (mutatingMethods.includes(method)) {
-      cookieStr += `; inv_csrf=${csrfValue}`;
-    }
 
-    const reqHeaders: Record<string, string> = {
-      "Cookie": cookieStr,
-      "Content-Type": "application/json",
-    };
-    if (mutatingMethods.includes(method)) {
-      reqHeaders["X-CSRF-Token"] = csrfValue;
-    }
+  return new Promise((resolve) => {
+    try {
+      const mutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
 
-    // Parse URL
-    const parsed = new URL(url);
-    const http = await import("node:http");
-    const options = {
-      hostname: parsed.hostname,
-      port: parseInt(parsed.port, 10) || 3000,
-      path: parsed.pathname + parsed.search,
-      method,
-      headers: reqHeaders,
-    };
+      // Build cookie string — must use http module because fetch() strips Cookie
+      let cookieStr = `inv_token=${token}`;
+      if (mutatingMethods.includes(method)) {
+        cookieStr += `; inv_csrf=${csrfValue}`;
+      }
 
-    const { statusCode, headers: rawHeaders, body: responseBody } = await new Promise<{
-      statusCode: number;
-      headers: Record<string, string | string[] | undefined>;
-      body: string;
-    }>((resolve, reject) => {
+      /** @type {Record<string, string>} */
+      const reqHeaders = {
+        "Cookie": cookieStr,
+        "Content-Type": "application/json",
+      };
+      if (mutatingMethods.includes(method)) {
+        reqHeaders["X-CSRF-Token"] = csrfValue;
+      }
+
+      // Parse URL
+      const parsed = new URL(urlStr);
+      const options = {
+        hostname: parsed.hostname,
+        port: parseInt(parsed.port, 10) || (parsed.protocol === "https:" ? 443 : 3000),
+        path: parsed.pathname + parsed.search,
+        method,
+        headers: reqHeaders,
+      };
+
       const req = http.request(options, (res) => {
         let data = "";
-        res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
-        res.on("end", () => resolve({
-          statusCode: res.statusCode || 0,
-          headers: res.headers,
-          body: data,
-        }));
+        res.on("data", (chunk) => {
+          data += chunk.toString();
+        });
+        res.on("end", () => {
+          const elapsed = performance.now() - start;
+
+          // Flatten headers (some may be arrays, take first value)
+          /** @type {Record<string, string>} */
+          const respHeaders = {};
+          for (const [k, v] of Object.entries(res.headers)) {
+            if (v === undefined) continue;
+            respHeaders[k] = Array.isArray(v) ? v[0] : v;
+          }
+
+          resolve({
+            status: res.statusCode || 0,
+            latencyMs: elapsed,
+            headers: respHeaders,
+            body: data,
+          });
+        });
       });
-      req.on("error", (err: Error) => reject(err));
+
+      req.on("error", (err) => {
+        const elapsed = performance.now() - start;
+        resolve({
+          status: 0,
+          latencyMs: elapsed,
+          headers: {},
+          body: "",
+          error: err.message,
+        });
+      });
+
+      // Set a timeout so we don't hang forever
+      req.setTimeout(30_000, () => {
+        req.destroy(new Error("Request timeout (30s)"));
+      });
 
       if (body && method !== "GET") {
         req.write(JSON.stringify(body));
       }
       req.end();
-    });
-
-    const elapsed = performance.now() - start;
-
-    // Flatten headers (some may be arrays, take first value)
-    const respHeaders: Record<string, string> = {};
-    for (const [k, v] of Object.entries(rawHeaders)) {
-      if (v === undefined) continue;
-      respHeaders[k] = Array.isArray(v) ? v[0] : v;
+    } catch (err) {
+      const elapsed = performance.now() - start;
+      resolve({
+        status: 0,
+        latencyMs: elapsed,
+        headers: {},
+        body: "",
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
-
-    // Parse status from response body if it's JSON with an error
-    let status = statusCode;
-
-    // If status is 200 but body starts with {"error":...}, the middleware might have
-    // returned a 401/403 as a 200 with error JSON — check the actual HTTP status
-    return {
-      status,
-      latencyMs: elapsed,
-      headers: respHeaders,
-      body: responseBody,
-    };
-  } catch (err: unknown) {
-    const elapsed = performance.now() - start;
-    return {
-      status: 0,
-      latencyMs: elapsed,
-      headers: {},
-      body: "",
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
+  });
 }
 
 // ── Statistics ───────────────────────────────────────────────────────────────
 
-function percentile(sorted: number[], p: number): number {
+/**
+ * @param {number[]} sorted
+ * @param {number} p
+ * @returns {number}
+ */
+function percentile(sorted, p) {
   if (sorted.length === 0) return 0;
   const idx = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.max(0, idx)];
 }
 
-interface TestPhaseResult {
-  name: string;
-  endpoint: string;
-  method: string;
-  totalRequests: number;
-  successfulRequests: number; // 2xx
-  rateLimitedRequests: number; // 429
-  authFailures: number; // 401/403
-  otherErrors: number;
-  latencies: number[];
-  rateLimitHeaders: { retryAfter: number; remaining: string; reset: string }[];
-  first429AtRequest: number | null;
-  limitConfig: { maxAttempts: number; windowMs: number };
-}
+/**
+ * @typedef {Object} TestPhaseResult
+ * @property {string} name
+ * @property {string} endpoint
+ * @property {string} method
+ * @property {number} totalRequests
+ * @property {number} successfulRequests
+ * @property {number} rateLimitedRequests
+ * @property {number} authFailures
+ * @property {number} otherErrors
+ * @property {number[]} latencies
+ * @property {{ retryAfter: number; remaining: string; reset: string }[]} rateLimitHeaders
+ * @property {number|null} first429AtRequest
+ * @property {{ maxAttempts: number; windowMs: number }} limitConfig
+ */
 
-function computeStats(result: TestPhaseResult): string {
+/**
+ * @param {TestPhaseResult} result
+ * @returns {string}
+ */
+function computeStats(result) {
   const sortedLat = [...result.latencies].sort((a, b) => a - b);
-  const successfulLatencies = sortedLat.filter((_, i) => {
-    // Only include latency for successful requests
-    return true;
-  });
 
-  const p50 = percentile(successfulLatencies, 50);
-  const p90 = percentile(successfulLatencies, 90);
-  const p95 = percentile(successfulLatencies, 95);
-  const p99 = percentile(successfulLatencies, 99);
-  const avg = successfulLatencies.length > 0
-    ? successfulLatencies.reduce((a, b) => a + b, 0) / successfulLatencies.length
+  const p50 = percentile(sortedLat, 50);
+  const p90 = percentile(sortedLat, 90);
+  const p95 = percentile(sortedLat, 95);
+  const p99 = percentile(sortedLat, 99);
+  const avg = sortedLat.length > 0
+    ? sortedLat.reduce((a, b) => a + b, 0) / sortedLat.length
     : 0;
 
   const rate = result.totalRequests > 0
@@ -257,13 +279,19 @@ function computeStats(result: TestPhaseResult): string {
 
 // ── Test phases ──────────────────────────────────────────────────────────────
 
-async function testAccountingRead(baseUrl: string, token: string, csrf: string): Promise<TestPhaseResult> {
+/**
+ * @param {string} baseUrl
+ * @param {string} token
+ * @param {string} csrf
+ * @returns {Promise<TestPhaseResult>}
+ */
+async function testAccountingRead(baseUrl, token, csrf) {
   const endpoint = "/api/accounting/test-rate-limit";
   const limitConfig = { maxAttempts: 40, windowMs: 60_000 };
   // Send 50 requests — should see 429 starting around request #41
   const burstSize = 50;
 
-  const result: TestPhaseResult = {
+  const result = {
     name: "ACCOUNTING_READ",
     endpoint,
     method: "GET",
@@ -322,13 +350,19 @@ async function testAccountingRead(baseUrl: string, token: string, csrf: string):
   return result;
 }
 
-async function testAccountingWrite(baseUrl: string, token: string, csrf: string): Promise<TestPhaseResult> {
+/**
+ * @param {string} baseUrl
+ * @param {string} token
+ * @param {string} csrf
+ * @returns {Promise<TestPhaseResult>}
+ */
+async function testAccountingWrite(baseUrl, token, csrf) {
   const endpoint = "/api/accounting/test-rate-limit";
   const limitConfig = { maxAttempts: 15, windowMs: 60_000 };
   // Send 20 requests — should see 429 starting around request #16
   const burstSize = 20;
 
-  const result: TestPhaseResult = {
+  const result = {
     name: "ACCOUNTING_WRITE",
     endpoint,
     method: "POST",
@@ -375,10 +409,10 @@ async function testAccountingWrite(baseUrl: string, token: string, csrf: string)
         console.log(`   [${i + 1}] ${resp.status} — Auth failure: ${resp.body.slice(0, 100)}`);
       }
     } else if (resp.status === 400) {
-      // Validation error — request was processed (rate limit counted) but body was invalid
+      // Validation error — request was processed (rate limit counted) but body was invalid.
       // This still counts as a "successful" rate-limit pass — the 400 means the rate limit
-      // wasn't triggered yet, the request just failed validation
-      result.successfulRequests++; // Rate limit allowed it, just bad input
+      // wasn't triggered yet, the request just failed validation.
+      result.successfulRequests++;
       result.latencies.push(resp.latencyMs);
       if (config.verbose) {
         console.log(`   [${i + 1}] 400 — Validation error (rate limit passed): ${resp.body.slice(0, 100)}`);
@@ -398,13 +432,19 @@ async function testAccountingWrite(baseUrl: string, token: string, csrf: string)
   return result;
 }
 
-async function testReportGeneration(baseUrl: string, token: string, csrf: string): Promise<TestPhaseResult> {
+/**
+ * @param {string} baseUrl
+ * @param {string} token
+ * @param {string} csrf
+ * @returns {Promise<TestPhaseResult>}
+ */
+async function testReportGeneration(baseUrl, token, csrf) {
   const endpoint = "/api/accounting/balance-sheet/test-rate-limit";
   const limitConfig = { maxAttempts: 5, windowMs: 300_000 }; // 5 per 5 minutes
   // Send 8 requests — should see 429 starting around request #6
   const burstSize = 8;
 
-  const result: TestPhaseResult = {
+  const result = {
     name: "REPORT_GENERATION",
     endpoint,
     method: "GET",
@@ -463,20 +503,24 @@ async function testReportGeneration(baseUrl: string, token: string, csrf: string
   return result;
 }
 
-// ── Health check ─────────────────────────────────────────────────────────────
+// ── Health check (using Node.js http, NOT fetch) ─────────────────────────────
 
-async function healthCheck(baseUrl: string): Promise<boolean> {
+/**
+ * @param {string} baseUrl
+ * @returns {Promise<boolean>}
+ */
+async function healthCheck(baseUrl) {
   console.log(`\n🔍 Checking if server is reachable at ${baseUrl}...`);
   try {
-    const resp = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(5000) });
-    if (resp.ok) {
+    const resp = await makeRequest(`${baseUrl}/api/health`, "GET", "", "");
+    if (resp.status >= 200 && resp.status < 500) {
       console.log(`   ✅ Server is running (${resp.status})`);
       return true;
     }
-    // Even if /api/health returns non-200, the server is running
+    // Even non-200 means the server is running
     console.log(`   ✅ Server is running (status: ${resp.status})`);
     return true;
-  } catch (err: unknown) {
+  } catch (err) {
     console.log(`   ❌ Server not reachable: ${err instanceof Error ? err.message : String(err)}`);
     return false;
   }
@@ -513,7 +557,7 @@ async function main() {
     `${config.baseUrl}/api/accounting/test-rate-limit`,
     "GET",
     token,
-    "",  // CSRF not needed for GET
+    "", // CSRF not needed for GET
   );
   console.log(`   Status: ${verifyResp.status}`);
 
@@ -552,12 +596,13 @@ async function main() {
     console.log("   Response: " + verifyResp.body.slice(0, 200));
   }
 
-  // 4. Wait a moment to clear any residual rate limits from the verify request
+  // 5. Wait a moment to clear any residual rate limits from the verify request
   console.log("\n⏳ Waiting 2s to clear rate limit window from verify request...");
   await new Promise((r) => setTimeout(r, 2000));
 
-  // 5. Run test phases
-  const results: TestPhaseResult[] = [];
+  // 6. Run test phases
+  /** @type {TestPhaseResult[]} */
+  const results = [];
 
   if (!config.skipRead) {
     const readResult = await testAccountingRead(config.baseUrl, token, csrfValue);
@@ -587,7 +632,7 @@ async function main() {
     console.log(computeStats(reportResult));
   }
 
-  // 6. Summary
+  // 7. Summary
   console.log("\n╔══════════════════════════════════════════════════════════════╗");
   console.log("║  SUMMARY                                                     ║");
   console.log("╚══════════════════════════════════════════════════════════════╝");
@@ -607,9 +652,10 @@ async function main() {
 
   console.log(`\n  Overall: ${allPass ? "✅ ALL RATE LIMITS WORKING CORRECTLY" : "❌ SOME RATE LIMITS NOT ENFORCED"}`);
 
-  // 7. Save results to JSON
+  // 8. Save results to JSON
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const outputPath = `./load-test-results/accounting-rate-limit-${timestamp}.json`;
+  const outputDir = path.resolve(process.cwd(), "load-test-results");
+  const outputPath = path.join(outputDir, `accounting-rate-limit-${timestamp}.json`);
 
   const outputData = {
     metadata: {
@@ -640,13 +686,11 @@ async function main() {
 
   // Ensure directory exists
   try {
-    const { mkdirSync } = await import("fs");
-    mkdirSync("./load-test-results", { recursive: true });
-    const { writeFileSync } = await import("fs");
-    writeFileSync(outputPath, JSON.stringify(outputData, null, 2));
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.writeFileSync(outputPath, JSON.stringify(outputData, null, 2));
     console.log(`\n  💾 Results saved to: ${outputPath}`);
-  } catch {
-    console.log(`\n  ⚠️ Could not save results file (non-critical)`);
+  } catch (err) {
+    console.log(`\n  ⚠️ Could not save results file (non-critical): ${err instanceof Error ? err.message : String(err)}`);
   }
 
   process.exit(allPass ? 0 : 1);
