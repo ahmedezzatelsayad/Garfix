@@ -123,6 +123,22 @@ export async function register(): Promise<void> {
       });
     }
 
+    // ── Step 3e: Start maintenance crons (P2.2 + P2.3) ───────────────────
+    // Hourly session-registry sweep (deletes expired SessionRegistry rows
+    // that isSessionValid() would never reach) + daily outbox purge
+    // (deletes published outbox events older than 30 days). Both follow
+    // the same setInterval+unref+run-guard pattern as the outbox relay.
+    // See src/lib/maintenance-cron.ts for design rationale.
+    try {
+      const { startMaintenanceCrons } = await import("@/lib/maintenance-cron");
+      startMaintenanceCrons();
+      logger.info("[instrumentation] ✓ Maintenance crons started (session sweep hourly, outbox purge daily)");
+    } catch (err) {
+      logger.warn("[instrumentation] Maintenance crons failed to start (non-fatal)", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     // ── Step 4: Process-Level Error Handlers ─────────────────────────────
     process.on("uncaughtException", (error: Error) => {
       logger.error("[instrumentation] UNCAUGHT EXCEPTION", {
@@ -173,11 +189,21 @@ export async function register(): Promise<void> {
         process.exit(1);
       }, 10000);
       try {
-        // Shutdown observability services
+        // Shutdown observability services (upstream Sprint 3)
         shutdownTelemetry();
         const { shutdownAllBreakers } = await import("@/lib/circuit-breaker/circuit-breaker");
         shutdownAllBreakers();
 
+        // Stop the background timers started in Steps 3b/3e so they
+        // don't fire during shutdown or keep the event loop alive (P2.2+P2.3)
+        try {
+          const { stopOutboxRelay } = await import("@/lib/outbox");
+          stopOutboxRelay();
+        } catch { /* best-effort */ }
+        try {
+          const { stopMaintenanceCrons } = await import("@/lib/maintenance-cron");
+          stopMaintenanceCrons();
+        } catch { /* best-effort */ }
         logger.info("[instrumentation] Graceful shutdown complete");
       } catch (err) {
         logger.error("[instrumentation] Error during shutdown", {
