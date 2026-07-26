@@ -127,6 +127,7 @@ export interface KuwaitSubmissionResult {
   submissionStatus: string;
   rejectionReason?: string;
   error?: string;
+  rejectionReason?: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -745,7 +746,7 @@ export async function submitKuwaitInvoiceWithRetry(
     attempts++;
     const r = await submitKuwaitInvoice(payload);
     if (!r.ok && r.submissionStatus === "rejected") {
-      const err = new Error(r.rejectionReason || "Kuwait rejected invoice") as Error & { status: number };
+      const err = new Error(r.rejectionReason || r.error || "Kuwait rejected invoice") as Error & { status: number };
       err.status = 422;
       throw err;
     }

@@ -26,3 +26,4 @@ export * from "./product-matching";
 export * from "./catalog";
 export * from "./webhooks";
 export * from "./onboarding";
+export * from "./observability";

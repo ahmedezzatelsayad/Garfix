@@ -372,4 +372,19 @@ export const queryKeys = {
     events: () =>
       [...queryKeys.webhooks.all, "events"] as const,
   },
+
+  // ── Observability ────────────────────────────────────────────────────────
+  observability: {
+    all: ["observability"] as const,
+    circuitBreakers: () =>
+      [...queryKeys.observability.all, "circuit-breakers"] as const,
+    auditTrail: (filters?: { channel?: string; correlationId?: string }) =>
+      [...queryKeys.observability.all, "audit-trail", filters ?? "default"] as const,
+    auditStats: () =>
+      [...queryKeys.observability.all, "audit-stats"] as const,
+    auditVerify: () =>
+      [...queryKeys.observability.all, "audit-verify"] as const,
+    systemHealth: () =>
+      [...queryKeys.observability.all, "system-health"] as const,
+  },
 } as const;
