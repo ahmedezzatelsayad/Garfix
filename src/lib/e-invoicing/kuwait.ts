@@ -125,6 +125,7 @@ export interface KuwaitSubmissionResult {
   ok: boolean;
   eInvoiceId?: number;
   submissionStatus: string;
+  rejectionReason?: string;
   error?: string;
 }
 

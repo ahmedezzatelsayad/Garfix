@@ -308,7 +308,7 @@ class RealSpan implements Span {
 
 class RealTracer implements Tracer {
   startSpan(name: string, attributes?: Record<string, string | number | boolean>): Span {
-    const parentCtx = currentContext;
+    const parentCtx = currentContext ?? undefined;
     const span = new RealSpan(name, attributes || {}, parentCtx);
     return span;
   }

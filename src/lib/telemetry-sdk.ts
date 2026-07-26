@@ -91,7 +91,7 @@ export async function startTelemetry(): Promise<boolean> {
 
     const sdk = new NodeSDK({
       serviceName,
-      serviceVersion,
+      // serviceVersion is set via resource attributes below
       traceExporter,
       metricReader: new PeriodicExportingMetricReader({
         exporter: metricExporter,
@@ -102,9 +102,9 @@ export async function startTelemetry(): Promise<boolean> {
         maxExportBatchSize: 256,
         scheduledDelayMillis: 5000,
       }),
-      // @ts-expect-error — autoInstrumentations may be missing in fallback
-      instrumentations: autoInstr?.getNodeAutoInstrumentations
-        ? [autoInstr.getNodeAutoInstrumentations({
+      // @ts-expect-error — autoInstrumentations typing varies by version
+      instrumentations: (autoInstr as Record<string, unknown>)?.getNodeAutoInstrumentations
+        ? [(autoInstr as { getNodeAutoInstrumentations: (c?: unknown) => unknown[] }).getNodeAutoInstrumentations({
             "@opentelemetry/instrumentation-fs": { enabled: false },
             "@opentelemetry/instrumentation-dns": { enabled: false },
           })]

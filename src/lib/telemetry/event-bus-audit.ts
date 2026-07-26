@@ -115,7 +115,16 @@ export function recordAuditEvent(
 
   // Best-effort DB write (would use Prisma in production)
   try {
-    appendToChain(event.id, event.hash);
+    appendToChain({
+      entryId: event.id,
+      content: {
+        userEmail: "system",
+        action: `event:${event.channel}`,
+        entity: "eventBus",
+        details: { channel: event.channel, correlationId: event.correlationId, publisher: event.publisher },
+        createdAt: new Date(event.timestamp),
+      },
+    });
   } catch {
     // Non-critical — audit is still in memory buffer
   }
@@ -152,11 +161,11 @@ export function queryAuditEvents(query: AuditEventQuery): AuditEventResult {
   }
 
   if (query.fromTimestamp) {
-    filtered = filtered.filter((e) => e.timestamp >= query.fromTimestamp);
+    filtered = filtered.filter((e) => e.timestamp >= query.fromTimestamp!);
   }
 
   if (query.toTimestamp) {
-    filtered = filtered.filter((e) => e.timestamp <= query.toTimestamp);
+    filtered = filtered.filter((e) => e.timestamp <= query.toTimestamp!);
   }
 
   // Sort newest first
@@ -196,23 +205,23 @@ export function verifyAuditEventIntegrity(event: AuditEvent): boolean {
  */
 export function verifyAuditChain(): {
   verified: number;
-  breaches: string[];
+  breaches: number;
   total: number;
 } {
   let verified = 0;
-  const breaches: string[] = [];
+  let breachCount = 0;
 
   for (const event of auditBuffer) {
     if (verifyAuditEventIntegrity(event)) {
       verified++;
     } else {
-      breaches.push(event.id);
+      breachCount++;
     }
   }
 
   return {
     verified,
-    breaches,
+    breaches: breachCount,
     total: auditBuffer.length,
   };
 }

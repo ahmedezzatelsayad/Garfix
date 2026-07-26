@@ -119,12 +119,12 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
       }
       // Wrap each model in its own proxy that intercepts method calls.
       return new Proxy(model, {
-        get(modelTarget, modelProp) {
-          const fn = (modelTarget as Record<string, unknown>)[modelProp];
+        get(modelTarget, modelProp: string | symbol) {
+          const fn = (modelTarget as Record<string | symbol, unknown>)[modelProp as string];
           if (typeof fn !== "function") return fn;
           return async (...args: unknown[]) => {
-            return runWithTenantContext(target, companySlug, () =>
-              (fn as (...a: unknown[]) => unknown).apply(modelTarget, args),
+            return runWithTenantContext(db, companySlug, async () =>
+              (fn as (...a: unknown[]) => Promise<unknown>).apply(modelTarget, args),
             );
           };
         },
