@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { ChevronRight, Mail, Lock, User, Eye, EyeOff, KeyRound, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRegister, useForgotPassword, useResetPassword } from "@/hooks/queries/auth";
 
 /**
  * AuthScreen — login + register + forgot-password + reset-password.
@@ -37,6 +38,9 @@ type Mode = "login" | "register" | "forgot" | "reset";
 
 export default function AuthScreen({ onBack }: AuthScreenProps) {
   const { login } = useAuth();
+  const registerMutation = useRegister();
+  const forgotMutation = useForgotPassword();
+  const resetMutation = useResetPassword();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,24 +64,11 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
         if (password !== confirmPassword) {
           throw new Error("كلمتا المرور غير متطابقتين");
         }
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ email, password, displayName }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Registration failed");
+        await registerMutation.mutateAsync({ email, password, displayName });
         toast.success("تم إنشاء الحساب بنجاح");
         await login(email, password);
       } else if (mode === "forgot") {
-        const res = await fetch("/api/auth/forgot-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "فشل إرسال الرمز");
+        const data = await forgotMutation.mutateAsync({ email });
         // Sandbox convenience: devCode is the OTP returned in non-production.
         // In production this would arrive by email instead.
         if (data.devCode) {
@@ -94,13 +85,7 @@ export default function AuthScreen({ onBack }: AuthScreenProps) {
         if (password !== confirmPassword) {
           throw new Error("كلمتا المرور غير متطابقتين");
         }
-        const res = await fetch("/api/auth/reset-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, code: resetCode, newPassword: password }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "فشل إعادة التعيين");
+        await resetMutation.mutateAsync({ email, code: resetCode, newPassword: password });
         toast.success("تم تغيير كلمة المرور بنجاح. سجّل الدخول الآن.");
         setMode("login");
         setResetCode("");

@@ -46,8 +46,10 @@ interface ForgotPasswordPayload {
 
 /** Payload for resetting a password with a token. */
 interface ResetPasswordPayload {
-  token: string;
+  email: string;
+  code: string;
   newPassword: string;
+  token?: string; // Legacy: some flows use token instead of email+code
 }
 
 // ─── Query Hooks ────────────────────────────────────────────────────────────
@@ -141,9 +143,9 @@ export function useChangePassword() {
  * invalidation is needed.
  */
 export function useForgotPassword() {
-  return useMutation<void, ApiError, ForgotPasswordPayload>({
+  return useMutation<{ message?: string; devCode?: string }, ApiError, ForgotPasswordPayload>({
     mutationFn: (payload) =>
-      apiPost<ForgotPasswordPayload, void>("/api/auth/forgot-password", payload),
+      apiPost<ForgotPasswordPayload, { message?: string; devCode?: string }>("/api/auth/forgot-password", payload),
   });
 }
 
