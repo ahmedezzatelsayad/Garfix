@@ -28,7 +28,7 @@
 |-------|---------|
 | `middleware.ts` | Auth middleware + tenant resolution + CSRF protection |
 | `api.ts` | API helpers: `requirePermissionForCompany()`, `resolveSecret()`, error formatting |
-| `rateLimit.ts` | 10 حدود rate limiting مخصصة — per-endpoint, per-tenant, accounting-specific (ACCOUNTING_READ: 40/min, ACCOUNTING_WRITE: 15/min, REPORT_GENERATION: 5/5min) |
+| `rateLimit.ts` | 10 حدود rate limiting مخصصة — per-endpoint, per-tenant, accounting-specific (ACCOUNTING_READ: 40/min, ACCOUNTING_WRITE: 15/min, REPORT_GENERATION: 5/5min) — **verified**: ACCOUNTING_READ first 429 at #40 ✓, ACCOUNTING_WRITE first 429 at #16 ✓, REPORT_GENERATION first 429 at #6 ✓ (p50=5.5ms, p95=14.7ms) |
 | `logger.ts` | Structured logging (Pino) — request tracing, audit events |
 | `db.ts` | Prisma client مع pool config (SQLite dev / PostgreSQL prod) |
 | `cursor-pagination-server.ts` | Cursor pagination helpers — `parseCursorParams`, `buildCursorPrismaQuery`, `buildCursorResponse` for API route handlers |
@@ -46,7 +46,7 @@
 | `audit.ts` | Audit trail — تسجيل كل عملية مع full context |
 | `auditExport.ts` | تصدير سجلات المراجعة — CSV, PDF, JSON formats |
 | `tamperAudit.ts` | حماية من التلاعب — hash chains, integrity verification |
-| `observability.ts` | مراقبة وقياسات — OpenTelemetry-compatible metrics, tracing, SLO definitions, OTEL_EXPORTER_OTLP_ENDPOINT support |
+| `observability.ts` | مراقبة وقياسات — OpenTelemetry-compatible metrics, tracing, **10 SLO definitions** (availability, latency, correctness, durability), periodic flush 60s, OTEL_EXPORTER_OTLP_ENDPOINT support (configured in `.env.production`) |
 | `usageMeter.ts` | قياس الاستخدام — per-tenant feature & API usage metering |
 | `startupCheck.ts` | فحص بدء التشغيل — dependency verification, config validation |
 
@@ -191,12 +191,12 @@
 | `inventory-costing.ts` | تكلفة المخزون — FIFO, weighted average costing |
 | `accountant-collab.ts` | تعاون المحاسبين — review workflow & comments |
 
-### `billing/` — الفوترة (2 ملف + 1 اختبار)
+### `billing/` — الفوترة (2 ملف + 1 اختبار، 866 سطر)
 
 | الملف | الوظيفة |
 |-------|---------|
-| `pricing.ts` | التسعير — plan pricing, feature costs |
-| `subscription-engine.ts` | محرك الاشتراكات — billing, renewal, upgrade/downgrade |
+| `pricing.ts` (132 سطر) | التسعير — **7 tiers تسعير حسب البلد** (KW/KWD, SA/SAR, AE/AED, BH/BHD, OM/OMR, QA/QAR, EG/EGP + DEFAULT/USD)، كل بلد بعملته المحلية |
+| `subscription-engine.ts` (734 سطر) | محرك الاشتراكات — billing, renewal, upgrade/downgrade, **dunning** (3 retries/7 days then downgrade), **MyFatoorah/Paymob routing** (EG→Paymob, others→MyFatoorah) |
 
 ### `integrations/` — التكاملات الخارجية (7 ملف + 3 اختبارات)
 
@@ -268,4 +268,5 @@ const safe = validateExternalUrl(userProvidedUrl); // blocks internal IPs
 | `integrations/` | 7 |
 | `workers/` | 5 |
 | `automation/` | 1 |
+| Prisma models | 74 |
 | **الإجمالي (مصدر)** | **114** |

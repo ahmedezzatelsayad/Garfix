@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "version": "12.1.0",
+    "timestamp": "2026-07-26T09:14:52.599Z",
+    "config": {
+      "baseUrl": "http://localhost:3000",
+      "concurrency": 1,
+      "skipRead": true,
+      "skipWrite": true,
+      "skipReport": false,
+      "verbose": true
+    }
+  },
+  "results": [
+    {
+      "name": "REPORT_GENERATION",
+      "endpoint": "/api/accounting/balance-sheet/test-rate-limit",
+      "method": "GET",
+      "totalRequests": 8,
+      "successfulRequests": 5,
+      "rateLimitedRequests": 3,
+      "authFailures": 0,
+      "otherErrors": 0,
+      "first429AtRequest": 6,
+      "limitConfig": {
+        "maxAttempts": 5,
+        "windowMs": 300000
+      },
+      "avgLatencyMs": 6.659938375000024,
+      "p50LatencyMs": 5.4604880000001685,
+      "p95LatencyMs": 14.745170000000144,
+      "p99LatencyMs": 14.745170000000144
+    }
+  ],
+  "overallPass": true
+}

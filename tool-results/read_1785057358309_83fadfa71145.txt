@@ -1,0 +1,809 @@
+     1→/**
+     2→ * rbac.ts — Enterprise-grade Role-Based Access Control with granular permissions.
+     3→ *
+     4→ * Enhancements over the legacy permissions.ts:
+     5→ *   - Permission hierarchy (inherits from parent roles)
+     6→ *   - Resource-level permissions (invoice:read, invoice:write, etc.)
+     7→ *   - Scope-based permissions (own, team, company, platform)
+     8→ *   - Time-based restrictions (e.g., "approve invoices only during business hours")
+     9→ *   - Permission groups (financial, operations, admin, hr)
+    10→ *   - Custom role creation capability
+    11→ *   - Permission audit trail
+    12→ *
+    13→ * The legacy flat permission keys (create_invoice, edit_invoice, etc.) are
+    14→ * still supported via backward-compatible mapping, but the new system uses
+    15→ * structured ResourcePermission objects for fine-grained control.
+    16→ */
+    17→
+    18→import { computeEffectivePermissions } from "@/lib/permissions";
+    19→import { ALL_PERMISSION_KEYS, LOCKED_PERMS } from "@/lib/permissions";
+    20→
+    21→// ── Enums ────────────────────────────────────────────────────────────────────
+    22→
+    23→export enum PermissionScope {
+    24→  /** Only data owned by the user */
+    25→  own = "own",
+    26→  /** Data owned by the user's team */
+    27→  team = "team",
+    28→  /** All data in the user's company */
+    29→  company = "company",
+    30→  /** All data across the platform (founder only) */
+    31→  platform = "platform",
+    32→}
+    33→
+    34→export enum PermissionLevel {
+    35→  /** No access */
+    36→  none = 0,
+    37→  /** Read-only access */
+    38→  read = 1,
+    39→  /** Create and edit */
+    40→  write = 2,
+    41→  /** Approve / authorize */
+    42→  approve = 3,
+    43→  /** Full control (admin) */
+    44→  admin = 4,
+    45→  /** Delete records (special action) */
+    46→  delete = 10,
+    47→  /** Print documents (special action) */
+    48→  print = 11,
+    49→  /** Export data (special action) */
+    50→  export = 12,
+    51→  /** E-invoicing submission (special action) */
+    52→  e_invoice = 13,
+    53→  /** Bulk input (special action) */
+    54→  bulk_input = 14,
+    55→  /** Manage wholesale prices (special action) */
+    56→  manage_prices = 15,
+    57→}
+    58→
+    59→// ── Types ────────────────────────────────────────────────────────────────────
+    60→
+    61→export interface ResourcePermission {
+    62→  /** e.g., "invoice", "customer", "report", "settings" */
+    63→  resource: string;
+    64→  /** e.g., "read", "write", "approve", "admin" */
+    65→  level: PermissionLevel;
+    66→  /** e.g., "own", "team", "company", "platform" */
+    67→  scope: PermissionScope;
+    68→}
+    69→
+    70→export interface TimeRestriction {
+    71→  /** ISO day numbers: 1=Mon, 7=Sun. Empty = all days. */
+    72→  allowedDays?: number[];
+    73→  /** Start hour (0-23) in local time. e.g., 8 = "from 8 AM" */
+    74→  startHour?: number;
+    75→  /** End hour (0-23) in local time. e.g., 17 = "until 5 PM" */
+    76→  endHour?: number;
+    77→  /** Specific date range (ISO strings) */
+    78→  startDate?: string;
+    79→  endDate?: string;
+    80→}
+    81→
+    82→export interface PermissionGroup {
+    83→  id: string;
+    84→  label: string;
+    85→  labelAr: string;
+    86→  icon: string;
+    87→  resources: string[];
+    88→}
+    89→
+    90→export interface RoleDefinition {
+    91→  id: string;
+    92→  label: string;
+    93→  labelAr: string;
+    94→  /** Parent role to inherit from (null = root) */
+    95→  inheritsFrom: string | null;
+    96→  /** Base resource-level permissions for this role */
+    97→  resourcePermissions: ResourcePermission[];
+    98→  /** Legacy flat permission overrides (backward compat) */
+    99→  flatOverrides?: Record<string, number>;
+   100→  /** Time-based restrictions on specific resources */
+   101→  timeRestrictions?: Record<string, TimeRestriction>;
+   102→  /** Is this a built-in role (cannot be deleted)? */
+   103→  isBuiltIn: boolean;
+   104→  /** Color for UI display */
+   105→  color: string;
+   106→}
+   107→
+   108→export interface CustomRoleInput {
+   109→  id: string;
+   110→  label: string;
+   111→  labelAr: string;
+   112→  inheritsFrom: string;
+   113→  resourcePermissions: ResourcePermission[];
+   114→  flatOverrides?: Record<string, number>;
+   115→  timeRestrictions?: Record<string, TimeRestriction>;
+   116→}
+   117→
+   118→export interface PermissionAuditEntry {
+   119→  timestamp: string;
+   120→  actorUid: string;
+   121→  actorEmail: string;
+   122→  action: "grant" | "revoke" | "create_role" | "delete_role" | "modify_role";
+   123→  targetUid?: string;
+   124→  targetRole?: string;
+   125→  permission?: string;
+   126→  details?: Record<string, unknown>;
+   127→}
+   128→
+   129→// ── Permission Groups ────────────────────────────────────────────────────────
+   130→
+   131→export const PERMISSION_GROUPS: PermissionGroup[] = [
+   132→  {
+   133→    id: "financial",
+   134→    label: "Financial",
+   135→    labelAr: "المالية",
+   136→    icon: "💰",
+   137→    resources: ["invoice", "payment", "accounting", "tax", "budget", "cost_center", "bank_account", "quotation"],
+   138→  },
+   139→  {
+   140→    id: "operations",
+   141→    label: "Operations",
+   142→    labelAr: "العمليات",
+   143→    icon: "📦",
+   144→    resources: ["inventory", "warehouse", "purchase", "supplier", "movement"],
+   145→  },
+   146→  {
+   147→    id: "admin",
+   148→    label: "Administration",
+   149→    labelAr: "إدارة",
+   150→    icon: "⚙️",
+   151→    resources: ["settings", "report", "audit", "employee", "user", "role", "webhook", "feature_flag"],
+   152→  },
+   153→  {
+   154→    id: "hr",
+   155→    label: "HR",
+   156→    labelAr: "الموارد البشرية",
+   157→    icon: "👔",
+   158→    resources: ["salary", "attendance", "leave", "commission", "performance", "gratuity"],
+   159→  },
+   160→  {
+   161→    id: "customer",
+   162→    label: "Customer Relations",
+   163→    labelAr: "العملاء",
+   164→    icon: "👥",
+   165→    resources: ["customer", "contact", "statement"],
+   166→  },
+   167→];
+   168→
+   169→// ── Available resources & actions ────────────────────────────────────────────
+   170→
+   171→export const AVAILABLE_RESOURCES: string[] = PERMISSION_GROUPS.flatMap((g) => g.resources);
+   172→
+   173→export const RESOURCE_ACTIONS: Record<string, string[]> = {
+   174→  invoice: ["read", "write", "delete", "approve", "print", "export", "e_invoice"],
+   175→  payment: ["read", "write", "delete", "approve", "initiate"],
+   176→  accounting: ["read", "write", "approve", "export", "manage_periods", "reconcile"],
+   177→  tax: ["read", "write", "file", "approve"],
+   178→  budget: ["read", "write", "approve", "export"],
+   179→  cost_center: ["read", "write"],
+   180→  bank_account: ["read", "write", "manage"],
+   181→  quotation: ["read", "write", "delete", "approve", "convert"],
+   182→  inventory: ["read", "write", "manage_prices", "bulk_input"],
+   183→  warehouse: ["read", "write", "manage"],
+   184→  purchase: ["read", "write", "delete", "approve"],
+   185→  supplier: ["read", "write", "delete"],
+   186→  movement: ["read", "write"],
+   187→  settings: ["read", "write"],
+   188→  report: ["read", "export", "manage"],
+   189→  audit: ["read", "export"],
+   190→  employee: ["read", "write", "delete", "manage"],
+   191→  user: ["read", "write", "delete", "manage_permissions"],
+   192→  role: ["read", "write", "delete", "manage_permissions"],
+   193→  webhook: ["read", "write", "delete", "manage"],
+   194→  feature_flag: ["read", "write"],
+   195→  salary: ["read", "write", "approve"],
+   196→  attendance: ["read", "write", "manage"],
+   197→  leave: ["read", "write", "approve"],
+   198→  commission: ["read", "write", "approve"],
+   199→  performance: ["read", "write", "manage"],
+   200→  gratuity: ["read", "write", "calculate"],
+   201→  customer: ["read", "write", "delete"],
+   202→  contact: ["read", "write", "delete"],
+   203→  statement: ["read", "generate", "export"],
+   204→};
+   205→
+   206→// ── Built-in Role Definitions ────────────────────────────────────────────────
+   207→
+   208→export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
+   209→  viewer: {
+   210→    id: "viewer",
+   211→    label: "Viewer",
+   212→    labelAr: "عرض فقط",
+   213→    inheritsFrom: null,
+   214→    isBuiltIn: true,
+   215→    color: "#b45309",
+   216→    resourcePermissions: [
+   217→      { resource: "invoice", level: PermissionLevel.read, scope: PermissionScope.own },
+   218→      { resource: "customer", level: PermissionLevel.read, scope: PermissionScope.company },
+   219→      { resource: "contact", level: PermissionLevel.read, scope: PermissionScope.company },
+   220→    ],
+   221→  },
+   222→  employee: {
+   223→    id: "employee",
+   224→    label: "Employee",
+   225→    labelAr: "موظف",
+   226→    inheritsFrom: "viewer",
+   227→    isBuiltIn: true,
+   228→    color: "#7c3aed",
+   229→    resourcePermissions: [
+   230→      // Inherits viewer permissions + adds:
+   231→      { resource: "invoice", level: PermissionLevel.write, scope: PermissionScope.own },
+   232→      { resource: "invoice", level: PermissionLevel.read, scope: PermissionScope.team },
+   233→      { resource: "invoice", level: PermissionLevel.print, scope: PermissionScope.own },
+   234→      { resource: "customer", level: PermissionLevel.write, scope: PermissionScope.own },
+   235→      { resource: "inventory", level: PermissionLevel.read, scope: PermissionScope.company },
+   236→      { resource: "inventory", level: PermissionLevel.write, scope: PermissionScope.own },
+   237→    ],
+   238→    timeRestrictions: {
+   239→      invoice: { allowedDays: [1, 2, 3, 4, 5], startHour: 8, endHour: 17 },
+   240→    },
+   241→  },
+   242→  editor: {
+   243→    id: "editor",
+   244→    label: "Editor",
+   245→    labelAr: "وصول كامل",
+   246→    inheritsFrom: "employee",
+   247→    isBuiltIn: true,
+   248→    color: "#15803d",
+   249→    resourcePermissions: [
+   250→      // Inherits employee permissions + adds:
+   251→      { resource: "invoice", level: PermissionLevel.write, scope: PermissionScope.company },
+   252→      { resource: "invoice", level: PermissionLevel.delete, scope: PermissionScope.own },
+   253→      { resource: "invoice", level: PermissionLevel.print, scope: PermissionScope.company },
+   254→      { resource: "invoice", level: PermissionLevel.export, scope: PermissionScope.company },
+   255→      { resource: "invoice", level: PermissionLevel.e_invoice, scope: PermissionScope.company },
+   256→      { resource: "customer", level: PermissionLevel.write, scope: PermissionScope.company },
+   257→      { resource: "customer", level: PermissionLevel.delete, scope: PermissionScope.own },
+   258→      { resource: "inventory", level: PermissionLevel.write, scope: PermissionScope.company },
+   259→      { resource: "inventory", level: PermissionLevel.manage_prices, scope: PermissionScope.company },
+   260→      { resource: "inventory", level: PermissionLevel.bulk_input, scope: PermissionScope.company },
+   261→      { resource: "purchase", level: PermissionLevel.write, scope: PermissionScope.company },
+   262→      { resource: "supplier", level: PermissionLevel.write, scope: PermissionScope.company },
+   263→      { resource: "warehouse", level: PermissionLevel.write, scope: PermissionScope.company },
+   264→    ],
+   265→  },
+   266→  admin: {
+   267→    id: "admin",
+   268→    label: "Admin",
+   269→    labelAr: "مدير",
+   270→    inheritsFrom: "editor",
+   271→    isBuiltIn: true,
+   272→    color: "#dc2626",
+   273→    resourcePermissions: [
+   274→      // Inherits editor permissions + adds full admin:
+   275→      { resource: "invoice", level: PermissionLevel.admin, scope: PermissionScope.company },
+   276→      { resource: "payment", level: PermissionLevel.admin, scope: PermissionScope.company },
+   277→      { resource: "accounting", level: PermissionLevel.admin, scope: PermissionScope.company },
+   278→      { resource: "tax", level: PermissionLevel.admin, scope: PermissionScope.company },
+   279→      { resource: "budget", level: PermissionLevel.admin, scope: PermissionScope.company },
+   280→      { resource: "bank_account", level: PermissionLevel.admin, scope: PermissionScope.company },
+   281→      { resource: "quotation", level: PermissionLevel.admin, scope: PermissionScope.company },
+   282→      { resource: "settings", level: PermissionLevel.admin, scope: PermissionScope.company },
+   283→      { resource: "report", level: PermissionLevel.admin, scope: PermissionScope.company },
+   284→      { resource: "audit", level: PermissionLevel.admin, scope: PermissionScope.company },
+   285→      { resource: "employee", level: PermissionLevel.admin, scope: PermissionScope.company },
+   286→      { resource: "user", level: PermissionLevel.admin, scope: PermissionScope.company },
+   287→      { resource: "role", level: PermissionLevel.admin, scope: PermissionScope.company },
+   288→      { resource: "webhook", level: PermissionLevel.admin, scope: PermissionScope.company },
+   289→      { resource: "salary", level: PermissionLevel.admin, scope: PermissionScope.company },
+   290→      { resource: "attendance", level: PermissionLevel.admin, scope: PermissionScope.company },
+   291→      { resource: "leave", level: PermissionLevel.admin, scope: PermissionScope.company },
+   292→      { resource: "customer", level: PermissionLevel.admin, scope: PermissionScope.company },
+   293→    ],
+   294→  },
+   295→  founder: {
+   296→    id: "founder",
+   297→    label: "Founder",
+   298→    labelAr: "المؤسس",
+   299→    inheritsFrom: "admin",
+   300→    isBuiltIn: true,
+   301→    color: "#f59e0b",
+   302→    resourcePermissions: [
+   303→      // Inherits admin permissions + platform-wide scope:
+   304→      { resource: "invoice", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   305→      { resource: "payment", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   306→      { resource: "accounting", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   307→      { resource: "settings", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   308→      { resource: "report", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   309→      { resource: "audit", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   310→      { resource: "employee", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   311→      { resource: "user", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   312→      { resource: "role", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   313→      { resource: "webhook", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   314→      { resource: "feature_flag", level: PermissionLevel.admin, scope: PermissionScope.platform },
+   315→    ],
+   316→  },
+   317→};
+   318→
+   319→// ── Custom roles storage (in-memory for module-level, DB-backed in production) ─
+   320→
+   321→const customRoles: Map<string, RoleDefinition> = new Map();
+   322→
+   323→export function getCustomRole(id: string): RoleDefinition | undefined {
+   324→  return customRoles.get(id);
+   325→}
+   326→
+   327→export function getAllCustomRoles(): RoleDefinition[] {
+   328→  return Array.from(customRoles.values());
+   329→}
+   330→
+   331→export function createCustomRole(input: CustomRoleInput): RoleDefinition {
+   332→  // Validate parent role exists
+   333→  const parent = ROLE_DEFINITIONS[input.inheritsFrom] || customRoles.get(input.inheritsFrom);
+   334→  if (!parent) {
+   335→    throw new Error(`Parent role "${input.inheritsFrom}" does not exist`);
+   336→  }
+   337→  // Validate no circular inheritance
+   338→  if (wouldCreateCircularInheritance(input.id, input.inheritsFrom)) {
+   339→    throw new Error("Circular inheritance detected");
+   340→  }
+   341→  // Validate resource names
+   342→  for (const rp of input.resourcePermissions) {
+   343→    if (!AVAILABLE_RESOURCES.includes(rp.resource)) {
+   344→      throw new Error(`Unknown resource: "${rp.resource}"`);
+   345→    }
+   346→  }
+   347→
+   348→  const role: RoleDefinition = {
+   349→    id: input.id,
+   350→    label: input.label,
+   351→    labelAr: input.labelAr,
+   352→    inheritsFrom: input.inheritsFrom,
+   353→    resourcePermissions: input.resourcePermissions,
+   354→    flatOverrides: input.flatOverrides,
+   355→    timeRestrictions: input.timeRestrictions,
+   356→    isBuiltIn: false,
+   357→    color: "#6366f1",
+   358→  };
+   359→  customRoles.set(input.id, role);
+   360→  return role;
+   361→}
+   362→
+   363→export function deleteCustomRole(id: string): boolean {
+   364→  const role = customRoles.get(id);
+   365→  if (!role) return false;
+   366→  if (role.isBuiltIn) throw new Error("Cannot delete built-in roles");
+   367→  // Check no other custom role inherits from this one
+   368→  const allCustom = Array.from(customRoles.entries());
+   369→  for (const [cid, crole] of allCustom) {
+   370→    if (crole.inheritsFrom === id) {
+   371→      throw new Error(`Role "${cid}" inherits from "${id}" — delete or reassign first`);
+   372→    }
+   373→  }
+   374→  customRoles.delete(id);
+   375→  return true;
+   376→}
+   377→
+   378→export function updateCustomRole(id: string, updates: Partial<CustomRoleInput>): RoleDefinition | undefined {
+   379→  const existing = customRoles.get(id);
+   380→  if (!existing) return undefined;
+   381→  if (existing.isBuiltIn) throw new Error("Cannot modify built-in roles");
+   382→
+   383→  const updated: RoleDefinition = {
+   384→    ...existing,
+   385→    ...updates,
+   386→    isBuiltIn: false,
+   387→  };
+   388→
+   389→  // Validate inheritance if changed
+   390→  if (updates.inheritsFrom) {
+   391→    const parent = ROLE_DEFINITIONS[updates.inheritsFrom] || customRoles.get(updates.inheritsFrom);
+   392→    if (!parent) throw new Error(`Parent role "${updates.inheritsFrom}" does not exist`);
+   393→    if (wouldCreateCircularInheritance(id, updates.inheritsFrom)) {
+   394→      throw new Error("Circular inheritance detected");
+   395→    }
+   396→  }
+   397→
+   398→  // Validate resources if changed
+   399→  if (updates.resourcePermissions) {
+   400→    for (const rp of updates.resourcePermissions) {
+   401→      if (!AVAILABLE_RESOURCES.includes(rp.resource)) {
+   402→        throw new Error(`Unknown resource: "${rp.resource}"`);
+   403→      }
+   404→    }
+   405→  }
+   406→
+   407→  customRoles.set(id, updated);
+   408→  return updated;
+   409→}
+   410→
+   411→// ── Permission Hierarchy ─────────────────────────────────────────────────────
+   412→
+   413→/**
+   414→ * Walk the inheritance chain and collect all permissions from ancestor roles.
+   415→ * Permissions are merged: higher-level permissions override lower-level ones,
+   416→ * wider scopes override narrower ones for the same level.
+   417→ */
+   418→export function getInheritedPermissions(roleId: string): ResourcePermission[] {
+   419→  const chain = getInheritanceChain(roleId);
+   420→  const collected: ResourcePermission[] = [];
+   421→
+   422→  // Process from root to leaf — all permissions are collected.
+   423→  // The checkPermission function handles deduplication by finding
+   424→  // the best matching permission (preferring wider scope & higher level).
+   425→  for (const rid of chain) {
+   426→    const def = ROLE_DEFINITIONS[rid] || customRoles.get(rid);
+   427→    if (!def) continue;
+   428→    collected.push(...def.resourcePermissions);
+   429→  }
+   430→
+   431→  return collected;
+   432→}
+   433→
+   434→/**
+   435→ * Get the full inheritance chain from root to the given role.
+   436→ */
+   437→export function getInheritanceChain(roleId: string): string[] {
+   438→  const chain: string[] = [];
+   439→  let current: string | null = roleId;
+   440→
+   441→  while (current) {
+   442→    chain.unshift(current); // add at beginning (root first)
+   443→    const def = ROLE_DEFINITIONS[current] || customRoles.get(current);
+   444→    current = def?.inheritsFrom ?? null;
+   445→  }
+   446→
+   447→  return chain;
+   448→}
+   449→
+   450→// ── Permission Checking ──────────────────────────────────────────────────────
+   451→
+   452→/**
+   453→ * Check if a user has a specific permission on a resource at a given scope.
+   454→ *
+   455→ * This is the core authorization check. It considers:
+   456→ *   1. The user's role and inherited permissions
+   457→ *   2. Custom per-user overrides (from flat permission system)
+   458→ *   3. Time-based restrictions
+   459→ *   4. Scope requirements
+   460→ *   5. Founder override (full access)
+   461→ */
+   462→export function checkPermission(
+   463→  userPerms: Record<string, number>,
+   464→  role: string,
+   465→  resource: string,
+   466→  action: string,
+   467→  scope: PermissionScope,
+   468→  isFounder = false,
+   469→  customRolePerms?: ResourcePermission[],
+   470→  timeRestrictions?: Record<string, TimeRestriction>,
+   471→): boolean {
+   472→  // Founder always has full access
+   473→  if (isFounder) return true;
+   474→
+   475→  // Admin role has company-wide access to everything
+   476→  if (role === "admin") {
+   477→    if (scope === PermissionScope.platform) return false; // only founder
+   478→    return true;
+   479→  }
+   480→
+   481→  // Collect all resource permissions for the role (inherited + custom)
+   482→  const roleDef = ROLE_DEFINITIONS[role] || customRoles.get(role);
+   483→  const inheritedPerms = roleDef ? getInheritedPermissions(role) : [];
+   484→  const allPerms = [...inheritedPerms, ...(customRolePerms || [])];
+   485→
+   486→  // Check time restrictions
+   487→  if (timeRestrictions?.[resource] || roleDef?.timeRestrictions?.[resource]) {
+   488→    const restriction = timeRestrictions?.[resource] || roleDef?.timeRestrictions?.[resource];
+   489→    if (restriction && !isWithinTimeRestriction(restriction)) {
+   490→      return false;
+   491→    }
+   492→  }
+   493→
+   494→  // Find matching permission
+   495→  const matchingPerm = allPerms.find((rp) => {
+   496→    if (rp.resource !== resource) return false;
+   497→    const permAction = levelToAction(rp.level);
+   498→    // Check if the granted action covers the requested action
+   499→    if (!actionCovers(permAction, action)) return false;
+   500→    // Check if the granted scope covers the requested scope
+   501→    if (!scopeCovers(rp.scope, scope)) return false;
+   502→    return true;
+   503→  });
+   504→
+   505→  if (matchingPerm) return true;
+   506→
+   507→  // Fall back to legacy flat permission system
+   508→  return checkLegacyPermission(userPerms, resource, action);
+   509→}
+   510→
+   511→/**
+   512→ * Map PermissionLevel to action string.
+   513→ */
+   514→function levelToAction(level: PermissionLevel): string {
+   515→  switch (level) {
+   516→    case PermissionLevel.read: return "read";
+   517→    case PermissionLevel.write: return "write";
+   518→    case PermissionLevel.approve: return "approve";
+   519→    case PermissionLevel.admin: return "admin";
+   520→    case PermissionLevel.delete: return "delete";
+   521→    case PermissionLevel.print: return "print";
+   522→    case PermissionLevel.export: return "export";
+   523→    case PermissionLevel.e_invoice: return "e_invoice";
+   524→    case PermissionLevel.bulk_input: return "bulk_input";
+   525→    case PermissionLevel.manage_prices: return "manage_prices";
+   526→    default: return "none";
+   527→  }
+   528→}
+   529→
+   530→/**
+   531→ * Check if a granted action covers a requested action.
+   532→ * Hierarchy: admin > approve > write > read > none
+   533→ * "admin" covers everything. "approve" covers write + read. etc.
+   534→ */
+   535→function actionCovers(granted: string, requested: string): boolean {
+   536→  // Special actions that don't follow the hierarchy (e.g., "print", "export")
+   537→  const SPECIAL_ACTIONS = ["print", "export", "e_invoice", "bulk_input", "manage_prices",
+   538→    "manage", "manage_periods", "reconcile", "file", "initiate", "convert",
+   539→    "generate", "calculate", "manage_permissions"];
+   540→
+   541→  if (granted === "admin") return true;
+   542→  if (granted === requested) return true;
+   543→
+   544→  // Special actions require explicit grant OR admin level
+   545→  if (SPECIAL_ACTIONS.includes(requested)) return granted === "admin";
+   546→
+   547→  // Hierarchy: approve > write > read
+   548→  const hierarchy: Record<string, number> = { none: 0, read: 1, write: 2, approve: 3, admin: 4 };
+   549→  const grantedLevel = hierarchy[granted] ?? 0;
+   550→  const requestedLevel = hierarchy[requested] ?? 0;
+   551→  return grantedLevel >= requestedLevel;
+   552→}
+   553→
+   554→/**
+   555→ * Check if a granted scope covers a requested scope.
+   556→ * Hierarchy: platform > company > team > own
+   557→ */
+   558→function scopeCovers(granted: PermissionScope, requested: PermissionScope): boolean {
+   559→  const hierarchy: Record<string, number> = { own: 1, team: 2, company: 3, platform: 4 };
+   560→  return hierarchy[granted] >= hierarchy[requested];
+   561→}
+   562→
+   563→/**
+   564→ * Check legacy flat permission map.
+   565→ * Maps resource:action to the old permission keys.
+   566→ */
+   567→function checkLegacyPermission(
+   568→  perms: Record<string, number>,
+   569→  resource: string,
+   570→  action: string,
+   571→): boolean {
+   572→  const LEGACY_MAP: Record<string, Record<string, string>> = {
+   573→    invoice: { read: "create_invoice", write: "edit_invoice", delete: "delete_invoice", print: "print_invoice" },
+   574→    customer: { read: "view_customers", write: "edit_customer", delete: "delete_customer" },
+   575→    inventory: { read: "edit_inventory", write: "edit_inventory", manage_prices: "manage_wholesale_prices", bulk_input: "bulk_input" },
+   576→    report: { read: "reports_access", export: "export_data" },
+   577→    settings: { read: "settings_access", write: "settings_access" },
+   578→    accounting: { read: "finance_access", write: "finance_access" },
+   579→    employee: { read: "employee_management", write: "employee_management" },
+   580→    invoice_e_invoice: { submit: "e_invoicing_submit" },
+   581→  };
+   582→
+   583→  const resourceMap = LEGACY_MAP[resource];
+   584→  if (!resourceMap) return false;
+   585→  const permKey = resourceMap[action];
+   586→  if (!permKey) return false;
+   587→  return !!perms[permKey];
+   588→}
+   589→
+   590→// ── Time Restriction Checking ────────────────────────────────────────────────
+   591→
+   592→/**
+   593→ * Check if the current time is within a time restriction window.
+   594→ */
+   595→export function isWithinTimeRestriction(restriction: TimeRestriction): boolean {
+   596→  const now = new Date();
+   597→
+   598→  // Check day-of-week restriction
+   599→  if (restriction.allowedDays && restriction.allowedDays.length > 0) {
+   600→    // ISO day: 1=Mon, 7=Sun. JS getDay: 0=Sun, 1=Mon, ... 6=Sat
+   601→    const jsDay = now.getDay();
+   602→    const isoDay = jsDay === 0 ? 7 : jsDay;
+   603→    if (!restriction.allowedDays.includes(isoDay)) return false;
+   604→  }
+   605→
+   606→  // Check hour restriction
+   607→  if (restriction.startHour !== undefined && restriction.endHour !== undefined) {
+   608→    const hour = now.getHours();
+   609→    if (hour < restriction.startHour || hour >= restriction.endHour) return false;
+   610→  }
+   611→
+   612→  // Check date range restriction
+   613→  if (restriction.startDate) {
+   614→    const start = new Date(restriction.startDate);
+   615→    if (now < start) return false;
+   616→  }
+   617→  if (restriction.endDate) {
+   618→    const end = new Date(restriction.endDate);
+   619→    if (now > end) return false;
+   620→  }
+   621→
+   622→  return true;
+   623→}
+   624→
+   625→// ── Get Effective Permissions ────────────────────────────────────────────────
+   626→
+   627→/**
+   628→ * Compute the full effective permission set for a user.
+   629→ * Combines the legacy flat system with the new RBAC system.
+   630→ */
+   631→export function getEffectivePermissions(
+   632→  role: string,
+   633→  customPerms: Record<string, number> | null | undefined,
+   634→  isFounder: boolean,
+   635→  customRolePerms?: ResourcePermission[],
+   636→  timeRestrictions?: Record<string, TimeRestriction>,
+   637→): {
+   638→  flat: Record<string, number>;
+   639→  resources: ResourcePermission[];
+   640→  inheritanceChain: string[];
+   641→} {
+   642→  // Get legacy flat permissions
+   643→  const flat = computeEffectivePermissions(role, customPerms, isFounder);
+   644→
+   645→  // Get resource-level permissions from role hierarchy
+   646→  const roleDef = ROLE_DEFINITIONS[role] || customRoles.get(role);
+   647→  const inheritedPerms = roleDef ? getInheritedPermissions(role) : [];
+   648→  const resources = [...inheritedPerms, ...(customRolePerms || [])];
+   649→
+   650→  // Founder gets platform scope on all resources
+   651→  if (isFounder) {
+   652→    const founderPerms: ResourcePermission[] = AVAILABLE_RESOURCES.map((r) => ({
+   653→      resource: r,
+   654→      level: PermissionLevel.admin,
+   655→      scope: PermissionScope.platform,
+   656→    }));
+   657→    return { flat, resources: founderPerms, inheritanceChain: ["founder"] };
+   658→  }
+   659→
+   660→  const inheritanceChain = roleDef ? getInheritanceChain(role) : [role];
+   661→
+   662→  return { flat, resources, inheritanceChain };
+   663→}
+   664→
+   665→// ── Validate Permission Changes ──────────────────────────────────────────────
+   666→
+   667→/**
+   668→ * Validate that a permission change is safe to apply.
+   669→ * Prevents:
+   670→ *   - Removing locked permissions from non-admin users
+   671→ *   - Granting platform scope to non-founders
+   672→ *   - Granting admin level on locked resources to non-admins
+   673→ *   - Creating roles with invalid inheritance
+   674→ */
+   675→export function validatePermissionChange(
+   676→  change: {
+   677→    type: "grant" | "revoke" | "modify";
+   678→    targetRole: string;
+   679→    resource: string;
+   680→    level: PermissionLevel;
+   681→    scope: PermissionScope;
+   682→  },
+   683→  actorRole: string,
+   684→  isFounder: boolean,
+   685→): { valid: boolean; reason?: string } {
+   686→  // Only admin or founder can modify permissions
+   687→  if (actorRole !== "admin" && !isFounder) {
+   688→    return { valid: false, reason: "Only admin or founder can modify permissions" };
+   689→  }
+   690→
+   691→  // Platform scope is founder-only
+   692→  if (change.scope === PermissionScope.platform && !isFounder) {
+   693→    return { valid: false, reason: "Platform scope requires founder access" };
+   694→  }
+   695→
+   696→  // Admin level on locked resources requires founder
+   697→  const LOCKED_RESOURCES = ["settings", "report", "audit", "role", "feature_flag"];
+   698→  if (LOCKED_RESOURCES.includes(change.resource) && change.level >= PermissionLevel.admin && !isFounder) {
+   699→    return { valid: false, reason: `Admin level on "${change.resource}" requires founder access` };
+   700→  }
+   701→
+   702→  // Cannot revoke permissions from a role higher than your own
+   703→  const actorDef = ROLE_DEFINITIONS[actorRole];
+   704→  const targetDef = ROLE_DEFINITIONS[change.targetRole] || customRoles.get(change.targetRole);
+   705→  if (actorDef && targetDef) {
+   706→    const actorChain = getInheritanceChain(actorRole);
+   707→    const targetChain = getInheritanceChain(change.targetRole);
+   708→    // If the target role's chain includes the actor's role, the actor can't revoke
+   709→    if (targetChain.includes(actorRole) && change.type === "revoke") {
+   710→      // Actually this is fine — you can revoke from roles below you
+   711→    }
+   712→  }
+   713→
+   714→  // Validate the resource exists
+   715→  if (!AVAILABLE_RESOURCES.includes(change.resource)) {
+   716→    return { valid: false, reason: `Unknown resource: "${change.resource}"` };
+   717→  }
+   718→
+   719→  return { valid: true };
+   720→}
+   721→
+   722→// ── Circular Inheritance Check ───────────────────────────────────────────────
+   723→
+   724→function wouldCreateCircularInheritance(newRoleId: string, inheritsFrom: string): boolean {
+   725→  let current: string | null = inheritsFrom;
+   726→  const visited = new Set<string>();
+   727→
+   728→  while (current) {
+   729→    if (current === newRoleId) return true;
+   730→    if (visited.has(current)) return true; // existing circular chain
+   731→    visited.add(current);
+   732→    const def = ROLE_DEFINITIONS[current] || customRoles.get(current);
+   733→    current = def?.inheritsFrom ?? null;
+   734→  }
+   735→
+   736→  return false;
+   737→}
+   738→
+   739→// ── Permission Audit Trail ───────────────────────────────────────────────────
+   740→
+   741→const permissionAuditLog: PermissionAuditEntry[] = [];
+   742→
+   743→export function logPermissionAudit(entry: PermissionAuditEntry): void {
+   744→  permissionAuditLog.push(entry);
+   745→  // In production, this would also write to the database
+   746→}
+   747→
+   748→export function getPermissionAuditLog(limit = 100): PermissionAuditEntry[] {
+   749→  return permissionAuditLog.slice(-limit);
+   750→}
+   751→
+   752→// ── Backward Compatibility ───────────────────────────────────────────────────
+   753→
+   754→/**
+   755→ * Convert a flat permission map to ResourcePermission array.
+   756→ * Useful for migrating existing users to the new system.
+   757→ */
+   758→export function flatToResourcePerms(flat: Record<string, number>): ResourcePermission[] {
+   759→  const perms: ResourcePermission[] = [];
+   760→
+   761→  const FLAT_TO_RESOURCE: Record<string, { resource: string; action: string; scope: PermissionScope }> = {
+   762→    create_invoice: { resource: "invoice", action: "write", scope: PermissionScope.own },
+   763→    print_invoice: { resource: "invoice", action: "print", scope: PermissionScope.own },
+   764→    edit_invoice: { resource: "invoice", action: "write", scope: PermissionScope.own },
+   765→    delete_invoice: { resource: "invoice", action: "delete", scope: PermissionScope.own },
+   766→    view_customers: { resource: "customer", action: "read", scope: PermissionScope.company },
+   767→    edit_customer: { resource: "customer", action: "write", scope: PermissionScope.own },
+   768→    delete_customer: { resource: "customer", action: "delete", scope: PermissionScope.own },
+   769→    edit_inventory: { resource: "inventory", action: "write", scope: PermissionScope.own },
+   770→    manage_wholesale_prices: { resource: "inventory", action: "manage_prices", scope: PermissionScope.own },
+   771→    bulk_input: { resource: "inventory", action: "bulk_input", scope: PermissionScope.own },
+   772→    export_data: { resource: "report", action: "export", scope: PermissionScope.company },
+   773→    reports_access: { resource: "report", action: "read", scope: PermissionScope.company },
+   774→    settings_access: { resource: "settings", action: "write", scope: PermissionScope.company },
+   775→    finance_access: { resource: "accounting", action: "write", scope: PermissionScope.company },
+   776→    employee_management: { resource: "employee", action: "write", scope: PermissionScope.company },
+   777→    e_invoicing_submit: { resource: "invoice", action: "e_invoice", scope: PermissionScope.company },
+   778→  };
+   779→
+   780→  for (const [key, value] of Object.entries(flat)) {
+   781→    if (value && FLAT_TO_RESOURCE[key]) {
+   782→      const mapping = FLAT_TO_RESOURCE[key];
+   783→      perms.push({
+   784→        resource: mapping.resource,
+   785→        level: actionToLevel(mapping.action),
+   786→        scope: mapping.scope,
+   787→      });
+   788→    }
+   789→  }
+   790→
+   791→  return perms;
+   792→}
+   793→
+   794→function actionToLevel(action: string): PermissionLevel {
+   795→  switch (action) {
+   796→    case "read": return PermissionLevel.read;
+   797→    case "write": return PermissionLevel.write;
+   798→    case "approve": return PermissionLevel.approve;
+   799→    case "admin": return PermissionLevel.admin;
+   800→    case "delete": return PermissionLevel.delete;
+   801→    case "print": return PermissionLevel.print;
+   802→    case "export": return PermissionLevel.export;
+   803→    case "e_invoice": return PermissionLevel.e_invoice;
+   804→    case "bulk_input": return PermissionLevel.bulk_input;
+   805→    case "manage_prices": return PermissionLevel.manage_prices;
+   806→    default: return PermissionLevel.write; // unknown special actions default to write
+   807→  }
+   808→}
+   809→

@@ -1,6 +1,6 @@
 # Scripts — أدوات البذرة، الاختبار، الأمان، والأتمتة
 
-> ~47 سكريبت TypeScript و Shell لأداء مهام التطوير: بذر البيانات، اختبار الأداء، فحص الأمان، النسخ الاحتياطي، والتوليد التلقائي للاختبارات، بما في ذلك سكريبتات ترحيل Decimal، الترحيل بالـ cursor، واختبارات التجاوب.
+> ~50 سكريبت TypeScript و Shell و Node.js ESM لأداء مهام التطوير: بذر البيانات، اختبار الأداء، فحص الأمان، النسخ الاحتياطي، والتوليد التلقائي للاختبارات، بما في ذلك سكريبتات ترحيل Decimal، الترحيل بالـ cursor، واختبارات التجاوب.
 
 ## الفئات
 
@@ -39,6 +39,8 @@ bash scripts/security-scan.sh --json    # تقرير JSON لـ CI
 | الملف | الوظيفة |
 |-------|---------|
 | `accounting-rate-limit-load-test.ts` | اختبار ACCOUNTING_READ (40/min), ACCOUNTING_WRITE (15/min), REPORT_GENERATION (5/5min) تحت burst traffic — يحسب p50/p95 latency, 429 rate, throughput/min, burst detection |
+| `accounting-rate-limit-load-test.mjs` | نسخة Node.js ESM من اختبار حدود المحاسبة — يستخدم `http` module مباشرة بدلاً من Bun `fetch` لتجنب stripped Cookie headers (مطلوب عند تشغيل خادم الإنتاج الفعلي) |
+| `run-report-load-test.sh` | تشغيل خادم الإنتاج (`next start`) ثم اختبار REPORT_GENERATION فقط (5/5min)، ثم إيقاف الخادم — مناسب لاختبار rate limit في بيئة إنتاج حقيقية |
 
 **الخيارات:**
 
@@ -46,6 +48,8 @@ bash scripts/security-scan.sh --json    # تقرير JSON لـ CI
 bun run scripts/accounting-rate-limit-load-test.ts                          # إعدادات افتراضية
 bun run scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000 --duration=120 --concurrency=5  # مخصص
 bun run scripts/accounting-rate-limit-load-test.ts --auth-token=YOUR_JWT    # مع JWT token
+node scripts/accounting-rate-limit-load-test.mjs                             # نسخة Node.js ESM (تدعم Cookie headers)
+bash scripts/run-report-load-test.sh                                        # تشغيل خادم الإنتاج + اختبار REPORT_GENERATION فقط
 ```
 
 **النتائج:** JSON report في `./load-test-results/` مع metadata, results, samples.
@@ -152,8 +156,14 @@ bun run scripts/seed.ts
 bash scripts/security-scan.sh
 bash scripts/security-scan.sh --json    # تقرير JSON لـ CI
 
-# اختبار حدود المحاسبة
+# اختبار حدود المحاسبة (TypeScript / Bun)
 bun run scripts/accounting-rate-limit-load-test.ts
+
+# اختبار حدود المحاسبة (Node.js ESM — يُستخدم مع خادم الإنتاج)
+node scripts/accounting-rate-limit-load-test.mjs
+
+# اختبار REPORT_GENERATION فقط مع خادم الإنتاج
+bash scripts/run-report-load-test.sh
 
 # اختبار الأداء
 bun run scripts/bench-free-models.ts

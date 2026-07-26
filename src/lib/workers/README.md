@@ -63,6 +63,27 @@ await enqueueAsync('email', { type: 'send-invoice', data: { invoiceId } });
 - لا يحتاج أي infrastructure إضافي — يستخدم نفس `DATABASE_URL` الذي يستخدمه Prisma
 - TTL / Job expiry — prevents stale locked jobs
 
+### `PGBOSS_AVAILABLE` flag
+
+`PGBOSS_AVAILABLE = Boolean(process.env.DATABASE_URL)` — يُصدّر من `queue-pgboss.ts` ويُستخدم في `queues.ts` لتحديد مستوى الطوابير. يُحسب تلقائياً عند بدء التطبيق:
+
+```ts
+// queues.ts — اختيار المستوى
+const USE_BULLMQ = Boolean(process.env.VALKEY_URL || process.env.REDIS_URL);
+const PGBOSS_AVAILABLE = Boolean(process.env.DATABASE_URL);
+const USE_PGBOSS = !USE_BULLMQ && PGBOSS_AVAILABLE;
+```
+
+### pg-boss Worker ID format
+
+كل عامل pg-boss يُعرّف نفسه بمعرف فريد عند التسجيل:
+
+```
+pgboss-worker-{pid}-{timestamp36}-{random6chars}
+```
+
+مثال: `pgboss-worker-12345-m1abcxyz-kr4f2q` — يُستخدم في structured logging لتمييز instance في multi-process deployments.
+
 ## العمال المتاحون
 
 | Worker | الملف | الوظيفة |

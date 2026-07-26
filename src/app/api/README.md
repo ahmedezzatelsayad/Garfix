@@ -1,6 +1,6 @@
 # API — مسارات واجهة البرمجة
 
-> جميع endpoint handlers لـ GarfiX — 208 route handler files، 177+ documented endpoints محمية ومُوثّقة، مع rate limits مخصصة وcursor pagination على routes عالية الحجم.
+> جميع endpoint handlers لـ GarfiX — 210 route handler files، 177+ documented endpoints محمية ومُوثّقة، مع rate limits مخصصة وcursor pagination على routes عالية الحجم.
 
 ## نمط المصادقة — RBAC
 
@@ -45,12 +45,30 @@ const { user, company } = await requirePermissionForCompany(
 | API_READ | باقي GET endpoints | 60/min |
 | API_WRITE | باقي POST/PUT/PATCH/DELETE | 30/min |
 
+### نتائج اختبار الحمل المُحققة (2026-07-26)
+
+تم تشغيل اختبار حمل فعلي على حدود المحاسبة الثلاث باستخدام endpoints اختبارية:
+- `/api/accounting/test-rate-limit` — ACCOUNTING_READ / ACCOUNTING_WRITE
+- `/api/accounting/balance-sheet/test-rate-limit` — REPORT_GENERATION
+
+| الحد | النتيجة | أول 429 | p50 | p95 |
+|------|---------|----------|------|------|
+| **ACCOUNTING_READ** | ✅ PASS | request #40 | 4.5ms | 16.9ms |
+| **ACCOUNTING_WRITE** | ✅ PASS | request #16 | 4.1ms | 5.9ms |
+| **REPORT_GENERATION** | ✅ PASS | request #6 | 5.5ms | 14.7ms |
+
+جميع حدود rate limiting تعمل كما هو مُحدد — أول 429 يظهر عند الحد المضبوط بدقة.
+
 ### اختبار Rate Limits
 
 ```bash
 # اختبار حدود المحاسبة تحت حمل مرتفع
 bun scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000 --duration=120 --concurrency=5
 ```
+
+### ملاحظة الإنتاج
+
+ملف `.env.production` يتضمن الآن `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` لدعم تصدير بيانات المراقبة (OpenTelemetry) إلى collector محلي.
 
 ## Cursor Pagination — التصفح بالـ Cursor
 

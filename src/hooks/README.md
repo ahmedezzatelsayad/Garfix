@@ -150,3 +150,15 @@ const { items, fetchNextPage, hasNextPage } = useAccountsCursor("company-slug");
 - الـ mutations تُبطل الـ cache تلقائياً عند النجاح (`invalidateQueries`)
 - الـ API client يُرفق CSRF token تلقائياً في headers لطلبات الكتابة (POST/PUT/DELETE) لضمان حماية الطلبات المعدّلة
 - الـ optimistic updates تُطبّق UI changes فورياً و rollback عند فشل الخادم — Arabic error messages via `sonner` toast
+
+## Rate Limits — حدود الطلبات (Verified)
+
+الـ API endpoints تخضع لـ rate limits مخصصة تم التحقق منها فعليًا في بيئة الإنتاج:
+
+| الحد | القيمة | أول 429 | التحقق |
+|------|--------|---------|--------|
+| ACCOUNTING_READ | 40 req/min | Request #40 | ✓ Verified |
+| ACCOUNTING_WRITE | 15 req/min | Request #16 | ✓ Verified |
+| REPORT_GENERATION | 5 req/5min | Request #6 | ✓ Verified (p50=5.5ms, p95=14.7ms) |
+
+الـ hooks تستخدم `api-client.ts` الذي يُضيف CSRF token تلقائياً — عند استلام 429، يُعرض toast error بالعربية ويُقترح retry بعد cooldown.

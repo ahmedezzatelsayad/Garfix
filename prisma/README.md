@@ -1,6 +1,6 @@
 # Prisma — قاعدة البيانات
 
-> Schema يحتوي على **72 نموذج** مع **110 @@index directive** يغطي كل نطاقات النظام. تم تصميم الفهارس لتسريع الاستعلامات على companySlug, status, createdAt, والحقول المركبة (composite fields).
+> Schema يحتوي على **74 نموذج** مع **110 @@index directive** يغطي كل نطاقات النظام. تم تصميم الفهارس لتسريع الاستعلامات على companySlug, status, createdAt, والحقول المركبة (composite fields).
 
 ## النماذج الرئيسية (Core Business)
 

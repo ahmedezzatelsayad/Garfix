@@ -57,10 +57,10 @@
 
 الـ API pattern: `GET /api/accounting/resource?companySlug=X&cursor=123&limit=20` → `{ items: [...], nextCursor: "124" | null }`
 
-Rate limits مخصصة:
+Rate limits مخصصة (verified via load tests):
 - ACCOUNTING_READ: 40 req/min (GET endpoints)
 - ACCOUNTING_WRITE: 15 req/min (POST/PUT/PATCH/DELETE)
-- REPORT_GENERATION: 5 req/5min (heavy financial report exports)
+- REPORT_GENERATION: 5 req/5min (heavy financial report exports) — يُختبر عبر `scripts/run-report-load-test.sh` بشكل مستقل
 
 ## المشاهد الفرعية — admin
 

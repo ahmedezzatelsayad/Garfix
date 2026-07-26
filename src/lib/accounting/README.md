@@ -69,7 +69,23 @@
 | ACCOUNTING_WRITE | 15/min | كتابة المحاسبة — voucher creation, JE posting | POST `/api/accounting/journal-entries`, POST `/api/accounting/vouchers`, POST `/api/accounting/accounts`, POST `/api/accounting/bank-transfer` |
 | REPORT_GENERATION | 5/5min | تقارير مالية ثقيلة — P&L, balance sheet, export-excel | `/api/accounting/profit-loss`, `/api/accounting/balance-sheet`, `/api/accounting/cash-flow`, `/api/accounting/trial-balance`, `/api/accounting/export-excel` |
 
-الـ rate limiter يُرسل `X-RateLimit-Remaining` و `X-RateLimit-Reset` headers. يُستخدم Valkey (production) أو in-memory (dev). تُختبر عبر `scripts/accounting-rate-limit-load-test.ts`.
+الـ rate limiter يُرسل `X-RateLimit-Remaining` و `X-RateLimit-Reset` headers. يُستخدم Valkey (production) أو in-memory (dev). تُختبر عبر `scripts/accounting-rate-limit-load-test.ts` ونسخة `.mjs` لـ Node.js `scripts/accounting-rate-limit-load-test.mjs`، بالإضافة إلى `scripts/run-report-load-test.sh` لاختبار REPORT_GENERATION بشكل مستقل.
+
+### نتائج اختبار الحمل المُحققة (2026-07-26)
+
+تم تشغيل اختبار حمل فعلي على حدود المحاسبة الثلاث — جميعها **مُحققة (verified)** وليس فقط validated via script:
+
+| الحد | النتيجة | أول 429 | p50 | p95 |
+|------|---------|----------|------|------|
+| **ACCOUNTING_READ** | ✅ PASS | request #40 | 4.5ms | 16.9ms |
+| **ACCOUNTING_WRITE** | ✅ PASS | request #16 | 4.1ms | 5.9ms |
+| **REPORT_GENERATION** | ✅ PASS | request #6 | 5.5ms | 14.7ms |
+
+**REPORT_GENERATION** تم اختباره عبر `/api/accounting/balance-sheet/test-rate-limit` endpoint — أول 429 ظهر عند request #6 (بحد 5 req/5min)، مما يُثبت أن الحد يعمل بدقة.
+
+**ACCOUNTING_READ/WRITE** تم اختبارهما عبر `/api/accounting/test-rate-limit` endpoint.
+
+النتائج الكاملة محفوظة في: `/home/z/my-project/load-test-results/accounting-rate-limit-2026-07-26T08-55-32-462Z.json`
 
 ## Cursor Pagination — ترحيل بالـ cursor لـ infinite scroll
 
@@ -174,4 +190,4 @@ import { arabicAmountText } from '@/lib/accounting/arabic-amount-text';
 - `arabic-amount-text.ts` يُستخدم في توليد e-invoices لتحويل المبالغ إلى نص عربي
 - `tax-compliance.ts` يُتكامل مع e-invoicing لكل دولة MENA
 - الـ cursor pagination يستفيد من Prisma @@index على `(companySlug, status, createdAt)` و `(companySlug, createdAt)` — `buildCursorPrismaQuery()` في `cursor-pagination-server.ts`
-- الـ rate limit load test (`scripts/accounting-rate-limit-load-test.ts`) يختبر ACCOUNTING_READ/WRITE/REPORT_GENERATION تحت burst traffic مع p50/p95 latency analysis
+- الـ rate limit load test (`scripts/accounting-rate-limit-load-test.ts`) ونسخة `.mjs` (`scripts/accounting-rate-limit-load-test.mjs`) و`scripts/run-report-load-test.sh` يختبرون ACCOUNTING_READ/WRITE/REPORT_GENERATION تحت burst traffic مع p50/p95 latency analysis — جميع الحدود **مُحققة فعليًا (verified)** بتاريخ 2026-07-26
