@@ -56,7 +56,7 @@
 | `adr/002-decimal-monetary-fields.md` | ترحيل Decimal للحقول المالية | تحويل القيم المالية من `String` إلى `Decimal` — Decimal Migration Report |
 | `adr/003-arabic-first-rtl.md` | Arabic-first مع RTL | التصميم العربي أولاً مع اتجاه RTL للمنطقة |
 | `adr/004-multi-tenant-shared-db.md` | Multi-tenant Shared DB | عزل Multi-tenant عبر `companySlug` في قاعدة مشتركة |
-| `adr/005-ai-fabric-cascade.md` | 16-Phase AI Cascade | نظام 16 مرحلة لتحسين تكلفة AI |
+| `adr/005-ai-fabric-cascade.md` | 20-Phase AI Cascade | نظام 20 مرحلة لتحسين تكلفة AI |
 | `adr/006-e-invoicing-mena.md` | E-Invoicing MENA | التوافق مع معايير الفوترة الإلكترونية لمنطقة MENA — E-invoicing Compliance |
 | `adr/007-nextjs-spa.md` | Next.js SPA | البنية SPA أحادية الصفحة باستخدام Next.js |
 | `adr/008-bullmq-valkey.md` | BullMQ + Valkey | استخدام BullMQ مع Valkey للـ queues الإنتاجية |

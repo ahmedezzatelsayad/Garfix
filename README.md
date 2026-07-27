@@ -34,7 +34,7 @@ bun run dev
 ```
 Garfix/
 ├── prisma/                  # Schema (74 models) + 110 @@index + Migrations
-├── e2e/                     # Playwright specs (8 files: accounting, e-invoicing, company-mgmt)
+├── e2e/                     # Playwright specs (9 files: accounting, e-invoicing, company-mgmt)
 ├── scripts/                 # Seed, bench, security-scan, rate-limit load test (~47 scripts)
 ├── docs/                    # Roadmaps, audit reports, API spec, ADRs
 │   └── api/openapi.yaml     # OpenAPI/Swagger specification
@@ -46,7 +46,7 @@ Garfix/
 │   │   ├── invoice-brain/   # Pattern-first extraction (13 files)
 │   │   ├── founder-validation/ # 1628+ test suite (11 sections)
 │   │   ├── e-invoicing/     # MENA e-invoicing (6 countries + ZATCA certs + TLV)
-│   │   ├── accounting/      # Full accounting engine (16 modules)
+│   │   ├── accounting/      # Full accounting engine (18 modules)
 │   │   ├── billing/         # Subscription engine + pricing
 │   │   ├── workers/         # BullMQ + pg-boss background jobs (5 workers)
 │   │   ├── ai/              # Router, cost tracker, registry (6 files)
@@ -96,7 +96,7 @@ Garfix/
 - **Prisma Indexing** — 110 @@index directives على companySlug, status, createdAt, و composite fields لضمان أداء الاستعلامات على 74 models
 - **Landing Page** — صفحة رئيسية تسويقية `EnhancedLandingPage.tsx` مع sections متعددة
 - **PWA Support** — Service worker + manifest + offline capability
-- **Full Accounting** — 16 modules: journals, AR/AP, banking, fixed assets, payroll/WPS, trade finance, consolidation, budgets, tax compliance, cost centers
+- **Full Accounting** — 18 modules: journals, AR/AP, banking, fixed assets, payroll/WPS, trade finance, consolidation, budgets, tax compliance, cost centers, Arabic amount text, financial dashboard
 
 ## Architecture
 
@@ -173,7 +173,7 @@ API Request → withMetrics() wrapper
 - **MetricsRegistry** — counters, gauges, histograms مع cardinality limits و redaction
 - **TraceContext** — distributed tracing مع trace/span IDs, request correlation
 - **SLO Definitions** — 10 SLOs عبر 4 categories: availability (api 99.9%, auth 99.95%), latency (p95 < 200ms, p99 < 500ms, AI < 2000ms, invoice < 300ms), correctness (accounting 100%, AI cost 99%), durability (data 100%, audit 100%)
-- **OTLP Export** — `OTEL_EXPORTER_OTLP_ENDPOINT` env var يفعّل OTLP/JSON POST إلى collector (configured in `.env.production`) — zero external dependencies, pure TypeScript ~5KB
+- **OTLP Export** — `OTEL_EXPORTER_OTLP_ENDPOINT` env var يفعّل OTLP/JSON POST إلى collector (configured in `docker-compose.yml` environment + `.env.example`) — zero external dependencies, pure TypeScript ~5KB — graceful fallback: when unset, metrics still recorded internally but NOT pushed externally
 - **Metrics Endpoints** — `/api/metrics/prometheus`, `/api/metrics/observability`, `/api/metrics/slo`
 
 ## RBAC Architecture
@@ -185,7 +185,7 @@ User ──► Role (viewer → employee → editor → admin → founder) — 5
          PermissionScope (own / team / company / platform)
               │
               ▼
-         PermissionLevel (none=0, read=1, write=2, approve=3, admin=4, delete=10, print=11, export=12, e_invoice=13, manage_prices=14, bulk_input=15, manage_periods=16, reconcile=17, file=18, initiate=19, convert=20, calculate=21, generate=22, manage_permissions=23, manage=50)
+         PermissionLevel (none=0, read=1, write=2, approve=3, admin=4, delete=10, print=11, export=12, e_invoice=13, bulk_input=14, manage_prices=15) — 11 levels across admin + special actions
               │
               ▼
          ResourcePermission (invoice:read, invoice:write, invoice:approve, ...)
@@ -331,7 +331,7 @@ node scripts/accounting-rate-limit-load-test.mjs --url=http://localhost:3000 --s
 - Observability: metrics + tracing tests
 - Responsive design: validation tests
 - Decimal migration: type safety tests
-- 8 ملفات E2E (Playwright): auth, invoices, clients, dashboard, settings, api-health, accounting, e-invoicing, company-management
+- 9 ملفات E2E (Playwright): auth, invoices, clients, dashboard, settings, api-health, accounting, e-invoicing, company-management
 
 ## Founder Validation Suite
 

@@ -68,7 +68,7 @@ bun scripts/accounting-rate-limit-load-test.ts --url=http://localhost:3000 --dur
 
 ### ملاحظة الإنتاج
 
-ملف `.env.production` يتضمن الآن `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` لدعم تصدير بيانات المراقبة (OpenTelemetry) إلى collector محلي.
+يتم تكوين `OTEL_EXPORTER_OTLP_ENDPOINT` في `docker-compose.yml` environment و `.env.example` لدعم تصدير بيانات المراقبة (OpenTelemetry) إلى collector. عند عدم تعيين المتغير، المراقبة تسجل المقاييس محلياً فقط (متاحة عبر `/api/metrics/prometheus` و `/api/metrics/observability`) لكن لا تدفع إلى collector خارجي — graceful fallback.
 
 ## Cursor Pagination — التصفح بالـ Cursor
 
@@ -97,7 +97,7 @@ Response: { entries: [...], nextCursor: "124" | null }
 
 ## AI Routes — عبر AI Fabric
 
-جميع مسارات AI تمر عبر `executeCascade()` — 16-phase cascade engine:
+جميع مسارات AI تمر عبر `executeCascade()` — 20-phase cascade engine:
 
 ```ts
 import { executeCascade } from '@/lib/ai-fabric/gateway';

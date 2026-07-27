@@ -119,6 +119,14 @@ services:
       # SEC-H4 (Cycle 3): set to "true" AFTER rolling out registerSession-on-
       # issue and waiting one access-token TTL (30 min). See auth.ts comment.
       SESSION_REGISTRY_ENFORCED: ${SESSION_REGISTRY_ENFORCED:-false}
+
+      # OpenTelemetry / Observability
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-garfix-eos}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # When unset, observability still records metrics internally
+      # (available at /api/metrics/prometheus and /api/metrics/observability)
+      # but does NOT push to an external collector. Set to your OTLP
+      # collector URL (e.g. http://jaeger:4318) to enable trace/metrics export.
     volumes:
       - app-storage:/app/storage
       # CONT-002 FIX (Cycle 3): tmpfs mounts for the writable directories

@@ -28,7 +28,7 @@
 
 | الميزة | الوصف |
 |--------|-------|
-| Cascade Monitoring | مراقبة الـ 16-phase cascade في الوقت الحقيقي |
+| Cascade Monitoring | مراقبة الـ 20-phase cascade في الوقت الحقيقي |
 | Provider Status | حالة كل AI provider (OpenRouter, DeepSeek, etc.) |
 | Cost Dashboard | تكلفة AI لكل مستأجر ونموذج |
 

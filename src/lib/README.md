@@ -28,7 +28,7 @@
 |-------|---------|
 | `middleware.ts` | Auth middleware + tenant resolution + CSRF protection |
 | `api.ts` | API helpers: `requirePermissionForCompany()`, `resolveSecret()`, error formatting |
-| `rateLimit.ts` | 10 حدود rate limiting مخصصة — per-endpoint, per-tenant, accounting-specific (ACCOUNTING_READ: 40/min, ACCOUNTING_WRITE: 15/min, REPORT_GENERATION: 5/5min) — **verified**: ACCOUNTING_READ first 429 at #40 ✓, ACCOUNTING_WRITE first 429 at #16 ✓, REPORT_GENERATION first 429 at #6 ✓ (p50=5.5ms, p95=14.7ms) |
+| `rateLimit.ts` | 11 حدود rate limiting مخصصة — per-endpoint, per-tenant, accounting-specific (ACCOUNTING_READ: 40/min, ACCOUNTING_WRITE: 15/min, REPORT_GENERATION: 5/5min) — **verified**: ACCOUNTING_READ first 429 at #40 ✓, ACCOUNTING_WRITE first 429 at #16 ✓, REPORT_GENERATION first 429 at #6 ✓ (p50=5.5ms, p95=14.7ms) |
 | `logger.ts` | Structured logging (Pino) — request tracing, audit events |
 | `db.ts` | Prisma client مع pool config (SQLite dev / PostgreSQL prod) |
 | `cursor-pagination-server.ts` | Cursor pagination helpers — `parseCursorParams`, `buildCursorPrismaQuery`, `buildCursorResponse` for API route handlers |
@@ -46,7 +46,7 @@
 | `audit.ts` | Audit trail — تسجيل كل عملية مع full context |
 | `auditExport.ts` | تصدير سجلات المراجعة — CSV, PDF, JSON formats |
 | `tamperAudit.ts` | حماية من التلاعب — hash chains, integrity verification |
-| `observability.ts` | مراقبة وقياسات — OpenTelemetry-compatible metrics, tracing, **10 SLO definitions** (availability, latency, correctness, durability), periodic flush 60s, OTEL_EXPORTER_OTLP_ENDPOINT support (configured in `.env.production`) |
+| `observability.ts` | مراقبة وقياسات — OpenTelemetry-compatible metrics, tracing, **10 SLO definitions** (availability, latency, correctness, durability), periodic flush 60s, OTEL_EXPORTER_OTLP_ENDPOINT support (configured in `docker-compose.yml` environment + `.env.example`) |
 | `usageMeter.ts` | قياس الاستخدام — per-tenant feature & API usage metering |
 | `startupCheck.ts` | فحص بدء التشغيل — dependency verification, config validation |
 
@@ -170,7 +170,7 @@
 | `oman-tax.ts` | Oman Tax — generation & submission |
 | `retention.ts` | احتفاظ الفواتير — archival & retention policy |
 
-### `accounting/` — المحاسبة (16 ملف + 16 اختبارات)
+### `accounting/` — المحاسبة (18 ملف + 16 اختبارات)
 
 | الملف | الوظيفة |
 |-------|---------|
@@ -263,7 +263,7 @@ const safe = validateExternalUrl(userProvidedUrl); // blocks internal IPs
 | `ai-fabric/` | 20 |
 | `invoice-brain/` | 13 |
 | `e-invoicing/` | 12 |
-| `accounting/` | 16 |
+| `accounting/` | 18 |
 | `billing/` | 2 |
 | `integrations/` | 7 |
 | `workers/` | 5 |

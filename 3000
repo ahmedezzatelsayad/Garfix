@@ -1,0 +1,10 @@
+▲ Next.js 16.2.11 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://21.0.2.159:3000
+- Environments: .env
+✓ Ready in 288ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+- Experiments (use with caution):
+  · optimizePackageImports
+
+[2026-07-27T05:53:26.620Z] WARN  [rate-limit] FALLBACK to in-memory — VALKEY_URL/REDIS_URL not set. This is fine for the sandbox/single-instance dev, but will NOT protect a multi-instance production deployment. Set VALKEY_URL or REDIS_URL in production.
