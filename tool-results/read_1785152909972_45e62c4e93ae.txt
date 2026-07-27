@@ -1,0 +1,1506 @@
+     1→// Responsive: sm/md/lg breakpoints added
+     2→"use client";
+     3→
+     4→import { useEffect, useState, useCallback, Suspense, lazy } from "react";
+     5→import { useBrand } from "@/context/BrandContext";
+     6→import { authedFetch } from "@/context/AuthContext";
+     7→import { toast } from "sonner";
+     8→import {
+     9→  useAccountsCursor,
+    10→  useJournalEntriesCursor,
+    11→} from "@/hooks/queries/accounting";
+    12→import {
+    13→  Plus, Calculator, X, Trash2, Scale, FileBarChart,
+    14→  TrendingUp, TrendingDown, Wallet, Download, RotateCcw,
+    15→  LayoutDashboard, Clock, Building, BarChart3, Landmark,
+    16→  ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, XCircle,
+    17→  Calendar, DollarSign, ArrowUpDown,
+    18→  FileText, Receipt, Globe, CreditCard, Building2, Package, Users,
+    19→} from "lucide-react";
+    20→import { cn } from "@/lib/utils";
+    21→
+    22→/* ─── Lazy-loaded sub-view imports ──────────────────────────────────────── */
+    23→const LazyArApView = lazy(() => import("@/modules/accounting/ArApView"));
+    24→const LazyBankingView = lazy(() => import("@/modules/accounting/BankingView"));
+    25→const LazyPayrollWpsView = lazy(() => import("@/modules/accounting/PayrollWpsView"));
+    26→const LazyFixedAssetsView = lazy(() => import("@/modules/accounting/FixedAssetsView"));
+    27→const LazyInventoryCostingView = lazy(() => import("@/modules/accounting/InventoryCostingView"));
+    28→const LazyVouchersDetailView = lazy(() => import("@/modules/accounting/VouchersDetailView").then((m) => ({ default: m.VouchersDetailView })));
+    29→const LazyTaxComplianceView = lazy(() => import("@/modules/accounting/TaxComplianceView"));
+    30→const LazyTradeFinanceView = lazy(() => import("@/modules/accounting/TradeFinanceView").then((m) => ({ default: m.TradeFinanceView })));
+    31→const LazyBudgetsView = lazy(() => import("@/modules/accounting/BudgetsView").then((m) => ({ default: m.BudgetsView })));
+    32→const LazyAccountantCollabView = lazy(() => import("@/modules/accounting/AccountantCollabView").then((m) => ({ default: m.AccountantCollabView })));
+    33→const LazyPaymentRailsView = lazy(() => import("@/modules/accounting/PaymentRailsView").then((m) => ({ default: m.PaymentRailsView })));
+    34→const LazyMultiCompanyView = lazy(() => import("@/modules/accounting/MultiCompanyView"));
+    35→
+    36→/* ─── Types ────────────────────────────────────────────────────────────────── */
+    37→type ModuleTab =
+    38→  | "core"          // existing monolithic content (accounts, journal, trial, statements, fiscal-periods, cost-centers, aging, banking, dashboard)
+    39→  | "dashboard"     // Financial dashboard (calls /api/accounting/financial-dashboard)
+    40→  | "ar-ap"         // ArApView
+    41→  | "banking"       // BankingView
+    42→  | "payroll"       // PayrollWpsView
+    43→  | "fixed-assets"  // FixedAssetsView
+    44→  | "inventory"     // InventoryCostingView
+    45→  | "vouchers"      // VouchersDetailView
+    46→  | "tax"           // TaxComplianceView
+    47→  | "trade"         // TradeFinanceView
+    48→  | "budgets"       // BudgetsView
+    49→  | "collab"        // AccountantCollabView
+    50→  | "payments"      // PaymentRailsView
+    51→  | "multi-company"; // MultiCompanyView
+    52→
+    53→type Tab = "dashboard" | "accounts" | "journal" | "trial" | "statements" | "fiscal-periods" | "cost-centers" | "aging" | "banking";
+    54→type StatementType = "profit-loss" | "balance-sheet" | "cash-flow";
+    55→
+    56→interface Account { id: number; code: string; nameAr: string; nameEn?: string; type: string; balance: number; currency: string; }
+    57→interface JournalLine { id: number; accountId: number; debit: number; credit: number; description?: string; }
+    58→interface JournalEntry { id: number; date: string; description?: string; reference?: string; status: string; lines: JournalLine[]; }
+    59→interface TrialRow {
+    60→  id: number; code: string; nameAr: string; type: string;
+    61→  totalDebit: number; totalCredit: number; balance: number;
+    62→}
+    63→interface FiscalPeriod { id: number; name: string; startDate: string; endDate: string; status: string; closedAt?: string; }
+    64→interface CostCenter { id: number; code: string; nameAr: string; parentId?: number | null; type: string; budget?: number; actual?: number; }
+    65→interface AgingBucket { range: string; receivable: number; payable: number; count: number; }
+    66→interface BankAccount { id: number; name: string; bankName: string; accountNumber: string; currency: string; balance: number; iban?: string; }
+    67→
+    68→/* ─── Module Tab Definitions ───────────────────────────────────────────────── */
+    69→const MODULE_TABS: Array<{ key: ModuleTab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    70→  { key: "core", label: "المحاسبة الأساسية", icon: Calculator },
+    71→  { key: "dashboard", label: "لوحة التحكم المالية", icon: LayoutDashboard },
+    72→  { key: "ar-ap", label: "الذمم المدينة/الدائنة", icon: ArrowUpDown },
+    73→  { key: "banking", label: "البنوك والتسوية", icon: Landmark },
+    74→  { key: "payroll", label: "الرواتب/WPS", icon: DollarSign },
+    75→  { key: "fixed-assets", label: "الأصول الثابتة", icon: Building },
+    76→  { key: "inventory", label: "تكلفة المخزون", icon: Package },
+    77→  { key: "vouchers", label: "السندات والعروض", icon: FileText },
+    78→  { key: "tax", label: "الضرائب والامتثال", icon: Receipt },
+    79→  { key: "trade", label: "التمويل التجاري", icon: Globe },
+    80→  { key: "budgets", label: "الموازنات", icon: BarChart3 },
+    81→  { key: "collab", label: "المحاسب الخارجي", icon: Users },
+    82→  { key: "payments", label: "طرق الدفع المحلية", icon: CreditCard },
+    83→  { key: "multi-company", label: "الشركات المتعددة", icon: Building2 },
+    84→];
+    85→
+    86→const PAGE_SIZE = 20;
+    87→
+    88→export function AccountingView() {
+    89→  const { activeCompany } = useBrand();
+    90→  const [moduleTab, setModuleTab] = useState<ModuleTab>("core");
+    91→
+    92→  /* ─── Cursor pagination hooks (TanStack Query infinite scroll) ──────── */
+    93→  const accountsCursor = useAccountsCursor(activeCompany?.slug || "", { limit: 50 });
+    94→  const journalCursor = useJournalEntriesCursor(activeCompany?.slug || "", { limit: 20 });
+    95→
+    96→  /* ─── Core sub-module state (preserved exactly as-is) ────────────────── */
+    97→  const [tab, setTab] = useState<Tab>("accounts");
+    98→  const [trial, setTrial] = useState<{ accounts: TrialRow[]; grandDebit: number; grandCredit: number; isBalanced: boolean } | null>(null);
+    99→  const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriod[]>([]);
+   100→  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+   101→  const [agingData, setAgingData] = useState<AgingBucket[]>([]);
+   102→  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+   103→  const [loading, setLoading] = useState(true);
+   104→  const [showForm, setShowForm] = useState(false);
+   105→  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+   106→  const [currentPage, setCurrentPage] = useState(1);
+   107→  const [bulkDeleting, setBulkDeleting] = useState(false);
+   108→  const [reversingId, setReversingId] = useState<number | null>(null);
+   109→  const [reverseConfirm, setReverseConfirm] = useState<JournalEntry | null>(null);
+   110→
+   111→  const load = useCallback(async () => {
+   112→    if (!activeCompany) { setLoading(false); return; }
+   113→    setLoading(true);
+   114→    // Accounts and journal entries are now fetched via cursor pagination hooks
+   115→    // (useAccountsCursor / useJournalEntriesCursor) — no manual fetch needed.
+   116→    // We still load trial balance, fiscal periods, etc. manually.
+   117→    try {
+   118→      await Promise.all([
+   119→        accountsCursor.refetch(),
+   120→        journalCursor.refetch(),
+   121→      ]);
+   122→    } catch (err) {
+   123→      toast.error(err instanceof Error ? err.message : "تعذّر تحميل بيانات المحاسبة");
+   124→    } finally { setLoading(false); }
+   125→  }, [activeCompany]);
+   126→
+   127→  const loadTrial = useCallback(async () => {
+   128→    if (!activeCompany) return;
+   129→    try {
+   130→      const res = await authedFetch(`/api/accounting/trial-balance?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   131→      if (!res.ok) {
+   132→        const e = await res.json().catch(() => ({}));
+   133→        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل ميزان المراجعة");
+   134→        setTrial(null);
+   135→        return;
+   136→      }
+   137→      setTrial(await res.json());
+   138→    } catch (err) {
+   139→      toast.error(err instanceof Error ? err.message : "تعذّر تحميل ميزان المراجعة");
+   140→      setTrial(null);
+   141→    }
+   142→  }, [activeCompany]);
+   143→
+   144→  const loadFiscalPeriods = useCallback(async () => {
+   145→    if (!activeCompany) return;
+   146→    try {
+   147→      const res = await authedFetch(`/api/accounting/fiscal-periods?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   148→      if (res.ok) { const d = await res.json(); setFiscalPeriods(d.periods || []); }
+   149→      else { setFiscalPeriods([]); }
+   150→    } catch { setFiscalPeriods([]); }
+   151→  }, [activeCompany]);
+   152→
+   153→  const loadCostCenters = useCallback(async () => {
+   154→    if (!activeCompany) return;
+   155→    try {
+   156→      const res = await authedFetch(`/api/accounting/cost-centers?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   157→      if (res.ok) { const d = await res.json(); setCostCenters(d.costCenters || []); }
+   158→      else { setCostCenters([]); }
+   159→    } catch { setCostCenters([]); }
+   160→  }, [activeCompany]);
+   161→
+   162→  const loadAging = useCallback(async () => {
+   163→    if (!activeCompany) return;
+   164→    try {
+   165→      const res = await authedFetch(`/api/accounting/aging?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   166→      if (res.ok) { const d = await res.json(); setAgingData(d.buckets || []); }
+   167→      else { setAgingData([]); }
+   168→    } catch { setAgingData([]); }
+   169→  }, [activeCompany]);
+   170→
+   171→  const loadBankAccounts = useCallback(async () => {
+   172→    if (!activeCompany) return;
+   173→    try {
+   174→      const res = await authedFetch(`/api/accounting/bank-accounts?companySlug=${encodeURIComponent(activeCompany.slug)}`);
+   175→      if (res.ok) { const d = await res.json(); setBankAccounts(d.accounts || []); }
+   176→      else { setBankAccounts([]); }
+   177→    } catch { setBankAccounts([]); }
+   178→  }, [activeCompany]);
+   179→
+   180→  useEffect(() => { load(); }, [load]);
+   181→  useEffect(() => {
+   182→    if (tab === "trial" && activeCompany) loadTrial();
+   183→    if (tab === "fiscal-periods" && activeCompany) loadFiscalPeriods();
+   184→    if (tab === "cost-centers" && activeCompany) loadCostCenters();
+   185→    if (tab === "aging" && activeCompany) loadAging();
+   186→    if (tab === "banking" && activeCompany) loadBankAccounts();
+   187→    if (tab === "dashboard" && activeCompany) { load(); loadAging(); loadBankAccounts(); }
+   188→  }, [tab, activeCompany, loadTrial, loadFiscalPeriods, loadCostCenters, loadAging, loadBankAccounts, load]);
+   189→
+   190→  const switchTab = (t: Tab) => {
+   191→    setTab(t);
+   192→    setShowForm(false);
+   193→    setSelectedIds(new Set());
+   194→    setCurrentPage(1);
+   195→  };
+   196→
+   197→  // Derived data from cursor pagination hooks (replaces manual state)
+   198→  const accounts = accountsCursor.items as Account[];
+   199→  const entries = journalCursor.items as JournalEntry[];
+   200→  const accountsHasNextPage = accountsCursor.hasNextPage;
+   201→  const accountsFetchingNext = accountsCursor.isFetchingNextPage;
+   202→  const entriesHasNextPage = journalCursor.hasNextPage;
+   203→  const entriesFetchingNext = journalCursor.isFetchingNextPage;
+   204→
+   205→  const itemsForTab = (): Array<{ id: number }> => (tab === "accounts" ? accounts : entries);
+   206→
+   207→  const allItems = itemsForTab();
+   208→  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+   209→  const pageItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+   210→  const safePage = Math.min(currentPage, totalPages);
+   211→
+   212→  const toggleSelectAll = () => {
+   213→    if (selectedIds.size === pageItems.length && pageItems.length > 0) setSelectedIds(new Set());
+   214→    else setSelectedIds(new Set(pageItems.map((i) => i.id)));
+   215→  };
+   216→  const toggleRow = (id: number) => {
+   217→    setSelectedIds((prev) => {
+   218→      const next = new Set(prev);
+   219→      if (next.has(id)) next.delete(id);
+   220→      else next.add(id);
+   221→      return next;
+   222→    });
+   223→  };
+   224→  const handleBulkDelete = async () => {
+   225→    if (selectedIds.size === 0) return;
+   226→    if (!confirm(`حذف ${selectedIds.size} عنصر؟`)) return;
+   227→    const endpoint = tab === "accounts" ? "/api/accounting/accounts" : "/api/accounting/journal-entries";
+   228→    setBulkDeleting(true);
+   229→    let okCount = 0, failCount = 0;
+   230→    for (const id of selectedIds) {
+   231→      try {
+   232→        const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
+   233→        if (res.ok) okCount++;
+   234→        else { failCount++; }
+   235→      } catch { failCount++; }
+   236→    }
+   237→    setBulkDeleting(false);
+   238→    setSelectedIds(new Set());
+   239→    if (okCount > 0) toast.success(`تم حذف ${okCount} عنصر`);
+   240→    if (failCount > 0) toast.error(`تعذّر حذف ${failCount} عنصر`);
+   241→    load();
+   242→  };
+   243→  const handleDelete = async (id: number) => {
+   244→    if (!confirm("حذف هذا العنصر؟")) return;
+   245→    const endpoint = tab === "accounts" ? "/api/accounting/accounts" : "/api/accounting/journal-entries";
+   246→    const res = await authedFetch(`${endpoint}/${id}`, { method: "DELETE" });
+   247→    if (res.ok) { toast.success("تم الحذف"); load(); }
+   248→    else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الحذف"); }
+   249→  };
+   250→
+   251→  const handleReverse = async (entry: JournalEntry) => {
+   252→    if (!activeCompany) return;
+   253→    setReverseConfirm(entry);
+   254→  };
+   255→
+   256→  const confirmReverse = async () => {
+   257→    if (!reverseConfirm || !activeCompany) return;
+   258→    const entry = reverseConfirm;
+   259→    setReversingId(entry.id);
+   260→    try {
+   261→      const url = `/api/accounting/journal-entries/${entry.id}/reverse?companySlug=${encodeURIComponent(activeCompany.slug)}`;
+   262→      const res = await authedFetch(url, { method: "POST" });
+   263→      if (!res.ok) {
+   264→        const e = await res.json().catch(() => ({}));
+   265→        throw new Error(e.error || "تعذّر العكس");
+   266→      }
+   267→      const data = await res.json().catch(() => ({}));
+   268→      const reversalId = data?.reversal?.id;
+   269→      toast.success(reversalId ? `تم إنشاء قيد عكسي #${reversalId}` : "تم عكس القيد");
+   270→      setReverseConfirm(null);
+   271→      await load();
+   272→    } catch (err) {
+   273→      toast.error(err instanceof Error ? err.message : "خطأ أثناء العكس");
+   274→    } finally { setReversingId(null); }
+   275→  };
+   276→
+   277→  const pageBtnStyle = (disabled: boolean): string =>
+   278→    disabled
+   279→      ? "py-1.5 px-3 rounded-md bg-transparent text-muted-foreground border border-border text-[12px] font-bold cursor-not-allowed opacity-50"
+   280→      : "py-1.5 px-3 rounded-md bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer";
+   281→
+   282→  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
+   283→
+   284→  const ACCOUNT_TYPES: Record<string, { label: string; color: string; badge: string }> = {
+   285→    asset: { label: "أصول", color: "#10b981", badge: "bg-emerald-500/15 text-emerald-500" },
+   286→    liability: { label: "خصوم", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
+   287→    equity: { label: "حقوق ملكية", color: "#7c3aed", badge: "bg-violet-500/15 text-violet-500" },
+   288→    revenue: { label: "إيرادات", color: "#3b82f6", badge: "bg-blue-500/15 text-blue-500" },
+   289→    expense: { label: "مصروفات", color: "#f59e0b", badge: "bg-amber-500/15 text-amber-500" },
+   290→    contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
+   291→    contra_asset: { label: "مقابل أصول", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
+   292→  };
+   293→
+   294→  const tabs: Array<{ key: Tab; label: string; icon?: React.ComponentType<{ size?: number }> }> = [
+   295→    { key: "dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
+   296→    { key: "accounts", label: `الحسابات (${accounts.length})` },
+   297→    { key: "journal", label: `القيود (${entries.length})` },
+   298→    { key: "trial", label: "ميزان المراجعة", icon: Scale },
+   299→    { key: "statements", label: "القوائم المالية", icon: FileBarChart },
+   300→    { key: "fiscal-periods", label: "الفترات المالية", icon: Clock },
+   301→    { key: "cost-centers", label: "مراكز التكلفة", icon: Building },
+   302→    { key: "aging", label: "تقادم الذمم", icon: BarChart3 },
+   303→    { key: "banking", label: "البنوك", icon: Landmark },
+   304→  ];
+   305→
+   306→  // Dashboard metrics
+   307→  const totalRevenue = accounts.filter(a => a.type === "revenue").reduce((s, a) => s + a.balance, 0);
+   308→  const totalExpenses = accounts.filter(a => a.type === "expense").reduce((s, a) => s + a.balance, 0);
+   309→  const totalAssets = accounts.filter(a => a.type === "asset").reduce((s, a) => s + a.balance, 0);
+   310→  const totalLiabilities = accounts.filter(a => a.type === "liability").reduce((s, a) => s + a.balance, 0);
+   311→  const netProfit = totalRevenue - totalExpenses;
+   312→  const totalAR = agingData.reduce((s, b) => s + b.receivable, 0);
+   313→  const totalAP = agingData.reduce((s, b) => s + b.payable, 0);
+   314→  const totalCash = bankAccounts.reduce((s, b) => s + b.balance, 0);
+   315→  const currentPeriod = fiscalPeriods.find(p => p.status === "open");
+   316→
+   317→  /* ─── Render ──────────────────────────────────────────────────────────── */
+   318→  return (
+   319→    <div className="flex flex-col gap-4">
+   320→      {/* Module-level header */}
+   321→      <div className="flex flex-wrap justify-between items-center gap-3">
+   322→        <div><h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><Calculator size={20} /> المحاسبة</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+   323→      </div>
+   324→
+   325→      {/* Module-level navigation tabs (top row, visually distinct) */}
+   326→      <div className="flex gap-1.5 flex-wrap bg-muted/50 rounded-[12px] p-2">
+   327→        {MODULE_TABS.map((mt) => {
+   328→          const Icon = mt.icon;
+   329→          const active = moduleTab === mt.key;
+   330→          return (
+   331→            <button
+   332→              key={mt.key}
+   333→              onClick={() => setModuleTab(mt.key)}
+   334→              className={cn(
+   335→                "py-2.5 px-4 rounded-[10px] text-[13px] font-bold cursor-pointer inline-flex items-center gap-2 transition-colors",
+   336→                active
+   337→                  ? "bg-primary text-primary-foreground shadow-sm"
+   338→                  : "bg-card text-muted-foreground border border-border hover:bg-accent hover:text-accent-foreground",
+   339→              )}
+   340→            >
+   341→              <Icon size={16} />
+   342→              {mt.label}
+   343→            </button>
+   344→          );
+   345→        })}
+   346→      </div>
+   347→
+   348→      {/* ─── Module content ─────────────────────────────────────────────── */}
+   349→      {moduleTab === "core" ? (
+   350→        /* ─── Core sub-module: exact original inner content ───────────── */
+   351→        <>
+   352→          <div className="flex flex-wrap justify-between items-center gap-3">
+   353→            {(tab === "accounts" || tab === "journal" || tab === "fiscal-periods" || tab === "cost-centers" || tab === "banking") && (
+   354→              <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+   355→            )}
+   356→          </div>
+   357→          <div className="flex gap-1.5 flex-wrap">
+   358→            {tabs.map((t) => {
+   359→              const Icon = t.icon;
+   360→              return (
+   361→                <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
+   362→                  "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5",
+   363→                  tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   364→                )}>
+   365→                  {Icon && <Icon size={14} />}
+   366→                  {t.label}
+   367→                </button>
+   368→              );
+   369→            })}
+   370→          </div>
+   371→
+   372→          {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "dashboard" ? (
+   373→            <FinancialDashboard
+   374→              totalRevenue={totalRevenue}
+   375→              totalExpenses={totalExpenses}
+   376→              netProfit={netProfit}
+   377→              totalAssets={totalAssets}
+   378→              totalLiabilities={totalLiabilities}
+   379→              totalAR={totalAR}
+   380→              totalAP={totalAP}
+   381→              totalCash={totalCash}
+   382→              currentPeriod={currentPeriod}
+   383→              entriesCount={entries.length}
+   384→              accountsCount={accounts.length}
+   385→            />
+   386→          ) : tab === "trial" ? (
+   387→            <TrialBalanceTable data={trial} loading={loading} />
+   388→          ) : tab === "statements" ? (
+   389→            <FinancialStatements company={activeCompany} />
+   390→          ) : tab === "fiscal-periods" ? (
+   391→            showForm ? <FiscalPeriodForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadFiscalPeriods(); }} /> : (
+   392→              <FiscalPeriodsTable periods={fiscalPeriods} company={activeCompany} onRefresh={loadFiscalPeriods} />
+   393→            )
+   394→          ) : tab === "cost-centers" ? (
+   395→            showForm ? <CostCenterForm company={activeCompany} costCenters={costCenters} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadCostCenters(); }} /> : (
+   396→              <CostCentersTable costCenters={costCenters} />
+   397→            )
+   398→          ) : tab === "aging" ? (
+   399→            <AgingReport data={agingData} totalAR={totalAR} totalAP={totalAP} />
+   400→          ) : tab === "banking" ? (
+   401→            showForm ? <BankAccountForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadBankAccounts(); }} /> : (
+   402→              <BankAccountsList accounts={bankAccounts} company={activeCompany} onRefresh={loadBankAccounts} />
+   403→            )
+   404→          ) : showForm ? (
+   405→            tab === "accounts" ? (
+   406→              <AccountForm company={activeCompany} accounts={accounts} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />
+   407→            ) : (
+   408→              <JournalForm company={activeCompany} accounts={accounts} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />
+   409→            )
+   410→          ) : (
+   411→            <>
+   412→              {selectedIds.size > 0 && (
+   413→                <div className="py-2.5 px-4 bg-destructive text-white rounded-[10px] flex flex-wrap justify-between items-center gap-2">
+   414→                  <span className="font-bold text-[13px]">{selectedIds.size} عنصر محدد</span>
+   415→                  <div className="flex gap-2">
+   416→                    <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-md py-1.5 px-3.5 text-[12px] font-bold cursor-pointer disabled:cursor-not-allowed">إلغاء التحديد</button>
+   417→                    <button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-md py-1.5 px-3.5 text-[12px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
+   418→                  </div>
+   419→                </div>
+   420→              )}
+   421→
+   422→              <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   423→                {allItems.length === 0 ? <Empty label={tab === "accounts" ? "حسابات" : "قيود يومية"} /> : (
+   424→                  <>
+   425→                    <div className="overflow-x-auto garfix-scroll">
+   426→                      {tab === "accounts" ? (
+   427→                        <table className="w-full border-collapse">
+   428→                          <thead><tr className="border-b border-border bg-muted">
+   429→                            <th scope="col" className={thCheck}><input type="checkbox" checked={selectedIds.size === pageItems.length && pageItems.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   430→                            <th scope="col" className={thStyle}>الكود</th><th scope="col" className={thStyle}>الاسم</th><th scope="col" className={thStyle}>النوع</th>
+   431→                            <th scope="col" className={thStyle}>الرصيد</th><th scope="col" className={thStyle}>العملة</th><th scope="col" className={thStyle}>إجراء</th>
+   432→                          </tr></thead>
+   433→                          <tbody>
+   434→                            {(pageItems as Account[]).map((a) => {
+   435→                              const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
+   436→                              const checked = selectedIds.has(a.id);
+   437→                              return (
+   438→                                <tr key={a.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   439→                                  <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(a.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${a.nameAr}`} /></td>
+   440→                                  <td className={cn(tdStyle, "font-mono")}>{a.code}</td>
+   441→                                  <td className={cn(tdStyle, "font-bold")}>{a.nameAr}</td>
+   442→                                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.badge)}>{t.label}</span></td>
+   443→                                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{a.balance.toLocaleString("ar-EG")}</td>
+   444→                                  <td className={tdStyle}>{a.currency}</td>
+   445→                                  <td className={tdStyle}><button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button></td>
+   446→                                </tr>
+   447→                              );
+   448→                            })}
+   449→                          </tbody>
+   450→                        </table>
+   451→                      ) : (
+   452→                        <table className="w-full border-collapse">
+   453→                          <thead><tr className="border-b border-border bg-muted">
+   454→                            <th scope="col" className={thCheck}><input type="checkbox" checked={selectedIds.size === pageItems.length && pageItems.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
+   455→                            <th scope="col" className={thStyle}>التاريخ</th><th scope="col" className={thStyle}>الوصف</th>
+   456→                            <th scope="col" className={thStyle}>المرجع</th><th scope="col" className={thStyle}>الحالة</th><th scope="col" className={thStyle}>البنود</th><th scope="col" className={thStyle}>إجراء</th>
+   457→                          </tr></thead>
+   458→                          <tbody>
+   459→                            {(pageItems as JournalEntry[]).map((e) => {
+   460→                              const checked = selectedIds.has(e.id);
+   461→                              const canReverse = e.status === "posted";
+   462→                              return (
+   463→                                <tr key={e.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   464→                                  <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(e.id)} className="cursor-pointer w-4 h-4" aria-label="تحديد قيد" /></td>
+   465→                                  <td className={tdStyle}>{e.date}</td>
+   466→                                  <td className={cn(tdStyle, "font-bold")}>{e.description || "—"}</td>
+   467→                                  <td className={cn(tdStyle, "font-mono")}>{e.reference || "—"}</td>
+   468→                                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : e.status === "draft" ? "مسودة" : "معكوس"}</span></td>
+   469→                                  <td className={tdStyle}>{e.lines?.length || 0}</td>
+   470→                                  <td className={tdStyle}>
+   471→                                    <div className="flex items-center gap-1.5">
+   472→                                      {tab === "journal" && (
+   473→                                        <button onClick={() => handleReverse(e)} disabled={!canReverse || reversingId === e.id} title={canReverse ? "عكس القيد" : "لا يمكن العكس"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md border border-border transition-colors", canReverse ? "hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-600 cursor-pointer" : "opacity-30 cursor-not-allowed")}>
+   474→                                          <RotateCcw size={13} className={reversingId === e.id ? "animate-spin" : ""} />
+   475→                                        </button>
+   476→                                      )}
+   477→                                      <button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
+   478→                                    </div>
+   479→                                  </td>
+   480→                                </tr>
+   481→                              );
+   482→                            })}
+   483→                          </tbody>
+   484→                        </table>
+   485→                      )}
+   486→                    </div>
+   487→                    <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
+   488→                      <span className="text-[12px] text-muted-foreground">{allItems.length} عنصر</span>
+   489→                      <div className="flex items-center gap-1.5">
+   490→                        {/* Cursor pagination: Load More button for infinite scroll */}
+   491→                        {(tab === "accounts" && accountsHasNextPage) && (
+   492→                          <button
+   493→                            onClick={() => accountsCursor.fetchNextPage()}
+   494→                            disabled={accountsFetchingNext}
+   495→                            className={pageBtnStyle(accountsFetchingNext)}
+   496→                          >
+   497→                            {accountsFetchingNext ? "جاري التحميل..." : "تحميل المزيد"}
+   498→                          </button>
+   499→                        )}
+   500→                        {(tab === "journal" && entriesHasNextPage) && (
+   501→                          <button
+   502→                            onClick={() => journalCursor.fetchNextPage()}
+   503→                            disabled={entriesFetchingNext}
+   504→                            className={pageBtnStyle(entriesFetchingNext)}
+   505→                          >
+   506→                            {entriesFetchingNext ? "جاري التحميل..." : "تحميل المزيد"}
+   507→                          </button>
+   508→                        )}
+   509→                      </div>
+   510→                    </div>
+   511→                  </>
+   512→                )}
+   513→              </div>
+   514→            </>
+   515→          )}
+   516→
+   517→          {/* Reverse confirmation dialog */}
+   518→          {reverseConfirm && (
+   519→            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => reversingId === null && setReverseConfirm(null)}>
+   520→              <div className="bg-card border border-border rounded-[14px] shadow-xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
+   521→                <div className="flex items-start gap-3 mb-3">
+   522→                  <div className="w-10 h-10 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0"><RotateCcw size={18} /></div>
+   523→                  <div className="flex-1">
+   524→                    <h3 className="font-bold text-base">عكس القيد #{reverseConfirm.id}</h3>
+   525→                    <p className="text-xs text-muted-foreground mt-0.5">{reverseConfirm.description || "بدون وصف"} • {reverseConfirm.date} • {reverseConfirm.lines?.length || 0} بند</p>
+   526→                  </div>
+   527→                </div>
+   528→                <div className="bg-muted rounded-md p-3 text-xs leading-relaxed mb-4">
+   529→                  سيتم إنشاء <strong>قيد عكسي جديد</strong> بنفس البنود ولكن مع <strong>تبديل المدين/الدائن</strong>، وترحيله فورًا.
+   530→                  <br /><span className="text-amber-600 font-semibold mt-1 block">⚠️ هذا إجراء مالي حساس — لا يمكن التراجع عنه.</span>
+   531→                </div>
+   532→                <div className="flex gap-2 justify-end">
+   533→                  <button onClick={() => setReverseConfirm(null)} disabled={reversingId !== null} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer disabled:opacity-50">إلغاء</button>
+   534→                  <button onClick={confirmReverse} disabled={reversingId !== null} className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"><RotateCcw size={14} className={reversingId !== null ? "animate-spin" : ""} />{reversingId !== null ? "جارٍ العكس…" : "تأكيد العكس"}</button>
+   535→                </div>
+   536→              </div>
+   537→            </div>
+   538→          )}
+   539→        </>
+   540→      ) : moduleTab === "dashboard" ? (
+   541→        /* ─── Financial Dashboard (API-backed) ──────────────────────────── */
+   542→        <FinancialDashboardApiView />
+   543→      ) : (
+   544→        /* ─── Other sub-modules: lazy-loaded ────────────────────────────── */
+   545→        <Suspense fallback={<div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>}>
+   546→          {moduleTab === "ar-ap" && <LazyArApView />}
+   547→          {moduleTab === "banking" && <LazyBankingView />}
+   548→          {moduleTab === "payroll" && <LazyPayrollWpsView />}
+   549→          {moduleTab === "fixed-assets" && <LazyFixedAssetsView />}
+   550→          {moduleTab === "inventory" && <LazyInventoryCostingView />}
+   551→          {moduleTab === "vouchers" && <LazyVouchersDetailView />}
+   552→          {moduleTab === "tax" && <LazyTaxComplianceView />}
+   553→          {moduleTab === "trade" && <LazyTradeFinanceView />}
+   554→          {moduleTab === "budgets" && <LazyBudgetsView />}
+   555→          {moduleTab === "collab" && <LazyAccountantCollabView />}
+   556→          {moduleTab === "payments" && <LazyPaymentRailsView />}
+   557→          {moduleTab === "multi-company" && <LazyMultiCompanyView />}
+   558→        </Suspense>
+   559→      )}
+   560→    </div>
+   561→  );
+   562→}
+   563→
+   564→/* ─── Financial Dashboard (API-backed) ──────────────────────────────────── */
+   565→interface DashboardMetrics {
+   566→  revenue: number;
+   567→  expenses: number;
+   568→  netProfit: number;
+   569→  cashPosition: number;
+   570→  accountsReceivable: number;
+   571→  accountsPayable: number;
+   572→  inventoryValue: number;
+   573→  trends: {
+   574→    revenueChange: number | null;
+   575→    expenseChange: number | null;
+   576→    profitChange: number | null;
+   577→    cashChange: number | null;
+   578→  };
+   579→}
+   580→
+   581→function FinancialDashboardApiView() {
+   582→  const { activeCompany } = useBrand();
+   583→  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+   584→  const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
+   585→  const [loading, setLoading] = useState(false);
+   586→  const [from, setFrom] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10));
+   587→  const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
+   588→
+   589→  const loadDashboard = useCallback(async () => {
+   590→    if (!activeCompany) return;
+   591→    setLoading(true);
+   592→    try {
+   593→      const res = await authedFetch(`/api/accounting/financial-dashboard?companySlug=${encodeURIComponent(activeCompany.slug)}&from=${from}&to=${to}`);
+   594→      if (res.ok) {
+   595→        const data = await res.json();
+   596→        setMetrics(data.metrics);
+   597→        setPeriod(data.period);
+   598→      } else {
+   599→        const e = await res.json().catch(() => ({}));
+   600→        toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل لوحة التحكم المالية");
+   601→      }
+   602→    } catch (err) {
+   603→      toast.error(err instanceof Error ? err.message : "تعذّر تحميل لوحة التحكم المالية");
+   604→    } finally { setLoading(false); }
+   605→  }, [activeCompany, from, to]);
+   606→
+   607→  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+   608→
+   609→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   610→  const fmtPct = (n: number | null) => {
+   611→    if (n === null) return "—";
+   612→    const sign = n >= 0 ? "+" : "";
+   613→    return `${sign}${n.toFixed(1)}%`;
+   614→  };
+   615→
+   616→  if (loading && !metrics) return <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>;
+   617→  if (!metrics) return <div className="p-12 text-center text-muted-foreground">لا توجد بيانات</div>;
+   618→
+   619→  const kpiCards = [
+   620→    { label: "الإيرادات", value: metrics.revenue, color: "#10b981", icon: <TrendingUp size={18} />, trend: metrics.trends.revenueChange },
+   621→    { label: "المصروفات", value: metrics.expenses, color: "#f59e0b", icon: <TrendingDown size={18} />, trend: metrics.trends.expenseChange },
+   622→    { label: "صافي الربح", value: metrics.netProfit, color: metrics.netProfit >= 0 ? "#10b981" : "#ef4444", icon: <DollarSign size={18} />, trend: metrics.trends.profitChange },
+   623→    { label: "النقدية", value: metrics.cashPosition, color: "#10b981", icon: <Wallet size={18} />, trend: metrics.trends.cashChange },
+   624→    { label: "الذمم المدينة", value: metrics.accountsReceivable, color: "#7c3aed", icon: <ArrowUpDown size={18} />, trend: null },
+   625→    { label: "الذمم الدائنة", value: metrics.accountsPayable, color: "#f59e0b", icon: <ArrowUpDown size={18} />, trend: null },
+   626→    { label: "قيمة المخزون", value: metrics.inventoryValue, color: "#3b82f6", icon: <Package size={18} />, trend: null },
+   627→  ];
+   628→
+   629→  return (
+   630→    <div className="flex flex-col gap-4">
+   631→      {/* Period filter */}
+   632→      <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
+   633→        <div className="flex items-center gap-1.5">
+   634→          <label className="text-[11px] font-bold text-muted-foreground">من</label>
+   635→          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" />
+   636→        </div>
+   637→        <div className="flex items-center gap-1.5">
+   638→          <label className="text-[11px] font-bold text-muted-foreground">إلى</label>
+   639→          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" />
+   640→        </div>
+   641→        <button onClick={loadDashboard} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">
+   642→          {loading ? "جارٍ…" : "تحديث"}
+   643→        </button>
+   644→      </div>
+   645→
+   646→      {/* KPI cards */}
+   647→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   648→        {kpiCards.map((kpi) => (
+   649→          <DashboardCard
+   650→            key={kpi.label}
+   651→            label={kpi.label}
+   652→            value={fmt(kpi.value)}
+   653→            color={kpi.color}
+   654→            icon={kpi.icon}
+   655→            trend={kpi.trend !== null ? fmtPct(kpi.trend) : undefined}
+   656→          />
+   657→        ))}
+   658→      </div>
+   659→
+   660→      {/* Period info */}
+   661→      {period && (
+   662→        <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-2">
+   663→          <h3 className="font-bold text-[14px] flex items-center gap-2"><Calendar size={16} /> الفترة المالية</h3>
+   664→          <div className="text-[13px] font-bold">{period.from} ← {period.to}</div>
+   665→          <div className="text-[12px] text-muted-foreground">هامش الربح: <span className={cn("font-bold", metrics.revenue > 0 ? (metrics.netProfit / metrics.revenue * 100 >= 10 ? "text-emerald-500" : "text-amber-500") : "text-red-500")}>{metrics.revenue > 0 ? `${(metrics.netProfit / metrics.revenue * 100).toFixed(1)}%` : "—"}</span></div>
+   666→        </div>
+   667→      )}
+   668→
+   669→      {/* Trends summary */}
+   670→      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-2">
+   671→        <h3 className="font-bold text-[14px] flex items-center gap-2"><LayoutDashboard size={16} /> التغيرات عن الفترة السابقة</h3>
+   672→        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 text-[12px] sm:text-[13px]">
+   673→          <div className="flex justify-between"><span className="text-muted-foreground">الإيرادات</span><span className={cn("font-bold", metrics.trends.revenueChange !== null ? (metrics.trends.revenueChange >= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.revenueChange)}</span></div>
+   674→          <div className="flex justify-between"><span className="text-muted-foreground">المصروفات</span><span className={cn("font-bold", metrics.trends.expenseChange !== null ? (metrics.trends.expenseChange <= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.expenseChange)}</span></div>
+   675→          <div className="flex justify-between"><span className="text-muted-foreground">صافي الربح</span><span className={cn("font-bold", metrics.trends.profitChange !== null ? (metrics.trends.profitChange >= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.profitChange)}</span></div>
+   676→          <div className="flex justify-between"><span className="text-muted-foreground">النقدية</span><span className={cn("font-bold", metrics.trends.cashChange !== null ? (metrics.trends.cashChange >= 0 ? "text-emerald-500" : "text-red-500") : "")}>{fmtPct(metrics.trends.cashChange)}</span></div>
+   677→        </div>
+   678→      </div>
+   679→    </div>
+   680→  );
+   681→}
+   682→
+   683→/* ─── Financial Dashboard (core inner) ────────────────────────────────── */
+   684→function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAssets, totalLiabilities, totalAR, totalAP, totalCash, currentPeriod, entriesCount, accountsCount }: {
+   685→  totalRevenue: number; totalExpenses: number; netProfit: number; totalAssets: number;
+   686→  totalLiabilities: number; totalAR: number; totalAP: number; totalCash: number;
+   687→  currentPeriod?: FiscalPeriod; entriesCount: number; accountsCount: number;
+   688→}) {
+   689→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   690→  const metrics = [
+   691→    { label: "الإيرادات", value: totalRevenue, color: "#10b981", icon: <TrendingUp size={18} /> },
+   692→    { label: "المصروفات", value: totalExpenses, color: "#f59e0b", icon: <TrendingDown size={18} /> },
+   693→    { label: "صافي الربح", value: netProfit, color: netProfit >= 0 ? "#10b981" : "#ef4444", icon: <DollarSign size={18} /> },
+   694→    { label: "إجمالي الأصول", value: totalAssets, color: "#3b82f6", icon: <Scale size={18} /> },
+   695→    { label: "الخصوم", value: totalLiabilities, color: "#ef4444", icon: <TrendingDown size={18} /> },
+   696→    { label: "النقدية", value: totalCash, color: "#10b981", icon: <Wallet size={18} /> },
+   697→    { label: "الذمم المدينة", value: totalAR, color: "#7c3aed", icon: <ArrowUpDown size={18} /> },
+   698→    { label: "الذمم الدائنة", value: totalAP, color: "#f59e0b", icon: <ArrowUpDown size={18} /> },
+   699→  ];
+   700→  return (
+   701→    <div className="flex flex-col gap-4">
+   702→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   703→        {metrics.map((m) => (
+   704→          <DashboardCard key={m.label} label={m.label} value={fmt(m.value)} color={m.color} icon={m.icon} />
+   705→        ))}
+   706→      </div>
+   707→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+   708→        <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
+   709→          <h3 className="font-bold text-[14px] flex items-center gap-2"><Clock size={16} /> الفترة المالية الحالية</h3>
+   710→          {currentPeriod ? (
+   711→            <div className="flex flex-col gap-1.5">
+   712→              <div className="text-[13px] font-bold">{currentPeriod.name}</div>
+   713→              <div className="text-[12px] text-muted-foreground">{currentPeriod.startDate} ← {currentPeriod.endDate}</div>
+   714→              <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", currentPeriod.status === "open" ? "bg-emerald-500/15 text-emerald-500" : currentPeriod.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{currentPeriod.status === "open" ? "مفتوحة" : currentPeriod.status === "closed" ? "مقفلة" : "مؤقتة"}</span>
+   715→            </div>
+   716→          ) : (
+   717→            <div className="text-[12px] text-muted-foreground">لا توجد فترة مالية مفتوحة</div>
+   718→          )}
+   719→        </div>
+   720→        <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
+   721→          <h3 className="font-bold text-[14px] flex items-center gap-2"><Calculator size={16} /> ملخص</h3>
+   722→          <div className="flex flex-col gap-1.5 text-[13px]">
+   723→            <div className="flex justify-between"><span className="text-muted-foreground">الحسابات</span><span className="font-bold">{accountsCount}</span></div>
+   724→            <div className="flex justify-between"><span className="text-muted-foreground">القيود</span><span className="font-bold">{entriesCount}</span></div>
+   725→            <div className="flex justify-between"><span className="text-muted-foreground">هامش الربح</span><span className={cn("font-bold", totalRevenue > 0 ? (netProfit / totalRevenue * 100 >= 10 ? "text-emerald-500" : "text-amber-500") : "text-red-500")}>{totalRevenue > 0 ? `${(netProfit / totalRevenue * 100).toFixed(1)}%` : "—"}</span></div>
+   726→          </div>
+   727→        </div>
+   728→      </div>
+   729→    </div>
+   730→  );
+   731→}
+   732→
+   733→function DashboardCard({ label, value, color, icon, trend }: { label: string; value: string; color: string; icon: React.ReactNode; trend?: string }) {
+   734→  return (
+   735→    <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   736→      <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center shrink-0", iconBadge)}>{icon}</div>
+   737→      <div className="flex-1 min-w-0">
+   738→        <div className="text-[11px] text-muted-foreground">{label}</div>
+   739→        <div className="text-lg font-extrabold [direction:ltr] text-end truncate">{value}</div>
+   740→        {trend && <div className={cn("text-[10px] font-bold mt-0.5", trend.startsWith("+") ? "text-emerald-500" : trend.startsWith("-") ? "text-red-500" : "text-gray-400")}>{trend} vs السابق</div>}
+   741→      </div>
+   742→    </div>
+   743→  );
+   744→}
+   745→
+   746→/* ─── Fiscal Periods ──────────────────────────────────────────────────────── */
+   747→function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPeriod[]; company: { slug: string }; onRefresh: () => void }) {
+   748→  const [closingId, setClosingId] = useState<number | null>(null);
+   749→  const [openingId, setOpeningId] = useState<number | null>(null);
+   750→
+   751→  const handleClose = async (p: FiscalPeriod) => {
+   752→    if (!confirm(`قفل الفترة "${p.name}"؟ لا يمكن التراجع.`)) return;
+   753→    setClosingId(p.id);
+   754→    try {
+   755→      const res = await authedFetch(`/api/accounting/fiscal-periods/${p.id}/close?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
+   756→      if (res.ok) { toast.success("تم قفل الفترة"); onRefresh(); }
+   757→      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر قفل الفترة"); }
+   758→    } catch { toast.error("خطأ في الاتصال"); }
+   759→    finally { setClosingId(null); }
+   760→  };
+   761→
+   762→  const handleReopen = async (p: FiscalPeriod) => {
+   763→    if (!confirm(`إعادة فتح الفترة "${p.name}"؟`)) return;
+   764→    setOpeningId(p.id);
+   765→    try {
+   766→      const res = await authedFetch(`/api/accounting/fiscal-periods/${p.id}/reopen?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
+   767→      if (res.ok) { toast.success("تم إعادة الفتح"); onRefresh(); }
+   768→      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إعادة الفتح"); }
+   769→    } catch { toast.error("خطأ في الاتصال"); }
+   770→    finally { setOpeningId(null); }
+   771→  };
+   772→
+   773→  const statusIcon = (status: string) => {
+   774→    if (status === "open") return <CheckCircle2 size={14} className="text-emerald-500" />;
+   775→    if (status === "closed") return <XCircle size={14} className="text-red-500" />;
+   776→    return <AlertTriangle size={14} className="text-amber-500" />;
+   777→  };
+   778→
+   779→  return (
+   780→    <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   781→      {periods.length === 0 ? <Empty label="فترات مالية" /> : (
+   782→        <div className="overflow-x-auto garfix-scroll">
+   783→          <table className="w-full border-collapse">
+   784→            <thead><tr className="border-b border-border bg-muted">
+   785→              <th scope="col" className={thStyle}>الاسم</th><th scope="col" className={thStyle}>البداية</th><th scope="col" className={thStyle}>النهاية</th>
+   786→              <th scope="col" className={thStyle}>الحالة</th><th scope="col" className={thStyle}>تاريخ القفل</th><th scope="col" className={thStyle}>إجراء</th>
+   787→            </tr></thead>
+   788→            <tbody>
+   789→              {periods.map((p) => (
+   790→                <tr key={p.id} className="border-b border-border">
+   791→                  <td className={cn(tdStyle, "font-bold flex items-center gap-1.5")}>{statusIcon(p.status)} {p.name}</td>
+   792→                  <td className={tdStyle} dir="ltr">{p.startDate}</td>
+   793→                  <td className={tdStyle} dir="ltr">{p.endDate}</td>
+   794→                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", p.status === "open" ? "bg-emerald-500/15 text-emerald-500" : p.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{p.status === "open" ? "مفتوحة" : p.status === "closed" ? "مقفلة" : "مؤقتة"}</span></td>
+   795→                  <td className={tdStyle}>{p.closedAt || "—"}</td>
+   796→                  <td className={tdStyle}>
+   797→                    <div className="flex items-center gap-1.5">
+   798→                      {p.status === "open" && <button onClick={() => handleClose(p)} disabled={closingId === p.id} className="py-1 px-3 rounded-md bg-red-500/10 border border-red-500/30 text-red-600 text-[11px] font-bold cursor-pointer disabled:opacity-50">{closingId === p.id ? "جارٍ…" : "قفل"}</button>}
+   799→                      {p.status === "closed" && <button onClick={() => handleReopen(p)} disabled={openingId === p.id} className="py-1 px-3 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[11px] font-bold cursor-pointer disabled:opacity-50">{openingId === p.id ? "جارٍ…" : "إعادة فتح"}</button>}
+   800→                    </div>
+   801→                  </td>
+   802→                </tr>
+   803→              ))}
+   804→            </tbody>
+   805→          </table>
+   806→        </div>
+   807→      )}
+   808→    </div>
+   809→  );
+   810→}
+   811→
+   812→function FiscalPeriodForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   813→  const [name, setName] = useState("");
+   814→  const [startDate, setStartDate] = useState("");
+   815→  const [endDate, setEndDate] = useState("");
+   816→  const [saving, setSaving] = useState(false);
+   817→
+   818→  const submit = async () => {
+   819→    if (!name || !startDate || !endDate) { toast.error("جميع الحقول مطلوبة"); return; }
+   820→    setSaving(true);
+   821→    try {
+   822→      const res = await authedFetch("/api/accounting/fiscal-periods", {
+   823→        method: "POST", headers: { "Content-Type": "application/json" },
+   824→        body: JSON.stringify({ name, startDate, endDate, companySlug: company.slug }),
+   825→      });
+   826→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+   827→      toast.success("تم إنشاء الفترة المالية");
+   828→      onSaved();
+   829→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   830→    finally { setSaving(false); }
+   831→  };
+   832→
+   833→  return (
+   834→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   835→      <h3 className="text-[15px] font-bold">فترة مالية جديدة</h3>
+   836→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   837→        <div><label className={labelStyle}>الاسم *</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} placeholder="مثال: 2025-Q1" /></div>
+   838→        <div><label className={labelStyle}>تاريخ البداية *</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   839→        <div><label className={labelStyle}>تاريخ النهاية *</label><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   840→      </div>
+   841→      <div className="flex gap-2.5 justify-end">
+   842→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   843→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   844→      </div>
+   845→    </div>
+   846→  );
+   847→}
+   848→
+   849→/* ─── Cost Centers ─────────────────────────────────────────────────────────── */
+   850→function CostCentersTable({ costCenters }: { costCenters: CostCenter[] }) {
+   851→  return (
+   852→    <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   853→      {costCenters.length === 0 ? <Empty label="مراكز التكلفة" /> : (
+   854→        <div className="overflow-x-auto garfix-scroll">
+   855→          <table className="w-full border-collapse">
+   856→            <thead><tr className="border-b border-border bg-muted">
+   857→              <th scope="col" className={thStyle}>الكود</th><th scope="col" className={thStyle}>الاسم</th><th scope="col" className={thStyle}>النوع</th>
+   858→              <th scope="col" className={cn(thStyle, "text-end")}>الموازنة</th><th scope="col" className={cn(thStyle, "text-end")}>الفعلي</th><th scope="col" className={cn(thStyle, "text-end")}>الفرق</th>
+   859→            </tr></thead>
+   860→            <tbody>
+   861→              {costCenters.map((cc) => {
+   862→                const diff = (cc.budget || 0) - (cc.actual || 0);
+   863→                return (
+   864→                  <tr key={cc.id} className="border-b border-border">
+   865→                    <td className={cn(tdStyle, "font-mono")}>{cc.code}</td>
+   866→                    <td className={cn(tdStyle, "font-bold")}>{cc.nameAr}</td>
+   867→                    <td className={tdStyle}>{cc.type}</td>
+   868→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{(cc.budget || 0).toLocaleString("ar-EG")}</td>
+   869→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{(cc.actual || 0).toLocaleString("ar-EG")}</td>
+   870→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", diff >= 0 ? "text-emerald-500" : "text-red-500")}>{diff.toLocaleString("ar-EG")}</td>
+   871→                  </tr>
+   872→                );
+   873→              })}
+   874→            </tbody>
+   875→          </table>
+   876→        </div>
+   877→      )}
+   878→    </div>
+   879→  );
+   880→}
+   881→
+   882→function CostCenterForm({ company, costCenters, onClose, onSaved }: { company: { slug: string }; costCenters: CostCenter[]; onClose: () => void; onSaved: () => void }) {
+   883→  const [code, setCode] = useState("");
+   884→  const [nameAr, setNameAr] = useState("");
+   885→  const [type, setType] = useState("department");
+   886→  const [parentId, setParentId] = useState<number | null>(null);
+   887→  const [budget, setBudget] = useState(0);
+   888→  const [saving, setSaving] = useState(false);
+   889→
+   890→  const submit = async () => {
+   891→    if (!code || !nameAr) { toast.error("الكود والاسم مطلوبان"); return; }
+   892→    setSaving(true);
+   893→    try {
+   894→      const res = await authedFetch("/api/accounting/cost-centers", {
+   895→        method: "POST", headers: { "Content-Type": "application/json" },
+   896→        body: JSON.stringify({ code, nameAr, type, parentId, budget, companySlug: company.slug }),
+   897→      });
+   898→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+   899→      toast.success("تم إنشاء مركز التكلفة");
+   900→      onSaved();
+   901→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+   902→    finally { setSaving(false); }
+   903→  };
+   904→
+   905→  return (
+   906→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   907→      <h3 className="text-[15px] font-bold">مركز تكلفة جديد</h3>
+   908→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   909→        <div><label className={labelStyle}>الكود *</label><input value={code} onChange={(e) => setCode(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   910→        <div><label className={labelStyle}>الاسم (عربي) *</label><input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className={inputStyle} /></div>
+   911→        <div><label className={labelStyle}>النوع</label>
+   912→          <select value={type} onChange={(e) => setType(e.target.value)} className={inputStyle}>
+   913→            <option value="department">قسم</option><option value="project">مشروع</option><option value="branch">فرع</option><option value="product">منتج</option>
+   914→          </select>
+   915→        </div>
+   916→        <div><label className={labelStyle}>الأب</label>
+   917→          <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   918→            <option value="">—</option>
+   919→            {costCenters.map((cc) => <option key={cc.id} value={cc.id}>{cc.code} — {cc.nameAr}</option>)}
+   920→          </select>
+   921→        </div>
+   922→        <div><label className={labelStyle}>الموازنة</label><input type="number" value={budget} onChange={(e) => setBudget(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   923→      </div>
+   924→      <div className="flex gap-2.5 justify-end">
+   925→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   926→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   927→      </div>
+   928→    </div>
+   929→  );
+   930→}
+   931→
+   932→/* ─── Aging Report ─────────────────────────────────────────────────────────── */
+   933→function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR: number; totalAP: number }) {
+   934→  const [mode, setMode] = useState<"receivable" | "payable">("receivable");
+   935→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   936→
+   937→  return (
+   938→    <div className="flex flex-col gap-4">
+   939→      <div className="flex gap-1.5">
+   940→        <button onClick={() => setMode("receivable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", mode === "receivable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم مدينة (مستحقات)</button>
+   941→        <button onClick={() => setMode("payable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", mode === "payable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم دائنة (التزامات)</button>
+   942→      </div>
+   943→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   944→        <DashboardCard label={mode === "receivable" ? "إجمالي الذمم المدينة" : "إجمالي الذمم الدائنة"} value={fmt(mode === "receivable" ? totalAR : totalAP)} color={mode === "receivable" ? "#7c3aed" : "#f59e0b"} icon={<ArrowUpDown size={18} />} />
+   945→      </div>
+   946→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   947→        {data.length === 0 ? <Empty label="بيانات التقادم" /> : (
+   948→          <div className="overflow-x-auto garfix-scroll">
+   949→            <table className="w-full border-collapse">
+   950→              <thead><tr className="border-b border-border bg-muted">
+   951→                <th scope="col" className={thStyle}>الفترة</th><th scope="col" className={cn(thStyle, "text-end")}>المبلغ</th><th scope="col" className={thStyle}>عدد الحركات</th><th scope="col" className={cn(thStyle, "text-end")}>النسبة</th>
+   952→              </tr></thead>
+   953→              <tbody>
+   954→                {data.map((b, i) => {
+   955→                  const val = mode === "receivable" ? b.receivable : b.payable;
+   956→                  const total = mode === "receivable" ? totalAR : totalAP;
+   957→                  const pct = total > 0 ? (val / total * 100).toFixed(1) : "0";
+   958→                  return (
+   959→                    <tr key={i} className="border-b border-border">
+   960→                      <td className={cn(tdStyle, "font-bold")}>{b.range}</td>
+   961→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", val > 0 ? (mode === "receivable" ? "text-violet-500" : "text-amber-500") : "text-emerald-500")}>{fmt(val)}</td>
+   962→                      <td className={tdStyle}>{b.count}</td>
+   963→                      <td className={cn(tdStyle, "text-end")}>{pct}%</td>
+   964→                    </tr>
+   965→                  );
+   966→                })}
+   967→              </tbody>
+   968→              <tfoot>
+   969→                <tr className="border-t-2 border-border bg-muted font-extrabold">
+   970→                  <td className={cn(tdStyle, "font-extrabold")}>الإجمالي</td>
+   971→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", mode === "receivable" ? "text-violet-500" : "text-amber-500")}>{fmt(mode === "receivable" ? totalAR : totalAP)}</td>
+   972→                  <td className={cn(tdStyle, "font-extrabold")}>{data.reduce((s, b) => s + b.count, 0)}</td>
+   973→                  <td className={cn(tdStyle, "font-extrabold text-end")}>100%</td>
+   974→                </tr>
+   975→              </tfoot>
+   976→            </table>
+   977→          </div>
+   978→        )}
+   979→      </div>
+   980→    </div>
+   981→  );
+   982→}
+   983→
+   984→/* ─── Bank Accounts ─────────────────────────────────────────────────────────── */
+   985→function BankAccountsList({ accounts, company, onRefresh }: { accounts: BankAccount[]; company: { slug: string }; onRefresh: () => void }) {
+   986→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   987→
+   988→  return (
+   989→    <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   990→      {accounts.length === 0 ? <Empty label="حسابات بنكية" /> : (
+   991→        <div className="overflow-x-auto garfix-scroll">
+   992→          <table className="w-full border-collapse">
+   993→            <thead><tr className="border-b border-border bg-muted">
+   994→              <th scope="col" className={thStyle}>البنك</th><th scope="col" className={thStyle}>اسم الحساب</th><th scope="col" className={thStyle}>رقم الحساب</th>
+   995→              <th scope="col" className={thStyle}>IBAN</th><th scope="col" className={thStyle}>العملة</th><th scope="col" className={cn(thStyle, "text-end")}>الرصيد</th>
+   996→            </tr></thead>
+   997→            <tbody>
+   998→              {accounts.map((ba) => (
+   999→                <tr key={ba.id} className="border-b border-border">
+  1000→                  <td className={cn(tdStyle, "font-bold")}><Landmark size={14} className="inline me-1 opacity-50" />{ba.bankName}</td>
+  1001→                  <td className={tdStyle}>{ba.name}</td>
+  1002→                  <td className={cn(tdStyle, "font-mono")} dir="ltr">{ba.accountNumber}</td>
+  1003→                  <td className={cn(tdStyle, "font-mono text-[11px]")} dir="ltr">{ba.iban || "—"}</td>
+  1004→                  <td className={tdStyle}>{ba.currency}</td>
+  1005→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", ba.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(ba.balance)}</td>
+  1006→                </tr>
+  1007→              ))}
+  1008→            </tbody>
+  1009→            <tfoot>
+  1010→              <tr className="border-t-2 border-border bg-muted font-extrabold">
+  1011→                <td className={cn(tdStyle, "font-extrabold")} colSpan={5}>إجمالي النقدية</td>
+  1012→                <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-emerald-500")}>{fmt(accounts.reduce((s, ba) => s + ba.balance, 0))}</td>
+  1013→              </tr>
+  1014→            </tfoot>
+  1015→          </table>
+  1016→        </div>
+  1017→      )}
+  1018→    </div>
+  1019→  );
+  1020→}
+  1021→
+  1022→function BankAccountForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+  1023→  const [name, setName] = useState("");
+  1024→  const [bankName, setBankName] = useState("");
+  1025→  const [accountNumber, setAccountNumber] = useState("");
+  1026→  const [iban, setIban] = useState("");
+  1027→  const [currency, setCurrency] = useState(company.slug.includes("kw") ? "KWD" : company.slug.includes("sa") ? "SAR" : "AED");
+  1028→  const [balance, setBalance] = useState(0);
+  1029→  const [saving, setSaving] = useState(false);
+  1030→
+  1031→  const submit = async () => {
+  1032→    if (!name || !bankName || !accountNumber) { toast.error("الاسم والبنك ورقم الحساب مطلوبة"); return; }
+  1033→    setSaving(true);
+  1034→    try {
+  1035→      const res = await authedFetch("/api/accounting/bank-accounts", {
+  1036→        method: "POST", headers: { "Content-Type": "application/json" },
+  1037→        body: JSON.stringify({ name, bankName, accountNumber, iban, currency, balance, companySlug: company.slug }),
+  1038→      });
+  1039→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+  1040→      toast.success("تم إنشاء الحساب البنكي");
+  1041→      onSaved();
+  1042→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+  1043→    finally { setSaving(false); }
+  1044→  };
+  1045→
+  1046→  return (
+  1047→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+  1048→      <h3 className="text-[15px] font-bold">حساب بنكي جديد</h3>
+  1049→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+  1050→        <div><label className={labelStyle}>اسم الحساب *</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} /></div>
+  1051→        <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
+  1052→        <div><label className={labelStyle}>رقم الحساب *</label><input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
+  1053→        <div><label className={labelStyle}>IBAN</label><input value={iban} onChange={(e) => setIban(e.target.value)} className={inputStyle} dir="ltr" /></div>
+  1054→        <div><label className={labelStyle}>العملة</label>
+  1055→          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputStyle}>
+  1056→            <option value="KWD">KWD</option><option value="SAR">SAR</option><option value="AED">AED</option><option value="USD">USD</option><option value="EUR">EUR</option>
+  1057→          </select>
+  1058→        </div>
+  1059→        <div><label className={labelStyle}>الرصيد الافتتاحي</label><input type="number" value={balance} onChange={(e) => setBalance(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+  1060→      </div>
+  1061→      <div className="flex gap-2.5 justify-end">
+  1062→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+  1063→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+  1064→      </div>
+  1065→    </div>
+  1066→  );
+  1067→}
+  1068→
+  1069→/* ─── Trial Balance Table ──────────────────────────────────────────────────── */
+  1070→function TrialBalanceTable({ data, loading }: { data: { accounts: TrialRow[]; grandDebit: number; grandCredit: number; isBalanced: boolean } | null; loading: boolean }) {
+  1071→  if (loading && !data) return <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>;
+  1072→  if (!data || data.accounts.length === 0) return (
+  1073→    <div className="bg-card rounded-[14px] border border-border p-12 text-center text-muted-foreground">
+  1074→      <Scale size={36} className="opacity-30 mb-2" /><div>لا توجد بيانات لميزان المراجعة</div>
+  1075→    </div>
+  1076→  );
+  1077→  return (
+  1078→    <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+  1079→      <div className="overflow-x-auto garfix-scroll">
+  1080→        <table className="w-full border-collapse">
+  1081→          <thead><tr className="border-b border-border bg-muted">
+  1082→            <th scope="col" className={thStyle}>الكود</th><th scope="col" className={thStyle}>الحساب</th><th scope="col" className={thStyle}>النوع</th>
+  1083→            <th scope="col" className={cn(thStyle, "text-end")}>مدين</th><th scope="col" className={cn(thStyle, "text-end")}>دائن</th><th scope="col" className={cn(thStyle, "text-end")}>الرصيد</th>
+  1084→          </tr></thead>
+  1085→          <tbody>
+  1086→            {data.accounts.map((r) => (
+  1087→              <tr key={r.id} className="border-b border-border">
+  1088→                <td className={cn(tdStyle, "font-mono")}>{r.code}</td>
+  1089→                <td className={cn(tdStyle, "font-bold")}>{r.nameAr}</td>
+  1090→                <td className={tdStyle}>{r.type}</td>
+  1091→                <td className={cn(tdStyle, "[direction:ltr] text-start")}>{r.totalDebit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+  1092→                <td className={cn(tdStyle, "[direction:ltr] text-start")}>{r.totalCredit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+  1093→                <td className={cn(tdStyle, "[direction:ltr] text-start font-bold text-muted-foreground", r.balance > 0 ? "text-emerald-500" : r.balance < 0 ? "text-red-500" : "")}>{r.balance.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+  1094→              </tr>
+  1095→            ))}
+  1096→          </tbody>
+  1097→          <tfoot>
+  1098→            <tr className="border-t-2 border-border bg-muted font-extrabold">
+  1099→              <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>الإجمالي</td>
+  1100→              <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{data.grandDebit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+  1101→              <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{data.grandCredit.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
+  1102→              <td className={cn(tdStyle, "font-extrabold")}>
+  1103→                <span className={cn("inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
+  1104→                  {data.isBalanced ? "متوازن ✓" : "غير متوازن ✗"}
+  1105→                </span>
+  1106→              </td>
+  1107→            </tr>
+  1108→          </tfoot>
+  1109→        </table>
+  1110→      </div>
+  1111→    </div>
+  1112→  );
+  1113→}
+  1114→
+  1115→/* ─── Shared Styles ─────────────────────────────────────────────────────────── */
+  1116→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+  1117→const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+  1118→const thCheck = "w-10 text-center py-2.5 px-2 text-[11px] text-muted-foreground font-bold";
+  1119→const tdCheck = (checked: boolean): string => `py-2.5 px-2 text-center ${checked ? "bg-accent" : "bg-transparent"}`;
+  1120→const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
+  1121→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+  1122→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+  1123→const iconBadge = "bg-muted";
+  1124→const sectionBadge = "bg-muted";
+  1125→const sectionText = "";
+  1126→
+  1127→function Empty({ label }: { label: string }) {
+  1128→  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
+  1129→}
+  1130→
+  1131→/* ─── Financial Statements ────────────────────────────────────────────────── */
+  1132→interface ProfitLossData {
+  1133→  dateRange: { from: string; to: string };
+  1134→  revenue: { total: number; contra: number; net: number };
+  1135→  expenses: { total: number };
+  1136→  netProfit: number;
+  1137→  margin: string;
+  1138→  accounts: Array<{ code: string; nameAr: string; type: string; amount: number }>;
+  1139→}
+  1140→
+  1141→interface BalanceSheetData {
+  1142→  asOf: string;
+  1143→  assets: { accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number };
+  1144→  liabilities: { accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number };
+  1145→  equity: { accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number };
+  1146→  totalLiabilitiesAndEquity: number;
+  1147→  isBalanced: boolean;
+  1148→}
+  1149→
+  1150→interface CashFlowData {
+  1151→  dateRange: { from: string; to: string };
+  1152→  operating: { revenue: number; expenses: number; net: number; details: Array<{ code: string; nameAr: string; amount: number }> };
+  1153→  investing: { net: number; details: Array<{ code: string; nameAr: string; amount: number }> };
+  1154→  financing: { net: number; details: Array<{ code: string; nameAr: string; amount: number }> };
+  1155→  netCashFlow: number;
+  1156→  cashChange: number;
+  1157→}
+  1158→
+  1159→function FinancialStatements({ company }: { company: { slug: string } }) {
+  1160→  const [statementType, setStatementType] = useState<StatementType>("profit-loss");
+  1161→  const today = new Date().toISOString().slice(0, 10);
+  1162→  const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+  1163→  const [from, setFrom] = useState(yearStart);
+  1164→  const [to, setTo] = useState(today);
+  1165→  const [asOf, setAsOf] = useState(today);
+  1166→  const [data, setData] = useState<ProfitLossData | BalanceSheetData | CashFlowData | null>(null);
+  1167→  const [loading, setLoading] = useState(false);
+  1168→
+  1169→  const load = useCallback(async () => {
+  1170→    setLoading(true); setData(null);
+  1171→    try {
+  1172→      let url = "";
+  1173→      if (statementType === "profit-loss") url = `/api/accounting/profit-loss?companySlug=${encodeURIComponent(company.slug)}&from=${from}&to=${to}`;
+  1174→      else if (statementType === "balance-sheet") url = `/api/accounting/balance-sheet?companySlug=${encodeURIComponent(company.slug)}&asOf=${asOf}`;
+  1175→      else url = `/api/accounting/cash-flow?companySlug=${encodeURIComponent(company.slug)}&from=${from}&to=${to}`;
+  1176→      const res = await authedFetch(url);
+  1177→      if (res.ok) setData(await res.json());
+  1178→      else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر تحميل القائمة"); }
+  1179→    } catch (err) { toast.error(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم"); }
+  1180→    finally { setLoading(false); }
+  1181→  }, [company.slug, statementType, from, to, asOf]);
+  1182→
+  1183→  useEffect(() => { load(); }, [load]);
+  1184→
+  1185→  const statementTabs: Array<{ key: StatementType; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+  1186→    { key: "profit-loss", label: "قائمة الدخل", icon: TrendingUp },
+  1187→    { key: "balance-sheet", label: "الميزانية العمومية", icon: Scale },
+  1188→    { key: "cash-flow", label: "التدفقات النقدية", icon: Wallet },
+  1189→  ];
+  1190→
+  1191→  const exportCsv = () => {
+  1192→    if (!data) return;
+  1193→    let rows: string[][] = [];
+  1194→    let filename = "";
+  1195→    if (statementType === "profit-loss" && data) {
+  1196→      const pl = data as ProfitLossData;
+  1197→      filename = `profit-loss_${pl.dateRange.from}_${pl.dateRange.to}.csv`;
+  1198→      rows = [["البند", "الكود", "النوع", "المبلغ"], ...pl.accounts.map((a) => [a.nameAr, a.code, a.type, String(a.amount)]), [], ["إجمالي الإيرادات", "", "", String(pl.revenue.total)], ["صافي الربح", "", "", String(pl.netProfit)], ["هامش الربح", "", "", pl.margin]];
+  1199→    } else if (statementType === "balance-sheet" && data) {
+  1200→      const bs = data as BalanceSheetData;
+  1201→      filename = `balance-sheet_${bs.asOf}.csv`;
+  1202→      rows = [["القسم", "الكود", "الحساب", "الرصيد"]];
+  1203→      bs.assets.accounts.forEach((a) => rows.push(["الأصول", a.code, a.nameAr, String(a.balance)]));
+  1204→      rows.push(["إجمالي الأصول", "", "", String(bs.assets.total)]);
+  1205→      bs.liabilities.accounts.forEach((a) => rows.push(["الخصوم", a.code, a.nameAr, String(a.balance)]));
+  1206→      rows.push(["إجمالي الخصوم", "", "", String(bs.liabilities.total)]);
+  1207→      bs.equity.accounts.forEach((a) => rows.push(["حقوق الملكية", a.code, a.nameAr, String(a.balance)]));
+  1208→      rows.push(["إجمالي حقوق الملكية", "", "", String(bs.equity.total)]);
+  1209→    } else if (statementType === "cash-flow" && data) {
+  1210→      const cf = data as CashFlowData;
+  1211→      filename = `cash-flow_${cf.dateRange.from}_${cf.dateRange.to}.csv`;
+  1212→      rows = [["القسم", "الكود", "الحساب", "المبلغ"]];
+  1213→      cf.operating.details.forEach((a) => rows.push(["العمليات", a.code, a.nameAr, String(a.amount)]));
+  1214→      cf.investing.details.forEach((a) => rows.push(["الاستثمار", a.code, a.nameAr, String(a.amount)]));
+  1215→      cf.financing.details.forEach((a) => rows.push(["التمويل", a.code, a.nameAr, String(a.amount)]));
+  1216→    }
+  1217→    const csv = rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, "\"\"")}"`).join(",")).join("\n");
+  1218→    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  1219→    const url = URL.createObjectURL(blob);
+  1220→    const link = document.createElement("a"); link.href = url; link.download = filename; link.click();
+  1221→    URL.revokeObjectURL(url);
+  1222→    toast.success("تم تصدير CSV");
+  1223→  };
+  1224→
+  1225→  return (
+  1226→    <div className="flex flex-col gap-4">
+  1227→      <div className="flex gap-1.5 flex-wrap">
+  1228→        {statementTabs.map((t) => {
+  1229→          const Icon = t.icon;
+  1230→          const active = statementType === t.key;
+  1231→          return <button key={t.key} onClick={() => setStatementType(t.key)} className={cn("py-2 px-3.5 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5", active ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}><Icon size={14} /> {t.label}</button>;
+  1232→        })}
+  1233→      </div>
+  1234→      <div className="bg-card rounded-lg border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
+  1235→        {statementType === "balance-sheet" ? (
+  1236→          <div className="flex items-center gap-1.5"><label className="text-[11px] font-bold text-muted-foreground">كما في تاريخ</label><input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" /></div>
+  1237→        ) : (
+  1238→          <>
+  1239→            <div className="flex items-center gap-1.5"><label className="text-[11px] font-bold text-muted-foreground">من</label><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" /></div>
+  1240→            <div className="flex items-center gap-1.5"><label className="text-[11px] font-bold text-muted-foreground">إلى</label><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" /></div>
+  1241→          </>
+  1242→        )}
+  1243→        <button onClick={load} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">{loading ? "جارٍ…" : "تحديث"}</button>
+  1244→        <button onClick={exportCsv} disabled={!data || loading} className="py-2 px-4 rounded-sm bg-primary text-primary-foreground border-none text-[12px] font-bold cursor-pointer disabled:opacity-60 inline-flex items-center gap-1.5"><Download size={14} /> تصدير CSV</button>
+  1245→      </div>
+  1246→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : !data ? <div className="p-12 text-center text-muted-foreground">لا توجد بيانات</div> :
+  1247→        statementType === "profit-loss" ? <ProfitLossView data={data as ProfitLossData} /> :
+  1248→        statementType === "balance-sheet" ? <BalanceSheetView data={data as BalanceSheetData} /> :
+  1249→        <CashFlowView data={data as CashFlowData} />}
+  1250→    </div>
+  1251→  );
+  1252→}
+  1253→
+  1254→function fmt(n: number): string { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
+  1255→
+  1256→function StatementCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
+  1257→  return (
+  1258→    <div className="bg-card rounded-lg border border-border py-3.5 px-4 flex items-center gap-3">
+  1259→      <div className={cn("w-9 h-9 rounded-sm flex items-center justify-center", iconBadge)}>{icon}</div>
+  1260→      <div><div className="text-[11px] text-muted-foreground">{label}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(value)}</div></div>
+  1261→    </div>
+  1262→  );
+  1263→}
+  1264→
+  1265→function ProfitLossView({ data }: { data: ProfitLossData }) {
+  1266→  return (
+  1267→    <>
+  1268→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+  1269→        <StatementCard label="إجمالي الإيرادات" value={data.revenue.total} color="#10b981" icon={<TrendingUp size={16} />} />
+  1270→        <StatementCard label="صافي الإيرادات" value={data.revenue.net} color="#3b82f6" icon={<TrendingUp size={16} />} />
+  1271→        <StatementCard label="إجمالي المصروفات" value={data.expenses.total} color="#f59e0b" icon={<TrendingDown size={16} />} />
+  1272→        <StatementCard label="صافي الربح" value={data.netProfit} color={data.netProfit >= 0 ? "#10b981" : "#ef4444"} icon={<TrendingUp size={16} />} />
+  1273→      </div>
+  1274→      <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
+  1275→        <span className="text-[12px] text-muted-foreground">الفترة: {data.dateRange.from} ← {data.dateRange.to}</span>
+  1276→        <span className="text-[13px] font-bold">هامش الربح: <span className={cn(parseFloat(data.margin) >= 10 ? "text-emerald-500" : parseFloat(data.margin) >= 0 ? "text-amber-500" : "text-red-500")}>{data.margin}</span></span>
+  1277→      </div>
+  1278→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+  1279→        <div className="overflow-x-auto garfix-scroll">
+  1280→          <table className="w-full border-collapse">
+  1281→            <thead><tr className="border-b border-border bg-muted"><th scope="col" className={thStyle}>الكود</th><th scope="col" className={thStyle}>الحساب</th><th scope="col" className={thStyle}>النوع</th><th scope="col" className={cn(thStyle, "text-end")}>المبلغ</th></tr></thead>
+  1282→            <tbody>
+  1283→              {data.accounts.length === 0 ? <tr><td colSpan={4} className={cn(tdStyle, "text-center p-8 text-muted-foreground")}>لا توجد قيود مُرحّلة في هذه الفترة</td></tr> : data.accounts.map((a) => (
+  1284→                <tr key={a.code} className="border-b border-border">
+  1285→                  <td className={cn(tdStyle, "font-mono")}>{a.code}</td><td className={cn(tdStyle, "font-bold")}>{a.nameAr}</td><td className={tdStyle}>{a.type}</td>
+  1286→                  <td className={cn(tdStyle, "[direction:ltr] text-start font-bold", a.amount >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(a.amount)}</td>
+  1287→                </tr>
+  1288→              ))}
+  1289→            </tbody>
+  1290→            <tfoot><tr className="border-t-2 border-border bg-muted font-extrabold"><td className={cn(tdStyle, "font-extrabold")} colSpan={3}>صافي الربح</td><td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold", data.netProfit >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(data.netProfit)}</td></tr></tfoot>
+  1291→          </table>
+  1292→        </div>
+  1293→      </div>
+  1294→    </>
+  1295→  );
+  1296→}
+  1297→
+  1298→function BalanceSheetView({ data }: { data: BalanceSheetData }) {
+  1299→  return (
+  1300→    <>
+  1301→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+  1302→        <StatementCard label="إجمالي الأصول" value={data.assets.total} color="#10b981" icon={<TrendingUp size={16} />} />
+  1303→        <StatementCard label="إجمالي الخصوم" value={data.liabilities.total} color="#f59e0b" icon={<TrendingDown size={16} />} />
+  1304→        <StatementCard label="حقوق الملكية" value={data.equity.total} color="#7c3aed" icon={<Scale size={16} />} />
+  1305→        <StatementCard label="الخصوم + الملكية" value={data.totalLiabilitiesAndEquity} color={data.isBalanced ? "#10b981" : "#ef4444"} icon={<Scale size={16} />} />
+  1306→      </div>
+  1307→      <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
+  1308→        <span className="text-[12px] text-muted-foreground">كما في: {data.asOf}</span>
+  1309→        <span className={cn("py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{data.isBalanced ? "متوازنة ✓" : "غير متوازنة ✗"}</span>
+  1310→      </div>
+  1311→      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+  1312→        <BalanceSheetSection title="الأصول" accounts={data.assets.accounts} total={data.assets.total} color="#10b981" />
+  1313→        <BalanceSheetSection title="الخصوم" accounts={data.liabilities.accounts} total={data.liabilities.total} color="#f59e0b" />
+  1314→        <BalanceSheetSection title="حقوق الملكية" accounts={data.equity.accounts} total={data.equity.total} color="#7c3aed" />
+  1315→      </div>
+  1316→    </>
+  1317→  );
+  1318→}
+  1319→
+  1320→function BalanceSheetSection({ title, accounts, total, color }: { title: string; accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number; color: string }) {
+  1321→  return (
+  1322→    <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+  1323→      <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px]", sectionBadge)}>{title}</div>
+  1324→      <div className="overflow-x-auto garfix-scroll">
+  1325→        <table className="w-full border-collapse">
+  1326→          <tbody>
+  1327→            {accounts.length === 0 ? <tr><td className={cn(tdStyle, "text-center p-5 text-muted-foreground")}>لا توجد حسابات</td></tr> : accounts.map((a) => (
+  1328→              <tr key={a.code} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{a.code}</td><td className={cn(tdStyle, "font-semibold")}>{a.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold", sectionText)}>{fmt(a.balance)}</td></tr>
+  1329→            ))}
+  1330→          </tbody>
+  1331→          <tfoot><tr className="border-t-2 border-border bg-muted font-extrabold"><td className={cn(tdStyle, "font-extrabold")} colSpan={2}>الإجمالي</td><td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold", sectionText)}>{fmt(total)}</td></tr></tfoot>
+  1332→        </table>
+  1333→      </div>
+  1334→    </div>
+  1335→  );
+  1336→}
+  1337→
+  1338→function CashFlowView({ data }: { data: CashFlowData }) {
+  1339→  return (
+  1340→    <>
+  1341→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+  1342→        <StatementCard label="صافي العمليات" value={data.operating.net} color={data.operating.net >= 0 ? "#10b981" : "#ef4444"} icon={<Wallet size={16} />} />
+  1343→        <StatementCard label="صافي الاستثمار" value={data.investing.net} color={data.investing.net >= 0 ? "#10b981" : "#ef4444"} icon={<TrendingDown size={16} />} />
+  1344→        <StatementCard label="صافي التمويل" value={data.financing.net} color={data.financing.net >= 0 ? "#10b981" : "#ef4444"} icon={<TrendingUp size={16} />} />
+  1345→        <StatementCard label="صافي التدفق النقدي" value={data.netCashFlow} color={data.netCashFlow >= 0 ? "#10b981" : "#ef4444"} icon={<Wallet size={16} />} />
+  1346→      </div>
+  1347→      <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
+  1348→        <span className="text-[12px] text-muted-foreground">الفترة: {data.dateRange.from} ← {data.dateRange.to}</span>
+  1349→        <span className="text-[13px] font-bold">التغير في النقد: <span className={cn("[direction:ltr]", data.cashChange >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(data.cashChange)}</span></span>
+  1350→      </div>
+  1351→      <CashFlowSection title="الأنشطة التشغيلية" details={data.operating.details} net={data.operating.net} color="#10b981" />
+  1352→      <CashFlowSection title="الأنشطة الاستثمارية" details={data.investing.details} net={data.investing.net} color="#3b82f6" />
+  1353→      <CashFlowSection title="الأنشطة التمويلية" details={data.financing.details} net={data.financing.net} color="#7c3aed" />
+  1354→    </>
+  1355→  );
+  1356→}
+  1357→
+  1358→function CashFlowSection({ title, details, net, color }: { title: string; details: Array<{ code: string; nameAr: string; amount: number }>; net: number; color: string }) {
+  1359→  return (
+  1360→    <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+  1361→      <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px] flex justify-between", sectionBadge)}>
+  1362→        <span>{title}</span><span className={cn("[direction:ltr]", net >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(net)}</span>
+  1363→      </div>
+  1364→      <div className="overflow-x-auto garfix-scroll">
+  1365→        <table className="w-full border-collapse">
+  1366→          <tbody>
+  1367→            {details.length === 0 ? <tr><td className={cn(tdStyle, "text-center p-5 text-muted-foreground")}>لا توجد حركات</td></tr> : details.map((d, i) => (
+  1368→              <tr key={`${d.code}-${i}`} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{d.code}</td><td className={cn(tdStyle, "font-semibold")}>{d.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold", d.amount >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(d.amount)}</td></tr>
+  1369→            ))}
+  1370→          </tbody>
+  1371→        </table>
+  1372→      </div>
+  1373→    </div>
+  1374→  );
+  1375→}
+  1376→
+  1377→/* ─── Account Form ─────────────────────────────────────────────────────────── */
+  1378→function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug: string }; accounts: Account[]; onClose: () => void; onSaved: () => void }) {
+  1379→  const [code, setCode] = useState("");
+  1380→  const [nameAr, setNameAr] = useState("");
+  1381→  const [nameEn, setNameEn] = useState("");
+  1382→  const [type, setType] = useState("asset");
+  1383→  const [parentId, setParentId] = useState<number | null>(null);
+  1384→  const [balance, setBalance] = useState(0);
+  1385→  const [saving, setSaving] = useState(false);
+  1386→
+  1387→  const submit = async () => {
+  1388→    if (!code || !nameAr) { toast.error("الكود والاسم مطلوبان"); return; }
+  1389→    setSaving(true);
+  1390→    try {
+  1391→      const res = await authedFetch("/api/accounting/accounts", {
+  1392→        method: "POST", headers: { "Content-Type": "application/json" },
+  1393→        body: JSON.stringify({ code, nameAr, nameEn, type, parentId, balance, currency: "KWD", companySlug: company.slug }),
+  1394→      });
+  1395→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+  1396→      toast.success("تم إنشاء الحساب"); onSaved();
+  1397→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+  1398→    finally { setSaving(false); }
+  1399→  };
+  1400→
+  1401→  return (
+  1402→    <div className="flex flex-col gap-4">
+  1403→      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+  1404→        <h3 className="text-[15px] font-bold">حساب جديد</h3>
+  1405→        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+  1406→          <div><label className={labelStyle}>الكود *</label><input value={code} onChange={(e) => setCode(e.target.value)} className={inputStyle} dir="ltr" /></div>
+  1407→          <div><label className={labelStyle}>الاسم (عربي) *</label><input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className={inputStyle} /></div>
+  1408→          <div><label className={labelStyle}>الاسم (إنجليزي)</label><input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className={inputStyle} dir="ltr" /></div>
+  1409→          <div><label className={labelStyle}>النوع</label>
+  1410→            <select value={type} onChange={(e) => setType(e.target.value)} className={inputStyle}>
+  1411→              <option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق ملكية</option><option value="revenue">إيرادات</option><option value="expense">مصروفات</option><option value="contra_revenue">مقابل إيرادات</option><option value="contra_asset">مقابل أصول</option>
+  1412→            </select>
+  1413→          </div>
+  1414→          <div><label className={labelStyle}>الحساب الأب</label>
+  1415→            <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+  1416→              <option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}
+  1417→            </select>
+  1418→          </div>
+  1419→          <div><label className={labelStyle}>الرصيد الافتتاحي</label><input type="number" value={balance} onChange={(e) => setBalance(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+  1420→        </div>
+  1421→      </div>
+  1422→      <div className="flex gap-2.5 justify-end">
+  1423→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+  1424→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+  1425→      </div>
+  1426→    </div>
+  1427→  );
+  1428→}
+  1429→
+  1430→/* ─── Journal Form ─────────────────────────────────────────────────────────── */
+  1431→function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug: string }; accounts: Account[]; onClose: () => void; onSaved: () => void }) {
+  1432→  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  1433→  const [description, setDescription] = useState("");
+  1434→  const [reference, setReference] = useState("");
+  1435→  const [status, setStatus] = useState("draft");
+  1436→  const [lines, setLines] = useState<Array<{ accountId: number | null; debit: number; credit: number; description?: string }>>([{ accountId: null, debit: 0, credit: 0 }]);
+  1437→  const [saving, setSaving] = useState(false);
+  1438→
+  1439→  const totalDebit = lines.reduce((s, l) => s + Number(l.debit || 0), 0);
+  1440→  const totalCredit = lines.reduce((s, l) => s + Number(l.credit || 0), 0);
+  1441→  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
+  1442→
+  1443→  const updateLine = (i: number, field: string, value: number | string) => { setLines((arr) => arr.map((l, idx) => idx === i ? { ...l, [field]: value } : l)); };
+  1444→  const addLine = () => setLines((arr) => [...arr, { accountId: null, debit: 0, credit: 0 }]);
+  1445→  const removeLine = (i: number) => setLines((arr) => arr.filter((_, idx) => idx !== i));
+  1446→
+  1447→  const submit = async () => {
+  1448→    if (lines.length === 0) { toast.error("أضف بنداً واحداً على الأقل"); return; }
+  1449→    if (!isBalanced) { toast.error("القيد غير متوازن — المدين ≠ الدائن"); return; }
+  1450→    if (lines.some((l) => !l.accountId)) { toast.error("كل بند يجب أن يحدد حساباً"); return; }
+  1451→    setSaving(true);
+  1452→    try {
+  1453→      const res = await authedFetch("/api/accounting/journal-entries", {
+  1454→        method: "POST", headers: { "Content-Type": "application/json" },
+  1455→        body: JSON.stringify({ date, description, reference, status, lines, companySlug: company.slug }),
+  1456→      });
+  1457→      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+  1458→      toast.success("تم إنشاء القيد"); onSaved();
+  1459→    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+  1460→    finally { setSaving(false); }
+  1461→  };
+  1462→
+  1463→  return (
+  1464→    <div className="flex flex-col gap-4">
+  1465→      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+  1466→        <h3 className="text-[15px] font-bold">قيد يومية جديد</h3>
+  1467→        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+  1468→          <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+  1469→          <div><label className={labelStyle}>المرجع</label><input value={reference} onChange={(e) => setReference(e.target.value)} className={inputStyle} dir="ltr" /></div>
+  1470→          <div><label className={labelStyle}>الحالة</label>
+  1471→            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputStyle}><option value="draft">مسودة</option><option value="posted">مُرحّل</option></select>
+  1472→          </div>
+  1473→        </div>
+  1474→        <div><label className={labelStyle}>الوصف</label><input value={description} onChange={(e) => setDescription(e.target.value)} className={inputStyle} /></div>
+  1475→        <div>
+  1476→          <div className="flex justify-between items-center mb-2">
+  1477→            <label className={cn(labelStyle, "mb-0")}>البنود</label>
+  1478→            <button onClick={addLine} className="bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> إضافة</button>
+  1479→          </div>
+  1480→          <div className="flex flex-col gap-2">
+  1481→            {lines.map((l, i) => (
+  1482→              <div key={i} className="grid grid-cols-[1fr_80px_100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
+  1483→                <select value={l.accountId ?? ""} onChange={(e) => updateLine(i, "accountId", Number(e.target.value))} className={inputStyle}><option value="">— اختر حساب —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}</select>
+  1484→                <input type="number" placeholder="مدين" value={l.debit} onChange={(e) => updateLine(i, "debit", Number(e.target.value))} className={inputStyle} dir="ltr" />
+  1485→                <input type="number" placeholder="دائن" value={l.credit} onChange={(e) => updateLine(i, "credit", Number(e.target.value))} className={inputStyle} dir="ltr" />
+  1486→                <button onClick={() => removeLine(i)} className="bg-transparent border border-border text-destructive rounded-[6px] cursor-pointer flex items-center justify-center h-8"><X size={12} /></button>
+  1487→              </div>
+  1488→            ))}
+  1489→          </div>
+  1490→          <div className={cn("flex justify-between mt-3 py-2 px-3 rounded-sm text-[12px] font-bold", isBalanced ? "bg-emerald-500/10" : "bg-red-500/10")}>
+  1491→            <span>مدين: <span className="[direction:ltr]">{totalDebit.toLocaleString("ar-EG")}</span></span>
+  1492→            <span>دائن: <span className="[direction:ltr]">{totalCredit.toLocaleString("ar-EG")}</span></span>
+  1493→            <span className={cn(isBalanced ? "text-emerald-500" : "text-red-500")}>{isBalanced ? "متوازن ✓" : "غير متوازن ✗"}</span>
+  1494→          </div>
+  1495→        </div>
+  1496→      </div>
+  1497→      <div className="flex gap-2.5 justify-end">
+  1498→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+  1499→        <button onClick={submit} disabled={saving || !isBalanced} className={cn("py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold", saving ? "cursor-not-allowed" : "cursor-pointer", (saving || !isBalanced) && "opacity-70")}>{saving ? "جارٍ…" : "حفظ"}</button>
+  1500→      </div>
+  1501→    </div>
+  1502→  );
+  1503→}
+  1504→
+  1505→export default AccountingView;
+  1506→

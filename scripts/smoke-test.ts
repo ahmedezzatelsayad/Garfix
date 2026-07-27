@@ -324,10 +324,10 @@ check("docker-compose.yml exists", () =>
 // ═══════════════════════════════════════════════════════════════════════════════
 console.log("\n=== 12. Known Risks ===");
 
-check("ignoreBuildErrors flag in next.config.ts", () => {
+check("ignoreBuildErrors is REMOVED from next.config.ts", () => {
   const content = readFileSync(join(ROOT, "next.config.ts"), "utf-8");
-  return content.includes("ignoreBuildErrors: true");
-}, "⚠️ Should be removed for production (ROADMAP P2.2)");
+  return !content.includes("ignoreBuildErrors: true");
+}, "ROADMAP P2.2 complete — TypeScript errors now properly block build");
 
 check("Prisma uses PostgreSQL (not SQLite) in production config", () => {
   const content = readFileSync(join(ROOT, "prisma/schema.prisma"), "utf-8");
@@ -359,7 +359,7 @@ if (skipped > 0) {
 }
 
 console.log("\n  ⚠️ FLAGS:");
-console.log("    - ignoreBuildErrors: true — must be removed for production");
+console.log("    - ignoreBuildErrors: REMOVED — TypeScript errors block build (P2.2 complete)");
 console.log("    - Load Test: blocked by OOM in dev environment, needs prod-like environment");
 console.log("    - GitHub Actions: not yet configured (deferred ROADMAP P5.4)");
 console.log("");
@@ -373,7 +373,7 @@ const report = {
   summary: { passed, failed, skipped, total: passed + failed + skipped },
   results,
   flags: [
-    "ignoreBuildErrors: true in next.config.ts — must remove for production",
+    "ignoreBuildErrors REMOVED from next.config.ts (ROADMAP P2.2 complete)",
     "Load Test blocked by OOM at ~3.5GB in dev environment",
     "No GitHub Actions CI pipeline (deferred ROADMAP P5.4)",
   ],

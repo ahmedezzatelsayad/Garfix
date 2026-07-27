@@ -28,6 +28,11 @@ import { FeatureFlagsTab } from "./FeatureFlagsTab";
 import { ReviewQueueTab } from "./ReviewQueueTab";
 import type { Stats, Tenant, Announcement, Ticket, AdminAudit, QueueFailure, StockMovement, Tab } from "./types";
 
+/* ── Static component: extracted from PlatformAdminPanel to avoid "Cannot create components during render" ── */
+function AdminPageBtn({ disabled, children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button className={`px-3 py-1.5 rounded-md border border-[var(--border)] font-inherit text-xs font-bold ${disabled ? "bg-transparent text-[var(--muted-foreground)] cursor-not-allowed opacity-50" : "bg-[var(--card)] text-[var(--foreground)] cursor-pointer"}`} disabled={disabled} {...props}>{children}</button>;
+}
+
 /* ── Lazy-loaded admin tabs (only fetched when the user clicks them) ── */
 const AiOrchestrationTab = dynamic(() => import("./AiOrchestrationTab").then(m => ({ default: m.AiOrchestrationTab })));
 const AiUsageTab = dynamic(() => import("./AiUsageTab").then(m => ({ default: m.AiUsageTab })));
@@ -128,10 +133,6 @@ export function PlatformAdminPanel() {
   const auditTotalPages = Math.max(1, Math.ceil(audit.length / adminPageSize));
   const auditSafePage = Math.min(auditPage, auditTotalPages);
   const currentPageAudit = audit.slice((auditSafePage - 1) * adminPageSize, auditSafePage * adminPageSize);
-
-  function AdminPageBtn({ disabled, children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-    return <button className={`px-3 py-1.5 rounded-md border border-[var(--border)] font-inherit text-xs font-bold ${disabled ? "bg-transparent text-[var(--muted-foreground)] cursor-not-allowed opacity-50" : "bg-[var(--card)] text-[var(--foreground)] cursor-pointer"}`} disabled={disabled} {...props}>{children}</button>;
-  }
 
   return (
     <div className="flex flex-col gap-4">

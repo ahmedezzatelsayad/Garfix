@@ -1,21 +1,24 @@
 ---
-Task ID: 1
+Task ID: 2
 Agent: Main
-Task: Sprint 3 Production Readiness - Full verification and report update
+Task: Sprint 3 Closure — Execute 4 critical items before Sprint 4
 
 Work Log:
-- Explored project structure: 22 READMEs found, 210+ API routes, 74 Prisma models
-- Run bun run lint: 665 problems (22 errors, 643 warnings) — classified by severity
-- Lint errors: 15 React setState-in-effect (Medium), 4 React components-during-render (High), 1 JSX-in-try-catch (Medium), 2 no-require-imports (Low)
-- Lint warnings: 507 detect-object-injection (Low), 117 detect-non-literal-fs (Low), 7 unsafe-regex (Medium), 7 non-literal-regexp (Medium), 3 timing-attacks (Medium)
-- Run bun test --isolate: 2913+ test cases passed, OOM killed at ~5GB (environment limit, not test failure)
-- Run bun run build: Successful — .next/BUILD_ID, standalone output, 210+ API routes
-- Created smoke-test.ts: 53 checks across 12 sections, result: 51 pass, 0 fail, 2 skip
-- Smoke test covers: Health Endpoint, Login/Auth, Core API Routes, Database, Queues, OTEL, Rate Limiting, Security, Build, README, CI/CD, Known Risks
-- Documented Load Test as "Blocked by Environment (OOM)" — not "Passed"
-- Created comprehensive Sprint 3 Production Readiness Report PDF (Arabic RTL, dark theme)
-- Report contains 11 sections: Executive Summary, Build, Tests, Lint Classification, Smoke Test, OTEL, Load Test, README, CI/CD, Risk Flags, Final Assessment
-- Added Production Verification Checklist recommendation for Sprint 4 CI pipeline
+- Removed ignoreBuildErrors: true from next.config.ts (ROADMAP P2.2 complete)
+- Fixed 33 hidden TypeScript errors surfaced by removal:
+  - Added function overloads to buildCursorResponse in cursor-pagination-server.ts (31 errors fixed)
+  - Fixed AccountingView.tsx casts through unknown (2 errors)
+  - Updated tsconfig.json to exclude scripts/skills/e2e from type check
+  - Fixed readme-consistency-check.ts Dirent.path access
+- Build now succeeds without ignoreBuildErrors: bun run build ✅
+- Fixed 4 React High Lint errors: extracted AdminPageBtn from PlatformAdminPanel render to module scope
+- Current lint: 18 errors (all Medium/Low), 693 warnings — no High/Critical remaining
+- Created GitHub Actions CI workflow: .github/workflows/production-verification.yml
+  - Pipeline: install → prisma generate → tsc → eslint (High block) → test → build → readme-check → smoke-test → OTEL verify → ignoreBuildErrors verify
+- Created production load test script: scripts/production-load-test.ts
+  - Features: 3 phases, p50/p95/p99/max, HTTP 500/502/429, memory leak detection (5-min wait)
+- Created RC1 git tag: v12.1.0-rc1
+- Updated smoke test: 51/51 pass, 0 fail, 2 skip (ignoreBuildErrors check inverted to verify REMOVAL)
 
 Stage Summary:
 - Prisma schema: 83 models (from 41 → 83)

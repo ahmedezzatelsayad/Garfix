@@ -159,8 +159,8 @@ export function AccountingView() {
   };
 
   // Derived data from cursor pagination hooks (replaces manual state)
-  const accounts = accountsCursor.items as Account[];
-  const entries = journalCursor.items as JournalEntry[];
+  const accounts = accountsCursor.items as unknown as Account[];
+  const entries = journalCursor.items as unknown as JournalEntry[];
   const accountsHasNextPage = accountsCursor.hasNextPage;
   const accountsFetchingNext = accountsCursor.isFetchingNextPage;
   const entriesHasNextPage = journalCursor.hasNextPage;

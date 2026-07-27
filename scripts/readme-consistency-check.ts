@@ -26,7 +26,7 @@ function countFiles(dir: string, pattern: RegExp, exclude?: RegExp): number {
     return entries
       .filter(e => e.isFile())
       .filter(e => pattern.test(e.name))
-      .filter(e => !exclude || !exclude.test(e.path))
+      .filter(e => !exclude || !exclude.test((e as any).path ?? e.name))
       .length;
   } catch {
     return 0;

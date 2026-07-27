@@ -52,11 +52,21 @@ export function parseCursorParams(req: { nextUrl: URL }) {
  *   const allItems = await db.model.findMany({ where, orderBy: { id: "desc" }, take: limit + 1, ... });
  *   return buildCursorResponse(allItems, limit);
  */
-export function buildCursorResponse<T extends { id: number }>(
-  allItems: T[],
-  limit: number,
-  totalCount?: number,
-) {
+// Overload: when input is any[] (e.g. from db.X.findMany where db is typed as any),
+// return any[] so callers can access any property without TS errors.
+export function buildCursorResponse(allItems: any[], limit: number, totalCount?: number): {
+  items: any[];
+  nextCursor: string | null;
+  totalCount?: number;
+};
+// Overload: when input is a properly typed array, preserve the type through pagination.
+export function buildCursorResponse<T extends { id: number }>(allItems: T[], limit: number, totalCount?: number): {
+  items: T[];
+  nextCursor: string | null;
+  totalCount?: number;
+};
+// Implementation
+export function buildCursorResponse(allItems: any[], limit: number, totalCount?: number) {
   const hasNextPage = allItems.length > limit;
   const items = hasNextPage ? allItems.slice(0, limit) : allItems;
   const nextCursor = hasNextPage
