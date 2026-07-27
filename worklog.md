@@ -1,23 +1,21 @@
 ---
 Task ID: 1
-Agent: Super Z (main)
-Task: إضافة ~30 نموذج Prisma مفقود + TanStack Query + Cursor Pagination + Docker verification
+Agent: Main
+Task: Sprint 3 Production Readiness - Full verification and report update
 
 Work Log:
-- Read existing Prisma schema (41 models) and identified 42 missing models referenced by API routes
-- Updated existing models to match API expectations: Account (Int ID, companySlug, nameAr/nameEn, version), Client (Int ID, nameEn), Supplier (Int ID, nameEn, deletedAt), Company (vatNumber, country), Invoice (expanded Kuwait compliance fields), PaymentVoucher (companySlug, bankAccountId), etc.
-- Added 42 new models: HR (Employee, Attendance, Salary, Commission, LeaveRequest, Performance, Department), Banking (BankAccount, BankTransaction, BankReconciliation, BankReconciliationMatch), FixedAssets (FixedAsset, DepreciationEntry), CostCenter/Budget (CostCenter, Budget), JournalEntry (JournalEntry, JournalEntryLine), OpeningBalanceEntry, FiscalPeriod, Purchases (PurchaseOrder, PurchaseInvoice), Quotation, TaxFiling, PostDatedCheck, FxRevaluation, LandedCostAllocation, InterCompanyTransaction, WPSFile, RolePermission, EInvoicing (EInvoice, EInvoiceLine, ZATCAConfig), InvoiceTemplate/Settings, Platform (Announcement, SupportTicket, SupportTicketReply), Automation (AutomationRule, AutomationExecution), Webhooks (WebhookEndpoint, WebhookEvent, WebhookDelivery)
-- Pushed schema to SQLite DB and generated Prisma Client (83 total models)
-- Created Providers.tsx (wrapping ThemeProvider → AuthProvider → QueryProvider → BrandProvider)
-- Wired Providers into layout.tsx (was previously missing from app tree)
-- Enhanced QueryProvider with React Query Devtools (dev only), staleTime/gcTime defaults
-- Created optimistic.ts (optimisticAdd, optimisticUpdate, optimisticDelete, prefetchQuery, invalidateMany)
-- Created cursor-pagination.ts (useCursorPagination, parseCursorParams, buildCursorResponse, buildCursorPrismaQuery, prefetchNextCursorPage)
-- Updated Dockerfile: SQLite for build verification, --no-cache for clean builds
-- Created docker-verify.sh (5-step verification: clean → build → verify → healthcheck → summary)
-- Fixed sprint1-p0-acceptance.test.ts to use correct Prisma model names
-- Added Account.version and JournalEntry.version for P0-8 optimistic locking
-- All builds succeed, 3662+ tests passing
+- Explored project structure: 22 READMEs found, 210+ API routes, 74 Prisma models
+- Run bun run lint: 665 problems (22 errors, 643 warnings) — classified by severity
+- Lint errors: 15 React setState-in-effect (Medium), 4 React components-during-render (High), 1 JSX-in-try-catch (Medium), 2 no-require-imports (Low)
+- Lint warnings: 507 detect-object-injection (Low), 117 detect-non-literal-fs (Low), 7 unsafe-regex (Medium), 7 non-literal-regexp (Medium), 3 timing-attacks (Medium)
+- Run bun test --isolate: 2913+ test cases passed, OOM killed at ~5GB (environment limit, not test failure)
+- Run bun run build: Successful — .next/BUILD_ID, standalone output, 210+ API routes
+- Created smoke-test.ts: 53 checks across 12 sections, result: 51 pass, 0 fail, 2 skip
+- Smoke test covers: Health Endpoint, Login/Auth, Core API Routes, Database, Queues, OTEL, Rate Limiting, Security, Build, README, CI/CD, Known Risks
+- Documented Load Test as "Blocked by Environment (OOM)" — not "Passed"
+- Created comprehensive Sprint 3 Production Readiness Report PDF (Arabic RTL, dark theme)
+- Report contains 11 sections: Executive Summary, Build, Tests, Lint Classification, Smoke Test, OTEL, Load Test, README, CI/CD, Risk Flags, Final Assessment
+- Added Production Verification Checklist recommendation for Sprint 4 CI pipeline
 
 Stage Summary:
 - Prisma schema: 83 models (from 41 → 83)

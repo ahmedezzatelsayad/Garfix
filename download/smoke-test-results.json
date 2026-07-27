@@ -1,0 +1,234 @@
+{
+  "timestamp": "2026-07-27T06:49:08.470Z",
+  "version": "12.1.0",
+  "environment": "development",
+  "summary": {
+    "passed": 51,
+    "failed": 0,
+    "skipped": 2,
+    "total": 53
+  },
+  "results": [
+    {
+      "name": "Health route file exists",
+      "status": "pass"
+    },
+    {
+      "name": "Health route exports GET",
+      "status": "pass"
+    },
+    {
+      "name": "Health route checks DB",
+      "status": "pass"
+    },
+    {
+      "name": "Health route checks Valkey",
+      "status": "pass"
+    },
+    {
+      "name": "Health route checks queues",
+      "status": "pass"
+    },
+    {
+      "name": "Health route checks memory",
+      "status": "pass"
+    },
+    {
+      "name": "Health route returns 503 on critical failure",
+      "status": "pass"
+    },
+    {
+      "name": "Health route is unauthenticated",
+      "status": "pass"
+    },
+    {
+      "name": "Login route exists",
+      "status": "pass"
+    },
+    {
+      "name": "Login route validates input with Zod",
+      "status": "pass"
+    },
+    {
+      "name": "Login route has rate limiting",
+      "status": "pass"
+    },
+    {
+      "name": "Login route uses Node.js runtime",
+      "status": "pass"
+    },
+    {
+      "name": "Route invoices/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Route clients/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Route match-override/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Route settings/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Route profit-loss/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Route agents/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Route startup-check/route.ts exists",
+      "status": "pass"
+    },
+    {
+      "name": "Prisma schema file exists",
+      "status": "pass"
+    },
+    {
+      "name": "Prisma schema has PostgreSQL datasource",
+      "status": "pass"
+    },
+    {
+      "name": "Prisma db.ts module exists",
+      "status": "pass"
+    },
+    {
+      "name": "Prisma schema has ≥70 models",
+      "status": "pass",
+      "detail": "Actual count: 74"
+    },
+    {
+      "name": "Queues module exists",
+      "status": "pass"
+    },
+    {
+      "name": "BullMQ is a dependency",
+      "status": "pass"
+    },
+    {
+      "name": "pg-boss is a dependency",
+      "status": "pass"
+    },
+    {
+      "name": "ioredis is a dependency",
+      "status": "pass"
+    },
+    {
+      "name": "Observability module exists",
+      "status": "pass"
+    },
+    {
+      "name": "OTEL reads OTEL_EXPORTER_OTLP_ENDPOINT env var",
+      "status": "pass"
+    },
+    {
+      "name": "OTEL reads OTEL_SERVICE_NAME env var",
+      "status": "pass"
+    },
+    {
+      "name": "OTEL has graceful fallback when collector unavailable",
+      "status": "pass"
+    },
+    {
+      "name": "OTEL exports metrics via OTLP/JSON format",
+      "status": "pass"
+    },
+    {
+      "name": ".env.example documents OTEL vars",
+      "status": "pass"
+    },
+    {
+      "name": "docker-compose.yml passes OTEL vars",
+      "status": "pass"
+    },
+    {
+      "name": "Metrics middleware wraps API handlers",
+      "status": "pass"
+    },
+    {
+      "name": "Rate limit module exists",
+      "status": "pass"
+    },
+    {
+      "name": "Rate limit has REPORT_GENERATION tier",
+      "status": "pass"
+    },
+    {
+      "name": "Rate limit has ACCOUNTING_READ tier",
+      "status": "pass"
+    },
+    {
+      "name": "Rate limit has ACCOUNTING_WRITE tier",
+      "status": "pass"
+    },
+    {
+      "name": "Middleware file exists",
+      "status": "pass"
+    },
+    {
+      "name": "Middleware implements auth checks",
+      "status": "pass"
+    },
+    {
+      "name": "Middleware has security headers",
+      "status": "pass"
+    },
+    {
+      "name": "Build output exists (.next directory)",
+      "status": "pass"
+    },
+    {
+      "name": "Server output exists",
+      "status": "pass"
+    },
+    {
+      "name": "Static output exists",
+      "status": "pass"
+    },
+    {
+      "name": "README consistency check script exists",
+      "status": "pass"
+    },
+    {
+      "name": "bun run readme-check command exists in package.json",
+      "status": "pass"
+    },
+    {
+      "name": "GitHub Actions workflow exists",
+      "status": "skip",
+      "detail": "Deferred — no .github/workflows/ yet (ROADMAP P5.4)"
+    },
+    {
+      "name": "Dockerfile exists",
+      "status": "pass"
+    },
+    {
+      "name": "docker-compose.yml exists",
+      "status": "pass"
+    },
+    {
+      "name": "ignoreBuildErrors flag in next.config.ts",
+      "status": "pass",
+      "detail": "⚠️ Should be removed for production (ROADMAP P2.2)"
+    },
+    {
+      "name": "Prisma uses PostgreSQL (not SQLite) in production config",
+      "status": "pass"
+    },
+    {
+      "name": "Load test fully passing in production environment",
+      "status": "skip",
+      "detail": "Blocked by OOM at ~3.5GB in current dev environment"
+    }
+  ],
+  "flags": [
+    "ignoreBuildErrors: true in next.config.ts — must remove for production",
+    "Load Test blocked by OOM at ~3.5GB in dev environment",
+    "No GitHub Actions CI pipeline (deferred ROADMAP P5.4)"
+  ]
+}
