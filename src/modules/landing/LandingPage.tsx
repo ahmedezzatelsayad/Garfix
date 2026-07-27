@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { EnhancedLandingPage } from "./EnhancedLandingPage";
 import { useLandingContent } from "@/hooks/queries";
 
@@ -9,22 +10,37 @@ interface LandingPageProps {
 }
 
 /**
- * LandingPage now delegates to EnhancedLandingPage which includes:
- * - Full pricing tiers (SAR)
- * - Comparison table vs competitors
- * - Framer Motion animations
- * - shadcn/ui components (Card, Badge, Accordion)
- * - PWA install hint
- *
- * The original implementation is preserved below as a fallback
- * in case EnhancedLandingPage fails to render.
+ * Error Boundary for EnhancedLandingPage.
+ * React does not catch rendering errors in try/catch —
+ * an Error Boundary is required to recover from component failures.
+ */
+class LandingPageErrorBoundary extends React.Component<
+  LandingPageProps,
+  { hasError: boolean }
+> {
+  constructor(props: LandingPageProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <LegacyLandingPage onLogin={this.props.onLogin} onRegister={this.props.onRegister} />;
+    }
+    return <EnhancedLandingPage onLogin={this.props.onLogin} onRegister={this.props.onRegister} />;
+  }
+}
+
+/**
+ * LandingPage now delegates to EnhancedLandingPage via an Error Boundary.
+ * If EnhancedLandingPage fails to render, the legacy fallback is shown.
  */
 export default function LandingPage({ onLogin, onRegister }: LandingPageProps) {
-  try {
-    return <EnhancedLandingPage onLogin={onLogin} onRegister={onRegister} />;
-  } catch {
-    // Fallback to legacy implementation below
-  }
+  return <LandingPageErrorBoundary onLogin={onLogin} onRegister={onRegister} />;
 }
 
 /* ── Legacy LandingPage (fallback) ───────────────────────────────────── */

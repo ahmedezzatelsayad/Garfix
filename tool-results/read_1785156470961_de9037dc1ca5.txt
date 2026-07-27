@@ -1,0 +1,889 @@
+     1→#!/usr/bin/env bun
+     2→// NOTE: This script is designed for PostgreSQL (not SQLite). Set DATABASE_URL env var.
+     3→
+     4→/**
+     5→ * scale-load-test.ts — Fresh load test for GarfiX dev server.
+     6→ *
+     7→ * Task ID: 3-load-test
+     8→ * Measures p50/p90/p95/p99 latency + CPU/RAM for invoice-related endpoints
+     9→ * against the running Next.js dev server at http://localhost:3000.
+    10→ *
+    11→ * Usage:  bun run scripts/scale-load-test.ts
+    12→ *
+    13→ * Output (3 files in /home/z/my-project/bench-results/):
+    14→ *   - scale-load-test.json  (full raw data)
+    15→ *   - scale-load-test.csv   (flat table)
+    16→ *   - scale-load-test.md    (human-readable summary)
+    17→ */
+    18→import { monitorEventLoopDelay } from "node:perf_hooks";
+    19→import { writeFileSync, mkdirSync, readFileSync, existsSync, statSync } from "node:fs";
+    20→import { execSync } from "node:child_process";
+    21→
+    22→// ─── Config ──────────────────────────────────────────────────────────────────
+    23→const BASE = "http://localhost:3000";
+    24→const RESULTS_DIR = "/home/z/my-project/bench-results";
+    25→const COMPANY_SLUG = "loadtest";
+    26→const FOUNDER_EMAIL = "founder@garfix.app";
+    27→const FOUNDER_PASSWORD = process.env.LOADTEST_PASSWORD || "CHANGE_ME_IN_ENV";
+    28→const REQUEST_TIMEOUT_MS = 60_000;
+    29→// C5 FIX: DB_PATH removed — PostgreSQL is used, not SQLite. Set DATABASE_URL env var.
+    30→
+    31→const CONCURRENCY_LEVELS = [1, 5, 10, 25, 50];
+    32→const REQUESTS_PER_LEVEL = 20; // H6 FIX: was 5, too small for meaningful statistics
+    33→const AI_CONCURRENCY_LEVELS = [1, 3, 5];
+    34→const AI_REQUESTS_PER_LEVEL = 1;
+    35→const BATCH_SIZES = [100, 500, 1000];
+    36→const BATCH_CONCURRENCY = 1; // sequential by default; increase for PostgreSQL
+    37→const HTTP_REQUEST_TIMEOUT_MS = 15_000; // non-AI: fail fast on connection contention
+    38→const AI_REQUEST_TIMEOUT_MS = 60_000; // AI: matches codebase timeout
+    39→
+    40→mkdirSync(RESULTS_DIR, { recursive: true });
+    41→
+    42→// ─── State ───────────────────────────────────────────────────────────────────
+    43→let jwt = "";
+    44→
+    45→// ─── Types ───────────────────────────────────────────────────────────────────
+    46→interface Sample {
+    47→  status: number;
+    48→  ok: boolean;
+    49→  latencyMs: number;
+    50→  errorType: string | null;
+    51→}
+    52→
+    53→interface TestResult {
+    54→  endpoint: string;
+    55→  method: string;
+    56→  concurrency: number;
+    57→  totalRequests: number;
+    58→  successCount: number;
+    59→  errorCount: number;
+    60→  errorTypes: Record<string, number>;
+    61→  latenciesMs: number[];
+    62→  p50: number;
+    63→  p90: number;
+    64→  p95: number;
+    65→  p99: number;
+    66→  mean: number;
+    67→  min: number;
+    68→  max: number;
+    69→  rps: number;
+    70→  wallMs: number;
+    71→  serverCpuPct: number;
+    72→  serverRssDeltaMB: number;
+    73→  runnerRssDeltaMB: number;
+    74→  eventLoopLagP99Ms: number;
+    75→  eventLoopLagMaxMs: number;
+    76→  notes: string[];
+    77→}
+    78→
+    79→interface BatchResult {
+    80→  size: number;
+    81→  wallMs: number;
+    82→  throughputInvoicesPerSec: number;
+    83→  successCount: number;
+    84→  errorCount: number;
+    85→  listLatencyMsBefore: number;
+    86→  listLatencyMsAfter: number;
+    87→  dbSizeBytesBefore: number;
+    88→  dbSizeBytesAfter: number;
+    89→  listP50: number;
+    90→  listP95: number;
+    91→}
+    92→
+    93→// ─── Helpers ─────────────────────────────────────────────────────────────────
+    94→function pct(arr: number[], p: number): number {
+    95→  if (arr.length === 0) return 0;
+    96→  const sorted = [...arr].sort((a, b) => a - b);
+    97→  const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+    98→  return sorted[idx];
+    99→}
+   100→
+   101→function mean(arr: number[]): number {
+   102→  if (arr.length === 0) return 0;
+   103→  return arr.reduce((s, v) => s + v, 0) / arr.length;
+   104→}
+   105→
+   106→function findServerPid(): number | null {
+   107→  try {
+   108→    // Find the PID listening on port 3000 (IPv4 or IPv6)
+   109→    const out = execSync("ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null", {
+   110→      encoding: "utf8",
+   111→      stdio: ["pipe", "pipe", "ignore"],
+   112→    });
+   113→    for (const line of out.split("\n")) {
+   114→      if (line.includes(":3000")) {
+   115→        const m = line.match(/pid=(\d+)/);
+   116→        if (m) return parseInt(m[1], 10);
+   117→      }
+   118→    }
+   119→  } catch {}
+   120→  // Fallback: pgrep for next dev / next-server
+   121→  try {
+   122→    const out = execSync("pgrep -f 'next-server|next dev|next start' 2>/dev/null", {
+   123→      encoding: "utf8",
+   124→      stdio: ["pipe", "pipe", "ignore"],
+   125→    });
+   126→    const pid = parseInt(out.split("\n")[0], 10);
+   127→    if (!Number.isNaN(pid)) return pid;
+   128→  } catch {}
+   129→  return null;
+   130→}
+   131→
+   132→let SERVER_PID: number | null = null;
+   133→
+   134→function readProcStat(pid: number): { cpuTicks: number; rssKB: number } | null {
+   135→  try {
+   136→    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+   137→    // /proc/[pid]/stat has the comm field in parens which may contain spaces —
+   138→    // find the closing paren and parse the rest from there.
+   139→    const closeParen = stat.lastIndexOf(")");
+   140→    const rest = stat.slice(closeParen + 2).split(" ");
+   141→    // After state (rest[0]), utime=rest[11], stime=rest[12], rss=rest[21]
+   142→    // (relative to fields after the closing paren).
+   143→    const utime = parseInt(rest[11], 10);
+   144→    const stime = parseInt(rest[12], 10);
+   145→    const rssPages = parseInt(rest[21], 10);
+   146→    return { cpuTicks: utime + stime, rssKB: rssPages * 4 };
+   147→  } catch {
+   148→    return null;
+   149→  }
+   150→}
+   151→
+   152→function sampleServer(): { cpuTicks: number; rssKB: number; ts: number } {
+   153→  if (!SERVER_PID) return { cpuTicks: 0, rssKB: 0, ts: Date.now() };
+   154→  const s = readProcStat(SERVER_PID);
+   155→  return { cpuTicks: s?.cpuTicks ?? 0, rssKB: s?.rssKB ?? 0, ts: Date.now() };
+   156→}
+   157→
+   158→function sampleRunner(): { rssMB: number; cpuUsage: [number, number]; ts: number } {
+   159→  const m = process.memoryUsage();
+   160→  const cpu = process.cpuUsage();
+   161→  return { rssMB: m.rss / (1024 * 1024), cpuUsage: [cpu.user, cpu.system], ts: Date.now() };
+   162→}
+   163→
+   164→function fileSizeBytes(path: string): number {
+   165→  try {
+   166→    const st = readFileSync(path);
+   167→    return st.length;
+   168→  } catch {
+   169→    return 0;
+   170→  }
+   171→}
+   172→
+   173→// Better: use statSync for actual file size on disk
+   174→function fileSizeOnDisk(path: string): number {
+   175→  try {
+   176→    return statSync(path).size;
+   177→  } catch {
+   178→    return 0;
+   179→  }
+   180→}
+   181→
+   182→// ─── HTTP ────────────────────────────────────────────────────────────────────
+   183→async function timedFetch(
+   184→  method: string,
+   185→  path: string,
+   186→  body?: unknown,
+   187→  timeoutMs = REQUEST_TIMEOUT_MS,
+   188→): Promise<{ status: number; ok: boolean; latencyMs: number; errorType: string | null }> {
+   189→  const t0 = performance.now();
+   190→  const controller = new AbortController();
+   191→  const timer = setTimeout(() => controller.abort(), timeoutMs);
+   192→  try {
+   193→    const init: RequestInit = {
+   194→      method,
+   195→      headers: {
+   196→        "Content-Type": "application/json",
+   197→        Cookie: `inv_token=${jwt}`,
+   198→      },
+   199→      signal: controller.signal,
+   200→    };
+   201→    if (body !== undefined) init.body = JSON.stringify(body);
+   202→    const res = await fetch(`${BASE}${path}`, init);
+   203→    const latencyMs = performance.now() - t0;
+   204→    // Drain the body so the connection can be reused
+   205→    try {
+   206→      await res.text();
+   207→    } catch {}
+   208→    const ok = res.status >= 200 && res.status < 300;
+   209→    let errorType: string | null = null;
+   210→    if (!ok) errorType = `HTTP_${res.status}`;
+   211→    return { status: res.status, ok, latencyMs, errorType };
+   212→  } catch (err) {
+   213→    const latencyMs = performance.now() - t0;
+   214→    let errorType = "NETWORK_ERROR";
+   215→    if (err instanceof Error) {
+   216→      if (err.name === "AbortError") errorType = "TIMEOUT";
+   217→      else errorType = err.message.slice(0, 80);
+   218→    }
+   219→    return { status: 0, ok: false, latencyMs, errorType };
+   220→  } finally {
+   221→    clearTimeout(timer);
+   222→  }
+   223→}
+   224→
+   225→// ─── Auth setup ──────────────────────────────────────────────────────────────
+   226→async function loginOrRegister(): Promise<void> {
+   227→  // Try login first (idempotent re-runs)
+   228→  const loginRes = await fetch(`${BASE}/api/auth/login`, {
+   229→    method: "POST",
+   230→    headers: { "Content-Type": "application/json" },
+   231→    body: JSON.stringify({ email: FOUNDER_EMAIL, password: FOUNDER_PASSWORD }),
+   232→  });
+   233→  if (loginRes.ok) {
+   234→    const setCookie = loginRes.headers.get("set-cookie") || "";
+   235→    const m = setCookie.match(/inv_token=([^;]+)/);
+   236→    if (m) {
+   237→      jwt = m[1];
+   238→      console.log(`✓ Logged in as ${FOUNDER_EMAIL}`);
+   239→      return;
+   240→    }
+   241→  }
+   242→  // Register
+   243→  const regRes = await fetch(`${BASE}/api/auth/register`, {
+   244→    method: "POST",
+   245→    headers: { "Content-Type": "application/json" },
+   246→    body: JSON.stringify({
+   247→      email: FOUNDER_EMAIL,
+   248→      password: FOUNDER_PASSWORD,
+   249→      displayName: "Load Test Founder",
+   250→    }),
+   251→  });
+   252→  if (!regRes.ok) {
+   253→    const txt = await regRes.text();
+   254→    throw new Error(`Register failed (${regRes.status}): ${txt}`);
+   255→  }
+   256→  // Now login
+   257→  const login2 = await fetch(`${BASE}/api/auth/login`, {
+   258→    method: "POST",
+   259→    headers: { "Content-Type": "application/json" },
+   260→    body: JSON.stringify({ email: FOUNDER_EMAIL, password: FOUNDER_PASSWORD }),
+   261→  });
+   262→  const setCookie = login2.headers.get("set-cookie") || "";
+   263→  const m = setCookie.match(/inv_token=([^;]+)/);
+   264→  if (!m) throw new Error("Login after register returned no inv_token cookie");
+   265→  jwt = m[1];
+   266→  console.log(`✓ Registered + logged in as ${FOUNDER_EMAIL}`);
+   267→}
+   268→
+   269→async function ensureTestCompany(): Promise<void> {
+   270→  // Try create; if 409, it already exists.
+   271→  const res = await fetch(`${BASE}/api/companies`, {
+   272→    method: "POST",
+   273→    headers: { "Content-Type": "application/json", Cookie: `inv_token=${jwt}` },
+   274→    body: JSON.stringify({
+   275→      name: "Load Test Co",
+   276→      slug: COMPANY_SLUG,
+   277→      currency: "KWD",
+   278→      defaultTaxRate: "0",
+   279→    }),
+   280→  });
+   281→  if (res.ok) {
+   282→    console.log(`✓ Created test company: ${COMPANY_SLUG}`);
+   283→    return;
+   284→  }
+   285→  if (res.status === 409) {
+   286→    console.log(`✓ Test company already exists: ${COMPANY_SLUG}`);
+   287→    return;
+   288→  }
+   289→  const txt = await res.text();
+   290→  throw new Error(`Company create failed (${res.status}): ${txt}`);
+   291→}
+   292→
+   293→// ─── Concurrency test runner ─────────────────────────────────────────────────
+   294→async function runConcurrencyTest(
+   295→  endpoint: string,
+   296→  method: string,
+   297→  pathBuilder: (n: number) => string,
+   298→  bodyBuilder: ((n: number) => unknown) | null,
+   299→  concurrency: number,
+   300→  totalRequests: number,
+   301→  notes: string[] = [],
+   302→  timeoutMs: number = HTTP_REQUEST_TIMEOUT_MS,
+   303→): Promise<TestResult> {
+   304→  console.log(
+   305→    `  ▶ ${endpoint} @ c=${concurrency} (n=${totalRequests}) ...`,
+   306→  );
+   307→
+   308→  // Pre-sample
+   309→  const serverBefore = sampleServer();
+   310→  const runnerBefore = sampleRunner();
+   311→  const eld = monitorEventLoopDelay();
+   312→  eld.reset();
+   313→  eld.enable();
+   314→
+   315→  const samples: Sample[] = [];
+   316→  const t0 = performance.now();
+   317→  let inflight = 0;
+   318→  let nextIdx = 0;
+   319→  const queue: Promise<void>[] = [];
+   320→
+   321→  async function worker() {
+   322→    while (true) {
+   323→      const i = nextIdx++;
+   324→      if (i >= totalRequests) return;
+   325→      inflight++;
+   326→      const path = pathBuilder(i);
+   327→      const body = bodyBuilder ? bodyBuilder(i) : undefined;
+   328→      const r = await timedFetch(method, path, body, timeoutMs);
+   329→      samples.push({
+   330→        status: r.status,
+   331→        ok: r.ok,
+   332→        latencyMs: r.latencyMs,
+   333→        errorType: r.errorType,
+   334→      });
+   335→      inflight--;
+   336→    }
+   337→  }
+   338→
+   339→  for (let w = 0; w < concurrency; w++) queue.push(worker());
+   340→  await Promise.all(queue);
+   341→
+   342→  const wallMs = performance.now() - t0;
+   343→  eld.disable();
+   344→
+   345→  const serverAfter = sampleServer();
+   346→  const runnerAfter = sampleRunner();
+   347→
+   348→  const latencies = samples.map((s) => s.latencyMs);
+   349→  const successCount = samples.filter((s) => s.ok).length;
+   350→  const errorCount = samples.length - successCount;
+   351→  const errorTypes: Record<string, number> = {};
+   352→  for (const s of samples) {
+   353→    if (s.errorType) errorTypes[s.errorType] = (errorTypes[s.errorType] || 0) + 1;
+   354→  }
+   355→
+   356→  // Server CPU% over the test window (cpuTicks are in 1/100s of a second on Linux)
+   357→  const wallSec = wallMs / 1000;
+   358→  const cpuDeltaTicks = serverAfter.cpuTicks - serverBefore.cpuTicks;
+   359→  const cpuDeltaSec = cpuDeltaTicks / 100; // 100 Hz clock
+   360→  const serverCpuPct = wallSec > 0 ? (cpuDeltaSec / wallSec) * 100 : 0;
+   361→  const serverRssDeltaMB = (serverAfter.rssKB - serverBefore.rssKB) / 1024;
+   362→  const runnerRssDeltaMB = runnerAfter.rssMB - runnerBefore.rssMB;
+   363→
+   364→  const result: TestResult = {
+   365→    endpoint,
+   366→    method,
+   367→    concurrency,
+   368→    totalRequests,
+   369→    successCount,
+   370→    errorCount,
+   371→    errorTypes,
+   372→    latenciesMs: latencies,
+   373→    p50: pct(latencies, 50),
+   374→    p90: pct(latencies, 90),
+   375→    p95: pct(latencies, 95),
+   376→    p99: pct(latencies, 99),
+   377→    mean: mean(latencies),
+   378→    min: latencies.length ? Math.min(...latencies) : 0,
+   379→    max: latencies.length ? Math.max(...latencies) : 0,
+   380→    rps: wallMs > 0 ? (samples.length / wallMs) * 1000 : 0,
+   381→    wallMs,
+   382→    serverCpuPct,
+   383→    serverRssDeltaMB,
+   384→    runnerRssDeltaMB,
+   385→    eventLoopLagP99Ms: eld.percentile(99) / 1e6, // ns → ms
+   386→    eventLoopLagMaxMs: eld.max / 1e6,
+   387→    notes,
+   388→  };
+   389→
+   390→  console.log(
+   391→    `    ✓ ok=${successCount}/${totalRequests} p50=${result.p50.toFixed(0)}ms p95=${result.p95.toFixed(0)}ms p99=${result.p99.toFixed(0)}ms rps=${result.rps.toFixed(1)} cpu=${serverCpuPct.toFixed(0)}% err=${errorCount}`,
+   392→  );
+   393→  return result;
+   394→}
+   395→
+   396→// ─── Batch invoice creation ──────────────────────────────────────────────────
+   397→async function runBatchTest(size: number): Promise<BatchResult> {
+   398→  console.log(`\n  ▶ BATCH create ${size} invoices (c=${BATCH_CONCURRENCY}) ...`);
+   399→
+   400→  // C5 FIX: Cannot measure PostgreSQL DB size from file path like SQLite
+   401→  const dbSizeBefore = 0;
+   402→
+   403→  // Measure list latency before (single sample, fresh)
+   404→  const listBefore = await timedFetch(
+   405→    "GET",
+   406→    `/api/invoices?companySlug=${COMPANY_SLUG}&limit=500`,
+   407→    undefined,
+   408→    HTTP_REQUEST_TIMEOUT_MS,
+   409→  );
+   410→  // Take 5 samples for percentile
+   411→  const listSamplesBefore: number[] = [listBefore.latencyMs];
+   412→  for (let i = 0; i < 4; i++) {
+   413→    const r = await timedFetch(
+   414→      "GET",
+   415→      `/api/invoices?companySlug=${COMPANY_SLUG}&limit=500`,
+   416→      undefined,
+   417→      HTTP_REQUEST_TIMEOUT_MS,
+   418→    );
+   419→    listSamplesBefore.push(r.latencyMs);
+   420→  }
+   421→
+   422→  // Create `size` invoices with concurrency BATCH_CONCURRENCY
+   423→  const t0 = performance.now();
+   424→  let successCount = 0;
+   425→  let errorCount = 0;
+   426→  let nextIdx = 0;
+   427→  const ts = Date.now();
+   428→  async function worker() {
+   429→    while (true) {
+   430→      const i = nextIdx++;
+   431→      if (i >= size) return;
+   432→      const body = {
+   433→        invoiceNumber: `BATCH-${ts}-${size}-${i}`,
+   434→        clientName: `Batch Client ${i}`,
+   435→        issueDate: "2026-01-15",
+   436→        dueDate: "2026-02-15",
+   437→        lineItems: [{ description: `Item ${i}`, qty: 2, price: "50" }],
+   438→        subtotal: "100",
+   439→        taxRate: "0",
+   440→        taxAmount: "0",
+   441→        total: "100",
+   442→        status: "draft",
+   443→        companySlug: COMPANY_SLUG,
+   444→      };
+   445→      const r = await timedFetch("POST", "/api/invoices", body, HTTP_REQUEST_TIMEOUT_MS);
+   446→      if (r.ok) successCount++;
+   447→      else errorCount++;
+   448→    }
+   449→  }
+   450→  const workers: Promise<void>[] = [];
+   451→  for (let w = 0; w < BATCH_CONCURRENCY; w++) workers.push(worker());
+   452→  await Promise.all(workers);
+   453→  const wallMs = performance.now() - t0;
+   454→
+   455→  // Wait a brief moment for DB to flush (C5 FIX: updated for PostgreSQL)
+   456→  await new Promise((r) => setTimeout(r, 500));
+   457→
+   458→  // Measure list latency after (5 samples)
+   459→  const listSamplesAfter: number[] = [];
+   460→  for (let i = 0; i < 5; i++) {
+   461→    const r = await timedFetch(
+   462→      "GET",
+   463→      `/api/invoices?companySlug=${COMPANY_SLUG}&limit=500`,
+   464→      undefined,
+   465→      HTTP_REQUEST_TIMEOUT_MS,
+   466→    );
+   467→    listSamplesAfter.push(r.latencyMs);
+   468→  }
+   469→
+   470→  // C5 FIX: Cannot measure PostgreSQL DB size from file path like SQLite
+   471→  const dbSizeAfter = 0;
+   472→
+   473→  const result: BatchResult = {
+   474→    size,
+   475→    wallMs,
+   476→    throughputInvoicesPerSec: wallMs > 0 ? (successCount / wallMs) * 1000 : 0,
+   477→    successCount,
+   478→    errorCount,
+   479→    listLatencyMsBefore: listBefore.latencyMs,
+   480→    listLatencyMsAfter: listSamplesAfter[0],
+   481→    dbSizeBytesBefore: dbSizeBefore,
+   482→    dbSizeBytesAfter: dbSizeAfter,
+   483→    listP50: pct(listSamplesAfter, 50),
+   484→    listP95: pct(listSamplesAfter, 95),
+   485→  };
+   486→
+   487→  console.log(
+   488→    `    ✓ ok=${successCount}/${size} wall=${(wallMs / 1000).toFixed(1)}s throughput=${result.throughputInvoicesPerSec.toFixed(1)} inv/s listAfterP50=${result.listP50.toFixed(0)}ms dbGrowth=${((dbSizeAfter - dbSizeBefore) / 1024).toFixed(0)}KB`,
+   489→  );
+   490→  return result;
+   491→}
+   492→
+   493→// ─── Cleanup ─────────────────────────────────────────────────────────────────
+   494→async function cleanup(): Promise<void> {
+   495→  console.log("\n  ▶ Cleanup: hard-delete test company ...");
+   496→  const res = await fetch(`${BASE}/api/companies/${COMPANY_SLUG}`, {
+   497→    method: "DELETE",
+   498→    headers: {
+   499→      "Content-Type": "application/json",
+   500→      Cookie: `inv_token=${jwt}`,
+   501→    },
+   502→    body: JSON.stringify({ hardDelete: true, typeToConfirm: "Load Test Co" }),
+   503→  });
+   504→  if (res.ok) {
+   505→    console.log(`    ✓ Test company "${COMPANY_SLUG}" deleted`);
+   506→  } else {
+   507→    const txt = await res.text();
+   508→    console.log(`    ⚠️ Cleanup failed (${res.status}): ${txt.slice(0, 200)}`);
+   509→  }
+   510→}
+   511→
+   512→// ─── Output writers ──────────────────────────────────────────────────────────
+   513→function writeOutputs(
+   514→  results: TestResult[],
+   515→  batchResults: BatchResult[],
+   516→  serverPid: number | null,
+   517→): void {
+   518→  // JSON
+   519→  const jsonPayload = {
+   520→    meta: {
+   521→      task: "3-load-test",
+   522→      agent: "full-stack-developer",
+   523→      timestamp: new Date().toISOString(),
+   524→      base: BASE,
+   525→      serverPid,
+   526→      dbPath: "PostgreSQL (C5 FIX: no single file path)",
+   527→      requestTimeoutMs: REQUEST_TIMEOUT_MS,
+   528→      requestsPerLevel: REQUESTS_PER_LEVEL,
+   529→      aiRequestsPerLevel: AI_REQUESTS_PER_LEVEL,
+   530→      batchConcurrency: BATCH_CONCURRENCY,
+   531→      companySlug: COMPANY_SLUG,
+   532→      founderEmail: FOUNDER_EMAIL,
+   533→      notes: [
+   534→        "All numbers tagged [MEASURED] reflect real latency against the running Next.js dev server (dev mode, not production build).",
+   535→        "p50/p90/p95/p99 computed from sorted latency arrays (Nearest-rank method).",
+   536→        "Server CPU% = (delta utime+stime jiffies / wall seconds) × 100, sampled via /proc/[pid]/stat.",
+   537→        "Server RSS delta = RSS after − RSS before, in MB.",
+   538→        "Event-loop lag sampled via perf_hooks.monitorEventLoopDelay() in the test-runner process (not the server).",
+   539→        "Dashboard stats endpoint tested with ?fresh=1 to bypass the 30s in-memory cache (measures the real DB cost).",
+   540→        "AI endpoint (smart-parse) tested at lower concurrency to avoid hammering the free z-ai SDK.",
+   541→      ],
+   542→    },
+   543→    endpointResults: results,
+   544→    batchResults,
+   545→  };
+   546→  writeFileSync(
+   547→    `${RESULTS_DIR}/scale-load-test.json`,
+   548→    JSON.stringify(jsonPayload, null, 2),
+   549→  );
+   550→
+   551→  // CSV
+   552→  const csvRows: string[] = [
+   553→    "endpoint,method,concurrency,total,success,error,p50_ms,p90_ms,p95_ms,p99_ms,mean_ms,min_ms,max_ms,rps,wall_ms,server_cpu_pct,server_rss_delta_mb,runner_rss_delta_mb,eloop_p99_ms,eloop_max_ms",
+   554→  ];
+   555→  for (const r of results) {
+   556→    csvRows.push(
+   557→      [
+   558→        r.endpoint,
+   559→        r.method,
+   560→        r.concurrency,
+   561→        r.totalRequests,
+   562→        r.successCount,
+   563→        r.errorCount,
+   564→        r.p50.toFixed(2),
+   565→        r.p90.toFixed(2),
+   566→        r.p95.toFixed(2),
+   567→        r.p99.toFixed(2),
+   568→        r.mean.toFixed(2),
+   569→        r.min.toFixed(2),
+   570→        r.max.toFixed(2),
+   571→        r.rps.toFixed(2),
+   572→        r.wallMs.toFixed(0),
+   573→        r.serverCpuPct.toFixed(1),
+   574→        r.serverRssDeltaMB.toFixed(2),
+   575→        r.runnerRssDeltaMB.toFixed(2),
+   576→        r.eventLoopLagP99Ms.toFixed(2),
+   577→        r.eventLoopLagMaxMs.toFixed(2),
+   578→      ].join(","),
+   579→    );
+   580→  }
+   581→  csvRows.push("");
+   582→  csvRows.push(
+   583→    "# batch tests: endpoint=size,throughput_invoices_per_sec,wall_ms,success,error,list_before_ms,list_after_ms,list_p50_ms,list_p95_ms,db_before_bytes,db_after_bytes",
+   584→  );
+   585→  for (const b of batchResults) {
+   586→    csvRows.push(
+   587→      [
+   588→        `BATCH_${b.size}`,
+   589→        b.throughputInvoicesPerSec.toFixed(2),
+   590→        b.wallMs.toFixed(0),
+   591→        b.successCount,
+   592→        b.errorCount,
+   593→        b.listLatencyMsBefore.toFixed(0),
+   594→        b.listLatencyMsAfter.toFixed(0),
+   595→        b.listP50.toFixed(0),
+   596→        b.listP95.toFixed(0),
+   597→        b.dbSizeBytesBefore,
+   598→        b.dbSizeBytesAfter,
+   599→      ].join(","),
+   600→    );
+   601→  }
+   602→  writeFileSync(`${RESULTS_DIR}/scale-load-test.csv`, csvRows.join("\n"));
+   603→
+   604→  // MD
+   605→  const md: string[] = [];
+   606→  md.push("# GarfiX Scale Load Test — [MEASURED] Results");
+   607→  md.push("");
+   608→  md.push(`- **Task ID**: 3-load-test`);
+   609→  md.push(`- **Agent**: full-stack-developer`);
+   610→  md.push(`- **Timestamp**: ${jsonPayload.meta.timestamp}`);
+   611→  md.push(`- **Target**: ${BASE} (Next.js dev server)`);
+   612→  md.push(`- **Server PID**: ${serverPid ?? "not found"}`);
+   613→  md.push(`- **DB**: PostgreSQL (C5 FIX: no single file path)`);
+   614→  md.push(`- **Test company**: \`${COMPANY_SLUG}\` (created + cleaned up)`);
+   615→  md.push(`- **Auth**: JWT cookie \`inv_token\` issued via \`/api/auth/login\``);
+   616→  md.push(
+   617→    `- **Requests per concurrency level**: ${REQUESTS_PER_LEVEL} (HTTP endpoints) / ${AI_REQUESTS_PER_LEVEL} (AI endpoint)`,
+   618→  );
+   619→  md.push(`- **Request timeout**: ${REQUEST_TIMEOUT_MS / 1000}s`);
+   620→  md.push("");
+   621→  md.push("> All numbers below are **[MEASURED]** against the live dev server. The dev server runs Next.js in dev mode (no prod build, no HTTP caching). Production numbers will be substantially better.");
+   622→  md.push("");
+   623→
+   624→  md.push("## 1. Endpoint Concurrency Results");
+   625→  md.push("");
+   626→  // Group by endpoint
+   627→  const byEndpoint = new Map<string, TestResult[]>();
+   628→  for (const r of results) {
+   629→    const key = r.endpoint;
+   630→    if (!byEndpoint.has(key)) byEndpoint.set(key, []);
+   631→    byEndpoint.get(key)!.push(r);
+   632→  }
+   633→  for (const [endpoint, rs] of byEndpoint) {
+   634→    md.push(`### ${endpoint}`);
+   635→    md.push("");
+   636→    md.push(
+   637→      "| Concurrency | Total | Success | Errors | p50 ms | p90 ms | p95 ms | p99 ms | Mean ms | RPS | Server CPU% | Server RSS Δ MB | ELoop p99 ms |",
+   638→    );
+   639→    md.push(
+   640→      "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+   641→    );
+   642→    for (const r of rs) {
+   643→      md.push(
+   644→        `| ${r.concurrency} | ${r.totalRequests} | ${r.successCount} | ${r.errorCount} | ${r.p50.toFixed(0)} | ${r.p90.toFixed(0)} | ${r.p95.toFixed(0)} | ${r.p99.toFixed(0)} | ${r.mean.toFixed(0)} | ${r.rps.toFixed(1)} | ${r.serverCpuPct.toFixed(0)} | ${r.serverRssDeltaMB.toFixed(1)} | ${r.eventLoopLagP99Ms.toFixed(1)} |`,
+   645→      );
+   646→    }
+   647→    md.push("");
+   648→    // Error breakdown if any
+   649→    const hasErrors = rs.some((r) => r.errorCount > 0);
+   650→    if (hasErrors) {
+   651→      md.push("**Error breakdown:**");
+   652→      for (const r of rs) {
+   653→        if (r.errorCount > 0) {
+   654→          const breakdown = Object.entries(r.errorTypes)
+   655→            .map(([k, v]) => `${k}=${v}`)
+   656→            .join(", ");
+   657→          md.push(`- c=${r.concurrency}: ${breakdown}`);
+   658→        }
+   659→      }
+   660→      md.push("");
+   661→    }
+   662→  }
+   663→
+   664→  md.push("## 2. Batch Invoice Creation");
+   665→  md.push("");
+   666→  md.push(
+   667→    "| Batch Size | Wall s | Throughput (inv/s) | Success | Errors | List p50 After ms | List p95 After ms | DB Growth KB |",
+   668→  );
+   669→  md.push("|---:|---:|---:|---:|---:|---:|---:|---:|");
+   670→  for (const b of batchResults) {
+   671→    md.push(
+   672→      `| ${b.size} | ${(b.wallMs / 1000).toFixed(1)} | ${b.throughputInvoicesPerSec.toFixed(1)} | ${b.successCount} | ${b.errorCount} | ${b.listP50.toFixed(0)} | ${b.listP95.toFixed(0)} | ${((b.dbSizeBytesAfter - b.dbSizeBytesBefore) / 1024).toFixed(0)} |`,
+   673→    );
+   674→  }
+   675→  md.push("");
+   676→
+   677→  md.push("## 3. Methodology & Honest Gaps");
+   678→  md.push("");
+   679→  md.push("- **p50/p90/p95/p99**: nearest-rank percentile on raw latency array per (endpoint, concurrency) cell.");
+   680→  md.push("- **Server CPU%**: `(Δutime+Δstime) / wall_seconds × 100`, read from `/proc/[pid]/stat`. Single-core %, can exceed 100% if multi-threaded.");
+   681→  md.push("- **Server RSS Δ**: resident-set size delta in MB, read from `/proc/[pid]/stat`.");
+   682→  md.push("- **Event-loop lag**: sampled in the **test runner**, not the server. P99 of delay between scheduled and executed timers (1ms resolution).");
+   683→  md.push("- **Dashboard stats**: tested with `?fresh=1` to bypass the 30s in-memory cache and measure the real aggregate query cost. Without `?fresh=1`, repeated calls hit cache and return in <5ms — not representative of cold-query performance.");
+   684→  md.push("- **AI endpoint** (`/api/ai/smart-parse`): tested at concurrency 1/3/5 only to avoid hammering the free z-ai-web-dev-sdk. Failures (429/timeout) recorded as errors, NOT retried.");
+   685→  md.push("- **Dev mode**: Next.js runs in dev mode (no prod build). Hot-module recompilation, no HTTP caching, source maps enabled. Production numbers will be substantially better.");
+   686→  md.push("- **PostgreSQL**: production database. Use DATABASE_URL env var to configure connection. C5 FIX: migrated from SQLite.");
+   687→  md.push("");
+   688→  md.push("## 4. Artifacts");
+   689→  md.push("- `scale-load-test.json` — full raw data");
+   690→  md.push("- `scale-load-test.csv` — flat table");
+   691→  md.push("- `scale-load-test.md` — this summary");
+   692→
+   693→  writeFileSync(`${RESULTS_DIR}/scale-load-test.md`, md.join("\n"));
+   694→}
+   695→
+   696→// ─── Main ────────────────────────────────────────────────────────────────────
+   697→async function main() {
+   698→  // M2 FIX: Require LOADTEST_PASSWORD env var before running
+   699→  if (FOUNDER_PASSWORD === "CHANGE_ME_IN_ENV") {
+   700→    console.error("ERROR: Set LOADTEST_PASSWORD env var before running load tests.");
+   701→    process.exit(1);
+   702→  }
+   703→
+   704→  console.log("╔══════════════════════════════════════════════════════════════╗");
+   705→  console.log("║  GarfiX Scale Load Test — Task 3-load-test                  ║");
+   706→  console.log("╚══════════════════════════════════════════════════════════════╝");
+   707→  console.log(`  Target: ${BASE}`);
+   708→  SERVER_PID = findServerPid();
+   709→  console.log(`  Server PID: ${SERVER_PID ?? "NOT FOUND"}`);
+   710→
+   711→  const results: TestResult[] = [];
+   712→  const batchResults: BatchResult[] = [];
+   713→  let cleanupOk = false;
+   714→
+   715→  try {
+   716→    // 1. Auth
+   717→    console.log("\n[1/6] Auth setup");
+   718→    await loginOrRegister();
+   719→
+   720→    // 2. Company
+   721→    console.log("\n[2/6] Ensure test company");
+   722→    await ensureTestCompany();
+   723→
+   724→    // Sanity probe
+   725→    const probe = await timedFetch("GET", `/api/invoices?companySlug=${COMPANY_SLUG}`, undefined, HTTP_REQUEST_TIMEOUT_MS);
+   726→    console.log(`  Sanity probe GET /api/invoices → ${probe.status} in ${probe.latencyMs.toFixed(0)}ms`);
+   727→
+   728→    // 3a. POST /api/invoices (create)
+   729→    console.log("\n[3/6] POST /api/invoices (create invoice)");
+   730→    {
+   731→      const ts = Date.now();
+   732→      for (const c of CONCURRENCY_LEVELS) {
+   733→        try {
+   734→          const r = await runConcurrencyTest(
+   735→            "POST /api/invoices",
+   736→            "POST",
+   737→            () => "/api/invoices",
+   738→            (n) => ({
+   739→              invoiceNumber: `LOAD-TEST-${ts}-${c}-${n}`,
+   740→              clientName: `Test Client ${n}`,
+   741→              issueDate: "2026-01-15",
+   742→              dueDate: "2026-02-15",
+   743→              lineItems: [{ description: "Item 1", qty: 2, price: "50" }],
+   744→              subtotal: "100",
+   745→              taxRate: "0",
+   746→              taxAmount: "0",
+   747→              total: "100",
+   748→              status: "draft",
+   749→              companySlug: COMPANY_SLUG,
+   750→            }),
+   751→            c,
+   752→            REQUESTS_PER_LEVEL,
+   753→          );
+   754→          results.push(r);
+   755→        } catch (err) {
+   756→          console.log(`    ⚠️ c=${c} crashed: ${err instanceof Error ? err.message : String(err)}`);
+   757→        }
+   758→        await new Promise((r) => setTimeout(r, 500));
+   759→      }
+   760→    }
+   761→
+   762→    // 3b. GET /api/invoices (list)
+   763→    console.log("\n[3/6] GET /api/invoices (list invoices)");
+   764→    for (const c of CONCURRENCY_LEVELS) {
+   765→      try {
+   766→        const r = await runConcurrencyTest(
+   767→          "GET /api/invoices",
+   768→          "GET",
+   769→          () => `/api/invoices?companySlug=${COMPANY_SLUG}&limit=100`,
+   770→          null,
+   771→          c,
+   772→          REQUESTS_PER_LEVEL,
+   773→        );
+   774→        results.push(r);
+   775→      } catch (err) {
+   776→        console.log(`    ⚠️ c=${c} crashed: ${err instanceof Error ? err.message : String(err)}`);
+   777→      }
+   778→      await new Promise((r) => setTimeout(r, 500));
+   779→    }
+   780→
+   781→    // 3c. GET /api/dashboard/stats (heaviest read; ?fresh=1 bypasses 30s cache)
+   782→    console.log("\n[3/6] GET /api/dashboard/stats (heaviest read, ?fresh=1)");
+   783→    for (const c of CONCURRENCY_LEVELS) {
+   784→      try {
+   785→        const r = await runConcurrencyTest(
+   786→          "GET /api/dashboard/stats",
+   787→          "GET",
+   788→          () => `/api/dashboard/stats?companySlug=${COMPANY_SLUG}&fresh=1`,
+   789→          null,
+   790→          c,
+   791→          REQUESTS_PER_LEVEL,
+   792→          ["?fresh=1 bypasses the 30s in-memory cache to measure the real aggregate query cost"],
+   793→        );
+   794→        results.push(r);
+   795→      } catch (err) {
+   796→        console.log(`    ⚠️ c=${c} crashed: ${err instanceof Error ? err.message : String(err)}`);
+   797→      }
+   798→      await new Promise((r) => setTimeout(r, 500));
+   799→    }
+   800→
+   801→    // 3d. POST /api/ai/smart-parse (limited concurrency)
+   802→    console.log("\n[3/6] POST /api/ai/smart-parse (AI — limited concurrency)");
+   803→    {
+   804→      const arabicText =
+   805→        "فاتورة رقم 123 من شركة الأمل للتجارة بتاريخ 2026-01-15، العميل: محمد أحمد، المبلغ الإجمالي 250 دينار";
+   806→      for (const c of AI_CONCURRENCY_LEVELS) {
+   807→        try {
+   808→          const r = await runConcurrencyTest(
+   809→            "POST /api/ai/smart-parse",
+   810→            "POST",
+   811→            () => "/api/ai/smart-parse",
+   812→            () => ({
+   813→              rawText: arabicText,
+   814→              companySlug: COMPANY_SLUG,
+   815→            }),
+   816→            c,
+   817→            AI_REQUESTS_PER_LEVEL,
+   818→            [
+   819→              "AI endpoint — z-ai-web-dev-sdk upstream; lower concurrency to avoid rate-limit",
+   820→              "Failures (429/timeout) recorded as errors, NOT retried",
+   821→            ],
+   822→            AI_REQUEST_TIMEOUT_MS,
+   823→          );
+   824→          results.push(r);
+   825→        } catch (err) {
+   826→          console.log(`    ⚠️ c=${c} crashed: ${err instanceof Error ? err.message : String(err)}`);
+   827→        }
+   828→        // Long cooldown for AI to avoid free-tier rate-limit
+   829→        await new Promise((r) => setTimeout(r, 2000));
+   830→      }
+   831→    }
+   832→
+   833→    // 4. Batch invoice creation
+   834→    console.log("\n[4/6] Batch invoice creation tests");
+   835→    for (const size of BATCH_SIZES) {
+   836→      try {
+   837→        const b = await runBatchTest(size);
+   838→        batchResults.push(b);
+   839→      } catch (err) {
+   840→        console.log(`    ⚠️ batch ${size} crashed: ${err instanceof Error ? err.message : String(err)}`);
+   841→      }
+   842→      await new Promise((r) => setTimeout(r, 1000));
+   843→    }
+   844→  } catch (err) {
+   845→    console.log(`\nFATAL during tests: ${err instanceof Error ? err.message : String(err)}`);
+   846→    console.log("Will still write partial results.");
+   847→  }
+   848→
+   849→  // 5. Write outputs (always — even on partial failure)
+   850→  console.log("\n[5/6] Writing outputs");
+   851→  writeOutputs(results, batchResults, SERVER_PID);
+   852→  console.log(`  ✓ Wrote scale-load-test.json/csv/md to ${RESULTS_DIR}`);
+   853→
+   854→  // 6. Cleanup
+   855→  console.log("\n[6/6] Cleanup");
+   856→  try {
+   857→    await cleanup();
+   858→    cleanupOk = true;
+   859→  } catch (err) {
+   860→    console.log(`  ⚠️ Cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
+   861→  }
+   862→  void cleanupOk;
+   863→
+   864→  // Stdout summary table
+   865→  console.log("\n╔══════════════════════════════════════════════════════════════╗");
+   866→  console.log("║  SUMMARY                                                     ║");
+   867→  console.log("╚══════════════════════════════════════════════════════════════╝");
+   868→  console.log("\nEndpoint | Method | Concurrency | p50 ms | p95 ms | p99 ms | RPS | Errors");
+   869→  console.log("---------|--------|-------------|-------:|-------:|-------:|----:|-------:");
+   870→  for (const r of results) {
+   871→    console.log(
+   872→      `${r.endpoint} | ${r.method} | ${r.concurrency} | ${r.p50.toFixed(0)} | ${r.p95.toFixed(0)} | ${r.p99.toFixed(0)} | ${r.rps.toFixed(1)} | ${r.errorCount}`,
+   873→    );
+   874→  }
+   875→  console.log("\nBatch | Wall s | Throughput (inv/s) | Success | Errors | List p50 After ms");
+   876→  console.log("------|-------:|-------------------:|--------:|-------:|-----------------:");
+   877→  for (const b of batchResults) {
+   878→    console.log(
+   879→      `${b.size} | ${(b.wallMs / 1000).toFixed(1)} | ${b.throughputInvoicesPerSec.toFixed(1)} | ${b.successCount} | ${b.errorCount} | ${b.listP50.toFixed(0)}`,
+   880→    );
+   881→  }
+   882→  console.log("\nDone. Results in /home/z/my-project/bench-results/");
+   883→}
+   884→
+   885→main().catch((err) => {
+   886→  console.error("FATAL:", err);
+   887→  process.exit(1);
+   888→});
+   889→

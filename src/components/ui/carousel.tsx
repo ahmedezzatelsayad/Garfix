@@ -95,7 +95,8 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return
-    onSelect(api)
+    // Use startTransition to avoid cascading renders from synchronous setState
+    React.startTransition(() => { onSelect(api) })
     api.on("reInit", onSelect)
     api.on("select", onSelect)
 

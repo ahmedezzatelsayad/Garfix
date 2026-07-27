@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
 import { Activity, CheckCircle, AlertTriangle, XCircle, Clock, RefreshCw } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 
@@ -60,13 +60,15 @@ export default function StatusPage() {
 
   useEffect(() => {
     const now = new Date();
-    setLastChecked(now.toLocaleString("ar-KW", { timeZone: "Asia/Kuwait" }));
-    // Determine overall status from services
-    const hasOutage = SERVICES.some((s) => s.status === "outage");
-    const hasDegraded = SERVICES.some((s) => s.status === "degraded");
-    if (hasOutage) setOverallStatus("outage");
-    else if (hasDegraded) setOverallStatus("degraded");
-    else setOverallStatus("operational");
+    // Determine overall status from services (use startTransition to avoid cascading renders)
+    startTransition(() => {
+      setLastChecked(now.toLocaleString("ar-KW", { timeZone: "Asia/Kuwait" }));
+      const hasOutage = SERVICES.some((s) => s.status === "outage");
+      const hasDegraded = SERVICES.some((s) => s.status === "degraded");
+      if (hasOutage) setOverallStatus("outage");
+      else if (hasDegraded) setOverallStatus("degraded");
+      else setOverallStatus("operational");
+    });
   }, []);
 
   const overallConfig = STATUS_CONFIG[overallStatus];

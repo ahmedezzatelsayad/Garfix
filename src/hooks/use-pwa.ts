@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -45,7 +45,7 @@ export function usePWAInstall(): PWAInstallResult {
       document.referrer.includes("android-app://");
 
     if (isStandalone) {
-      setIsInstalled(true);
+      React.startTransition(() => { setIsInstalled(true) });
       return;
     }
 
@@ -98,10 +98,10 @@ export function useOfflineStatus(): PWAOfflineResult {
 
   useEffect(() => {
     // Initial state
-    setIsOffline(!navigator.onLine);
+    React.startTransition(() => { setIsOffline(!navigator.onLine) });
 
-    const onOffline = () => setIsOffline(true);
-    const onOnline = () => setIsOffline(false);
+    const onOffline = () => React.startTransition(() => { setIsOffline(true) });
+    const onOnline = () => React.startTransition(() => { setIsOffline(false) });
 
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
