@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS "SessionRegistry" (
     "jti" TEXT NOT NULL,
     "ipAddress" TEXT,
     "userAgent" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "expiresAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "SessionRegistry_jti_key" ON "SessionRegistry"("jti");
 CREATE INDEX IF NOT EXISTS "SessionRegistry_userUid_expiresAt_idx" ON "SessionRegistry"("userUid", "expiresAt");
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS "OutboxEvent" (
     "eventType" TEXT NOT NULL,
     "payload" TEXT NOT NULL,
     "headers" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "publishedAt" DATETIME,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "publishedAt" TIMESTAMP(3),
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "lastError" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending'

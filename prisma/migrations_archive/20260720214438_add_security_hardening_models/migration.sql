@@ -5,10 +5,10 @@ CREATE TABLE "MFASecret" (
     "secret" TEXT NOT NULL,
     "recoveryCodes" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
-    "verifiedAt" DATETIME,
-    "lastUsedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "verifiedAt" TIMESTAMP(3),
+    "lastUsedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "MFASecret_userUid_fkey" FOREIGN KEY ("userUid") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -19,8 +19,8 @@ CREATE TABLE "SessionRegistry" (
     "jti" TEXT NOT NULL,
     "ipAddress" TEXT,
     "userAgent" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "expiresAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "SessionRegistry_userUid_fkey" FOREIGN KEY ("userUid") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -32,9 +32,9 @@ CREATE TABLE "TamperEvidenceChain" (
     "contentHash" TEXT NOT NULL,
     "prevHash" TEXT NOT NULL,
     "chainOrder" INTEGER NOT NULL DEFAULT 0,
-    "verifiedAt" DATETIME,
+    "verifiedAt" TIMESTAMP(3),
     "isValid" BOOLEAN,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -45,10 +45,10 @@ CREATE TABLE "WebhookEndpoint" (
     "events" TEXT NOT NULL,
     "secret" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "lastPingAt" DATETIME,
+    "lastPingAt" TIMESTAMP(3),
     "failCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -62,9 +62,9 @@ CREATE TABLE "WebhookDelivery" (
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "maxAttempts" INTEGER NOT NULL DEFAULT 3,
     "status" TEXT NOT NULL DEFAULT 'pending',
-    "nextRetryAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deliveredAt" DATETIME,
+    "nextRetryAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deliveredAt" TIMESTAMP(3),
     CONSTRAINT "WebhookDelivery_endpointId_fkey" FOREIGN KEY ("endpointId") REFERENCES "WebhookEndpoint" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

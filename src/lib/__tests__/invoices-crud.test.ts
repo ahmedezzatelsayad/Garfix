@@ -39,6 +39,31 @@
  */
 import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ─── Active-test flag (mock pollution prevention) ───────────────────────────
+//
+// Bun's mock.module() is GLOBAL across test files in the same process — once
+// registered, the mock factory is called for EVERY import of that module,
+// even from other test files. This causes mock-pollution: the @/lib/auth,
+// @/lib/middleware, @/lib/usageMeter, and next/server mocks we register
+// below leak into auth-advanced.test.ts, rbac.test.ts, and
+// multi-tenant-isolation.test.ts (which all import @/lib/auth expecting the
+// real implementation).
+//
+// Fix: gate each mock factory behind __invoiceTestsActive. Set to true in
+// beforeAll, false in afterAll. When false, factories fall through to the
+// real module (loaded once at top of file via dynamic import) so downstream
+// tests see genuine behavior.
+// Start ACTIVE so mock factories return smart-mock implementations for all
+// imports (including the invoice route handlers' module-load-time import of
+// @/lib/auth). afterAll() flips this to false so downstream test files get
+// real modules. The smart mock's resolveAuth delegates to realAuthModule
+// which was loaded via require() (bypasses mock interception), so there is
+// NO infinite recursion — realAuthModule IS the real implementation, not
+// the smart mock.
+(globalThis as any).__invoiceTestsActive = true;
 
 // ─── Mutable per-test state ──────────────────────────────────────────────────
 
@@ -224,12 +249,49 @@ const RICH_TX = {
 const invoiceAuthOverride: { user: any | null } = { user: null };
 (globalThis as any).__invoiceAuthOverride = invoiceAuthOverride;
 
-// Pre-load the real auth module via require() with an absolute path, which
-// bypasses Bun's mock.module interception.  This gives us access to the
-// genuine auth functions so we can re-export them in the smart mock factory.
-const realAuthModule = require("/home/z/my-project/garfix-repo/src/lib/auth.ts");
+// Pre-load the REAL auth module via require() with a path-resolved relative
+// path. Bun's mock.module() does NOT intercept require() with absolute paths
+// (only ESM-style imports), so this gives us the genuine implementation.
+// We then re-export these real functions in the smart mock factory below.
+//
+// NOTE: We use path.resolve(__dirname, '../auth.ts') instead of a hardcoded
+// absolute path so this works on any developer machine AND on CI runners.
+// The eslint-disable is intentional — there is no ESM equivalent that
+// bypasses Bun's mock.module interception.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const realAuthModule = require(path.resolve(__dirname, "../auth.ts")) as typeof import("../auth.ts");
 
-mock.module("@/lib/auth", () => ({
+// Load real middleware / usageMeter / next/server modules via the same
+// require()-bypass pattern (anti-pollution: when __invoiceTestsActive=false,
+// mock factories fall through to these).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const realMiddlewareModule: any = require(path.resolve(__dirname, "../middleware.ts"));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const realUsageMeterModule: any = require(path.resolve(__dirname, "../usageMeter.ts"));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const realNextServerModule: any = require("next/server");
+// Load real founder module (used by inlined assertCompanyAccess/hasUnrestrictedScope
+// fallbacks to check isFounderEmail — auth-advanced.test.ts mocks @/lib/founder,
+// so we use require() bypass to get the real one).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const realFounderModule: any = require(path.resolve(__dirname, "../founder.ts"));
+
+mock.module("@/lib/auth", () => {
+  // IMPORTANT: Bun's mock.module() caches the factory result — the factory
+  // is called ONCE (when @/lib/auth is first imported) and the returned
+  // object is reused for all subsequent imports. This means we CANNOT use
+  // __invoiceTestsActive at factory time to fall through to the real module
+  // (the cached smart mock would be returned even after afterAll sets the
+  // flag to false).
+  //
+  // Instead, we check __invoiceTestsActive at CALL TIME inside each smart
+  // mock function. When inactive, we require() the real module (require()
+  // bypasses mock.module interception per Bun's behavior) and delegate to
+  // the real function.
+  const __authPath = path.resolve(__dirname, "../auth.ts");
+  return {
   // Re-export every real auth function so auth-advanced tests get the
   // genuine implementations (for hashPassword, verifyPassword, signToken,
   // etc.).  Only resolveAuth, assertCompanyAccess, and hasUnrestrictedScope
@@ -250,33 +312,65 @@ mock.module("@/lib/auth", () => ({
   getRefreshToken: realAuthModule.getRefreshToken,
   ACCESS_COOKIE: "inv_token",
   REFRESH_COOKIE: "inv_refresh",
-  // Smart mocks — check override first, delegate to real if no override
+  // Smart mocks — when __invoiceTestsActive is true, use the override.
+  // When false (downstream test files), delegate to the REAL function via
+  // require() bypass (require() is NOT intercepted by mock.module).
   resolveAuth: mock(async (req: any) => {
+    if (!(globalThis as any).__invoiceTestsActive) {
+      // Use dynamic import() with absolute path + cache-busting query to
+      // bypass Bun's mock.module interception.
+      const real: any = await import(__authPath + "?bypass=" + Date.now());
+      return real.resolveAuth(req);
+    }
     const override = (globalThis as any).__invoiceAuthOverride;
     if (override?.user) {
       return { ok: true, user: override.user };
     }
-    return realAuthModule.resolveAuth(req);
+    return { ok: false, status: 401, error: "No override set" };
   }),
   assertCompanyAccess: mock((user: any, slug: string | null) => {
+    if (!(globalThis as any).__invoiceTestsActive) {
+      // Inline the REAL assertCompanyAccess logic (can't use await import()
+      // in a sync function). Mirrors src/lib/auth.ts:393-397. Delegates the
+      // founder check to @/lib/founder's isFounderEmail (which auth-advanced
+      // mocks). We load the founder module via dynamic import at the top of
+      // the file (realFounderModule) so we don't need await here.
+      const isUnrestricted = user?.role === "admin" ||
+        (realFounderModule?.isFounderEmail ? realFounderModule.isFounderEmail(user?.email) : false);
+      if (!slug) return isUnrestricted;
+      if (isUnrestricted) return true;
+      return Array.isArray(user?.companies) && user.companies.includes(slug);
+    }
     const override = (globalThis as any).__invoiceAuthOverride;
     if (override?.user) {
       if (!slug) return true;
       if (override.user.role === "admin" || override.user.email === "founder@garfix.app") return true;
       return Array.isArray(override.user.companies) && override.user.companies.includes(slug);
     }
-    return realAuthModule.assertCompanyAccess(user, slug);
+    return false;
   }),
   hasUnrestrictedScope: mock((user: any) => {
+    if (!(globalThis as any).__invoiceTestsActive) {
+      // Inline the REAL hasUnrestrictedScope logic. Mirrors src/lib/auth.ts:389-391.
+      return user?.role === "admin" ||
+        (realFounderModule?.isFounderEmail ? realFounderModule.isFounderEmail(user?.email) : false);
+    }
     const override = (globalThis as any).__invoiceAuthOverride;
     if (override?.user) {
       return override.user.role === "admin" || override.user.email === "founder@garfix.app";
     }
-    return realAuthModule.hasUnrestrictedScope(user);
+    return false;
   }),
-}));
+  };
+});
 
-mock.module("@/lib/middleware", () => ({
+// realMiddlewareModule loaded above (require()-bypass pattern).
+
+mock.module("@/lib/middleware", () => {
+  if (!(globalThis as any).__invoiceTestsActive) {
+    return realMiddlewareModule;
+  }
+  return {
   requirePermissionForCompany: mock(async (_req: any, _perm: string, slug: string) => {
     if (!authUser) {
       return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -295,7 +389,22 @@ mock.module("@/lib/middleware", () => ({
   }),
   requirePermission: mock(async () => ({ user: authUser })),
   hasPermission: mock(() => permissionGranted),
-}));
+  };
+});
+
+// realUsageMeterModule loaded above (require()-bypass pattern).
+
+mock.module("@/lib/usageMeter", () => {
+  if (!(globalThis as any).__invoiceTestsActive) {
+    return realUsageMeterModule;
+  }
+  return {
+  checkTrialExpiry: mock(async () => ({ ok: trialOk })),
+  checkInvoiceQuota: mock(async () => ({ ok: quotaOk })),
+  checkUserQuota: mock(async () => ({ ok: true })),
+  checkCompanyQuota: mock(async () => ({ ok: true })),
+  };
+});
 
 // NOTE: We do NOT mock @/lib/audit via mock.module. The audit-advanced
 // test file imports the real logAudit/logAdminAction and tests them against
@@ -322,7 +431,12 @@ mock.module("@/lib/usageMeter", () => ({
 // space, breaking the invoice route handlers. Our own mock here provides
 // a fully-functional NextRequest/NextResponse built on Bun's native
 // Request/Response.
+// realNextServerModule loaded above (require()-bypass pattern).
+
 mock.module("next/server", () => {
+  if (!(globalThis as any).__invoiceTestsActive) {
+    return realNextServerModule;
+  }
   class NextRequest extends Request {
     _nextUrl: URL;
     constructor(input: string | Request, init?: RequestInit) {
@@ -381,6 +495,8 @@ import {
 const _orig: Record<string, any> = {};
 
 beforeAll(() => {
+  // Activate the mock factories (see __invoiceTestsActive comment at top).
+  (globalThis as any).__invoiceTestsActive = true;
   _orig.invoice = (db as any).invoice;
   _orig.auditLog = (db as any).auditLog;
   _orig.company = (db as any).company;
@@ -432,6 +548,10 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  // Deactivate mock factories so downstream test files (auth-advanced,
+  // rbac, multi-tenant-isolation) see the real @/lib/auth / @/lib/middleware
+  // / @/lib/usageMeter / next/server implementations.
+  (globalThis as any).__invoiceTestsActive = false;
   (db as any).invoice = _orig.invoice;
   (db as any).auditLog = _orig.auditLog;
   (db as any).company = _orig.company;

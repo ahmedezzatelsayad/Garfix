@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "rule_candidates" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "requestType" TEXT NOT NULL,
     "patternSignature" TEXT NOT NULL,
@@ -8,25 +8,23 @@ CREATE TABLE "rule_candidates" (
     "consistentOutput" TEXT NOT NULL,
     "confidence" REAL NOT NULL DEFAULT 0,
     "status" TEXT NOT NULL DEFAULT 'observing',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
-);
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL);
 
 -- CreateTable
 CREATE TABLE "global_patterns" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL PRIMARY KEY,
     "patternKey" TEXT NOT NULL,
     "suggestedSku" TEXT,
     "suggestedVatCategory" TEXT,
     "suggestedCategory" TEXT,
     "contributingCompaniesCount" INTEGER NOT NULL DEFAULT 0,
     "confidence" REAL NOT NULL DEFAULT 0,
-    "lastUpdated" DATETIME NOT NULL
-);
+    "lastUpdated" TIMESTAMP(3) NOT NULL);
 
 -- CreateTable
 CREATE TABLE "ai_score_snapshots" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "period" TEXT NOT NULL,
     "score" REAL NOT NULL DEFAULT 0,
@@ -34,12 +32,11 @@ CREATE TABLE "ai_score_snapshots" (
     "ruleHitPct" REAL NOT NULL DEFAULT 0,
     "aiCallPct" REAL NOT NULL DEFAULT 0,
     "avgCostPerRequest" REAL NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
 
 -- CreateTable
 CREATE TABLE "compiled_rules" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL PRIMARY KEY,
     "requestType" TEXT NOT NULL,
     "patternDescription" TEXT NOT NULL,
     "logicType" TEXT NOT NULL,
@@ -47,24 +44,23 @@ CREATE TABLE "compiled_rules" (
     "accuracyOnHistoricalSample" REAL NOT NULL DEFAULT 0,
     "status" TEXT NOT NULL DEFAULT 'pending_review',
     "reviewedBy" TEXT,
-    "reviewedAt" DATETIME,
+    "reviewedAt" TIMESTAMP(3),
     "sourceCandidateId" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
-);
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL);
 
 -- RedefineTables
 PRAGMA defer_foreign_keys=ON;
 PRAGMA foreign_keys=OFF;
 CREATE TABLE "new_company_runtimes" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL PRIMARY KEY,
     "companyId" INTEGER NOT NULL,
     "workerPoolSize" INTEGER NOT NULL DEFAULT 2,
     "status" TEXT NOT NULL DEFAULT 'active',
     "slaTier" TEXT NOT NULL DEFAULT 'starter',
     "maxAcceptableLatencyMs" INTEGER NOT NULL DEFAULT 2000,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "company_runtimes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 INSERT INTO "new_company_runtimes" ("companyId", "createdAt", "id", "status", "updatedAt", "workerPoolSize") SELECT "companyId", "createdAt", "id", "status", "updatedAt", "workerPoolSize" FROM "company_runtimes";
