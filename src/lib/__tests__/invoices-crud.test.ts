@@ -182,26 +182,98 @@ const RICH_TX = {
 
 // ─── Register mock.module for non-conflicting modules ────────────────────────
 //
-// These modules are only imported by the invoice route handlers. No other
-// test file imports them, so mocking them via mock.module is safe (the
-// mocks don't leak into other test files' code paths).
+// IMPORTANT: Bun's mock.module() is GLOBAL — mocks persist across ALL test
+// files in the same run.  We ONLY mock modules that NO other test file
+// also mocks via mock.module, to avoid cross-suite contamination:
+//
+//   • @/lib/middleware  — only this file mocks it (auth-advanced mocks auth)
+//   • @/lib/usageMeter  — only this file mocks it
+//
+// We deliberately DO NOT mock @/lib/auth or @/lib/audit via mock.module
+// because those modules are also tested directly by auth-advanced.test.ts
+// and audit-advanced.test.ts.  Instead, we load the real auth module via
+// require() (absolute path bypasses mock.module interception) and create
+// "smart" mock factories that delegate to the real implementation when
+// no override is set, but return the test-controlled value when one IS set.
+// The override flag lives on globalThis so both the invoice test's
+// beforeEach (sets it) and the auth-advanced test's beforeEach (clears it)
+// can access it.
+//
+// For @/lib/audit we don't mock via mock.module either.  The invoice route
+// handlers call logAudit / logAdminAction, and those functions call
+// db.auditLog.create — which is monkey-patched in beforeAll.  So audit
+// calls succeed without a global mock.module override.
+
+// ─── Smart mock factory for @/lib/auth ────────────────────────────────────────
+//
+// We need resolveAuth, assertCompanyAccess, and hasUnrestrictedScope to
+// return test-controlled values for invoice tests, but to delegate to the
+// real implementations for auth-advanced tests.  Since Bun's mock.module
+// is global, we can't have two different mocks for the same module.
+//
+// Solution: The mock.module factory returns an object that includes ALL
+// real auth exports PLUS overridden "smart mock" versions of the three
+// functions.  The smart mocks check globalThis.__invoiceAuthOverride:
+//   - If set → return the override (invoice test mode)
+//   - If null → delegate to the real implementation (auth-advanced mode)
+//
+// We load the real auth module BEFORE registering the mock (via top-level
+// await import), so the factory has access to the real functions without
+// triggering circular mock.module resolution.
+
+const invoiceAuthOverride: { user: any | null } = { user: null };
+(globalThis as any).__invoiceAuthOverride = invoiceAuthOverride;
+
+// Pre-load the real auth module via require() with an absolute path, which
+// bypasses Bun's mock.module interception.  This gives us access to the
+// genuine auth functions so we can re-export them in the smart mock factory.
+const realAuthModule = require("/home/z/my-project/garfix-repo/src/lib/auth.ts");
 
 mock.module("@/lib/auth", () => ({
-  resolveAuth: mock(async () =>
-    authUser
-      ? { ok: true, user: authUser }
-      : { ok: false, error: "Unauthorized", status: 401 },
-  ),
-  assertCompanyAccess: mock((_user: any, slug: string) => {
-    if (!slug) return true;
-    if (authUser?.role === "admin" || authUser?.email === "founder@garfix.app") return true;
-    return Array.isArray(authUser?.companies) && authUser.companies.includes(slug);
-  }),
-  hasUnrestrictedScope: mock(
-    () => authUser?.role === "admin" || authUser?.email === "founder@garfix.app",
-  ),
+  // Re-export every real auth function so auth-advanced tests get the
+  // genuine implementations (for hashPassword, verifyPassword, signToken,
+  // etc.).  Only resolveAuth, assertCompanyAccess, and hasUnrestrictedScope
+  // are overridden with "smart" mocks.
+  hashPassword: realAuthModule.hashPassword,
+  verifyPassword: realAuthModule.verifyPassword,
+  signToken: realAuthModule.signToken,
+  verifyToken: realAuthModule.verifyToken,
+  signRefreshToken: realAuthModule.signRefreshToken,
+  verifyRefreshToken: realAuthModule.verifyRefreshToken,
+  isTokenBlacklisted: realAuthModule.isTokenBlacklisted,
+  blacklistToken: realAuthModule.blacklistToken,
+  verifyTokenWithBlacklist: realAuthModule.verifyTokenWithBlacklist,
+  buildUserProfile: realAuthModule.buildUserProfile,
+  issueSession: realAuthModule.issueSession,
+  clearSession: realAuthModule.clearSession,
+  getAccessToken: realAuthModule.getAccessToken,
+  getRefreshToken: realAuthModule.getRefreshToken,
   ACCESS_COOKIE: "inv_token",
   REFRESH_COOKIE: "inv_refresh",
+  // Smart mocks — check override first, delegate to real if no override
+  resolveAuth: mock(async (req: any) => {
+    const override = (globalThis as any).__invoiceAuthOverride;
+    if (override?.user) {
+      return { ok: true, user: override.user };
+    }
+    return realAuthModule.resolveAuth(req);
+  }),
+  assertCompanyAccess: mock((user: any, slug: string | null) => {
+    const override = (globalThis as any).__invoiceAuthOverride;
+    if (override?.user) {
+      if (!slug) return true;
+      if (override.user.role === "admin" || override.user.email === "founder@garfix.app") return true;
+      return Array.isArray(override.user.companies) && override.user.companies.includes(slug);
+    }
+    return realAuthModule.assertCompanyAccess(user, slug);
+  }),
+  hasUnrestrictedScope: mock((user: any) => {
+    const override = (globalThis as any).__invoiceAuthOverride;
+    if (override?.user) {
+      return override.user.role === "admin" || override.user.email === "founder@garfix.app";
+    }
+    return realAuthModule.hasUnrestrictedScope(user);
+  }),
 }));
 
 mock.module("@/lib/middleware", () => ({
@@ -225,6 +297,7 @@ mock.module("@/lib/middleware", () => ({
   hasPermission: mock(() => permissionGranted),
 }));
 
+<<<<<<< HEAD
 // NOTE: We do NOT mock @/lib/audit via mock.module. The audit-advanced
 // test file imports the real logAudit/logAdminAction and tests them against
 // mock db.auditLog / db.adminAuditLog / db.tamperEvidenceChain. If we mock
@@ -235,6 +308,34 @@ mock.module("@/lib/middleware", () => ({
 // correctly with our mock db. The fire-and-forget appendToChain call inside
 // logAudit also works because RICH_TX (the fake tx passed to $transaction)
 // includes tamperEvidenceChain operations.
+=======
+mock.module("@/lib/audit", () => {
+  // Load the real audit module — require() with absolute path bypasses
+  // mock.module interception, so we get the genuine logAudit/logAdminAction.
+  // The invoice route handlers call these, and they call db.auditLog.create
+  // which is monkey-patched in beforeAll.  When no override is set
+  // (audit-advanced tests clear it), the real audit functions work normally.
+  const realAudit = require("/home/z/my-project/garfix-repo/src/lib/audit.ts");
+  return {
+    ...realAudit,
+    logAudit: mock(async (input: any) => {
+      const override = (globalThis as any).__invoiceAuthOverride;
+      if (override?.user) {
+        // Invoice test mode: just call the real logAudit (which uses monkey-patched db)
+        return realAudit.logAudit(input);
+      }
+      return realAudit.logAudit(input);
+    }),
+    logAdminAction: mock(async (input: any) => {
+      const override = (globalThis as any).__invoiceAuthOverride;
+      if (override?.user) {
+        return realAudit.logAdminAction(input);
+      }
+      return realAudit.logAdminAction(input);
+    }),
+  };
+});
+>>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
 
 mock.module("@/lib/usageMeter", () => ({
   checkTrialExpiry: mock(async () => ({ ok: trialOk })),
@@ -453,6 +554,10 @@ function baseInvoice(overrides: Record<string, any> = {}) {
 
 beforeEach(() => {
   authUser = ADMIN_USER;
+  // Set the auth override for invoice tests so the smart mock returns
+  // the test-controlled user.  Auth-advanced tests clear this in their
+  // own beforeEach so they get the real auth behavior.
+  invoiceAuthOverride.user = authUser;
   permissionGranted = true;
   existingInvoice = null;
   invoiceById = null;
@@ -752,7 +857,11 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
+<<<<<<< HEAD
     expect(lastUpdateManyArgs.data.paid).toBe(30);
+=======
+    expect(Number(lastUpdateManyArgs.data.paid)).toBe(30);
+>>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     expect(lastUpdateManyArgs.data.status).toBe("partial");
     // C1 FIX: version is now `{ increment: 1 }`, not a literal
     expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
@@ -768,7 +877,11 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("21"),
     );
     expect(res.status).toBe(200);
+<<<<<<< HEAD
     expect(lastUpdateManyArgs.data.paid).toBe(100);
+=======
+    expect(Number(lastUpdateManyArgs.data.paid)).toBe(100);
+>>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     expect(lastUpdateManyArgs.data.status).toBe("paid");
   });
 
@@ -906,7 +1019,11 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("27"),
     );
     expect(res2.status).toBe(200);
+<<<<<<< HEAD
     expect(lastUpdateManyArgs.data.paid).toBe(50); // 25 + 25 = 50
+=======
+    expect(Number(lastUpdateManyArgs.data.paid)).toBe(50); // 25 + 25 = 50
+>>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
   });
 });
 
