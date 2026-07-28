@@ -215,9 +215,13 @@ export async function withRetry<T>(
  *     operationName: "zatca-ack",
  *   });
  */
+export type AckPollResult<T extends string> =
+  | { state: T; raw?: unknown; attempts: number }
+  | { state: "TIMEOUT"; raw?: unknown; attempts: number };
+
 export async function pollSubmissionAck<T extends string>(
   opts: AckPollOptions<T>,
-): Promise<{ state: T; raw?: unknown; attempts: number }> {
+): Promise<AckPollResult<T>> {
   const maxAttempts = opts.maxAttempts ?? 30;
   const pollIntervalMs = opts.pollIntervalMs ?? 2000;
   const opName = opts.operationName ?? "unknown";
@@ -249,7 +253,7 @@ export async function pollSubmissionAck<T extends string>(
   }
   logger.error(`[ack-poll] ${opName} exhausted poll budget`, { maxAttempts });
   return {
-    state: "TIMEOUT" as T,
+    state: "TIMEOUT",
     attempts: maxAttempts,
   };
 }
@@ -346,9 +350,15 @@ export async function submitWithRetry<TSubmitState extends string, TAckState ext
   });
   ackPollAttempts = ackResult.attempts;
 
+  // TIMEOUT is not in successStates (it's not a real ack state), so the
+  // `successStates.includes(...)` check below correctly returns false for
+  // timeouts. We cast here because AckPollResult is a discriminated union —
+  // when state !== "TIMEOUT" it is TAckState.
+  const finalState = ackResult.state as TAckState;
+
   return {
-    finalState: ackResult.state,
-    ok: opts.successStates.includes(ackResult.state),
+    finalState,
+    ok: opts.successStates.includes(finalState),
     raw: ackResult.raw,
     submitAttempts,
     ackPollAttempts,

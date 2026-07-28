@@ -73,7 +73,7 @@ describe("SEC-H4: issueSession 3-arg signature + registerSession", () => {
       }),
     };
     // @ts-expect-error — fake objects
-    await expect(issueSession(fakeResponse, fakeUser, fakeReq)).resolves.not.toThrow();
+    await issueSession(fakeResponse, fakeUser, fakeReq);
   });
 
   it("registers the JTI in SessionRegistry when req is passed", async () => {
@@ -115,7 +115,10 @@ describe("SEC-H4: issueSession 3-arg signature + registerSession", () => {
 
     // Verify registerSession was called with the JTI + IP + UA
     expect(registerSessionSpy).toHaveBeenCalledTimes(1);
-    const call = registerSessionSpy.mock.calls[0][0];
+    const calls = registerSessionSpy.mock.calls as unknown as Array<
+      Array<{ userUid: string; jti: string; ipAddress: string; userAgent: string }>
+    >;
+    const call = calls[0][0];
     expect(call.userUid).toBe("test-uid");
     expect(call.jti).toBeTruthy();
     expect(typeof call.jti).toBe("string");
@@ -162,7 +165,7 @@ describe("SEC-H4: issueSession 3-arg signature + registerSession", () => {
     };
 
     // @ts-expect-error — fake objects
-    await expect(issueSession(fakeResponse, fakeUser)).resolves.not.toThrow();
+    await issueSession(fakeResponse, fakeUser);
   });
 });
 
