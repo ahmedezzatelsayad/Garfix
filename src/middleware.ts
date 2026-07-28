@@ -55,6 +55,26 @@ function isPublicRoute(pathname: string): boolean {
   return false;
 }
 
+// ── Rate-limit-exempt routes ─────────────────────────────────────────────────
+//
+// /api/health is the orchestrator health probe. It is intentionally
+// unauthenticated AND must NOT be rate-limited — otherwise load balancers
+// (AWS ALB, Kubernetes liveness/readiness probes, uptime monitors) get 429'd
+// and mark the instance as unhealthy. This also covers load-test pipelines
+// that hammer /api/health under load (perf workflow: ab -n 500 -c 20).
+//
+// The health route itself is cheap (SELECT 1 + Valkey PING) and runs in
+// <50ms; the previous 60-req/min cap was rejecting ~440 of 500 load-test
+// requests, producing false-positive "performance regression" failures
+// in the perf workflow.
+const RATE_LIMIT_EXEMPT_ROUTES = new Set<string>([
+  "/api/health",
+]);
+
+function isRateLimitExempt(pathname: string): boolean {
+  return RATE_LIMIT_EXEMPT_ROUTES.has(pathname);
+}
+
 // ── General API rate limit config: 60 requests per minute ───────────────────
 
 const GENERAL_API_LIMIT: RateLimitConfig = {
@@ -140,10 +160,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
   const ip = getClientIp(req);
 
-  // ── 1. Public routes: rate-limit by IP, skip auth ──────────────────────
+  // ── 1. Public routes: skip auth; rate-limit by IP (unless exempt) ─────
   if (isPublicRoute(pathname)) {
-    const limited = await rateLimitResponse(req, "pub", GENERAL_API_LIMIT, ip);
-    if (limited) return withSecurityHeaders(limited, pathname);
+    if (!isRateLimitExempt(pathname)) {
+      const limited = await rateLimitResponse(req, "pub", GENERAL_API_LIMIT, ip);
+      if (limited) return withSecurityHeaders(limited, pathname);
+    }
 
     const response = NextResponse.next();
     return withSecurityHeaders(response, pathname);

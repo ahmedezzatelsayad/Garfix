@@ -19,7 +19,11 @@ concurrency:
 
 env:
   NODE_ENV: test
-  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
+  # PERF FIX: connection_limit was 5 — too small for ab -c 20 concurrency.
+  # Under load, the Prisma pool was exhausted and some /api/health probes
+  # returned 503 (db timeout), contributing to the ~466 "failed requests"
+  # in the load-test job. Bumped to 20 to match the load-test concurrency.
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=20"
   DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
   JWT_SECRET: "j16Zoo6iiO7xSg78tBzHVjog6jkzsOMBjOShkHWxn2zVGS3u"
   JWT_REFRESH_SECRET: "NObYh3hZlRzsw924JkX1T19kPaQbp2xVsKv3EzVSDEpwKeKU"
@@ -354,7 +358,10 @@ jobs:
           echo ""
           echo "─── Load Test: Landing Page ──"
           set +e
-          ab -n 100 -c 10 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt
+          # PERF FIX: -n reduced from 100 → 50 to stay under the 60-req/min
+          # public-route rate limit. With -n 100 the test produced ~40 spurious
+          # 429 failures that masked real perf signals.
+          ab -n 50 -c 10 http://localhost:3000/ 2>&1 | tee -a load-test-results.txt
           AB_EXIT=$?
           set -e
           if [ $AB_EXIT -ne 0 ]; then
@@ -364,10 +371,9 @@ jobs:
       - name: Verify load test results
         run: |
           echo "─── Load Test Validation ──"
-          FAILED_REQUESTS=$(grep -oP 'Failed requests:\s+\K\d+' load-test-results.txt | head -1 || echo "0")
-          if [ -z "$FAILED_REQUESTS" ]; then
-            FAILED_REQUESTS=0
-          fi
+          # PERF FIX: sum failures across ALL ab runs (previously head -1 only
+          # captured the /api/health result, hiding landing-page failures).
+          FAILED_REQUESTS=$(grep -oP 'Failed requests:\s+\K\d+' load-test-results.txt | awk '{s+=$1} END {print s+0}')
           if [ "$FAILED_REQUESTS" -gt 50 ]; then
             echo "❌ High number of failed requests: $FAILED_REQUESTS (threshold: 50)"
             echo "This indicates performance issues under load"

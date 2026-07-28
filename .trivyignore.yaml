@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Trivy ignore list — GarfiX v12.4
+# ─────────────────────────────────────────────────────────────────────────────
+# CVEs listed here are MANUALLY REVIEWED and accepted. Each entry MUST have a
+# ` justification` field explaining why the CVE is not exploitable in the
+# GarfiX production deployment.
+#
+# Review cadence: re-evaluate every entry on each quarterly security review
+# or whenever the base image is bumped.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Empty list as of v12.4 — the Dockerfile changes (pin node:22-alpine3.21 +
+# apk upgrade --no-cache + remove dead smoke-test stage) are expected to
+# eliminate all HIGH/CRITICAL findings. If a residual HIGH CVE appears after
+# the next Trivy run, add it here with a justification block, e.g.:
+#
+# - id: CVE-XXXX-XXXXX
+#   status: wontfix
+#   severity: HIGH
+#   package:
+#     name: some-package
+#     version: 1.2.3
+#   justification: |
+#     This CVE affects the foo feature of some-package which GarfiX does not
+#     use at runtime. The package is only installed transitively for build-
+#     time type definitions and is stripped from the production image via
+#     next.config.ts's serverExternalPackages optimization.
+
+vulnerabilities: []

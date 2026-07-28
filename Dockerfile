@@ -1,8 +1,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# GarfiX v12.3 — Multi-stage Production Dockerfile
+# GarfiX v12.4 — Multi-stage Production Dockerfile
 # Optimized for: minimal image size, security, fast builds, CI/CD stability
 # Runtime deps: PostgreSQL 17 + Valkey 8 (Redis-compatible, BullMQ)
 # ─────────────────────────────────────────────────────────────────────────────
+# v12.4 CHANGELOG — Resolves Security Container Scan failures:
+#   * Pinned `node:22-alpine` (floating) → `node:22-alpine3.21` (specific
+#     Alpine release). Floating tags can silently roll forward to a new
+#     Alpine minor with different CVE surface; pinning locks the OS layer.
+#   * Added `apk upgrade --no-cache` in the runner stage so the latest
+#     security patches for alpine packages (musl, busybox, libssl, etc.)
+#     are applied on top of the pinned base.
+#   * Removed the dead `smoke-test` stage. It was the LAST stage in
+#     v12.3, which meant `docker build` (without `--target`) produced
+#     the smoke-test image (with curl+wget) — not the runner image. Trivy
+#     therefore scanned curl/wget CVEs that are NOT in the actual
+#     production image. CI smoke testing is done by cd.yml's
+#     docker-smoke-test job, which pulls the published runner image and
+#     curls from the host. The in-Dockerfile smoke-test stage was dead
+#     code. Removing it makes `runner` the default build target.
 # v12.3 CHANGELOG — Resolves "Docker/Bun SIGILL" blocker on GitHub Actions:
 #   * Builder stage switched from `oven/bun:1.3.14` → `node:22-alpine`
 #     Reason: `bun run build` (which calls `next build`) inside the Bun
@@ -16,8 +31,6 @@
 #     to Node.js. The `node_modules/.bin/*` shims have `#!/usr/bin/env node`
 #     shebangs, so they execute under Node.js without modification.
 #   * All base images pinned by tag (not floating `latest`).
-#   * Smoke test stage added: builds a runtime image, starts it, curls
-#     /api/health, fails the build if HTTP != 200.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Dependencies (Bun — fast install) ──────────────────────────
@@ -37,7 +50,8 @@ RUN bun install --frozen-lockfile --no-cache
 # Switched from oven/bun to node:22-alpine in v12.3.
 # Next.js is officially built/tested on Node.js; using Bun for `next build`
 # inside Docker on GHA runners intermittently raises SIGILL.
-FROM node:22-alpine AS builder
+# v12.4: pinned to alpine3.21 (specific Alpine release).
+FROM node:22-alpine3.21 AS builder
 WORKDIR /app
 
 # Build-time environment variables (needed for `next build` to succeed)
@@ -78,21 +92,33 @@ RUN ./node_modules/.bin/next build
 # Next.js standalone server.js requires Node.js APIs.
 # (Bun 1.3.x has native module compatibility issues with Next.js standalone)
 #
+# v12.4: pinned to node:22-alpine3.21 (specific Alpine release).
+# v12.4: `apk upgrade --no-cache` applies latest security patches for the
+#   alpine base packages (musl, busybox, libssl, etc.) on top of the
+#   pinned base. This closes CVEs that ship with the base image but have
+#   fixed versions available in the alpine update repo.
+#
 # MED-006 (Cycle 2 NOTE): base images are pinned by TAG, not by digest.
 #   Pinning by digest would prevent supply-chain attacks via upstream image
 #   tampering, but it also prevents automatic security patching of the base
 #   OS. For now we keep tag-pinning (auto-receives patch bumps within the
-#   major) and rely on Trivy image scanning in CI (security.yml container-scan
-#   job) to catch vulnerabilities in the base image. To migrate to digest
-#   pinning, compute the digest with:
-#     docker pull node:22-alpine && \
-#     docker inspect --format='{{index .RepoDigests 0}}' node:22-alpine
-#   and replace `FROM node:22-alpine` with `FROM node:22-alpine@sha256:<digest>`.
-FROM node:22-alpine AS runner
+#   major) + `apk upgrade` (applies patch bumps at build time) and rely on
+#   Trivy image scanning in CI (security.yml container-scan job) to catch
+#   any residual vulnerabilities. To migrate to digest pinning, compute
+#   the digest with:
+#     docker pull node:22-alpine3.21 && \
+#     docker inspect --format='{{index .RepoDigests 0}}' node:22-alpine3.21
+#   and replace `FROM node:22-alpine3.21` with `FROM node:22-alpine3.21@sha256:<digest>`.
+FROM node:22-alpine3.21 AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# v12.4: upgrade alpine packages to latest patched versions before
+# installing anything new. This closes CVEs in the base image's
+# musl/busybox/openssl without changing the major versions.
+RUN apk upgrade --no-cache
 
 # HIGH-006 FIX (Cycle 2): remove `curl` from the production image.
 #   `curl` is a common attacker tool for lateral movement and data
@@ -133,22 +159,17 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 CMD ["node", "server.js"]
 
-# ── Stage 4: Smoke Test (built on-demand via --target smoke-test) ───────
-# This stage is NOT included in the default `docker build` output. It's
-# used by CI/CD to run a smoke test inside Docker itself, verifying the
-# built image actually serves /api/health before pushing to the registry.
+# ── Note on smoke testing ────────────────────────────────────────────────────
+# The previous v12.3 Dockerfile had a `smoke-test` stage here that added
+# curl+wget for in-Docker smoke testing. It was the LAST stage, which meant
+# `docker build` (without `--target`) produced the smoke-test image, not the
+# production runner image. This caused Trivy to scan curl/wget CVEs that
+# were NOT in the actual production image — false positives that blocked
+# the security pipeline.
 #
-# Usage in CI:
-#   docker build --target smoke-test -t garfix-smoke:latest .
-#   docker run --rm -d -p 3001:3000 --name garfix-smoke garfix-smoke:latest
-#   # ... wait for health, curl /api/health, expect 200 ...
-#   docker stop garfix-smoke
-#
-# The smoke-test stage inherits everything from `runner` and adds `curl`
-# (which is fine here — this image is NEVER pushed to the registry).
-FROM runner AS smoke-test
-USER root
-RUN apk add --no-cache curl wget
-# Override the non-root user for testing convenience
-USER nextjs
-# Smoke-test entrypoint is identical to runner; CI orchestrates the curl
+# CI smoke testing is now done by cd.yml's `docker-smoke-test` job, which:
+#   1. Pulls the published `runner` image from ghcr.io
+#   2. Starts it in a container with PostgreSQL + Valkey service containers
+#   3. Curls /api/health from the host (curl runs on the runner, not in
+#      the container — the container stays production-clean)
+# No in-Dockerfile smoke-test stage is needed.
