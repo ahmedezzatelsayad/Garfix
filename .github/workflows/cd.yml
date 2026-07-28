@@ -155,16 +155,24 @@ jobs:
 
       - name: Determine image tag
         id: img
+        env:
+          # Docker requires lowercase repository names. github.repository
+          # preserves the original case ("ahmedezzatelsayad/Garfix"), but
+          # docker/build-push-action lowercases it automatically when
+          # pushing. We must do the same when pulling.
+          IMAGE_LOWER: ${{ env.REGISTRY }}/${{ github.repository }}
         run: |
+          IMAGE_FULL="$(echo "$IMAGE_LOWER" | tr '[:upper:]' '[:lower:]')"
+          echo "Image (lowercased): $IMAGE_FULL"
           # Prefer SHA-tagged image, fall back to :main
           TAG="sha-${GITHUB_SHA::7}"
-          if ! docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG 2>/dev/null; then
+          if ! docker pull "$IMAGE_FULL:$TAG" 2>/dev/null; then
             echo "⚠️ SHA tag not found, falling back to :main"
             TAG="main"
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG
+            docker pull "$IMAGE_FULL:$TAG"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "full=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG" >> $GITHUB_OUTPUT
+          echo "full=$IMAGE_FULL:$TAG" >> $GITHUB_OUTPUT
 
       - name: Run smoke test inside Docker container
         env:
