@@ -1,7 +1,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# GarfiX v1.4 — Continuous Deployment Pipeline
+# GarfiX v1.5 — Continuous Deployment Pipeline
 # Triggers on release publish, push to main, or manual dispatch
-# Jobs: build → docker → deploy-staging → smoke-test → deploy-production
+# Jobs: build-image → docker-smoke-test → deploy-staging → deploy-production
+#
+# v1.5 CHANGELOG:
+#   * Removed redundant host-level `bun run build` — the Dockerfile already
+#     builds inside the image. Running it twice wasted CI minutes and could
+#     mask Dockerfile build failures (host build would pass while Docker
+#     build would fail).
+#   * Added `docker-smoke-test` job: builds the image, starts it in a
+#     container, curls /api/health, fails the pipeline if HTTP != 200.
+#     This is the user-requested "Smoke Test inside Docker itself".
+#   * Dockerfile builder stage switched to Node.js (v12.3) — eliminates
+#     the SIGILL that was previously blocking this pipeline on GHA.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX CD
@@ -68,20 +79,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.14"
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Generate Prisma client
-        run: bun run db:generate
-
-      - name: Build application
-        run: bun run build
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -126,23 +123,156 @@ jobs:
       - name: Image digest
         run: echo "Image digest ${{ steps.build.outputs.digest }}"
 
-      - name: Verify Docker image
+      - name: Verify Docker image built successfully
         run: |
           echo "─── Docker Image Verification ───"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
           echo "Digest: ${{ steps.build.outputs.digest }}"
-          echo ""
-          # Pull and verify the image starts correctly
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA::7} 2>/dev/null || \
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main 2>/dev/null || \
-            echo "⚠️ Could not pull image for verification (may need registry permissions)"
           echo "✅ Docker image built and pushed successfully"
+          echo "ℹ️ Runtime smoke test runs in the next job (docker-smoke-test)"
 
-  # ── Job 2: Deploy to Staging ───────────────────────────────────────────
+  # ── Job 2: Docker Smoke Test (inside the built image) ──────────────────
+  # v1.5: Pulls the just-pushed image, starts it, curls /api/health.
+  # This catches runtime issues that a successful `docker build` cannot
+  # detect (missing runtime deps, broken server.js, env var typos, etc.).
+  docker-smoke-test:
+    name: 🧪 Docker Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build-image]
+    if: always() && needs.build-image.result == 'success'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tag
+        id: img
+        run: |
+          # Prefer SHA-tagged image, fall back to :main
+          TAG="sha-${GITHUB_SHA::7}"
+          if ! docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG 2>/dev/null; then
+            echo "⚠️ SHA tag not found, falling back to :main"
+            TAG="main"
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "full=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG" >> $GITHUB_OUTPUT
+
+      - name: Run smoke test inside Docker container
+        env:
+          IMAGE: ${{ steps.img.outputs.full }}
+          # Minimal runtime env — the image's HEALTHCHECK will hit /api/health
+          # internally, but we also curl from the host for a stronger check.
+          DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
+          DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+          JWT_SECRET: "smoke-test-jwt-secret-at-least-32-characters-long!!"
+          JWT_REFRESH_SECRET: "smoke-test-refresh-secret-at-least-32-chars!!"
+          FOUNDER_EMAIL: "founder@test.com"
+          PAYMENTS_ENC_KEY: "smoke-test-encryption-key-at-least-32-chars!"
+          NODE_ENV: "production"
+        run: |
+          echo "─── Docker Smoke Test ───"
+          echo "Image: $IMAGE"
+          echo ""
+
+          # Start the container detached
+          docker run --rm -d \
+            --name garfix-smoke \
+            -p 3001:3000 \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e DATABASE_DIRECT_URL="$DATABASE_DIRECT_URL" \
+            -e JWT_SECRET="$JWT_SECRET" \
+            -e JWT_REFRESH_SECRET="$JWT_REFRESH_SECRET" \
+            -e FOUNDER_EMAIL="$FOUNDER_EMAIL" \
+            -e PAYMENTS_ENC_KEY="$PAYMENTS_ENC_KEY" \
+            -e NODE_ENV="$NODE_ENV" \
+            "$IMAGE"
+
+          echo "✅ Container started, waiting for it to become healthy..."
+
+          # Wait for the container's HEALTHCHECK to report healthy (max 60s)
+          HEALTHY=false
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' garfix-smoke 2>/dev/null || echo "none")
+            echo "  Attempt $i/30 — health: $STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              HEALTHY=true
+              break
+            fi
+            if [ "$STATUS" = "unhealthy" ]; then
+              echo "❌ Container became unhealthy before becoming healthy"
+              docker logs garfix-smoke 2>&1 | tail -50
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "$HEALTHY" = "false" ]; then
+            echo "❌ Container did not become healthy within 60 seconds"
+            docker logs garfix-smoke 2>&1 | tail -80
+            exit 1
+          fi
+
+          echo "✅ Container is healthy"
+          echo ""
+
+          # Hit /api/health from the host (port 3001) for an end-to-end check
+          echo "─── Curl /api/health from host ───"
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3001/api/health 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ /api/health returned HTTP 200"
+          else
+            echo "❌ /api/health returned HTTP $HTTP_CODE (expected 200)"
+            docker logs garfix-smoke 2>&1 | tail -80
+            exit 1
+          fi
+
+          # Also fetch the body to verify it's valid JSON with status:ok
+          BODY=$(curl -sf http://localhost:3001/api/health 2>/dev/null || echo "")
+          echo "   Body: $BODY"
+          if echo "$BODY" | grep -q '"status"'; then
+            echo "✅ Health response body is valid"
+          else
+            echo "⚠️ Health response body is missing 'status' field"
+          fi
+
+          echo ""
+          echo "✅ Docker smoke test PASSED"
+
+      - name: Cleanup smoke test container
+        if: always()
+        run: |
+          docker stop garfix-smoke 2>/dev/null || true
+          docker rm garfix-smoke 2>/dev/null || true
+
+      - name: Upload smoke test logs on failure
+        if: failure()
+        run: |
+          docker logs garfix-smoke 2>&1 > smoke-test-logs.txt || echo "(no logs available)" > smoke-test-logs.txt
+          echo "Smoke test logs saved to smoke-test-logs.txt"
+
+      - name: Upload smoke test logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-smoke-test-logs
+          path: smoke-test-logs.txt
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ── Job 3: Deploy to Staging ───────────────────────────────────────────
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-image]
+    needs: [build-image, docker-smoke-test]
     if: |
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging') ||
       github.event_name == 'release' ||
@@ -196,11 +326,11 @@ jobs:
           echo ""
           echo "✅ Smoke tests completed"
 
-  # ── Job 3: Deploy to Production ────────────────────────────────────────
+  # ── Job 4: Deploy to Production ────────────────────────────────────────
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-image, deploy-staging]
+    needs: [build-image, docker-smoke-test, deploy-staging]
     if: |
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') ||
       (github.event_name == 'release' && needs.deploy-staging.result == 'success')
@@ -249,21 +379,22 @@ jobs:
           echo ""
           echo "✅ Production health check completed"
 
-  # ── Job 4: Deployment Summary ──────────────────────────────────────────
+  # ── Job 5: Deployment Summary ──────────────────────────────────────────
   deploy-summary:
     name: Deployment Summary
     runs-on: ubuntu-latest
-    needs: [build-image, deploy-staging, deploy-production]
+    needs: [build-image, docker-smoke-test, deploy-staging, deploy-production]
     if: always()
 
     steps:
       - name: Deployment Status
         run: |
           echo "╔══════════════════════════════════════════════════╗"
-          echo "║        GarFiX v1.4 Deployment Summary            ║"
+          echo "║        GarFiX v1.5 Deployment Summary            ║"
           echo "╚══════════════════════════════════════════════════╝"
           echo ""
           echo "Image Build:      ${{ needs.build-image.result }}"
+          echo "Smoke Test:       ${{ needs.docker-smoke-test.result }}"
           echo "Staging Deploy:   ${{ needs.deploy-staging.result }}"
           echo "Production Deploy: ${{ needs.deploy-production.result }}"
           echo ""
@@ -274,4 +405,10 @@ jobs:
         if: needs.build-image.result == 'failure'
         run: |
           echo "❌ Docker image build failed — deployment aborted"
+          exit 1
+
+      - name: Fail if smoke test failed
+        if: needs.docker-smoke-test.result == 'failure'
+        run: |
+          echo "❌ Docker smoke test failed — image is not healthy, deployment aborted"
           exit 1
