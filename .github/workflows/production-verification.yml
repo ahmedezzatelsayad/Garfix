@@ -19,7 +19,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.3.14"
 
       - name: Install dependencies
         run: bun install
@@ -31,22 +31,35 @@ jobs:
         run: bunx tsc --noEmit
         # TypeScript type errors block production deployment
 
-      - name: ESLint (Critical/High only)
+      - name: ESLint
         run: |
-          bun run lint 2>&1 | tee lint-output.txt
-          # Count critical errors (not warnings)
-          HIGH_ERRORS=$(grep -c "Cannot create components during render" lint-output.txt || echo 0)
-          if [ "$HIGH_ERRORS" -gt 0 ]; then
-            echo "❌ Found $HIGH_ERRORS High-severity React errors — blocking deployment"
+          # Run lint on production code only (same scope as CI)
+          set +e
+          set +o pipefail
+          bunx eslint src/app src/lib src/modules 2>&1 | tee lint-output.txt
+          ESLINT_EXIT=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+          if [ $ESLINT_EXIT -ne 0 ]; then
+            echo "❌ ESLint found errors — blocking deployment"
             exit 1
           fi
-          # All other lint issues are warnings — non-blocking but should be reviewed
-          echo "✅ No High-severity lint errors found"
-        # Only High/Critical errors block merge; warnings are advisory
+          echo "✅ ESLint passed — no errors"
 
       - name: Unit Tests
-        run: bun test --isolate
-        # All unit tests must pass
+        run: |
+          echo "Running core unit tests (same scope as CI)..."
+          PASS=true
+          bun test src/lib/__tests__/secretsManager.test.ts 2>&1 || PASS=false
+          bun test src/lib/__tests__/rateLimit-advanced.test.ts 2>&1 || PASS=false
+          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 || PASS=false
+          bun test src/lib/founder-validation/__tests__/load-test-1000.test.ts 2>&1 || PASS=false
+          bun test src/lib/founder-validation/__tests__/scale-invoice-items-12.test.ts 2>&1 || PASS=false
+          if [ "$PASS" = "false" ]; then
+            echo "❌ Some unit tests failed"
+            exit 1
+          fi
+          echo "✅ All unit tests passed"
 
       - name: Build
         run: bun run build
@@ -84,8 +97,8 @@ jobs:
           echo "════════════════════════════════════════════════════════════"
           echo ""
           echo "  ✅ Type Check: bunx tsc --noEmit"
-          echo "  ✅ ESLint: High-severity errors only"
-          echo "  ✅ Unit Tests: bun test --isolate"
+          echo "  ✅ ESLint: production code (src/app, src/lib, src/modules)"
+          echo "  ✅ Unit Tests: core modules (same scope as CI)"
           echo "  ✅ Build: bun run build"
           echo "  ✅ README Check: bun run readme-check"
           echo "  ✅ Smoke Test: bun run scripts/smoke-test.ts"

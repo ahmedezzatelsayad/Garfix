@@ -113,6 +113,9 @@ export const LIMITS = {
   AI_BULK: { windowMs: 60 * 1000, maxAttempts: 3 },
   API_READ: { windowMs: 60 * 1000, maxAttempts: 60 },
   API_WRITE: { windowMs: 60 * 1000, maxAttempts: 30 },
+  REPORT_GENERATION: { windowMs: 60 * 1000, maxAttempts: 5 },
+  ACCOUNTING_READ: { windowMs: 60 * 1000, maxAttempts: 30 },
+  ACCOUNTING_WRITE: { windowMs: 60 * 1000, maxAttempts: 10 },
 } as const;
 
 export interface RateLimitResult {

@@ -42,6 +42,8 @@
     "e2e",
     "download",
     "examples",
+    "skills",
+    "playwright.config.ts",
     "src/lib/__tests__",
     "src/lib/accounting/__tests__",
     "src/lib/billing/__tests__",

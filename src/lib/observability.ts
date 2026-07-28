@@ -203,10 +203,13 @@ class MetricsRegistry {
       timestamp: data.updatedAt,
     }));
 
+    const serviceName = process.env.OTEL_SERVICE_NAME || "garfix-eos";
+    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "";
+
     return {
       resource: {
         attributes: {
-          "service.name": "garfix-eos",
+          "service.name": serviceName,
           "service.version": "12.1.0",
           "service.instance.id": process.env.HOSTNAME || "local",
           "telemetry.sdk.name": "garfix-observability",

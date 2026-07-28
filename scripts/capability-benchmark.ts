@@ -333,7 +333,7 @@ async function callModelStream(model: string, messages: Msg[], maxTokens: number
     const decoder = new TextDecoder();
     let buf = "";
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;

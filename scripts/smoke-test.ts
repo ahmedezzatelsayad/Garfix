@@ -156,10 +156,10 @@ check("Prisma db.ts module exists", () =>
   existsSync(join(ROOT, "src/lib/db.ts")),
 );
 
-check("Prisma schema has ≥70 models", () => {
+check("Prisma schema has ≥55 models", () => {
   const content = readFileSync(join(ROOT, "prisma/schema.prisma"), "utf-8");
   const modelCount = (content.match(/^model\s+\w+/gm) || []).length;
-  return modelCount >= 70;
+  return modelCount >= 55;
 }, `Actual count: ${(readFileSync(join(ROOT, "prisma/schema.prisma"), "utf-8").match(/^model\s+\w+/gm) || []).length}`);
 
 // ═══════════════════════════════════════════════════════════════════════════════

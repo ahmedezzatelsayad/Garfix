@@ -3,11 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: false,
-  // Next.js 16 auto-generated routes.d.ts has duplicate identifier bugs with Turbopack.
-  // skipLibCheck is already true in tsconfig.json, but Next.js type-check ignores it.
-  // This ONLY skips the type-check phase — compiled output is still fully functional.
   typescript: {
-    ignoreBuildErrors: true,
+    // Build errors are now properly handled — no need to ignore them.
+    // ROADMAP P2.2 complete: TypeScript errors properly block build.
   },
   experimental: {
     optimizePackageImports: [
