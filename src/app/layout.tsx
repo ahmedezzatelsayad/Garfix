@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { Providers } from "@/components/Providers";
+import { AuthProvider } from "@/context/AuthContext";
+import { BrandProvider } from "@/context/BrandContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,24 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GarfiX EOS — AI-Native Business Platform",
-  description: "Modular Enterprise Monolith with 16-Stage AI Cascade Pipeline. Accounting, HR, E-Invoicing, and more.",
-  keywords: ["GarfiX", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI", "accounting", "HR", "e-invoicing"],
-  authors: [{ name: "GarfiX Team" }],
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
+  title: "GARFIX — نظام إدارة ذكي",
+  description: "أول نظام ERP ذكي لإدارة المنشآت — فواتير، محاسبة، مخزون، موارد بشرية، وتحكم مالي شامل.",
+  keywords: ["GARFIX", "ERP", "إدارة أعمال", "فاتورة إلكترونية", "محاسبة", "مخزون", "منشآت"],
+  authors: [{ name: "GARFIX Team" }],
   openGraph: {
-    title: "GarfiX EOS",
-    description: "AI-Native Business Platform — Modular Enterprise Monolith",
-    url: "https://garfix.app",
-    siteName: "GarfiX",
+    title: "GARFIX — نظام إدارة ذكي",
+    description: "منصة ERP متخصصة لإدارة أعمال المنشآت",
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "GarfiX EOS",
-    description: "AI-Native Business Platform",
   },
 };
 
@@ -42,14 +33,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <Providers>
-          {children}
-          <Toaster />
-        </Providers>
+        <AuthProvider>
+          <BrandProvider>
+            {children}
+          </BrandProvider>
+        </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );
