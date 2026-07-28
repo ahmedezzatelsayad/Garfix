@@ -227,6 +227,7 @@ const invoiceAuthOverride: { user: any | null } = { user: null };
 // Pre-load the real auth module via require() with an absolute path, which
 // bypasses Bun's mock.module interception.  This gives us access to the
 // genuine auth functions so we can re-export them in the smart mock factory.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const realAuthModule = require("/home/z/my-project/garfix-repo/src/lib/auth.ts");
 
 mock.module("@/lib/auth", () => ({
@@ -297,7 +298,6 @@ mock.module("@/lib/middleware", () => ({
   hasPermission: mock(() => permissionGranted),
 }));
 
-<<<<<<< HEAD
 // NOTE: We do NOT mock @/lib/audit via mock.module. The audit-advanced
 // test file imports the real logAudit/logAdminAction and tests them against
 // mock db.auditLog / db.adminAuditLog / db.tamperEvidenceChain. If we mock
@@ -308,34 +308,6 @@ mock.module("@/lib/middleware", () => ({
 // correctly with our mock db. The fire-and-forget appendToChain call inside
 // logAudit also works because RICH_TX (the fake tx passed to $transaction)
 // includes tamperEvidenceChain operations.
-=======
-mock.module("@/lib/audit", () => {
-  // Load the real audit module — require() with absolute path bypasses
-  // mock.module interception, so we get the genuine logAudit/logAdminAction.
-  // The invoice route handlers call these, and they call db.auditLog.create
-  // which is monkey-patched in beforeAll.  When no override is set
-  // (audit-advanced tests clear it), the real audit functions work normally.
-  const realAudit = require("/home/z/my-project/garfix-repo/src/lib/audit.ts");
-  return {
-    ...realAudit,
-    logAudit: mock(async (input: any) => {
-      const override = (globalThis as any).__invoiceAuthOverride;
-      if (override?.user) {
-        // Invoice test mode: just call the real logAudit (which uses monkey-patched db)
-        return realAudit.logAudit(input);
-      }
-      return realAudit.logAudit(input);
-    }),
-    logAdminAction: mock(async (input: any) => {
-      const override = (globalThis as any).__invoiceAuthOverride;
-      if (override?.user) {
-        return realAudit.logAdminAction(input);
-      }
-      return realAudit.logAdminAction(input);
-    }),
-  };
-});
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
 
 mock.module("@/lib/usageMeter", () => ({
   checkTrialExpiry: mock(async () => ({ ok: trialOk })),
@@ -857,11 +829,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-<<<<<<< HEAD
     expect(lastUpdateManyArgs.data.paid).toBe(30);
-=======
-    expect(Number(lastUpdateManyArgs.data.paid)).toBe(30);
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     expect(lastUpdateManyArgs.data.status).toBe("partial");
     // C1 FIX: version is now `{ increment: 1 }`, not a literal
     expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
@@ -877,11 +845,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("21"),
     );
     expect(res.status).toBe(200);
-<<<<<<< HEAD
     expect(lastUpdateManyArgs.data.paid).toBe(100);
-=======
-    expect(Number(lastUpdateManyArgs.data.paid)).toBe(100);
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     expect(lastUpdateManyArgs.data.status).toBe("paid");
   });
 
@@ -1019,11 +983,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("27"),
     );
     expect(res2.status).toBe(200);
-<<<<<<< HEAD
     expect(lastUpdateManyArgs.data.paid).toBe(50); // 25 + 25 = 50
-=======
-    expect(Number(lastUpdateManyArgs.data.paid)).toBe(50); // 25 + 25 = 50
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
   });
 });
 

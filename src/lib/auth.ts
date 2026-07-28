@@ -333,7 +333,6 @@ export interface AuthResult {
 export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   const access = getAccessToken(req);
   if (access) {
-<<<<<<< HEAD
     // SEC-C1 FIX (Cycle 1): use verifyTokenWithBlacklist so that a
     // force-logged-out or password-changed user is immediately rejected,
     // even if the JWT signature is still valid for the remaining TTL.
@@ -354,14 +353,6 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
           console.warn("[auth] SessionRegistry lookup failed (fail-open):",
             err instanceof Error ? err.message : String(err));
         }
-=======
-    const payload = verifyToken(access);
-    if (payload) {
-      // SEC-C1: Check blacklist asynchronously for access tokens
-      // If the token has a jti and is blacklisted, reject it
-      if (payload.jti && await isTokenBlacklisted(payload.jti)) {
-        return { ok: false, error: "Token revoked", status: 401 };
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
       }
       return { ok: true, user: payload };
     }

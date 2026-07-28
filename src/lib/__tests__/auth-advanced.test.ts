@@ -55,7 +55,6 @@ _orig.getValkeyClient = _realGetValkeyClient;
 // because no other test file also mocks @/lib/valkey via mock.module (the
 // audit-advanced test mocks @/lib/db but NOT @/lib/valkey).
 mock.module("@/lib/valkey", () => ({
-<<<<<<< HEAD
   getValkeyClient: mock(() =>
     Promise.resolve({ exists: mockExists, set: mockSet }),
   ),
@@ -76,9 +75,6 @@ mock.module("@/lib/db", () => ({
       update: mock(() => Promise.resolve({})),
     },
   },
-=======
-  getValkeyClient: mockGetValkeyClient,
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
 }));
 
 // Founder: monkey-patch via the module namespace object.
@@ -90,22 +86,11 @@ mock.module("@/lib/founder", () => ({
   FOUNDER_EMAIL: "founder@garfix.com",
 }));
 
-<<<<<<< HEAD
 // NOTE: We do NOT mock @/lib/permissions. permissions.ts is a pure data
 // module with no database imports — it can be imported safely without a
 // generated Prisma client. Mocking it globally breaks rbac.test.ts, which
 // imports the real computeEffectivePermissions and asserts the full admin
 // permission set.
-=======
-// Permissions: same approach — mock.module because no other suite mocks it.
-mock.module("@/lib/permissions", () => ({
-  computeEffectivePermissions: mockComputeEffectivePermissions,
-  ROLE_DEFAULTS: {
-    admin: { create_invoice: 1, reports_access: 1, settings_access: 1, finance_access: 1, employee_management: 1, e_invoicing_submit: 1 },
-  },
-  LOCKED_PERMS: ["reports_access", "settings_access", "finance_access", "employee_management"],
-}));
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
 
 // @/lib/db: We DO NOT mock via mock.module because other suites
 // (audit-advanced, invoices-crud) also need to mock it and a global
@@ -130,49 +115,12 @@ class MockNextRequest {
   url: string;
   _cookies: Map<string, string>;
   headers: Headers;
-<<<<<<< HEAD
   constructor(init: { url?: string; cookies?: Map<string, string>; headers?: Headers; method?: string; body?: any }) {
     this.url = init.url || "http://localhost/";
     this._cookies = init.cookies || new Map();
     this.headers = init.headers || new Headers();
     if (init.method) this.method = init.method;
     if (init.body) this._body = init.body;
-=======
-  method: string;
-  _body: string | null;
-  _init: any;
-
-  // Support both auth-test format { url, cookies, headers } AND standard
-  // NextRequest format (urlString, { method, body, headers }) so the mock
-  // doesn't break other test files that use the standard constructor.
-  constructor(initOrUrl: string | { url?: string; cookies?: Map<string, string>; headers?: Headers }, init?: any) {
-    if (typeof initOrUrl === 'string') {
-      // Standard NextRequest format: new NextRequest(urlString, { method, body, headers })
-      this.url = initOrUrl;
-      this._init = init || {};
-      this.method = this._init.method || 'GET';
-      this._body = this._init.body || null;
-      this._cookies = new Map();
-      // Parse Cookie header into _cookies map for standard requests
-      const rawHeaders = this._init.headers || {};
-      this.headers = new Headers(rawHeaders);
-      const cookieHeader = this.headers.get('cookie');
-      if (cookieHeader) {
-        for (const part of cookieHeader.split(';')) {
-          const [k, ...rest] = part.trim().split('=');
-          if (k && rest.length) this._cookies.set(k.trim(), rest.join('=').trim());
-        }
-      }
-    } else {
-      // Auth-test format: new MockNextRequest({ url, cookies, headers })
-      this.url = initOrUrl.url || "http://localhost/";
-      this._cookies = initOrUrl.cookies || new Map();
-      this.headers = initOrUrl.headers || new Headers();
-      this.method = 'GET';
-      this._body = null;
-      this._init = {};
-    }
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
   }
   method: string = "GET";
   _body: any = null;
@@ -187,41 +135,18 @@ class MockNextRequest {
       delete: mockCookieSet,
     };
   }
-<<<<<<< HEAD
   async json() { 
     if (typeof this._body === 'string') return JSON.parse(this._body);
     return this._body;
   }
   async text() { return typeof this._body === 'string' ? this._body : JSON.stringify(this._body); }
-=======
-  // nextUrl — wraps the URL with searchParams (required by route handlers
-  // that use req.nextUrl.searchParams, e.g. GET /api/invoices).
-  get nextUrl() {
-    return new URL(this.url);
-  }
-  // .json() — parse the request body (required by parseJsonBody in api.ts
-  // and route handlers that call req.json()).
-  async json() {
-    if (this._body) {
-      return JSON.parse(this._body as string);
-    }
-    return null;
-  }
-  async text() {
-    return this._body || '';
-  }
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
 }
 
 class MockNextResponse {
   _cookies: Map<string, { name: string; value: string; options: any }> = new Map();
   status = 200;
   body: any;
-<<<<<<< HEAD
   _jsonBody: any;
-=======
-  ok: boolean;
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
 
   constructor(body?: any, init?: any) {
     this.body = body;

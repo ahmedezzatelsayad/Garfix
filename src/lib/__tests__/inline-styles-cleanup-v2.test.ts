@@ -108,13 +108,8 @@ describe('Inline Styles Cleanup — Module Views', () => {
   describe('AuditView.tsx', () => {
     it('should have ≤20 remaining inline styles', () => {
       const content = readFile('modules/admin/AuditView.tsx');
-<<<<<<< HEAD
       expect(content.length).toBeGreaterThan(0);
       expect(countInlineStyles(content)).toBeLessThanOrEqual(5);
-=======
-      if (!content) return;
-      expect(countInlineStyles(content)).toBeLessThanOrEqual(20);
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     });
 
     it('should use Tailwind className helpers for table cells', () => {
@@ -126,11 +121,7 @@ describe('Inline Styles Cleanup — Module Views', () => {
   });
 
   // ── Global: all module files should have reduced inline styles ────
-<<<<<<< HEAD
   it('average inline style count per module view should be < 20', () => {
-=======
-  it('average inline style count per module view should be < 30', () => {
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     const moduleFiles = [
       'modules/admin/AuditView.tsx',
       'modules/settings/CompanySettingsForm.tsx',
@@ -152,10 +143,6 @@ describe('Inline Styles Cleanup — Module Views', () => {
     }
     if (fileCount === 0) return;
     const avg = totalInline / fileCount;
-<<<<<<< HEAD
     expect(avg).toBeLessThan(20);
-=======
-    expect(avg).toBeLessThan(30);
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
   });
 });

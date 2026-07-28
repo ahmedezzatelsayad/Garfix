@@ -130,17 +130,11 @@ describe("Inline Styles Cleanup", () => {
       const filePath = path.join(SRC_DIR, relPath);
       if (!fs.existsSync(filePath)) continue; // skip missing files
       const stats = countInlineStyles(filePath);
-<<<<<<< HEAD
       // All remaining inline styles should be annotated with TAILWINDBREAK
       // convertible can be 0 or negative (TAILWINDBREAK comments may exceed style count
       // if comments reference same pattern or are on separate lines)
       expect(stats.convertible).toBeLessThanOrEqual(0);
       expect(stats.tailwindbreak).toBeGreaterThan(0);
-=======
-      // Relaxed: partially-converted files may still have convertible styles
-      // that haven't been converted yet. Tighten as conversion progresses.
-      expect(stats.convertible).toBeLessThanOrEqual(10);
->>>>>>> 51a27c5 (fix: SEC-C1 auth blacklist, TS test fixes, Prisma schema restore, Grafana added)
     }
   });
 
