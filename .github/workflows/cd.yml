@@ -142,9 +142,34 @@ jobs:
     needs: [build-image]
     if: always() && needs.build-image.result == 'success'
 
+    # PostgreSQL service container — the GarfiX app requires a database
+    # to start (Prisma client connects on boot for outbox relay, session
+    # registry, etc.). The service container runs on the runner host; we
+    # expose it to the garfix-smoke container via the host's bridge IP
+    # (172.17.0.1 on default docker0).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: garfix_test
+          POSTGRES_PASSWORD: garfix_test_pass
+          POSTGRES_DB: garfix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -174,13 +199,42 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "full=$IMAGE_FULL:$TAG" >> $GITHUB_OUTPUT
 
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL service container..."
+          for i in $(seq 1 15); do
+            if pg_isready -h localhost -p 5432 -U garfix_test 2>/dev/null; then
+              echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "  Attempt $i/15 - waiting..."
+            sleep 2
+          done
+
+      - name: Run Prisma migrations against smoke-test DB
+        env:
+          DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
+          DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+        run: |
+          echo "Running Prisma migrations against smoke-test DB..."
+          bun install --frozen-lockfile
+          bun run db:generate
+          if ! bun run db:deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ Prisma migration FAILED"
+            cat migrate-output.txt
+            exit 1
+          fi
+          echo "✅ Migrations applied"
+
       - name: Run smoke test inside Docker container
         env:
           IMAGE: ${{ steps.img.outputs.full }}
-          # Minimal runtime env — the image's HEALTHCHECK will hit /api/health
-          # internally, but we also curl from the host for a stronger check.
-          DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public"
-          DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+          # The container needs to reach the PostgreSQL service on the
+          # runner host. `host.docker.internal` is the cross-platform way
+          # (Docker 20.10+ on Linux resolves it via the host-gateway
+          # entry in /etc/hosts, which we add via --add-host below).
+          DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@host.docker.internal:5432/garfix_test?schema=public"
+          DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@host.docker.internal:5432/garfix_test"
           JWT_SECRET: "smoke-test-jwt-secret-at-least-32-characters-long!!"
           JWT_REFRESH_SECRET: "smoke-test-refresh-secret-at-least-32-chars!!"
           FOUNDER_EMAIL: "founder@test.com"
@@ -189,12 +243,17 @@ jobs:
         run: |
           echo "─── Docker Smoke Test ───"
           echo "Image: $IMAGE"
+          echo "DATABASE_URL points to host.docker.internal:5432 (runner-side postgres service)"
           echo ""
 
-          # Start the container detached
+          # Start the container detached.
+          # --add-host=host.docker.internal:host-gateway is the official
+          # Docker 20.10+ way to make host.docker.internal resolve to the
+          # runner's bridge IP from inside the container.
           docker run --rm -d \
             --name garfix-smoke \
             -p 3001:3000 \
+            --add-host=host.docker.internal:host-gateway \
             -e DATABASE_URL="$DATABASE_URL" \
             -e DATABASE_DIRECT_URL="$DATABASE_DIRECT_URL" \
             -e JWT_SECRET="$JWT_SECRET" \
