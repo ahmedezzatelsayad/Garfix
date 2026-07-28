@@ -26,7 +26,8 @@ const mockDb: Record<string, any> = {
   cacheEntry: m(), aIRequestLog: m(), ruleCandidate: m(),
   aIMemoryEntry: m(), budgetConfig: m(), notification: m(),
   company: m(), companyRuntime: m(), providerConfig: m(),
-  globalPattern: m(), profitSnapshot: m(), aIScoreSnapshot: m(),
+  globalPattern: { ...m(), findUnique: mock(() => Promise.resolve(null)), update: mock(() => Promise.resolve({})) },
+  profitSnapshot: m(), aIScoreSnapshot: { ...m(), findFirst: mock(() => Promise.resolve(null)) },
   jobQueue: m(), inventoryItem: m(), productCatalog: m(), client: m(),
   compiledRule: m(), platformSettings: m(), featureFlag: m(),
 };
@@ -38,21 +39,13 @@ const mockLogger = {
 
 mock.module("@/lib/db", () => ({ db: mockDb }));
 mock.module("@/lib/logger", () => ({ logger: mockLogger }));
-mock.module("@/lib/ai-fabric/budget-engine", () => ({
-  checkBudgetGate: mock(() => Promise.resolve(true)),
-  getBudgetStatus: mock(() => Promise.resolve(null)),
-  __resetAlertTracking: mock(() => {}),
-}));
-mock.module("@/lib/ai-fabric/cross-company-intelligence", () => ({
-  lookupGlobalPattern: mock(() => Promise.resolve(null)),
-  contributePattern: mock(() => Promise.resolve(true)),
-  verifyNoSensitiveData: mock(() => true),
-  getPatternStats: mock(() => Promise.resolve({ totalPatterns: 0, avgConfidence: 0, avgContributingCompanies: 0, topPatterns: [] })),
-}));
+mock.module("@/lib/valkey", () => ({ getValkeyClient: async () => null }));
 
 // ─── Imports after mocks ──────────────────────────────────────────────────
 
 import { executeCascade, storeAIMemory, cacheStore, type GatewayAIFn, type GatewayOptions } from "@/lib/ai-fabric/gateway";
+import { checkBudgetGate, getBudgetStatus, __resetAlertTracking } from "@/lib/ai-fabric/budget-engine";
+import { lookupGlobalPattern } from "@/lib/ai-fabric/cross-company-intelligence";
 import { fabricHash, type GatewayRequest } from "@/lib/ai-fabric/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -637,65 +630,66 @@ describe("executeCascade skipStages", () => {
 // ─── Budget gate ─────────────────────────────────────────────────────────
 
 describe("executeCascade budget gate", () => {
-  beforeEach(clearAll);
+  beforeEach(() => { clearAll(); __resetAlertTracking(); });
 
-  it("allows AI call when checkBudgetGate returns true", async () => {
+  it("allows AI call when no budget config exists", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
-    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
-    (checkBudgetGate as any).mockResolvedValue(true);
+    // No BudgetConfig → checkBudgetGate returns true
+    mockDb.budgetConfig.findUnique.mockResolvedValue(null);
     const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
     expect(r.resolvedBy).toBe("ai");
     expect(r.budgetBlocked).toBeFalsy();
   });
 
-  it("blocks AI call when checkBudgetGate returns false", async () => {
+  it("blocks AI call when hard stop enabled and spend >= budget", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
-    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
-    (checkBudgetGate as any).mockResolvedValue(false);
-    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
-    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: true, currentSpendUsd: 100, monthlyBudgetUsd: 100 });
+    // BudgetConfig: hardStop enabled, spend >= budget → checkBudgetGate returns false
+    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 100, hardStopEnabled: true, alertThresholdPct: 80 });
+    // Forecast mocks (called by getBudgetStatus)
+    mockDb.aIRequestLog.findFirst.mockResolvedValue(null);
+    mockDb.aIRequestLog.aggregate.mockResolvedValue({ _sum: { costUsd: 0 } });
+    mockDb.aIRequestLog.create.mockResolvedValue({});
     const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
     expect(r.budgetBlocked).toBe(true);
   });
 
   it("returns budgetBlocked: true when blocked", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
-    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
-    (checkBudgetGate as any).mockResolvedValue(false);
-    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
-    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: false });
+    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 100, hardStopEnabled: true, alertThresholdPct: 80 });
+    mockDb.aIRequestLog.findFirst.mockResolvedValue(null);
+    mockDb.aIRequestLog.aggregate.mockResolvedValue({ _sum: { costUsd: 0 } });
+    mockDb.aIRequestLog.create.mockResolvedValue({});
     const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
     expect(r.budgetBlocked).toBe(true);
   });
 
   it("returns budgetReason when blocked", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
-    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
-    (checkBudgetGate as any).mockResolvedValue(false);
-    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
-    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: true });
+    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 100, hardStopEnabled: true, alertThresholdPct: 80 });
+    mockDb.aIRequestLog.findFirst.mockResolvedValue(null);
+    mockDb.aIRequestLog.aggregate.mockResolvedValue({ _sum: { costUsd: 0 } });
+    mockDb.aIRequestLog.create.mockResolvedValue({});
     const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
     expect(r.budgetReason).toBe("hard_stop");
   });
 
   it("returns resolvedBy: cache when budget-blocked", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
-    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
-    (checkBudgetGate as any).mockResolvedValue(false);
-    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
-    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: false });
+    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 100, hardStopEnabled: true, alertThresholdPct: 80 });
+    mockDb.aIRequestLog.findFirst.mockResolvedValue(null);
+    mockDb.aIRequestLog.aggregate.mockResolvedValue({ _sum: { costUsd: 0 } });
+    mockDb.aIRequestLog.create.mockResolvedValue({});
     const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
     expect(r.resolvedBy).toBe("cache");
   });
 
-  it("returns budget_exceeded reason when not hard stop", async () => {
+  it("when hardStop disabled and over budget, AI call is still allowed", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
-    const { checkBudgetGate } = await import("@/lib/ai-fabric/budget-engine");
-    (checkBudgetGate as any).mockResolvedValue(false);
-    const { getBudgetStatus } = await import("@/lib/ai-fabric/budget-engine");
-    (getBudgetStatus as any).mockResolvedValue({ hardStopActive: false });
+    // hardStopEnabled=false → checkBudgetGate returns true even when over budget
+    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 150, hardStopEnabled: false, alertThresholdPct: 80 });
     const r = await executeCascade(req(), { aiFn: () => Promise.resolve(aiResult) });
-    expect(r.budgetReason).toBe("budget_exceeded");
+    expect(r.resolvedBy).toBe("ai");
+    expect(r.budgetBlocked).toBeFalsy();
   });
 });
 

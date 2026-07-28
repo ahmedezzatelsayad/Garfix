@@ -45,7 +45,7 @@
  * by default). The matcher's exact-match path calls `db.productAlias.findUnique`
  * which we ALSO monkey-patch to return our per-test fixture.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
 
 import { db } from "@/lib/db";
 import { invalidateKillSwitchCache, matchProduct } from "@/lib/productMatcher";
@@ -226,3 +226,5 @@ describe("B.7e — charSetJaccard multiplicity false-positive trap", () => {
 // bigram Jaccard is ~0.67 (>= the 0.30 prefilter threshold) — the candidate
 // reaches the scoring stage. So the rejection is from the SCORING stage,
 // confirming multisetJaccard is the active safety net.
+
+afterAll(() => { mock.restore(); });

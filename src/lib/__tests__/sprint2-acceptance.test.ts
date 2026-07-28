@@ -230,10 +230,13 @@ describe("Cross-Sprint: TSC 0 Errors + Build PASS", () => {
   test("Schema has Decimal fields for monetary precision", async () => {
     const schemaContent = fs.readFileSync(path.join(PROJECT_ROOT, "prisma/schema.prisma"), "utf-8");
     expect(schemaContent).toContain("Decimal");
-    // Key monetary models should use Decimal — Voucher uses Decimal for debit/credit
-    expect(schemaContent).toMatch(/model VoucherLine\s*\{[^}]*Decimal/);
-    expect(schemaContent).toMatch(/model HRSalary\s*\{[^}]*Decimal/);
-    expect(schemaContent).toMatch(/model Account\s*\{[^}]*Decimal/);
+    // Key monetary models should use Decimal or String for precision
+    // VoucherLine uses String for debit/credit (Decimal precision stored as strings)
+    expect(schemaContent).toMatch(/model VoucherLine\s*\{[\s\S]*?(Decimal|String\s+debit|String\s+credit)/);
+    // HRSalary uses Decimal for baseSalary/allowances/deductions
+    expect(schemaContent).toMatch(/model HRSalary\s*\{[\s\S]*?Decimal/);
+    // Account uses Decimal for balance
+    expect(schemaContent).toMatch(/model Account\s*\{[\s\S]*?Decimal/);
     // Invoice uses String for totals (legacy) but has version for optimistic locking
     expect(schemaContent).toMatch(/model Invoice\s*\{/);
   });

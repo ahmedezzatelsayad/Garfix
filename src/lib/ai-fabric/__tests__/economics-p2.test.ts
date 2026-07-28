@@ -8,11 +8,23 @@
  *   - Cost Per Invoice (Phase 15): AI-resolved have real cost, cache-resolved have $0, trend
  *   - AI Compiler (Phase 16a): clustering groups similar requests, compilation assessment
  *
- * Uses real Prisma (SQLite) — no mocks for DB.
+ * Uses mock Prisma (in-memory) — no real DB connection.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { db } from "@/lib/db";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from "bun:test";
+import { createMockDb } from "./helpers/mock-db";
+
+// Mock @/lib/db and @/lib/valkey before importing modules that depend on them
+const _mockDb = createMockDb();
+mock.module("@/lib/db", () => ({ db: _mockDb }));
+mock.module("@/lib/valkey", () => ({
+  getValkeyClient: async () => null,
+}));
+mock.module("@/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+}));
+
+const db = _mockDb;
 
 // ─── Phase 13 imports ───────────────────────────────────────────────────────
 import {

@@ -62,21 +62,6 @@ mock.module("@/lib/valkey", () => ({
   VALKEY_CONFIGURED: false,
 }));
 
-mock.module("@/lib/db", () => ({
-  db: {
-    user: {
-      findUnique: mock(() => Promise.resolve(null)),
-    },
-    appUser: {
-      findUnique: mock(() => Promise.resolve(null)),
-      findFirst: mock(() => Promise.resolve(null)),
-      findMany: mock(() => Promise.resolve([])),
-      create: mock(() => Promise.resolve({})),
-      update: mock(() => Promise.resolve({})),
-    },
-  },
-}));
-
 // Founder: monkey-patch via the module namespace object.
 // Bun: import * as founderModule → founderModule.isFounderEmail is writable.
 // However, ESM named exports are NOT writable in strict mode.  Instead we
@@ -115,12 +100,40 @@ class MockNextRequest {
   url: string;
   _cookies: Map<string, string>;
   headers: Headers;
-  constructor(init: { url?: string; cookies?: Map<string, string>; headers?: Headers; method?: string; body?: any }) {
-    this.url = init.url || "http://localhost/";
-    this._cookies = init.cookies || new Map();
-    this.headers = init.headers || new Headers();
-    if (init.method) this.method = init.method;
-    if (init.body) this._body = init.body;
+  method: string;
+  _body: string | null;
+  _init: any;
+
+  // Support both auth-test format { url, cookies, headers } AND standard
+  // NextRequest format (urlString, { method, body, headers }) so the mock
+  // doesn't break other test files that use the standard constructor.
+  constructor(initOrUrl: string | { url?: string; cookies?: Map<string, string>; headers?: Headers; method?: string; body?: any }, init?: any) {
+    if (typeof initOrUrl === 'string') {
+      // Standard NextRequest format: new NextRequest(urlString, { method, body, headers })
+      this.url = initOrUrl;
+      this._init = init || {};
+      this.method = this._init.method || 'GET';
+      this._body = this._init.body || null;
+      this._cookies = new Map();
+      // Parse Cookie header into _cookies map for standard requests
+      const rawHeaders = this._init.headers || {};
+      this.headers = new Headers(rawHeaders);
+      const cookieHeader = this.headers.get('cookie');
+      if (cookieHeader) {
+        for (const part of cookieHeader.split(';')) {
+          const [k, ...rest] = part.trim().split('=');
+          if (k && rest.length) this._cookies.set(k.trim(), rest.join('=').trim());
+        }
+      }
+    } else {
+      // Auth-test format: new MockNextRequest({ url, cookies, headers })
+      this.url = initOrUrl.url || "http://localhost/";
+      this._cookies = initOrUrl.cookies || new Map();
+      this.headers = initOrUrl.headers || new Headers();
+      this.method = initOrUrl.method || 'GET';
+      this._body = initOrUrl.body || null;
+      this._init = {};
+    }
   }
   method: string = "GET";
   _body: any = null;
@@ -135,11 +148,20 @@ class MockNextRequest {
       delete: mockCookieSet,
     };
   }
-  async json() { 
+  // nextUrl — wraps the URL with searchParams (required by route handlers
+  // that use req.nextUrl.searchParams, e.g. GET /api/invoices).
+  get nextUrl() {
+    return new URL(this.url);
+  }
+  // .json() — parse the request body (required by parseJsonBody in api.ts
+  // and route handlers that call req.json()).
+  async json() {
     if (typeof this._body === 'string') return JSON.parse(this._body);
     return this._body;
   }
-  async text() { return typeof this._body === 'string' ? this._body : JSON.stringify(this._body); }
+  async text() {
+    return typeof this._body === 'string' ? this._body : JSON.stringify(this._body);
+  }
 }
 
 class MockNextResponse {
@@ -147,6 +169,7 @@ class MockNextResponse {
   status = 200;
   body: any;
   _jsonBody: any;
+  ok: boolean;
 
   constructor(body?: any, init?: any) {
     this.body = body;

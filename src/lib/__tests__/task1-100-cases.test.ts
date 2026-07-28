@@ -37,7 +37,7 @@
  * calls `db.productAlias.findMany` (which returns the full catalog). The
  * audit-create path calls `db.productMatchAudit.create` (no-op).
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
 
 import { db } from "@/lib/db";
 import { invalidateKillSwitchCache, matchProduct } from "@/lib/productMatcher";
@@ -456,3 +456,5 @@ describe("Task 1 — 100-case product matching matrix", () => {
     expect(single + multi).toBe(100);
   });
 });
+
+afterAll(() => { mock.restore(); });

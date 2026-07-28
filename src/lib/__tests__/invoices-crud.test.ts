@@ -227,7 +227,6 @@ const invoiceAuthOverride: { user: any | null } = { user: null };
 // Pre-load the real auth module via require() with an absolute path, which
 // bypasses Bun's mock.module interception.  This gives us access to the
 // genuine auth functions so we can re-export them in the smart mock factory.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const realAuthModule = require("/home/z/my-project/garfix-repo/src/lib/auth.ts");
 
 mock.module("@/lib/auth", () => ({
@@ -568,13 +567,15 @@ describe("POST /api/invoices", () => {
   });
 
   it("2. 403 forbidden — user lacks company access", async () => {
-    authUser = {
+    const strangerUser = {
       uid: "u3",
       email: "stranger@test.com",
       role: "staff",
       companies: [],
       permissions: { create_invoice: 1 },
     };
+    authUser = strangerUser;
+    invoiceAuthOverride.user = strangerUser;
     const res = await invoicesPOST(makePostRequest(VALID_BODY));
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -666,6 +667,7 @@ describe("GET /api/invoices/[id]", () => {
 
   it("9. 403 cross-tenant — invoice exists but belongs to a different company", async () => {
     authUser = TENANT_USER; // staff with access only to "test-co"
+    invoiceAuthOverride.user = TENANT_USER; // MUST also update override so mock uses TENANT_USER
     invoiceById = baseInvoice({ id: 7, companySlug: "other-co" });
     const res = await singleGET(
       makeGetRequest("https://example.com/api/invoices/7"),
@@ -829,7 +831,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(lastUpdateManyArgs.data.paid).toBe(30);
+    expect(Number(lastUpdateManyArgs.data.paid)).toBe(30);
     expect(lastUpdateManyArgs.data.status).toBe("partial");
     // C1 FIX: version is now `{ increment: 1 }`, not a literal
     expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
@@ -845,7 +847,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("21"),
     );
     expect(res.status).toBe(200);
-    expect(lastUpdateManyArgs.data.paid).toBe(100);
+    expect(Number(lastUpdateManyArgs.data.paid)).toBe(100);
     expect(lastUpdateManyArgs.data.status).toBe("paid");
   });
 
@@ -983,7 +985,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("27"),
     );
     expect(res2.status).toBe(200);
-    expect(lastUpdateManyArgs.data.paid).toBe(50); // 25 + 25 = 50
+    expect(Number(lastUpdateManyArgs.data.paid)).toBe(50); // 25 + 25 = 50
   });
 });
 

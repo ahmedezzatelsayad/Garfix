@@ -56,18 +56,18 @@ import { syncInventoryOnSale, syncInventoryOnPurchase } from "@/lib/inventorySyn
 // them in afterAll so other test files are unaffected.
 
 const _origFeatureFlag = (db as any).featureFlag;
-const _origPlatformSettings = (db as any).platformSettingss;
+const _origPlatformSettings = (db as any).platformSettings;
 
 beforeAll(() => {
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSettingss = { findMany: async () => [] };
+  (db as any).platformSettings = { findMany: async () => [] };
 });
 
 afterAll(() => {
   (db as any).featureFlag = _origFeatureFlag;
-  (db as any).platformSettingss = _origPlatformSettings;
+  (db as any).platformSettings = _origPlatformSettings;
 });
 
 // ─── tx mock factory ──────────────────────────────────────────────────────────
@@ -431,3 +431,5 @@ describe("syncInventoryOnPurchase", () => {
     expect(mvCall.data.note).toBe("initial stock: no existing inventory");
   });
 });
+
+afterAll(() => { mock.restore(); });

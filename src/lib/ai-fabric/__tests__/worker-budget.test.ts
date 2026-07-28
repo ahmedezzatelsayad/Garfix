@@ -3,15 +3,27 @@
  * worker-budget.test.ts — Phase 4/5/6 integration tests.
  *
  * Tests the worker scaler, fair-share scheduler, and budget engine.
- * Uses real Prisma (SQLite) — no mocks for DB.
+ * Uses mock Prisma (in-memory) — no real DB connection.
  *
  * - Worker scaler: tier limits, queue overflow → scale up, idle → scale down
  * - Scheduler: fair share, idle company gives resources, starvation prevention
  * - Budget engine: record spend, threshold alert, hard stop, forecast
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { db } from "@/lib/db";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from "bun:test";
+import { createMockDb } from "./helpers/mock-db";
+
+// Mock @/lib/db and @/lib/valkey before importing modules that depend on them
+const _mockDb = createMockDb();
+mock.module("@/lib/db", () => ({ db: _mockDb }));
+mock.module("@/lib/valkey", () => ({
+  getValkeyClient: async () => null,
+}));
+mock.module("@/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+}));
+
+const db = _mockDb;
 import { getOrCreateRuntime, scaleWorkers, getActiveWorkerCounts, __setResourcePctForTesting } from "@/lib/ai-fabric/worker-scaler";
 import { scheduleNextJob, getAllocationMap, requestSlot, __resetActiveSlugs } from "@/lib/ai-fabric/scheduler";
 import { recordSpend, getBudgetStatus, checkBudgetGate, forecastMonthlySpend, __resetAlertTracking } from "@/lib/ai-fabric/budget-engine";

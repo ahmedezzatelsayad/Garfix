@@ -8,11 +8,23 @@
  *   - Phase 11 (learning-engine): observation recording, promotion at threshold, rejection
  *   - Phase 12 (cross-company): pattern contribution, lookup, privacy filtering
  *
- * Uses real Prisma (SQLite) — no mocks for DB.
+ * Uses mock Prisma (in-memory) — no real DB connection.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { db } from "@/lib/db";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from "bun:test";
+import { createMockDb } from "./helpers/mock-db";
+
+// Mock @/lib/db and @/lib/valkey before importing modules that depend on them
+const _mockDb = createMockDb();
+mock.module("@/lib/db", () => ({ db: _mockDb }));
+mock.module("@/lib/valkey", () => ({
+  getValkeyClient: async () => null,
+}));
+mock.module("@/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+}));
+
+const db = _mockDb;
 
 // Phase 9
 import {
