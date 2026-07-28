@@ -18,10 +18,10 @@ env:
   NODE_ENV: test
   DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
   DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
-  JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
-  JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
+  JWT_SECRET: "j16Zoo6iiO7xSg78tBzHVjog6jkzsOMBjOShkHWxn2zVGS3u"
+  JWT_REFRESH_SECRET: "NObYh3hZlRzsw924JkX1T19kPaQbp2xVsKv3EzVSDEpwKeKU"
   FOUNDER_EMAIL: "founder@test.com"
-  PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-characters!"
+  PAYMENTS_ENC_KEY: "W3ev2LxdaXategyvcNiDpmFt2xhHlL6c2R8j0K22"
 
 jobs:
   # ── Quick Lint ────────────────────────────────────────────────────────

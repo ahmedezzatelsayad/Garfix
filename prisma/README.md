@@ -1,6 +1,6 @@
 # Prisma — قاعدة البيانات
 
-> Schema يحتوي على **74 نموذج** مع **110 @@index directive** يغطي كل نطاقات النظام. تم تصميم الفهارس لتسريع الاستعلامات على companySlug, status, createdAt, والحقول المركبة (composite fields).
+> Schema يحتوي على **83 نموذج** مع **32 @@index directive** يغطي كل نطاقات النظام. تم تصميم الفهارس لتسريع الاستعلامات على companySlug, status, createdAt, والحقول المركبة (composite fields).
 
 ## النماذج الرئيسية (Core Business)
 
@@ -113,7 +113,7 @@
 
 عمود `total` في جدول `Invoice` تم ترقيته من نوع `String` إلى `Decimal` لدقة الإنتاج (ADR 002). هذا يضمن حسابات مالية دقيقة بدون أخطاء التقريب. Migration: `20260801000000_decimal_migration_monetary_fields`.
 
-## استراتيجية الفهارس (110 @@index)
+## استراتيجية الفهارس (32 @@index)
 
 الفهارس مصممة لتسريع أنماط الاستعلام الشائعة في النظام:
 

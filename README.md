@@ -11,7 +11,7 @@
 | Next.js | 16 | App Router + Server Actions |
 | Bun | — | Runtime + Package Manager |
 | TypeScript | — | 99% coverage |
-| Prisma | 6.11 | ORM (74 models, 110 @@index directives, SQLite dev / PostgreSQL prod) |
+| Prisma | 6.11 | ORM (83 models, 32 @@index directives, PostgreSQL) |
 | Tailwind CSS | 4 | Styling + Responsive Design |
 | Valkey | 8.1 | Cache + Queue backend |
 | BullMQ | — | Job processing (primary queue) |
@@ -33,8 +33,8 @@ bun run dev
 
 ```
 Garfix/
-├── prisma/                  # Schema (74 models) + 110 @@index + Migrations
-├── e2e/                     # Playwright specs (9 files: accounting, e-invoicing, company-mgmt)
+├── prisma/                  # Schema (83 models) + 32 @@index + Migrations
+├── e2e/                     # Playwright specs (10 files: accounting, e-invoicing, company-mgmt)
 ├── scripts/                 # Seed, bench, security-scan, rate-limit load test (~47 scripts)
 ├── docs/                    # Roadmaps, audit reports, API spec, ADRs
 │   └── api/openapi.yaml     # OpenAPI/Swagger specification
@@ -42,7 +42,7 @@ Garfix/
 │   ├── app/api/             # Route handlers (210 route files, 177+ documented endpoints)
 │   ├── modules/             # 20+ domain UI modules
 │   ├── lib/
-│   │   ├── ai-fabric/       # 20-phase AI cascade engine (20 files)
+│   │   ├── ai-fabric/       # 20-phase AI cascade engine (21 files)
 │   │   ├── invoice-brain/   # Pattern-first extraction (13 files)
 │   │   ├── founder-validation/ # 1628+ test suite (11 sections)
 │   │   ├── e-invoicing/     # MENA e-invoicing (6 countries + ZATCA certs + TLV)
@@ -64,7 +64,7 @@ Garfix/
 │   ├── hooks/               # React Query hooks (16 domain scopes + cursor pagination + optimistic)
 │   │   ├── cursor-pagination.ts  # useCursorPagination + server helpers
 │   │   ├── optimistic.ts        # Optimistic update helpers (add, update, delete)
-│   │   └── queries/             # Domain-scoped hooks (16 files)
+│   │   └── queries/             # Domain-scoped hooks (18 files)
 │   ├── components/          # UI + GarfiX custom components (50+)
 │   └── middleware.ts         # Auth + rate limit + CSRF + security headers
 └── docker-compose.yml
@@ -93,7 +93,7 @@ Garfix/
 - **Valkey + BullMQ + pg-boss** — 3-tier queue: Valkey/BullMQ (primary) → pg-boss (secondary) → in-process (dev)
 - **Arabic-first** — واجهة عربية مع RTL كامل + Arabic amount text conversion + accessibility (`a11y.ts`)
 - **OpenAPI/Swagger** — 177+ endpoints documented in `docs/api/openapi.yaml` مع interactive viewer at `/api-docs`
-- **Prisma Indexing** — 110 @@index directives على companySlug, status, createdAt, و composite fields لضمان أداء الاستعلامات على 74 models
+- **Prisma Indexing** — 32 @@index directives على companySlug, status, createdAt, و composite fields لضمان أداء الاستعلامات على 83 models
 - **Landing Page** — صفحة رئيسية تسويقية `EnhancedLandingPage.tsx` مع sections متعددة
 - **PWA Support** — Service worker + manifest + offline capability
 - **Full Accounting** — 18 modules: journals, AR/AP, banking, fixed assets, payroll/WPS, trade finance, consolidation, budgets, tax compliance, cost centers, Arabic amount text, financial dashboard

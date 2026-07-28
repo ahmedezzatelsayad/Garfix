@@ -83,8 +83,8 @@ const prismaModels = grepCount(join(ROOT, "prisma/schema.prisma"), /^model \w+/g
 checks.push({
   name: "Prisma Models",
   readmePath: join(ROOT, "README.md"),
-  readmePattern: /74 models/g,
-  readmeClaimedValue: 74,
+  readmePattern: /83 models/g,
+  readmeClaimedValue: 83,
   actualValue: prismaModels,
   actualMethod: "grep '^model ' prisma/schema.prisma",
 });
@@ -94,8 +94,8 @@ const prismaIndexes = grepCount(join(ROOT, "prisma/schema.prisma"), /@@index/g);
 checks.push({
   name: "Prisma @@index",
   readmePath: join(ROOT, "README.md"),
-  readmePattern: /110 @@index/g,
-  readmeClaimedValue: 110,
+  readmePattern: /32 @@index/g,
+  readmeClaimedValue: 32,
   actualValue: prismaIndexes,
   actualMethod: "grep '@@index' prisma/schema.prisma",
 });
@@ -109,8 +109,8 @@ const aiFabricFiles = countFiles(
 checks.push({
   name: "AI Fabric Files",
   readmePath: join(ROOT, "README.md"),
-  readmePattern: /20 files/g,
-  readmeClaimedValue: 20,
+  readmePattern: /21 files/g,
+  readmeClaimedValue: 21,
   actualValue: aiFabricFiles,
   actualMethod: "count .ts files in src/lib/ai-fabric/ (excl. tests)",
 });
@@ -138,8 +138,8 @@ const e2eFiles = countFiles(
 checks.push({
   name: "E2E Spec Files",
   readmePath: join(ROOT, "README.md"),
-  readmePattern: /9 files/g,
-  readmeClaimedValue: 9,
+  readmePattern: /10 files/g,
+  readmeClaimedValue: 10,
   actualValue: e2eFiles,
   actualMethod: "count .spec.ts files in e2e/",
 });
@@ -252,8 +252,8 @@ const hookFiles = countFiles(
 checks.push({
   name: "React Query Hooks",
   readmePath: join(ROOT, "README.md"),
-  readmePattern: /16 files/g,
-  readmeClaimedValue: 16,
+  readmePattern: /18 files/g,
+  readmeClaimedValue: 18,
   actualValue: hookFiles,
   actualMethod: "count .ts hook files in src/hooks/queries/",
   tolerance: 1,
@@ -356,10 +356,12 @@ for (const check of checks) {
 // ── Scan ALL sub-READMEs for stale numbers ──────────────────────────────────
 
 const stalePatterns = [
-  { pattern: /72 models/g, description: "Old model count (should be 74)" },
+  { pattern: /72 models/g, description: "Old model count (should be 83)" },
+  { pattern: /74 models/g, description: "Old model count (should be 83)" },
+  { pattern: /110 @@index/g, description: "Old @@index count (should be 32)" },
   { pattern: /16-phase/gi, description: "Old AI phase count (should be 20)" },
   { pattern: /16 modules/g, description: "Old accounting count (should be 18)" },
-  { pattern: /8 files/g, description: "Old E2E count (should be 9)" },
+  { pattern: /\b8 files\b/g, description: "Old E2E count (should be 10)" },
   { pattern: /20 levels/g, description: "Old RBAC PermissionLevel count (should be 11)" },
   { pattern: /\.env\.production/g, description: "OTEL config reference (should be docker-compose.yml + .env.example)" },
 ];
