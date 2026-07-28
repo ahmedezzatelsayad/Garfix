@@ -460,12 +460,17 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
     expect(getDeadLetters()).toHaveLength(0);
   });
 
-  it("QUEUE_NAMES contains all expected queues", () => {
-    expect(QUEUE_NAMES.AI).toBe("ai-jobs");
-    expect(QUEUE_NAMES.EMAIL).toBe("email-jobs");
-    expect(QUEUE_NAMES.WHATSAPP).toBe("whatsapp-jobs");
-    expect(QUEUE_NAMES.BACKUP).toBe("backup-jobs");
-    expect(QUEUE_NAMES.SCHEDULER).toBe("scheduler-jobs");
+  it("QUEUE_NAMES contains all expected queues", async () => {
+    // P1/R3 fix: re-import @/lib/queues with a cache-busting query to bypass
+    // any mock.module() overrides that other test files (e.g. p1-outbox)
+    // registered globally. Bun's mock.module persists across files.
+    const realMod = await import("@/lib/queues?bypass=" + Math.random());
+    const realQueueNames = realMod.QUEUE_NAMES;
+    expect(realQueueNames.AI).toBe("ai-jobs");
+    expect(realQueueNames.EMAIL).toBe("email-jobs");
+    expect(realQueueNames.WHATSAPP).toBe("whatsapp-jobs");
+    expect(realQueueNames.BACKUP).toBe("backup-jobs");
+    expect(realQueueNames.SCHEDULER).toBe("scheduler-jobs");
   });
 });
 

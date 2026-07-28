@@ -15,32 +15,72 @@
  * If anyone reverts these in a future commit, the tests will fail.
  */
 
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, afterAll, mock } from "bun:test";
 /* eslint-disable @typescript-eslint/no-require-imports */
+
+// P1/R3 fix: active flag that lets the @/lib/db mock fall through to the
+// real db module when this test file is not running. Bun's mock.module()
+// is global and persists across files; without this guard, sec-h4's db mock
+// leaks into auth-advanced (whose resolveAuth calls db.sessionRegistry.findUnique
+// and gets our mock returning null → "Session revoked" → resolveAuth fails).
+const secH4TestsActive: { value: boolean } = { value: false };
+(globalThis as any).__secH4TestsActive = secH4TestsActive;
+
+// P1/R3 fix: save env vars before any test runs so we can restore them in
+// afterAll. sec-h4 tests set SESSION_REGISTRY_ENFORCED to "true"/"false"
+// and never restore — auth-advanced's resolveAuth reads it and behaves
+// differently than expected.
+const _savedEnv = {
+  SESSION_REGISTRY_ENFORCED: process.env.SESSION_REGISTRY_ENFORCED,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+};
 
 // ─── SEC-H4 Regression Tests ──────────────────────────────────────────────
 
 describe("SEC-H4: issueSession 3-arg signature + registerSession", () => {
   beforeEach(() => {
+    // Activate this file's db mock for the duration of each test
+    secH4TestsActive.value = true;
     // Reset env
     delete process.env.SESSION_REGISTRY_ENFORCED;
-    // Mock db.sessionRegistry
-    mock.module("@/lib/db", () => ({
-      db: {
-        sessionRegistry: {
-          create: mock(async () => ({ id: "test-id" })),
-          findMany: mock(async () => []),
-          delete: mock(async () => ({})),
-          count: mock(async () => 0),
-          deleteMany: mock(async () => ({ count: 0 })),
-          findUnique: mock(async () => null),
-        },
-      },
-    }));
   });
 
   afterEach(() => {
+    // Deactivate after each test so the mock falls through to real db
+    secH4TestsActive.value = false;
     mock.restore();
+  });
+
+  // Register the mock ONCE at module scope with the active-flag pattern
+  mock.module("@/lib/db", () => {
+    const handler: ProxyHandler<Record<string, any>> = {
+      get(_target, prop) {
+        if (!(globalThis as any).__secH4TestsActive?.value) {
+          // Fall through to real db via dynamic import (cache-bust)
+          return new Proxy({}, {
+            get(_t, p) {
+              return async (...args: any[]) => {
+                const real = (await import("@/lib/db?bypass=" + Math.random())).db;
+                return (real as any)[prop][p](...args);
+              };
+            },
+          });
+        }
+        return mockDb[prop];
+      },
+    };
+    const mockDb = {
+      sessionRegistry: {
+        create: mock(async () => ({ id: "test-id" })),
+        findMany: mock(async () => []),
+        delete: mock(async () => ({})),
+        count: mock(async () => 0),
+        deleteMany: mock(async () => ({ count: 0 })),
+        findUnique: mock(async () => null),
+      },
+    };
+    return { db: new Proxy(mockDb, handler) };
   });
 
   it("issueSession function accepts 3 arguments (response, user, req)", async () => {
@@ -168,6 +208,24 @@ describe("SEC-H4: issueSession 3-arg signature + registerSession", () => {
     // @ts-expect-error — fake objects
     await issueSession(fakeResponse, fakeUser);
   });
+});
+
+// P1/R3 fix: restore env vars after this describe block so subsequent test
+// files (especially auth-advanced's resolveAuth) see the original
+// SESSION_REGISTRY_ENFORCED value.
+afterAll(() => {
+  if (_savedEnv.SESSION_REGISTRY_ENFORCED !== undefined) {
+    process.env.SESSION_REGISTRY_ENFORCED = _savedEnv.SESSION_REGISTRY_ENFORCED;
+  } else {
+    delete process.env.SESSION_REGISTRY_ENFORCED;
+  }
+  if (_savedEnv.JWT_SECRET !== undefined) {
+    process.env.JWT_SECRET = _savedEnv.JWT_SECRET;
+  }
+  if (_savedEnv.JWT_REFRESH_SECRET !== undefined) {
+    process.env.JWT_REFRESH_SECRET = _savedEnv.JWT_REFRESH_SECRET;
+  }
+  secH4TestsActive.value = false;
 });
 
 // ─── MED-004 Regression Tests ─────────────────────────────────────────────

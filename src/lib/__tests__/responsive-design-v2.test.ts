@@ -12,24 +12,6 @@ import { join } from 'path';
 
 const MODULES_DIR = join(__dirname, '..', '..', 'modules');
 
-// ── Module views that should have responsive breakpoints (file-level scope) ──
-const moduleFiles = [
-  'settings/CompanySettingsForm.tsx',
-  'settings/SettingsView.tsx',
-  'clients/ClientProfile.tsx',
-  'admin/AuditView.tsx',
-  'accounting/AccountingView.tsx',
-  'accounting/ArApView.tsx',
-  'accounting/PayrollWpsView.tsx',
-  'accounting/TaxComplianceView.tsx',
-  'accounting/BankingView.tsx',
-  'accounting/FixedAssetsView.tsx',
-  'accounting/MultiCompanyView.tsx',
-  'accounting/InventoryCostingView.tsx',
-  'common/AppShell.tsx',
-  'common/NotificationsDropdown.tsx',
-];
-
 // ── Helper: read a module file ──────────────────────────────────────────
 function readModuleFile(relPath: string): string {
   try {
@@ -49,9 +31,26 @@ function countResponsive(content: string): { sm: number; md: number; lg: number 
 
 // ── Helper: count inline styles ─────────────────────────────────────────
 function countInlineStyles(content: string): number {
-  return (content.match(/style={{/g) || []).length;
+  return (content.match(/style=\{/g) || []).length;
 }
 
+// ── Module files (defined at module scope so both describe blocks can access) ──
+const moduleFiles = [
+  'settings/CompanySettingsForm.tsx',
+  'settings/SettingsView.tsx',
+  'clients/ClientProfile.tsx',
+  'admin/AuditView.tsx',
+  'accounting/AccountingView.tsx',
+  'accounting/ArApView.tsx',
+  'accounting/PayrollWpsView.tsx',
+  'accounting/TaxComplianceView.tsx',
+  'accounting/BankingView.tsx',
+  'accounting/FixedAssetsView.tsx',
+  'accounting/MultiCompanyView.tsx',
+  'accounting/InventoryCostingView.tsx',
+  'common/AppShell.tsx',
+  'common/NotificationsDropdown.tsx',
+];
 
 describe('Responsive Design — Module Views', () => {
   for (const file of moduleFiles) {
@@ -73,20 +72,20 @@ describe('Responsive Design — Module Views', () => {
         expect(inlineCount).toBeLessThanOrEqual(40);
       });
 
-      it('should have responsive grid, flex, padding, width, or minmax layout patterns', () => {
+      it('should have responsive grid or flex layout patterns', () => {
         const content = readModuleFile(file);
         if (!content) return;
         const hasResponsiveGrid = content.includes('sm:grid-cols') || content.includes('md:grid-cols');
         const hasResponsiveFlex = content.includes('sm:flex-row') || content.includes('md:flex-row');
         const hasResponsivePadding = content.includes('sm:p-') || content.includes('md:p-');
-        const hasResponsiveMinmax = content.includes('sm:minmax') || content.includes('md:minmax') || content.includes('sm:grid-cols-[repeat(auto-fit,minmax') || content.includes('md:grid-cols-[repeat(auto-fit,minmax');
-        const hasResponsiveWidth = content.includes('sm:w-') || content.includes('md:w-');
+        const hasResponsiveMinmax = content.includes('sm:minmax') || content.includes('md:minmax');
+        const hasResponsiveWidth = content.includes('sm:w') || content.includes('md:w');
         expect(hasResponsiveGrid || hasResponsiveFlex || hasResponsivePadding || hasResponsiveMinmax || hasResponsiveWidth).toBe(true);
       });
     });
   }
 
-  // ── Specific test: WebhookManagementView should have zero inline style ──
+  // ── Specific test: WebhookManagementView should have zero inline styles ──
   it('WebhookManagementView should have 0 inline styles={{}} occurrences', () => {
     const content = readModuleFile('admin/WebhookManagementView.tsx');
     if (!content) return;
@@ -110,24 +109,22 @@ describe('Responsive Design — Module Views', () => {
   });
 
   // ── Test: Responsive grid patterns in accounting views ──
-  it('Accounting views should use responsive grid columns or minmax patterns', () => {
+  it('Accounting views should use responsive grid columns', () => {
     const accountingFiles = ['AccountingView.tsx', 'ArApView.tsx', 'BankingView.tsx'];
     for (const f of accountingFiles) {
       const content = readModuleFile(`accounting/${f}`);
       if (!content) continue;
-      // Match sm:grid-cols, md:grid-cols, sm:minmax (bare), and sm:grid-cols-[repeat(auto-fit,minmax(...))]
-      const hasResponsiveGridCols = content.includes('sm:grid-cols') || content.includes('md:grid-cols');
-      const hasResponsiveMinmax = content.includes('sm:minmax') || content.includes('md:minmax') || content.includes('sm:grid-cols-[repeat(auto-fit,minmax') || content.includes('md:grid-cols-[repeat(auto-fit,minmax');
-      expect(hasResponsiveGridCols || hasResponsiveMinmax).toBe(true);
+      const hasResponsiveGrid = content.includes('sm:grid-cols') || content.includes('sm:minmax');
+      expect(hasResponsiveGrid).toBe(true);
     }
   });
 
-  // ── Test: NotificationsDropdown should be responsive ──
+  // ── Test: NotificationsDropdown should be responsive width ──
   it('NotificationsDropdown should have responsive width on mobile', () => {
     const content = readModuleFile('common/NotificationsDropdown.tsx');
     if (!content) return;
-    // Should have responsive width pattern (sm:w-, md:w-, or responsive flex/grid)
-    const hasResponsiveWidth = content.includes('sm:w') || content.includes('md:w') || content.includes('sm:flex') || content.includes('sm:grid');
+    // Should have responsive width pattern (w-[calc] sm:w-[350px] etc.)
+    const hasResponsiveWidth = content.includes('sm:w') || content.includes('md:w');
     expect(hasResponsiveWidth).toBe(true);
   });
 });
@@ -142,14 +139,12 @@ describe('Responsive Design — Global Stats', () => {
     expect(totalSm).toBeGreaterThan(50);
   });
 
-  it('total md: breakpoints in modules should be > 30', () => {
+  it('total md: breakpoints in modules should be > 10', () => {
     let totalMd = 0;
     for (const file of moduleFiles) {
       const content = readModuleFile(file);
       if (content) totalMd += countResponsive(content).md;
     }
-    // Threshold reflects current conversion progress. Tighten as more modules are converted.
-    // Current: only a subset of module files has md: breakpoints (≈18 across listed files).
     expect(totalMd).toBeGreaterThan(10);
   });
 });

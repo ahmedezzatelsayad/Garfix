@@ -13,7 +13,7 @@
  * Uses mock for pg-boss since we don't have a real PG instance in test.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll, spyOn } from "bun:test";
 
 // ─── Mock setup ──────────────────────────────────────────────────────────
 
@@ -36,6 +36,17 @@ let PgBossMock = mock(function (options) {
   return mockBossInstance;
 });
 
+// P1/R3 fix: save env vars before any test runs so we can restore them in
+// afterAll. Without this, queue-pgboss's beforeEach/afterEach delete
+// DATABASE_URL and the deletion persists across test files, breaking
+// collision-recovery-audit-purchase (which uses the real db).
+const _savedEnv = {
+  VALKEY_URL: process.env.VALKEY_URL,
+  REDIS_URL: process.env.REDIS_URL,
+  DATABASE_URL: process.env.DATABASE_URL,
+  DATABASE_DIRECT_URL: process.env.DATABASE_DIRECT_URL,
+};
+
 // Reset mocks before each test
 beforeEach(() => {
   // Reset env
@@ -48,6 +59,19 @@ afterEach(() => {
   delete process.env.VALKEY_URL;
   delete process.env.REDIS_URL;
   delete process.env.DATABASE_URL;
+});
+
+// P1/R3 fix: restore env vars after this test file completes so subsequent
+// test files see the original DATABASE_URL etc.
+afterAll(() => {
+  if (_savedEnv.VALKEY_URL !== undefined) process.env.VALKEY_URL = _savedEnv.VALKEY_URL;
+  else delete process.env.VALKEY_URL;
+  if (_savedEnv.REDIS_URL !== undefined) process.env.REDIS_URL = _savedEnv.REDIS_URL;
+  else delete process.env.REDIS_URL;
+  if (_savedEnv.DATABASE_URL !== undefined) process.env.DATABASE_URL = _savedEnv.DATABASE_URL;
+  else delete process.env.DATABASE_URL;
+  if (_savedEnv.DATABASE_DIRECT_URL !== undefined) process.env.DATABASE_DIRECT_URL = _savedEnv.DATABASE_DIRECT_URL;
+  else delete process.env.DATABASE_DIRECT_URL;
 });
 
 // ─── Test: pg-boss availability detection ──────────────────────────────────
