@@ -1,0 +1,645 @@
+     1→#!/usr/bin/env node
+     2→// GarfiX EOS v12.1 — Technical Report Generator (DOCX)
+     3→// Bilingual: Arabic + English, Deep Cyan tech palette
+     4→
+     5→const {
+     6→  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+     7→  PageBreak, Header, Footer, PageNumber, NumberFormat,
+     8→  AlignmentType, HeadingLevel, WidthType, BorderStyle, ShadingType,
+     9→  TableOfContents, SectionType,
+    10→} = require("docx");
+    11→const fs = require("fs");
+    12→
+    13→// ── Palette: DM-1 Deep Cyan (Tech / AI) ──
+    14→const palette = {
+    15→  bg: "162235", primary: "FFFFFF", accent: "37DCF2",
+    16→  cover: { titleColor: "FFFFFF", subtitleColor: "B0B8C0", metaColor: "90989F", footerColor: "687078" },
+    17→  table: { headerBg: "1B6B7A", headerText: "FFFFFF", accentLine: "1B6B7A", innerLine: "C8DDE2", surface: "EDF3F5" },
+    18→  body: "000000", secondary: "506070",
+    19→};
+    20→const c = (hex) => hex.replace("#", "");
+    21→
+    22→// ── Common constants ──
+    23→const allNoBorders = {
+    24→  top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
+    25→  left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
+    26→  insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE },
+    27→};
+    28→const noBorders = {
+    29→  top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
+    30→  left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
+    31→};
+    32→const pgSize = { width: 11906, height: 16838 };
+    33→const pgMargin = { top: 1440, bottom: 1440, left: 1701, right: 1417 };
+    34→
+    35→// ── Helper functions ──
+    36→function calcTitleLayout(title, maxWidthTwips, preferredPt = 40, minPt = 24) {
+    37→  const charWidth = (pt) => pt * 20;
+    38→  const charsPerLine = (pt) => Math.floor(maxWidthTwips / charWidth(pt));
+    39→  let titlePt = preferredPt;
+    40→  let lines = null;
+    41→  while (titlePt >= minPt) {
+    42→    const cpl = charsPerLine(titlePt);
+    43→    if (cpl < 2) { titlePt -= 2; continue; }
+    44→    lines = splitTitleLines(title, cpl);
+    45→    if (lines.length <= 3) break;
+    46→    titlePt -= 2;
+    47→  }
+    48→  if (!lines || lines.length > 3) {
+    49→    lines = splitTitleLines(title, charsPerLine(minPt));
+    50→    titlePt = minPt;
+    51→  }
+    52→  return { titlePt, titleLines: lines };
+    53→}
+    54→
+    55→function splitTitleLines(title, charsPerLine) {
+    56→  if (title.length <= charsPerLine) return [title];
+    57→  const safeBreakAfter = " \u3001\u3002\uFF0C\uFF1B\uFF1A\u2027\u2014\u2013\u2019ofandorintowithatbyforinonupout";
+    58→  const lines = [];
+    59→  let remaining = title;
+    60→  while (remaining.length > charsPerLine) {
+    61→    let breakAt = charsPerLine;
+    62→    for (let i = charsPerLine; i > Math.floor(charsPerLine * 0.6); i--) {
+    63→      if (safeBreakAfter.includes(remaining[i - 1])) { breakAt = i; break; }
+    64→    }
+    65→    if (breakAt === charsPerLine && remaining[charsPerLine]) {
+    66→      for (let i = charsPerLine; i > Math.floor(charsPerLine * 0.6); i--) {
+    67→        if (safeBreakAfter.includes(remaining[i])) { breakAt = i + 1; break; }
+    68→      }
+    69→    }
+    70→    lines.push(remaining.substring(0, breakAt));
+    71→    remaining = remaining.substring(breakAt);
+    72→  }
+    73→  if (remaining) lines.push(remaining);
+    74→  // Merge orphan last line (1-2 chars) into previous
+    75→  if (lines.length > 1 && lines[lines.length - 1].length <= 2) {
+    76→    lines[lines.length - 2] += lines[lines.length - 1];
+    77→    lines.pop();
+    78→  }
+    79→  return lines;
+    80→}
+    81→
+    82→function calcCoverSpacing(params) {
+    83→  const {
+    84→    titleLineCount = 1, titlePt = 36, hasSubtitle = false,
+    85→    hasEnglishLabel = false, metaLineCount = 0, fixedHeight = 400, pageHeight = 16838,
+    86→  } = params;
+    87→  const titleBlock = titleLineCount * Math.ceil(titlePt * 23) + (titleLineCount > 1 ? (titleLineCount - 1) * 200 : 0);
+    88→  const subtitleBlock = hasSubtitle ? 600 : 0;
+    89→  const labelBlock = hasEnglishLabel ? 700 : 0;
+    90→  const metaBlock = metaLineCount * 320;
+    91→  const contentHeight = titleBlock + subtitleBlock + labelBlock + metaBlock + fixedHeight + 1000;
+    92→  const available = pageHeight - contentHeight;
+    93→  const topSpacing = Math.min(4500, Math.max(1800, Math.floor(available * 0.35)));
+    94→  const bottomSpacing = Math.min(3000, Math.max(400, available - topSpacing));
+    95→  return { topSpacing, midSpacing: 800, bottomSpacing };
+    96→}
+    97→
+    98→// ── Cover R1 Builder ──
+    99→function buildCoverR1(config) {
+   100→  const P = config.palette;
+   101→  const padL = 1200, padR = 800;
+   102→  const availableWidth = 11906 - padL - padR - 300;
+   103→  const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth, 40, 24);
+   104→  const titleSize = titlePt * 2;
+   105→  const spacing = calcCoverSpacing({
+   106→    titleLineCount: titleLines.length, titlePt,
+   107→    hasSubtitle: !!config.subtitle, hasEnglishLabel: !!config.englishLabel,
+   108→    metaLineCount: (config.metaLines || []).length, fixedHeight: 400,
+   109→  });
+   110→  const accentLeft = { style: BorderStyle.SINGLE, size: 8, color: P.accent, space: 12 };
+   111→  const children = [];
+   112→  children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+   113→  if (config.englishLabel) {
+   114→    children.push(new Paragraph({
+   115→      indent: { left: padL, right: padR }, spacing: { after: 500 },
+   116→      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: P.accent, space: 8 } },
+   117→      children: [new TextRun({ text: config.englishLabel.split("").join("  "),
+   118→        size: 18, color: P.accent, font: { ascii: "Calibri", eastAsia: "SimHei" }, characterSpacing: 40 })],
+   119→    }));
+   120→  }
+   121→  for (let i = 0; i < titleLines.length; i++) {
+   122→    children.push(new Paragraph({
+   123→      indent: { left: padL },
+   124→      spacing: { after: i < titleLines.length - 1 ? 100 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+   125→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+   126→        color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   127→    }));
+   128→  }
+   129→  if (config.subtitle) {
+   130→    children.push(new Paragraph({
+   131→      indent: { left: padL }, spacing: { after: 800 },
+   132→      children: [new TextRun({ text: config.subtitle, size: 24, color: P.subtitleColor,
+   133→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   134→    }));
+   135→  }
+   136→  for (const line of (config.metaLines || [])) {
+   137→    children.push(new Paragraph({
+   138→      indent: { left: padL + 200 }, spacing: { after: 80 },
+   139→      border: { left: accentLeft },
+   140→      children: [new TextRun({ text: line, size: 24, color: P.metaColor,
+   141→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   142→    }));
+   143→  }
+   144→  children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+   145→  children.push(new Paragraph({
+   146→    indent: { left: padL, right: padR },
+   147→    border: { top: { style: BorderStyle.SINGLE, size: 2, color: P.accent, space: 8 } },
+   148→    spacing: { before: 200 },
+   149→    children: [
+   150→      new TextRun({ text: config.footerLeft || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } }),
+   151→      new TextRun({ text: "                                        " }),
+   152→      new TextRun({ text: config.footerRight || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } }),
+   153→    ],
+   154→  }));
+   155→  return [new Table({
+   156→    width: { size: 100, type: WidthType.PERCENTAGE },
+   157→    layout: "FIXED",
+   158→    borders: allNoBorders,
+   159→    rows: [new TableRow({
+   160→      height: { value: 16838, rule: "exact" },
+   161→      children: [new TableCell({
+   162→        shading: { type: ShadingType.CLEAR, fill: P.bg }, borders: noBorders,
+   163→        children,
+   164→      })],
+   165→    })],
+   166→  })];
+   167→}
+   168→
+   169→// ── Body helpers ──
+   170→function h1(text) {
+   171→  return new Paragraph({
+   172→    heading: HeadingLevel.HEADING_1,
+   173→    spacing: { before: 360, after: 120 },
+   174→    children: [new TextRun({ text, bold: true, size: 32, color: c(palette.table.headerBg),
+   175→      font: { eastAsia: "SimHei", ascii: "Times New Roman" } })],
+   176→  });
+   177→}
+   178→
+   179→function h2(text) {
+   180→  return new Paragraph({
+   181→    heading: HeadingLevel.HEADING_2,
+   182→    spacing: { before: 240, after: 100 },
+   183→    children: [new TextRun({ text, bold: true, size: 28, color: c(palette.table.headerBg),
+   184→      font: { eastAsia: "SimHei", ascii: "Times New Roman" } })],
+   185→  });
+   186→}
+   187→
+   188→function h3(text) {
+   189→  return new Paragraph({
+   190→    heading: HeadingLevel.HEADING_3,
+   191→    spacing: { before: 200, after: 80 },
+   192→    children: [new TextRun({ text, bold: true, size: 24, color: c(palette.secondary),
+   193→      font: { eastAsia: "SimHei", ascii: "Times New Roman" } })],
+   194→  });
+   195→}
+   196→
+   197→function para(text) {
+   198→  return new Paragraph({
+   199→    alignment: AlignmentType.JUSTIFIED,
+   200→    indent: { firstLine: 420 },
+   201→    spacing: { line: 312, after: 120 },
+   202→    children: [new TextRun({ text, size: 24, color: c(palette.body),
+   203→      font: { eastAsia: "Microsoft YaHei", ascii: "Times New Roman" } })],
+   204→  });
+   205→}
+   206→
+   207→function paraEn(text) {
+   208→  return new Paragraph({
+   209→    alignment: AlignmentType.JUSTIFIED,
+   210→    spacing: { line: 312, after: 120 },
+   211→    children: [new TextRun({ text, size: 24, color: c(palette.body),
+   212→      font: { ascii: "Times New Roman" } })],
+   213→  });
+   214→}
+   215→
+   216→function paraBi(arText, enText) {
+   217→  return new Paragraph({
+   218→    alignment: AlignmentType.JUSTIFIED,
+   219→    indent: { firstLine: 420 },
+   220→    spacing: { line: 312, after: 120 },
+   221→    children: [
+   222→      new TextRun({ text: arText, size: 24, color: c(palette.body),
+   223→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } }),
+   224→      new TextRun({ text: " | ", size: 24, color: c(palette.secondary) }),
+   225→      new TextRun({ text: enText, size: 24, color: c(palette.body),
+   226→        font: { ascii: "Times New Roman" } }),
+   227→    ],
+   228→  });
+   229→}
+   230→
+   231→// ── Table builder ──
+   232→function makeTable(headers, rows, colWidths) {
+   233→  const t = palette.table;
+   234→  const headerRow = new TableRow({
+   235→    tableHeader: true, cantSplit: true,
+   236→    children: headers.map((h, i) => new TableCell({
+   237→      width: { size: colWidths[i], type: WidthType.PERCENTAGE },
+   238→      shading: { type: ShadingType.CLEAR, fill: t.headerBg },
+   239→      margins: { top: 60, bottom: 60, left: 120, right: 120 },
+   240→      children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 21, color: t.headerText,
+   241→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })] })],
+   242→    })),
+   243→  });
+   244→  const dataRows = rows.map((row, ri) => new TableRow({
+   245→    cantSplit: true,
+   246→    children: row.map((cell, ci) => new TableCell({
+   247→      width: { size: colWidths[ci], type: WidthType.PERCENTAGE },
+   248→      shading: { type: ShadingType.CLEAR, fill: ri % 2 === 0 ? t.surface : "FFFFFF" },
+   249→      margins: { top: 60, bottom: 60, left: 120, right: 120 },
+   250→      children: [new Paragraph({ children: [new TextRun({ text: cell, size: 21, color: "000000",
+   251→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })] })],
+   252→    })),
+   253→  }));
+   254→  return new Table({
+   255→    width: { size: 100, type: WidthType.PERCENTAGE },
+   256→    borders: {
+   257→      top: { style: BorderStyle.SINGLE, size: 2, color: t.accentLine },
+   258→      bottom: { style: BorderStyle.SINGLE, size: 2, color: t.accentLine },
+   259→      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: t.innerLine },
+   260→      left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
+   261→      insideVertical: { style: BorderStyle.NONE },
+   262→    },
+   263→    rows: [headerRow, ...dataRows],
+   264→  });
+   265→}
+   266→
+   267→// ── Footer builders ──
+   268→function footerRoman() {
+   269→  return new Footer({ children: [new Paragraph({
+   270→    alignment: AlignmentType.CENTER,
+   271→    children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "808080" })],
+   272→  })] });
+   273→}
+   274→function footerArabic() {
+   275→  return new Footer({ children: [new Paragraph({
+   276→    alignment: AlignmentType.CENTER,
+   277→    children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "808080" })],
+   278→  })] });
+   279→}
+   280→function headerBody() {
+   281→  return new Header({ children: [new Paragraph({
+   282→    alignment: AlignmentType.RIGHT,
+   283→    children: [new TextRun({ text: "GarfiX EOS v12.1 \u2014 Technical Report", size: 18, color: "808080",
+   284→      font: { ascii: "Calibri" } })],
+   285→  })] });
+   286→}
+   287→
+   288→// ── SECTION CONTENT ──
+   289→
+   290→// Executive Summary
+   291→const execSummary = [
+   292→  h1("\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u062a\u0646\u0641\u064a\u0630\u064a | Executive Summary"),
+   293→  paraBi("\u064a\u0639\u062f \u0627\u0644\u0625\u0635\u062f\u0627\u0631 v12.1 \u0645\u0646 GarfiX EOS \u0642\u0641\u0632\u0629 \u0643\u0628\u064a\u0631\u0629 \u0645\u0646 \u0645\u0646\u063a\u0645 \u0641\u0648\u0627\u062a\u0631 \u0623\u0633\u0627\u0633\u064a \u0625\u0644\u064a \u0646\u0638\u0627\u0645 ERP \u0645\u062a\u0639\u062f\u062f \u0627\u0644\u0645\u0633\u062a\u0623\u062c\u0631\u064a\u0646 \u062f\u0631\u062c\u0629 \u0627\u0644\u0623\u0639\u0645\u0627\u0644\u060c \u0645\u0639 50 \u062a\u063a\u064a\u064a\u0631\u0627\u064b \u0645\u0627\u0647\u0645\u0627\u064b \u0645\u0646\u0630 \u0627\u0644\u0625\u0635\u062f\u0627\u0631 v1.5.",
+   294→    "The v12.1 release of GarfiX EOS represents a leap from a basic invoicing app to an enterprise-grade multi-tenant ERP, with 50 significant changes since v1.5."),
+   295→  paraBi("\u0627\u0644\u062a\u063a\u064a\u064a\u0631\u0627\u062a \u0627\u0644\u0643\u0627\u062f\u0631\u0629 \u062a\u062a\u0636\u0645\u0646: \u062a\u0639\u0627\u0632 \u0623\u0645\u0646\u064a \u0643\u0627\u0645\u0644 (7+ \u0625\u0635\u0644\u0627\u062d\u0627\u062a audit-level)0\u060c \u0648 AI Fabric v2 \u0628\u0646\u0633\u0628\u0649 16 \u0645\u0631\u0627\u062d\u0644 cascade\u060c \u0648 Invoice Brain \u0644\u0627\u0633\u062a\u062e\u0631\u0627\u0623 \u0627\u0644\u0646\u0645\u0627\u0626\u0637\u060c \u0648\u0627\u0633\u062a\u0628\u062f\u0627\u0644 Redis \u0628\u0640 Valkey + BullMQ\u060c \u0648\u062a\u0648\u0633\u064a\u0639 MENA \u0644\u0620+ \u062f\u0648\u0644\u0629\u060c \u0648\u0645\u062c\u0645\u0648\u0639\u0629 \u0627\u062e\u062a\u0628\u0627\u0631 1855+ \u0645\u0644\u0641.",
+   296→    "Core changes include: full security hardening (7+ audit-level fixes), AI Fabric v2 with 16-phase cascade, Invoice Brain pattern extraction, Redis replaced with Valkey+BullMQ, MENA expansion for 20+ countries, and 1855+ test suite."),
+   297→];
+   298→
+   299→// Background
+   300→const background = [
+   301→  h1("\u0627\u0644\u062e\u0644\u0641\u064a\u0629 \u0648\u0627\u0644\u0623\u0647\u062f\u0627\u0641 | Background & Objectives"),
+   302→  paraBi("\u0628\u062f\u0627 GarfiX \u0641\u064a \u0627\u0644\u0625\u0635\u062f\u0627\u0631\u0627\u062a v1.3\u062d\u062a\u064a v1.5 \u0643\u0645\u0646\u0638\u0648\u0645\u0629 \u0641\u0648\u0627\u062a\u0631 \u0623\u0633\u0627\u0633\u064a\u0629 \u0644\u0644\u0633\u0648\u0642 \u0627\u0644\u0639\u0631\u0628\u064a\u060c \u0644\u0643\u0646 \u0627\u0644\u062a\u062d\u062f\u064a \u0627\u0644\u0623\u0643\u0628\u0631 \u0643\u0627\u0646 \u0627\u0644\u0646\u0645\u0627\u062d\u064a\u0629 \u0627\u0644\u0623\u0645\u0646\u064a\u0629 \u0648\u0627\u0644\u0642\u062f\u0631\u0629 \u0639\u0644\u0649 \u0627\u0644\u062a\u0648\u0633\u0639 \u0644\u062f\u0648\u0644 MENA \u0627\u0644\u0645\u062a\u0639\u062f\u062f\u0629.",
+   303→    "GarfiX started in v1.3-v1.5 as a basic invoicing system for the Arabic market, but the biggest challenge was security posture and scalability to multiple MENA countries."),
+   304→  paraBi("\u0623\u062b\u0628\u062a CTO Audit Report \u0648\u0627\u0644\u0623\u062f\u0627\u0629 Security Pipeline (CodeQL + TruffleHog + Gitleaks) 16 \u0645\u0634\u0643\u0644\u0629: 5 \u062d\u0631\u062c\u0629 (C)\u060c 6 \u062e\u0637\u064a\u0631\u0629 (H)\u060c 5 \u0645\u062a\u0648\u0633\u0637\u0629 (M). \u0643\u0627\u0646 \u0627\u0644\u0623\u0647\u062f\u0627\u0641 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629 \u0644\u0625\u0635\u062f\u0627\u0631 v12:",
+   305→    "The CTO Audit Report and Security Pipeline (CodeQL + TruffleHog + Gitleaks) identified 16 issues: 5 critical (C), 6 high-risk (H), 5 medium (M). Main objectives for v12:"),
+   306→  para("\u0625\u0635\u0644\u0627\u062d \u0643\u0627\u0641\u0629 \u0627\u0644\u0645\u0634\u0627\u0643\u0644 \u0627\u0644\u0623\u0645\u0646\u064a\u0629 \u0627\u0644\u062d\u0631\u062c\u0629 \u0648\u0627\u0644\u062e\u0637\u064a\u0631\u0629 (C1-C5, H1-H6) | Fix all critical and high-risk security issues (C1-C5, H1-H6)"),
+   307→  para("\u0628\u0646\u0627\u0621 AI Fabric \u0643\u0627\u0645\u0644 \u0628\u0640 16 \u0645\u0631\u0627\u062d\u0644 cascade \u0644\u062a\u0642\u0644\u064a\u0644 \u062a\u0643\u0627\u0644\u064a\u0641 AI | Build complete AI Fabric with 16-phase cascade to reduce AI costs"),
+   308→  para("\u0625\u0636\u0627\u0641\u0629 \u0645\u0633\u062a\u0648\u0649 \u0627\u0642\u062a\u0635\u0627\u062f\u064a \u0644\u0644\u0646\u0638\u0627\u0645 (Budget Engine + Profit Engine) | Add economic layer (Budget Engine + Profit Engine)"),
+   309→  para("\u062a\u0648\u0633\u064a\u0639 \u0627\u0644\u062f\u0639\u0645 \u0644\u0620+ \u062f\u0648\u0644 MENA \u0628\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u062e\u0627\u0635\u0629 \u0644\u0643\u0644 \u062f\u0648\u0644\u0629 | Expand support to 20+ MENA countries with per-country configs"),
+   310→  para("\u0627\u0633\u062a\u0628\u062f\u0627\u0644 Redis \u0628\u0640 Valkey + BullMQ \u0644\u0645\u0639\u0627\u0644\u0629 \u0627\u0644\u0645\u0647\u0627\u0645 \u0627\u0644\u062e\u0644\u0641\u064a\u0629 | Replace Redis with Valkey + BullMQ for background job processing"),
+   311→  para("\u0628\u0646\u0627\u0621 \u0645\u062c\u0645\u0648\u0639\u0629 \u0627\u062e\u062a\u0628\u0627\u0631 CTO-level \u062a\u0636\u0645\u0646 \u062c\u0627\u0647\u0632\u064a\u0629 \u0627\u0644\u0625\u0646\u062a\u0627\u062e | Build CTO-level test suite ensuring production readiness"),
+   312→];
+   313→
+   314→// Security Hardening
+   315→const security = [
+   316→  h1("\u0627\u0644\u062a\u0639\u0627\u0632 \u0627\u0644\u0623\u0645\u0646\u064a | Security Hardening"),
+   317→  paraBi("\u064a\u062a\u0636\u0645\u0646 v12.1 \u0625\u0635\u0644\u0627\u062d\u0627\u062a \u0623\u0645\u0646\u064a\u0629 \u062f\u0631\u062c\u0629 audit \u0644\u0623\u0643\u062b\u0631 \u0645\u0646 7 \u0645\u0634\u0627\u0643\u0644 \u062d\u0631\u062c\u0629 \u0648\u062e\u0637\u064a\u0631\u0629\u060c \u0625\u0644\u0647 \u0645\u0646\u0647\u0627 \u0643\u0627\u0646\u062a \u0645\u0646\u0639\u0629 \u0643\u0644 \u0648\u062c\u0648\u062f \u0627\u0644\u062a\u0634\u0641\u064a\u0631 \u0648\u0627\u0644\u0645\u0639\u0627\u0645\u0644\u0629.",
+   318→    "v12.1 includes audit-level security fixes for over 7 critical and high-risk issues, some of which prevented encryption and authentication entirely."),
+   319→
+   320→  h2("\u0645\u0634\u0627\u0643\u0644 \u0627\u0644\u0623\u0645\u0646 \u0627\u0644\u0645\u0635\u0644\u0627\u062d\u0629 | Security Issues Fixed"),
+   321→  makeTable(
+   322→    ["\u0627\u0644\u0645\u0634\u0643\u0644\u0629 | ID", "\u0627\u0644\u062f\u0631\u062c\u0629 | Severity", "\u0627\u0644\u0648\u0635\u0641 | Description"],
+   323→    [
+   324→      ["SEC-002", "Critical", "JWT fallback secrets \u0643\u0627\u0646\u062a \u0645\u0646\u0639\u0629 \u0627\u0644\u0625\u062a\u0635\u0627\u0644 \u0627\u0644\u0645\u0648\u0642\u0648\u0642"],
+   325→      ["SEC-003", "Critical", "PAYMENTS_ENC_KEY \u0643\u0627\u0646 \u064a\u0633\u062a\u062e\u062f\u0645 JWT_SECRET \u0643\u0627\u0641\u0627\u064b\u062d\u064b\u0631\u064a\u0641"],
+   326→      ["P0 (audit)", "Critical", "decryptSecret() \u0643\u0627\u0646 \u064a\u0639\u064a\u062f ciphertext \u0639\u0646\u062f \u0627\u0644\u0641\u0634\u0644 \u0628\u062f\u0644 \u0627\u0644\u0625\u0644\u063a\u0627\u0645"],
+   327→      ["P0 (MFA)", "Critical", "MFA TOTP: Base32/Base64 mismatch \u0643\u0627\u0646 MFA \u0645\u0639\u0637\u0644\u0627\u064b \u0643\u0627\u0645\u0644\u0627"],
+   328→      ["P0 (SSRF)", "High", "MyFatoorah SSRF: \u0639\u0646\u0627\u0648\u064a\u0646 IP \u062f\u0627\u062e\u0644\u064a\u0629 \u0645\u0633\u0645\u0648\u062d\u0629"],
+   329→      ["M3", "High", "Rate limit key prefix mismatch \u0639\u0646\u062f \u0625\u0644\u063a\u0627\u0644 clear"],
+   330→      ["IDOR", "High", "54/56 handlers \u062a\u062d\u062a\u0627\u062c tenant scope protection"],
+   331→      ["Gemini", "Medium", "AI provider: empty base URL \u0643\u0627\u0646 \u0643\u0644 Gemini calls \u062a\u0641\u0634\u0644"],
+   332→    ],
+   333→    [15, 12, 73],
+   334→  ),
+   335→
+   336→  h2("\u0645\u0648\u0627\u0639\u064a\u0646 \u0627\u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645 | Usage Safeguards"),
+   337→  paraBi("\u062a\u0633\u062a\u0646\u062f \u0627\u0644\u0646\u0638\u0627\u0645 \u0627\u0644\u0623\u0645\u0646\u064a \u0639\u0644\u064a \u0639\u062f\u0629 \u0645\u0648\u0627\u0639\u064a\u0646 \u0645\u062a\u0639\u062f\u062f\u0629: JWT dual-token system (Access 30min + Refresh 30d) \u0645\u0639 token versioning \u0644\u0625\u0644\u063a\u0627\u0644 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0627\u062a \u0643\u0627\u0645\u0644\u0627\u060c Valkey-backed token blacklist \u0644\u0640 force logout\u060c AES-256-GCM encryption vault \u0645\u0639 scrypt key derivation\u060c \u0648 tamper-evident audit chain \u0628\u0637\u0644\u0627\u0642 SHA-256 hash chain.",
+   338→    "The security system relies on multiple safeguards: JWT dual-token system (Access 30min + Refresh 30d) with token versioning for full logout, Valkey-backed token blacklist for force logout, AES-256-GCM encryption vault with scrypt key derivation, and tamper-evident audit chain using SHA-256 hash chain."),
+   339→  paraBi("\u064a\u062a\u0636\u0645\u0646 \u0627\u0644 Rate Limiter 7 \u062d\u062f\u0648\u062f (LOGIN 5/15min, REGISTER 3/hr, OTP 5/5min, AI_CHAT 10/min, AI_BULK 3/min) \u0645\u0639 \u0631\u0633\u0627\u0644\u0627\u062a \u0623\u0639\u0637\u0627\u064b \u0639\u0631\u0628\u064a\u0629 \u0648IP spoofing-resistant extraction. \u0627\u0644 Password Policy \u064a\u0637\u0627\u0644\u0628 10 \u062d\u0631\u0648\u0641 \u0648\u0645\u062d\u0635\u0646 40/100 \u0645\u0639 penalties \u0644\u0640 repeated chars \u0648common starts. Session Management \u064a\u062d\u062f\u062f MAX_SESSIONS_PER_USER=5 \u0645\u0639 eviction.",
+   340→    "Rate Limiter has 7 limits (LOGIN 5/15min, REGISTER 3/hr, OTP 5/5min, AI_CHAT 10/min, AI_BULK 3/min) with Arabic messages and IP spoofing-resistant extraction. Password Policy requires 10 chars and score 40/100 with penalties for repeated chars and common starts. Session Management limits MAX_SESSIONS_PER_USER=5 with eviction."),
+   341→  paraBi("\u0627\u0644 Permissions Model \u064a\u062a\u0636\u0645\u0646 16 \u0645\u0641\u0627\u062a\u064a\u062d \u0645\u0646\u0638\u0645\u0629 \u0641\u064a 4 \u0645\u062c\u0645\u0648\u0639\u0627\u062a (Unlocked: \u0641\u0648\u0627\u062a\u0631/\u0639\u0645\u0627\u0644/\u0645\u062e\u0632\u0646\u060c Locked: admin/founder only) \u0645\u0639 4 role presets (viewer/employee/editor/admin).",
+   342→    "Permissions Model has 16 keys organized in 4 groups (Unlocked: invoices/customers/inventory, Locked: admin/founder only) with 4 role presets (viewer/employee/editor/admin)."),
+   343→];
+   344→
+   345→// AI Fabric
+   346→const aiFabric = [
+   347→  h1("AI Fabric v2 \u0640 \u0646\u0633\u0649 16 \u0645\u0631\u0627\u062d\u0644 Cascade | 16-Phase Cascade"),
+   348→  paraBi("AI Fabric v2 \u064a\u0639\u0645\u0644 \u0643\u0634\u0627\u0634\u0627\u0629 cheapest-first: \u0643\u0644 \u0637\u0644\u0628 AI \u064a\u0639\u0628\u0631 \u0639\u0628\u0631 \u0645\u0631\u0627\u062d\u0644 \u0645\u062a\u062f\u0631\u062c\u0629\u060c \u0648\u0625\u0630\u0627 \u062d\u0644 \u0645\u0631\u062d\u0644\u0629 \u0627\u0644\u0645\u0633\u0623\u0644\u0629\u060c \u064a\u062a\u0648\u0642\u0641 pipeline \u0628\u062f\u0644 \u0627\u0644\u0627\u0633\u062a\u062f\u0627\u0639\u0627\u0640 AI.",
+   349→    "AI Fabric v2 operates as cheapest-first cascade: every AI request passes through progressive stages, and if a stage resolves the query, the pipeline stops instead of calling AI."),
+   350→  makeTable(
+   351→    ["# | Phase #", "\u0627\u0644\u0645\u0631\u062d\u0644\u0629 | Phase", "\u0627\u0644\u0648\u0635\u0641 | Description"],
+   352→    [
+   353→      ["1", "Cache Lookup", "Search CacheEntry by fabricHash. TTL-based expiry"],
+   354→      ["2", "Pattern Match", "Invoice Brain fingerprint + cross-company intelligence"],
+   355→      ["3", "Rule Evaluation", "Query promoted RuleCandidate matching input"],
+   356→      ["4", "Memory Retrieval", "Search AIMemoryEntry for same company+category"],
+   357→      ["5", "Budget Gate", "Block AI if hardStop enabled + spend >= budget"],
+   358→      ["6", "Provider Selection", "Cheapest provider with capability-based routing"],
+   359→      ["7", "Cost Estimation", "Estimate request cost before execution"],
+   360→      ["8", "AI Call", "The costly fallback \u0640 actual LLM call"],
+   361→      ["9", "Response Cache", "Store result in CacheEntry for future hits"],
+   362→      ["10", "Learning Save", "Save new pattern for reuse"],
+   363→      ["11", "Usage Logging", "Log to AIRequestLog with resolvedBy/cost/latency"],
+   364→      ["12", "Budget Update", "recordSpend() + threshold notification"],
+   365→      ["13", "Cost Tracking", "Per-invoice cost tracking"],
+   366→      ["14", "Provider Scoring", "Post-call provider performance evaluation"],
+   367→      ["15", "Cross-Company Intel", "Share anonymized patterns between tenants"],
+   368→      ["16", "AI Scoring", "Compute 0-100 score from hit rates"],
+   369→    ],
+   370→    [8, 20, 72],
+   371→  ),
+   372→  h2("\u0627\u0644 Budget Engine | Budget Engine"),
+   373→  paraBi("\u064a\u0645\u0643\u0646 Budget Engine \u0645\u0646 \u062a\u062d\u062f\u064a\u062f monthly budget \u0644\u0643\u0644 \u0634\u0631\u0643\u0629\u060c \u0645\u0639 hardStop \u0644\u0648\u0642\u0641 AI calls \u0639\u0646\u062f \u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u062d\u062f\u060c \u0648forecast \u0644\u064a\u0648\u0631\u064a\u0646 spend \u0627\u0644\u0634\u0647\u0631\u064a: forecast = currentSpend \u00d7 (daysInMonth / daysElapsed). \u064a\u0631\u0627\u0633\u0644 Notification \u0639\u0646\u062f threshold crossing \u0645\u0639 Valkey-backed dedup.",
+   374→    "Budget Engine enables setting monthly budget per company, with hardStop to block AI calls when over budget, and monthly spend forecast: forecast = currentSpend \u00d7 (daysInMonth / daysElapsed). Sends Notification on threshold crossing with Valkey-backed dedup."),
+   375→  h2("\u0627\u0644 Profit Engine | Profit Engine"),
+   376→  paraBi("\u064a\u0639\u0645\u0644 Profit Engine \u0645\u0646 \u0627\u0644\u0645\u064a\u0627\u0647\u064a\u0627\u0644 \u0627\u0644\u0641\u0631\u064a\u062f\u0629: profit = revenue - aiCost - infra - worker. \u064a\u0633\u062a\u062e\u062f\u0645 \u0623\u0633\u0639\u0627\u0631 \u0627\u0644\u062e\u0637\u0648\u0637 (trial=$0, starter=$29/mo, business=$99/mo, enterprise=$299/mo) \u0648\u0640 AI cost \u0645\u0646 AIRequestLog.costUsd \u0627\u0644\u0641\u0631\u064a\u062f\u064a.",
+   377→    "Profit Engine works from real financial data: profit = revenue - aiCost - infra - worker. Uses plan prices (trial=$0, starter=$29/mo, business=$99/mo, enterprise=$299/mo) and real AI cost from AIRequestLog.costUsd."),
+   378→];
+   379→
+   380→// Invoice Brain
+   381→const invoiceBrain = [
+   382→  h1("\u0646\u0645\u0627\u0624\u062c \u0627\u0644\u0641\u0648\u0627\u062a\u0631 | Invoice Brain"),
+   383→  paraBi("\u064a\u0639\u0645\u0644 Invoice Brain \u0628\u0645\u0646\u0633\u0649 pattern-first / AI-fallback: \u0627\u0644\u0641\u0627\u062a\u0631\u0629 \u0627\u0644\u0623\u0648\u0644\u0649 \u0645\u0646 \u0645\u0648\u0631\u062f \u062c\u062f\u064a\u062f \u062a\u0633\u062a\u062f\u0641\u064a LLM \u0645\u0631\u0629 \u0648\u062a\u062d\u0641\u0638 \u0627\u0644\u0646\u0645\u0627\u0626\u0638 \u0643 template\u060c \u0648\u0627\u0644\u0641\u0627\u062a\u0631\u0629 \u0627\u0644\u0645\u062a\u0645\u0627\u062b\u0644\u0629 \u0628\u0627\u0644\u0634\u0643\u0644 \u062a\u0633\u062a\u062e\u0631\u062c regex \u0641\u0642\u0637 \u0640 AI cost = $0.",
+   384→    "Invoice Brain works on pattern-first / AI-fallback hybrid: first invoice from a new supplier triggers LLM once and saves the pattern as a template, subsequent identical-shape invoices extract via regex only \u2014 AI cost = $0."),
+   385→  paraBi("\u062a\u0636\u0645\u0646 3 \u0625\u0635\u0644\u0627\u062d\u0627\u062a \u0645\u0633\u0627\u0648\u064a\u0629 (Normalization Fixes): N-03 (AI fallback: normalize each line BEFORE parsing)\u060c N-04 (Pattern parser: normalize BEFORE regex matching)\u060c N-05 (Schema: arabicIndicSafeNumber preprocesses numeric fields). \u0627\u0644\u0647\u062f\u0641 \u064a\u0636\u0645\u0646 \u0623\u0646 \u0627\u0644\u0623\u0631\u0642\u0627\u0645 \u0627\u0644\u0639\u0631\u0628\u064a\u0629-\u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645\u0629 (\u0665\u0660) \u062a\u062a\u062d\u0648\u0644 \u0628\u0627\u0644\u0634\u0643\u0644 \u0627\u0644\u0633\u0644\u064a\u0645 \u0644\u0640 ASCII (50).",
+   386→    "3 normalization fixes included: N-03 (AI fallback: normalize each line BEFORE parsing), N-04 (Pattern parser: normalize BEFORE regex matching), N-05 (Schema: arabicIndicSafeNumber preprocesses numeric fields). Goal ensures Arabic-Indic digits (\u0665\u0660) convert cleanly to ASCII (50)."),
+   387→];
+   388→
+   389→// Testing
+   390→const testing = [
+   391→  h1("\u0628\u064a\u0626\u0629 \u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631 | Testing Infrastructure"),
+   392→  paraBi("\u064a\u062a\u0636\u0645\u0646 v12.1 \u0645\u062c\u0645\u0648\u0639\u0629 \u0627\u062e\u062a\u0628\u0627\u0631 1855+ \u0645\u0644\u0641 \u062a\u062a\u0636\u0645\u0646 Founder Validation Suite \u0628\u0640 11 \u0623\u0642\u0633\u0627\u0645 + 170+ deep tests + 14 AI Fabric tests + 7 E2E tests.",
+   393→    "v12.1 includes 1855+ test files comprising Founder Validation Suite with 11 sections + 170+ deep tests + 14 AI Fabric tests + 7 E2E tests."),
+   394→  makeTable(
+   395→    ["\u0627\u0644\u0642\u0633\u0645 | Section", "\u0627\u0644\u062a\u063a\u0637\u064a\u0629 | Coverage"],
+   396→    [
+   397→      ["1. Seeder Validation", "\u0645\u0648\u0644\u062f \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a (10 \u062d\u062a\u064a 25,000 \u0634\u0631\u0643\u0629)"],
+   398→      ["2. Edge Cases", "20 \u0627\u062e\u062a\u0628\u0627\u0631 \u062d\u0627\u0641\u0629: null, max, Arabic"],
+   399→      ["3. Cost Validation", "\u062a\u0643\u0627\u0644\u064a\u0641: \u0644\u0643\u0644 \u0641\u0627\u062a\u0631\u0629/provider/tenant/\u0645\u0646\u0648\u0639"],
+   400→      ["4. Metrics", "error rate, cache hit, p50/p95/p99 latency"],
+   401→      ["5. Telemetry", "\u062a\u0633\u062c\u064a\u0644/\u062a\u0635\u0641\u064a\u0629 \u062d\u062f\u0648\u0627\u062b \u0628\u0640 tenant/model/provider"],
+   402→      ["6. Scale Tests", "\u062a\u062d\u0645\u064a\u0644 \u0645\u062a\u062f\u0631\u062c: 100 \u062d\u062a\u064a 10,000"],
+   403→      ["7. Report Validation", "\u0627\u0643\u0645\u0627\u0644 \u0648\u062f\u0642\u0629 \u0627\u0644\u062a\u0642\u0631\u064a\u0631"],
+   404→      ["8. Validation Logic", "\u0633\u0644\u0627\u0645\u0629 \u0627\u0644\u0645\u0639\u0631\u064a\u0641\u0627\u062a/\u0627\u0644\u0639\u0644\u0627\u0642\u0627\u062a/\u0627\u0644\u062d\u062f\u0648\u062f"],
+   405→      ["9. Learning Validation", "\u0645\u062d\u0631\u0643 \u0627\u0644\u062a\u0639\u0644\u0645 (pattern + memory)"],
+   406→      ["10. Failure Injection", "\u062d\u0642\u0646 \u0623\u0639\u0637\u0627\u0644: Valkey, Postgres, BullMQ, Network"],
+   407→      ["11. Deep Tests", "170+ \u0627\u062e\u062a\u0628\u0627\u0631: Arabic/cross-tenant/concurrent"],
+   408→    ],
+   409→    [40, 60],
+   410→  ),
+   411→];
+   412→
+   413→// Valkey/BullMQ
+   414→const valkey = [
+   415→  h1("\u0627\u0644\u0628\u064a\u0626\u0629 \u0627\u0644\u062a\u062d\u062a\u064a\u0629 \u0640 Valkey + BullMQ | Infrastructure"),
+   416→  paraBi("\u0627\u0633\u062a\u0628\u062f\u0644 Redis \u0628\u0640 Valkey 8.1 \u0645\u0639 \u0625\u062f\u0627\u0631\u0629 \u0627\u0633\u062a\u062e\u062f\u0627\u0645 dual-backend: Valkey (\u0625\u0646\u062a\u0627\u062c) / in-memory Map (\u062a\u0637\u0648\u064a\u0631/sandbox). \u0627\u0644 URL normalization \u064a\u062d\u0648\u0644 valkey:// \u0644\u0640 redis:// \u0628\u0634\u0643\u0644 \u0633\u0644\u064a\u0645.",
+   417→    "Redis replaced with Valkey 8.1 with dual-backend management: Valkey (production) / in-memory Map (dev/sandbox). URL normalization converts valkey:// to redis:// transparently."),
+   418→  makeTable(
+   419→    ["\u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0645\u0647\u0627\u0645 | Queue", "TTL", "Concurrency", "\u0627\u0644\u0647\u062f\u0641 | Purpose"],
+   420→    [
+   421→      ["ai-jobs", "60s", "2", "\u0645\u0639\u0627\u0644\u062c\u0629 AI"],
+   422→      ["email-jobs", "30s", "5", "\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0628\u0631\u064a\u062f"],
+   423→      ["whatsapp-jobs", "30s", "5", "\u0631\u0633\u0627\u0644 WhatsApp"],
+   424→      ["backup-jobs", "600s", "5", "\u0627\u0644\u0646\u0633\u062e \u0627\u0644\u0627\u062d\u062a\u064a\u0627\u0637\u064a"],
+   425→      ["scheduler-jobs", "5s", "5", "\u0627\u0644\u0645\u0624\u062a\u0643\u0631\u0627\u062a"],
+   426→    ],
+   427→    [25, 10, 15, 50],
+   428→  ),
+   429→  paraBi("\u064a\u062a\u0636\u0645\u0646 BullMQ exponential backoff (3 retries: 1s\u0640\u06405s\u0640\u064015s)\u060c rate limiting\u060c priority\u060c delayed jobs\u060c \u0648distributed locking. \u0627\u0644\u0640 in-process fallback \u064a\u0633\u062a\u0646\u062f \u0644\u0640 Prisma JobQueue \u0645\u0639 stale lock recovery \u0648dead-letter recording.",
+   430→    "BullMQ includes exponential backoff (3 retries: 1s\u06405s\u064015s), rate limiting, priority, delayed jobs, and distributed locking. In-process fallback uses Prisma JobQueue with stale lock recovery and dead-letter recording."),
+   431→];
+   432→
+   433→// MENA
+   434→const mena = [
+   435→  h1("\u062a\u0648\u0633\u064a\u0639 MENA \u0648\u0627\u0644\u0645\u064a\u0627\u0647 \u0627\u0644\u0639\u0631\u0628\u064a\u0629 | MENA & Arabic"),
+   436→  paraBi("\u064a\u062f\u0639\u0645 v12.1 \u0620+ \u062f\u0648\u0644 MENA \u0641\u064a 4 \u0645\u0633\u062a\u0648\u064a\u0627\u062a \u0645\u062a\u062f\u0631\u062c\u0629\u060c \u0645\u0639 \u0625\u0639\u062f\u0627\u062f\u0627\u062a \u062e\u0627\u0635\u0629 \u0644\u0643\u0644 \u062f\u0648\u0644\u0629: ISO code\u060c Arabic/English names\u060c currency\u060c VAT rate\u060c e-invoice authority\u060c weekend days.",
+   437→    "v12.1 supports 20+ MENA countries in 4 progressive tiers, with per-country configs: ISO code, Arabic/English names, currency, VAT rate, e-invoice authority, weekend days."),
+   438→  makeTable(
+   439→    ["\u0627\u0644\u0645\u0633\u062a\u0648\u064a | Tier", "\u0627\u0644\u062f\u0648\u0644 | Countries", "\u0623\u0645\u062b\u0644\u0629 | Examples"],
+   440→    [
+   441→      ["L0 (Gulf Core)", "6 \u062f\u0648\u0644", "KW, SA, AE, BH, OM, QA"],
+   442→      ["L1 (Levant+N. Africa)", "6 \u062f\u0648\u0644", "JO, MA, DZ, TN, IQ, LB"],
+   443→      ["L2 (Extended MENA)", "7 \u062f\u0648\u0644", "EG, PS, SY, YE, SD, LY + more"],
+   444→      ["L3 (Horn+Sahel)", "5 \u062f\u0648\u0644", "SO, DJ, KM, MR, ER"],
+   445→    ],
+   446→    [20, 15, 65],
+   447→  ),
+   448→  paraBi("\u064a\u062a\u0636\u0645\u0646 6 \u0633\u0644\u0637\u0627\u062a e-invoice (none, ZATCA, UAE_FTA, Bahrain_NBR, Oman_Tax, ETA_Egypt) \u0648\u0640 RTL \u0643\u0627\u0645\u0644 \u0648\u0640 landing page \u0628\u0640 12 feature cards \u0639\u0631\u0628\u064a\u0629 \u0648\u0640 Professional Footer \u0648\u0640 PWA manifest.",
+   449→    "Includes 6 e-invoice authorities (none, ZATCA, UAE_FTA, Bahrain_NBR, Oman_Tax, ETA_Egypt) + full RTL + landing page with 12 Arabic feature cards + Professional Footer + PWA manifest."),
+   450→];
+   451→
+   452→// CI/CD
+   453→const cicd = [
+   454→  h1("\u0623\u0646\u0627\u0628\u064a\u062e CI/CD | CI/CD Pipeline"),
+   455→  paraBi("\u064a\u062a\u0636\u0645\u0643 5 GitHub Actions workflows: CI (lint+typecheck+build+tests)\u060c CD\u060c Security\u060c PR Checks\u060c Performance. \u064a\u0633\u062a\u0647\u062f\u0641 Bun 1.3.14 \u0648\u0640 PostgreSQL 16-alpine service containers.",
+   456→    "Comprises 5 GitHub Actions workflows: CI (lint+typecheck+build+tests), CD, Security, PR Checks, Performance. Targets Bun 1.3.14 and PostgreSQL 16-alpine service containers."),
+   457→  makeTable(
+   458→    ["\u0627\u0644\u0648\u0631\u064a\u0643\u0644\u0648\u0641 | Workflow", "\u0627\u0644\u0645\u0647\u0627\u0645 | Jobs"],
+   459→    [
+   460→      ["CI (ci.yml)", "lint \u0640 typecheck \u0640 build \u0640 unit tests \u0640 integration tests \u0640 summary"],
+   461→      ["CD (cd.yml)", "\u0627\u0644\u062a\u0639\u064a\u064a\u0646 Docker + standalone"],
+   462→      ["Security (security.yml)", "CodeQL + TruffleHog + Gitleaks"],
+   463→      ["PR Checks", "\u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 PR"],
+   464→      ["Performance", "Apache Bench load testing"],
+   465→    ],
+   466→    [30, 70],
+   467→  ),
+   468→  paraBi("\u064a\u062a\u0636\u0645\u0643 \u0627\u0644\u0640 CI Pipeline architecture compliance check (\u0644\u0627 module-level side effects \u0641\u064a workers) \u0648standalone build verification (.next/standalone exists, server.js \u0645\u0648\u062c\u0648\u062f). \u0627\u0644\u0640 Deployment \u0623\u0645\u0627\u0645\u064a\u0647: Vercel\u060c Docker + docker-compose\u060c Caddy.",
+   469→    "CI Pipeline includes architecture compliance check (no module-level side effects in workers) and standalone build verification (.next/standalone exists, server.js present). Deployment options: Vercel, Docker + docker-compose, Caddy."),
+   470→];
+   471→
+   472→// Database
+   473→const database = [
+   474→  h1("\u0647\u064a\u0643\u0644 \u0627\u0644\u0642\u0627\u0639\u062f\u0629 \u0640 72+ \u0646\u0645\u0627\u062f\u062c | Database Schema"),
+   475→  paraBi("\u064a\u062a\u0636\u0645\u0643 Prisma schema \u0628\u0640 1,878 \u0633\u0637\u0631 \u0648 72+ \u0646\u0645\u0627\u062f\u062c\u060c PostgreSQL \u0641\u0642\u0637 (SQLite \u062a\u0645 \u0625\u0632\u0627\u0644\u064a\u0647 \u0641\u064a EA-002). 3 migrations \u0645\u0634\u0627\u0631\u0643\u0629:",
+   476→    "Prisma schema with 1,878 lines and 72+ models, PostgreSQL only (SQLite removed in EA-002). 3 migrations included:"),
+   477→  makeTable(
+   478→    ["\u0627\u0644 Migration | Migration", "\u0627\u0644\u062a\u0627\u0631\u064a\u062e | Date", "\u0627\u0644\u062a\u063a\u064a\u064a\u0631\u0627\u062a | Key Changes"],
+   479→    [
+   480→      ["init_ai_fabric", "2026-07-20", "AIRequestLog, CacheEntry, BudgetConfig, ProfitSnapshot"],
+   481→      ["add_economics_layer", "2026-07-20", "RuleCandidate, GlobalPattern, AIScoreSnapshot, CompiledRule"],
+   482→      ["add_security_hardening", "2026-07-20", "MFASecret, SessionRegistry, TamperEvidenceChain, WebhookEndpoint"],
+   483→    ],
+   484→    [20, 15, 65],
+   485→  ),
+   486→];
+   487→
+   488→// Recommendations
+   489→const recommendations = [
+   490→  h1("\u062a\u0648\u0635\u064a\u0627\u062a \u0640 \u0627\u0644\u0637\u0631\u064a\u0642 \u0644\u0628\u0632\u0646\u0633 \u0627\u0644\u0645\u0644\u064a\u0648\u0646 \u062f\u0648\u0644\u0627\u0631 | Road to Million-Dollar Business"),
+   491→  paraBi("\u0628\u0646\u0627\u0621 \u0639\u0644\u064a \u0627\u0644\u0625\u0646\u062a\u0627\u062c \u0627\u0644\u0642\u064a\u0645 \u0644\u0640 v12.1\u060c \u0623\u0648\u0636\u062d \u0647\u0646\u0627 \u0627\u0644\u0645\u0645\u064a\u0632\u0627\u062a \u0648\u0627\u0644\u062a\u0643\u0627\u0645\u0644\u0627\u062a \u0627\u0644\u064a \u0644\u0648 \u0627\u0633\u062a\u0643\u0645\u0644\u0646\u0627\u0647\u0627 \u0645\u0645\u0643\u0646 \u064a\u0648\u0635\u0644 \u0627\u0644\u0646\u0638\u0627\u0645 \u0644\u0645\u0633\u062a\u0648\u064a \u0627\u0644\u0645\u0644\u064a\u0648\u0646 \u062f\u0648\u0644\u0627\u0631.",
+   492→    "Based on the solid v12.1 foundation, here are the features and integrations that could take the system to the million-dollar business level."),
+   493→
+   494→  h2("1. SaaS \u0627\u0644\u062a\u062d\u062f\u064a\u062f \u0627\u0644\u0643\u0645\u064a | SaaS Monetization Engine"),
+   495→  paraBi("\u0627\u0644\u0646\u0638\u0627\u0645 \u0644\u062f\u064a\u0647 \u0628\u064a\u0627\u0646 \u0623\u0648\u0635\u0645 \u0623\u0633\u0639\u0627\u0631 \u0627\u0644\u062e\u0637\u0648\u0637 (trial=$0, starter=$29, business=$99, enterprise=$299) \u0648\u0644\u0643\u0646 \u0627\u0644\u0640 revenue \u0645\u0627\u0632\u0627\u0644 \u0627\u0633\u062a\u0648\u0627\u0631\u064a\u0627. \u0627\u0644\u0640\u0640\u062f\u0631\u0627\u0628 \u0627\u0644\u062d\u0627\u0642\u0648\u064a: \u0646\u0638\u0627\u0645 billing \u0641\u0631\u064a\u062f\u064a \u0645\u0639 Stripe/Paddle \u0644\u0640 subscription management\u060c metered billing \u0644\u0640 AI usage\u060c \u0648\u0640 annual contracts \u0645\u0639 volume discounts. \u0628\u0640 5,000 \u0634\u0631\u0643\u0627\u062a \u0640 business plan ($99/mo) = $5M ARR.",
+   496→    "The system has price tiers (trial=$0, starter=$29, business=$99, enterprise=$299) but revenue is still theoretical. Critical next step: real billing system with Stripe/Paddle for subscription management, metered billing for AI usage, and annual contracts with volume discounts. At 5,000 companies on business plan ($99/mo) = $5M ARR."),
+   497→
+   498→  h2("2. \u0627\u0644\u0627\u062a\u0645\u0627\u062a \u0627\u0644\u062d\u0643\u0648\u0645\u064a\u0629 | Government Compliance Automation"),
+   499→  paraBi("\u0646\u0636\u0627\u0645 ZATCA (SA)\u060c UAE_FTA\u060c Bahrain_NBR \u064a\u0639\u0645\u0644 \u0648\u0644\u0643\u0646 \u0627\u0644\u0640\u0640\u062f\u0631\u0627\u0628 \u0627\u0644\u0642\u0627\u062f\u0631: \u0625\u0636\u0627\u0641\u0629 e-invoice submission pipeline \u0641\u0631\u064a\u062f\u064a \u0644\u0640 ZATCA Phase 2 API \u0648\u0640 UAE FTA API\u060c \u0648\u0625\u0636\u0627\u0641\u0629 VAT return auto-generation \u0648\u0640 tax compliance dashboard. \u0647\u0646\u0627 \u0642\u064a\u0645\u0629 \u0627\u0642\u062a\u0635\u0627\u062f\u064a\u0629 \u0643\u0627\u0628\u0631\u0629: \u0627\u0644\u0634\u0631\u0643\u0627\u062a \u0641\u064a MENA \u0645\u0644\u0632\u0645\u0629 \u0628\u0640 e-invoicing \u0648\u0648\u0644\u0627 \u062a\u0648\u062f \u0646\u0638\u0627\u0645 \u0645\u0643\u0645\u0644.",
+   500→    "ZATCA (SA), UAE_FTA, Bahrain_NBR framework exists but critical next step: add real e-invoice submission pipeline to ZATCA Phase 2 API and UAE FTA API, add VAT return auto-generation and tax compliance dashboard. Massive economic value: MENA companies are mandated to adopt e-invoicing and will pay for a complete system."),
+   501→
+   502→  h2("3. AI Marketplace | AI Value Marketplace"),
+   503→  paraBi("\u0645\u0639 AI Fabric 16-phase cascade \u0648 Invoice Brain\u060c \u0627\u0644\u0640\u0640\u062f\u0631\u0627\u0628 \u0627\u0644\u0642\u0627\u062f\u0631: \u0625\u0636\u0627\u0641\u0629 AI Agent marketplace \u0644\u0640\u0640\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0627\u0644\u0623\u0639\u0645\u0627\u0644 \u0627\u0644\u0643\u0627\u0628\u0631\u0629 (chat\u060c document QA\u060c forecasting)\u060c \u0648\u0640 white-label AI \u0644\u0640\u0640\u0634\u0631\u0643\u0627\u062a \u0627\u0644\u0627\u0633\u062a\u0634\u0627\u0631\u0629 \u0627\u0644\u062a\u064a \u064a\u0631\u064a\u062f\u0648\u0646 \u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u0628\u064a\u0639 \u0628\u0640 AI-as-a-Service. \u0647\u0646\u0627 \u0633\u0628\u0649 \u0645\u0646\u0627\u0641\u0639\u0629 \u0625\u0636\u0627\u0641\u064a\u0629 \u0644\u0640\u0640\u0643\u0644 AI call.",
+   504→    "With AI Fabric 16-phase cascade and Invoice Brain, critical next step: add AI Agent marketplace for enterprise use cases (chat, document QA, forecasting), and white-label AI for consulting firms wanting to resell AI-as-a-Service. This creates an additional revenue stream per AI call."),
+   505→
+   506→  h2("4. \u0627\u0644\u062a\u0643\u0627\u0645\u0644\u0627\u062a \u0627\u0644\u062d\u0627\u0642\u0648\u064a\u0629 | Critical Integrations"),
+   507→  paraBi("\u0627\u0644\u0640\u0640\u062f\u0631\u0627\u0628 \u0627\u0644\u062d\u0627\u0642\u0648\u064a: \u0625\u0636\u0627\u0641\u0629 Stripe/Paddle \u0644\u0640 billing\u060c Xero/QuickBooks \u0644\u0640 accounting sync\u060c Slack/Teams \u0644\u0640 notifications\u060c Zapier \u0644\u0640 workflow automation\u060c Shopify/WooCommerce \u0644\u0640 e-commerce sync. \u0627\u0644\u0640\u0640\u062f\u0631\u0627\u0628 \u0627\u0644\u0642\u0627\u062f\u0631 \u0627\u0644\u0627\u0633\u062a\u0631\u0627\u062f\u064a\u064a: HubSpot \u0644\u0640 CRM sync \u0648\u0640 Oracle NetSuite \u0644\u0640 enterprise ERP sync. \u0647\u0646\u0627 \u062a\u0643\u0627\u0645\u0644\u0627\u062a \u062a\u0646\u0641\u0639 \u0643\u0644 \u0634\u0631\u0643\u0629 \u0645\u0646\u0645\u0646\u062a\u0629 \u0644\u0640\u0640\u0640\u0640\u0640\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a.",
+   508→    "Critical next step: add Stripe/Paddle for billing, Xero/QuickBooks for accounting sync, Slack/Teams for notifications, Zapier for workflow automation, Shopify/WooCommerce for e-commerce sync. Strategic next step: HubSpot for CRM sync and Oracle NetSuite for enterprise ERP sync. These integrations benefit every enterprise client wanting to use their data."),
+   509→
+   510→  h2("5. Mobile PWA \u0648\u0640 POS | Mobile & POS"),
+   511→  paraBi("\u0627\u0644\u0640\u0640\u062f\u0631\u062a \u0644\u062f\u064a\u0647 PWA manifest \u0648\u0644\u0643\u0646 \u0627\u0644\u0640\u0640\u062f\u0631\u0627\u0628 \u0627\u0644\u0642\u0627\u062f\u0631: \u0625\u0636\u0627\u0641\u0629 \u062a\u062c\u0631\u062a\u0629 mobile \u0641\u0631\u064a\u062f\u064a\u0629 \u0644\u0640\u0640\u0640\u0635\u0627\u062d\u0628 \u0627\u0644\u0645\u062a\u0627\u062c\u0631 \u0627\u0644\u0635\u063a\u064a\u0631\u0629 (scan invoice\u060c approve payment\u060c track expenses)\u060c \u0648\u0640 POS integration \u0644\u0640\u0640\u0640\u0627\u0644\u0645\u062a\u0627\u062c\u0631 \u0627\u0644\u062a\u064a \u062a\u0628\u064a\u0639 \u0641\u064a \u0627\u0644\u0640\u0640\u0640\u0640\u0645\u062a\u062c\u0631 \u0648\u062a\u0648\u062f \u0641\u0627\u062a\u0631\u0629 \u0625\u0644\u064a\u062a\u0631\u0648\u0646\u064a\u0629 \u0628\u0627\u0644\u0634\u0643\u0644 \u0627\u0644\u0633\u0644\u064a\u0645.",
+   512→    "PWA manifest exists but critical next step: add real mobile experience for small merchants (scan invoice, approve payment, track expenses), and POS integration for merchants selling in-store who want electronic invoicing cleanly."),
+   513→];
+   514→
+   515→// ── Assemble Document ──
+   516→const coverConfig = {
+   517→  title: "GarfiX EOS v12.1 \u2014 Technical Release Report",
+   518→  subtitle: "\u062a\u0642\u0631\u064a\u0631 \u062a\u0642\u0646\u064a \u0644\u0625\u0635\u062f\u0627\u0631 v12.1: \u062a\u0639\u0627\u0632 \u0623\u0645\u0646\u064a + AI Fabric + 1855+ Tests",
+   519→  englishLabel: "ENTERPRISE ERP RELEASE REPORT",
+   520→  metaLines: [
+   521→    "Version: 12.1.0 | \u0627\u0644\u0625\u0635\u062f\u0627\u0631: 12.1.0",
+   522→    "Author: ahmedezzatelsayad | \u0627\u0644\u0645\u0624\u0644\u0641: ahmedezzatelsayad",
+   523→    "Date: July 2026 | \u0627\u0644\u062a\u0627\u0631\u064a\u062e: \u064a\u0648\u0644\u064a\u0648 2026",
+   524→    "License: MIT | \u0627\u0644\u062a\u0631\u062e\u064a\u0635: MIT",
+   525→  ],
+   526→  footerLeft: "github.com/ahmedezzatelsayad/Garfix",
+   527→  footerRight: "v12.1.0 \u2014 2026",
+   528→  palette: palette.cover,
+   529→};
+   530→
+   531→const coverChildren = buildCoverR1(coverConfig);
+   532→
+   533→const tocChildren = [
+   534→  new Paragraph({
+   535→    alignment: AlignmentType.CENTER, spacing: { before: 480, after: 360 },
+   536→    children: [new TextRun({ text: "\u0627\u0644\u0641\u0647\u0631\u0633 | Table of Contents", bold: true, size: 32,
+   537→      font: { eastAsia: "SimHei", ascii: "Times New Roman" } })],
+   538→  }),
+   539→  new TableOfContents("Table of Contents", {
+   540→    hyperlink: true,
+   541→    headingStyleRange: "1-3",
+   542→  }),
+   543→  new Paragraph({
+   544→    spacing: { before: 200 },
+   545→    children: [new TextRun({
+   546→      text: "Note: This Table of Contents is generated via field codes. To ensure page number accuracy, please right-click the TOC and select \"Update Field.\"",
+   547→      italics: true, size: 18, color: "888888",
+   548→    })],
+   549→  }),
+   550→  new Paragraph({ children: [new PageBreak()] }),
+   551→];
+   552→
+   553→const bodyChildren = [
+   554→  ...execSummary,
+   555→  ...background,
+   556→  ...security,
+   557→  ...aiFabric,
+   558→  ...invoiceBrain,
+   559→  ...testing,
+   560→  ...valkey,
+   561→  ...mena,
+   562→  ...cicd,
+   563→  ...database,
+   564→  ...recommendations,
+   565→];
+   566→
+   567→const doc = new Document({
+   568→  styles: {
+   569→    default: {
+   570→      document: {
+   571→        run: {
+   572→          font: { ascii: "Times New Roman", eastAsia: "Microsoft YaHei" },
+   573→          size: 24, color: c(palette.body),
+   574→        },
+   575→        paragraph: {
+   576→          spacing: { line: 312 },
+   577→        },
+   578→      },
+   579→      heading1: {
+   580→        run: {
+   581→          font: { ascii: "Times New Roman", eastAsia: "SimHei" },
+   582→          size: 32, bold: true, color: c(palette.table.headerBg),
+   583→        },
+   584→      },
+   585→      heading2: {
+   586→        run: {
+   587→          font: { ascii: "Times New Roman", eastAsia: "SimHei" },
+   588→          size: 28, bold: true, color: c(palette.table.headerBg),
+   589→        },
+   590→      },
+   591→      heading3: {
+   592→        run: {
+   593→          font: { ascii: "Times New Roman", eastAsia: "SimHei" },
+   594→          size: 24, bold: true, color: c(palette.secondary),
+   595→        },
+   596→      },
+   597→    },
+   598→  },
+   599→  sections: [
+   600→    // Section 1: Cover (no page numbers)
+   601→    {
+   602→      properties: {
+   603→        page: { size: pgSize, margin: { top: 0, bottom: 0, left: 0, right: 0 } },
+   604→      },
+   605→      children: coverChildren,
+   606→    },
+   607→    // Section 2: Front matter (TOC) — Roman numerals
+   608→    {
+   609→      properties: {
+   610→        type: SectionType.NEXT_PAGE,
+   611→        page: {
+   612→          size: pgSize, margin: pgMargin,
+   613→          pageNumbers: { start: 1, formatType: NumberFormat.UPPER_ROMAN },
+   614→        },
+   615→      },
+   616→      footers: { default: footerRoman() },
+   617→      children: tocChildren,
+   618→    },
+   619→    // Section 3: Body — Arabic numerals starting from 1
+   620→    {
+   621→      properties: {
+   622→        type: SectionType.NEXT_PAGE,
+   623→        page: {
+   624→          size: pgSize, margin: pgMargin,
+   625→          pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL },
+   626→        },
+   627→      },
+   628→      headers: { default: headerBody() },
+   629→      footers: { default: footerArabic() },
+   630→      children: bodyChildren,
+   631→    },
+   632→  ],
+   633→});
+   634→
+   635→// ── Generate ──
+   636→const OUTPUT_PATH = "/home/z/my-project/download/GarfiX_v12.1_Technical_Report.docx";
+   637→
+   638→Packer.toBuffer(doc).then(buffer => {
+   639→  fs.writeFileSync(OUTPUT_PATH, buffer);
+   640→  console.log("Report generated: " + OUTPUT_PATH);
+   641→}).catch(err => {
+   642→  console.error("Error:", err);
+   643→  process.exit(1);
+   644→});
+   645→

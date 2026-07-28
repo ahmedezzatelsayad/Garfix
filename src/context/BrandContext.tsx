@@ -69,7 +69,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       subscriptionStatus: (c as Record<string, unknown>).subscriptionStatus as string ?? "active",
       trialEndsAt: (c as Record<string, unknown>).trialEndsAt as string | null | undefined ?? null,
     }));
-  }, [user, companiesQuery.data?.companies]);
+  }, [user, companiesQuery.data]);
 
   // Derived state: loading indicator (replaces useState + useEffect setState)
   const loadingCompanies = useMemo(() => {
@@ -98,7 +98,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Sync active slug from localStorage (external system) — legitimate setState-in-effect
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!user) {
       setActiveSlugState(null);
@@ -114,6 +114,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [user, companies]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const refreshCompanies = useCallback(async () => {
     await companiesQuery.refetch();

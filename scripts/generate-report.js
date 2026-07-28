@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // GarfiX EOS v12.1 — Technical Report Generator (DOCX)
 // Bilingual: Arabic + English, Deep Cyan tech palette
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,

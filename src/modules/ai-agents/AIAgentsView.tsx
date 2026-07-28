@@ -103,11 +103,12 @@ export function AIAgentsView() {
   // Reset chat when switching agent — legitimate state reset on dependency change.
   // React docs: "If you want to reset all state when a prop changes, consider making
   // the component with a different key." For now, explicit reset is simpler.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setTurns([]);
     setInput("");
   }, [selectedAgent]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Auto-scroll on new turn
   useEffect(() => {

@@ -27,6 +27,7 @@ export const runtime = "nodejs";
 export async function register(): Promise<void> {
   const startTime = Date.now();
 
+  const { logger } = await import("@/lib/logger");
   logger.info("[instrumentation] Server starting up...");
 
   try {

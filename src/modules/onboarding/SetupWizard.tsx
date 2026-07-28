@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import {
@@ -42,7 +42,6 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   const { user } = useAuth();
   const { companies, activeCompany, setActiveSlug, refreshCompanies } = useBrand();
   const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<WizardData>({});
   const [newCompanyName, setNewCompanyName] = useState("");
@@ -51,23 +50,6 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Onboarding P2 — slug availability check + auto-suggest from company name.
-  // - When the user types a company NAME, we auto-suggest a slug via the same
-  //   slugify() used by /api/companies (Arabic numerals + Latin letters + dashes).
-  //   The user can still override the suggested slug manually.
-  // - When the user types/edits the slug (or accepts the suggestion), we
-  //   debounce 350ms then call GET /api/companies?checkSlug=… and show
-  //   inline availability feedback (✓ available / ✗ taken / ⚠ invalid).
-  const [slugAvailability, setSlugAvailability] = useState<
-    | { state: "idle" }
-    | { state: "checking" }
-    | { state: "available"; slug: string }
-    | { state: "taken"; slug: string }
-    | { state: "invalid"; reason: string }
-  >({ state: "idle" });
-  const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastCheckedSlugRef = useRef<string>("");
-
   // Load existing progress via TanStack Query
   const onboardingQuery = useOnboardingStatus();
   const completeOnboardingMutation = useCompleteOnboarding();
@@ -75,18 +57,46 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   const updateCompanyMutation = useUpdateOnboardingCompany();
   const smartParseMutation = useSmartParse();
 
+  // Debounced slug check query — declared BEFORE debounce effect (fixes immutability error)
+  const [checkSlug, setCheckSlug] = useState("");
+  const slugCheckQuery = useCheckCompanySlug(checkSlug);
+
+  // Derived state: loading (replaces useState + useEffect setState)
+  const loading = onboardingQuery.isLoading;
+
+  // Derived state: slugAvailability from query result (replaces useState + useEffect setState)
+  // "checking" state: slug submitted but query hasn't returned yet
+  type SlugAvailability =
+    | { state: "idle" }
+    | { state: "checking" }
+    | { state: "available"; slug: string }
+    | { state: "taken"; slug: string }
+    | { state: "invalid"; reason: string };
+  const slugAvailability = useMemo<SlugAvailability>(() => {
+    if (!checkSlug || checkSlug.length < 2) return { state: "idle" };
+    if (slugCheckQuery.isLoading) return { state: "checking" };
+    if (!slugCheckQuery.data) return { state: "idle" };
+    const d = slugCheckQuery.data;
+    if (d.reason === "too-short") return { state: "invalid", reason: "المعرّف قصير جداً (٢ حرف على الأقل)" };
+    if (d.reason === "invalid-chars") return { state: "invalid", reason: "المعرّف يجب أن يكون أحرف لاتينية وأرقام و- فقط" };
+    if (d.available) return { state: "available", slug: d.slug as string };
+    return { state: "taken", slug: d.slug as string };
+  }, [checkSlug, slugCheckQuery.isLoading, slugCheckQuery.data]);
+
+  // Sync onboarding status to step/data — legitimate external system sync
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (onboardingQuery.isLoading) return;
     const d = onboardingQuery.data as Record<string, unknown> | undefined;
-    if (!d) { setLoading(false); return; }
+    if (!d) return;
     if (d.completed) {
       onComplete();
       return;
     }
     if ((d.step as number) > 0) setStep(Math.min(d.step as number, STEPS.length - 1));
     if (d.data) setData(d.data as WizardData);
-    setLoading(false);
   }, [onboardingQuery.isLoading, onboardingQuery.data, onComplete]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Onboarding P2 — auto-suggest slug from company name when the user hasn't
   // manually edited the slug yet. We compare against the last suggestion we
@@ -109,44 +119,21 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
 
   // Onboarding P2 — debounced availability check.
   // Whenever the slug changes, wait 350ms then call the check endpoint.
+  const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCheckedSlugRef = useRef<string>("");
   useEffect(() => {
     if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
-    if (!newCompanySlug || newCompanySlug.length < 2) {
-      // schedule idle on next tick to avoid synchronous setState in effect
-      slugDebounceRef.current = setTimeout(() => {
-        setSlugAvailability({ state: "idle" });
-      }, 0);
-      return;
-    }
+    if (!newCompanySlug || newCompanySlug.length < 2) return;
     if (newCompanySlug === lastCheckedSlugRef.current) return;
     // Use TanStack Query hook for slug check via debounced slug state
     slugDebounceRef.current = setTimeout(() => {
       lastCheckedSlugRef.current = newCompanySlug;
-      setSlugAvailability({ state: "checking" });
       setCheckSlug(newCompanySlug);
     }, 350);
     return () => {
       if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     };
   }, [newCompanySlug]);
-
-  // Debounced slug check query
-  const [checkSlug, setCheckSlug] = useState("");
-  const slugCheckQuery = useCheckCompanySlug(checkSlug);
-
-  useEffect(() => {
-    if (!slugCheckQuery.data || !checkSlug) return;
-    const d = slugCheckQuery.data;
-    if (d.reason === "too-short") {
-      setSlugAvailability({ state: "invalid", reason: "المعرّف قصير جداً (٢ حرف على الأقل)" });
-    } else if (d.reason === "invalid-chars") {
-      setSlugAvailability({ state: "invalid", reason: "المعرّف يجب أن يكون أحرف لاتينية وأرقام و- فقط" });
-    } else if (d.available) {
-      setSlugAvailability({ state: "available", slug: d.slug as string });
-    } else {
-      setSlugAvailability({ state: "taken", slug: d.slug as string });
-    }
-  }, [slugCheckQuery.data, checkSlug]);
 
   // If no company exists, force step to company creation; or pre-select first company slug.
   // Render-time adjustment keyed on loading/companies/step/data.companySlug — no cascading render.

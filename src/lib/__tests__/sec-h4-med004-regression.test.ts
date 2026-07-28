@@ -16,6 +16,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 // ─── SEC-H4 Regression Tests ──────────────────────────────────────────────
 
