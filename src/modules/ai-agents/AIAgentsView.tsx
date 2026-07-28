@@ -20,7 +20,7 @@
  *   POST /api/ai/agents               → { ok, inScope, agentName, response, allowedIntents }
  *      body: { agentType, message, companySlug }
  */
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import { useAIAgents, useAIAgentMessage } from "@/hooks/queries";
@@ -58,39 +58,56 @@ const AGENT_DESCRIPTIONS: Record<string, string> = {
 
 export function AIAgentsView() {
   const { activeCompany } = useBrand();
-  const [agents, setAgents] = useState<AgentMeta[]>(AGENT_FALLBACK);
   const [selectedAgent, setSelectedAgent] = useState<string>("accounting");
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [sending, setSending] = useState(false);
-  const [loadingAgents, setLoadingAgents] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load the agent list using TanStack Query hook
   const agentsQuery = useAIAgents(activeCompany?.slug ?? "");
   const apiAgents = agentsQuery.data?.agents;
 
-  useEffect(() => {
+  // Derived state: agents from TanStack Query with fallback (replaces useState + useEffect setState)
+  const agents = useMemo<AgentMeta[]>(() => {
     if (apiAgents && apiAgents.length > 0) {
-      setAgents(apiAgents.map((a) => ({
+      return apiAgents.map((a) => ({
         type: a.type,
         name: a.name,
         nameAr: (a as Record<string, unknown>).nameAr as string ?? a.name,
         icon: (a as Record<string, unknown>).icon as string ?? "🤖",
         allowedIntents: (a as Record<string, unknown>).allowedIntents as string[] ?? [],
-      })));
-      setSelectedAgent(apiAgents[0].type);
+      }));
     }
-    setLoadingAgents(!agentsQuery.isLoading && !agentsQuery.data);
-  }, [apiAgents, agentsQuery.isLoading]);
+    return AGENT_FALLBACK;
+  }, [apiAgents]);
 
-  // Reset chat when switching agent
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // Derived state: loading indicator (replaces useState + useEffect setState)
+  const loadingAgents = useMemo(() => {
+    return agentsQuery.isLoading || (!agentsQuery.data && !agentsQuery.isError);
+  }, [agentsQuery.isLoading, agentsQuery.data, agentsQuery.isError]);
+
+  // Adjust selectedAgent during render when agents change (React-recommended pattern)
+  // See: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevAgentTypes, setPrevAgentTypes] = useState<string[]>([]);
+  const currentAgentTypes = agents.map((a) => a.type);
+  if (currentAgentTypes.length > 0 && currentAgentTypes !== prevAgentTypes) {
+    setPrevAgentTypes(currentAgentTypes);
+    setSelectedAgent(currentAgentTypes[0]);
+  }
+
+  // The useEffect that set agents/loadingAgents/setSelectedAgent has been replaced by
+  // useMemo for agents & loadingAgents, and render-time adjustment for selectedAgent.
+  // No more setState-in-effect violations.
+
+  // Reset chat when switching agent — legitimate state reset on dependency change.
+  // React docs: "If you want to reset all state when a prop changes, consider making
+  // the component with a different key." For now, explicit reset is simpler.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     setTurns([]);
     setInput("");
   }, [selectedAgent]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Auto-scroll on new turn
   useEffect(() => {

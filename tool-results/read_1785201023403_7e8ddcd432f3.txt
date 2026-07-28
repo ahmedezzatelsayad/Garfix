@@ -1,0 +1,648 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from "react";
+     4→import { useAuth } from "@/context/AuthContext";
+     5→import { useBrand } from "@/context/BrandContext";
+     6→import {
+     7→  useOnboardingStatus, useCheckCompanySlug, useCompleteOnboarding,
+     8→  useCreateCompany, useUpdateOnboardingCompany, useSmartParse,
+     9→} from "@/hooks/queries";
+    10→import type { CompleteOnboardingPayload } from "@/hooks/queries/onboarding";
+    11→import { toast } from "sonner";
+    12→import {
+    13→  Check, ChevronLeft, ChevronRight, Building2, Globe, Briefcase,
+    14→  Users, Package, MessageCircle, Sparkles, Loader2, Rocket, X as XIcon,
+    15→} from "lucide-react";
+    16→import { BUSINESS_TYPES, type BusinessType } from "@/lib/accountTemplates";
+    17→import { GULF_COUNTRIES } from "@/lib/gulfConfig";
+    18→import { cn } from "@/lib/utils";
+    19→
+    20→interface WizardData {
+    21→  companySlug?: string;
+    22→  businessType?: BusinessType;
+    23→  hasEmployees?: boolean;
+    24→  hasWarehouse?: boolean;
+    25→  usesWhatsApp?: boolean;
+    26→}
+    27→
+    28→const STEPS = [
+    29→  { key: "welcome", label: "مرحباً", icon: Rocket },
+    30→  { key: "company", label: "بيانات الشركة", icon: Building2 },
+    31→  { key: "country", label: "الدولة", icon: Globe },
+    32→  { key: "business", label: "نوع النشاط", icon: Briefcase },
+    33→  { key: "features", label: "المميزات", icon: Package },
+    34→  { key: "ai-test", label: "جرّب الذكاء", icon: Sparkles },
+    35→  { key: "done", label: "اكتمل", icon: Check },
+    36→];
+    37→
+    38→const labelStyle = "block text-xs font-semibold text-white/60 mb-1.5";
+    39→const inputStyle = "w-full py-2.5 px-3.5 rounded-md bg-white/[0.06] border border-white/10 text-white text-sm outline-none max-md:min-h-[44px]";
+    40→
+    41→export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; onSkip: () => void }) {
+    42→  const { user } = useAuth();
+    43→  const { companies, activeCompany, setActiveSlug, refreshCompanies } = useBrand();
+    44→  const [step, setStep] = useState(0);
+    45→  const [loading, setLoading] = useState(true);
+    46→  const [saving, setSaving] = useState(false);
+    47→  const [data, setData] = useState<WizardData>({});
+    48→  const [newCompanyName, setNewCompanyName] = useState("");
+    49→  const [newCompanySlug, setNewCompanySlug] = useState("");
+    50→  const [aiTestText, setAiTestText] = useState("");
+    51→  const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
+    52→  const [aiLoading, setAiLoading] = useState(false);
+    53→
+    54→  // Onboarding P2 — slug availability check + auto-suggest from company name.
+    55→  // - When the user types a company NAME, we auto-suggest a slug via the same
+    56→  //   slugify() used by /api/companies (Arabic numerals + Latin letters + dashes).
+    57→  //   The user can still override the suggested slug manually.
+    58→  // - When the user types/edits the slug (or accepts the suggestion), we
+    59→  //   debounce 350ms then call GET /api/companies?checkSlug=… and show
+    60→  //   inline availability feedback (✓ available / ✗ taken / ⚠ invalid).
+    61→  const [slugAvailability, setSlugAvailability] = useState<
+    62→    | { state: "idle" }
+    63→    | { state: "checking" }
+    64→    | { state: "available"; slug: string }
+    65→    | { state: "taken"; slug: string }
+    66→    | { state: "invalid"; reason: string }
+    67→  >({ state: "idle" });
+    68→  const slugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    69→  const lastCheckedSlugRef = useRef<string>("");
+    70→
+    71→  // Load existing progress via TanStack Query
+    72→  const onboardingQuery = useOnboardingStatus();
+    73→  const completeOnboardingMutation = useCompleteOnboarding();
+    74→  const createCompanyMutation = useCreateCompany();
+    75→  const updateCompanyMutation = useUpdateOnboardingCompany();
+    76→  const smartParseMutation = useSmartParse();
+    77→
+    78→  useEffect(() => {
+    79→    if (onboardingQuery.isLoading) return;
+    80→    const d = onboardingQuery.data as Record<string, unknown> | undefined;
+    81→    if (!d) { setLoading(false); return; }
+    82→    if (d.completed) {
+    83→      onComplete();
+    84→      return;
+    85→    }
+    86→    if ((d.step as number) > 0) setStep(Math.min(d.step as number, STEPS.length - 1));
+    87→    if (d.data) setData(d.data as WizardData);
+    88→    setLoading(false);
+    89→  }, [onboardingQuery.isLoading, onboardingQuery.data, onComplete]);
+    90→
+    91→  // Onboarding P2 — auto-suggest slug from company name when the user hasn't
+    92→  // manually edited the slug yet. We compare against the last suggestion we
+    93→  // made: if the slug still matches the previous suggestion, we treat it as
+    94→  // "auto" and update it. Once the user types something different, we leave
+    95→  // their text alone.
+    96→  const lastSuggestedSlugRef = useRef<string>("");
+    97→  useEffect(() => {
+    98→    if (!newCompanyName) return;
+    99→    const suggested = newCompanyName
+   100→      .toLowerCase()
+   101→      .trim()
+   102→      .replace(/[^a-z0-9-]+/g, "-")
+   103→      .replace(/^-+|-+$/g, "");
+   104→    if (newCompanySlug === lastSuggestedSlugRef.current || !newCompanySlug) {
+   105→      lastSuggestedSlugRef.current = suggested;
+   106→      setNewCompanySlug(suggested);
+   107→    }
+   108→  }, [newCompanyName, newCompanySlug]);
+   109→
+   110→  // Onboarding P2 — debounced availability check.
+   111→  // Whenever the slug changes, wait 350ms then call the check endpoint.
+   112→  useEffect(() => {
+   113→    if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+   114→    if (!newCompanySlug || newCompanySlug.length < 2) {
+   115→      // schedule idle on next tick to avoid synchronous setState in effect
+   116→      slugDebounceRef.current = setTimeout(() => {
+   117→        setSlugAvailability({ state: "idle" });
+   118→      }, 0);
+   119→      return;
+   120→    }
+   121→    if (newCompanySlug === lastCheckedSlugRef.current) return;
+   122→    // Use TanStack Query hook for slug check via debounced slug state
+   123→    slugDebounceRef.current = setTimeout(() => {
+   124→      lastCheckedSlugRef.current = newCompanySlug;
+   125→      setSlugAvailability({ state: "checking" });
+   126→      setCheckSlug(newCompanySlug);
+   127→    }, 350);
+   128→    return () => {
+   129→      if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+   130→    };
+   131→  }, [newCompanySlug]);
+   132→
+   133→  // Debounced slug check query
+   134→  const [checkSlug, setCheckSlug] = useState("");
+   135→  const slugCheckQuery = useCheckCompanySlug(checkSlug);
+   136→
+   137→  useEffect(() => {
+   138→    if (!slugCheckQuery.data || !checkSlug) return;
+   139→    const d = slugCheckQuery.data;
+   140→    if (d.reason === "too-short") {
+   141→      setSlugAvailability({ state: "invalid", reason: "المعرّف قصير جداً (٢ حرف على الأقل)" });
+   142→    } else if (d.reason === "invalid-chars") {
+   143→      setSlugAvailability({ state: "invalid", reason: "المعرّف يجب أن يكون أحرف لاتينية وأرقام و- فقط" });
+   144→    } else if (d.available) {
+   145→      setSlugAvailability({ state: "available", slug: d.slug as string });
+   146→    } else {
+   147→      setSlugAvailability({ state: "taken", slug: d.slug as string });
+   148→    }
+   149→  }, [slugCheckQuery.data, checkSlug]);
+   150→
+   151→  // If no company exists, force step to company creation; or pre-select first company slug.
+   152→  // Render-time adjustment keyed on loading/companies/step/data.companySlug — no cascading render.
+   153→  const [prevAdjKey, setPrevAdjKey] = useState("");
+   154→  const adjKey = `${loading ? 1 : 0}|${companies.length}|${step}|${data.companySlug || ""}`;
+   155→  if (adjKey !== prevAdjKey) {
+   156→    setPrevAdjKey(adjKey);
+   157→    if (!loading && companies.length === 0 && step < 1) {
+   158→      setStep(1);
+   159→    }
+   160→    if (!loading && companies.length > 0 && !data.companySlug) {
+   161→      setData((d) => ({ ...d, companySlug: companies[0].slug }));
+   162→    }
+   163→  }
+   164→
+   165→  const saveProgress = useCallback(async (stepNum: number, updates: Partial<WizardData>) => {
+   166→    const merged = { ...data, ...updates };
+   167→    setData(merged);
+   168→    if (merged.companySlug) {
+   169→      try {
+   170→        await completeOnboardingMutation.mutateAsync({
+   171→          step: stepNum,
+   172→          companySlug: merged.companySlug,
+   173→          businessType: merged.businessType,
+   174→          hasEmployees: merged.hasEmployees,
+   175→          hasWarehouse: merged.hasWarehouse,
+   176→          usesWhatsApp: merged.usesWhatsApp,
+   177→        } as unknown as CompleteOnboardingPayload);
+   178→      } catch { /* silent — progress save is best-effort */ }
+   179→    }
+   180→  }, [data, completeOnboardingMutation]);
+   181→
+   182→  const createCompany = async () => {
+   183→    if (!newCompanyName || !newCompanySlug) {
+   184→      toast.error("اسم الشركة ومعرّفها مطلوبان");
+   185→      return;
+   186→    }
+   187→    setSaving(true);
+   188→    try {
+   189→      await createCompanyMutation.mutateAsync({ name: newCompanyName, slug: newCompanySlug });
+   190→      await refreshCompanies();
+   191→      setData((d) => ({ ...d, companySlug: newCompanySlug }));
+   192→      toast.success("تم إنشاء الشركة");
+   193→    } catch (err) {
+   194→      toast.error(err instanceof Error ? err.message : "خطأ");
+   195→      return;
+   196→    } finally {
+   197→      setSaving(false);
+   198→    }
+   199→  };
+   200→
+   201→  const testAI = async () => {
+   202→    if (!aiTestText.trim() || !data.companySlug) return;
+   203→    setAiLoading(true);
+   204→    setAiResult(null);
+   205→    try {
+   206→      const d = await smartParseMutation.mutateAsync({
+   207→        content: aiTestText,
+   208→        companySlug: data.companySlug,
+   209→      });
+   210→      setAiResult(d);
+   211→      toast.success(`تم استخراج ${((d as Record<string, unknown>).orders as Array<unknown> | undefined)?.length || 0} طلب`);
+   212→    } catch (err) {
+   213→      toast.error(err instanceof Error ? err.message : "خطأ");
+   214→    } finally {
+   215→      setAiLoading(false);
+   216→    }
+   217→  };
+   218→
+   219→  const completeWizard = async () => {
+   220→    setSaving(true);
+   221→    try {
+   222→      const d = await completeOnboardingMutation.mutateAsync({
+   223→        companySlug: data.companySlug,
+   224→        businessType: data.businessType,
+   225→        hasEmployees: data.hasEmployees,
+   226→        hasWarehouse: data.hasWarehouse,
+   227→        usesWhatsApp: data.usesWhatsApp,
+   228→      });
+   229→      toast.success(`تم إعداد منصتك! (${((d as Record<string, unknown>).summary as Record<string, number>)?.accountsCreated || 0} حساب, ${((d as Record<string, unknown>).summary as Record<string, number>)?.modulesActivated || 0} موديول)`);
+   230→      onComplete();
+   231→    } catch (err) {
+   232→      toast.error(err instanceof Error ? err.message : "خطأ");
+   233→    } finally {
+   234→      setSaving(false);
+   235→    }
+   236→  };
+   237→
+   238→  const next = async () => {
+   239→    await saveProgress(step + 1, {});
+   240→    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+   241→  };
+   242→  const prev = () => setStep((s) => Math.max(s - 1, 0));
+   243→
+   244→  if (loading) {
+   245→    return (
+   246→      <div className="min-h-screen flex items-center justify-center bg-background">
+   247→        <Loader2 size={32} className="animate-spin text-primary" />
+   248→      </div>
+   249→    );
+   250→  }
+   251→
+   252→  // Void references to satisfy lints (activeCompany/setActiveSlug are used by parent context but not directly here).
+   253→  void activeCompany;
+   254→  void setActiveSlug;
+   255→
+   256→  return (
+   257→    <div
+   258→      dir="rtl"
+   259→      className="min-h-screen bg-[linear-gradient(135deg,#0f0a1e_0%,#1e1147_50%,#2d1b69_100%)] text-white flex flex-col"
+   260→    >
+   261→      {/* Progress bar */}
+   262→      <div className="py-5 px-[5%] flex flex-wrap items-center gap-2 border-b border-white/[0.08]">
+   263→        <div className="flex items-center gap-2.5 flex-1">
+   264→          <div className="w-9 h-9 rounded-md bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-lg font-black">
+   265→            G
+   266→          </div>
+   267→          <span className="text-base font-extrabold">إعداد GarfiX</span>
+   268→        </div>
+   269→        {/* Step indicators */}
+   270→        <div className="flex gap-1">
+   271→          {STEPS.map((s, i) => (
+   272→            <div
+   273→              key={s.key}
+   274→              className={cn(
+   275→                "h-2 rounded-sm transition-all duration-300",
+   276→                i === step ? "w-8" : "w-2",
+   277→                i <= step ? "bg-[#a78bfa]" : "bg-white/20"
+   278→              )}
+   279→            />
+   280→          ))}
+   281→        </div>
+   282→        <button
+   283→          onClick={onSkip}
+   284→          className="bg-transparent border border-white/15 text-white/60 rounded-sm px-3.5 py-1.5 text-xs cursor-pointer max-md:min-h-[44px]"
+   285→        >تخطّي</button>
+   286→      </div>
+   287→
+   288→      {/* Step content */}
+   289→      <div className="flex-1 flex items-center justify-center py-10 px-[5%] overflow-y-auto">
+   290→        <div className="w-full max-w-[640px]">
+   291→          {/* Step 0: Welcome */}
+   292→          {step === 0 && (
+   293→            <div className="text-center">
+   294→              <div className="w-20 h-20 rounded-xl bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] inline-flex items-center justify-center text-[40px] mb-6 shadow-[0_16px_48px_rgba(124,58,237,0.4)]">
+   295→                <Rocket size={36} />
+   296→              </div>
+   297→              <h1 className="text-[32px] font-black mb-3">
+   298→                مرحباً {user?.displayName?.split(" ")[0] || ""}! 👋
+   299→              </h1>
+   300→              <p className="text-base text-white/70 leading-relaxed mb-8">
+   301→                خلّينا نجهّز لك شركتك في أقل من 5 دقايق.
+   302→                <br />
+   303→                هنعمل لك: شجرة حسابات، تفعيل الموديولات، وكل حاجة جاهزة لأول فاتورة.
+   304→              </p>
+   305→              <button
+   306→                onClick={next}
+   307→                className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer inline-flex items-center gap-2 shadow-[0_12px_36px_rgba(124,58,237,0.4)] max-md:min-h-[44px]"
+   308→              >
+   309→                يلا نبدأ <ChevronLeft size={18} />
+   310→              </button>
+   311→            </div>
+   312→          )}
+   313→
+   314→          {/* Step 1: Company */}
+   315→          {step === 1 && (
+   316→            <StepCard
+   317→              icon={<Building2 size={28} />}
+   318→              title="بيانات شركتك"
+   319→              subtitle="أو اختر شركة موجودة لو عندك واحدة"
+   320→            >
+   321→              {companies.length > 0 && (
+   322→                <div className="mb-5">
+   323→                  <label className={labelStyle}>شركة موجودة</label>
+   324→                  <select
+   325→                    value={data.companySlug || ""}
+   326→                    onChange={(e) => setData({ ...data, companySlug: e.target.value })}
+   327→                    className={inputStyle}
+   328→                  >
+   329→                    <option value="">— اختر —</option>
+   330→                    {companies.map((c) => (
+   331→                      <option key={c.slug} value={c.slug}>{c.nameAr || c.name}</option>
+   332→                    ))}
+   333→                  </select>
+   334→                </div>
+   335→              )}
+   336→              <div className="flex flex-col sm:flex-row gap-3 mb-3">
+   337→                <div className="flex-1">
+   338→                  <label className={labelStyle}>اسم الشركة</label>
+   339→                  <input
+   340→                    value={newCompanyName}
+   341→                    onChange={(e) => setNewCompanyName(e.target.value)}
+   342→                    placeholder="مؤسسة النور"
+   343→                    className={inputStyle}
+   344→                  />
+   345→                </div>
+   346→                <div className="sm:w-40">
+   347→                  <label className={labelStyle}>المعرّف</label>
+   348→                  <input
+   349→                    value={newCompanySlug}
+   350→                    onChange={(e) => setNewCompanySlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+   351→                    placeholder="al-noor"
+   352→                    className={cn(
+   353→                      inputStyle,
+   354→                      "[direction:ltr]",
+   355→                      slugAvailability.state === "available" ? "border-emerald-500" : undefined,
+   356→                      slugAvailability.state === "taken" ? "border-red-500" : undefined,
+   357→                      slugAvailability.state === "invalid" ? "border-amber-500" : undefined,
+   358→                      slugAvailability.state === "idle" ? "border-white/10" : undefined,
+   359→                    )}
+   360→                  />
+   361→                  {/* Onboarding P2 — inline slug-availability feedback */}
+   362→                  <div className="text-[10px] mt-1 min-h-[14px] flex items-center gap-1">
+   363→                    {slugAvailability.state === "checking" && (
+   364→                      <span className="text-white/60 inline-flex items-center gap-1">
+   365→                        <Loader2 size={10} className="animate-spin" /> جارٍ التحقق…
+   366→                      </span>
+   367→                    )}
+   368→                    {slugAvailability.state === "available" && (
+   369→                      <span className="text-[#10b981] inline-flex items-center gap-1">
+   370→                        <Check size={11} /> متاح
+   371→                      </span>
+   372→                    )}
+   373→                    {slugAvailability.state === "taken" && (
+   374→                      <span className="text-[#ef4444] inline-flex items-center gap-1">
+   375→                        <XIcon size={11} /> محجوز
+   376→                      </span>
+   377→                    )}
+   378→                    {slugAvailability.state === "invalid" && (
+   379→                      <span className="text-[#f59e0b] inline-flex items-center gap-1">
+   380→                        <XIcon size={11} /> {slugAvailability.reason}
+   381→                      </span>
+   382→                    )}
+   383→                  </div>
+   384→                </div>
+   385→              </div>
+   386→              {newCompanyName && (
+   387→                <button
+   388→                  onClick={createCompany}
+   389→                  disabled={saving}
+   390→                  className="bg-[rgba(167,139,250,0.2)] text-[#a78bfa] border border-[rgba(167,139,250,0.3)] rounded-sm px-4 py-2 text-xs font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 max-md:min-h-[44px]"
+   391→                >
+   392→                  {saving ? "جارٍ..." : "إنشاء الشركة"}
+   393→                </button>
+   394→              )}
+   395→              <NavButtons onNext={next} nextLabel="التالي" disabled={!data.companySlug} />
+   396→            </StepCard>
+   397→          )}
+   398→
+   399→          {/* Step 2: Country */}
+   400→          {step === 2 && (
+   401→            <StepCard
+   402→              icon={<Globe size={28} />}
+   403→              title="دولة عملك"
+   404→              subtitle="هنظبط العملة والضريبة وأيام العطلة تلقائياً"
+   405→            >
+   406→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   407→                {GULF_COUNTRIES.map((c) => (
+   408→                  <button
+   409→                    key={c.code}
+   410→                    onClick={async () => {
+   411→                      // Update company country
+   412→                      if (data.companySlug) {
+   413→                        try {
+   414→                          await updateCompanyMutation.mutateAsync({
+   415→                            slug: data.companySlug,
+   416→                            country: c.code,
+   417→                            currency: c.currency,
+   418→                            defaultTaxRate: c.defaultTaxRate,
+   419→                          });
+   420→                        } catch { /* silent best-effort */ }
+   421→                      }
+   422→                      await saveProgress(step + 1, {});
+   423→                      next();
+   424→                    }}
+   425→                    className="p-5 rounded-[14px] bg-white/[0.05] border-2 border-white/[0.08] text-white cursor-pointer text-start transition-all hover:border-[#a78bfa] hover:bg-[rgba(124,58,237,0.15)] max-md:min-h-[44px]"
+   426→                  >
+   427→                    <div className="text-[28px] mb-2">🌍</div>
+   428→                    <div className="text-[15px] font-bold">{c.nameAr}</div>
+   429→                    <div className="text-[11px] text-white/50 mt-1">
+   430→                      {c.currency} {c.vatApplicable ? `• VAT ${c.vatRate}%` : "• لا ضريبة"}
+   431→                    </div>
+   432→                  </button>
+   433→                ))}
+   434→              </div>
+   435→            </StepCard>
+   436→          )}
+   437→
+   438→          {/* Step 3: Business Type */}
+   439→          {step === 3 && (
+   440→            <StepCard
+   441→              icon={<Briefcase size={28} />}
+   442→              title="نوع نشاطك"
+   443→              subtitle="هنولّد لك شجرة حسابات تناسب نشاطك تلقائياً"
+   444→            >
+   445→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+   446→                {BUSINESS_TYPES.map((bt) => (
+   447→                  <button
+   448→                    key={bt.value}
+   449→                    onClick={() => setData({ ...data, businessType: bt.value })}
+   450→                    className={cn(
+   451→                      "p-5 rounded-[14px] text-white cursor-pointer text-start transition-all border-2 max-md:min-h-[44px]",
+   452→                      data.businessType === bt.value
+   453→                        ? "bg-[rgba(124,58,237,0.25)] border-[#a78bfa]"
+   454→                        : "bg-white/[0.05] border-white/[0.08]"
+   455→                    )}
+   456→                  >
+   457→                    <div className="text-[28px] mb-2">{bt.icon}</div>
+   458→                    <div className="text-[15px] font-bold">{bt.labelAr}</div>
+   459→                  </button>
+   460→                ))}
+   461→              </div>
+   462→              <NavButtons onNext={next} onPrev={prev} disabled={!data.businessType} />
+   463→            </StepCard>
+   464→          )}
+   465→
+   466→          {/* Step 4: Features */}
+   467→          {step === 4 && (
+   468→            <StepCard
+   469→              icon={<Package size={28} />}
+   470→              title="مميزات إضافية"
+   471→              subtitle="فعّل اللي تحتاجه — تقدر تغيّرها بعدين"
+   472→            >
+   473→              <ToggleRow
+   474→                icon={<Users size={20} />}
+   475→                label="عندي موظفين"
+   476→                desc="فعّل وحدة الموارد البشرية (رواتب، حضور، إجازات)"
+   477→                value={data.hasEmployees ?? false}
+   478→                onChange={(v) => setData({ ...data, hasEmployees: v })}
+   479→              />
+   480→              <ToggleRow
+   481→                icon={<Package size={20} />}
+   482→                label="عندي مخازن"
+   483→                desc="فعّل إدارة المخزون والمستودعات"
+   484→                value={data.hasWarehouse ?? false}
+   485→                onChange={(v) => setData({ ...data, hasWarehouse: v })}
+   486→              />
+   487→              <ToggleRow
+   488→                icon={<MessageCircle size={20} />}
+   489→                label="أستخدم واتساب للعمل"
+   490→                desc="فعّل تكامل واتساب لاستقبال الطلبات"
+   491→                value={data.usesWhatsApp ?? false}
+   492→                onChange={(v) => setData({ ...data, usesWhatsApp: v })}
+   493→              />
+   494→              <NavButtons onNext={next} onPrev={prev} />
+   495→            </StepCard>
+   496→          )}
+   497→
+   498→          {/* Step 5: AI Test */}
+   499→          {step === 5 && (
+   500→            <StepCard
+   501→              icon={<Sparkles size={28} />}
+   502→              title="جرّب الذكاء الاصطناعي"
+   503→              subtitle="اكتب طلب بالعربية وشوف كيف يحوّله لفاتورة"
+   504→            >
+   505→              <textarea
+   506→                value={aiTestText}
+   507→                onChange={(e) => setAiTestText(e.target.value)}
+   508→                placeholder={"📍 العنوان: الكويت - حولي\n📞 50001234\n👤 العميل: أحمد محمد\n\n🛠️ الطلب:\n٢ ماتور ١٦ دينار\n٣ فيلتر ٤.٥ دينار\n\n🚚 التوصيل: ٢ دينار"}
+   509→                rows={6}
+   510→                className={cn(inputStyle, "font-mono resize-y mb-3")}
+   511→              />
+   512→              <button
+   513→                onClick={testAI}
+   514→                disabled={aiLoading || !aiTestText.trim()}
+   515→                className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-md px-6 py-2.5 text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 inline-flex items-center gap-1.5 max-md:min-h-[44px]"
+   516→              >
+   517→                {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+   518→                {aiLoading ? "جارٍ التحليل..." : "حلّل بالذكاء"}
+   519→              </button>
+   520→              {aiResult && (
+   521→                <div className="mt-4 p-3.5 rounded-md bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.3)] text-[13px]">
+   522→                  ✅ تم استخراج {(aiResult as Record<string, unknown[]>)?.orders?.length || 0} طلب
+   523→                  <br />
+   524→                  <span className="text-white/60 text-[11px]">
+   525→                    وقت المعالجة: {(aiResult as { meta?: { processingMs?: number } })?.meta?.processingMs}ms
+   526→                  </span>
+   527→                </div>
+   528→              )}
+   529→              <NavButtons onNext={next} onPrev={prev} nextLabel="التالي" />
+   530→            </StepCard>
+   531→          )}
+   532→
+   533→          {/* Step 6: Done */}
+   534→          {step === 6 && (
+   535→            <div className="text-center">
+   536→              <div className="w-20 h-20 rounded-xl bg-[linear-gradient(135deg,#10b981,#34d399)] inline-flex items-center justify-center text-[40px] mb-6 shadow-[0_16px_48px_rgba(16,185,129,0.4)]">
+   537→                <Check size={36} />
+   538→              </div>
+   539→              <h1 className="text-[28px] font-black mb-2">جاهزين! 🎉</h1>
+   540→              <p className="text-[15px] text-white/70 mb-6">
+   541→                هضبط لك كل حاجة دلوقتي — شجرة حسابات، موديولات، إعدادات.
+   542→              </p>
+   543→              <div className="p-4 rounded-lg bg-white/[0.05] border border-white/[0.08] mb-6 text-start">
+   544→                <SummaryRow label="الشركة" value={companies.find((c) => c.slug === data.companySlug)?.nameAr || data.companySlug || "—"} />
+   545→                <SummaryRow label="نوع النشاط" value={BUSINESS_TYPES.find((b) => b.value === data.businessType)?.labelAr || "—"} />
+   546→                <SummaryRow label="موظفين" value={data.hasEmployees ? "نعم" : "لا"} />
+   547→                <SummaryRow label="واتساب" value={data.usesWhatsApp ? "نعم" : "لا"} />
+   548→              </div>
+   549→              <button
+   550→                onClick={completeWizard}
+   551→                disabled={saving}
+   552→                className="bg-[linear-gradient(135deg,#10b981,#34d399)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 inline-flex items-center gap-2 shadow-[0_12px_36px_rgba(16,185,129,0.4)] max-md:min-h-[44px]"
+   553→              >
+   554→                {saving ? <Loader2 size={18} className="animate-spin" /> : <Rocket size={18} />}
+   555→                {saving ? "جارٍ الإعداد..." : "ابدأ الاستخدام!"}
+   556→              </button>
+   557→            </div>
+   558→          )}
+   559→        </div>
+   560→      </div>
+   561→    </div>
+   562→  );
+   563→}
+   564→
+   565→// ─── Sub-components ──────────────────────────────────────────────────────────
+   566→
+   567→function StepCard({ icon, title, subtitle, children }: {
+   568→  icon: React.ReactNode; title: string; subtitle: string; children: React.ReactNode;
+   569→}) {
+   570→  return (
+   571→    <div>
+   572→      <div className="flex items-center gap-3.5 mb-6">
+   573→        <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-[14px] bg-[rgba(124,58,237,0.2)] text-[#a78bfa] flex items-center justify-center">
+   574→          {icon}
+   575→        </div>
+   576→        <div>
+   577→          <h2 className="text-[22px] font-extrabold">{title}</h2>
+   578→          <p className="text-[13px] text-white/50">{subtitle}</p>
+   579→        </div>
+   580→      </div>
+   581→      {children}
+   582→    </div>
+   583→  );
+   584→}
+   585→
+   586→function ToggleRow({ icon, label, desc, value, onChange }: {
+   587→  icon: React.ReactNode; label: string; desc: string; value: boolean; onChange: (v: boolean) => void;
+   588→}) {
+   589→  return (
+   590→    <div
+   591→      className="flex items-center gap-3.5 p-4 rounded-lg mb-2.5 bg-white/[0.05] border border-white/[0.08] cursor-pointer max-md:min-h-[44px]"
+   592→      onClick={() => onChange(!value)}
+   593→    >
+   594→      <div className={cn(value ? "text-[#a78bfa]" : "text-white/40")}>{icon}</div>
+   595→      <div className="flex-1">
+   596→        <div className="text-sm font-bold">{label}</div>
+   597→        <div className="text-[11px] text-white/50">{desc}</div>
+   598→      </div>
+   599→      <div
+   600→        className={cn("relative w-10 h-[22px] rounded-[11px] transition-colors duration-200",
+   601→          value ? "bg-violet-600" : "bg-white/15"
+   602→        )}
+   603→      >
+   604→        <div
+   605→          className={cn("absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-[right] duration-200",
+   606→            value ? "right-0.5" : "right-5"
+   607→          )}
+   608→        />
+   609→      </div>
+   610→    </div>
+   611→  );
+   612→}
+   613→
+   614→function NavButtons({ onNext, onPrev, nextLabel = "التالي", disabled }: {
+   615→  onNext: () => void; onPrev?: () => void; nextLabel?: string; disabled?: boolean;
+   616→}) {
+   617→  return (
+   618→    <div className="flex gap-2.5 mt-6 sticky bottom-0 -mx-[5%] px-[5%] py-3 md:py-0 md:static md:mx-0 md:px-0 bg-[#1e1147] md:bg-transparent">
+   619→      {onPrev && (
+   620→        <button
+   621→          onClick={onPrev}
+   622→          className="bg-transparent text-white/60 border border-white/15 rounded-md px-5 py-3 text-[13px] font-bold cursor-pointer inline-flex items-center gap-1 max-md:min-h-[44px]"
+   623→        >
+   624→          <ChevronRight size={16} /> السابق
+   625→        </button>
+   626→      )}
+   627→      <button
+   628→        onClick={onNext}
+   629→        disabled={disabled}
+   630→        className="flex-1 bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-md px-5 py-3 text-sm font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center justify-center gap-1.5 max-md:min-h-[44px]"
+   631→      >
+   632→        {nextLabel} <ChevronLeft size={16} />
+   633→      </button>
+   634→    </div>
+   635→  );
+   636→}
+   637→
+   638→function SummaryRow({ label, value }: { label: string; value: string }) {
+   639→  return (
+   640→    <div className="flex justify-between py-1.5 text-[13px]">
+   641→      <span className="text-white/50">{label}</span>
+   642→      <span className="font-bold">{value}</span>
+   643→    </div>
+   644→  );
+   645→}
+   646→
+   647→export default SetupWizard;
+   648→

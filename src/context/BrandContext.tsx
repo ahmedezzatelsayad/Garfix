@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "./AuthContext";
 import { useCompanies } from "@/hooks/queries";
 import type { Company as QueryCompany } from "@/hooks/queries/dashboard";
@@ -45,10 +45,37 @@ const THEME_KEY = "garfix:theme";
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const companiesQuery = useCompanies();
-  const [companies, setCompanies] = useState<CompanyInfo[]>([]);
   const [activeSlug, setActiveSlugState] = useState<string | null>(null);
-  const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  // Derived state: companies from TanStack Query (replaces useState + useEffect setState)
+  const companies = useMemo<CompanyInfo[]>(() => {
+    if (!user || !companiesQuery.data?.companies) return [];
+    return companiesQuery.data.companies.map((c: QueryCompany) => ({
+      id: (c as Record<string, unknown>).id as number ?? 0,
+      name: c.name,
+      slug: c.slug,
+      nameAr: (c as Record<string, unknown>).nameAr as string | null | undefined ?? null,
+      emoji: (c as Record<string, unknown>).emoji as string | null | undefined ?? null,
+      color: (c as Record<string, unknown>).color as string | null | undefined ?? null,
+      phone: (c as Record<string, unknown>).phone as string | null | undefined ?? null,
+      email: (c as Record<string, unknown>).email as string | null | undefined ?? null,
+      address: (c as Record<string, unknown>).address as string | null | undefined ?? null,
+      vatNumber: (c as Record<string, unknown>).vatNumber as string | null | undefined ?? null,
+      currency: (c as Record<string, unknown>).currency as string ?? "SAR",
+      country: (c as Record<string, unknown>).country as string | null | undefined ?? null,
+      defaultTaxRate: (c as Record<string, unknown>).defaultTaxRate as string ?? "0",
+      plan: (c as Record<string, unknown>).plan as string ?? "trial",
+      subscriptionStatus: (c as Record<string, unknown>).subscriptionStatus as string ?? "active",
+      trialEndsAt: (c as Record<string, unknown>).trialEndsAt as string | null | undefined ?? null,
+    }));
+  }, [user, companiesQuery.data?.companies]);
+
+  // Derived state: loading indicator (replaces useState + useEffect setState)
+  const loadingCompanies = useMemo(() => {
+    if (!user) return false;
+    return companiesQuery.isLoading;
+  }, [user, companiesQuery.isLoading]);
 
   // Load theme from localStorage on mount
   useEffect(() => {
@@ -70,52 +97,23 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   }, []);
 
-  // Sync companies from TanStack Query to local state
+  // Sync active slug from localStorage (external system) — legitimate setState-in-effect
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!user) {
-      setCompanies([]);
       setActiveSlugState(null);
-      setLoadingCompanies(false);
       return;
     }
-    setLoadingCompanies(companiesQuery.isLoading);
-    if (companiesQuery.data?.companies) {
-      // Map QueryCompany → CompanyInfo (they share the same shape for most fields)
-      const mapped: CompanyInfo[] = companiesQuery.data.companies.map((c: QueryCompany) => ({
-        id: (c as Record<string, unknown>).id as number ?? 0,
-        name: c.name,
-        slug: c.slug,
-        nameAr: (c as Record<string, unknown>).nameAr as string | null | undefined ?? null,
-        emoji: (c as Record<string, unknown>).emoji as string | null | undefined ?? null,
-        color: (c as Record<string, unknown>).color as string | null | undefined ?? null,
-        phone: (c as Record<string, unknown>).phone as string | null | undefined ?? null,
-        email: (c as Record<string, unknown>).email as string | null | undefined ?? null,
-        address: (c as Record<string, unknown>).address as string | null | undefined ?? null,
-        vatNumber: (c as Record<string, unknown>).vatNumber as string | null | undefined ?? null,
-        currency: (c as Record<string, unknown>).currency as string ?? "SAR",
-        country: (c as Record<string, unknown>).country as string | null | undefined ?? null,
-        defaultTaxRate: (c as Record<string, unknown>).defaultTaxRate as string ?? "0",
-        plan: (c as Record<string, unknown>).plan as string ?? "trial",
-        subscriptionStatus: (c as Record<string, unknown>).subscriptionStatus as string ?? "active",
-        trialEndsAt: (c as Record<string, unknown>).trialEndsAt as string | null | undefined ?? null,
-      }));
-      setCompanies(mapped);
-      // Restore active slug from localStorage or pick first
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored && mapped.some((c: CompanyInfo) => c.slug === stored)) {
-          setActiveSlugState(stored);
-        } else if (mapped.length > 0) {
-          setActiveSlugState(mapped[0].slug);
-        } else {
-          setActiveSlugState(null);
-        }
+    // Restore active slug from localStorage or pick first company
+    if (companies.length > 0 && typeof window !== "undefined") {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored && companies.some((c) => c.slug === stored)) {
+        setActiveSlugState(stored);
+      } else {
+        setActiveSlugState(companies[0].slug);
       }
-    } else if (companiesQuery.isError) {
-      console.error("[brand] failed to load companies:", companiesQuery.error);
-      setCompanies([]);
     }
-  }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);
+  }, [user, companies]);
 
   const refreshCompanies = useCallback(async () => {
     await companiesQuery.refetch();
