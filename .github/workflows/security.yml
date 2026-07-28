@@ -283,6 +283,13 @@ jobs:
           # continue-on-error). Limiting this scan to vuln only avoids the
           # false-positive secret findings on known test values.
           scanners: "vuln"
+          # v12.4: limit SARIF output to CRITICAL,HIGH only. Without this,
+          # trivy-action builds the SARIF with ALL severities (including
+          # MEDIUM/LOW) and the exit-code check gets confused by the
+          # non-filtered findings. With limit-severities-for-sarif: true,
+          # both the SARIF content AND the exit-code gate apply the severity
+          # filter consistently.
+          limit-severities-for-sarif: true
           # v12.4: respect the repo's .trivyignore.yaml for manually-reviewed
           # accepted CVEs (e.g. CVEs in build-time-only deps that are stripped
           # from the production image). The ignore file lives at repo root and
