@@ -38,6 +38,20 @@ function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   // Prefix match for wildcard public routes
   if (pathname.startsWith("/api/webhooks/")) return true;
+  // Public page routes (marketing, legal, status — no auth required).
+  // These are SSR'd pages that don't need resolveAuth; the middleware
+  // would otherwise return 401 and break Lighthouse / unauthenticated
+  // browsing.
+  if (
+    pathname === "/" ||
+    pathname === "/partners" ||
+    pathname === "/status" ||
+    pathname === "/cookies" ||
+    pathname === "/privacy" ||
+    pathname === "/refund"
+  ) {
+    return true;
+  }
   return false;
 }
 

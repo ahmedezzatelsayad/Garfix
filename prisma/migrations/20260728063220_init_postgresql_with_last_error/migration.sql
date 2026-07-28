@@ -451,6 +451,7 @@ CREATE TABLE "JobQueue" (
     "status" TEXT NOT NULL DEFAULT 'pending',
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "maxAttempts" INTEGER NOT NULL DEFAULT 3,
+    "lastError" TEXT,
     "scheduledAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "startedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),

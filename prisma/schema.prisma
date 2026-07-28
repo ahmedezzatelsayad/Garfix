@@ -553,6 +553,7 @@ model JobQueue {
   status      String   @default("pending") // pending, running, completed, failed
   attempts    Int      @default(0)
   maxAttempts Int      @default(3)
+  lastError   String?
   scheduledAt DateTime @default(now())
   startedAt   DateTime?
   completedAt DateTime?
