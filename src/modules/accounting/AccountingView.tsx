@@ -158,13 +158,13 @@ export function AccountingView() {
     setCurrentPage(1);
   };
 
-  // Derived data from cursor pagination hooks (replaces manual state)
-  const accounts = accountsCursor.items as unknown as Account[];
-  const entries = journalCursor.items as unknown as JournalEntry[];
-  const accountsHasNextPage = accountsCursor.hasNextPage;
-  const accountsFetchingNext = accountsCursor.isFetchingNextPage;
-  const entriesHasNextPage = journalCursor.hasNextPage;
-  const entriesFetchingNext = journalCursor.isFetchingNextPage;
+  // NOTE: cursor pagination hooks were removed during TanStack Query migration.
+  // accounts/entries are sourced from accountsQuery/journalEntriesQuery above.
+  // Pagination is handled client-side via PAGE_SIZE / currentPage slicing below.
+  const accountsHasNextPage = false;
+  const accountsFetchingNext = false;
+  const entriesHasNextPage = false;
+  const entriesFetchingNext = false;
 
   const itemsForTab = (): Array<{ id: number }> => (tab === "accounts" ? accounts : entries);
 
@@ -454,25 +454,8 @@ export function AccountingView() {
                     <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
                       <span className="text-[12px] text-muted-foreground">{allItems.length} عنصر</span>
                       <div className="flex items-center gap-1.5">
-                        {/* Cursor pagination: Load More button for infinite scroll */}
-                        {(tab === "accounts" && accountsHasNextPage) && (
-                          <button
-                            onClick={() => accountsCursor.fetchNextPage()}
-                            disabled={accountsFetchingNext}
-                            className={pageBtnStyle(accountsFetchingNext)}
-                          >
-                            {accountsFetchingNext ? "جاري التحميل..." : "تحميل المزيد"}
-                          </button>
-                        )}
-                        {(tab === "journal" && entriesHasNextPage) && (
-                          <button
-                            onClick={() => journalCursor.fetchNextPage()}
-                            disabled={entriesFetchingNext}
-                            className={pageBtnStyle(entriesFetchingNext)}
-                          >
-                            {entriesFetchingNext ? "جاري التحميل..." : "تحميل المزيد"}
-                          </button>
-                        )}
+                        {/* NOTE: cursor pagination buttons removed — pagination is now
+                            client-side via PAGE_SIZE / currentPage slicing above. */}
                       </div>
                     </div>
                   </>

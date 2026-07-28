@@ -1,16 +1,28 @@
 /**
- * instrumentation.ts — Next.js Server Entry Point (Edge-compatible stub)
+ * instrumentation.ts — Next.js Server Entry Point
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * NEXT.JS 16 FIX: This file is intentionally minimal (Edge-compatible).
- * Next.js 16 traces instrumentation.ts as Edge Runtime, causing crashes
- * when it encounters node:fs/path imports in dynamically imported workers.
+ * NEXT.JS SPECIFIC: This file is automatically executed by Next.js when:
+ *   - `next start` is called (production server starts)
+ *   - The dev server initializes
  *
- * The actual runtime bootstrap is handled by instrumentation.node.ts,
- * which runs in Node.js runtime and can safely import Prisma, pg-boss,
- * and other Node-only modules.
+ * It does NOT run during `next build` — this is the critical distinction.
+ *
+ * All worker imports are DYNAMIC inside register(). Static imports of
+ * bootstrap.ts caused Next.js to trace backup.ts, backupWorker.ts,
+ * schedulerWorker.ts — all of which use node:fs/path. Dynamic imports
+ * inside register() only execute at server startup, AFTER the build
+ * completes. This prevents Turbopack/Webpack from tracing these
+ * Node-only modules during the build phase.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+
+import { logger } from "@/lib/logger";
+
+// Next.js 16 defaults instrumentation to Edge Runtime. Our instrumentation
+// uses Node-only modules (Prisma, bcrypt, pg-boss). Force Node.js runtime
+// so Turbopack/NFT doesn't trace node:path imports in workers.
+export const runtime = "nodejs";
 
 export async function register(): Promise<void> {
   const startTime = Date.now();
