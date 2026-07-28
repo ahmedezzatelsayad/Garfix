@@ -39,12 +39,14 @@
   "exclude": [
     "node_modules",
     "scripts",
-    "skills",
     "e2e",
-    "upload",
     "download",
-    "agent-ctx",
-    "load-test-results",
-    "examples"
+    "examples",
+    "src/lib/__tests__",
+    "src/lib/accounting/__tests__",
+    "src/lib/billing/__tests__",
+    "src/lib/e-invoicing/__tests__",
+    "src/lib/integrations/__tests__",
+    ".next/types"
   ]
 }

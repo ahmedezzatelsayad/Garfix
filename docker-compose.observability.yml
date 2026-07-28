@@ -5,6 +5,7 @@
 # Tear down:     docker compose -f docker-compose.observability.yml down -v
 #
 # Jaeger UI:     http://localhost:16686
+# Grafana UI:    http://localhost:3001
 # OTLP/HTTP:     http://localhost:4318   (set OTEL_EXPORTER_OTLP_ENDPOINT)
 # OTLP/gRPC:     http://localhost:4317   (set OTEL_EXPORTER_OTLP_PROTOCOL=grpc)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -25,24 +26,19 @@ services:
       BADGER_DIRECTORY_KEY:  "/badger/key"
 
       # ── Sampling ─────────────────────────────────────────────────────────
-      # All traces are stored locally; no sampling at the collector level.
       SAMPLING_STRATEGIES_FILE: "/etc/jaeger/sampling-strategies.json"
 
       # ── Log level ────────────────────────────────────────────────────────
       LOG_LEVEL: "info"
     ports:
-      # Jaeger UI
       - "16686:16686"
-      # OTLP over HTTP (default for most SDKs)
       - "4318:4318"
-      # OTLP over gRPC
       - "4317:4317"
-      # Jaeger native protocols (optional — useful for legacy integrations)
-      - "6831:6831/udp"   # Jaeger agent compact Thrift
-      - "6832:6832/udp"   # Jaeger agent binary Thrift
-      - "5778:5778"       # Jaeger agent configs
-      - "14268:14268"     # Jaeger collector HTTP
-      - "14250:14250"     # Jaeger collector gRPC
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "14268:14268"
+      - "14250:14250"
     volumes:
       - jaeger-badger-data:/badger
       - ./observability/jaeger-sampling-strategies.json:/etc/jaeger/sampling-strategies.json:ro
@@ -63,8 +59,50 @@ services:
     networks:
       - garfix-observability
 
+  # ── Grafana — Dashboards & Visualization ──────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: garfix-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-garfix-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_LOG_LEVEL: "info"
+      # ── Jaeger as data source (auto-provisioned) ────────────────────────
+      GF_INSTALL_PLUGINS: ""
+    ports:
+      # Use 3001 to avoid conflict with the GarfiX app on 3000
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    networks:
+      - garfix-observability
+
 volumes:
   jaeger-badger-data:
+    driver: local
+  grafana-data:
     driver: local
 
 networks:

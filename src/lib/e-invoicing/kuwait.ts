@@ -127,7 +127,6 @@ export interface KuwaitSubmissionResult {
   submissionStatus: string;
   rejectionReason?: string;
   error?: string;
-  rejectionReason?: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────

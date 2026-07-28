@@ -1,0 +1,43 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "jaeger", "uid": "jaeger" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "auto" },
+      "pluginVersion": "11.6.0",
+      "targets": [{ "datasource": { "type": "jaeger", "uid": "jaeger" }, "query": "service=garfix-app", "queryType": "search" }],
+      "title": "GarfiX Traces Overview",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "jaeger", "uid": "jaeger" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "targets": [{ "datasource": { "type": "jaeger", "uid": "jaeger" }, "query": "service=garfix-app", "queryType": "search" }],
+      "title": "Recent Traces",
+      "type": "traces"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["garfix", "observability"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "GarfiX Observability Overview",
+  "version": 1,
+  "weekStart": ""
+}
