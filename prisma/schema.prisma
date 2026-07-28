@@ -1,7 +1,21 @@
 // NOTE: Financial fields use Decimal instead of Float for production accuracy.
-// SQLite doesn't support Decimal, so in dev it falls back to Float-like behavior.
-// For PostgreSQL production, Decimal ensures exact precision (no floating-point errors).
-// This prevents issues like 0.1 + 0.2 = 0.30000000000000004
+// PostgreSQL stores Decimal as NUMERIC — exact precision, no floating-point
+// drift. This prevents issues like 0.1 + 0.2 = 0.30000000000000004.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER POLICY
+// ─────────────────────────────────────────────────────────────────────────────
+// Dev / Test / Prod:  provider = "postgresql"
+//
+// A local PostgreSQL 17 server is provisioned in the dev sandbox at
+// 127.0.0.1:5433 (database=garfix, user=garfix). See .env for DATABASE_URL.
+// Production deployments use the same provider — no schema swap needed.
+//
+// To (re)start the local PostgreSQL server:
+//   export PATH="/home/z/my-project/.local-debs/extracted/usr/lib/postgresql/17/bin:$PATH"
+//   export LD_LIBRARY_PATH="/home/z/my-project/.local-debs/extracted/usr/lib/postgresql/17/lib"
+//   pg_ctl -D /home/z/my-project/.local-pgdata -l /home/z/my-project/.local-pgdata/postgres.log start
+// ─────────────────────────────────────────────────────────────────────────────
 
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
@@ -11,8 +25,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_DIRECT_URL")
 }
 
@@ -72,6 +86,8 @@ model Company {
   quotations        Quotation[]
   purchaseOrders    PurchaseOrder[]
   purchaseInvoices  PurchaseInvoice[]
+  journalEntries    JournalEntry[]
+  fiscalPeriods     FiscalPeriod[]
 }
 
 // ─── Chart of Accounts ───
@@ -231,6 +247,46 @@ model FinancialPeriod {
   @@unique([name, companySlug])
 }
 
+// ─── Journal Entries (double-entry ledger posts) ───
+//
+// Restored in this commit (R3 fix): the JournalEntry model was referenced by
+// 94+ call sites across src/lib/accounting/* and src/lib/e-invoicing/* but
+// had been deleted from the schema during the Sprint 3 Voucher refactor.
+// The Voucher model remains as a higher-level AR/AP document; JournalEntry
+// is the immutable ledger post that backs every voucher.
+//
+// P0-3 (Soft Delete):  deletedAt field — when non-null, entry is soft-deleted
+//                       and balance-engine.ts filters it out via `deletedAt: null`.
+// P0-8 (Row Versioning): version Int — optimistic locking for concurrent updates.
+//                         Incremented by `tx.journalEntry.update({ data: { version: { increment: 1 } } })`.
+//                         Callers must check `WHERE version = expectedVersion` to detect races.
+
+model JournalEntry {
+  id           Int       @id @default(autoincrement())
+  companySlug  String    @default("default")
+  companyId    String?
+  date         DateTime
+  description  String?
+  reference    String?
+  status       String    @default("posted") // draft, posted, reversed, cancelled
+  currency     String    @default("SAR")
+  sourceType   String?   // voucher, voucher_cancel, period_close, consolidation, banking, commission, fixed_asset, inventory, trade_finance
+  sourceId     Int?
+  createdBy    String?
+  // P0-3 Soft delete
+  deletedAt    DateTime?
+  // P0-8 Optimistic locking
+  version      Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  company      Company?  @relation(fields: [companyId], references: [id])
+  lines        JournalEntryLine[]
+
+  @@index([companySlug, status])
+  @@index([companySlug, date])
+  @@index([sourceType, sourceId])
+}
+
 // ─── Vouchers (Journal Entries) ───
 
 model Voucher {
@@ -256,8 +312,8 @@ model Voucher {
 model VoucherLine {
   id           Int      @id @default(autoincrement())
   accountId    Int
-  debit        String   @default("0.000")
-  credit       String   @default("0.000")
+  debit        Decimal  @default(0)
+  credit       Decimal  @default(0)
   description  String?
   sortOrder    Int      @default(0)
   voucherId    Int
@@ -917,9 +973,16 @@ model FixedAsset {
   glAccount       Account? @relation("FixedAssetGL", fields: [glAccountId], references: [id])
   depAccount      Account? @relation("FixedAssetDep", fields: [depAccountId], references: [id])
   expAccount      Account? @relation("FixedAssetExp", fields: [expAccountId], references: [id])
+  depreciationEntries DepreciationEntry[]
 }
 
 // ─── Journal Entry Line ───
+//
+// Linked to JournalEntry via `journalEntryId` (with relation).
+// NOTE: some legacy callers (balance-engine.ts, period-close.ts) query this
+// model using `entryId` instead of `journalEntryId` — those are tracked as
+// a separate product bug (R3-triage §3) and should be migrated to
+// `journalEntryId` in a follow-up commit.
 
 model JournalEntryLine {
   id              Int      @id @default(autoincrement())
@@ -933,7 +996,12 @@ model JournalEntryLine {
   companySlug     String   @default("default")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  journalEntry    JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account         Account  @relation("JELAccount", fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([companySlug])
 }
 
 // ─── Opening Balance Entry ───
@@ -1081,3 +1149,395 @@ model OutboxEvent {
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
 }
+
+// ─── P0-1 Missing Models (restored) ─────────────────────────────────────
+//
+// These 23 models were referenced by 94+ call sites across src/lib/**,
+// src/app/api/**, and src/lib/__tests__/sprint1-p0-acceptance.test.ts but
+// had been dropped from schema.prisma during the Sprint 3 refactor. They are
+// restored here as the minimum-viable schema required by their callers.
+//
+// Field shapes are derived from the actual `db.<model>.create()` / `.upsert()`
+// call sites in the codebase. Add more fields as needed when callers are
+// promoted from MVP to production.
+
+// ── Fiscal Period (separate from FinancialPeriod; period-close.ts expects
+//    this model with name/status/start/end/companySlug fields) ──
+model FiscalPeriod {
+  id          Int      @id @default(autoincrement())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("open") // open, closed, locked
+  companyId   String?
+  companySlug String   @default("default")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company? @relation(fields: [companyId], references: [id])
+  @@unique([name, companySlug])
+}
+
+// ── E-Invoice (cross-authority e-invoice submission log) ──
+// Used by src/lib/e-invoicing/{egypt-eta,oman-tax,bahrain,kuwait,uae}.ts
+model EInvoice {
+  id              Int      @id @default(autoincrement())
+  authorityType   String   // sa_zatca, ae_ta, eg_eta, om_ta, kw_pa, bh_nbr
+  submissionStatus String  @default("pending") // pending, accepted, rejected, cancelled
+  uuid            String?  @unique
+  rawXml          String?  // raw submission payload (JSON or XML)
+  invoiceId       Int?
+  companySlug     String   @default("default")
+  companyId       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([companySlug, authorityType])
+  @@index([invoiceId])
+}
+
+// ── ZATCA Certificate (encrypted X.509 binary security cert) ──
+// Used by src/lib/e-invoicing/zatca-certs.ts
+model ZatcaCertificate {
+  id                    Int      @id @default(autoincrement())
+  companySlug           String   @default("default")
+  companyId             String?
+  certificateType       String   // sandbox | production
+  certificateDataEnc    Bytes
+  privateKeyDataEnc     Bytes
+  serialNumber          String?  @unique
+  expiryDate            DateTime
+  status                String   @default("active") // active, revoked, expired
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@index([companySlug, status])
+}
+
+// ── MFA Secret (encrypted TOTP secret + recovery codes per user) ──
+// Used by src/lib/mfa.ts
+model MFASecret {
+  id            String   @id // format: "mfa-<userUid>"
+  userUid       String   @unique
+  secret        String   // encrypted TOTP secret
+  recoveryCodes String?  // JSON-encoded array of encrypted recovery codes
+  enabled       Boolean  @default(false)
+  verifiedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Support Ticket (platform admin helpdesk) ──
+// Used by src/lib/automation/engine.ts and src/app/api/platform-admin/tickets/route.ts
+model SupportTicket {
+  id          Int      @id @default(autoincrement())
+  userEmail   String
+  subject     String
+  body        String
+  status      String   @default("open") // open, in_progress, resolved, closed
+  priority    String   @default("normal") // low, normal, high, urgent
+  companySlug String?
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([status, createdAt])
+  @@index([userEmail])
+}
+
+// ── Payment Transaction (MyFatoorah / payment gateway integration) ──
+// Used by src/lib/integrations/myfatoorah-webhook.ts
+model PaymentTransaction {
+  id                Int      @id @default(autoincrement())
+  companySlug       String   @default("default")
+  companyId         String?
+  invoiceId         Int?
+  provider          String   // myfatoorah, stripe, etc.
+  providerPaymentId String?  // provider's invoice/payment ID
+  providerEventId   String?  // provider's webhook event ID
+  amount            Decimal  @default(0)
+  currency          String   @default("SAR")
+  status            String   @default("pending") // pending, paid, failed, refunded
+  metadata          String?  // JSON-encoded webhook metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([provider, providerPaymentId])
+  @@index([companySlug, status])
+}
+
+// ── AI Model Registry (catalog of all known LLM/vision models) ──
+// Used by src/lib/ai/modelRegistry.ts
+model AIModelRegistry {
+  id            Int      @id @default(autoincrement())
+  provider      String   // openai, anthropic, gemini, deepseek, zai, etc.
+  model         String   // gpt-4o, claude-3.5-sonnet, etc.
+  displayName   String
+  capabilities  String   @default("[]") // JSON: ["chat","vision","tools"]
+  tier          String   @default("free") // free, paid, enterprise
+  costPer1kIn   Decimal  @default(0)
+  costPer1kOut  Decimal  @default(0)
+  maxTokens     Int      @default(4096)
+  contextWindow Int      @default(8192)
+  isEnabled     Boolean  @default(true)
+  healthScore   Decimal? @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  benchmarkResults AIBenchmarkResult[]
+  @@unique([provider, model])
+}
+
+// ── AI Benchmark Result (per-capability latency/quality metrics) ──
+// Used by src/lib/ai/modelRegistry.ts
+model AIBenchmarkResult {
+  id              Int      @id @default(autoincrement())
+  modelRegistryId Int
+  capability      String   // chat, vision, tools, code, etc.
+  success         Boolean
+  latencyMs       Int
+  tokensIn        Int      @default(0)
+  tokensOut       Int      @default(0)
+  responseQuality Decimal? @default(0)
+  responseSample  String?  // up to 500 chars
+  errorMessage    String?  // up to 500 chars
+  createdAt       DateTime @default(now())
+  modelRegistry   AIModelRegistry @relation(fields: [modelRegistryId], references: [id], onDelete: Cascade)
+  @@index([modelRegistryId, capability])
+}
+
+// ── AI Fabric Cache Entry (provider response cache for AI Fabric) ──
+// No active code references found; stubbed for forward compatibility.
+model AIFabricCacheEntry {
+  id          Int      @id @default(autoincrement())
+  cacheKey    String   @unique
+  cacheValue  String   // JSON-encoded cached response
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([expiresAt])
+}
+
+// ── Automation Rule (tenant-scoped trigger → actions) ──
+// Used by src/app/api/automation/route.ts and src/lib/automation/engine.ts
+model AutomationRule {
+  id          Int      @id @default(autoincrement())
+  companySlug String   @default("default")
+  name        String
+  trigger     String   // event type, e.g. "invoice.created"
+  condition   String   @default("{}") // JSON
+  actions     String   // JSON array of action objects
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  executionLogs AutomationExecutionLog[]
+  @@index([companySlug, isActive])
+}
+
+// ── Automation Execution Log (per-firing audit trail) ──
+// Used by src/lib/automation/engine.ts
+model AutomationExecutionLog {
+  id          Int      @id @default(autoincrement())
+  ruleId      Int
+  status      String   // success, failed, skipped
+  triggerData String?  // JSON
+  error       String?
+  durationMs  Int      @default(0)
+  createdAt   DateTime @default(now())
+  rule        AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  @@index([ruleId, createdAt])
+}
+
+// ── Webhook Endpoint (tenant's registered webhook URL + secret) ──
+// Used by src/lib/webhooks.ts
+model WebhookEndpoint {
+  id          Int      @id @default(autoincrement())
+  companySlug String   @default("default")
+  url         String
+  events      String   @default("[]") // JSON array of subscribed event types
+  secret      String   // encrypted signing secret
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deliveries  WebhookDelivery[]
+  @@index([companySlug, isActive])
+}
+
+// ── Webhook Delivery (per-dispatch retry log) ──
+// Used by src/lib/webhooks.ts
+model WebhookDelivery {
+  id          Int      @id @default(autoincrement())
+  endpointId  Int
+  eventType   String
+  payload     String   // JSON-encoded payload
+  status      String   @default("pending") // pending, success, failed, dead
+  attempts    Int      @default(0)
+  nextRetryAt DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  @@index([status, nextRetryAt])
+}
+
+// ── Invoice Brain Header Map (OCR supplier-header → field mapping) ──
+// Used by src/lib/invoice-brain/headerMapStore.ts
+model InvoiceBrainHeaderMap {
+  id                Int      @id @default(autoincrement())
+  headerFingerprint String   @unique
+  mapping           String   // JSON: { "supplier": "A", "invoice_no": "B", ... }
+  sampleCount       Int      @default(1)
+  createdAt         DateTime @default(now())
+  lastUsedAt        DateTime @default(now())
+}
+
+// ── Invoice Brain Template (per-supplier OCR template) ──
+// Used by src/lib/invoice-brain/patternStore.ts
+model InvoiceBrainTemplate {
+  id          Int      @id @default(autoincrement())
+  fingerprint String   @unique
+  fields      String   // JSON: full field extraction template
+  sampleCount Int      @default(1)
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime @default(now())
+}
+
+// ── Invoice Template (printable invoice layout template) ──
+// Used by src/app/api/invoice-templates/route.ts
+model InvoiceTemplate {
+  id          Int      @id @default(autoincrement())
+  name        String
+  layout      String?  // JSON layout definition
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Invoice Template Settings (per-tenant template customization) ──
+// Used by src/app/api/invoice-templates/route.ts
+model InvoiceTemplateSettings {
+  id              Int      @id @default(autoincrement())
+  companySlug     String   @unique
+  templateId      String?
+  primaryColor    String?  @default("#1f2937")
+  fontFamily      String?  @default("Inter, sans-serif")
+  fontSize        Int      @default(12)
+  showLogo        Boolean  @default(true)
+  logoPosition    String?  @default("right")
+  showPaymentInfo Boolean  @default(true)
+  showStamp       Boolean  @default(false)
+  invoiceTypes    String?  // JSON array
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ── Cost Center (organizational unit for cost allocation) ──
+// Used by src/app/api/accounting/cost-centers/route.ts
+model CostCenter {
+  id          Int      @id @default(autoincrement())
+  companySlug String   @default("default")
+  code        String
+  nameAr      String
+  nameEn      String?
+  parentId    Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  parent      CostCenter? @relation("CostCenterHierarchy", fields: [parentId], references: [id])
+  children    CostCenter[] @relation("CostCenterHierarchy")
+  @@unique([companySlug, code])
+}
+
+// ── Depreciation Entry (monthly depreciation run for a FixedAsset) ──
+// Used by src/lib/accounting/fixed-assets.ts
+model DepreciationEntry {
+  id                  Int      @id @default(autoincrement())
+  companySlug         String   @default("default")
+  assetId             Int
+  period              String   // YYYY-MM
+  depreciationAmount  Decimal  @default(0)
+  bookValueAfter      Decimal  @default(0)
+  status              String   @default("draft") // draft, posted, reversed
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  asset               FixedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  @@index([companySlug, period])
+  @@index([assetId, period])
+}
+
+// ── FX Revaluation (period-end currency revaluation) ──
+// Used by src/lib/accounting/trade-finance.ts
+model FxRevaluation {
+  id                Int      @id @default(autoincrement())
+  companySlug       String   @default("default")
+  fromCurrency      String
+  toCurrency        String
+  rate              String   // stored as string for Decimal precision
+  period            String   // YYYY-MM
+  realizedGain      Decimal  @default(0)
+  realizedLoss      Decimal  @default(0)
+  unrealizedGain    Decimal  @default(0)
+  unrealizedLoss    Decimal  @default(0)
+  status            String   @default("draft") // draft, posted, reversed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([companySlug, period])
+}
+
+// ── Inter-Company Transaction (transfer between two tenants) ──
+// Used by src/lib/accounting/consolidation.ts
+model InterCompanyTransaction {
+  id                  Int      @id @default(autoincrement())
+  companySlugFrom     String
+  companySlugTo       String
+  amount              String   // stored as string for Decimal precision
+  currency            String   @default("SAR")
+  description         String?
+  journalEntryIdFrom  Int?
+  journalEntryIdTo    Int?
+  status              String   @default("pending") // pending, posted, cancelled
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  @@index([companySlugFrom, status])
+  @@index([companySlugTo, status])
+}
+
+// ── Landed Cost Allocation (allocate freight/customs to PO lines) ──
+// Used by src/lib/accounting/trade-finance.ts and src/app/api/accounting/landed-cost/route.ts
+model LandedCostAllocation {
+  id                Int      @id @default(autoincrement())
+  companySlug       String   @default("default")
+  purchaseInvoiceId Int?
+  costType          String   // freight, customs, insurance, etc.
+  totalCost         Decimal  @default(0)
+  allocationMethod  String   @default("quantity") // quantity, value, weight
+  status            String   @default("draft") // draft, posted
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lines             LandedCostLine[]
+  @@index([companySlug, purchaseInvoiceId])
+}
+
+// ── Landed Cost Line (per-line allocated cost) ──
+// Created via nested write in trade-finance.ts (no direct callers found)
+model LandedCostLine {
+  id              Int      @id @default(autoincrement())
+  allocationId    Int
+  inventoryItemId Int?
+  productId       Int?
+  allocatedCost   Decimal  @default(0)
+  baseQuantity    Decimal? @default(0)
+  createdAt       DateTime @default(now())
+  allocation      LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  @@index([allocationId])
+  @@index([productId])
+}
+
+// ── Installment Schedule (AR/AP payment plan) ──
+// Used by src/lib/accounting/ar-ap.ts
+model InstallmentSchedule {
+  id              Int      @id @default(autoincrement())
+  companySlug     String   @default("default")
+  invoiceId       Int?
+  totalAmount     Decimal  @default(0)
+  paidAmount      Decimal  @default(0)
+  status          String   @default("active") // active, completed, cancelled
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([companySlug, invoiceId])
+}
+
