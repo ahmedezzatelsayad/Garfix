@@ -147,6 +147,11 @@ jobs:
     # registry, etc.). The service container runs on the runner host; we
     # expose it to the garfix-smoke container via the host's bridge IP
     # (172.17.0.1 on default docker0).
+    #
+    # Valkey (Redis-compatible) service container — required by the
+    # /api/health endpoint (marked as CRITICAL along with PostgreSQL).
+    # Without Valkey, the health check returns 503 and the smoke test
+    # fails. BullMQ also needs it for queue operations.
     services:
       postgres:
         image: postgres:16-alpine
@@ -158,6 +163,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping | grep -q PONG"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -199,12 +213,22 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "full=$IMAGE_FULL:$TAG" >> $GITHUB_OUTPUT
 
-      - name: Wait for PostgreSQL to be ready
+      - name: Wait for PostgreSQL and Valkey to be ready
         run: |
           echo "Waiting for PostgreSQL service container..."
           for i in $(seq 1 15); do
             if pg_isready -h localhost -p 5432 -U garfix_test 2>/dev/null; then
               echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "  Attempt $i/15 - waiting..."
+            sleep 2
+          done
+          echo ""
+          echo "Waiting for Valkey service container..."
+          for i in $(seq 1 15); do
+            if redis-cli -h localhost -p 6379 ping 2>/dev/null | grep -q PONG; then
+              echo "✅ Valkey is ready"
               break
             fi
             echo "  Attempt $i/15 - waiting..."
@@ -229,12 +253,15 @@ jobs:
       - name: Run smoke test inside Docker container
         env:
           IMAGE: ${{ steps.img.outputs.full }}
-          # The container needs to reach the PostgreSQL service on the
+          # The container needs to reach PostgreSQL + Valkey on the
           # runner host. `host.docker.internal` is the cross-platform way
           # (Docker 20.10+ on Linux resolves it via the host-gateway
           # entry in /etc/hosts, which we add via --add-host below).
           DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@host.docker.internal:5432/garfix_test?schema=public"
           DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@host.docker.internal:5432/garfix_test"
+          # Valkey/Redis — required by /api/health (CRITICAL) and BullMQ
+          VALKEY_URL: "redis://host.docker.internal:6379"
+          REDIS_URL: "redis://host.docker.internal:6379"
           JWT_SECRET: "smoke-test-jwt-secret-at-least-32-characters-long!!"
           JWT_REFRESH_SECRET: "smoke-test-refresh-secret-at-least-32-chars!!"
           FOUNDER_EMAIL: "founder@test.com"
@@ -243,7 +270,8 @@ jobs:
         run: |
           echo "─── Docker Smoke Test ───"
           echo "Image: $IMAGE"
-          echo "DATABASE_URL points to host.docker.internal:5432 (runner-side postgres service)"
+          echo "DATABASE_URL  → host.docker.internal:5432 (postgres)"
+          echo "VALKEY_URL    → host.docker.internal:6379 (valkey)"
           echo ""
 
           # Start the container detached.
@@ -256,6 +284,8 @@ jobs:
             --add-host=host.docker.internal:host-gateway \
             -e DATABASE_URL="$DATABASE_URL" \
             -e DATABASE_DIRECT_URL="$DATABASE_DIRECT_URL" \
+            -e VALKEY_URL="$VALKEY_URL" \
+            -e REDIS_URL="$REDIS_URL" \
             -e JWT_SECRET="$JWT_SECRET" \
             -e JWT_REFRESH_SECRET="$JWT_REFRESH_SECRET" \
             -e FOUNDER_EMAIL="$FOUNDER_EMAIL" \
@@ -265,11 +295,13 @@ jobs:
 
           echo "✅ Container started, waiting for it to become healthy..."
 
-          # Wait for the container's HEALTHCHECK to report healthy (max 60s)
+          # Wait for the container's HEALTHCHECK to report healthy (max 90s).
+          # The Next.js app + Prisma + Valkey + BullMQ boot can take 30-60s
+          # on a cold GHA runner, so we allow up to 90s (45 attempts × 2s).
           HEALTHY=false
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' garfix-smoke 2>/dev/null || echo "none")
-            echo "  Attempt $i/30 — health: $STATUS"
+            echo "  Attempt $i/45 — health: $STATUS"
             if [ "$STATUS" = "healthy" ]; then
               HEALTHY=true
               break
@@ -283,7 +315,7 @@ jobs:
           done
 
           if [ "$HEALTHY" = "false" ]; then
-            echo "❌ Container did not become healthy within 60 seconds"
+            echo "❌ Container did not become healthy within 90 seconds"
             docker logs garfix-smoke 2>&1 | tail -80
             exit 1
           fi
