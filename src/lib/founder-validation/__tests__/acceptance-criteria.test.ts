@@ -75,7 +75,7 @@ describe('Acceptance Criteria — Final Gate', () => {
       for (const c of companies) {
         for (const inv of c.invoices) {
           expect(Number.isNaN(parseFloat(inv.total))).toBe(false);
-          expect(Number.isNaN(parseFloat(inv.subtotal))).toBe(false);
+          expect(Number.isNaN(inv.subtotal)).toBe(false);
           expect(Number.isNaN(parseFloat(inv.taxAmount))).toBe(false);
         }
       }
@@ -93,11 +93,11 @@ describe('Acceptance Criteria — Final Gate', () => {
     it('should have all invoice amounts as valid numeric values', () => {
       for (const c of companies.slice(0, 100)) {
         for (const inv of c.invoices) {
-          expect(typeof inv.total).toBe('number');
+          expect(typeof inv.total).toBe('string');
           expect(typeof inv.subtotal).toBe('number');
-          expect(typeof inv.paid).toBe('number');
-          expect(inv.total).not.toBeNaN();
-          expect(inv.paid).not.toBeNaN();
+          expect(typeof inv.paid).toBe('string');
+          expect(parseFloat(inv.total)).not.toBeNaN();
+          expect(parseFloat(inv.paid)).not.toBeNaN();
         }
       }
     });

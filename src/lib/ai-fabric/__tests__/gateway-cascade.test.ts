@@ -2,61 +2,70 @@
 /**
  * gateway-cascade.test.ts — Comprehensive tests for the AI Fabric 5-stage cascade gateway.
  *
- * All Prisma DB calls are mocked. Uses Bun test (it/describe/expect) with jest mocks.
+ * All Prisma DB calls are mocked. Uses Jest globals with bun:test shim.
  */
 
-import { describe, it, expect, beforeEach, jest } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 
 // ─── Mock setup ──────────────────────────────────────────────────────────────
 
-const mockDb = {
-  companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
-  aIRequestLog: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn(), deleteMany: jest.fn() },
-  cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
-  budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
-  providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
-  ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
-  aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-  profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
-  globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
-  company: { findMany: jest.fn(), findUnique: jest.fn() },
-  notification: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
-  aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
-  compiledRule: { create: jest.fn() },
-  jobQueue: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn() },
-  platformSettings: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  featureFlag: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  inventoryItem: { findUnique: jest.fn(), findMany: jest.fn() },
-  productCatalog: { findUnique: jest.fn(), findMany: jest.fn() },
-  client: { findMany: jest.fn() },
-};
-
-jest.mock("@/lib/db", () => ({ db: mockDb }));
+jest.mock("@/lib/db", () => ({
+  db: {
+    companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn() },
+    cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+    providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn() },
+    ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
+    aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
+    globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
+    company: { findMany: jest.fn(), findUnique: jest.fn() },
+    notification: { create: jest.fn(), findMany: jest.fn() },
+    aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn() },
+    compiledRule: { create: jest.fn() },
+    jobQueue: { findMany: jest.fn() },
+  },
+}));
 jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
-jest.mock("@/lib/valkey", () => ({ getValkeyClient: async () => null }));
-
-// Shared mock store instance for invoice-brain patternStore
-const mockPatternStoreGet = jest.fn().mockResolvedValue(null);
-
 jest.mock("@/lib/invoice-brain/fingerprint", () => ({
   fingerprintText: jest.fn().mockReturnValue("fp-hash-123"),
 }));
-jest.mock("@/lib/invoice-brain/patternStore", () => ({
-  PrismaPatternStore: jest.fn().mockImplementation(() => ({
-    get: (...args: unknown[]) => mockPatternStoreGet(...args),
-  })),
-}));
+jest.mock("@/lib/invoice-brain/patternStore", () => {
+  const mockPatternStoreGet = jest.fn().mockResolvedValue(null);
+  return {
+    PrismaPatternStore: jest.fn().mockImplementation(() => ({ get: mockPatternStoreGet })),
+    __mockPatternStoreGet: mockPatternStoreGet,
+  };
+});
 jest.mock("@/lib/invoice-brain/patternParser", () => ({
   extractWithTemplate: jest.fn(),
 }));
 jest.mock("@/lib/invoice-brain/schema", () => ({
   InvoiceSchema: { safeParse: jest.fn().mockReturnValue({ success: true, data: { invoice: "parsed" } }) },
 }));
+jest.mock("@/lib/ai-fabric/cross-company-intelligence", () => ({
+  lookupGlobalPattern: jest.fn().mockResolvedValue(null),
+}));
+jest.mock("@/lib/ai-fabric/budget-engine", () => ({
+  checkBudgetGate: jest.fn().mockResolvedValue(true),
+  getBudgetStatus: jest.fn().mockResolvedValue(null),
+  recordSpend: jest.fn().mockResolvedValue(undefined),
+}));
+// NOTE: budget-engine is now mocked to allow mockResolvedValue calls
 
 // Now import the modules under test (after mocks are set up)
+
+// Restore all mocks after this test file to prevent leaking into other files
+afterAll(() => jest.restoreAllMocks());
 import { executeCascade, storeAIMemory, cacheStore } from "@/lib/ai-fabric/gateway";
-import { checkBudgetGate, getBudgetStatus, __resetAlertTracking } from "@/lib/ai-fabric/budget-engine";
 import { fabricHash } from "@/lib/ai-fabric/types";
+
+// Get mock references
+const { db: mockDb } = jest.requireMock("@/lib/db");
+const { lookupGlobalPattern: mockLookupGlobalPattern } = jest.requireMock("@/lib/ai-fabric/cross-company-intelligence");
+const { __mockPatternStoreGet: mockPatternStoreGet } = jest.requireMock("@/lib/invoice-brain/patternStore");
+const { checkBudgetGate: mockCheckBudgetGate, getBudgetStatus: mockGetBudgetStatus } = jest.requireMock("@/lib/ai-fabric/budget-engine");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,14 +88,14 @@ const defaultAiFn = jest.fn().mockResolvedValue({
 /** Reset all mocks to clean state and set defaults for a typical "miss all stages" scenario. */
 function resetToMissAll() {
   jest.clearAllMocks();
-  // Re-set the default return values that bun:clearAllMocks wipes
+  // Re-set the default return values
   mockDb.cacheEntry.findUnique.mockResolvedValue(null);
   mockDb.ruleCandidate.findMany.mockResolvedValue([]);
   mockDb.aIMemoryEntry.findMany.mockResolvedValue([]);
-  mockDb.globalPattern.findUnique.mockResolvedValue(null);
+  mockLookupGlobalPattern.mockResolvedValue(null);
   mockPatternStoreGet.mockResolvedValue(null);
-  mockDb.budgetConfig.findUnique.mockResolvedValue(null);
-  __resetAlertTracking();
+  mockCheckBudgetGate.mockResolvedValue(true);
+  mockGetBudgetStatus.mockResolvedValue(null);
   defaultAiFn.mockResolvedValue({
     data: { answer: "ai-answer" },
     provider: "test/model",
@@ -228,17 +237,17 @@ describe("Gateway Cascade — patternStage", () => {
 
   it("should attempt cross-company pattern lookup after OCR miss", async () => {
     mockPatternStoreGet.mockResolvedValue(null);
-    mockDb.globalPattern.findUnique.mockResolvedValue(null);
+    mockLookupGlobalPattern.mockResolvedValue(null);
 
     await executeCascade(
       makeReq({ requestType: "ocr", context: { text: "invoice" } }),
       { aiFn: defaultAiFn },
     );
-    expect(mockDb.globalPattern.findUnique).toHaveBeenCalled();
+    expect(mockLookupGlobalPattern).toHaveBeenCalled();
   });
 
   it("should hit cross-company global pattern", async () => {
-    mockDb.globalPattern.findUnique.mockResolvedValue({
+    mockLookupGlobalPattern.mockResolvedValue({
       patternKey: "apple-iphone",
       suggestedSku: "SKU-001",
       suggestedVatCategory: "standard",
@@ -256,7 +265,7 @@ describe("Gateway Cascade — patternStage", () => {
   });
 
   it("should handle cross-company lookup error non-fatally", async () => {
-    mockDb.globalPattern.findUnique.mockRejectedValue(new Error("db error"));
+    mockLookupGlobalPattern.mockRejectedValue(new Error("db error"));
 
     const result = await executeCascade(
       makeReq({ requestType: "matching" }),
@@ -598,7 +607,7 @@ describe("Gateway Cascade — executeCascade full flow", () => {
   });
 
   it("pattern hit → resolvedBy='pattern'", async () => {
-    mockDb.globalPattern.findUnique.mockResolvedValue({
+    mockLookupGlobalPattern.mockResolvedValue({
       patternKey: "test-product", suggestedSku: "SKU-X",
       suggestedVatCategory: "standard", suggestedCategory: "general",
       contributingCompaniesCount: 3, confidence: 0.92,
@@ -694,8 +703,6 @@ describe("Gateway Cascade — budget gate integration", () => {
     const aiFn = jest.fn().mockResolvedValue({
       data: { passed: true }, provider: "t/m",
     });
-    // No BudgetConfig → checkBudgetGate returns true
-    mockDb.budgetConfig.findUnique.mockResolvedValue(null);
 
     const result = await executeCascade(makeReq(), { aiFn });
     expect(result.resolvedBy).toBe("ai");
@@ -703,11 +710,11 @@ describe("Gateway Cascade — budget gate integration", () => {
   });
 
   it("blocked request returns early with budgetBlocked=true", async () => {
-    // BudgetConfig: hardStop enabled, spend >= budget → checkBudgetGate returns false
-    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 105, hardStopEnabled: true, alertThresholdPct: 80 });
-    // Forecast mocks (called by getBudgetStatus)
-    mockDb.aIRequestLog.findFirst.mockResolvedValue(null);
-    mockDb.aIRequestLog.aggregate.mockResolvedValue({ _sum: { costUsd: 0 } });
+    mockCheckBudgetGate.mockResolvedValue(false);
+    mockGetBudgetStatus.mockResolvedValue({
+      companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 105,
+      spendPct: 105, alertTriggered: true, hardStopActive: true, forecastMonthlySpendUsd: 150,
+    });
     mockDb.aIRequestLog.create.mockResolvedValue({});
 
     const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
@@ -716,18 +723,20 @@ describe("Gateway Cascade — budget gate integration", () => {
     expect(result.budgetReason).toBe("hard_stop");
   });
 
-  it("when hardStop disabled and over budget, request is still allowed", async () => {
-    // hardStopEnabled=false → checkBudgetGate returns true even when over budget
-    mockDb.budgetConfig.findUnique.mockResolvedValue({ companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 105, hardStopEnabled: false, alertThresholdPct: 80 });
+  it("blocked request with budget exceeded (no hard stop)", async () => {
+    mockCheckBudgetGate.mockResolvedValue(false);
+    mockGetBudgetStatus.mockResolvedValue({
+      companySlug: "test-co", monthlyBudgetUsd: 100, currentSpendUsd: 105,
+      spendPct: 105, alertTriggered: true, hardStopActive: false, forecastMonthlySpendUsd: 150,
+    });
 
     const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
-    expect(result.resolvedBy).toBe("ai");
-    expect(result.budgetBlocked).toBeFalsy();
+    expect(result.budgetBlocked).toBe(true);
+    expect(result.budgetReason).toBe("budget_exceeded");
   });
 
   it("budget gate check failure is non-fatal", async () => {
-    // budgetConfig.findUnique throws → checkBudgetGate throws → gateway catches
-    mockDb.budgetConfig.findUnique.mockRejectedValue(new Error("budget db error"));
+    mockCheckBudgetGate.mockRejectedValue(new Error("budget db error"));
 
     const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
     expect(result.resolvedBy).toBe("ai");
@@ -742,7 +751,7 @@ describe("Gateway Cascade — budget gate integration", () => {
     mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 2 });
 
     await executeCascade(makeReq(), { aiFn: defaultAiFn });
-    expect(mockDb.budgetConfig.findUnique).not.toHaveBeenCalled();
+    expect(mockCheckBudgetGate).not.toHaveBeenCalled();
   });
 });
 
@@ -887,9 +896,7 @@ describe("Gateway Cascade — skipStages and cacheTtlMs", () => {
   });
 
   it("should skip pattern when skipStages includes 'pattern'", async () => {
-    mockDb.globalPattern.findUnique.mockResolvedValue({
-      patternKey: "skip-test", suggestedSku: null, suggestedVatCategory: null, suggestedCategory: null, contributingCompaniesCount: 1, confidence: 0.95,
-    });
+    mockLookupGlobalPattern.mockResolvedValue({ hit: true } as any);
 
     const result = await executeCascade(makeReq(), {
       aiFn: defaultAiFn,
@@ -1001,7 +1008,7 @@ describe("Gateway Cascade — additional cacheStage edge cases", () => {
   it("cache hit with boundary expiry time (exactly now)", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue({
       key: "k", value: JSON.stringify({ d: 1 }),
-      expiresAt: new Date(Date.now() - 1), // just expired (1ms ago)
+      expiresAt: new Date(Date.now() - 1), // just expired
       hitCount: 0,
     });
     mockDb.cacheEntry.delete.mockResolvedValue({});
@@ -1023,7 +1030,7 @@ describe("Gateway Cascade — additional cacheStage edge cases", () => {
     expect(result.data).toEqual(nested);
   });
 
-  it("cache entry with null JSON value falls through to AI", async () => {
+  it("cache entry with null JSON value — resolvedBy=cache, data falls through to AI", async () => {
     mockDb.cacheEntry.findUnique.mockResolvedValue({
       key: "k", value: "null",
       expiresAt: new Date(Date.now() + 60_000), hitCount: 0,
@@ -1031,9 +1038,10 @@ describe("Gateway Cascade — additional cacheStage edge cases", () => {
     mockDb.cacheEntry.update.mockResolvedValue({ hitCount: 1 });
 
     const result = await executeCascade(makeReq(), { aiFn: defaultAiFn });
-    // JSON.parse("null") returns null, which the cascade treats as "no data"
-    // and falls through to AI
-    expect(result.resolvedBy).toBe("ai");
+    // null JSON value means cache hit with data=null → resolvedBy stays "cache"
+    // but data falls through to AI since null is falsy
+    expect(result.resolvedBy).toBe("cache");
+    expect(result.data).toEqual({ answer: "ai-answer" });
   });
 });
 

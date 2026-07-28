@@ -1,12 +1,10 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
-import {
-  useTaxFiling, useCreateTaxFiling, useFilingReminders, useRetentionCheck,
-} from "@/hooks/queries";
 import {
   Scale, FileText, Clock, Shield, Plus, Download, Send,
   CheckCircle2, AlertTriangle, Calculator, MapPin, X,
@@ -50,23 +48,67 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function TaxComplianceView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("vat-return");
-
+  const [vatReturns, setVatReturns] = useState<VATReturn[]>([]);
+  const [zakatRecords, setZakatRecords] = useState<ZakatRecord[]>([]);
+  const [reminders, setReminders] = useState<FilingReminder[]>([]);
+  const [retentionChecks, setRetentionChecks] = useState<RetentionCheck[]>([]);
+  const [loading, setLoading] = useState(false);
   const [vatResult, setVatResult] = useState<VATReturn | null>(null);
   const [zakatResult, setZakatResult] = useState<ZakatRecord | null>(null);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  // TanStack Query hooks for data fetching
-  const vatQuery = useTaxFiling(slug, "vat");
-  const zakatQuery = useTaxFiling(slug, "zakat");
-  const remindersQuery = useFilingReminders(slug);
-  const retentionQuery = useRetentionCheck(slug);
+  const loadVAT = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/tax-filing?companySlug=${slug}&type=vat`);
+      if (res.ok) { const d = await res.json(); setVatReturns(d.returns || []); }
+      else setVatReturns([]);
+    } catch { setVatReturns([]); }
+    finally { setLoading(false); }
+  }, [slug, activeCompany]);
 
-  const vatReturns = vatQuery.data?.returns ?? [];
-  const zakatRecords = zakatQuery.data?.records ?? [];
-  const reminders = remindersQuery.data?.reminders ?? [];
-  const retentionChecks = retentionQuery.data?.checks ?? [];
-  const loading = (tab === "vat-return" ? vatQuery.isLoading : tab === "zakat" ? zakatQuery.isLoading : tab === "reminders" ? remindersQuery.isLoading : tab === "retention" ? retentionQuery.isLoading : false);
+  const loadZakat = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/tax-filing?companySlug=${slug}&type=zakat`);
+      if (res.ok) { const d = await res.json(); setZakatRecords(d.records || []); }
+      else setZakatRecords([]);
+    } catch { setZakatRecords([]); }
+    finally { setLoading(false); }
+  }, [slug, activeCompany]);
+
+  const loadReminders = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/filing-reminders?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setReminders(d.reminders || []); }
+      else setReminders([]);
+    } catch { setReminders([]); }
+    finally { setLoading(false); }
+  }, [slug, activeCompany]);
+
+  const loadRetention = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/retention-check?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setRetentionChecks(d.checks || []); }
+      else setRetentionChecks([]);
+    } catch { setRetentionChecks([]); }
+    finally { setLoading(false); }
+  }, [slug, activeCompany]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === "vat-return") loadVAT();
+    if (tab === "zakat") loadZakat();
+    if (tab === "reminders") loadReminders();
+    if (tab === "retention") loadRetention();
+  }, [tab, loadVAT, loadZakat, loadReminders, loadRetention]);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -91,9 +133,9 @@ export function TaxComplianceView() {
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "vat-return" ? (
-        <VATReturnView returns={vatReturns} result={vatResult} setResult={setVatResult} company={activeCompany} onRefresh={() => vatQuery.refetch()} />
+        <VATReturnView returns={vatReturns} result={vatResult} setResult={setVatResult} company={activeCompany} onRefresh={loadVAT} />
       ) : tab === "zakat" ? (
-        <ZakatView records={zakatRecords} result={zakatResult} setResult={setZakatResult} company={activeCompany} onRefresh={() => zakatQuery.refetch()} />
+        <ZakatView records={zakatRecords} result={zakatResult} setResult={setZakatResult} company={activeCompany} onRefresh={loadZakat} />
       ) : tab === "reminders" ? (
         <RemindersView reminders={reminders} />
       ) : (
@@ -112,18 +154,22 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
   const [generating, setGenerating] = useState(false);
-  const createTaxFilingMutation = useCreateTaxFiling();
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!periodFrom || !periodTo) { toast.error("حدد الفترة"); return; }
     setGenerating(true);
-    createTaxFilingMutation.mutate(
-      { type: "vat", country, periodFrom, periodTo, companySlug: company.slug },
-      {
-        onSuccess: (data) => { setResult((data as unknown as { return: VATReturn }).return); toast.success("تم إنشاء الإقرار"); setGenerating(false); onRefresh(); },
-        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الإقرار"); setGenerating(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/tax-filing", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "vat", country, periodFrom, periodTo, companySlug: company.slug }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setResult(d.return as VATReturn);
+        toast.success("تم إنشاء الإقرار"); onRefresh();
+      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر إنشاء الإقرار"); }
+    } catch { toast.error("خطأ"); }
+    finally { setGenerating(false); }
   };
 
   const countryLabel = (c: string) => COUNTRIES.find(x => x.value === c)?.label || c;
@@ -133,7 +179,7 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
       <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
         <div className="flex items-center gap-1.5">
           <label className="text-[11px] font-bold text-muted-foreground">الدولة</label>
-          <select value={country} onChange={(e) => setCountry(e.target.value)} className={cn(inputStyle, "w-auto")}>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputStyle} w-auto>
             {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
@@ -158,7 +204,7 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">إجمالي المشتريات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalPurchases)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">VAT على المبيعات</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(result.vatOnSales)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">VAT على المشتريات</div><div className="text-lg font-extrabold [direction:ltr] text-end text-emerald-500">{fmt(result.vatOnPurchases)}</div></div>
-            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">VAT المستحق</div><div className={cn("text-xl font-extrabold [direction:ltr] text-end", result.vatDue >= 0 ? "text-red-500" : "text-emerald-500")}>{fmt(result.vatDue)}</div></div>
+            <div className={cn("bg-muted rounded-md p-3", result.vatDue >= 0 ? "text-red-500" : "text-emerald-500")}><div className="text-[11px] text-muted-foreground">VAT المستحق</div><div className="text-xl font-extrabold [direction:ltr] text-end" >{fmt(result.vatDue)}</div></div>
           </div>
           <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", result.status === "submitted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{result.status === "submitted" ? "مُرسل" : "مُنشأ"}</span>
         </div>
@@ -175,11 +221,11 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
               </tr></thead>
               <tbody>{returns.map(r => (
                 <tr key={r.id} className="border-b border-border">
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-violet-500/15 text-violet-500">{countryLabel(r.country)}</span></td>
+                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-purple-500/15 text-purple-500">{countryLabel(r.country)}</span></td>
                   <td className={tdStyle} dir="ltr">{r.periodFrom}</td><td className={tdStyle} dir="ltr">{r.periodTo}</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(r.vatOnSales)}</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-emerald-500")}>{fmt(r.vatOnPurchases)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.vatDue >= 0 ? "text-red-500" : "text-emerald-500")}>{fmt(r.vatDue)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end", "text-red-500")}>{fmt(r.vatOnSales)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end", "text-emerald-500")}>{fmt(r.vatOnPurchases)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.vatDue >= 0 ? "text-red-500" : "text-emerald-500")} >{fmt(r.vatDue)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "submitted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{r.status === "submitted" ? "مُرسل" : "مُنشأ"}</span></td>
                 </tr>
               ))}</tbody>
@@ -198,17 +244,21 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
 }) {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [calculating, setCalculating] = useState(false);
-  const createZakatMutation = useCreateTaxFiling();
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     setCalculating(true);
-    createZakatMutation.mutate(
-      { type: "zakat", year, companySlug: company.slug },
-      {
-        onSuccess: (data) => { setResult((data as unknown as { record: ZakatRecord }).record); toast.success("تم حساب الزكاة"); setCalculating(false); onRefresh(); },
-        onError: (err) => { toast.error(err.message || "تعذّر حساب الزكاة"); setCalculating(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/tax-filing", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "zakat", year, companySlug: company.slug }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setResult(d.record as ZakatRecord);
+        toast.success("تم حساب الزكاة"); onRefresh();
+      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر حساب الزكاة"); }
+    } catch { toast.error("خطأ"); }
+    finally { setCalculating(false); }
   };
 
   return (
@@ -233,7 +283,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">أصول غير زكوية</div><div className="text-lg font-extrabold [direction:ltr] text-end text-amber-500">{fmt(result.nonZakatAssets)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">أساس الزكاة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.zakatBase)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">نسبة الزكاة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{result.zakatRate}%</div></div>
-            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">مبلغ الزكاة</div><div className="text-xl font-extrabold [direction:ltr] text-end text-violet-500">{fmt(result.zakatAmount)}</div></div>
+            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">مبلغ الزكاة</div><div className="text-xl font-extrabold [direction:ltr] text-end text-purple-500">{fmt(result.zakatAmount)}</div></div>
           </div>
           {result.breakdown && Object.keys(result.breakdown).length > 0 && (
             <div className="bg-muted rounded-md p-3 text-[12px]">
@@ -259,7 +309,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
                   <td className={tdStyle} dir="ltr">{r.year}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(r.zakatBase)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.zakatRate}%</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-violet-500")}>{fmt(r.zakatAmount)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", "text-purple-500")}>{fmt(r.zakatAmount)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "paid" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{r.status === "paid" ? "مُسدد" : "مُحسب"}</span></td>
                 </tr>
               ))}</tbody>
@@ -286,7 +336,7 @@ function RemindersView({ reminders }: { reminders: FilingReminder[] }) {
         Object.entries(grouped).map(([country, items]) => (
           <div key={country} className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <MapPin size={16} className="text-violet-500" />
+              <MapPin size={16} text-purple-500 />
               <h3 className="text-[14px] font-bold">{COUNTRIES.find(c => c.value === country)?.label || country}</h3>
             </div>
             <div className="flex flex-col gap-2.5">
@@ -307,7 +357,7 @@ function RemindersView({ reminders }: { reminders: FilingReminder[] }) {
                         </div>
                       </div>
                       <div className="text-[11px] text-muted-foreground">{r.type} — الموعد: <span dir="ltr" className="font-mono">{r.nextDeadline}</span></div>
-                      <div className="text-[11px]"><span className={cn("font-bold", isOverdue ? "text-red-500" : isUrgent ? "text-amber-500" : "text-emerald-500")}>{r.daysUntil} يوم</span> متبقي</div>
+                      <div className={cn("text-[11px]", isOverdue ? "#ef4444" : isUrgent ? "text-amber-500" : "text-emerald-500")}><span className="font-bold" >{r.daysUntil} يوم</span> متبقي</div>
                     </div>
                   </div>
                 );
@@ -347,7 +397,7 @@ function RetentionView({ checks }: { checks: RetentionCheck[] }) {
         Object.entries(grouped).map(([country, items]) => (
           <div key={country} className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <MapPin size={16} className="text-violet-500" />
+              <MapPin size={16} text-purple-500 />
               <h3 className="text-[14px] font-bold">{COUNTRIES.find(c => c.value === country)?.label || country}</h3>
             </div>
             <div className="overflow-x-auto garfix-scroll">
@@ -361,7 +411,7 @@ function RetentionView({ checks }: { checks: RetentionCheck[] }) {
                     <td className={cn(tdStyle, "font-bold")}>{c.category}</td>
                     <td className={tdStyle}>{c.requiredYears} سنوات</td>
                     <td className={tdStyle}>{c.actualYears} سنوات</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end", c.recordsAtRisk > 0 ? "text-red-500" : "text-emerald-500")}>{c.recordsAtRisk}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end", c.recordsAtRisk > 0 ? "text-red-500" : "text-emerald-500")} >{c.recordsAtRisk}</td>
                     <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.compliant ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{c.compliant ? "متوافق ✓" : "غير متوافق ✗"}</span></td>
                   </tr>
                 ))}</tbody>

@@ -5,7 +5,7 @@
  * Covers: appendToChain, verifyChain, getChainStats, and edge cases.
  */
 
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import {  describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import crypto from "node:crypto";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
@@ -622,4 +622,4 @@ describe("Tamper Audit Module", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

@@ -3,27 +3,21 @@
  * worker-budget.test.ts — Phase 4/5/6 integration tests.
  *
  * Tests the worker scaler, fair-share scheduler, and budget engine.
- * Uses mock Prisma (in-memory) — no real DB connection.
+ * Uses real Prisma (SQLite) — no mocks for DB.
  *
  * - Worker scaler: tier limits, queue overflow → scale up, idle → scale down
  * - Scheduler: fair share, idle company gives resources, starvation prevention
  * - Budget engine: record spend, threshold alert, hard stop, forecast
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll, mock } from "bun:test";
-import { createMockDb } from "./helpers/mock-db";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
 
-// Mock @/lib/db and @/lib/valkey before importing modules that depend on them
-const _mockDb = createMockDb();
-mock.module("@/lib/db", () => ({ db: _mockDb }));
-mock.module("@/lib/valkey", () => ({
-  getValkeyClient: async () => null,
-}));
-mock.module("@/lib/logger", () => ({
-  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
-}));
+// Mock Valkey to prevent connection hangs
+jest.mock("@/lib/valkey", () => ({ getValkeyClient: jest.fn().mockResolvedValue(null) }));
 
-const db = _mockDb;
+// Restore all mocks after this test file to prevent leaking into other files
+afterAll(() => jest.restoreAllMocks());
+import { db } from "@/lib/db";
 import { getOrCreateRuntime, scaleWorkers, getActiveWorkerCounts, __setResourcePctForTesting } from "@/lib/ai-fabric/worker-scaler";
 import { scheduleNextJob, getAllocationMap, requestSlot, __resetActiveSlugs } from "@/lib/ai-fabric/scheduler";
 import { recordSpend, getBudgetStatus, checkBudgetGate, forecastMonthlySpend, __resetAlertTracking } from "@/lib/ai-fabric/budget-engine";
@@ -56,12 +50,19 @@ async function createRuntime(companyId: number, poolSize: number, status = "acti
   });
 }
 
-/** Create a BudgetConfig for a company. */
+/** Create a BudgetConfig for a company. Ensures the Company row exists first (FK constraint). */
 async function createBudgetConfig(
   companySlug: string,
   monthlyBudgetUsd: number,
   opts: { currentSpendUsd?: number; alertThresholdPct?: number; hardStopEnabled?: boolean } = {},
 ) {
+  // Ensure the company exists (budget_configs.companySlug has FK → companies.slug)
+  const existing = await db.company.findUnique({ where: { slug: companySlug } });
+  if (!existing) {
+    await db.company.create({
+      data: { name: `Test ${companySlug}`, slug: companySlug, plan: "business" },
+    });
+  }
   return db.budgetConfig.create({
     data: {
       companySlug,
@@ -466,6 +467,7 @@ describe("AI Fabric: Budget Engine (Phase 6)", () => {
   });
 
   it("should create BudgetConfig if it does not exist", async () => {
+    await createCompany(SLUG_A, "business");
     await recordSpend(SLUG_A, 2.5);
 
     const config = await db.budgetConfig.findUniqueOrThrow({ where: { companySlug: SLUG_A } });

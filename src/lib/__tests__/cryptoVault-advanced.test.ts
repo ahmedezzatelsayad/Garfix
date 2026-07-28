@@ -8,7 +8,7 @@
  * special chars).
  */
 
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import {  describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -336,4 +336,4 @@ describe("Edge cases", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

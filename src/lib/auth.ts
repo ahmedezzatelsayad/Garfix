@@ -20,21 +20,9 @@ import { computeEffectivePermissions } from "@/lib/permissions";
 import { getValkeyClient } from "@/lib/valkey";
 
 // SEC-002 FIX: No fallback secrets — throw if missing in production
-// P0 BUILD FIX: Lazy secret resolution — module-level const resolution throws
-// during `next build` because NODE_ENV=production is set at build time.
-// Using getters defers resolution to first actual use (at runtime), not at import.
-// During build, the module is imported for type analysis only — no secrets needed.
 function resolveSecret(envVar: string, name: string): string {
   const val = process.env[envVar];
   if (!val) {
-    // P0 FIX: During `next build`, do NOT throw — secrets are not needed for
-    // static page compilation. Next.js sets NEXT_PHASE during build phases.
-    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
-      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
-    if (isBuildPhase) {
-      console.warn(`⚠️  ${name} not set during build — will be validated at runtime. DO NOT deploy without setting this.`);
-      return `build-placeholder-${name.toLowerCase()}-not-for-runtime-use`;
-    }
     if (process.env.NODE_ENV === "production") {
       throw new Error(`FATAL: ${name} environment variable is not set. Refusing to start with insecure defaults.`);
     }
@@ -48,25 +36,8 @@ function resolveSecret(envVar: string, name: string): string {
   return val;
 }
 
-// P0 FIX: Lazy getter pattern — secrets resolved only on first access at runtime.
-// This prevents module-level throws during `next build`'s "Collecting page data" phase.
-let _jwtSecret: string | undefined;
-let _jwtRefreshSecret: string | undefined;
-
-function getJwtSecret(): string {
-  if (!_jwtSecret) _jwtSecret = resolveSecret("JWT_SECRET", "JWT_SECRET");
-  return _jwtSecret;
-}
-function getJwtRefreshSecret(): string {
-  if (!_jwtRefreshSecret) _jwtRefreshSecret = resolveSecret("JWT_REFRESH_SECRET", "JWT_REFRESH_SECRET");
-  return _jwtRefreshSecret;
-}
-
-// Backward-compatible getters: most code references JWT_SECRET / JWT_REFRESH_SECRET
-// as if they were const — these getters return the resolved value lazily.
-// Token signing/verification functions below use getJwtSecret()/getJwtRefreshSecret().
-const JWT_SECRET_PROXY = { get: () => getJwtSecret() } as const;
-const JWT_REFRESH_SECRET_PROXY = { get: () => getJwtRefreshSecret() } as const;
+const JWT_SECRET = resolveSecret("JWT_SECRET", "JWT_SECRET");
+const JWT_REFRESH_SECRET = resolveSecret("JWT_REFRESH_SECRET", "JWT_REFRESH_SECRET");
 const ACCESS_TTL = parseInt(process.env.JWT_ACCESS_TTL_SECONDS || "1800", 10); // 30 min
 const REFRESH_TTL = parseInt(process.env.JWT_REFRESH_TTL_SECONDS || "2592000", 10); // 30 days
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
@@ -113,16 +84,16 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
 
 export function signToken(payload: AuthPayload): string {
   const jti = crypto.randomUUID();
-  return jwt.sign({ ...payload, jti, type: "access" }, getJwtSecret(), { expiresIn: ACCESS_TTL });
+  return jwt.sign({ ...payload, jti, type: "access" }, JWT_SECRET, { expiresIn: ACCESS_TTL });
 }
 
 export function signRefreshToken(uid: string, tv: number): string {
-  return jwt.sign({ uid, tv, type: "refresh" }, getJwtRefreshSecret(), { expiresIn: REFRESH_TTL });
+  return jwt.sign({ uid, tv, type: "refresh" }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TTL });
 }
 
 export function verifyToken(token: string): AuthPayload | null {
   try {
-    const decoded = jwt.verify(token, getJwtSecret()) as jwt.JwtPayload & AuthPayload & { type?: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload & AuthPayload & { type?: string };
     if (decoded.type !== "access") return null;
     return {
       uid: decoded.uid,
@@ -140,7 +111,7 @@ export function verifyToken(token: string): AuthPayload | null {
 
 export function verifyRefreshToken(token: string): { uid: string; tv: number } | null {
   try {
-    const decoded = jwt.verify(token, getJwtRefreshSecret()) as jwt.JwtPayload & {
+    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as jwt.JwtPayload & {
       uid: string;
       tv: number;
       type?: string;
@@ -213,25 +184,7 @@ const REFRESH_COOKIE_OPTS = {
   maxAge: REFRESH_TTL,
 };
 
-/**
- * SEC-H4 FIX (Cycle 3, re-applied): Issue access + refresh cookies AND
- * register the JTI in the SessionRegistry with IP + User-Agent context.
- *
- * The third argument `req` is REQUIRED in production — omitting it leaves
- * SessionRegistry empty and breaks forensic revocation. The
- * SESSION_REGISTRY_ENFORCED env var (default "true") toggles this:
- *   - "true"  → registerSession is called (production default)
- *   - "false" → skipped (only for tests / local dev without DB)
- *
- * registerSession failures are logged but never throw — a SessionRegistry
- * outage must NOT block login. resolveAuth() will fail-OPEN if the
- * registry is unreachable, matching the existing Valkey blacklist policy.
- */
-export async function issueSession(
-  response: NextResponse,
-  user: SessionUser,
-  req?: NextRequest,
-): Promise<void> {
+export async function issueSession(response: NextResponse, user: SessionUser): Promise<void> {
   const payload: AuthPayload = {
     uid: user.uid,
     email: user.email,
@@ -240,60 +193,8 @@ export async function issueSession(
     permissions: user.permissions,
     tv: user.tokenVersion,
   };
-
-  const accessToken = signToken(payload);
-  const refreshToken = signRefreshToken(user.uid, user.tokenVersion);
-
-  response.cookies.set(ACCESS_COOKIE, accessToken, COOKIE_OPTS);
-  response.cookies.set(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTS);
-
-  // SEC-H4: Register the access token's JTI in the SessionRegistry so
-  // resolveAuth() can validate it for revocation, concurrent-session
-  // limits, and forensic IP/UA tracking. Best-effort: failures are logged
-  // but do NOT break login.
-  const enforced = process.env.SESSION_REGISTRY_ENFORCED !== "false";
-  if (enforced && req) {
-    try {
-      // Decode the JTI we just signed — signToken mints a fresh UUID
-      // and embeds it. We re-decode rather than pass it back to avoid
-      // changing signToken's return type for all other callers.
-      const decoded = jwt.decode(accessToken) as jwt.JwtPayload | null;
-      const jti = decoded?.jti as string | undefined;
-      if (jti) {
-        const ip = getClientIpFromRequest(req);
-        const ua = req.headers.get("user-agent") || undefined;
-        // Dynamic import avoids a circular dep at module load (passwordPolicy
-        // imports db which imports logger which is fine, but keeping the
-        // dep lazy makes the test surface for auth.ts hermetic).
-        const { registerSession } = await import("./passwordPolicy");
-        await registerSession({
-          userUid: user.uid,
-          jti,
-          ipAddress: ip,
-          userAgent: ua,
-          ttlSeconds: ACCESS_TTL,
-        });
-      }
-    } catch (err) {
-      // Best-effort — login must succeed even if SessionRegistry is down.
-      // resolveAuth() will fail-OPEN in that case (matching Valkey policy).
-      console.warn("[auth] SessionRegistry registration failed (best-effort):",
-        err instanceof Error ? err.message : String(err));
-    }
-  }
-}
-
-/** Extract client IP from a NextRequest, honoring X-Forwarded-For chains. */
-function getClientIpFromRequest(req: NextRequest): string | undefined {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    // First IP in the chain is the original client
-    return xff.split(",")[0]?.trim() || undefined;
-  }
-  // Next.js 15+ exposes req.ip in some runtimes; fall back to x-real-ip
-  return (req as unknown as { ip?: string }).ip
-    || req.headers.get("x-real-ip")
-    || undefined;
+  response.cookies.set(ACCESS_COOKIE, signToken(payload), COOKIE_OPTS);
+  response.cookies.set(REFRESH_COOKIE, signRefreshToken(user.uid, user.tokenVersion), REFRESH_COOKIE_OPTS);
 }
 
 export async function clearSession(response: NextResponse): Promise<void> {
@@ -322,40 +223,13 @@ export interface AuthResult {
 /**
  * Resolve the authenticated user from the request's access cookie.
  * On expired access token, attempts to refresh from the refresh cookie.
- *
- * SEC-H4 (re-applied): when SESSION_REGISTRY_ENFORCED !== "false" (default
- * is enforced), the access token's JTI must exist in the SessionRegistry
- * table. This gives admins an immediate revocation path that survives
- * JWT TTL windows (deleting the row invalidates the session on the next
- * request). Fail-OPEN on DB errors so a DB outage does not lock everyone
- * out — matching the existing Valkey blacklist policy.
  */
 export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   const access = getAccessToken(req);
   if (access) {
-    // SEC-C1 FIX (Cycle 1): use verifyTokenWithBlacklist so that a
-    // force-logged-out or password-changed user is immediately rejected,
-    // even if the JWT signature is still valid for the remaining TTL.
     const payload = await verifyTokenWithBlacklist(access);
-    if (payload) {
-      // SEC-H4: verify the JTI is still registered. Skip when env disabled
-      // OR when the token has no JTI (older tokens issued before SEC-H4).
-      const enforced = process.env.SESSION_REGISTRY_ENFORCED !== "false";
-      if (enforced && payload.jti) {
-        try {
-          const { isSessionValid } = await import("./passwordPolicy");
-          const valid = await isSessionValid(payload.jti);
-          if (!valid) {
-            return { ok: false, error: "Session revoked", status: 401 };
-          }
-        } catch (err) {
-          // Fail-OPEN — DB outage must not lock everyone out.
-          console.warn("[auth] SessionRegistry lookup failed (fail-open):",
-            err instanceof Error ? err.message : String(err));
-        }
-      }
-      return { ok: true, user: payload };
-    }
+    if (payload) return { ok: true, user: payload };
+    // Token was either invalid or blacklisted — try refresh
   }
 
   // Try refresh
@@ -366,7 +240,7 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   if (!refreshPayload) return { ok: false, error: "Unauthorized", status: 401 };
 
   // Look up user — verify token version matches (invalidates old sessions)
-  const user = await db.appUser.findUnique({ where: { uid: refreshPayload.uid } });
+  const user = await db.user.findUnique({ where: { uid: refreshPayload.uid } });
   if (!user) return { ok: false, error: "Unauthorized", status: 401 };
   if (user.tokenVersion !== refreshPayload.tv) {
     return { ok: false, error: "Session revoked", status: 401 };
@@ -498,7 +372,7 @@ export async function verifyPasswordAndMaybeRehash(
   const hashRounds = parseInt(hash.split("$")[2], 10);
   if (hashRounds < BCRYPT_ROUNDS) {
     const newHash = await hashPassword(plain);
-    await db.appUser.update({ where: { uid }, data: { passwordHash: newHash } });
+    await db.user.update({ where: { uid }, data: { passwordHash: newHash } });
     return { ok: true, rehashed: true };
   }
   return { ok: true, rehashed: false };

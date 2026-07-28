@@ -34,7 +34,7 @@ function countInlineStyles(content: string): number {
   return (content.match(/style=\{/g) || []).length;
 }
 
-// ── Module files (defined at module scope so both describe blocks can access) ──
+// ── Module views that should have responsive breakpoints ────────────
 const moduleFiles = [
   'settings/CompanySettingsForm.tsx',
   'settings/SettingsView.tsx',
@@ -66,10 +66,12 @@ describe('Responsive Design — Module Views', () => {
         const content = readModuleFile(file);
         if (!content) return;
         const inlineCount = countInlineStyles(content);
-        // After partial cleanup, files may have remaining inline styles
-        // (dynamic styles that can't be expressed in Tailwind).
-        // Accounting views use grid-template-columns with dynamic values.
-        expect(inlineCount).toBeLessThanOrEqual(40);
+        // After cleanup, most files should have ≤5 remaining inline styles
+        // (dynamic styles that can't be expressed in Tailwind)
+        // Large files with dynamic color props (AccountingView, ArApView) allow ≤10
+        const isLargeDynamicFile = file.startsWith('accounting/AccountingView') || file.startsWith('accounting/ArApView');
+        const threshold = isLargeDynamicFile ? 10 : 5;
+        expect(inlineCount).toBeLessThanOrEqual(threshold);
       });
 
       it('should have responsive grid or flex layout patterns', () => {
@@ -79,8 +81,7 @@ describe('Responsive Design — Module Views', () => {
         const hasResponsiveFlex = content.includes('sm:flex-row') || content.includes('md:flex-row');
         const hasResponsivePadding = content.includes('sm:p-') || content.includes('md:p-');
         const hasResponsiveMinmax = content.includes('sm:minmax') || content.includes('md:minmax');
-        const hasResponsiveWidth = content.includes('sm:w') || content.includes('md:w');
-        expect(hasResponsiveGrid || hasResponsiveFlex || hasResponsivePadding || hasResponsiveMinmax || hasResponsiveWidth).toBe(true);
+        expect(hasResponsiveGrid || hasResponsiveFlex || hasResponsivePadding || hasResponsiveMinmax).toBe(true);
       });
     });
   }
@@ -109,13 +110,14 @@ describe('Responsive Design — Module Views', () => {
   });
 
   // ── Test: Responsive grid patterns in accounting views ──
-  it('Accounting views should use responsive grid columns', () => {
+  it('Accounting views should use responsive minmax grid columns', () => {
     const accountingFiles = ['AccountingView.tsx', 'ArApView.tsx', 'BankingView.tsx'];
     for (const f of accountingFiles) {
       const content = readModuleFile(`accounting/${f}`);
       if (!content) continue;
-      const hasResponsiveGrid = content.includes('sm:grid-cols') || content.includes('sm:minmax');
-      expect(hasResponsiveGrid).toBe(true);
+      // Tailwind expresses responsive minmax via sm:grid-cols-[repeat(auto-fit,minmax(...))]
+      const hasResponsiveMinmax = content.includes('sm:grid-cols-[repeat(auto-fit,minmax');
+      expect(hasResponsiveMinmax).toBe(true);
     }
   });
 

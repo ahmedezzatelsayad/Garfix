@@ -16,36 +16,7 @@
  * (supports all RESP commands including pub/sub, SCAN, etc.)
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn, afterAll } from "bun:test";
-
-// ─── Mocks to isolate from Prisma / cross-test contamination ────────────
-// Other test files mock @/lib/db globally via bun:test's mock.module().
-// Without our own mock here, the real @/lib/db import pulls in @prisma/client
-// which isn't generated for test runs. Also, the pg-boss module (used when
-// DATABASE_URL is set) has its own dead-letter map — mocking it forces
-// enqueueBackground to fall through to the in-process path so dead letters
-// are recorded in queues.ts's own map (which getDeadLetters() reads).
-mock.module("@/lib/db", () => ({
-  db: {
-    user: { findUnique: mock(() => Promise.resolve(null)) },
-    jobQueue: {
-      create: mock(() => Promise.resolve({ id: 1 })),
-      update: mock(() => Promise.resolve({})),
-    },
-    auditLog: { create: mock(() => Promise.resolve({ id: "mock-audit" })) },
-  },
-}));
-
-mock.module("@/lib/queue-pgboss", () => ({
-  PGBOSS_AVAILABLE: false,
-  startPgBoss: mock(() => Promise.reject(new Error("pg-boss mocked out"))),
-  enqueueBackground: mock(() => {}),
-  enqueueAsync: mock(() => Promise.reject(new Error("pg-boss mocked out"))),
-  registerWorker: mock(() => {}),
-  getDeadLetters: mock(() => []),
-  clearDeadLetters: mock(() => {}),
-  recoverPendingJobs: mock(() => Promise.resolve(0)),
-}));
+import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
 
 // ─── ioredis-mock setup (must come before any imports that use ioredis) ────
 
@@ -100,7 +71,6 @@ describe("valkey.ts — Connection Manager", () => {
     process.env.REDIS_URL = "redis://redis:6379";
     // Reset module to pick up new env
     const mod = await import("@/lib/valkey?reset=2");
-    // getValkeyUrl() normalizes valkey:// → redis:// for ioredis compatibility
     expect(mod.getValkeyUrl()).toBe("redis://valkey:6379");
   });
 
@@ -398,6 +368,7 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
   beforeEach(async () => {
     delete process.env.VALKEY_URL;
     delete process.env.REDIS_URL;
+    delete process.env.DATABASE_URL;
     const mod = await import("@/lib/queues");
     registerWorker = mod.registerWorker;
     enqueue = mod.enqueue;
@@ -419,8 +390,8 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
 
   it("enqueueBackground dead-letters when no handler registered", async () => {
     enqueueBackground("nonexistent-queue" as any, { type: "test", data: {} });
-    // Give the async operation time to complete (pg-boss fallback chain is async)
-    await new Promise((r) => setTimeout(r, 500));
+    // Give the async operation time to complete
+    await new Promise((r) => setTimeout(r, 100));
     const dl = getDeadLetters();
     expect(dl.some((d) => d.type === "test")).toBe(true);
   });
@@ -460,17 +431,12 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
     expect(getDeadLetters()).toHaveLength(0);
   });
 
-  it("QUEUE_NAMES contains all expected queues", async () => {
-    // P1/R3 fix: re-import @/lib/queues with a cache-busting query to bypass
-    // any mock.module() overrides that other test files (e.g. p1-outbox)
-    // registered globally. Bun's mock.module persists across files.
-    const realMod = await import("@/lib/queues?bypass=" + Math.random());
-    const realQueueNames = realMod.QUEUE_NAMES;
-    expect(realQueueNames.AI).toBe("ai-jobs");
-    expect(realQueueNames.EMAIL).toBe("email-jobs");
-    expect(realQueueNames.WHATSAPP).toBe("whatsapp-jobs");
-    expect(realQueueNames.BACKUP).toBe("backup-jobs");
-    expect(realQueueNames.SCHEDULER).toBe("scheduler-jobs");
+  it("QUEUE_NAMES contains all expected queues", () => {
+    expect(QUEUE_NAMES.AI).toBe("ai-jobs");
+    expect(QUEUE_NAMES.EMAIL).toBe("email-jobs");
+    expect(QUEUE_NAMES.WHATSAPP).toBe("whatsapp-jobs");
+    expect(QUEUE_NAMES.BACKUP).toBe("backup-jobs");
+    expect(QUEUE_NAMES.SCHEDULER).toBe("scheduler-jobs");
   });
 });
 
@@ -631,6 +597,7 @@ describe("Chaos Tests — Graceful Degradation", () => {
 
   it("queue dead-letters job when handler throws", { timeout: 30_000 }, async () => {
     delete process.env.VALKEY_URL;
+    delete process.env.DATABASE_URL;
     const mod = await import("@/lib/queues?chaos=4");
     mod.clearDeadLetters();
 
@@ -806,5 +773,3 @@ describe("Performance Benchmarks — Measured", () => {
     unsub();
   });
 });
-
-afterAll(() => { mock.restore(); });

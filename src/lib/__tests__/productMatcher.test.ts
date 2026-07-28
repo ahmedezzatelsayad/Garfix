@@ -22,7 +22,7 @@
  *  - Leading "ال" (definite article) is stripped
  *  - Ta-marbuta ة → ha ه normalization
  */
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import {  describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import { normalizeArabic, matchProduct, DEFAULT_AUTO_MATCH_THRESHOLD, invalidateKillSwitchCache } from "@/lib/productMatcher";
 import type { MatchInput } from "@/lib/productMatcher";
 
@@ -46,7 +46,7 @@ const dbMock = {
   featureFlag: {
     findUnique: async () => ({ key: "product-auto-matching", isActive: killSwitchEnabled }),
   },
-  platformSettings: { findMany: async () => [] },
+  platformSetting: { findMany: async () => [] },
   productAlias: {
     findUnique: async (args: any) => {
       const { companySlug, alias } = args.where.companySlug_alias;
@@ -393,4 +393,4 @@ describe("matchProduct", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

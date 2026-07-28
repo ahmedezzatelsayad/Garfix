@@ -280,8 +280,9 @@ describe("30-Day Simulation: Provider Failure (Day 15)", () => {
   it("should show increased cost on day 15 (retries + fallback)", () => {
     const failureDay = metrics[14];
     const dayBefore = metrics[13];
-    // Math.random() makes this non-deterministic; just verify cost is non-negative
-    expect(failureDay.totalCostUsd).toBeGreaterThanOrEqual(0);
+    // Cost may increase due to retries/fallback, but may also decrease if fallback
+    // is cheaper. Check that cost is at least 60% of previous day (not zero)
+    expect(failureDay.totalCostUsd).toBeGreaterThan(dayBefore.totalCostUsd * 0.5);
   });
 
   it("should show fallback provider handling requests", () => {

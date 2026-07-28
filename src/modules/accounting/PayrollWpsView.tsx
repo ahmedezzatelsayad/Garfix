@@ -1,13 +1,10 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
-import {
-  usePayroll, useCalculatePayroll, useWPS, useGenerateWPS, useSubmitWPS,
-  useDownloadWPSFile,
-} from "@/hooks/queries";
 import {
   Banknote, FileText, Plus, X, Download, Send, Clock,
   CheckCircle2, Users, Calculator, RefreshCw, AlertTriangle,
@@ -32,20 +29,41 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function PayrollWpsView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("payroll");
-
+  const [salaries, setSalaries] = useState<EmployeeSalary[]>([]);
+  const [wpsFiles, setWpsFiles] = useState<WPSFile[]>([]);
+  const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  // TanStack Query hooks for data fetching
-  const payrollQuery = usePayroll(slug, selectedMonth);
-  const wpsQuery = useWPS(slug);
-  const calculatePayrollMutation = useCalculatePayroll();
+  const loadPayroll = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/payroll?companySlug=${slug}&month=${selectedMonth}`);
+      if (res.ok) { const d = await res.json(); setSalaries(d.salaries || []); }
+      else setSalaries([]);
+    } catch { setSalaries([]); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug, selectedMonth]);
 
-  const salaries = payrollQuery.data?.salaries ?? [];
-  const wpsFiles = wpsQuery.data?.files ?? [];
-  const loading = tab === "payroll" ? payrollQuery.isLoading : tab === "wps" ? wpsQuery.isLoading : false;
+  const loadWPS = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/wps?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setWpsFiles(d.files || []); }
+      else setWpsFiles([]);
+    } catch { setWpsFiles([]); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === "payroll") loadPayroll();
+    if (tab === "wps") loadWPS();
+  }, [tab, loadPayroll, loadWPS]);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -85,10 +103,10 @@ export function PayrollWpsView() {
           onMonthChange={setSelectedMonth}
           company={activeCompany}
           calculating={calculating}
-          onCalculate={() => { setCalculating(true); calculatePayrollMutation.mutate({ month: selectedMonth, companySlug: activeCompany.slug }, { onSuccess: () => { payrollQuery.refetch(); setCalculating(false); }, onError: () => { setCalculating(false); } }); }}
+          onCalculate={loadPayroll}
         />
       ) : (
-        <WPSView wpsFiles={wpsFiles} company={activeCompany} selectedMonth={selectedMonth} onRefresh={() => wpsQuery.refetch()} />
+        <WPSView wpsFiles={wpsFiles} company={activeCompany} selectedMonth={selectedMonth} onRefresh={loadWPS} />
       )}
     </div>
   );
@@ -101,17 +119,18 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
   onMonthChange: (m: string) => void; company: { slug: string }; calculating: boolean; onCalculate: () => void;
 }) {
   const [calcLoading, setCalcLoading] = useState(false);
-  const calculatePayrollMutation = useCalculatePayroll();
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     setCalcLoading(true);
-    calculatePayrollMutation.mutate(
-      { month: selectedMonth, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم حساب الرواتب"); setCalcLoading(false); onCalculate(); },
-        onError: (err) => { toast.error(err.message || "تعذّر حساب الرواتب"); setCalcLoading(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/payroll", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: selectedMonth, companySlug: company.slug }),
+      });
+      if (res.ok) { toast.success("تم حساب الرواتب"); onCalculate(); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر حساب الرواتب"); }
+    } catch { toast.error("خطأ في الاتصال"); }
+    finally { setCalcLoading(false); }
   };
 
   return (
@@ -149,8 +168,8 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
           <div><div className="text-[11px] text-muted-foreground">الاستقطاعات</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(totalDeductions)}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalNet >= 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
-          <div><div className="text-[11px] text-muted-foreground">صافي الرواتب</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalNet)}</div></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: totalNet >= 0 ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.20)", color: totalNet >= 0 ? "#10b981" : "#ef4444" }}><CheckCircle2 size={18} /></div>
+          <div><div className={cn("text-[11px] text-muted-foreground", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>صافي الرواتب</div><div className="text-lg font-extrabold [direction:ltr] text-end" >{fmt(totalNet)}</div></div>
         </div>
       </div>
 
@@ -174,12 +193,12 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
                   <tr key={s.id} className="border-b border-border">
                     <td className={cn(tdStyle, "font-bold")}>{s.employeeName}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(s.baseSalary)}</td>
-                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-blue-500")}>{fmt(s.allowances)}</td>
-                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-amber-500")}>{fmt(s.socialInsurance)}</td>
-                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(s.deductions)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", s.netSalary >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(s.netSalary)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end", "text-blue-500")}>{fmt(s.allowances)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end", "text-amber-500")}>{fmt(s.socialInsurance)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end", "text-red-500")}>{fmt(s.deductions)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", s.netSalary >= 0 ? "text-emerald-500" : "text-red-500")} >{fmt(s.netSalary)}</td>
                     <td className={tdStyle}>{s.currency}</td>
-                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", s.status === "paid" ? "bg-emerald-500/15 text-emerald-500" : s.status === "pending" ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500")}>{s.status === "paid" ? "مسدّد" : s.status === "pending" ? "معلّق" : "متأخر"}</span></td>
+                    <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: s.status === "paid" ? "rgba(16,185,129,0.15)" : s.status === "pending" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)", color: s.status === "paid" ? "#10b981" : s.status === "pending" ? "#f59e0b" : "#ef4444" }}>{s.status === "paid" ? "مسدّد" : s.status === "pending" ? "معلّق" : "متأخر"}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -187,10 +206,10 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
                 <tr className="border-t-2 border-border bg-muted font-extrabold">
                   <td className={cn(tdStyle, "font-extrabold")}>الإجمالي ({salaries.length} موظف)</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(totalBase)}</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-blue-500")}>{fmt(totalAllowances)}</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-amber-500")}>{fmt(totalSocialInsurance)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold text-red-500")}>{fmt(totalDeductions)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalNet)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", "text-blue-500")}>{fmt(totalAllowances)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", "text-amber-500")}>{fmt(totalSocialInsurance)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", "text-red-500")}>{fmt(totalDeductions)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalNet >= 0 ? "text-emerald-500" : "text-red-500")} >{fmt(totalNet)}</td>
                   <td className={cn(tdStyle, "font-extrabold")} colSpan={2}></td>
                 </tr>
               </tfoot>
@@ -211,49 +230,41 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
   const countryLabels: Record<string, string> = { KW: "الكويت", SA: "السعودية", AE: "الإمارات" };
   const countryCodes = ["KW", "SA", "AE"];
 
-  const generateWpsMutation = useGenerateWPS();
-
-  const handleGenerate = (country: string) => {
+  const handleGenerate = async (country: string) => {
     setGenerating(country);
-    generateWpsMutation.mutate(
-      { country, month: localMonth, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success(`تم إنشاء ملف WPS ل${countryLabels[country]}`); setGenerating(null); onRefresh(); },
-        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الملف"); setGenerating(null); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/wps", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country, month: localMonth, companySlug: company.slug }),
+      });
+      if (res.ok) { toast.success(`تم إنشاء ملف WPS ل${countryLabels[country]}`); onRefresh(); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إنشاء الملف"); }
+    } catch { toast.error("خطأ"); }
+    finally { setGenerating(null); }
   };
 
-  const submitWpsMutation = useSubmitWPS();
-
-  const handleSubmit = (fileId: number) => {
-    submitWpsMutation.mutate(
-      { id: fileId, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم إرسال الملف"); onRefresh(); },
-        onError: (err) => { toast.error(err.message || "تعذّر الإرسال"); },
-      },
-    );
+  const handleSubmit = async (fileId: number) => {
+    try {
+      const res = await authedFetch(`/api/accounting/wps/${fileId}/submit?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
+      if (res.ok) { toast.success("تم إرسال الملف"); onRefresh(); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الإرسال"); }
+    } catch { toast.error("خطأ"); }
   };
 
-  const downloadWpsMutation = useDownloadWPSFile();
-
-  const handleDownload = (fileId: number, country: string, month: string) => {
-    downloadWpsMutation.mutate(
-      { fileId, companySlug: company.slug },
-      {
-        onSuccess: (blob) => {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `wps_${country}_${month}.txt`;
-          link.click();
-          URL.revokeObjectURL(url);
-          toast.success("تم تحميل الملف");
-        },
-        onError: () => { toast.error("تعذّر التحميل"); },
-      },
-    );
+  const handleDownload = async (fileId: number, country: string, month: string) => {
+    try {
+      const res = await authedFetch(`/api/accounting/wps/${fileId}/download?companySlug=${encodeURIComponent(company.slug)}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `wps_${country}_${month}.txt`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success("تم تحميل الملف");
+      } else { toast.error("تعذّر التحميل"); }
+    } catch { toast.error("خطأ"); }
   };
 
   // Group files by country
@@ -264,8 +275,9 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
   }
 
   const statusBadge = (status: string) => {
-    if (status === "submitted") return { badge: "bg-emerald-500/15 text-emerald-500", label: "مُرسل" };
-    return { badge: "bg-red-500/15 text-red-500", label: "خطأ" };
+    if (status === "submitted") return { bg: "rgba(16,185,129,0.15)", fg: "#10b981", label: "مُرسل" };
+    if (status === "generated") return { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", label: "مُنشأ" };
+    return { bg: "rgba(239,68,68,0.15)", fg: "#ef4444", label: "خطأ" };
   };
 
   const totalByCountry = (country: string) => (filesByCountry[country] || []).reduce((s, f) => s + f.totalAmount, 0);
@@ -294,7 +306,7 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-purple-500/20 text-purple-500"><FileText size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الملفات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{wpsFiles.length}</div></div>
         </div>
         <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
@@ -314,12 +326,12 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
         if (files.length === 0 && country !== activeCountry) return null;
         return (
           <div key={country} className="bg-card rounded-[14px] border border-border overflow-hidden">
-            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center bg-violet-500/10 text-violet-500">
+            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center bg-purple-500/10 text-purple-500">
               <span className="flex items-center gap-2">
-                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-violet-500/20 text-violet-500">{country}</span>
+                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-purple-500/20 text-purple-500">{country}</span>
                 {countryLabels[country]}
               </span>
-              <span className={cn("[direction:ltr] text-end text-[13px]", countryTotal >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(countryTotal)}</span>
+              <span className={cn("[direction:ltr] text-end text-[13px]", countryTotal >= 0 ? "text-emerald-500" : "text-red-500")} >{fmt(countryTotal)}</span>
             </div>
             {files.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-[13px]">
@@ -345,7 +357,7 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
                           <td className={tdStyle}>{f.employeeCount}</td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(f.totalAmount)}</td>
                           <td className={tdStyle} dir="ltr">{f.generatedAt || f.submittedAt || "—"}</td>
-                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", sb.badge)}>{sb.label}</span></td>
+                          <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: sb.bg, color: sb.fg }}>{sb.label}</span></td>
                           <td className={tdStyle}>
                             <div className="flex items-center gap-1">
                               {f.status === "generated" && <button onClick={() => handleSubmit(f.id)} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer inline-flex items-center gap-1"><Send size={10} /> إرسال</button>}

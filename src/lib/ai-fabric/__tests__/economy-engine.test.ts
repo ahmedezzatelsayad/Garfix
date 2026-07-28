@@ -5,33 +5,38 @@
  * Tests getEconomyStatus and shouldUseEconomyMode with mocked Prisma DB.
  */
 
-import { describe, it, expect, beforeEach, jest } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 
 // ─── Mock setup ──────────────────────────────────────────────────────────────
 
-const mockDb = {
-  companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
-  aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn(), deleteMany: jest.fn() },
-  cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
-  budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
-  providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
-  ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
-  aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-  profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
-  globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
-  company: { findMany: jest.fn(), findUnique: jest.fn() },
-  notification: { create: jest.fn(), findMany: jest.fn() },
-  aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn() },
-  compiledRule: { create: jest.fn() },
-  jobQueue: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn() },
-  platformSettings: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  featureFlag: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-};
-
-jest.mock("@/lib/db", () => ({ db: mockDb }));
+jest.mock("@/lib/db", () => {
+  const mockDb = {
+    companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn() },
+    cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+    providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn() },
+    ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
+    aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
+    globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
+    company: { findMany: jest.fn(), findUnique: jest.fn() },
+    notification: { create: jest.fn(), findMany: jest.fn() },
+    aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn() },
+    compiledRule: { create: jest.fn() },
+    jobQueue: { findMany: jest.fn() },
+  };
+  return { db: mockDb };
+});
 jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
 
+
+// Restore all mocks after this test file to prevent leaking into other files
+afterAll(() => jest.restoreAllMocks());
 import { getEconomyStatus, shouldUseEconomyMode } from "@/lib/ai-fabric/ai-economy-engine";
+
+// Get reference to mock db for assertions
+const { db: mockDb } = jest.requireMock("@/lib/db");
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
 
@@ -403,7 +408,7 @@ describe("Economy Engine — additional shouldUseEconomyMode tests", () => {
     mockBudget(100);
 
     const result = await shouldUseEconomyMode("co");
-    expect(result.reason).toContain("5"); // marginPct = 5% (forecast-adjusted from 8% current)
+    expect(result.reason).toContain("5"); // marginPct = 5%
   });
 
   it("boost is always between 0 and 1 inclusive", async () => {

@@ -9,7 +9,8 @@ describe('Seeder Edge Case 01', () => {
     expect(companies.length).toBe(10);
     for (const c of companies) {
       expect(c.id).toBeTruthy();
-      expect(String(c.id).length).toBeGreaterThan(0);
+      expect(typeof c.id).toBe('number');
+      expect(c.id).toBeGreaterThan(0);
     }
   });
   it('each company has at least one user for edge case 01', () => {
@@ -22,7 +23,7 @@ describe('Seeder Edge Case 01', () => {
     const companies = seedEnterpriseData(10, 42 + 1);
     for (const c of companies) {
       for (const inv of c.invoices) {
-        expect(parseFloat(inv.total)).toBeGreaterThanOrEqual(0);
+        expect(inv.finalTotal).toBeGreaterThanOrEqual(0);
       }
     }
   });
@@ -30,7 +31,7 @@ describe('Seeder Edge Case 01', () => {
     const companies = seedEnterpriseData(10, 42 + 1);
     for (const c of companies) {
       for (const p of c.products) {
-        expect(parseFloat(p.sellingPrice)).toBeGreaterThanOrEqual(parseFloat(p.purchasePrice));
+        expect(p.sellPrice).toBeGreaterThanOrEqual(p.costPrice);
       }
     }
   });

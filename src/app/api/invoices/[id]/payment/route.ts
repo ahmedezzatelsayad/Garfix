@@ -123,7 +123,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
   const result = await db.invoice.updateMany({
     where: { id: existing.id, deletedAt: null, ...versionFilter },
-    data: { paid: newPaid, status: newStatus, version: { increment: 1 } },
+    data: { paid: newPaid.toFixed(3), status: newStatus, version: { increment: 1 } },
   });
   if (result.count === 0) {
     return NextResponse.json(

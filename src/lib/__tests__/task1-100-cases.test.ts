@@ -42,11 +42,6 @@ import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun
 import { db } from "@/lib/db";
 import { invalidateKillSwitchCache, matchProduct } from "@/lib/productMatcher";
 import type { MatchInput } from "@/lib/productMatcher";
-
-// ─── Catalog fixture ─────────────────────────────────────────────────────────
-//
-// 32 products, 33 aliases (some products have both an English + Arabic alias).
-// Products 1-17 are the "base" catalog; products 18-32 are the "trap" products
 // used by false_positive_trap cases (same brand, different size/capacity/spec).
 
 interface FakeAlias {

@@ -1,0 +1,4 @@
+[test]
+preload = ["./src/__mocks__/jest-shim.ts"]
+isolate = true
+exclude = ["e2e/**"]

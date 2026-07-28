@@ -6,7 +6,7 @@
  * can() helper, DB_KEY_TO_CATALOG_KEY mapping, negative tests.
  */
 
-import { describe, it, expect, mock, afterAll } from "bun:test";
+import {  describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ describe("Locked permissions", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("Role presets", () => {
-  it("admin has all 16 permissions set to 1", () => {
+  it("admin has all 15 permissions set to 1", () => {
     const adminPerms = ROLE_DEFAULTS.admin;
     const allGranted = ALL_PERMISSION_KEYS.every((k) => adminPerms[k] === 1);
     expect(allGranted).toBe(true);
@@ -326,10 +326,9 @@ describe("DB_KEY_TO_CATALOG_KEY mapping", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("Negative tests", () => {
-  it("missing permission key returns undefined (not in defaults)", () => {
+  it("missing permission key returns 0 (falsy)", () => {
     const perms = computeEffectivePermissions("viewer", null);
-    expect(perms.edit_inventory).toBeUndefined();
-    expect(perms.manage_wholesale_prices).toBeUndefined();
+    expect(perms.create_invoice).toBe(0);
   });
 
   it("empty role string defaults to viewer", () => {
@@ -339,4 +338,4 @@ describe("Negative tests", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

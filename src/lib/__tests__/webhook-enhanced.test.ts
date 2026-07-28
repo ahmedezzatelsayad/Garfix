@@ -7,7 +7,7 @@
  * API route patterns, event type catalog, audit integration.
  */
 
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import {  describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import crypto from "node:crypto";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
@@ -60,20 +60,8 @@ mock.module("@/lib/db", () => ({
 }));
 
 mock.module("@/lib/cryptoVault", () => ({
-  // Format matches the real cryptoVault output (iv.tag.encrypted in base64)
-  // so that mfa.test.ts assertions on the encrypted format still pass when
-  // this mock leaks across test files.
-  encryptSecret: mock((s: string) => {
-    const b64 = Buffer.from(s).toString("base64");
-    return `MOCKIV==.MOCKTAG==.${b64}`;
-  }),
-  decryptSecret: mock((s: string) => {
-    const parts = s.split(".");
-    if (parts.length === 3) {
-      try { return Buffer.from(parts[2], "base64").toString("utf8"); } catch { return s; }
-    }
-    return s;
-  }),
+  encryptSecret: mock((s: string) => `enc_${s}`),
+  decryptSecret: mock((s: string) => s.startsWith("enc_") ? s.slice(4) : s),
 }));
 
 mock.module("@/lib/logger", () => ({
@@ -159,8 +147,8 @@ describe("registerWebhook — endpoint creation", () => {
       events: ["*"],
     });
     const callArgs = mockWHEndpointCreate.mock.calls[0][0];
-    // Secret should be encrypted (mock returns iv.tag.encrypted base64 format)
-    expect(callArgs.data.secret).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
+    // Secret should be encrypted (starts with "enc_" due to mock)
+    expect(callArgs.data.secret).toMatch(/^enc_/);
   });
 
   it("generates a random 32-byte hex secret", async () => {
@@ -745,4 +733,4 @@ describe("Edge cases", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

@@ -3,49 +3,64 @@
  * cron-runner.test.ts — Comprehensive tests for the AI Fabric cron runner.
  *
  * Tests runAllCronJobs, runSingleJob, safeRun, and getActiveCompanies.
- * Worker-scaler and learning-engine are mocked; ai-score and profit-engine
- * use real implementations with mock DB data.
+ * All external dependencies are mocked.
  */
 
-import { describe, it, expect, beforeEach, jest } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 
 // ─── Mock setup ──────────────────────────────────────────────────────────────
 
-const mockDb = {
-  companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
-  aIRequestLog: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn(), deleteMany: jest.fn() },
-  cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
-  budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
-  providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
-  ruleCandidate: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), updateMany: jest.fn(), count: jest.fn(), create: jest.fn() },
-  aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-  profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn(), findFirst: jest.fn(), upsert: jest.fn() },
-  globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
-  company: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
-  notification: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
-  aIScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
-  compiledRule: { create: jest.fn() },
-  jobQueue: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn() },
-  platformSettings: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  featureFlag: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  inventoryItem: { findUnique: jest.fn(), findMany: jest.fn() },
-  productCatalog: { findUnique: jest.fn(), findMany: jest.fn() },
-  client: { findMany: jest.fn() },
-};
-
-jest.mock("@/lib/db", () => ({ db: mockDb }));
+jest.mock("@/lib/db", () => ({
+  db: {
+    companyRuntime: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    aIRequestLog: { create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn(), count: jest.fn() },
+    cacheEntry: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    budgetConfig: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+    providerConfig: { findFirst: jest.fn(), findMany: jest.fn(), upsert: jest.fn(), create: jest.fn() },
+    ruleCandidate: { findMany: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
+    aIMemoryEntry: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    profitSnapshot: { create: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
+    globalPattern: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
+    company: { findMany: jest.fn(), findUnique: jest.fn() },
+    notification: { create: jest.fn(), findMany: jest.fn() },
+    aiScoreSnapshot: { upsert: jest.fn(), findMany: jest.fn() },
+    compiledRule: { create: jest.fn() },
+    jobQueue: { findMany: jest.fn() },
+  },
+}));
 jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
-jest.mock("@/lib/valkey", () => ({ getValkeyClient: async () => null }));
-
-// Only worker-scaler is still mocked; learning-engine, ai-score, and profit-engine use real implementations
-const mockScaleWorkers = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("@/lib/ai-fabric/worker-scaler", () => ({
-  scaleWorkers: (...args: unknown[]) => mockScaleWorkers(...args),
+  scaleWorkers: jest.fn().mockResolvedValue(undefined),
 }));
-// learning-engine, ai-score and profit-engine are NOT mocked — real functions run with mock db
+jest.mock("@/lib/ai-fabric/learning-engine", () => ({
+  promoteCandidates: jest.fn().mockResolvedValue({ promoted: 3, rejected: 1 }),
+}));
+jest.mock("@/lib/ai-fabric/ai-score", () => ({
+  computeAndSaveScore: jest.fn().mockResolvedValue({
+    companySlug: "co", period: "2025-01-01", score: 85,
+    cacheHitPct: 60, ruleHitPct: 20, aiCallPct: 20,
+    avgCostPerRequest: 0.001, alerted: false,
+  }),
+}));
+jest.mock("@/lib/ai-fabric/profit-engine", () => ({
+  saveProfitSnapshot: jest.fn().mockResolvedValue({
+    companySlug: "co", periodStart: new Date(), periodEnd: new Date(),
+    revenueUsd: 100, infraCostUsd: 5, aiCostUsd: 2, workerCostUsd: 1, profitUsd: 92,
+  }),
+}));
 
+
+// Restore all mocks after this test file to prevent leaking into other files
+afterAll(() => jest.restoreAllMocks());
 import { runAllCronJobs, runSingleJob } from "@/lib/ai-fabric/cron-runner";
+
+// Get mock references
+const { db: mockDb } = jest.requireMock("@/lib/db");
+const { scaleWorkers: mockScaleWorkers } = jest.requireMock("@/lib/ai-fabric/worker-scaler");
+const { promoteCandidates: mockPromoteCandidates } = jest.requireMock("@/lib/ai-fabric/learning-engine");
+const { computeAndSaveScore: mockComputeAndSaveScore } = jest.requireMock("@/lib/ai-fabric/ai-score");
+const { saveProfitSnapshot: mockSaveProfitSnapshot } = jest.requireMock("@/lib/ai-fabric/profit-engine");
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
@@ -54,30 +69,16 @@ function resetAllJobMocks() {
   // Re-set defaults after clearAllMocks wipes return values
   mockDb.company.findMany.mockResolvedValue([{ slug: "co-a" }, { slug: "co-b" }]);
   mockScaleWorkers.mockResolvedValue(undefined);
-
-  // Set up mock db data for real ai-score, profit-engine, and learning-engine functions
-  // learning-engine: promoteCandidates calls db.ruleCandidate.findMany and update
-  mockDb.ruleCandidate.findMany.mockResolvedValue([
-    { id: 1, companySlug: "co-a", requestType: "other", patternSignature: "sig1", consistentOutput: "{}", sampleCount: 25, confidence: 0.97, status: "observing" },
-    { id: 2, companySlug: "co-a", requestType: "other", patternSignature: "sig2", consistentOutput: "{}", sampleCount: 22, confidence: 0.96, status: "observing" },
-    { id: 3, companySlug: "co-b", requestType: "other", patternSignature: "sig3", consistentOutput: "{}", sampleCount: 30, confidence: 0.98, status: "observing" },
-    { id: 4, companySlug: "co-a", requestType: "other", patternSignature: "sig4", consistentOutput: "{}", sampleCount: 21, confidence: 0.3, status: "observing" },  // rejected
-  ]);
-  mockDb.ruleCandidate.update.mockResolvedValue({});
-  mockDb.ruleCandidate.count.mockResolvedValue(0);
-
-  // ai-score: computeAndSaveScore calls db.aIRequestLog.findMany, db.aIScoreSnapshot.upsert, db.notification
-  mockDb.aIRequestLog.findMany.mockResolvedValue([]); // 0 requests → score = 100
-  mockDb.aIScoreSnapshot.upsert.mockResolvedValue({ companySlug: "co-a", period: "2025-01-01", score: 100, cacheHitPct: 0, ruleHitPct: 0, aiCallPct: 0, avgCostPerRequest: 0, alerted: false });
-  mockDb.notification.count.mockResolvedValue(0);
-  mockDb.notification.create.mockResolvedValue({});
-
-  // profit-engine: saveProfitSnapshot calls db.company, db.aIRequestLog.aggregate, db.companyRuntime, db.profitSnapshot
-  mockDb.company.findUnique.mockResolvedValue({ id: 1, slug: "co-a", plan: "business" });
-  mockDb.aIRequestLog.aggregate.mockResolvedValue({ _sum: { costUsd: 0 } });
-  mockDb.companyRuntime.findUnique.mockResolvedValue({ companyId: 1, workerPoolSize: 4, status: "active" });
-  mockDb.profitSnapshot.findFirst.mockResolvedValue(null); // no existing snapshot
-  mockDb.profitSnapshot.upsert.mockResolvedValue({ id: 1, companySlug: "co-a", periodStart: new Date(), periodEnd: new Date(), revenueUsd: 3.3, infraCostUsd: 5, aiCostUsd: 0, workerCostUsd: 2, profitUsd: -3.7 });
+  mockPromoteCandidates.mockResolvedValue({ promoted: 3, rejected: 1 });
+  mockComputeAndSaveScore.mockResolvedValue({
+    companySlug: "co", period: "2025-01-01", score: 85,
+    cacheHitPct: 60, ruleHitPct: 20, aiCallPct: 20,
+    avgCostPerRequest: 0.001, alerted: false,
+  });
+  mockSaveProfitSnapshot.mockResolvedValue({
+    companySlug: "co", periodStart: new Date(), periodEnd: new Date(),
+    revenueUsd: 100, infraCostUsd: 5, aiCostUsd: 2, workerCostUsd: 1, profitUsd: 92,
+  });
 }
 
 // ─── Test Suite ───────────────────────────────────────────────────────────────
@@ -130,8 +131,7 @@ describe("Cron Runner — runAllCronJobs", () => {
   });
 
   it("handles partial failures", async () => {
-    // Make computeAndSaveScore fail by making aIRequestLog.findMany throw
-    mockDb.aIRequestLog.findMany.mockRejectedValueOnce(new Error("score fail"));
+    mockComputeAndSaveScore.mockRejectedValueOnce(new Error("score fail"));
 
     const results = await runAllCronJobs();
     const hasFailure = results.some((r) => !r.success);
@@ -147,8 +147,7 @@ describe("Cron Runner — runAllCronJobs", () => {
   });
 
   it("returns error message for failed jobs", async () => {
-    // Make saveProfitSnapshot fail by making db.company.findUnique throw
-    mockDb.company.findUnique.mockRejectedValue(new Error("snapshot error"));
+    mockSaveProfitSnapshot.mockRejectedValue(new Error("snapshot error"));
 
     const results = await runAllCronJobs();
     const failed = results.find((r) => !r.success && r.job === "profit-snapshots");
@@ -183,8 +182,7 @@ describe("Cron Runner — runSingleJob", () => {
   });
 
   it("handles job failure gracefully", async () => {
-    // Make promoteCandidates fail by making ruleCandidate.findMany throw
-    mockDb.ruleCandidate.findMany.mockRejectedValueOnce(new Error("DB error"));
+    mockPromoteCandidates.mockRejectedValueOnce(new Error("DB error"));
 
     const result = await runSingleJob("learning-engine-promotion");
     expect(result.success).toBe(false);
@@ -216,7 +214,7 @@ describe("Cron Runner — safeRun behavior", () => {
 
   it("logs error message for failed jobs", async () => {
     const { logger } = await import("@/lib/logger");
-    mockDb.ruleCandidate.findMany.mockRejectedValueOnce(new Error("fail"));
+    mockPromoteCandidates.mockRejectedValueOnce(new Error("fail"));
 
     await runSingleJob("learning-engine-promotion");
     expect(logger.error).toHaveBeenCalledWith(
@@ -271,13 +269,10 @@ describe("Cron Runner — edge cases", () => {
 
   it("all jobs fail — returns all with success=false", async () => {
     mockDb.company.findMany.mockResolvedValue([{ slug: "failing-co" }]);
-    // Make ai-score fail
-    mockDb.aIRequestLog.findMany.mockRejectedValue(new Error("x"));
-    // Make profit-snapshot fail
-    mockDb.company.findUnique.mockRejectedValue(new Error("y"));
-    // Make learning-engine and worker-scaler fail
-    // Make learning-engine fail
-    mockDb.ruleCandidate.findMany.mockRejectedValue(new Error("z"));
+
+    mockComputeAndSaveScore.mockRejectedValue(new Error("x"));
+    mockSaveProfitSnapshot.mockRejectedValue(new Error("y"));
+    mockPromoteCandidates.mockRejectedValue(new Error("z"));
     mockScaleWorkers.mockRejectedValue(new Error("w"));
 
     const results = await runAllCronJobs();
@@ -287,14 +282,13 @@ describe("Cron Runner — edge cases", () => {
 
   it("one job fails, others succeed", async () => {
     mockDb.company.findMany.mockResolvedValue([{ slug: "mixed-co" }]);
-    // Make profit-snapshot fail
-    mockDb.company.findUnique.mockRejectedValue(new Error("snapshot fail"));
+    mockSaveProfitSnapshot.mockRejectedValue(new Error("snapshot fail"));
 
     const results = await runAllCronJobs();
     const failed = results.filter((r) => !r.success);
     const succeeded = results.filter((r) => r.success);
-    expect(failed.length).toBeGreaterThanOrEqual(1);
-    expect(succeeded.length).toBeGreaterThanOrEqual(1);
+    expect(failed.length).toBe(1);
+    expect(succeeded.length).toBe(3);
   });
 
   it("runs correct number of jobs for multiple companies", async () => {

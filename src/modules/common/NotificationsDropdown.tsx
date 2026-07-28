@@ -92,9 +92,7 @@ export function NotificationsDropdown() {
         onClick={() => setOpen((v) => !v)}
         aria-label="الإشعارات"
         title="الإشعارات"
-        className="bg-muted border border-border w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground cursor-pointer relative transition-colors duration-150"
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--muted)"; }}
+        className="bg-muted hover:bg-accent border border-border w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground cursor-pointer relative transition-colors duration-150"
       >
         <Bell size={16} />
         {unreadCount > 0 && (
@@ -108,11 +106,11 @@ export function NotificationsDropdown() {
 
       {open && (
         <div
-          className="absolute top-[calc(100%+8px)] left-0 w-[calc(100vw-32px)] sm:w-[350px] max-h-[440px] bg-popover border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] z-[200] flex flex-col overflow-hidden"
+          className="absolute top-[calc(100%+8px)] left-0 w-[calc(100vw-32px)] sm:w-[350px] sm:p-0 max-h-[440px] bg-popover border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] z-[200] flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div
-            className="py-3 px-3.5 border-b border-border flex items-center justify-between bg-card"
+            className="py-3 sm:py-3.5 px-3.5 sm:px-4 border-b border-border flex items-center justify-between bg-card"
           >
             <div className="flex items-center gap-2">
               <Bell size={14} className="text-primary" />
@@ -158,9 +156,7 @@ export function NotificationsDropdown() {
                     key={n.id}
                     type="button"
                     onClick={() => handleClickNotification(n)}
-                    className={cn("w-full flex gap-2.5 py-2.5 px-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-100 text-popover-foreground", n.isRead ? "bg-transparent" : "bg-accent")}
-                    onMouseEnter={(e) => { if (n.isRead) e.currentTarget.classList.add("bg-muted"); }}
-                    onMouseLeave={(e) => { if (n.isRead) e.currentTarget.classList.remove("bg-muted"); }}
+                    className={cn("w-full flex sm:flex-row gap-2.5 py-2.5 px-3 sm:p-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-100 text-popover-foreground", n.isRead ? "bg-transparent hover:bg-muted" : "bg-accent")}
                   >
                     {/* Unread dot */}
                     <div className="shrink-0 pt-1">

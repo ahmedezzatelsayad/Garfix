@@ -12,8 +12,8 @@
  *
  * Takes a `clientId` prop. Rendered by ClientsView when a row is clicked.
  */
-import { useState, useEffect } from "react";
-import { useClientProfile, useEntityMemoryNotes, useCreateEntityMemoryNote, useDeleteAIMemory } from "@/hooks/queries";
+import { useEffect, useState, useCallback } from "react";
+import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
   ArrowRight, User, Mail, Phone, MapPin, StickyNote, FileText, Wallet,
@@ -76,13 +76,13 @@ interface AIMemoryNote {
   createdAt: string;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  draft: { label: "مسودة", color: "#6b7280", bg: "#6b728022" },
-  sent: { label: "مرسلة", color: "#0ea5e9", bg: "#0ea5e922" },
-  paid: { label: "مدفوعة", color: "#10b981", bg: "#10b98122" },
-  partial: { label: "جزئية", color: "#f59e0b", bg: "#f59e0b22" },
-  overdue: { label: "متأخرة", color: "#ef4444", bg: "#ef444422" },
-  cancelled: { label: "ملغاة", color: "#9ca3af", bg: "#9ca3af22" },
+const STATUS_LABELS: Record<string, { label: string; tw: string }> = {
+  draft: { label: "مسودة", tw: "bg-gray-500/13 text-gray-500" },
+  sent: { label: "مرسلة", tw: "bg-sky-500/13 text-sky-500" },
+  paid: { label: "مدفوعة", tw: "bg-emerald-500/13 text-emerald-500" },
+  partial: { label: "جزئية", tw: "bg-amber-500/13 text-amber-500" },
+  overdue: { label: "متأخرة", tw: "bg-red-500/13 text-red-500" },
+  cancelled: { label: "ملغاة", tw: "bg-gray-400/13 text-gray-400" },
 };
 
 function fmtDate(s: string): string {
@@ -103,56 +103,122 @@ const thStyle = "text-start px-2.5 sm:px-3 py-2.5 text-[11px] text-muted-foregro
 const tdStyle = "px-2.5 sm:px-3 py-2.5 align-middle";
 
 export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
-  const { data: profileData, isLoading: loading, error: profileError } = useClientProfile(clientId);
-  const { data: notesData, isLoading: loadingNotes } = useEntityMemoryNotes(
-    profileData?.client?.companySlug || "", "client", clientId
-  );
-  const createNoteMutation = useCreateEntityMemoryNote();
-  const deleteNoteMutation = useDeleteAIMemory();
+  const [client, setClient] = useState<ClientInfo | null>(null);
+  const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const client = (profileData?.client ?? null) as ClientInfo | null;
-  const invoices = ((profileData as Record<string, unknown> | undefined)?.invoices ?? []) as InvoiceRow[];
-  const summary = ((profileData as Record<string, unknown> | undefined)?.summary ?? null) as Summary | null;
-  const memoryNotes = (notesData?.notes ?? []) as AIMemoryNote[];
-
+  // ─── Item 4: AI Memory Notes state ───────────────────────────────────
+  const [memoryNotes, setMemoryNotes] = useState<AIMemoryNote[]>([]);
   const [newNote, setNewNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<number | null>(null);
 
-  // Handle 404 / 403 errors from the profile query — navigate back
-  useEffect(() => {
-    const status = (profileError as any)?.status;
-    if (status === 404) { toast.error("العميل غير موجود"); onBack(); }
-    else if (status === 403) { toast.error("ليس لديك صلاحية لعرض هذا العميل"); onBack(); }
-  }, [profileError, onBack]);
+  const loadMemoryNotes = useCallback(async (slug: string, id: number) => {
+    setLoadingNotes(true);
+    try {
+      const res = await authedFetch(
+        `/api/ai/memory?companySlug=${encodeURIComponent(slug)}&entityType=client&entityId=${id}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setMemoryNotes(Array.isArray(data.notes) ? data.notes : []);
+      } else {
+        setMemoryNotes([]);
+      }
+    } catch {
+      setMemoryNotes([]);
+    } finally {
+      setLoadingNotes(false);
+    }
+  }, []);
 
-  const addMemoryNote = () => {
+  const addMemoryNote = async () => {
     if (!client) return;
     const note = newNote.trim();
     if (!note) { toast.error("اكتب نص الملاحظة أولًا"); return; }
     if (note.length > 4000) { toast.error("النص طويل جداً (الحد 4000 حرف)"); return; }
-    createNoteMutation.mutate(
-      { companySlug: client.companySlug, entityType: "client", entityId: client.id, note },
-      {
-        onSuccess: () => { setNewNote(""); toast.success("تم حفظ الملاحظة"); },
-        onError: (err) => { toast.error(err.message || "خطأ"); },
-      },
-    );
+    setSavingNote(true);
+    try {
+      const res = await authedFetch("/api/ai/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companySlug: client.companySlug,
+          entityType: "client",
+          entityId: client.id,
+          note,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "تعذّر الحفظ");
+      }
+      const data = await res.json();
+      if (data.note) {
+        setMemoryNotes((prev) => [data.note, ...prev]);
+      }
+      setNewNote("");
+      toast.success("تم حفظ الملاحظة");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "خطأ");
+    } finally {
+      setSavingNote(false);
+    }
   };
 
-  const deleteMemoryNote = (noteId: number) => {
+  const deleteMemoryNote = async (noteId: number) => {
     if (!client) return;
     if (!confirm("حذف هذه الملاحظة؟")) return;
     setDeletingNoteId(noteId);
-    deleteNoteMutation.mutate(noteId, {
-      onSuccess: () => { toast.success("تم حذف الملاحظة"); },
-      onError: (err) => { toast.error(err.message || "خطأ"); },
-      onSettled: () => { setDeletingNoteId(null); },
-    });
+    try {
+      const res = await authedFetch(`/api/ai/memory/${noteId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "تعذّر الحذف");
+      }
+      setMemoryNotes((prev) => prev.filter((n) => n.id !== noteId));
+      toast.success("تم حذف الملاحظة");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "خطأ");
+    } finally {
+      setDeletingNoteId(null);
+    }
   };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/clients/${clientId}/profile`);
+      if (res.ok) {
+        const data = await res.json();
+        setClient(data.client);
+        setInvoices(data.invoices || []);
+        setSummary(data.summary || null);
+        if (data.client?.companySlug && data.client?.id) {
+          loadMemoryNotes(data.client.companySlug, data.client.id);
+        }
+      } else if (res.status === 404) {
+        toast.error("العميل غير موجود");
+        onBack();
+      } else if (res.status === 403) {
+        toast.error("ليس لديك صلاحية لعرض هذا العميل");
+        onBack();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "تعذّر تحميل الملف");
+      }
+    } finally { setLoading(false); }
+  }, [clientId, onBack, loadMemoryNotes]);
+
+  // setState runs inside async .then() callback in load (after await authedFetch) — not synchronous in effect body; no cascading render.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return (
-      <div className="p-6 md:p-12 text-center text-muted-foreground">
+      <div className="p-12 text-center text-muted-foreground">
         جارٍ التحميل…
       </div>
     );
@@ -160,7 +226,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
   if (!client) {
     return (
-      <div className="p-6 md:p-12 text-center text-muted-foreground">
+      <div className="p-12 text-center text-muted-foreground">
         تعذّر تحميل بيانات العميل
       </div>
     );
@@ -215,33 +281,36 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 icon={<FileText size={14} />}
                 label="عدد الفواتير"
                 value={String(summary.invoiceCount)}
-                color="#0ea5e9"
+                twColor="text-sky-500"
               />
               <SummaryRow
                 icon={<Wallet size={14} />}
                 label="إجمالي الفواتير"
                 value={fmtMoney(summary.totalDue)}
-                color="#6366f1"
+                twColor="text-indigo-500"
               />
               <SummaryRow
                 icon={<CheckCircle2 size={14} />}
                 label="إجمالي المدفوع"
                 value={fmtMoney(summary.totalPaid)}
-                color="#10b981"
+                twColor="text-emerald-500"
               />
               <div
-                className={`mt-1 p-3 rounded-[10px] flex justify-between items-center ${outstanding > 0 && !fullyPaid ? "bg-red-500/10 [border:1px_solid_#ef4444]" : "bg-emerald-500/10 [border:1px_solid_#10b981]"}`}
+                className={cn(
+                  "mt-1 p-3 rounded-[10px] flex justify-between items-center",
+                  fullyPaid ? "bg-emerald-500/13 border border-emerald-500" : outstanding > 0 ? "bg-red-500/13 border border-red-500" : "bg-emerald-500/13 border border-emerald-500"
+                )} // TAILWINDBREAK: complex conditional border/background
               >
                 <div className="flex items-center gap-2">
                   {fullyPaid
-                    ? <CheckCircle2 size={16} className="text-[#10b981]" />
-                    : <AlertTriangle size={16} className="text-[#ef4444]" />}
+                    ? <CheckCircle2 size={16} className="text-emerald-500" />
+                    : <AlertTriangle size={16} className="text-red-500" />}
                   <span className="text-xs font-bold text-foreground">
                     {fullyPaid ? "مدفوع بالكامل" : "المبلغ المستحق"}
                   </span>
                 </div>
                 <span
-                  className={cn("text-base font-extrabold [direction:ltr]", fullyPaid ? "text-[#10b981]" : "text-[#ef4444]")}
+                  className={cn("text-base font-extrabold [direction:ltr]", fullyPaid ? "text-emerald-500" : "text-red-500")}
                 >
                   {fmtMoney(outstanding)}
                 </span>
@@ -250,9 +319,9 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               {Object.keys(summary.byStatus).length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {Object.entries(summary.byStatus).map(([status, count]) => {
-                    const meta = STATUS_LABELS[status] || { label: status, color: "#6b7280", bg: "#6b728022" };
+                    const meta = STATUS_LABELS[status] || { label: status, tw: "bg-gray-500/13 text-gray-500" };
                     return (
-                      <span key={status} className={`inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold [background:${meta.bg}] [color:${meta.color}]`}>
+                      <span key={status} className={cn("inline-flex items-center gap-1 py-[3px] px-[10px] rounded-full text-[11px] font-bold", meta.tw)}>
                         {meta.label} × {count}
                       </span>
                     );
@@ -280,7 +349,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         </div>
 
         {invoices.length === 0 ? (
-          <div className="p-6 md:p-12 text-center text-muted-foreground">
+          <div className="p-12 text-center text-muted-foreground">
             <FileText size={36} className="opacity-30 mb-2" />
             <div>لا توجد فواتير لهذا العميل</div>
           </div>
@@ -291,18 +360,18 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border bg-muted">
-                  <th scope="col" className={thStyle}>رقم الفاتورة</th>
-                  <th scope="col" className={thStyle}>تاريخ الإصدار</th>
-                  <th scope="col" className={thStyle}>الاستحقاق</th>
-                  <th scope="col" className={thStyle}>الحالة</th>
-                  <th scope="col" className={thStyle}>الإجمالي</th>
-                  <th scope="col" className={thStyle}>المدفوع</th>
-                  <th scope="col" className={thStyle}>المستحق</th>
+                  <th className={thStyle}>رقم الفاتورة</th>
+                  <th className={thStyle}>تاريخ الإصدار</th>
+                  <th className={thStyle}>الاستحقاق</th>
+                  <th className={thStyle}>الحالة</th>
+                  <th className={thStyle}>الإجمالي</th>
+                  <th className={thStyle}>المدفوع</th>
+                  <th className={thStyle}>المستحق</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.map((inv) => {
-                  const meta = STATUS_LABELS[inv.status] || { label: inv.status, color: "#6b7280", bg: "#6b728022" };
+                  const meta = STATUS_LABELS[inv.status] || { label: inv.status, tw: "bg-gray-500/13 text-gray-500" };
                   return (
                     <tr key={inv.id} className="border-b border-border">
                       <td className={cn(tdStyle, "font-bold [direction:ltr] text-end")}>
@@ -311,8 +380,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                       <td className={tdStyle}>{fmtDate(inv.issueDate)}</td>
                       <td className={tdStyle}>{fmtDate(inv.dueDate)}</td>
                       <td className={tdStyle}>
-                        <span role="status" aria-label={meta.label} className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                          style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
+                        <span className={cn("inline-flex items-center py-[3px] px-[10px] rounded-full text-[11px] font-bold", meta.tw)}>
                           {meta.label}
                         </span>
                       </td>
@@ -322,9 +390,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                       <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>
                         {inv.paid > 0 ? fmtMoney(inv.paid) : "—"}
                       </td>
-                      <td
-                        className={cn("px-3 py-2.5 align-middle [direction:ltr] text-end font-bold", inv.outstanding > 0 ? "text-[#ef4444]" : "text-[#10b981]")}
-                      >
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", inv.outstanding > 0 ? "text-red-500" : "text-emerald-500")}>
                         {fmtMoney(inv.outstanding)}
                       </td>
                     </tr>
@@ -341,9 +407,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                     <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold text-[#10b981]")}>
                       {fmtMoney(summary?.totalPaid || 0)}
                     </td>
-                    <td
-                      className={cn("px-3 py-2.5 align-middle [direction:ltr] text-end font-extrabold", (summary?.outstanding || 0) > 0 ? "text-[#ef4444]" : "text-[#10b981]")}
-                    >
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", (summary?.outstanding || 0) > 0 ? "text-red-500" : "text-emerald-500")}>
                       {fmtMoney(summary?.outstanding || 0)}
                     </td>
                   </tr>
@@ -354,13 +418,12 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
           {/* Mobile cards */}
           <div className="md:hidden flex flex-col divide-y divide-border">
             {invoices.map((inv) => {
-              const meta = STATUS_LABELS[inv.status] || { label: inv.status, color: "#6b7280", bg: "#6b728022" };
+              const meta = STATUS_LABELS[inv.status] || { label: inv.status, tw: "bg-gray-500/13 text-gray-500" };
               return (
                 <div key={inv.id} className="p-3 flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-[13px]" dir="ltr">{inv.invoiceNumber}</span>
-                    <span role="status" aria-label={meta.label} className="inline-flex items-center py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                      style={{ background: meta.bg, color: meta.color }} /* TAILWINDBREAK: dynamic color */>
+                    <span className={cn("inline-flex items-center py-[3px] px-[10px] rounded-full text-[11px] font-bold", meta.tw)}>
                       {meta.label}
                     </span>
                   </div>
@@ -369,7 +432,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                     <div><span className="text-muted-foreground text-[11px]">الاستحقاق: </span>{fmtDate(inv.dueDate)}</div>
                     <div><span className="text-muted-foreground text-[11px]">الإجمالي: </span><span className="font-semibold" dir="ltr">{fmtMoney(inv.total)}</span></div>
                     <div><span className="text-muted-foreground text-[11px]">المدفوع: </span><span className="text-[#10b981]" dir="ltr">{inv.paid > 0 ? fmtMoney(inv.paid) : "—"}</span></div>
-                    <div className="col-span-2"><span className="text-muted-foreground text-[11px]">المستحق: </span><span className={cn("font-bold", inv.outstanding > 0 ? "text-[#ef4444]" : "text-[#10b981]")} dir="ltr">{fmtMoney(inv.outstanding)}</span></div>
+                    <div className="col-span-2"><span className="text-muted-foreground text-[11px]">المستحق: </span><span className={cn("font-bold", inv.outstanding > 0 ? "text-red-500" : "text-emerald-500")} dir="ltr">{fmtMoney(inv.outstanding)}</span></div>
                   </div>
                 </div>
               );
@@ -378,7 +441,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               <div className="p-3 bg-muted flex flex-wrap justify-between gap-2 text-[12px] font-extrabold">
                 <span>الإجمالي:</span>
                 <span className="text-[#10b981]" dir="ltr">مدفوع {fmtMoney(summary?.totalPaid || 0)}</span>
-                <span className={cn((summary?.outstanding || 0) > 0 ? "text-[#ef4444]" : "text-[#10b981]")} dir="ltr">مستحق {fmtMoney(summary?.outstanding || 0)}</span>
+                <span className={(summary?.outstanding || 0) > 0 ? "text-red-500" : "text-emerald-500"} dir="ltr">مستحق {fmtMoney(summary?.outstanding || 0)}</span>
               </div>
             )}
           </div>
@@ -401,7 +464,6 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
             <textarea
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
-              aria-label="ملاحظة ذكاء اصطناعي"
               placeholder="اكتب ملاحظة عن هذا العميل — يستخدمها الذكاء الاصطناعي لاحقًا لتقديم توصيات أفضل (مثال: يفضّل الدفع نقدًا، يعمل في مجال البناء، موسمي النشاط في الصيف…)"
               rows={3}
               maxLength={4000}
@@ -413,11 +475,11 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               </span>
               <button
                 onClick={addMemoryNote}
-                disabled={createNoteMutation.isPending || !newNote.trim()}
+                disabled={savingNote || !newNote.trim()}
                 className="inline-flex items-center gap-1.5 py-2 px-3.5 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createNoteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                {createNoteMutation.isPending ? "جارٍ الحفظ…" : "إضافة ملاحظة"}
+                {savingNote ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {savingNote ? "جارٍ الحفظ…" : "إضافة ملاحظة"}
               </button>
             </div>
           </div>
@@ -450,7 +512,6 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                     onClick={() => deleteMemoryNote(n.id)}
                     disabled={deletingNoteId === n.id}
                     title="حذف الملاحظة"
-                    aria-label="حذف"
                     className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive transition-colors cursor-pointer disabled:opacity-50"
                   >
                     {deletingNoteId === n.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
@@ -503,15 +564,15 @@ function InfoRow({
 }
 
 function SummaryRow({
-  icon, label, value, color,
-}: { icon: React.ReactNode; label: string; value: string; color: string }) {
+  icon, label, value, twColor,
+}: { icon: React.ReactNode; label: string; value: string; twColor: string }) {
   return (
     <div className="flex items-center justify-between p-2 px-2.5 rounded-sm bg-muted border border-border">
       <div className="flex items-center gap-2">
-        <span style={{ color }}>{icon}</span>
+        <span className={twColor}>{icon}</span>
         <span className="text-xs text-muted-foreground font-semibold">{label}</span>
       </div>
-      <span className="text-sm font-extrabold [direction:ltr]" style={{ color }}>{value}</span>
+      <span className={cn("text-sm font-extrabold [direction:ltr]", twColor)}>{value}</span>
     </div>
   );
 }

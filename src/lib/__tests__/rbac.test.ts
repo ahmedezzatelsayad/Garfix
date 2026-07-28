@@ -8,7 +8,7 @@
  * validatePermissionChange, audit trail, backward compatibility.
  */
 
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import {  describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -31,10 +31,10 @@ mock.module("@/lib/db", () => ({
   },
 }));
 
-// NOTE: We do NOT mock @/lib/cryptoVault. rbac.ts's import chain
-// (permissions.ts) does NOT touch cryptoVault. Mocking it globally breaks
-// mfa.test.ts (whose setupMFA calls the real encryptSecret/decryptSecret
-// and asserts the encrypted output format).
+mock.module("@/lib/cryptoVault", () => ({
+  encryptSecret: mock((s: string) => `enc_${s}`),
+  decryptSecret: mock((s: string) => s.startsWith("enc_") ? s.slice(4) : s),
+}));
 
 // ─── Real imports ──────────────────────────────────────────────────────────
 
@@ -584,4 +584,4 @@ describe("flatToResourcePerms — backward compatibility", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

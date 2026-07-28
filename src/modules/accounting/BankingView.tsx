@@ -1,15 +1,10 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
-import {
-  useBankAccountsList, useCreateBankAccount,
-  useBankReconciliation, useMatchBankReconciliation, useCompleteBankReconciliation,
-  useBankImport, useBankTransfers, useCreateBankTransfer,
-  useAccounts,
-} from "@/hooks/queries";
 import {
   Landmark, Plus, X, Upload, ArrowRightLeft, CheckCircle2,
   FileText, Download, Trash2, RefreshCw, AlertTriangle,
@@ -35,17 +30,41 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function BankingView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("accounts");
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [reconciliation, setReconciliation] = useState<ReconciliationItem[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  // TanStack Query hooks for data fetching
-  const bankAccountsQuery = useBankAccountsList(slug);
-  const bankTransfersQuery = useBankTransfers(slug);
+  const loadAccounts = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setBankAccounts(d.accounts || []); }
+      else setBankAccounts([]);
+    } catch { setBankAccounts([]); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug]);
 
-  const bankAccounts = bankAccountsQuery.data?.bankAccounts ?? [];
-  const transfers = bankTransfersQuery.data?.transfers ?? [];
-  const loading = (tab === "accounts" && bankAccountsQuery.isLoading) || (tab === "transfer" && bankTransfersQuery.isLoading);
+  const loadTransfers = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/bank-transfer?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setTransfers(d.transfers || []); }
+      else setTransfers([]);
+    } catch { setTransfers([]); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === "accounts") loadAccounts();
+    if (tab === "transfer") loadTransfers();
+  }, [tab, loadAccounts, loadTransfers]);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -75,15 +94,15 @@ export function BankingView() {
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "accounts" ? (
-        showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankAccountsQuery.refetch(); }} /> : (
+        showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAccounts(); }} /> : (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
-                <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</div></div>
+                <div><div className={cn("text-[11px] text-muted-foreground", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>إجمالي النقدية</div><div className="text-lg font-extrabold [direction:ltr] text-end" >{fmt(totalCash)}</div></div>
               </div>
               <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-purple-500/20 text-purple-500"><FileText size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
               </div>
             </div>
@@ -104,14 +123,14 @@ export function BankingView() {
                           <td className={cn(tdStyle, "font-mono text-[11px]")} dir="ltr">{ba.iban || "—"}</td>
                           <td className={tdStyle}>{ba.currency}</td>
                           <td className={tdStyle}>{ba.accountType || "—"}</td>
-                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", ba.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(ba.balance)}</td>
+                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", ba.balance >= 0 ? "text-emerald-500" : "text-red-500")} >{fmt(ba.balance)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-border bg-muted font-extrabold">
                         <td className={cn(tdStyle, "font-extrabold")} colSpan={6}>إجمالي النقدية</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalCash >= 0 ? "text-emerald-500" : "text-red-500")} >{fmt(totalCash)}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -125,7 +144,7 @@ export function BankingView() {
       ) : tab === "import" ? (
         <CSVImportView company={activeCompany} />
       ) : tab === "transfer" ? (
-        showForm ? <TransferFormView accounts={bankAccounts} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankTransfersQuery.refetch(); }} /> : (
+        showForm ? <TransferFormView accounts={bankAccounts} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadTransfers(); }} /> : (
           <div className="bg-card rounded-[14px] border border-border overflow-hidden">
             {transfers.length === 0 ? <Empty label="تحويلات" /> : (
               <div className="overflow-x-auto garfix-scroll">
@@ -144,7 +163,7 @@ export function BankingView() {
                         <td className={tdStyle}>{t.currency}</td>
                         <td className={tdStyle} dir="ltr">{t.date}</td>
                         <td className={tdStyle}>{t.description || "—"}</td>
-                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+                        <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: t.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: t.status === "completed" ? "#10b981" : "#f59e0b" }}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -169,21 +188,27 @@ function BankAccountFormView({ company, onClose, onSaved }: { company: { slug: s
   const [glAccountId, setGlAccountId] = useState<number | null>(null);
   const [balance, setBalance] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [glAccounts, setGlAccounts] = useState<Array<{ id: number; code: string; nameAr: string }>>([]);
 
-  const glAccountsQuery = useAccounts(company.slug);
-  const glAccounts = (glAccountsQuery.data?.accounts || []) as Array<{ id: number; code: string; name: string; nameAr?: string }>;
-  const createBankAccountMutation = useCreateBankAccount();
+  useEffect(() => {
+    authedFetch(`/api/accounting/accounts?companySlug=${encodeURIComponent(company.slug)}`)
+      .then(r => r.ok ? r.json() : { accounts: [] })
+      .then(d => setGlAccounts(d.accounts || []))
+      .catch(() => setGlAccounts([]));
+  }, [company.slug]);
 
-  const submit = () => {
+  const submit = async () => {
     if (!bankName || !accountName || !accountNumber) { toast.error("البنك واسم الحساب ورقم الحساب مطلوبة"); return; }
     setSaving(true);
-    createBankAccountMutation.mutate(
-      { name: accountName, bankName, accountName, accountNumber, iban, currency, accountType, glAccountId, balance, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم إنشاء الحساب البنكي"); onSaved(); setSaving(false); },
-        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/bank-accounts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: accountName, bankName, accountName, accountNumber, iban, currency, accountType, glAccountId, balance, companySlug: company.slug }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      toast.success("تم إنشاء الحساب البنكي"); onSaved();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -222,21 +247,35 @@ function BankAccountFormView({ company, onClose, onSaved }: { company: { slug: s
 
 /* ─── Reconciliation ─────────────────────────────────────────────────────────── */
 function ReconciliationView({ company }: { company: { slug: string } }) {
+  const [items, setItems] = useState<ReconciliationItem[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [completing, setCompleting] = useState(false);
 
   const slug = encodeURIComponent(company.slug);
 
-  const bankAccountsQuery = useBankAccountsList(slug);
-  const bankAccounts = bankAccountsQuery.data?.bankAccounts ?? [];
-  const reconciliationQuery = useBankReconciliation(slug, selectedAccountId);
-  const items = reconciliationQuery.data?.items ?? [];
-  const loading = reconciliationQuery.isLoading && !!selectedAccountId;
-  const matchMutation = useMatchBankReconciliation();
-  const completeMutation = useCompleteBankReconciliation();
+  useEffect(() => {
+    authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`)
+      .then(r => r.ok ? r.json() : { accounts: [] })
+      .then(d => setBankAccounts(d.accounts || []))
+      .catch(() => setBankAccounts([]));
+  }, [slug]);
 
-  const loadItems = () => { reconciliationQuery.refetch(); };
+  const loadItems = useCallback(async () => {
+    if (!selectedAccountId) { setItems([]); return; }
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/bank-reconciliation?companySlug=${slug}&bankAccountId=${selectedAccountId}`);
+      if (res.ok) { const d = await res.json(); setItems(d.items || []); }
+      else setItems([]);
+    } catch { setItems([]); }
+    finally { setLoading(false); }
+  }, [selectedAccountId, slug]);
+
+  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadItems(); }, [loadItems]);
 
   const totalBank = items.reduce((s, i) => s + i.bankAmount, 0);
   const totalBook = items.reduce((s, i) => s + i.bookAmount, 0);
@@ -244,28 +283,26 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
   const matchedCount = items.filter(i => i.status === "matched").length;
   const unmatchedCount = items.filter(i => i.status !== "matched").length;
 
-  const handleMatch = (id: number) => {
+  const handleMatch = async (id: number) => {
     setActionId(id);
-    matchMutation.mutate(
-      { id, companySlug: company.slug, bankAccountId: selectedAccountId! },
-      {
-        onSuccess: () => { toast.success("تم المطابقة"); reconciliationQuery.refetch(); setActionId(null); },
-        onError: (err) => { toast.error(err.message || "تعذّر المطابقة"); setActionId(null); },
-      },
-    );
+    try {
+      const res = await authedFetch(`/api/accounting/bank-reconciliation/${id}/match?companySlug=${slug}&bankAccountId=${selectedAccountId}`, { method: "POST" });
+      if (res.ok) { toast.success("تم المطابقة"); loadItems(); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر المطابقة"); }
+    } catch { toast.error("خطأ"); }
+    finally { setActionId(null); }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!selectedAccountId) return;
     if (unmatchedCount > 0 && !confirm(`هناك ${unmatchedCount} عنصر غير مطابق. إتمام المطابقة؟`)) return;
     setCompleting(true);
-    completeMutation.mutate(
-      { companySlug: company.slug, bankAccountId: selectedAccountId },
-      {
-        onSuccess: () => { toast.success("تم إتمام المطابقة البنكية"); reconciliationQuery.refetch(); setCompleting(false); },
-        onError: (err) => { toast.error(err.message || "تعذّر إتمام المطابقة"); setCompleting(false); },
-      },
-    );
+    try {
+      const res = await authedFetch(`/api/accounting/bank-reconciliation/complete?companySlug=${slug}&bankAccountId=${selectedAccountId}`, { method: "POST" });
+      if (res.ok) { toast.success("تم إتمام المطابقة البنكية"); loadItems(); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر إتمام المطابقة"); }
+    } catch { toast.error("خطأ"); }
+    finally { setCompleting(false); }
   };
 
   return (
@@ -299,14 +336,14 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
             <div><div className="text-[11px] text-muted-foreground">إجمالي الكتب</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBook)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalDiff === 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: totalDiff === 0 ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.20)", color: totalDiff === 0 ? "#10b981" : "#ef4444" }}>
               {totalDiff === 0 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
             </div>
-            <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalDiff)}</div></div>
+            <div><div className={cn("text-[11px] text-muted-foreground", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>الفرق</div><div className="text-lg font-extrabold [direction:ltr] text-end" >{fmt(totalDiff)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><CheckCircle2 size={18} /></div>
-            <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span className="text-emerald-500">{matchedCount}</span> / <span className="text-amber-500">{unmatchedCount}</span></div></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-purple-500/20 text-purple-500"><CheckCircle2 size={18} /></div>
+            <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span text-emerald-500>{matchedCount}</span> / <span text-amber-500>{unmatchedCount}</span></div></div>
           </div>
         </div>
       )}
@@ -327,8 +364,8 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
                     <td className={cn(tdStyle, "font-bold")}>{item.description}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bankAmount)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bookAmount)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", item.difference === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(item.difference)}</td>
-                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", item.status === "matched" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", item.difference === 0 ? "text-emerald-500" : "text-red-500")} >{fmt(item.difference)}</td>
+                    <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: item.status === "matched" ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: item.status === "matched" ? "#10b981" : "#f59e0b" }}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
                     <td className={tdStyle}>{item.status !== "matched" && <button onClick={() => handleMatch(item.id)} disabled={actionId === item.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{actionId === item.id ? "جارٍ…" : "مطابقة"}</button>}</td>
                   </tr>
                 ))}
@@ -344,31 +381,33 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
 /* ─── CSV Import ────────────────────────────────────────────────────────────── */
 function CSVImportView({ company }: { company: { slug: string } }) {
   const [accountId, setAccountId] = useState<number | null>(null);
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [csvContent, setCsvContent] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
 
   const slug = encodeURIComponent(company.slug);
 
-  const bankAccountsQuery = useBankAccountsList(slug);
-  const accounts = bankAccountsQuery.data?.bankAccounts ?? [];
-  const bankImportMutation = useBankImport();
+  useEffect(() => {
+    authedFetch(`/api/accounting/bank-accounts?companySlug=${slug}`)
+      .then(r => r.ok ? r.json() : { accounts: [] })
+      .then(d => setAccounts(d.accounts || []))
+      .catch(() => setAccounts([]));
+  }, [slug]);
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!accountId) { toast.error("اختر حساب بنكي"); return; }
     if (!csvContent.trim()) { toast.error("أدخل محتوى CSV"); return; }
     setImporting(true); setResult(null);
-    const formData = new FormData();
-    formData.append("accountId", String(accountId));
-    formData.append("csvContent", csvContent);
-    formData.append("companySlug", company.slug);
-    bankImportMutation.mutate(
-      formData,
-      {
-        onSuccess: (data) => { setResult(data as { imported: number; skipped: number; errors: string[] }); toast.success(`تم استيراد ${(data as { imported: number }).imported} حركة`); setCsvContent(""); setImporting(false); },
-        onError: (err) => { toast.error(err.message || "تعذّر الاستيراد"); setImporting(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/bank-import", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId, csvContent, companySlug: company.slug }),
+      });
+      if (res.ok) { const d = await res.json(); setResult(d); toast.success(`تم استيراد ${d.imported} حركة`); setCsvContent(""); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر الاستيراد"); }
+    } catch { toast.error("خطأ في الاتصال"); }
+    finally { setImporting(false); }
   };
 
   const sampleCSV = `Date,Description,Amount
@@ -435,7 +474,6 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
-  const createBankTransferMutation = useCreateBankTransfer();
 
   const fromAccount = accounts.find(a => a.id === fromAccountId);
   const toAccount = accounts.find(a => a.id === toAccountId);
@@ -446,17 +484,19 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
     if (fromAccount) setCurrency(fromAccount.currency);
   }, [fromAccount]);
 
-  const submit = () => {
+  const submit = async () => {
     if (!fromAccountId || !toAccountId || amount <= 0) { toast.error("اختر الحسابات والمبلغ"); return; }
     if (fromAccountId === toAccountId) { toast.error("لا يمكن التحويل إلى نفس الحساب"); return; }
     setSaving(true);
-    createBankTransferMutation.mutate(
-      { fromAccountId, toAccountId, amount, currency, date, description, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم إنشاء التحويل"); onSaved(); setSaving(false); },
-        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/bank-transfer", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromAccountId, toAccountId, amount, currency, date, description, companySlug: company.slug }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      toast.success("تم إنشاء التحويل"); onSaved();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -468,14 +508,14 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
             <option value="">— اختر —</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
           </select>
-          {fromAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className={cn("font-bold", fromAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(fromAccount.balance)} {fromAccount.currency}</span></div>}
+          {fromAccount && <div className={cn("text-[11px] text-muted-foreground mt-1", fromAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>الرصيد: <span className="font-bold" >{fmt(fromAccount.balance)} {fromAccount.currency}</span></div>}
         </div>
         <div><label className={labelStyle}>إلى حساب *</label>
           <select value={toAccountId ?? ""} onChange={(e) => setToAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
             <option value="">— اختر —</option>
             {accounts.filter(a => a.id !== fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
           </select>
-          {toAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className={cn("font-bold", toAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(toAccount.balance)} {toAccount.currency}</span></div>}
+          {toAccount && <div className={cn("text-[11px] text-muted-foreground mt-1", toAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>الرصيد: <span className="font-bold" >{fmt(toAccount.balance)} {toAccount.currency}</span></div>}
         </div>
         <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" min={0} /></div>
         <div><label className={labelStyle}>العملة</label>

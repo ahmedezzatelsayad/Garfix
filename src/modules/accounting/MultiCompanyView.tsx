@@ -1,13 +1,10 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
-import {
-  useInterCompany, useCreateInterCompany, useSettleInterCompany,
-  useCreateConsolidation,
-} from "@/hooks/queries";
 import {
   Building2, ArrowRightLeft, Plus, X, CheckCircle2, Scale,
   Calendar, FileText, DollarSign, TrendingUp, ChevronDown,
@@ -40,27 +37,39 @@ function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigi
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
 
 const TX_TYPE_LABELS: Record<string, string> = { loan: "سلفة", sale: "بيع", service: "خدمة", expense: "مصروف", transfer: "تحويل" };
-const STATUS_BADGES: Record<string, string> = {
-  settled: "bg-emerald-500/15 text-emerald-500",
-  pending: "bg-amber-500/15 text-amber-500",
-  disputed: "bg-red-500/15 text-red-500",
-  cancelled: "bg-gray-400/15 text-gray-400",
+const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  settled: { bg: "rgba(16,185,129,0.15)", color: "#10b981" },
+  pending: { bg: "rgba(245,158,11,0.15)", color: "#f59e0b" },
+  disputed: { bg: "rgba(239,68,68,0.15)", color: "#ef4444" },
+  cancelled: { bg: "rgba(156,163,175,0.15)", color: "#9ca3af" },
 };
 const STATUS_LABELS: Record<string, string> = { settled: "مسوى", pending: "معلّق", disputed: "مختلف", cancelled: "ملغى" };
 
 export function MultiCompanyView() {
   const { activeCompany, companies } = useBrand();
   const [tab, setTab] = useState<Tab>("consolidation");
-
+  const [interCompanyTxs, setInterCompanyTxs] = useState<InterCompanyTx[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [consResult, setConsResult] = useState<ConsolidationResult | null>(null);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  // TanStack Query hooks for data fetching
-  const interCompanyQuery = useInterCompany(slug);
-  const interCompanyTxs = interCompanyQuery.data?.transactions ?? [];
-  const loading = tab === "inter-company" ? interCompanyQuery.isLoading : false;
+  const loadInterCompany = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/inter-company?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setInterCompanyTxs(d.transactions || []); }
+      else setInterCompanyTxs([]);
+    } catch { setInterCompanyTxs([]); }
+    finally { setLoading(false); }
+  }, [slug, activeCompany]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === "inter-company") loadInterCompany();
+  }, [tab, loadInterCompany]);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -88,7 +97,7 @@ export function MultiCompanyView() {
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "consolidation" ? (
         <ConsolidationView companies={companies} result={consResult} setResult={setConsResult} activeCompany={activeCompany} />
       ) : tab === "inter-company" ? (
-        showForm ? <InterCompanyForm companies={companies} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); interCompanyQuery.refetch(); }} /> : <InterCompanyView transactions={interCompanyTxs} company={activeCompany} onRefresh={() => interCompanyQuery.refetch()} />
+        showForm ? <InterCompanyForm companies={companies} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadInterCompany(); }} /> : <InterCompanyView transactions={interCompanyTxs} company={activeCompany} onRefresh={loadInterCompany} />
       ) : null}
     </div>
   );
@@ -103,7 +112,6 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
   const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set([activeCompany.slug]));
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
   const [running, setRunning] = useState(false);
-  const consolidationMutation = useCreateConsolidation();
 
   const toggleCompany = (slug: string) => {
     setSelectedSlugs(prev => {
@@ -114,16 +122,21 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
     });
   };
 
-  const handleConsolidate = () => {
+  const handleConsolidate = async () => {
     if (selectedSlugs.size < 2) { toast.error("اختر至少 2 شركات"); return; }
     setRunning(true);
-    consolidationMutation.mutate(
-      { companySlugs: Array.from(selectedSlugs), asOfDate, companySlug: activeCompany.slug },
-      {
-        onSuccess: (data) => { setResult(data); toast.success("تم التوحيد"); setRunning(false); },
-        onError: (err) => { toast.error(err.message || "تعذّر التوحيد"); setRunning(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/consolidation", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companySlugs: Array.from(selectedSlugs), asOfDate, companySlug: activeCompany.slug }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setResult(d as ConsolidationResult);
+        toast.success("تم التوحيد");
+      } else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر التوحيد"); }
+    } catch { toast.error("خطأ"); }
+    finally { setRunning(false); }
   };
 
   return (
@@ -165,8 +178,8 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
               <div><div className="text-[11px] text-muted-foreground">إجمالي الإيرادات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalRevenue)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
-              <div><div className="text-[11px] text-muted-foreground">صافي الدخل</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", result.netIncome >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(result.netIncome)}</div></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-purple-500/20 text-purple-500"><FileText size={18} /></div>
+              <div><div className={cn("text-[11px] text-muted-foreground", result.netIncome >= 0 ? "text-emerald-500" : "text-red-500")}>صافي الدخل</div><div className="text-lg font-extrabold [direction:ltr] text-end" >{fmt(result.netIncome)}</div></div>
             </div>
           </div>
 
@@ -183,11 +196,11 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
                   <tr key={l.id} className="border-b border-border">
                     <td className={cn(tdStyle, "font-mono")}>{l.accountCode}</td>
                     <td className={cn(tdStyle, "font-bold")}>{l.accountName}</td>
-                    <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", l.section === "assets" ? "bg-emerald-500/15 text-emerald-500" : l.section === "liabilities" ? "bg-red-500/15 text-red-500" : l.section === "revenue" ? "bg-amber-500/15 text-amber-500" : "bg-violet-500/15 text-violet-500")}>{l.section === "assets" ? "أصول" : l.section === "liabilities" ? "خصوم" : l.section === "revenue" ? "إيرادات" : "مصروفات"}</span></td>
+                    <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" style={{ background: l.section === "assets" ? "rgba(16,185,129,0.15)" : l.section === "liabilities" ? "rgba(239,68,68,0.15)" : l.section === "revenue" ? "rgba(245,158,11,0.15)" : "rgba(124,58,237,0.15)", color: l.section === "assets" ? "#10b981" : l.section === "liabilities" ? "#ef4444" : l.section === "revenue" ? "#f59e0b" : "#7c3aed" }}>{l.section === "assets" ? "أصول" : l.section === "liabilities" ? "خصوم" : l.section === "revenue" ? "إيرادات" : "مصروفات"}</span></td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyA)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyB)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end", l.adjustments !== 0 ? "text-amber-500" : "text-gray-400")}>{fmt(l.adjustments)}</td>
-                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-violet-500")}>{fmt(l.consolidated)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end", l.adjustments !== 0 ? "text-amber-500" : "text-gray-400")} >{fmt(l.adjustments)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", "text-purple-500")}>{fmt(l.consolidated)}</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -202,17 +215,15 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
 /* ─── Inter-Company ─────────────────────────────────── */
 function InterCompanyView({ transactions, company, onRefresh }: { transactions: InterCompanyTx[]; company: { slug: string }; onRefresh: () => void }) {
   const [settlingId, setSettlingId] = useState<number | null>(null);
-  const settleMutation = useSettleInterCompany();
 
-  const handleSettle = (id: number) => {
+  const handleSettle = async (id: number) => {
     setSettlingId(id);
-    settleMutation.mutate(
-      { id, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم التسوية"); setSettlingId(null); onRefresh(); },
-        onError: (err) => { toast.error(err.message || "تعذّر التسوية"); setSettlingId(null); },
-      },
-    );
+    try {
+      const res = await authedFetch(`/api/accounting/inter-company/${id}/settle?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
+      if (res.ok) { toast.success("تم التسوية"); onRefresh(); }
+      else { const e = await res.json().catch(() => ({})); toast.error((e as Record<string, unknown>)?.error as string || "تعذّر التسوية"); }
+    } catch { toast.error("خطأ"); }
+    finally { setSettlingId(null); }
   };
 
   return (
@@ -226,7 +237,7 @@ function InterCompanyView({ transactions, company, onRefresh }: { transactions: 
               <th className={thStyle}>النوع</th><th className={thStyle}>الوصف</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
             </tr></thead>
             <tbody>{transactions.map(t => {
-              const scBadge = STATUS_BADGES[t.status] || STATUS_BADGES.pending;
+              const sc = STATUS_COLORS[t.status] || STATUS_COLORS.pending;
               return (
                 <tr key={t.id} className="border-b border-border">
                   <td className={tdStyle} dir="ltr">{t.date}</td>
@@ -234,9 +245,9 @@ function InterCompanyView({ transactions, company, onRefresh }: { transactions: 
                   <td className={tdStyle}>{t.toCompany}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(t.amount)}</td>
                   <td className={cn(tdStyle, "font-mono")}>{t.currency}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", t.type === "loan" ? "bg-blue-500/15 text-blue-500" : t.type === "sale" ? "bg-emerald-500/15 text-emerald-500" : "bg-violet-500/15 text-violet-500")}>{TX_TYPE_LABELS[t.type] || t.type}</span></td>
+                  <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold" style={{ background: t.type === "loan" ? "rgba(59,130,246,0.15)" : t.type === "sale" ? "rgba(16,185,129,0.15)" : "rgba(124,58,237,0.15)", color: t.type === "loan" ? "#3b82f6" : t.type === "sale" ? "#10b981" : "#7c3aed" }}>{TX_TYPE_LABELS[t.type] || t.type}</span></td>
                   <td className={tdStyle}>{t.description}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", scBadge)}>{STATUS_LABELS[t.status] || t.status}</span></td>
+                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold" style={{ background: sc.bg, color: sc.color }}>{STATUS_LABELS[t.status] || t.status}</span></td>
                   <td className={tdStyle}>
                     {t.status === "pending" && <button onClick={() => handleSettle(t.id)} disabled={settlingId === t.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{settlingId === t.id ? "جارٍ…" : "تسوية"}</button>}
                   </td>
@@ -263,19 +274,20 @@ function InterCompanyForm({ companies, company, onClose, onSaved }: {
   const [type, setType] = useState("loan");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
-  const createInterCompanyMutation = useCreateInterCompany();
 
-  const submit = () => {
+  const submit = async () => {
     if (!fromCompany || !toCompany || amount <= 0) { toast.error("جميع الحقول مطلوبة"); return; }
     if (fromCompany === toCompany) { toast.error("الشركات يجب أن تكون مختلفة"); return; }
     setSaving(true);
-    createInterCompanyMutation.mutate(
-      { fromCompany, toCompany, amount, currency, description, type, date, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم إنشاء التسوية"); setSaving(false); onSaved(); },
-        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/inter-company", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromCompany, toCompany, amount, currency, description, type, date, companySlug: company.slug }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string || "Failed"); }
+      toast.success("تم إنشاء التسوية"); onSaved();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+    finally { setSaving(false); }
   };
 
   const companyLabel = (slug: string) => {

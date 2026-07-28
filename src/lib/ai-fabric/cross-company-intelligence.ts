@@ -120,6 +120,7 @@ export async function contributePattern(
         suggestedSku: existing.suggestedSku || sku || null,
         suggestedVatCategory: existing.suggestedVatCategory || vatCategory || null,
         suggestedCategory: existing.suggestedCategory || category || null,
+        lastUpdated: new Date(),
       },
     });
   } else {
@@ -131,6 +132,7 @@ export async function contributePattern(
         suggestedCategory: category || null,
         contributingCompaniesCount: 1,
         confidence,
+        lastUpdated: new Date(),
       },
     });
   }

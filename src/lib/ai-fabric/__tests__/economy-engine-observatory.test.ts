@@ -1,46 +1,52 @@
 // @ts-nocheck
 /**
- * economy-engine-observatory.test.ts — 30 tests for AI Economy Engine and Observatory.
- * Tests getEconomyStatus, shouldUseEconomyMode, recordDecisionTrace, getExplainabilitySummary.
+ * Converted from bun:test to Jest.
  */
 
-import { describe, it, expect, beforeEach, mock, afterAll } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 
 // ─── Mock setup ─────────────────────────────────────────────────────────
 
-const m = () => ({
-  findUnique: mock(() => Promise.resolve(null)),
-  findMany: mock(() => Promise.resolve([])),
-  create: mock(() => Promise.resolve({})),
-  update: mock(() => Promise.resolve({})),
-  delete: mock(() => Promise.resolve({})),
-  deleteMany: mock(() => Promise.resolve({ count: 0 })),
-  upsert: mock(() => Promise.resolve({})),
-  aggregate: mock(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0, _avg: { confidence: 0, contributingCompaniesCount: 0 } })),
-  groupBy: mock(() => Promise.resolve([])),
-  count: mock(() => Promise.resolve(0)),
-  findFirst: mock(() => Promise.resolve(null)),
-});
+jest.mock("@/lib/db", () => ({
+  db: {
+    cacheEntry: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    aIRequestLog: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    ruleCandidate: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    aIMemoryEntry: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    budgetConfig: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    notification: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    company: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    companyRuntime: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    providerConfig: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    globalPattern: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    profitSnapshot: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    aIScoreSnapshot: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    jobQueue: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    inventoryItem: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    productCatalog: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    client: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+    compiledRule: { findUnique: jest.fn(() => Promise.resolve(null)), findMany: jest.fn(() => Promise.resolve([])), create: jest.fn(() => Promise.resolve({})), update: jest.fn(() => Promise.resolve({})), delete: jest.fn(() => Promise.resolve({})), deleteMany: jest.fn(() => Promise.resolve({ count: 0 })), upsert: jest.fn(() => Promise.resolve({})), aggregate: jest.fn(() => Promise.resolve({ _sum: { costUsd: 0 }, _count: 0 })), groupBy: jest.fn(() => Promise.resolve([])), count: jest.fn(() => Promise.resolve(0)), findFirst: jest.fn(() => Promise.resolve(null)) },
+  },
+}));
+jest.mock("@/lib/logger", () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
 
-const mockDb: Record<string, any> = {
-  cacheEntry: m(), aIRequestLog: m(), ruleCandidate: m(),
-  aIMemoryEntry: m(), budgetConfig: m(), notification: m(),
-  company: m(), companyRuntime: m(), providerConfig: m(),
-  globalPattern: m(), profitSnapshot: m(), aIScoreSnapshot: m(),
-  jobQueue: m(), inventoryItem: m(), productCatalog: m(), client: m(),
-  compiledRule: m(), platformSettings: m(), featureFlag: m(),
-};
 
-const mockLogger = {
-  info: mock(() => {}), warn: mock(() => {}),
-  error: mock(() => {}), debug: mock(() => {}),
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/logger", () => ({ logger: mockLogger }));
-
+// Restore all mocks after this test file to prevent leaking into other files
+afterAll(() => jest.restoreAllMocks());
 import { getEconomyStatus, shouldUseEconomyMode } from "@/lib/ai-fabric/ai-economy-engine";
 import { recordDecisionTrace, getExplainabilitySummary, type DecisionTrace } from "@/lib/observatory";
+
+// Get mock references
+const { db: mockDb } = jest.requireMock("@/lib/db");
+const { logger: mockLogger } = jest.requireMock("@/lib/logger");
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -77,6 +83,7 @@ function makeTrace(overrides?: Partial<DecisionTrace>): DecisionTrace {
 }
 
 // ─── getEconomyStatus — strategy tests ───────────────────────────────────
+
 
 describe("getEconomyStatus — strategy", () => {
   beforeEach(clearAll);
@@ -296,5 +303,3 @@ describe("getExplainabilitySummary", () => {
     expect(s.period).toBe("30 days");
   });
 });
-
-afterAll(() => { mock.restore(); });

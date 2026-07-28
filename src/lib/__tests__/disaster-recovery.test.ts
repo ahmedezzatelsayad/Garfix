@@ -6,7 +6,7 @@
  * recovery drills, Valkey persistence, and snapshot cleanup.
  */
 
-import { describe, it, expect, mock, afterAll } from "bun:test";
+import {  describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -337,4 +337,4 @@ describe("Snapshot cleanup", () => {
   });
 });
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

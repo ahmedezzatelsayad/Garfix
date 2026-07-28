@@ -7,16 +7,9 @@
  * getActiveSessionCount, cleanupExpiredSessions.
  */
 
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import {  describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────
-
-// P1/R3 fix: active flag that lets the @/lib/db mock fall through to the
-// real db module when this test file is not running. Bun's mock.module()
-// is global and persists across files; without this guard, passwordPolicy's
-// db mock leaks into collision-recovery-audit-purchase (which uses real db).
-const passwordPolicyTestsActive: { value: boolean } = { value: true };
-(globalThis as any).__passwordPolicyTestsActive = passwordPolicyTestsActive;
 
 const mockSessionCreate = mock(() => Promise.resolve({}));
 const mockSessionFindMany = mock(() => Promise.resolve([]));
@@ -25,27 +18,8 @@ const mockSessionDelete = mock(() => Promise.resolve({}));
 const mockSessionDeleteMany = mock(() => Promise.resolve({ count: 0 }));
 const mockSessionCount = mock(() => Promise.resolve(0));
 
-mock.module("@/lib/db", () => {
-  // P1/R3 fix: when this test file is not active, fall through to the real
-  // db module via dynamic import (cache-bust to bypass mock interception).
-  const realDb = async () => (await import("@/lib/db?bypass=" + Math.random())).db;
-  const handler: ProxyHandler<Record<string, any>> = {
-    get(_target, prop) {
-      if (!(globalThis as any).__passwordPolicyTestsActive?.value) {
-        // Return a thenable that resolves to the real db's property
-        return new Proxy({}, {
-          get(_t, p) {
-            return async (...args: any[]) => {
-              const real = await realDb();
-              return (real as any)[prop][p](...args);
-            };
-          },
-        });
-      }
-      return mockDb[prop];
-    },
-  };
-  const mockDb = {
+mock.module("@/lib/db", () => ({
+  db: {
     user: {
       findUnique: mock(() => Promise.resolve(null)),
       findMany: mock(() => Promise.resolve([])),
@@ -77,9 +51,8 @@ mock.module("@/lib/db", () => {
     ruleCandidate: { findMany: mock(() => Promise.resolve([])) },
     company: { findMany: mock(() => Promise.resolve([])) },
     notification: { create: mock(() => Promise.resolve({})) },
-  };
-  return { db: new Proxy(mockDb, handler) };
-});
+  },
+}));
 
 mock.module("@/lib/logger", () => ({
   logger: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), debug: mock(() => {}) },
@@ -506,11 +479,4 @@ describe("Password Policy Module", () => {
   });
 });
 
-afterAll(() => {
-  // P1/R3 fix: deactivate this file's @/lib/db mock so it doesn't leak
-  // into subsequent test files (especially collision-recovery-audit-purchase
-  // which uses the real db). The mock factory checks this flag and falls
-  // through to the real db via dynamic import when false.
-  passwordPolicyTestsActive.value = false;
-  mock.restore();
-});
+afterAll(() => mock.restore());

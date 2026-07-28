@@ -1,15 +1,10 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { authedFetch } from "@/context/AuthContext";
 import { toast } from "sonner";
-import {
-  useArApAging, useClientStatement, useSupplierStatement,
-  usePostDatedChecks, useCreatePDC, usePDCAction,
-  useInstallments, useCreateInstallment,
-  useAccounts, useClients, useSuppliers,
-} from "@/hooks/queries";
 import {
   ArrowUpDown, Plus, X, Trash2, FileText, CheckCircle2,
   Clock, Banknote, CalendarDays, Send, Download,
@@ -32,8 +27,6 @@ type Direction = "receivable" | "payable";
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const accentBadge = "bg-muted";
-const accentText = "";
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
@@ -43,28 +36,56 @@ function Empty({ label }: { label: string }) { return <div className="p-12 text-
 export function ArApView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("aging");
+  const [agingData, setAgingData] = useState<AgingSummary | null>(null);
   const [agingDirection, setAgingDirection] = useState<Direction>("receivable");
+  const [clientStatement, setClientStatement] = useState<ClientStatement | null>(null);
+  const [supplierStatement, setSupplierStatement] = useState<ClientStatement | null>(null);
+  const [pdcs, setPdcs] = useState<PDC[]>([]);
+  const [installments, setInstallments] = useState<Installment[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
 
-  // TanStack Query hooks for data fetching
-  const agingQuery = useArApAging(slug, agingDirection);
-  const pdcQuery = usePostDatedChecks(slug);
-  const installmentQuery = useInstallments(slug);
+  const loadAging = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/aging?companySlug=${slug}&direction=${agingDirection}`);
+      if (res.ok) { const d = await res.json(); setAgingData(d.summary || null); }
+      else setAgingData(null);
+    } catch { setAgingData(null); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug, agingDirection]);
 
-  const agingData: AgingSummary | null = agingQuery.data ? {
-    direction: agingDirection, rows: agingQuery.data.rows,
-    grandCurrent: agingQuery.data.grandCurrent, grandThirty: agingQuery.data.grandThirty,
-    grandSixty: agingQuery.data.grandSixty, grandNinetyPlus: agingQuery.data.grandNinetyPlus,
-    grandTotal: agingQuery.data.grandTotal,
-  } : null;
-  const pdcs = pdcQuery.data?.postDatedChecks ?? [];
-  const installments = installmentQuery.data?.installments ?? [];
-  const [clientStatement, setClientStatement] = useState<ClientStatement | null>(null);
-  const [supplierStatement, setSupplierStatement] = useState<ClientStatement | null>(null);
+  const loadPDCs = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/post-dated-checks?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setPdcs(d.checks || []); }
+      else setPdcs([]);
+    } catch { setPdcs([]); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug]);
 
-  const loading = (tab === "aging" && agingQuery.isLoading) || (tab === "pdc" && pdcQuery.isLoading) || (tab === "installments" && installmentQuery.isLoading);
+  const loadInstallments = useCallback(async () => {
+    if (!activeCompany) return;
+    setLoading(true);
+    try {
+      const res = await authedFetch(`/api/accounting/installments?companySlug=${slug}`);
+      if (res.ok) { const d = await res.json(); setInstallments(d.installments || []); }
+      else setInstallments([]);
+    } catch { setInstallments([]); }
+    finally { setLoading(false); }
+  }, [activeCompany, slug]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === "aging") loadAging();
+    if (tab === "pdc") loadPDCs();
+    if (tab === "installments") loadInstallments();
+  }, [tab, loadAging, loadPDCs, loadInstallments]);
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -102,9 +123,9 @@ export function ArApView() {
       ) : tab === "supplier-statement" ? (
         <StatementView type="supplier" company={activeCompany} data={supplierStatement} setData={setSupplierStatement} />
       ) : tab === "pdc" ? (
-        showForm ? <PDCForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); pdcQuery.refetch(); }} /> : <PDCList pdcs={pdcs} company={activeCompany} onRefresh={() => pdcQuery.refetch()} />
+        showForm ? <PDCForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadPDCs(); }} /> : <PDCList pdcs={pdcs} company={activeCompany} onRefresh={loadPDCs} />
       ) : tab === "installments" ? (
-        showForm ? <InstallmentForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); installmentQuery.refetch(); }} /> : <InstallmentList installments={installments} />
+        showForm ? <InstallmentForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadInstallments(); }} /> : <InstallmentList installments={installments} />
       ) : null}
     </div>
   );
@@ -126,7 +147,7 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
       {data && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", accentBadge)}><ArrowUpDown size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center" style={{ background: `${accentColor}20`, color: accentColor }}>{/* TAILWINDBREAK: dynamic accent color prop */}<ArrowUpDown size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي {direction === "receivable" ? "الذمم المدينة" : "الذمم الدائنة"}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandTotal)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
@@ -159,8 +180,8 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.current > 0 ? fmt(r.current) : "—"}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.thirty > 0 ? fmt(r.thirty) : "—"}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.sixty > 0 ? fmt(r.sixty) : "—"}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.ninetyPlus > 0 ? "text-red-500" : "text-emerald-500")}>{r.ninetyPlus > 0 ? fmt(r.ninetyPlus) : "—"}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", accentText)}>{fmt(r.total)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.ninetyPlus > 0 ? "text-red-500" : "text-emerald-500")} >{r.ninetyPlus > 0 ? fmt(r.ninetyPlus) : "—"}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")} style={{ color: accentColor }}>{/* TAILWINDBREAK: dynamic accent color prop */}{fmt(r.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -170,8 +191,8 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandCurrent)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandThirty)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandSixty)}</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(data.grandNinetyPlus)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", accentText)}>{fmt(data.grandTotal)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", "text-red-500")}>{fmt(data.grandNinetyPlus)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")} style={{ color: accentColor }}>{/* TAILWINDBREAK: dynamic accent color prop */}{fmt(data.grandTotal)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -185,35 +206,28 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
 /* ─── Client/Supplier Statement ────────────────────────────────────────────── */
 function StatementView({ type, company, data, setData }: { type: "client" | "supplier"; company: { slug: string }; data: ClientStatement | null; setData: (d: ClientStatement | null) => void }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingStatement, setLoadingStatement] = useState(false);
 
-  const clientsQuery = useClients(company.slug);
-  const suppliersQuery = useSuppliers(company.slug);
-  const clientStatementQuery = useClientStatement(company.slug, type === "client" ? selectedId : null);
-  const supplierStatementQuery = useSupplierStatement(company.slug, type === "supplier" ? selectedId : null);
+  useEffect(() => {
+    const endpoint = type === "client" ? "/api/clients" : "/api/suppliers";
+    authedFetch(`${endpoint}?companySlug=${encodeURIComponent(company.slug)}`)
+      .then(r => r.ok ? r.json() : { clients: [], suppliers: [] })
+      .then(d => setContacts(type === "client" ? (d.clients || []) : (d.suppliers || [])))
+      .catch(() => setContacts([]));
+  }, [type, company.slug]);
 
-  const contacts = type === "client"
-    ? (clientsQuery.data?.clients || [])
-    : (suppliersQuery.data?.suppliers || []);
-
-  const loadStatement = () => {
+  const loadStatement = async () => {
     if (!selectedId) { toast.error("اختر " + (type === "client" ? "عميل" : "مورد")); return; }
     setLoadingStatement(true);
-    const query = type === "client" ? clientStatementQuery : supplierStatementQuery;
-    if (query.data) {
-      if (type === "client") {
-        const cs = (query.data as { clientStatement: { clientName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number } }).clientStatement;
-        setData(cs);
-      } else {
-        const ss = (query.data as { supplierStatement: { supplierName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number } }).supplierStatement;
-        setData({ clientName: ss.supplierName, openingBalance: ss.openingBalance, lines: ss.lines, closingBalance: ss.closingBalance });
-      }
-      setLoadingStatement(false);
-    } else if (query.isError) {
-      toast.error("تعذّر تحميل كشف الحساب");
-      setData(null);
-      setLoadingStatement(false);
-    }
+    try {
+      const endpoint = type === "client" ? "/api/accounting/client-statement" : "/api/accounting/supplier-statement";
+      const paramName = type === "client" ? "clientId" : "supplierId";
+      const res = await authedFetch(`${endpoint}?companySlug=${encodeURIComponent(company.slug)}&${paramName}=${selectedId}`);
+      if (res.ok) { setData(await res.json()); }
+      else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر تحميل كشف الحساب"); setData(null); }
+    } catch { toast.error("خطأ في الاتصال"); setData(null); }
+    finally { setLoadingStatement(false); }
   };
 
   const totalDebit = data?.lines.reduce((s, l) => s + l.debit, 0) || 0;
@@ -242,7 +256,7 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-purple-500/20 text-purple-500"><FileText size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">{data.clientName}</div><div className="text-[13px] font-bold">رصيد افتتاحي: {fmt(data.openingBalance)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
@@ -254,8 +268,8 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
               <div><div className="text-[11px] text-muted-foreground">إجمالي دائن</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCredit)}</div></div>
             </div>
             <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", data.closingBalance >= 0 ? "bg-violet-500/20 text-violet-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
-              <div><div className="text-[11px] text-muted-foreground">رصيد إقفالي</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", data.closingBalance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(data.closingBalance)}</div></div>
+              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", data.closingBalance >= 0 ? "bg-purple-500/20 text-purple-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
+              <div><div className={cn("text-[11px] text-muted-foreground", data.closingBalance >= 0 ? "text-purple-500" : "text-red-500")}>رصيد إقفالي</div><div className="text-lg font-extrabold [direction:ltr] text-end" >{fmt(data.closingBalance)}</div></div>
             </div>
           </div>
 
@@ -273,18 +287,18 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
                         <td className={tdStyle} dir="ltr">{l.date}</td>
                         <td className={tdStyle}>{l.type}</td>
                         <td className={cn(tdStyle, "font-mono")}>{l.reference}</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.debit > 0 ? "text-violet-500" : "")}>{l.debit ? fmt(l.debit) : "—"}</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.credit > 0 ? "text-red-500" : "")}>{l.credit ? fmt(l.credit) : "—"}</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", l.balance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(l.balance)}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.debit > 0 && "text-purple-500")}>{l.debit ? fmt(l.debit) : "—"}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.credit > 0 && "text-red-500")}>{l.credit ? fmt(l.credit) : "—"}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", l.balance >= 0 ? "text-purple-500" : "text-red-500")} >{fmt(l.balance)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-border bg-muted font-extrabold">
                       <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>رصيد إقفالي</td>
-                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-violet-500")}>{fmt(totalDebit)}</td>
-                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(totalCredit)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", data.closingBalance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(data.closingBalance)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", "text-purple-500")}>{fmt(totalDebit)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", "text-red-500")}>{fmt(totalCredit)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", data.closingBalance >= 0 ? "text-purple-500" : "text-red-500")} >{fmt(data.closingBalance)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -300,32 +314,28 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
 /* ─── PDC List ──────────────────────────────────────────────────────────────── */
 function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: string }; onRefresh: () => void }) {
   const [actionId, setActionId] = useState<number | null>(null);
-  const pdcActionMutation = usePDCAction();
 
-  const handleAction = (pdcId: number, action: string) => {
+  const handleAction = async (pdcId: number, action: string) => {
     setActionId(pdcId);
-    pdcActionMutation.mutate(
-      { id: pdcId, action, companySlug: company.slug },
-      {
-        onSuccess: () => {
-          const actionLabel = action === "deposit" ? "تسليم الشيك" : action === "clear" ? "تحصيل الشيك" : "إرجاع الشيك";
-          toast.success(`تم ${actionLabel}`);
-          onRefresh();
-          setActionId(null);
-        },
-        onError: (err) => { toast.error(err.message || "تعذّر تنفيذ الإجراء"); setActionId(null); },
-      },
-    );
+    try {
+      const res = await authedFetch(`/api/accounting/post-dated-checks/${pdcId}/${action}?companySlug=${encodeURIComponent(company.slug)}`, { method: "POST" });
+      if (res.ok) {
+        const actionLabel = action === "deposit" ? "تسليم الشيك" : action === "clear" ? "تحصيل الشيك" : "إرجاع الشيك";
+        toast.success(`تم ${actionLabel}`);
+        onRefresh();
+      } else { const e = await res.json().catch(() => ({})); toast.error(e.error || "تعذّر تنفيذ الإجراء"); }
+    } catch { toast.error("خطأ"); }
+    finally { setActionId(null); }
   };
 
   const statusBadge = (status: string) => {
-    const map: Record<string, { badge: string; label: string }> = {
-      pending: { badge: "bg-amber-500/15 text-amber-500", label: "معلّق" },
-      deposited: { badge: "bg-blue-500/15 text-blue-500", label: "مسلّم" },
-      cleared: { badge: "bg-emerald-500/15 text-emerald-500", label: "محصل" },
-      returned: { badge: "bg-red-500/15 text-red-500", label: "مرجع" },
+    const map: Record<string, { tw: string; label: string }> = {
+      pending: { tw: "bg-amber-500/15 text-amber-500", label: "معلّق" },
+      deposited: { tw: "bg-blue-500/15 text-blue-500", label: "مسلّم" },
+      cleared: { tw: "bg-emerald-500/15 text-emerald-500", label: "محصل" },
+      returned: { tw: "bg-red-500/15 text-red-500", label: "مرجع" },
     };
-    return map[status] || { badge: "bg-gray-400/15 text-gray-400", label: status };
+    return map[status] || { tw: "bg-gray-400/15 text-gray-400", label: status };
   };
 
   const totalAmount = pdcs.reduce((s, p) => s + p.amount, 0);
@@ -364,7 +374,7 @@ function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: s
                       <td className={tdStyle}>{name || "—"}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(p.amount)}</td>
                       <td className={tdStyle} dir="ltr">{p.dueDate}</td>
-                      <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", sc.badge)}>{sc.label}</span></td>
+                      <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", sc.tw)}>{sc.label}</span></td>
                       <td className={tdStyle}>
                         <div className="flex items-center gap-1">
                           {p.status === "pending" && <button onClick={() => handleAction(p.id, "deposit")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">تسليم</button>}
@@ -394,18 +404,20 @@ function PDCForm({ company, onClose, onSaved }: { company: { slug: string }; onC
   const [clientName, setClientName] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [saving, setSaving] = useState(false);
-  const createPDCMutation = useCreatePDC();
 
-  const submit = () => {
+  const submit = async () => {
     if (!checkNumber || !bankName || !dueDate || amount <= 0) { toast.error("جميع الحقول مطلوبة"); return; }
     setSaving(true);
-    createPDCMutation.mutate(
-      { checkNumber, bankName, amount, dueDate, direction, clientName: direction === "receivable" ? clientName : undefined, supplierName: direction === "payable" ? supplierName : undefined, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم إنشاء الشيك المؤجل"); onSaved(); setSaving(false); },
-        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/post-dated-checks", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkNumber, bankName, amount, dueDate, direction, clientName: direction === "receivable" ? clientName : undefined, supplierName: direction === "payable" ? supplierName : undefined, companySlug: company.slug }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      toast.success("تم إنشاء الشيك المؤجل");
+      onSaved();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -485,18 +497,20 @@ function InstallmentForm({ company, onClose, onSaved }: { company: { slug: strin
   const [installmentCount, setInstallmentCount] = useState(1);
   const [firstDueDate, setFirstDueDate] = useState("");
   const [saving, setSaving] = useState(false);
-  const createInstallmentMutation = useCreateInstallment();
 
-  const submit = () => {
+  const submit = async () => {
     if (!reference || !clientName || totalAmount <= 0 || installmentCount <= 0 || !firstDueDate) { toast.error("جميع الحقول مطلوبة"); return; }
     setSaving(true);
-    createInstallmentMutation.mutate(
-      { reference, clientId: 0, clientName, totalAmount, installmentCount, firstDueDate, companySlug: company.slug },
-      {
-        onSuccess: () => { toast.success("تم إنشاء اتفاق التقسيط"); onSaved(); setSaving(false); },
-        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
-      },
-    );
+    try {
+      const res = await authedFetch("/api/accounting/installments", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference, clientName, totalAmount, installmentCount, firstDueDate, companySlug: company.slug }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed"); }
+      toast.success("تم إنشاء اتفاق التقسيط");
+      onSaved();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
+    finally { setSaving(false); }
   };
 
   return (

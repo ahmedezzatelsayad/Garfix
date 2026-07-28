@@ -1,75 +1,73 @@
-/**
- * db.ts — Prisma Client (P0-3: Soft Delete via $extends).
- *
- * Uses Prisma's $extends API for soft-delete filtering.
- * The extended client automatically adds deletedAt: null to
- * findMany/findFirst queries on soft-delete models.
- */
-
 import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: any | undefined
+  prisma: PrismaClient | undefined
+  __dbMockOverride: any | undefined
 }
 
+// Only log queries in development, never in production
 const isDev = process.env.NODE_ENV !== 'production';
 
+// Connection pool sizing for PostgreSQL.
+// Default Prisma pool = 10 connections, which exhausts quickly under load.
+// In production: use DATABASE_POOL_SIZE env var (default 20 for a single instance).
+// Formula guidance: pool_size = (CPU cores × 2) + effective_spindle_count
 const poolSize = isDev
-  ? 5
+  ? 5  // Dev: smaller pool
   : (parseInt(process.env.DATABASE_POOL_SIZE || '20', 10) || 20);
 
-// P0-3: Models that support soft-delete (must have deletedAt field in schema)
-const SOFT_DELETE_MODELS = new Set([
-  'Company', 'Client', 'Invoice',
-]);
+const _realDb =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: isDev ? ['query', 'warn', 'error'] : ['warn', 'error'],
+    datasourceUrl: process.env.DATABASE_URL
+      ? appendPoolParams(process.env.DATABASE_URL, poolSize)
+      : undefined,
+  })
 
-// Create base client
-const basePrisma = new PrismaClient({
-  log: isDev ? ['query', 'warn', 'error'] : ['warn', 'error'],
-  datasourceUrl: process.env.DATABASE_URL
-    ? appendPoolParams(process.env.DATABASE_URL, poolSize)
-    : undefined,
-});
-
-// P0-3: Extend with soft-delete filtering
-// Uses $extends with result-level override for findMany/findFirst
-const extendedPrisma = basePrisma.$extends({
-  name: 'softDelete',
-  result: {
-    // We don't modify results — we filter inputs
-  },
-  query: {
-    $allModels: {
-      async findMany({ args, query, model }) {
-        if (SOFT_DELETE_MODELS.has(model) && !(args as any)?.where?.deletedAt) {
-          args = { ...args, where: { ...(args as any)?.where, deletedAt: null } } as any;
-        }
-        return query(args);
-      },
-      async findFirst({ args, query, model }) {
-        if (SOFT_DELETE_MODELS.has(model) && !(args as any)?.where?.deletedAt) {
-          args = { ...args, where: { ...(args as any)?.where, deletedAt: null } } as any;
-        }
-        return query(args);
-      },
-    },
+/**
+ * Database client — supports mock override for testing.
+ *
+ * When `globalForPrisma.__dbMockOverride` is set (by jest shim),
+ * the mock is returned instead of the real Prisma client.
+ * This allows test files that use jest.mock("@/lib/db", ...) to
+ * inject mocks without using Bun's global mock.module().
+ */
+export const db = new Proxy(_realDb, {
+  get(target, prop, receiver) {
+    if (globalForPrisma.__dbMockOverride && typeof prop === 'string' && prop in globalForPrisma.__dbMockOverride) {
+      return globalForPrisma.__dbMockOverride[prop];
+    }
+    return Reflect.get(target, prop, receiver);
   },
 });
 
-// Export as `db` — type as any to avoid TS extension type issues
-export const db: any = globalForPrisma.prisma ?? extendedPrisma;
-
+/**
+ * Append connection pool parameters to a PostgreSQL URL.
+ */
 function appendPoolParams(url: string, poolSize: number): string {
+  // Already has pool params — don't double-add
   if (url.includes('connection_limit=')) return url;
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}connection_limit=${poolSize}&pool_timeout=30`;
 }
 
+// ── Runtime initialization ─────────────────────────────────────────────
+// Module-level side effects REMOVED — initDb() now requires
+// an explicit call from instrumentation.ts / bootstrap.ts at runtime.
+// This prevents database queries from firing during `next build`.
 let _dbInitialized = false;
 
+/**
+ * Initialize database connection settings.
+ * Must be called once at application startup (e.g., from instrumentation.ts).
+ * Safe to call multiple times — subsequent calls are no-ops.
+ */
 export async function initDb(): Promise<void> {
   if (_dbInitialized) return;
   _dbInitialized = true;
+  // PostgreSQL doesn't need PRAGMA configuration — connection pooling
+  // is handled by Prisma and the pool params in the URL.
 }
 
-if (isDev) globalForPrisma.prisma = db;
+if (isDev) globalForPrisma.prisma = _realDb

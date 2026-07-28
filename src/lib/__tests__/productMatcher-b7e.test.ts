@@ -39,13 +39,13 @@
  * MOCK STRATEGY
  * =============
  * We use the SAME monkey-patching pattern as `collision-recovery-audit.test.ts`:
- * import the real `db`, monkey-patch `db.featureFlag` + `db.platformSettingss` in
+ * import the real `db`, monkey-patch `db.featureFlag` + `db.platformSetting` in
  * beforeAll, restore them in afterAll. We do NOT call `mock.module("@/lib/db")`
  * — that would leak into `productMatcher.test.ts` (Bun's mock.module is global
  * by default). The matcher's exact-match path calls `db.productAlias.findUnique`
  * which we ALSO monkey-patch to return our per-test fixture.
  */
-import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, mock } from "bun:test";
 
 import { db } from "@/lib/db";
 import { invalidateKillSwitchCache, matchProduct } from "@/lib/productMatcher";
@@ -64,7 +64,7 @@ let fakeAliases: Array<{ alias: string; product: { id: number; name: string; sel
 
 beforeAll(() => {
   _orig.featureFlag = (db as any).featureFlag;
-  _orig.platformSettings = (db as any).platformSettings;
+  _orig.platformSetting = (db as any).platformSetting;
   _orig.productAlias = (db as any).productAlias;
   _orig.productMatchAudit = (db as any).productMatchAudit;
 
@@ -72,7 +72,7 @@ beforeAll(() => {
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSettings = { findMany: async () => [] };
+  (db as any).platformSetting = { findMany: async () => [] };
 
   // productAlias.findUnique: exact-match path — returns null for our test
   // inputs (we want them to fall through to the fuzzy path so the
@@ -94,7 +94,7 @@ beforeAll(() => {
 
 afterAll(() => {
   (db as any).featureFlag = _orig.featureFlag;
-  (db as any).platformSettings = _orig.platformSettings;
+  (db as any).platformSetting = _orig.platformSetting;
   (db as any).productAlias = _orig.productAlias;
   (db as any).productMatchAudit = _orig.productMatchAudit;
 });
@@ -227,4 +227,4 @@ describe("B.7e — charSetJaccard multiplicity false-positive trap", () => {
 // reaches the scoring stage. So the rejection is from the SCORING stage,
 // confirming multisetJaccard is the active safety net.
 
-afterAll(() => { mock.restore(); });
+afterAll(() => mock.restore());

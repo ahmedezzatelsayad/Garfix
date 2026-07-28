@@ -37,21 +37,15 @@ function findTsxFiles(dir: string): string[] {
  */
 function countInlineStyles(filePath: string): { total: number; tailwindbreak: number; convertible: number } {
   const content = fs.readFileSync(filePath, "utf-8");
-  // Match style={{ ... }} patterns (must be double braces for JSX inline styles)
-  const styleRegex = /style=\{\{/g;
-  const matches = content.match(styleRegex) || [];
-  const total = matches.length;
-
-  // Count TAILWINDBREAK comments ONLY on lines that also contain style={{ (or
-  // on lines within 2 lines of a style={{ line).  TAILWINDBREAK comments on
-  // className= lines (which have no style={{) should NOT count as "kept
-  // inline styles" — they annotate CSS-variable classes that replaced what
-  // was formerly an inline style.
   const lines = content.split("\n");
+
+  let total = 0;
   let tailwindbreak = 0;
+
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes("style={{")) {
-      // Check if any TAILWINDBREAK comment exists within 2 lines
+      total++;
+      // Check if a TAILWINDBREAK comment is on the same line or within 2 lines below
       const nearby = lines.slice(i, i + 3).join(" ");
       if (nearby.includes("TAILWINDBREAK")) {
         tailwindbreak++;
@@ -59,7 +53,7 @@ function countInlineStyles(filePath: string): { total: number; tailwindbreak: nu
     }
   }
 
-  const convertible = Math.max(0, total - tailwindbreak);
+  const convertible = total - tailwindbreak;
   return { total, tailwindbreak, convertible };
 }
 
@@ -104,37 +98,30 @@ describe("Inline Styles Cleanup", () => {
 
   it("should have no convertible inline styles in fully-converted files", () => {
     const fullyConvertedFiles = [
-      "components/garfix/CommandPalette.tsx",
-      "components/garfix/EmptyState.tsx",
-      "components/garfix/ErrorState.tsx",
-      "components/garfix/LoadingSkeleton.tsx",
+      "modules/saas/SaaSControlPanel.tsx",
+      "modules/account/AccountView.tsx",
     ];
 
     for (const relPath of fullyConvertedFiles) {
       const filePath = path.join(SRC_DIR, relPath);
-      if (!fs.existsSync(filePath)) continue; // skip missing files
       const stats = countInlineStyles(filePath);
-      // Relaxed: fully-converted files may still have a few convertible styles
-      // during incremental conversion. Tighten to 0 once complete.
-      expect(stats.convertible).toBeLessThanOrEqual(5);
+      expect(stats.convertible).toBe(0);
     }
   });
 
   it("should have only TAILWINDBREAK styles in partially-converted files", () => {
     const partiallyConvertedFiles = [
       "modules/common/Sidebar.tsx",
+      "modules/auth/AuthScreen.tsx",
       "modules/common/NotificationsDropdown.tsx",
     ];
 
     for (const relPath of partiallyConvertedFiles) {
       const filePath = path.join(SRC_DIR, relPath);
-      if (!fs.existsSync(filePath)) continue; // skip missing files
       const stats = countInlineStyles(filePath);
-      // All remaining inline styles should be annotated with TAILWINDBREAK
-      // convertible can be 0 or negative (TAILWINDBREAK comments may exceed style count
-      // if comments reference same pattern or are on separate lines)
-      expect(stats.convertible).toBeLessThanOrEqual(0);
-      expect(stats.tailwindbreak).toBeGreaterThan(0);
+      // All remaining inline styles should be TAILWINDBREAK
+      expect(stats.convertible).toBe(0);
+      expect(stats.total).toBe(stats.tailwindbreak);
     }
   });
 
