@@ -1,38 +1,37 @@
 /**
  * GET /api/health
  *
- * Production-grade health-check endpoint for load balancers, orchestrators,
+ * Comprehensive health-check endpoint for load balancers, orchestrators,
  * and monitoring dashboards.
  *
  * Checks:
- *   1. PostgreSQL — SELECT 1 with 5s timeout (CRITICAL)
- *   2. Queue System — 3-tier: BullMQ (Valkey) → pg-boss (PostgreSQL) → in-process
- *   3. Valkey — PING with 2s timeout (NON-CRITICAL — pg-boss is the fallback)
- *   4. Disk — /app/storage writable check (100ms timeout)
- *   5. Memory — RSS + heap usage vs system memory
+ *   1. PostgreSQL — SELECT 1 with 1s timeout
+ *   2. Valkey   — PING with 2s timeout
+ *   3. BullMQ   — queue counts (waiting + active)
+ *   4. Disk     — /app/storage writable check (100ms timeout)
+ *   5. Memory   — RSS + heap usage vs system memory
  *
- * CRITICAL vs NON-CRITICAL:
- *   - PostgreSQL is CRITICAL — without it, the app cannot function.
- *   - Queue system is CRITICAL — jobs must be processable (at least one tier).
- *   - Valkey is NON-CRITICAL — pg-boss provides a production-safe fallback.
- *   - Disk, cache stats are NON-CRITICAL — the app can still serve requests.
- *
- * Returns 200 when all critical services are healthy.
+ * Returns 200 when all critical services (DB, Valkey) are healthy.
  * Returns 503 when any critical service is down.
  *
  * RUNTIME: Node.js only — uses process.memoryUsage(), os module
+ * Non-critical failures (disk, queue stats) are reported but don't
+ * cause a 503 — the app can still serve requests.
+ *
  * Unauthenticated — healthchecks must succeed without cookies.
+ *
+ * RUNTIME: Node.js only — uses node:os, queues.ts (BullMQ)
  */
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { VALKEY_CONFIGURED, valkeyHealthCheck } from "@/lib/valkey";
-import { getBullMQStats, getPgBossStats, isPgBossMode } from "@/lib/queues";
+import { valkeyHealthCheck, VALKEY_CONFIGURED } from "@/lib/valkey";
+import { getBullMQStats } from "@/lib/queues";
 import { cacheStats } from "@/lib/cache";
 import { totalmem } from "node:os";
 
-const VERSION = "12.1.0";
+const VERSION = "12.0.0";
 
 export const dynamic = "force-dynamic";
 
@@ -41,118 +40,64 @@ export async function GET() {
   const checks: Record<string, unknown> = {};
   let criticalOk = true;
 
-  // ── 1. PostgreSQL (CRITICAL) ──────────────────────────────────────────
+  // ── 1. PostgreSQL ──────────────────────────────────────────────────────
+  //   3s timeout — Neon serverless cold starts can take 1-2s for cross-region.
   try {
     await Promise.race([
       db.$queryRaw`SELECT 1`,
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout 5000ms")), 5000),
+        setTimeout(() => reject(new Error("timeout 3000ms")), 3000),
       ),
     ]);
-    checks.database = { ok: true, status: "connected" };
+    checks.db = { ok: true };
   } catch (err) {
     criticalOk = false;
-    checks.database = {
+    checks.db = {
       ok: false,
-      status: "disconnected",
       error: err instanceof Error ? err.message : String(err),
     };
   }
 
-  // ── 2. Queue System (CRITICAL — at least one tier must work) ──────────
-  // 3-tier: BullMQ (Valkey) → pg-boss (PostgreSQL) → in-process
-  let queueMode = "unknown";
-  let queueOk = false;
-
-  // Tier 1: BullMQ (Valkey)
-  if (VALKEY_CONFIGURED) {
-    try {
-      const bullStats = await Promise.race([
-        getBullMQStats(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ]);
-      if (bullStats) {
-        queueMode = "bullmq";
-        queueOk = true;
-        checks.queues = { mode: "bullmq", ok: true, stats: bullStats };
-      }
-    } catch {
-      // BullMQ failed — fall through to pg-boss
-    }
-  }
-
-  // Tier 2: pg-boss (PostgreSQL)
-  if (!queueOk && isPgBossMode()) {
-    try {
-      const pgStats = await Promise.race([
-        getPgBossStats(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ]);
-      if (pgStats) {
-        queueMode = "pg-boss";
-        queueOk = true;
-        checks.queues = { mode: "pg-boss", ok: true, stats: pgStats };
-      }
-    } catch {
-      // pg-boss failed — fall through to in-process
-    }
-  }
-
-  // Tier 3: In-process (database-backed, acceptable for single-instance)
-  if (!queueOk) {
-    queueMode = "in-process";
-    // In-process is OK if DB is connected — jobs are persisted to JobQueue table
-    queueOk = Boolean(checks.database && (checks.database as { ok: boolean }).ok);
-    checks.queues = {
-      mode: "in-process",
-      ok: queueOk,
-      note: "Jobs persisted to JobQueue table via Prisma. Set VALKEY_URL for BullMQ or use pg-boss mode.",
-    };
-  }
-
-  if (!queueOk) {
-    criticalOk = false;
-  }
-
-  // ── 3. Valkey / Cache (NON-CRITICAL — pg-boss is the fallback) ────────
-  if (VALKEY_CONFIGURED) {
-    try {
-      const vh = await Promise.race([
-        valkeyHealthCheck(),
-        new Promise<{ ok: false }>((resolve) =>
-          setTimeout(() => resolve({ ok: false }), 2000),
-        ),
-      ]);
-      checks.cache = {
-        ok: vh.ok,
-        provider: "valkey",
-        latencyMs: "latencyMs" in vh ? vh.latencyMs : undefined,
-        note: vh.ok ? undefined : "Valkey unreachable — pg-boss handles queue fallback",
-      };
-    } catch {
-      checks.cache = {
-        ok: false,
-        provider: "valkey",
-        note: "Valkey unreachable — pg-boss handles queue fallback",
-      };
-    }
-  } else {
-    checks.cache = {
-      ok: true,
-      provider: "pg-boss",
-      note: "Valkey not configured — pg-boss provides queue persistence via PostgreSQL",
-    };
-  }
-
-  // Also include in-memory cache stats
+  // ── 2. Valkey (OPTIONAL — app falls back to pg-boss when not configured) ──
+  //   A missing Valkey must NOT cause a 503, because the app fully functions
+  //   with pg-boss (PostgreSQL-backed queue). Only a *configured* but
+  //   *unreachable* Valkey is a critical failure.
   try {
-    const memCache = cacheStats();
-    (checks.cache as Record<string, unknown>).memoryCache = memCache;
+    const vh = await Promise.race([
+      valkeyHealthCheck(),
+      new Promise<{ ok: false; notConfigured?: boolean }>((resolve) =>
+        setTimeout(() => resolve({ ok: false }), 2000),
+      ),
+    ]);
+    if (!VALKEY_CONFIGURED) {
+      checks.valkey = { ok: true, configured: false, mode: "pg-boss fallback" };
+    } else {
+      checks.valkey = vh;
+      if (!vh.ok) criticalOk = false;
+    }
   } catch {
-    // ignore
+    checks.valkey = { ok: false, error: "exception" };
   }
 
-  // ── 4. Memory ──────────────────────────────────────────────────────────
+  // ── 3. BullMQ Queue Stats (non-critical) ──────────────────────────────
+  try {
+    const queueStats = await Promise.race([
+      getBullMQStats(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    checks.queues = queueStats ?? { mode: "in-process", bullmq: false };
+  } catch {
+    checks.queues = { mode: "in-process", bullmq: false };
+  }
+
+  // ── 4. Cache Stats (non-critical) ──────────────────────────────────────
+  try {
+    checks.cache = cacheStats();
+  } catch {
+    checks.cache = { error: "unavailable" };
+  }
+
+  // ── 5. Memory ──────────────────────────────────────────────────────────
   const memUsage = process.memoryUsage();
   const totalMemory = totalmem();
   checks.memory = {
@@ -163,7 +108,7 @@ export async function GET() {
     rssPercent: ((memUsage.rss / totalMemory) * 100).toFixed(1),
   };
 
-  // ── 5. Disk (non-critical) ────────────────────────────────────────────
+  // ── 6. Disk (non-critical) ────────────────────────────────────────────
   try {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
@@ -182,25 +127,15 @@ export async function GET() {
 
   const latencyMs = Date.now() - started;
 
-  // ── Determine overall health status ────────────────────────────────────
-  // HEALTHY: all critical services (DB, queues) are up.
-  // DEGRADED: non-critical services (Valkey, disk) are down but app works.
-  // UNHEALTHY: critical services (DB, queues) are down — 503.
-  const dbOk = checks.database && (checks.database as { ok: boolean }).ok;
-  const overallStatus = !dbOk || !queueOk
-    ? "unhealthy"
-    : "healthy";
-
   return NextResponse.json(
     {
-      status: overallStatus,
+      status: criticalOk ? "ok" : "degraded",
       version: VERSION,
       uptime: process.uptime ? Math.round(process.uptime()) : null,
       latencyMs,
       checks,
-      queueMode,
       timestamp: new Date().toISOString(),
     },
-    { status: overallStatus === "unhealthy" ? 503 : 200 },
+    { status: criticalOk ? 200 : 503 },
   );
 }
