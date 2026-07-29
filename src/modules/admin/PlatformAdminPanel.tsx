@@ -55,11 +55,15 @@ export function PlatformAdminPanel() {
   const deleteTenantMutation = useDeletePlatformTenant();
 
   const stats = (statsQuery.data ?? null) as unknown as Stats | null;
-  const tenants = (tenantsQuery.data ?? []) as unknown as Tenant[];
-  const announcements = (announcementsQuery.data ?? []) as unknown as Announcement[];
-  const tickets = (ticketsQuery.data ?? []) as unknown as Ticket[];
-  const audit = (auditQuery.data ?? []) as unknown as AdminAudit[];
-  const queueFailures = (queueFailuresQuery.data ?? []) as unknown as QueueFailure[];
+  // Each hook now returns its proper wrapper shape — unwrap to the array.
+  // Previously all hooks were typed as bare arrays but the APIs return
+  // { tenants: [...] } / { announcements: [...] } / etc, so the casts lied
+  // and `tenants.map(...)` threw TypeError when data was present.
+  const tenants = (tenantsQuery.data?.tenants ?? []) as unknown as Tenant[];
+  const announcements = (announcementsQuery.data?.announcements ?? []) as unknown as Announcement[];
+  const tickets = (ticketsQuery.data?.tickets ?? []) as unknown as Ticket[];
+  const audit = (auditQuery.data?.logs ?? []) as unknown as AdminAudit[];
+  const queueFailures = (queueFailuresQuery.data?.failures ?? []) as unknown as QueueFailure[];
   const loading = statsQuery.isLoading || tenantsQuery.isLoading;
 
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);

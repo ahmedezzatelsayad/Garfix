@@ -1199,18 +1199,36 @@ export function useCreateLandedCost() {
 // SPRINT 2 — MULTI-COMPANY HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// API returns Prisma InterCompanyTransaction rows. The relevant fields are:
+//   { id, companySlugFrom, companySlugTo, amount, currency, description,
+//     status, createdAt, ... }
+// Note: there is NO `fromCompany / toCompany / date / type` field — those were
+// a type lie that produced empty table cells.
 interface InterCompanyResponse {
   transactions: Array<{
-    id: number; date: string; fromCompany: string; toCompany: string;
-    amount: number; currency: string; description: string;
-    status: string; type: string;
+    id: number;
+    companySlugFrom: string;
+    companySlugTo: string;
+    amount: number;
+    currency: string;
+    description?: string | null;
+    status: string;
+    createdAt: string;
+    [key: string]: unknown;
   }>;
 }
 
+// API schema (SettlementSchema) only accepts these fields:
+//   { companySlugFrom, companySlugTo, amount, currency, description }
+// `type` and `date` are NOT in the schema and would be silently dropped.
 interface CreateInterCompanyPayload {
-  fromCompany: string; toCompany: string; amount: number;
-  currency: string; description: string; type: string;
-  date: string; companySlug: string;
+  companySlugFrom: string;
+  companySlugTo: string;
+  amount: number | string;
+  currency: string;
+  description?: string;
+  /** Required by the hook for cache invalidation; not sent in the body. */
+  companySlug: string;
 }
 
 export function useInterCompany(companySlug: string) {
@@ -1261,12 +1279,23 @@ interface ConsolidationResult {
   totalRevenue: number; totalExpenses: number; netIncome: number;
 }
 
+// API returns { ok, consolidation: {...} }. The hook unwraps `consolidation`
+// so the view can use it directly.
+interface ConsolidationApiResponse {
+  ok?: boolean;
+  consolidation: ConsolidationResult;
+}
+
 export function useCreateConsolidation() {
   return useMutation<ConsolidationResult, ApiError, {
-    companySlugs: string[]; asOfDate: string; companySlug: string;
+    groupSlug: string; asOfDate: string;
   }>({
-    mutationFn: (payload) =>
-      apiPost<typeof payload, ConsolidationResult>("/api/accounting/consolidation", payload),
+    mutationFn: async (payload) => {
+      const res = await apiPost<typeof payload, ConsolidationApiResponse>(
+        "/api/accounting/consolidation", payload,
+      );
+      return res.consolidation;
+    },
   });
 }
 

@@ -25,6 +25,8 @@ interface SlugCheckResponse {
 }
 
 export interface CompleteOnboardingPayload {
+  /** "update" saves progress without completing; "complete" finalizes the wizard. */
+  action?: "update" | "complete";
   step?: string;
   companySlug?: string;
   businessType?: string;

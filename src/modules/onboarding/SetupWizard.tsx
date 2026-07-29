@@ -168,6 +168,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
     if (merged.companySlug) {
       try {
         await completeOnboardingMutation.mutateAsync({
+          action: "update",
           step: stepNum,
           companySlug: merged.companySlug,
           businessType: merged.businessType,
@@ -220,6 +221,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
     setSaving(true);
     try {
       const d = await completeOnboardingMutation.mutateAsync({
+        action: "complete",
         companySlug: data.companySlug,
         businessType: data.businessType,
         hasEmployees: data.hasEmployees,

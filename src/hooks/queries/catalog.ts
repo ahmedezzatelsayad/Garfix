@@ -27,8 +27,10 @@ export interface CatalogItem {
 }
 
 interface CatalogListResponse {
-  items: CatalogItem[];
-  total: number;
+  // API returns { products: CatalogItem[]; nextCursor: string | null }
+  // (was incorrectly typed as { items, total } which never matched).
+  products: CatalogItem[];
+  nextCursor: string | null;
 }
 
 interface CatalogItemResponse {

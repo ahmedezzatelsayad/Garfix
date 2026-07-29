@@ -232,12 +232,21 @@ export async function issueSession(
   user: SessionUser,
   req?: NextRequest,
 ): Promise<void> {
+  // Compute EFFECTIVE permissions (role baseline + user overrides) and store
+  // those in the JWT. Previously the JWT stored the raw `user.permissions`
+  // (typically {} for new users), which caused every `hasPermission()` check
+  // to fail with 403 even for permissions the user's role grants by default
+  // (e.g. employee → create_invoice). The login response surface already
+  // included `effectivePermissions`, but the JWT didn't, so middleware-time
+  // checks (requirePermission / requirePermissionForCompany) all failed.
+  const founder = isFounderEmail(user.email);
+  const effectivePerms = computeEffectivePermissions(user.role, user.permissions, founder);
   const payload: AuthPayload = {
     uid: user.uid,
     email: user.email,
     role: user.role,
     companies: user.companies,
-    permissions: user.permissions,
+    permissions: effectivePerms,
     tv: user.tokenVersion,
   };
 

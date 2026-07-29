@@ -17,10 +17,10 @@ import { getHealthDashboard, getAllBreakers, externalBreakers } from "@/lib/circ
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const user = await requireAuth(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // requireAuth returns `{ user }` on success or `NextResponse` on failure —
+    // never null. The previous `if (!user)` check was a no-op (auth bypass).
+    const r = await requireAuth(req);
+    if (r instanceof NextResponse) return r;
 
     const dashboard = getHealthDashboard();
     return NextResponse.json(dashboard);
@@ -34,9 +34,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const user = await requireAuth(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Same auth fix as GET — was a no-op `if (!user)` check (auth bypass).
+    const r = await requireAuth(req);
+    if (r instanceof NextResponse) return r;
+    // Founder/admin-only — the previous comment claimed this but no check enforced it.
+    // AuthPayload doesn't have an isFounder field, so we check role + email.
+    const founderEmails = (process.env.FOUNDER_EMAIL || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+    const isFounder = r.user.role === "founder" || founderEmails.includes(r.user.email.toLowerCase());
+    if (r.user.role !== "admin" && !isFounder) {
+      return NextResponse.json({ error: "Forbidden: admin/founder only" }, { status: 403 });
     }
 
     const body = await req.json().catch(() => null);

@@ -125,7 +125,13 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } else if (companiesQuery.isError) {
-      console.error("[brand] failed to load companies:", companiesQuery.error);
+      // Don't log 401s — they're expected before login / when session expired
+      // and the retry policy already short-circuits them. Logging every 401
+      // spams the console on every page load before the user signs in.
+      const status = (companiesQuery.error as { status?: number } | null)?.status;
+      if (status !== 401) {
+        console.error("[brand] failed to load companies:", companiesQuery.error);
+      }
       setCompanies([]);
     }
   }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);

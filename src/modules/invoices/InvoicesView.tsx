@@ -69,7 +69,13 @@ export function InvoicesView() {
   const pendingInvoices = allInvoices.filter((inv: Invoice) => inv.status === "sent" || inv.status === "partial");
   const overdueInvoices = allInvoices.filter((inv: Invoice) => inv.status === "overdue");
   const totalRevenue = paidInvoices.reduce((s: number, inv: Invoice) => s + inv.total, 0);
-  const outstanding = allInvoices.reduce((s: number, inv: Invoice) => s + inv.outstanding, 0);
+  // Compute outstanding on the client — the API doesn't return an `outstanding`
+  // field (only `total` and `paid`). Reading `inv.outstanding` directly was
+  // producing NaN in the KPI card ("مستحقة: NaN").
+  const outstanding = allInvoices.reduce(
+    (s: number, inv: Invoice) => s + Math.max(0, (inv.total ?? 0) - (inv.paid ?? 0)),
+    0,
+  );
 
   const invoices = allInvoices;
 

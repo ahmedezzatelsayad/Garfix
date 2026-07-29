@@ -59,7 +59,8 @@ export function AutomationView() {
   const updateMutation = useUpdateAutomation();
   const deleteMutation = useDeleteAutomation();
 
-  const rules: AutomationRule[] = (data?.automations ?? []) as unknown as AutomationRule[];
+  // API returns { rules: [...] } (was wrongly read as `automations`).
+  const rules: AutomationRule[] = (data?.rules ?? []) as unknown as AutomationRule[];
 
   if (!activeCompany) {
     return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
@@ -69,7 +70,8 @@ export function AutomationView() {
 
   const toggleRule = (rule: AutomationRule) => {
     updateMutation.mutate(
-      { id: rule.id, enabled: !rule.isActive },
+      // API requires companySlug as IDOR guard + accepts `isActive` (not `enabled`).
+      { id: rule.id, companySlug: rule.companySlug, isActive: !rule.isActive },
       {
         onSuccess: () => {
           toast.success(rule.isActive ? "تم تعطيل القاعدة" : "تم تفعيل القاعدة");
@@ -83,14 +85,17 @@ export function AutomationView() {
 
   const deleteRule = (rule: AutomationRule) => {
     if (!confirm(`حذف القاعدة "${rule.name}"؟ لا يمكن التراجع.`)) return;
-    deleteMutation.mutate(rule.id, {
-      onSuccess: () => {
-        toast.success("تم حذف القاعدة");
+    deleteMutation.mutate(
+      { id: rule.id, companySlug: rule.companySlug },
+      {
+        onSuccess: () => {
+          toast.success("تم حذف القاعدة");
+        },
+        onError: (err) => {
+          toast.error(err.message || "تعذّر الحذف");
+        },
       },
-      onError: (err) => {
-        toast.error(err.message || "تعذّر الحذف");
-      },
-    });
+    );
   };
 
   return (
@@ -140,7 +145,8 @@ export function AutomationView() {
           {rules.map((rule) => {
             const trigger = TRIGGER_LABELS[rule.trigger] || { label: rule.trigger, color: "#6b7280", bg: "#6b728022", icon: "⚡" };
             const isToggling = updateMutation.isPending && updateMutation.variables?.id === rule.id;
-            const isDeleting = deleteMutation.isPending && deleteMutation.variables === rule.id;
+            // deleteMutation.variables is now `{ id, companySlug }`, not a bare number.
+            const isDeleting = deleteMutation.isPending && deleteMutation.variables?.id === rule.id;
             return (
               <div
                 key={rule.id}

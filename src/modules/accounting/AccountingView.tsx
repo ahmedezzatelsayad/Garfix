@@ -1297,7 +1297,7 @@ function CashFlowSection({ title, details, net, color }: { title: string; detail
 }
 
 /* ─── Account Form ─────────────────────────────────────────────────────────── */
-function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug: string }; accounts: Account[]; onClose: () => void; onSaved: () => void }) {
+function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug: string; currency?: string }; accounts: Account[]; onClose: () => void; onSaved: () => void }) {
   const [code, setCode] = useState("");
   const [nameAr, setNameAr] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -1311,7 +1311,10 @@ function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug:
     if (!code || !nameAr) { toast.error("الكود والاسم مطلوبان"); return; }
     setSaving(true);
     try {
-      await createAccountMutation.mutateAsync({ code, name: nameAr, nameAr, nameEn, type, parentId: parentId ?? undefined, balance, currency: "KWD", companySlug: company.slug });
+      // Use the active company's currency instead of hardcoding "KWD".
+      // Previously every new account was created with KWD regardless of the
+      // tenant's actual currency (SAR/AED/EGP/etc.).
+      await createAccountMutation.mutateAsync({ code, name: nameAr, nameAr, nameEn, type, parentId: parentId ?? undefined, balance, currency: company.currency || "SAR", companySlug: company.slug });
       toast.success("تم إنشاء الحساب"); onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
     finally { setSaving(false); }

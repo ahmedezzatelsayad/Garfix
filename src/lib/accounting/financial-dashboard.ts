@@ -36,11 +36,17 @@ export async function getDashboardMetrics(
   periodTo: string,
 ): Promise<{ ok: boolean; metrics?: DashboardMetrics; error?: string }> {
   try {
+    // Convert string dates ("YYYY-MM-DD") to Date objects — Prisma's
+    // DateTime filter requires Date objects, not strings. Without this
+    // conversion, Prisma rejects with "premature end of input. Expected
+    // ISO-8601 DateTime".
+    const fromDate = new Date(periodFrom);
+    const toDate = new Date(periodTo + "T23:59:59.999Z");
     // Current period metrics
     const entries = await db.journalEntry.findMany({
       where: {
         companySlug,
-        date: { gte: periodFrom, lte: periodTo },
+        date: { gte: fromDate, lte: toDate },
         status: "posted",
         deletedAt: null,
       },
@@ -123,16 +129,14 @@ export async function getDashboardMetrics(
     );
 
     // Previous period for trend comparison
-    const fromDate = new Date(periodFrom);
-    const toDate = new Date(periodTo);
     const periodDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
-    const prevFrom = new Date(fromDate.getTime() - periodDays * 1000 * 60 * 60 * 24).toISOString().slice(0, 10);
-    const prevTo = new Date(fromDate.getTime() - 1 * 1000 * 60 * 60 * 24).toISOString().slice(0, 10);
+    const prevFromDate = new Date(fromDate.getTime() - periodDays * 1000 * 60 * 60 * 24);
+    const prevToDate = new Date(fromDate.getTime() - 1 * 1000 * 60 * 60 * 24);
 
     const prevEntries = await db.journalEntry.findMany({
       where: {
         companySlug,
-        date: { gte: prevFrom, lte: prevTo },
+        date: { gte: prevFromDate, lte: prevToDate },
         status: "posted",
         deletedAt: null,
       },
@@ -288,7 +292,7 @@ export async function getPeriodComparison(
       const entries = await db.journalEntry.findMany({
         where: {
           companySlug,
-          date: { gte: from, lte: to },
+          date: { gte: new Date(from), lte: new Date(to + "T23:59:59.999Z") },
           status: "posted",
           deletedAt: null,
         },
@@ -446,7 +450,7 @@ export async function getBudgetVsActual(
     const entries = await db.journalEntry.findMany({
       where: {
         companySlug,
-        date: { gte: from, lte: to },
+        date: { gte: new Date(from), lte: new Date(to + "T23:59:59.999Z") },
         status: "posted",
         deletedAt: null,
       },

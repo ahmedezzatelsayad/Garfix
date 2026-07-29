@@ -21,10 +21,10 @@ import { queryAuditEvents, getAuditStats, verifyAuditChain } from "@/lib/telemet
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const user = await requireAuth(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // requireAuth returns `{ user }` on success or `NextResponse` on failure —
+    // never null. The previous `if (!user)` check was a no-op (auth bypass).
+    const r = await requireAuth(req);
+    if (r instanceof NextResponse) return r;
 
     const url = new URL(req.url);
     const pathSegment = url.pathname.split("/").pop();

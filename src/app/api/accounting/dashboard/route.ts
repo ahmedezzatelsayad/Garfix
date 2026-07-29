@@ -11,20 +11,11 @@ import { getTradeFinanceDashboard } from '@/lib/accounting/trade-finance'
 export async function GET(request: NextRequest) {
   try {
     const auth = await resolveAuth(request)
+    // Defense-in-depth: do NOT fall back to a demo company when auth fails.
+    // The previous code served real financial data for `demo-company-1` if
+    // resolveAuth ever errored (DB timeout, etc.), leaking tenant data.
     if (!auth || !auth.ok || !auth.user) {
-      // For demo purposes, use a default company slug if no auth
-      const companySlug = 'demo-company-1'
-      const financial = await getFinancialDashboard(companySlug)
-      const arSummary = await getARSummary(companySlug)
-      const apSummary = await getAPSummary(companySlug)
-      const tradeFinance = await getTradeFinanceDashboard(companySlug)
-
-      return NextResponse.json({
-        financial,
-        ar: arSummary,
-        ap: apSummary,
-        tradeFinance,
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)

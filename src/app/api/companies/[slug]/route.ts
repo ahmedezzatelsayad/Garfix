@@ -162,7 +162,10 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.hRLeaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.hRPerformance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.employee.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.journalEntryLine.deleteMany({ where: { entry: { companySlug: slug } } }).catch(() => {});
+    // Fix: relation name is `journalEntry` (not `entry`). Without this fix,
+    // Prisma throws "Unknown argument 'entry'" synchronously, which aborts
+    // the entire hard-delete transaction.
+    await tx.journalEntryLine.deleteMany({ where: { journalEntry: { companySlug: slug } } }).catch(() => {});
     await tx.journalEntry.updateMany({
       where: { companySlug: slug, deletedAt: null },
       data: { deletedAt: now } }).catch(() => {});
@@ -177,7 +180,10 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.eInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
       data: { deletedAt: now } }).catch(() => {});
-    await tx.orderDelivery.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    // OrderDelivery model was removed from schema.prisma; the previous call
+    // threw `Cannot read properties of undefined (reading 'deleteMany')`
+    // synchronously, aborting the whole cascade. Removed.
+    // (If you re-add an OrderDelivery model later, restore this line.)
     await tx.paymentTransaction.updateMany({
       where: { companySlug: slug, deletedAt: null },
       data: { deletedAt: now } }).catch(() => {});

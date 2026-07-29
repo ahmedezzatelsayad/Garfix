@@ -25,9 +25,20 @@ interface ConsolidationResult {
   totalRevenue: number; totalExpenses: number; netIncome: number;
 }
 interface InterCompanyTx {
-  id: number; date: string; fromCompany: string; toCompany: string;
-  amount: number; currency: string; description: string;
-  status: string; type: string;
+  id: number;
+  /** API field is `companySlugFrom` (not `fromCompany`). */
+  companySlugFrom: string;
+  /** API field is `companySlugTo` (not `toCompany`). */
+  companySlugTo: string;
+  amount: number;
+  currency: string;
+  description?: string | null;
+  status: string;
+  /** API field is `createdAt` (not `date`). */
+  createdAt: string;
+  /** Not returned by the API — kept for backwards-compat rendering. */
+  type?: string;
+  [key: string]: unknown;
 }
 
 type Tab = "consolidation" | "inter-company";
@@ -115,10 +126,12 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
   };
 
   const handleConsolidate = () => {
-    if (selectedSlugs.size < 2) { toast.error("اختر至少 2 شركات"); return; }
+    if (selectedSlugs.size < 2) { toast.error("اختر شركتين على الأقل"); return; }
     setRunning(true);
     consolidationMutation.mutate(
-      { companySlugs: Array.from(selectedSlugs), asOfDate, companySlug: activeCompany.slug },
+      // API schema requires { groupSlug, asOfDate }. Previously sent
+      // { companySlugs, companySlug, asOfDate } which the API rejected with 400.
+      { groupSlug: activeCompany.slug, asOfDate },
       {
         onSuccess: (data) => { setResult(data); toast.success("تم التوحيد"); setRunning(false); },
         onError: (err) => { toast.error(err.message || "تعذّر التوحيد"); setRunning(false); },
@@ -229,13 +242,13 @@ function InterCompanyView({ transactions, company, onRefresh }: { transactions: 
               const scBadge = STATUS_BADGES[t.status] || STATUS_BADGES.pending;
               return (
                 <tr key={t.id} className="border-b border-border">
-                  <td className={tdStyle} dir="ltr">{t.date}</td>
-                  <td className={cn(tdStyle, "font-bold")}>{t.fromCompany}</td>
-                  <td className={tdStyle}>{t.toCompany}</td>
+                  <td className={tdStyle} dir="ltr">{t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-EG") : "—"}</td>
+                  <td className={cn(tdStyle, "font-bold")}>{t.companySlugFrom}</td>
+                  <td className={tdStyle}>{t.companySlugTo}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(t.amount)}</td>
                   <td className={cn(tdStyle, "font-mono")}>{t.currency}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", t.type === "loan" ? "bg-blue-500/15 text-blue-500" : t.type === "sale" ? "bg-emerald-500/15 text-emerald-500" : "bg-violet-500/15 text-violet-500")}>{TX_TYPE_LABELS[t.type] || t.type}</span></td>
-                  <td className={tdStyle}>{t.description}</td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", t.type === "loan" ? "bg-blue-500/15 text-blue-500" : t.type === "sale" ? "bg-emerald-500/15 text-emerald-500" : "bg-violet-500/15 text-violet-500")}>{TX_TYPE_LABELS[t.type || ""] || t.type || "—"}</span></td>
+                  <td className={tdStyle}>{t.description || ""}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", scBadge)}>{STATUS_LABELS[t.status] || t.status}</span></td>
                   <td className={tdStyle}>
                     {t.status === "pending" && <button onClick={() => handleSettle(t.id)} disabled={settlingId === t.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{settlingId === t.id ? "جارٍ…" : "تسوية"}</button>}
@@ -270,7 +283,9 @@ function InterCompanyForm({ companies, company, onClose, onSaved }: {
     if (fromCompany === toCompany) { toast.error("الشركات يجب أن تكون مختلفة"); return; }
     setSaving(true);
     createInterCompanyMutation.mutate(
-      { fromCompany, toCompany, amount, currency, description, type, date, companySlug: company.slug },
+      // API schema (SettlementSchema) accepts companySlugFrom / companySlugTo / amount / currency / description.
+      // Previously sent fromCompany / toCompany / type / date which zod rejected with 400.
+      { companySlugFrom: fromCompany, companySlugTo: toCompany, amount, currency, description, companySlug: company.slug },
       {
         onSuccess: () => { toast.success("تم إنشاء التسوية"); setSaving(false); onSaved(); },
         onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },

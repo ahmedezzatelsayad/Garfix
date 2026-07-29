@@ -56,16 +56,18 @@ export async function checkInvoiceQuota(companySlug: string): Promise<QuotaCheck
   // Unlimited plan
   if (plan.maxInvoicesPerMonth === -1) return { ok: true };
 
-  // Count invoices this month (excluding soft-deleted)
+  // Count invoices this month (excluding soft-deleted).
+  // Note: issueDate is a DateTime, not a String — `startsWith` doesn't work
+  // on DateTime fields (Prisma rejects it). Use a date range instead.
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthStr = monthStart.toISOString().slice(0, 7); // YYYY-MM
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
   const count = await db.invoice.count({
     where: {
       companySlug,
       deletedAt: null,
-      issueDate: { startsWith: monthStr },
+      issueDate: { gte: monthStart, lt: monthEnd },
     },
   });
 

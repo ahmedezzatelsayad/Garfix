@@ -30,7 +30,8 @@ export function CatalogView() {
   const { data, isLoading, refetch } = useCatalog(activeCompany?.slug || "");
   const deleteMutation = useDeleteCatalogItem();
 
-  const products: Product[] = (data?.items ?? []) as unknown as Product[];
+  // API returns { products: [...] }; the hook now types this correctly.
+  const products: Product[] = (data?.products ?? []) as unknown as Product[];
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
