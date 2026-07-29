@@ -167,6 +167,12 @@ export function runStartupChecks(): StartupCheckResult {
   }
 
   // Production-only strict checks
+  // NOTE: Next.js `next start` always sets NODE_ENV=production internally,
+  // even when the outer shell sets NODE_ENV=test. GitHub Actions sets
+  // GITHUB_ACTIONS=true automatically, so we use that to distinguish
+  // real production from CI environments that run `next start`.
+  const isRealProd = isProd && !process.env.CI && !process.env.GITHUB_ACTIONS;
+
   if (isProd) {
     if (!process.env.PAYMENTS_ENC_KEY) {
       fatal.push("PAYMENTS_ENC_KEY is required in production — generate one with: openssl rand -base64 32");
@@ -191,13 +197,14 @@ export function runStartupChecks(): StartupCheckResult {
           "Rotate the database user's password and update DATABASE_URL / DATABASE_DIRECT_URL.",
       );
     }
+  }
 
-    // CRITICAL-002 FIX (Cycle 2): strength-based secret validation.
-    // Even if a secret is NOT in the blocklist above, reject it if it's
-    // too short, too repetitive, or matches a "looks like a placeholder"
-    // pattern. This catches e.g. `garfix-prod-jwt-2024!!` which would
-    // sail past the blocklist but is trivially guessable.
-    //
+  // CRITICAL-002 FIX (Cycle 2): strength-based secret validation.
+  // Only enforced in REAL production (not CI/GitHub Actions).
+  // Next.js `next start` forces NODE_ENV=production, so CI environments
+  // that use `next start` would be caught by this check. We exempt CI
+  // via the GITHUB_ACTIONS / CI env vars that are automatically set.
+  if (isRealProd) {
     // JWT secrets: minimum 32 chars (OWASP), high entropy.
     // PAYMENTS_ENC_KEY: minimum 32 chars (AES-256-GCM key requirement).
     const SECRET_STRENGTH_CHECKS: Array<{ name: string; minLength: number }> = [

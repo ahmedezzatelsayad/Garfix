@@ -45,13 +45,19 @@ export async function register(): Promise<void> {
     const startupResult = runStartupChecks();
 
     if (!startupResult.ok && startupResult.fatal.length > 0) {
-      if (process.env.NODE_ENV === "production") {
+      // Only throw in real production, not CI. Next.js `next start` forces
+      // NODE_ENV=production, so CI environments (GITHUB_ACTIONS=true / CI=true)
+      // that run `next start` would otherwise crash on placeholder secrets.
+      const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
+      if (isRealProd) {
         logger.error("[instrumentation] FATAL: Environment check failed", {
           errors: startupResult.fatal,
         });
         throw new Error(`FATAL: ${startupResult.fatal.join("; ")}`);
       }
-      logger.warn("[instrumentation] Continuing despite warnings in development mode");
+      logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
+        warnings: startupResult.fatal,
+      });
     }
 
     if (startupResult.warnings.length > 0) {

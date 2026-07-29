@@ -356,6 +356,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Free disk space for Trivy scan
+        run: |
+          echo "─── Disk space before cleanup ───"
+          df -h /
+          echo ""
+          # Remove unnecessary pre-installed software to reclaim ~20-30 GB
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL \
+            /opt/hostedtoolcache/Java_Temurin-Hotspot \
+            /opt/hostedtoolcache/Ruby /opt/hostedtoolcache/Python \
+            /opt/hostedtoolcache/node 2>/dev/null || true
+          sudo apt-get clean -y 2>/dev/null || true
+          echo "─── Disk space after cleanup ───"
+          df -h /
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -410,6 +425,10 @@ jobs:
           # Wontfix list — see .trivyignore for documented justifications.
           # Each CVE in that file has a comment explaining why it's accepted.
           trivyignores: .trivyignore
+        env:
+          # Skip Trivy version check to avoid downloading the new version
+          # and save disk space on the runner (previous runs ran out of disk).
+          TRIVY_SKIP_VERSION_CHECK: "true"
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always() && hashFiles('trivy-results.sarif') != ''
