@@ -4,6 +4,23 @@
 
 **الإصدار:** 12.1.0 | **المؤلف:** ahmedezzatelsayad | **الترخيص:** MIT
 
+## CI Status
+
+| Pipeline | Scope | Type | Badge |
+|----------|-------|------|-------|
+| **GarfiX CI v12** | Lint + TypeCheck + Build + Unit/Integration Tests | Functional Gate | ![CI](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/ci.yml/badge.svg?branch=main) |
+| **Security Scan** | Dependency Audit + CodeQL + Secret Scan + License + Container Scan | Security Gate | ![Security](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/security.yml/badge.svg?branch=main) |
+| **Performance** | Bundle Size + Load Test (push-time) | Functional Gate | ![Performance](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/performance.yml/badge.svg?branch=main) |
+| **Lighthouse (Nightly)** | Lighthouse CI + Budget Enforcement | Performance Gate (advisory) | ![Lighthouse](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/performance-nightly.yml/badge.svg) |
+| **CD** | Docker build + push + smoke test | Deploy Gate | ![CD](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/cd.yml/badge.svg?branch=main) |
+| **PR Checks** | Fast checks on pull requests | Functional Gate | ![PR Checks](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/pr-checks.yml/badge.svg) |
+
+**Gate classification:**
+- **Functional Gate** — must pass to merge; tests correctness.
+- **Security Gate** — must pass to merge; tests for vulnerabilities.
+- **Deploy Gate** — must pass to release; tests deployability.
+- **Performance Gate (advisory)** — does NOT block merge; trend tracking only.
+
 ## Tech Stack
 
 | التقنية | الإصدار | الدور |

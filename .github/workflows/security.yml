@@ -129,10 +129,13 @@ jobs:
           retention-days: 30
 
   # ── Job 2: CodeQL Analysis ─────────────────────────────────────────────
+  # P1 HARDENING: CodeQL is a Security Gate — must NOT use continue-on-error.
+  #   v3 action with explicit init/analyze + cache + diagnostics.
+  #   If this job fails, the Security Scan pipeline fails — that is intentional.
   codeql:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       security-events: write
       actions: read
@@ -146,8 +149,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history helps CodeQL build better call graph
+
+      - name: Setup Bun (for deterministic build)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache Bun store
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-codeql-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-codeql-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Initialize CodeQL
+        id: init
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
@@ -157,15 +181,41 @@ jobs:
               - '**/__tests__/**'
               - '**/*.test.ts'
               - '**/*.spec.ts'
+              - 'node_modules/**'
+              - '.next/**'
+              - 'coverage/**'
+              - 'scripts/**'
+              - 'e2e/**'
+              - 'examples/**'
+              - 'seed/**'
+            paths:
+              - 'src'
+          debugging: false
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Build application (explicit, no autobuild)
+        run: bun run build
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
 
       - name: Perform CodeQL Analysis
+        id: analyze
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
-          upload: true  # Already uploads SARIF to GitHub Security tab
+          upload: true
+          wait-for-processing: true  # Surface SARIF processing errors in CI log
+
+      - name: CodeQL diagnostics
+        if: always()
+        run: |
+          echo "─── CodeQL Run Diagnostics ───"
+          echo "Init status:      ${{ steps.init.outcome }}"
+          echo "Analyze status:   ${{ steps.analyze.outcome }}"
+          echo "Language:         ${{ matrix.language }}"
+          echo ""
+          echo "If 'Analyze status' is failure, inspect the SARIF upload"
+          echo "in the GitHub Security tab or download the codeql-sarif artifact."
 
   # ── Job 3: Secret Scanning ─────────────────────────────────────────────
   secret-scan:
@@ -258,19 +308,21 @@ jobs:
   # ── Job 5: Container Image Vulnerability Scan ───────────────────────────
   # CONT-001 FIX (Cycle 3): scan the production Docker image for known
   # vulnerabilities using Trivy. Fails on CRITICAL or HIGH findings so
-  # vulnerable images can't be deployed. The scan runs after a successful
-  # build of all branches that produce an image (main + PRs).
+  # vulnerable images can't be deployed.
+  #
+  # P1 HARDENING: Trivy is a Security Gate — no permanent continue-on-error.
+  #   * Pinned to a known-good action version (0.28.0) for reproducibility.
+  #   * Explicit docker/setup-buildx + GHA cache to reduce flakiness.
+  #   * SARIF uploaded regardless of scan result so findings are always visible.
+  #   * If runner itself fails (network/disk), the failure surfaces honestly.
   container-scan:
     name: Container Image Vulnerability Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Only run if the Dockerfile exists (always true for this repo) and the
-    # build job would have run. We don't formally depend on the build job
-    # because GitHub Actions doesn't have a "build" job in this workflow —
-    # the image is built fresh here just for scanning.
+    timeout-minutes: 25
     permissions:
       security-events: write
       contents: read
+      packages: read
 
     steps:
       - name: Checkout code
@@ -278,6 +330,17 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:v0.15.2  # pinned for reproducibility
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', 'bun.lockb', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Build image for scanning
         id: build
@@ -288,11 +351,17 @@ jobs:
           push: false
           load: true
           tags: garfix-scan:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move Docker cache (avoid cache grow unbounded)
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.24.0
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: garfix-scan:latest
           format: sarif
@@ -301,6 +370,7 @@ jobs:
           severity: "CRITICAL,HIGH"
           ignore-unfixed: true
           vuln-type: "os,library"
+          timeout: "10m"
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
@@ -316,6 +386,22 @@ jobs:
           name: trivy-container-scan-results
           path: trivy-results.sarif
           retention-days: 30
+
+      - name: Trivy diagnostics
+        if: always()
+        run: |
+          echo "─── Trivy Scan Diagnostics ───"
+          echo "Build status:  ${{ steps.build.outcome }}"
+          echo "Trivy status:  ${{ steps.trivy.outcome }}"
+          echo ""
+          if [ "${{ steps.trivy.outcome }}" = "failure" ]; then
+            echo "Trivy reported HIGH/CRITICAL vulnerabilities OR failed to run."
+            echo "Review trivy-results.sarif artifact for details."
+            echo ""
+            echo "If this is a runner-side failure (network/disk), re-run the job."
+            echo "If this is a real CVE finding, patch the base image or pin the"
+            echo "affected package before merging."
+          fi
 
   # ── Job 6: Security Summary ────────────────────────────────────────────
   security-summary:
