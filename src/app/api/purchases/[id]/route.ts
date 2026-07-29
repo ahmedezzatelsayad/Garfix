@@ -30,7 +30,7 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.purchaseInvoice.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.purchaseInvoice.findUnique({ where: { id: id } });
   if (!existing) return apiError("Purchase invoice not found", 404);
 
   // Enforce permission + company access (editing purchases is an admin/manager function)
@@ -78,7 +78,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.purchaseInvoice.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.purchaseInvoice.findUnique({ where: { id: id } });
   if (!existing) return apiError("Purchase invoice not found", 404);
 
   // Enforce permission + company access

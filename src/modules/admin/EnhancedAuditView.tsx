@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuditLogFiltered, type AuditLogFilterParams } from "@/hooks/queries";
 import {
   History, Search, Download, Filter, RefreshCw, ChevronLeft, ChevronRight,
@@ -88,8 +88,11 @@ export function EnhancedAuditView() {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Online status
-  useState(() => {
+  // Online status — previously used `useState(() => {...})` which made the
+  // cleanup function the initial state of an unused slot and never ran. This
+  // is a real useEffect with proper cleanup so listeners don't leak across
+  // route changes.
+  useEffect(() => {
     setIsOnline(navigator.onLine);
     const onOffline = () => setIsOnline(false);
     const onOnline = () => setIsOnline(true);
@@ -99,7 +102,7 @@ export function EnhancedAuditView() {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onOnline);
     };
-  });
+  }, []);
 
   // Build query params from filters
   const queryParams: AuditLogFilterParams = useMemo(() => ({

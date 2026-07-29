@@ -216,7 +216,9 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.employee.deleteMany({ where: { companySlug: slug } });
 
     // 3. Accounting (lines physical, entries SOFT-DELETE)
-    await tx.journalEntryLine.deleteMany({ where: { entry: { companySlug: slug } } });
+    // Fix: relation name is `journalEntry` (not `entry`). The previous call
+    // threw `Unknown argument 'entry'` and aborted the whole transaction.
+    await tx.journalEntryLine.deleteMany({ where: { journalEntry: { companySlug: slug } } }).catch(() => {});
     await tx.journalEntry.updateMany({
       where: { companySlug: slug, deletedAt: null },
       data: { deletedAt: now,  },
@@ -236,12 +238,13 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     // 5. Clients (physical)
     await tx.client.deleteMany({ where: { companySlug: slug } });
 
-    // 6. E-invoices (SOFT-DELETE) + deliveries (physical)
+    // 6. E-invoices (SOFT-DELETE). OrderDelivery physical delete removed —
+    //    that model doesn't exist in schema.prisma, so the previous call
+    //    synchronously threw and aborted the cascade.
     await tx.eInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
       data: { deletedAt: now,  },
     });
-    await tx.orderDelivery.deleteMany({ where: { companySlug: slug } }).catch(() => {});
 
     // 7. Payment transactions (SOFT-DELETE)
     await tx.paymentTransaction.updateMany({

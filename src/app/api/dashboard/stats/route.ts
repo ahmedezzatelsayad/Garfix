@@ -45,7 +45,12 @@ async function computeStats(userUid: string, userCompanies: string[], userRole: 
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const monthInvoices = invoices.filter((inv) => inv.issueDate.startsWith(monthKey));
+    // inv.issueDate is a Date object (DateTime column), not a string —
+    // use ISO string slice comparison instead of String.prototype.startsWith.
+    const monthInvoices = invoices.filter((inv) => {
+      const d = inv.issueDate instanceof Date ? inv.issueDate : new Date(inv.issueDate);
+      return !isNaN(d.getTime()) && d.toISOString().slice(0, 7) === monthKey;
+    });
     monthly.push({
       month: monthKey,
       revenue: monthInvoices.reduce((s, inv) => s + num(inv.total, 3), 0),

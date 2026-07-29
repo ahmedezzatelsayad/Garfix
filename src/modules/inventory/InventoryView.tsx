@@ -65,7 +65,8 @@ export function InventoryView() {
   const warehouses = (warehousesQuery.data?.warehouses ?? []) as unknown as Warehouse[];
   const items = (itemsQuery.data?.items ?? []) as unknown as InventoryItem[];
   const summary = (itemsQuery.data as unknown as Record<string, unknown> | undefined)?.summary as { total: number; ok: number; low: number; out: number } | null | undefined;
-  const products = ((catalogQuery.data as unknown as Record<string, unknown> | undefined)?.products ?? (catalogQuery.data?.items ?? [])) as unknown as Product[];
+  // useCatalog now correctly typed to { products: CatalogItem[]; nextCursor }.
+  const products = (catalogQuery.data?.products ?? []) as unknown as Product[];
   const loading = tab === "warehouses" ? warehousesQuery.isLoading : itemsQuery.isLoading;
 
   const [showForm, setShowForm] = useState(false);

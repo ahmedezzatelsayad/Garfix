@@ -18,11 +18,14 @@ import { queryKeys } from "@/hooks/query-keys";
 export interface Automation {
   id: number;
   name: string;
-  type: string;
+  type?: string;
   trigger: string;
-  action: string;
-  enabled: boolean;
+  condition?: Record<string, unknown>;
+  actions?: Array<{ type: string; params?: Record<string, unknown> }>;
+  isActive: boolean;
   companySlug: string;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
 
@@ -39,10 +42,10 @@ export interface AutomationLog {
 /** Payload for creating a new automation. */
 export interface CreateAutomationPayload {
   name: string;
-  type: string;
   trigger: string;
-  action: string;
-  enabled?: boolean;
+  condition?: Record<string, unknown>;
+  actions: Array<{ type: string; params?: Record<string, unknown> }>;
+  isActive?: boolean;
   companySlug: string;
   [key: string]: unknown;
 }
@@ -50,17 +53,19 @@ export interface CreateAutomationPayload {
 /** Payload for updating an existing automation. */
 export interface UpdateAutomationPayload {
   id: number;
+  /** Required by the API as ?companySlug= for IDOR protection. */
+  companySlug: string;
   name?: string;
-  type?: string;
   trigger?: string;
-  action?: string;
-  enabled?: boolean;
+  condition?: Record<string, unknown>;
+  actions?: Array<{ type: string; params?: Record<string, unknown> }>;
+  isActive?: boolean;
   [key: string]: unknown;
 }
 
 /** Response shape for the automation list endpoint. */
 interface AutomationListResponse {
-  automations: Automation[];
+  rules: Automation[];
 }
 
 /** Response shape for the automation logs endpoint. */
@@ -138,8 +143,13 @@ export function useUpdateAutomation() {
 
   return useMutation<Automation, ApiError, UpdateAutomationPayload>({
     mutationFn: (payload) => {
-      const { id, ...body } = payload;
-      return apiPatch<typeof body, Automation>(`/api/automation/${id}`, body);
+      // API requires ?companySlug= as IDOR protection (returns 400 otherwise).
+      // We send `isActive` (not `enabled`) per the API's zod schema.
+      const { id, companySlug, ...body } = payload;
+      return apiPatch<typeof body, Automation>(
+        `/api/automation/${id}?companySlug=${encodeURIComponent(companySlug)}`,
+        body,
+      );
     },
     onSuccess: (_data, variables) => {
       // Invalidate all automation list queries
@@ -163,8 +173,9 @@ export function useUpdateAutomation() {
 export function useDeleteAutomation() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, ApiError, number>({
-    mutationFn: (id) => apiDelete<void>(`/api/automation/${id}`),
+  return useMutation<void, ApiError, { id: number; companySlug: string }>({
+    mutationFn: ({ id, companySlug }) =>
+      apiDelete<void>(`/api/automation/${id}?companySlug=${encodeURIComponent(companySlug)}`),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.automation.all,

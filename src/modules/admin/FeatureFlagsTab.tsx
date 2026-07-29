@@ -25,10 +25,8 @@ export function FeatureFlagsTab() {
   const updateMutation = useUpdatePlatformFeatureFlag();
   const deleteMutation = useDeletePlatformFeatureFlag();
 
-  const flags = (flagsQuery.data as unknown as Array<{
-    id: number; key: string; label: string; description: string | null;
-    plans: string[]; isActive: boolean; createdAt: string; updatedAt: string;
-  }>) || [];
+  // API returns { flags: [...] } — the hook now types this correctly.
+  const flags: PlatformFeatureFlag[] = flagsQuery.data?.flags ?? [];
   const loading = flagsQuery.isLoading;
   const [showForm, setShowForm] = useState(false);
   const [newFlag, setNewFlag] = useState({ key: "", label: "", description: "", plans: "", isActive: true });
@@ -57,9 +55,9 @@ export function FeatureFlagsTab() {
     try {
       await createMutation.mutateAsync({
         key: newFlag.key,
-        name: newFlag.label,
+        label: newFlag.label,
         description: newFlag.description || undefined,
-        enabled: newFlag.isActive,
+        isActive: newFlag.isActive,
         plans: newFlag.plans.split(",").map((s) => s.trim()).filter(Boolean),
       });
       toast.success("تم إنشاء الميزة");

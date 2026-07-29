@@ -12,17 +12,26 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Local view-level types — relaxed to be compatible with the hook types
+// (SaaSUser / SaaSPayment / Company) which have an index signature but don't
+// declare every field we render. The optional markers reflect that the API
+// may not always populate them.
 interface User {
   uid: string; email: string; displayName: string; role: string;
-  companies: string[]; isFounder?: boolean; createdAt: string;
+  companies?: string[]; isFounder?: boolean; createdAt?: string;
+  status?: string;
+  [key: string]: unknown;
 }
 interface Company {
-  id: number; name: string; slug: string; nameAr?: string; emoji?: string;
-  plan: string; subscriptionStatus: string; createdAt: string;
+  id?: number; name: string; slug: string; nameAr?: string; emoji?: string;
+  plan?: string; subscriptionStatus?: string; createdAt?: string;
+  [key: string]: unknown;
 }
 interface Payment {
-  id: number; companySlug: string; plan: string; method: string;
-  amount: number; currency: string; status: string; createdAt: string;
+  id: number; companySlug?: string; plan?: string; method?: string;
+  amount: number; currency: string; status: string; createdAt?: string;
+  userId?: string;
+  [key: string]: unknown;
 }
 
 type Tab = "users" | "companies" | "payments" | "settings";
@@ -41,22 +50,15 @@ export function SaaSControlPanel() {
   const { data: companiesData, isLoading: companiesLoading } = useCompanies();
   const { data: paymentsData, isLoading: paymentsLoading } = useSaaSPayments();
 
-  // API response shape guards:
-  //   /api/saas/users    → { users: [...] }   (NOT a bare array)
-  //   /api/saas/payments → { payments: [...] } (NOT a bare array)
-  //   /api/companies     → { companies: [...] }
-  // Previously the code cast `usersData as User[]` which lied to TS and let
-  // the page call `.slice()` on an object → "T.slice is not a function".
-  const usersObj = (usersData ?? {}) as { users?: User[] };
-  const paymentsObj = (paymentsData ?? {}) as { payments?: Payment[] };
-  const companiesObj = (companiesData ?? {}) as { companies?: Company[] };
-  const users: User[] = Array.isArray(usersData)
-    ? (usersData as unknown as User[])
-    : Array.isArray(usersObj.users) ? usersObj.users : [];
-  const companies: Company[] = Array.isArray(companiesObj.companies) ? companiesObj.companies : [];
-  const payments: Payment[] = Array.isArray(paymentsData)
-    ? (paymentsData as unknown as Payment[])
-    : Array.isArray(paymentsObj.payments) ? paymentsObj.payments : [];
+  // Hooks now typed correctly:
+  //   useSaaSUsers()      → { users: [...] }
+  //   useSaaSPayments()   → { payments: [...] }
+  //   useCompanies()      → { companies: [...] }
+  // (Previously all were typed as bare arrays, requiring defensive Array.isArray
+  // guards. Now we just unwrap.)
+  const users: User[] = usersData?.users ?? [];
+  const payments: Payment[] = paymentsData?.payments ?? [];
+  const companies: Company[] = companiesData?.companies ?? [];
 
   const loading = usersLoading || companiesLoading || paymentsLoading;
 
@@ -159,7 +161,7 @@ export function SaaSControlPanel() {
                           <td className="py-2.5 px-3 text-[13px] font-mono">{c.slug}</td>
                           <td className="py-2.5 px-3 text-[13px]">{c.plan}</td>
                           <td className="py-2.5 px-3 text-[13px]">{c.subscriptionStatus}</td>
-                          <td className="py-2.5 px-3 text-[13px]">{new Date(c.createdAt).toLocaleDateString("ar-EG")}</td>
+                          <td className="py-2.5 px-3 text-[13px]">{c.createdAt ? new Date(c.createdAt).toLocaleDateString("ar-EG") : "—"}</td>
                         </tr>
                       ))
                     }
@@ -192,7 +194,7 @@ export function SaaSControlPanel() {
                         <td className="py-2.5 px-3 text-[13px]">{p.plan}</td>
                         <td className="py-2.5 px-3 text-[13px] font-bold text-right" dir="ltr">{p.amount} {p.currency}</td>
                         <td className="py-2.5 px-3 text-[13px]">{p.status === "paid" ? <span className="py-0.5 px-2.5 rounded-xl bg-emerald-500/15 text-emerald-500 text-[11px] font-bold">{p.status}</span> : <span className="py-0.5 px-2.5 rounded-xl bg-amber-500/15 text-amber-500 text-[11px] font-bold">{p.status}</span>}</td>
-                        <td className="py-2.5 px-3 text-[13px]">{new Date(p.createdAt).toLocaleDateString("ar-EG")}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{p.createdAt ? new Date(p.createdAt).toLocaleDateString("ar-EG") : "—"}</td>
                       </tr>
                     ))
                   }

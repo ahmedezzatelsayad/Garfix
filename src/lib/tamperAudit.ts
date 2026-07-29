@@ -81,6 +81,8 @@ function hashAuditContent(entry: {
 /** Add a new link in the tamper-evidence chain. Call after every audit log write. */
 export async function appendToChain(params: {
   entryId: string;
+  /** Optional type label for the entity (e.g. "audit_log", "journal_entry"). Defaults to "audit_log". */
+  entityType?: string;
   content: {
     userEmail: string;
     action: string;
@@ -110,6 +112,14 @@ export async function appendToChain(params: {
 
       await tx.tamperEvidenceChain.create({
         data: {
+          // entityType/entityId/hash/previousHash are required by the schema
+          // (NOT NULL). The previous code only set the new fields (entryId,
+          // contentHash, prevHash, chainOrder, companySlug) and omitted the
+          // required ones, causing every chain append to throw.
+          entityType: params.entityType ?? "audit_log",
+          entityId: params.entryId,
+          hash: computeHash(contentHash, prevHash),
+          previousHash: prevHash === "GENESIS" ? null : prevHash,
           entryId: params.entryId,
           contentHash: computeHash(contentHash, prevHash),
           prevHash,

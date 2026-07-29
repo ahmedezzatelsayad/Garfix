@@ -64,6 +64,25 @@ model Company {
   currency          String   @default("USD")
   taxId             String?
   address           String?
+  // Brand + locale + trial fields used by onboarding wizard and settings page.
+  nameAr            String?
+  emoji             String?
+  color             String?
+  phone             String?
+  vatNumber         String?
+  country           String?
+  defaultTaxRate    String   @default("0")
+  trialEndsAt       DateTime?
+  commercialRegistration String?
+  timezone          String?
+  weekendDays       String?
+  ramadanHours      String?
+  openrouterModel   String?
+  // WhatsApp integration fields
+  whatsappVerifyTokenHash String?
+  whatsappAppSecretEnc    String?
+  whatsappPhoneNumberId   String?
+  whatsappEnabled         Boolean  @default(false)
   deletedAt         DateTime?  // P0-3: Soft Delete
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -105,6 +124,10 @@ model Account {
   balance     Decimal  @default(0)  // Running balance — updated on JE posting
   isActive    Boolean  @default(true)
   version     Int      @default(0)  // P0-8: Optimistic Locking for balance updates
+  // Bilingual name + currency fields written by onboarding wizard (were missing).
+  nameAr      String?
+  nameEn      String?
+  currency    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   company     Company  @relation(fields: [companyId], references: [id])
@@ -214,6 +237,10 @@ model Warehouse {
   code        String
   companySlug String
   companyId   String?
+  /// Optional active flag used by inventory sync queries.
+  isActive    Boolean  @default(true)
+  /// Optional address used by warehouse detail pages.
+  address     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   inventoryItems InventoryItem[]
@@ -753,12 +780,39 @@ model Invoice {
   companyId     String?
   version       Int      @default(0)  // P0-8: Optimistic Locking
   deletedAt     DateTime?  // P0-3: Soft Delete
+  // Fields written by POST /api/invoices (were missing → 500 on every create).
+  lineItems     String   @default("[]")  // JSON-encoded array of line items
+  clientEmail   String?
+  clientPhone   String?
+  clientAddress String?
+  taxRate       Decimal  @default(0)
+  shipping      Decimal  @default(0)
+  paid          Decimal  @default(0)
+  discount      Decimal  @default(0)
+  notes         String?
+  createdByEmail String?
+  createdByName  String?
+  deletedBy      String?
+  // Kuwait-compliance fields (DECREE 10/2026)
+  hijriIssueDate  String?
+  hijriDueDate    String?
+  mociNumber      String?
+  invoiceTypeAr   String?
+  invoiceTypeEn   String?
+  sellerNameAr    String?
+  sellerAddressAr String?
+  buyerNameAr     String?
+  buyerAddressAr  String?
+  lineItemsAr     String?
+  notesAr         String?
+  currencyDecimalPlaces Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   company       Company?  @relation(fields: [companyId], references: [id])
   client        Client?   @relation(fields: [clientId], references: [id])
   eInvoice      EInvoice?
   paymentTransactions PaymentTransaction[]
+  @@unique([companySlug, invoiceNumber])
   @@map("invoices")
 }
 
@@ -775,9 +829,20 @@ model PurchaseInvoice {
   companySlug   String   @default("default")
   companyId     String?
   deletedAt     DateTime?  // P0-3: Soft Delete
+  // Fields written by POST /api/purchases — the API code uses these names
+  // (was missing → 500 on every purchase create). Kept alongside the
+  // canonical invoiceNumber/issueDate/total so both old and new code paths work.
+  num           String?
+  date          DateTime?
+  supplier      String?
+  items         String?  // JSON-encoded array
+  sourceInvoiceIds String?  // JSON-encoded array
+  totalQty      Decimal  @default(0)
+  totalAmount   Decimal  @default(0)
+  notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  supplierRel   Supplier? @relation(fields: [supplierId], references: [id])
   company       Company?  @relation(fields: [companyId], references: [id])
   @@map("purchase_invoices")
 }
@@ -1038,6 +1103,12 @@ model EmailVerification {
   code          String
   expiresAt     DateTime
   verified      Boolean  @default(false)
+  // Fields written by forgot-password/reset-password APIs (were missing → 500).
+  userId        String?
+  codeHash      String?
+  purpose       String?
+  usedAt        DateTime?
+  attempts      Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@unique([email, code])
@@ -1177,6 +1248,14 @@ model TamperEvidenceChain {
   entityId      String
   hash          String
   previousHash  String?
+  // Fields used by tamperAudit.ts (were missing → silent throws on every audit log write).
+  entryId       String?
+  contentHash   String?
+  prevHash      String?
+  chainOrder    Int?
+  companySlug   String?
+  isValid       Boolean  @default(true)
+  verifiedAt    DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -1335,6 +1414,10 @@ model Notification {
   type        String   @default("general")
   title       String
   body        String?
+  // isRead / readAt — were missing; GET /api/notifications was failing on
+  // `orderBy: [{ isRead: ... }]`.
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
   createdAt   DateTime @default(now())
   @@map("notifications")
 }
@@ -1617,6 +1700,9 @@ model SetupWizardProgress {
   companySlug   String   @unique
   currentStep   Int      @default(0)
   completed     Boolean  @default(false)
+  /// JSON-encoded wizard answers (businessType, hasEmployees, etc.).
+  /// Was missing in schema → upserts with `data:` field 500'd.
+  data          String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@map("setup_wizard_progress")
@@ -1652,6 +1738,8 @@ model WPSFile {
 model Module {
   id            String   @id @default(cuid())
   key           String   @unique
+  /// Alias used by /api/onboarding (findUnique({ where: { identifier } }))
+  identifier    String?  @unique
   name          String
   description   String?
   isActive      Boolean  @default(true)

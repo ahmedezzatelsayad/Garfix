@@ -23,7 +23,7 @@ const PatchSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.warehouse.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.warehouse.findUnique({ where: { id: id } });
   if (!existing) return apiError("المستودع غير موجود", 404);
 
   const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
@@ -67,7 +67,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.warehouse.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.warehouse.findUnique({ where: { id: id } });
   if (!existing) return apiError("المستودع غير موجود", 404);
 
   const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);

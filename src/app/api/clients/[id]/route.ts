@@ -23,7 +23,7 @@ const UpdateSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-async function loadClientForUser(id: number, user: AuthPayload) {
+async function loadClientForUser(id: string, user: AuthPayload) {
   const client = await db.client.findUnique({ where: { id } });
   if (!client) return null;
   if (!assertCompanyAccess(user, client.companySlug)) return null;
@@ -34,7 +34,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const client = await loadClientForUser(parseInt(id), result.user);
+  const client = await loadClientForUser(id, result.user);
   if (!client) return apiError("Client not found", 404);
   return NextResponse.json({ client });
 });
@@ -43,7 +43,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadClientForUser(parseInt(id), result.user);
+  const existing = await loadClientForUser(id, result.user);
   if (!existing) return apiError("Client not found", 404);
 
   // Enforce permission + company access
@@ -72,7 +72,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadClientForUser(parseInt(id), result.user);
+  const existing = await loadClientForUser(id, result.user);
   if (!existing) return apiError("Client not found", 404);
 
   // Enforce permission + company access

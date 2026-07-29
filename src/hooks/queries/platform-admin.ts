@@ -78,18 +78,25 @@ export interface AIOrchestration {
 export interface PlatformFeatureFlag {
   id: number;
   key: string;
-  name: string;
-  enabled: boolean;
-  description?: string;
+  /** Display label (the API field is `label`, not `name`). */
+  label: string;
+  description?: string | null;
+  /** Plans this flag is scoped to (empty array = all plans). */
+  plans: string[];
+  /** Whether the flag is currently active (the API field is `isActive`, not `enabled`). */
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
 
 /** Payload for creating a new feature flag. */
 export interface CreateFeatureFlagPayload {
   key: string;
-  name: string;
-  enabled: boolean;
-  description?: string;
+  label: string;
+  description?: string | null;
+  plans?: string[];
+  isActive?: boolean;
   [key: string]: unknown;
 }
 
@@ -233,10 +240,10 @@ export interface UpdateTenantPayload {
  * slug, name, and current status.
  */
 export function usePlatformTenants() {
-  return useQuery<PlatformTenant[], ApiError>({
+  return useQuery<{ tenants: PlatformTenant[] }, ApiError>({
     queryKey: queryKeys.platformAdmin.tenants(),
     queryFn: () =>
-      apiGet<PlatformTenant[]>("/api/platform-admin/tenants"),
+      apiGet<{ tenants: PlatformTenant[] }>("/api/platform-admin/tenants"),
   });
 }
 
@@ -264,10 +271,10 @@ export function usePlatformTenant(slug: string) {
  * including actor, action, and timestamp.
  */
 export function usePlatformAudit() {
-  return useQuery<PlatformAuditEntry[], ApiError>({
+  return useQuery<{ logs: PlatformAuditEntry[] }, ApiError>({
     queryKey: queryKeys.platformAdmin.audit(),
     queryFn: () =>
-      apiGet<PlatformAuditEntry[]>("/api/platform-admin/audit"),
+      apiGet<{ logs: PlatformAuditEntry[] }>("/api/platform-admin/audit"),
   });
 }
 
@@ -336,10 +343,10 @@ export function useAIOrchestration() {
  * key, name, enabled status, and description.
  */
 export function usePlatformFeatureFlags() {
-  return useQuery<PlatformFeatureFlag[], ApiError>({
+  return useQuery<{ flags: PlatformFeatureFlag[] }, ApiError>({
     queryKey: queryKeys.platformAdmin.featureFlags(),
     queryFn: () =>
-      apiGet<PlatformFeatureFlag[]>("/api/platform-admin/feature-flags"),
+      apiGet<{ flags: PlatformFeatureFlag[] }>("/api/platform-admin/feature-flags"),
   });
 }
 
@@ -350,10 +357,10 @@ export function usePlatformFeatureFlags() {
  * administrators for user-facing notifications.
  */
 export function usePlatformAnnouncements() {
-  return useQuery<PlatformAnnouncement[], ApiError>({
+  return useQuery<{ announcements: PlatformAnnouncement[] }, ApiError>({
     queryKey: queryKeys.platformAdmin.announcements(),
     queryFn: () =>
-      apiGet<PlatformAnnouncement[]>("/api/platform-admin/announcements"),
+      apiGet<{ announcements: PlatformAnnouncement[] }>("/api/platform-admin/announcements"),
   });
 }
 
@@ -392,10 +399,10 @@ export function useReviewQueue() {
  * including error messages and timestamps for troubleshooting.
  */
 export function useQueueFailures() {
-  return useQuery<QueueFailure[], ApiError>({
+  return useQuery<{ queue: unknown; count: number; failures: QueueFailure[] }, ApiError>({
     queryKey: queryKeys.platformAdmin.queueFailures(),
     queryFn: () =>
-      apiGet<QueueFailure[]>("/api/platform-admin/queue-failures"),
+      apiGet<{ queue: unknown; count: number; failures: QueueFailure[] }>("/api/platform-admin/queue-failures"),
   });
 }
 
@@ -426,10 +433,10 @@ export function useClearQueueFailures() {
  * and creator information.
  */
 export function usePlatformTickets() {
-  return useQuery<PlatformTicket[], ApiError>({
+  return useQuery<{ tickets: PlatformTicket[] }, ApiError>({
     queryKey: queryKeys.platformAdmin.tickets(),
     queryFn: () =>
-      apiGet<PlatformTicket[]>("/api/platform-admin/tickets"),
+      apiGet<{ tickets: PlatformTicket[] }>("/api/platform-admin/tickets"),
   });
 }
 
@@ -827,10 +834,10 @@ export function useReplyToTicket() {
  * their uid, email, display name, role, and status.
  */
 export function useSaaSUsers() {
-  return useQuery<SaaSUser[], ApiError>({
+  return useQuery<{ users: SaaSUser[] }, ApiError>({
     queryKey: queryKeys.saas.users(),
     queryFn: () =>
-      apiGet<SaaSUser[]>("/api/saas/users"),
+      apiGet<{ users: SaaSUser[] }>("/api/saas/users"),
   });
 }
 
@@ -841,10 +848,10 @@ export function useSaaSUsers() {
  * statuses, and timestamps.
  */
 export function useSaaSPayments() {
-  return useQuery<SaaSPayment[], ApiError>({
+  return useQuery<{ payments: SaaSPayment[] }, ApiError>({
     queryKey: queryKeys.saas.payments(),
     queryFn: () =>
-      apiGet<SaaSPayment[]>("/api/saas/payments"),
+      apiGet<{ payments: SaaSPayment[] }>("/api/saas/payments"),
   });
 }
 

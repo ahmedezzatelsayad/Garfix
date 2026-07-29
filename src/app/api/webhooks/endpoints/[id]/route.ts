@@ -22,7 +22,7 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   }
 
   const { id } = await ctx.params;
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: parseInt(id) } });
+  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: id } });
   if (!endpoint) return apiError("Endpoint not found", 404);
 
   // Verify the endpoint belongs to the user's company
@@ -54,7 +54,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   }
 
   const { id } = await ctx.params;
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: parseInt(id) } });
+  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: id } });
   if (!endpoint) return apiError("Endpoint not found", 404);
 
   const companySlug = result.user.companies?.[0];
@@ -76,7 +76,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   if (validation.data.isActive !== undefined) updates.isActive = validation.data.isActive;
 
   const updated = await db.webhookEndpoint.update({
-    where: { id: parseInt(id) },
+    where: { id: id },
     data: updates,
   });
 
@@ -85,7 +85,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
     userUid: result.user.uid,
     action: "update",
     entity: "webhook_endpoint",
-    entityId: parseInt(id),
+    entityId: id,
     companySlug: endpoint.companySlug,
     details: validation.data,
   });
@@ -105,7 +105,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContex
   }
 
   const { id } = await ctx.params;
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: parseInt(id) } });
+  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: id } });
   if (!endpoint) return apiError("Endpoint not found", 404);
 
   const companySlug = result.user.companies?.[0];
@@ -118,18 +118,18 @@ export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContex
   }
 
   // Delete associated deliveries first
-  await db.webhookDelivery.deleteMany({ where: { endpointId: parseInt(id) } });
-  await db.webhookEndpoint.delete({ where: { id: parseInt(id) } });
+  await db.webhookDelivery.deleteMany({ where: { endpointId: id } });
+  await db.webhookEndpoint.delete({ where: { id: id } });
 
   await logAudit({
     userEmail: result.user.email,
     userUid: result.user.uid,
     action: "delete",
     entity: "webhook_endpoint",
-    entityId: parseInt(id),
+    entityId: id,
     companySlug: endpoint.companySlug,
     details: { url: endpoint.url },
   });
 
-  return apiOk({ deleted: true, id: parseInt(id) });
+  return apiOk({ deleted: true, id: id });
 });

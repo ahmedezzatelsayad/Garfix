@@ -87,12 +87,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const progress = await db.setupWizardProgress.upsert({
       where: { companySlug: data.companySlug },
       update: {
-        currentStep: String(data.step || existing?.currentStep || 1),
+        currentStep: Number(data.step || existing?.currentStep || 1),
         data: JSON.stringify(mergedData),
       },
       create: {
         companySlug: data.companySlug,
-        currentStep: String(data.step || 1),
+        currentStep: Number(data.step || 1),
         data: JSON.stringify(mergedData),
       },
     });
@@ -171,7 +171,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     where: { companySlug },
     update: {
       completed: true,
-      currentStep: "10",
+      currentStep: 10,
       data: JSON.stringify({
         businessType,
         hasEmployees: data.hasEmployees,
@@ -182,7 +182,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     create: {
       companySlug,
       completed: true,
-      currentStep: "10",
+      currentStep: 10,
       data: JSON.stringify({
         businessType,
         hasEmployees: data.hasEmployees,

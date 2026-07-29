@@ -214,13 +214,13 @@ export function Sidebar({
                 <button
                   onClick={createCompany}
                   disabled={createCompanyMutation.isPending || !newCompanyName || !newCompanySlug}
-                  className={cn("flex-1 py-2 rounded-md bg-primary text-primary-foreground border-none cursor-pointer font-inherit text-[11px", createCompanyMutation.isPending || !newCompanyName || !newCompanySlug ? "opacity-60" : "")}
+                  className={cn("flex-1 py-2 rounded-md bg-primary text-primary-foreground border-none cursor-pointer font-inherit text-[11px]", createCompanyMutation.isPending || !newCompanyName || !newCompanySlug ? "opacity-60" : "")}
                 >
                   {createCompanyMutation.isPending ? "جارٍ…" : "إنشاء"}
                 </button>
                 <button
                   onClick={() => setShowCreateCompany(false)}
-                  className="py-2 px-3 rounded-md bg-transparent text-muted-foreground border border-border cursor-pointer font-inherit text-[11px"
+                  className="py-2 px-3 rounded-md bg-transparent text-muted-foreground border border-border cursor-pointer font-inherit text-[11px]"
                 >
                   إلغاء
                 </button>

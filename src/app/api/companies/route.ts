@@ -94,11 +94,23 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  // Authorization: enforce settings_access permission for creating companies
-  const permResult = await requirePermission(req, "settings_access");
-  if ("error" in permResult) return permResult.error;
-  const user = permResult.user;
+  // Authorization: enforce settings_access for creating ADDITIONAL companies,
+  // but allow any authenticated user to create their FIRST company (onboarding).
+  // Without this exception, fresh `employee` users could never complete the
+  // SetupWizard — they'd see "no companies" forever.
+  const authResult = await resolveAuth(req);
+  if (!authResult.ok || !authResult.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const user = authResult.user;
   const founder = isFounderEmail(user.email);
+
+  // If user already has companies, require settings_access to create more
+  // (unless they're the founder).
+  if (!founder && user.companies.length > 0) {
+    const permResult = await requirePermission(req, "settings_access");
+    if ("error" in permResult) return permResult.error;
+  }
 
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
@@ -146,11 +158,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     },
   });
 
-  // Auto-assign the new company to the creator
+  // Auto-assign the new company to the creator AND promote them to admin if
+  // this is their first company. Without the role promotion, an `employee`
+  // user could create a company but then couldn't manage it (no settings_access,
+  // no view_catalog, no finance_access, etc.) — the dashboard would be
+  // read-only with most tabs returning 403. Promoting to admin gives them
+  // full tenant-owner permissions, matching the user's expectation that
+  // "I created this company, I'm the admin."
   const newCompanies = [...new Set([...user.companies, slug])];
+  const isFirstCompany = user.companies.length === 0 && !founder;
+  const updateData: Record<string, unknown> = { companies: JSON.stringify(newCompanies) };
+  if (isFirstCompany) {
+    updateData.role = "admin";
+    // Bump tokenVersion so any other session is invalidated.
+    updateData.tokenVersion = { increment: 1 };
+  }
   await db.appUser.update({
     where: { uid: user.uid },
-    data: { companies: JSON.stringify(newCompanies) },
+    data: updateData,
   });
 
   await logAudit({
@@ -163,7 +188,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     details: { name: data.name, founder },
   });
 
-  return NextResponse.json({
+  // Re-issue the session so the new company is in the JWT's `companies` array.
+  // Without this, GET /api/companies (which filters by JWT.companies) would
+  // return [] even though the company was just created — the user would see
+  // "no companies" until they manually logged out and back in.
+  const response = NextResponse.json({
     ok: true,
     company: {
       id: company.id,
@@ -174,4 +203,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       color: company.color,
     },
   });
+  try {
+    const updatedUser = await db.appUser.findUnique({ where: { uid: user.uid } });
+    if (updatedUser) {
+      const { issueSession } = await import("@/lib/auth");
+      await issueSession(response, {
+        uid: updatedUser.uid,
+        email: updatedUser.email,
+        displayName: updatedUser.displayName || "",
+        role: updatedUser.role,
+        companies: newCompanies,
+        permissions: (updatedUser.permissions as Record<string, number>) ?? {},
+        emailVerified: updatedUser.emailVerified,
+        tokenVersion: updatedUser.tokenVersion,
+      }, req);
+    }
+  } catch (err) {
+    // Best-effort — the company was created, just don't refresh the session.
+    console.error("[companies] failed to refresh session after create:", err);
+  }
+  return response;
 });

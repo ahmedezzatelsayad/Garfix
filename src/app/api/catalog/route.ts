@@ -10,7 +10,7 @@ import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
-import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
 
 const CreateSchema = z.object({
@@ -44,7 +44,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (search) where.OR = [{ name: { contains: search } }, { code: { contains: search } }];
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
-  const allProducts: any[] = await db.productCatalog.findMany({ where, ...pagination });
+  // Include the ProductAlias relation so we can flatten aliases into a string[]
+  // on the response. Previously the code did `parseJsonField(p.code, [])` which
+  // tried to parse the product CODE ("SKU-123") as JSON — always returned [].
+  const allProducts: any[] = await db.productCatalog.findMany({
+    where,
+    ...pagination,
+    include: { productAliases: { select: { alias: true } } },
+  });
 
   const { items, nextCursor } = buildCursorResponse(allProducts, limit);
   const products: any[] = items;
@@ -52,7 +59,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json({
     products: products.map((p) => ({
       ...p,
-      aliases: parseJsonField(p.code, []),
+      aliases: Array.isArray(p.productAliases) ? p.productAliases.map((pa: { alias: string }) => pa.alias) : [],
       purchasePrice: p.purchasePrice ? num(p.purchasePrice, 3) : null,
       sellingPrice: p.sellingPrice ? num(p.sellingPrice, 3) : null,
       wholesalePrice: p.wholesalePrice ? num(p.wholesalePrice, 3) : null,
