@@ -16,12 +16,15 @@ concurrency:
 
 env:
   NODE_ENV: test
-  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
-  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  # NOTE: DATABASE_URL / DATABASE_DIRECT_URL are NOT set here — the committed
+  # `.env` file provides the real Neon PostgreSQL connection string, which
+  # `next start` loads automatically. Setting dummy localhost values here
+  # would override .env and break the smoke test.
   JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
   FOUNDER_EMAIL: "founder@test.com"
   PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-characters!"
+  COMMIT_SHA: ${{ github.sha }}
 
 jobs:
   # ── Quick Lint ────────────────────────────────────────────────────────
@@ -117,9 +120,9 @@ jobs:
 
   # ── Quick Build ──────────────────────────────────────────────────────
   quick-build:
-    name: 🏗️ Quick Build
+    name: 🏗️ Quick Build + Smoke Test
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     needs: [quick-lint, quick-typecheck]
     steps:
       - name: Checkout code
@@ -160,13 +163,71 @@ jobs:
             echo "✅ Build successful"
           fi
 
-      - name: Verify standalone output
+      - name: Verify build output
         run: |
-          if [ ! -f ".next/standalone/server.js" ]; then
-            echo "❌ Standalone server.js missing!"
+          if [ ! -f ".next/BUILD_ID" ]; then
+            echo "❌ .next/BUILD_ID missing — build is broken"
             exit 1
           fi
-          echo "✅ Standalone output verified"
+          if [ ! -f ".next/required-server-files.js" ]; then
+            echo "❌ .next/required-server-files.js missing — cannot run 'next start'"
+            exit 1
+          fi
+          echo "✅ Standard Next.js output verified (BUILD_ID: $(cat .next/BUILD_ID))"
+
+      - name: Smoke test — start server + curl /api/health
+        run: |
+          set +e
+          # Start server in background. PORT=3100 to avoid conflicts.
+          PORT=3100 bun run start > server.log 2>&1 &
+          SERVER_PID=$!
+          echo "Server started with PID $SERVER_PID"
+
+          # Wait for server to be ready (max 30s)
+          for i in {1..30}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3100/api/health | grep -q "200\|503"; then
+              echo "✅ Server responded after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          # Capture health endpoint response
+          HEALTH_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" http://localhost:3100/api/health)
+          echo "═══ /api/health response ═══"
+          echo "$HEALTH_RESPONSE"
+          echo "════════════════════════════"
+
+          # Verify health endpoint returns 200 (DB connected, queue tier available)
+          HTTP_STATUS=$(echo "$HEALTH_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ /api/health returned $HTTP_STATUS (expected 200)"
+            echo "═══ server.log (last 50 lines) ═══"
+            tail -50 server.log
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+
+          # Verify response contains commitSha (proves build-time injection works)
+          if ! echo "$HEALTH_RESPONSE" | grep -q "commitSha"; then
+            echo "❌ /api/health missing commitSha field — build-time env injection failed"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+
+          # Verify home page returns 200
+          HOME_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3100/)
+          if [ "$HOME_STATUS" != "200" ]; then
+            echo "❌ Home page returned $HOME_STATUS (expected 200)"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "✅ All smoke tests passed"
+          kill $SERVER_PID 2>/dev/null || true
+          # Give server time to clean up
+          sleep 2
+          set -e
 
   # ── PR Summary ───────────────────────────────────────────────────────
   pr-summary:
