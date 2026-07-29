@@ -6,7 +6,7 @@ import { useCatalog, useDeleteCatalogItem, useUpdateCatalogItem, useCreateCatalo
 import type { CreateCatalogItemPayload } from "@/hooks/queries/catalog";
 import { toast } from "sonner";
 import { Plus, Search, Package, Trash2, Edit2, X, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -38,7 +38,7 @@ export function CatalogView() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
-  const pageProducts = products.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageProducts = paginate(products, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
   const toggleSelectAll = () => {

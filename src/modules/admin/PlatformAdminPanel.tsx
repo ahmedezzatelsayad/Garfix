@@ -26,6 +26,7 @@ import { TenantDetailDrawer } from "./TenantDetailDrawer";
 import { TicketDetailDrawer } from "./TicketDetailDrawer";
 import { FeatureFlagsTab } from "./FeatureFlagsTab";
 import { ReviewQueueTab } from "./ReviewQueueTab";
+import { paginate } from "@/lib/utils";
 import type { Stats, Tenant, Announcement, Ticket, AdminAudit, QueueFailure, StockMovement, Tab } from "./types";
 
 /* ── Lazy-loaded admin tabs (only fetched when the user clicks them) ── */
@@ -123,11 +124,11 @@ export function PlatformAdminPanel() {
 
   const tenantsTotalPages = Math.max(1, Math.ceil(tenants.length / adminPageSize));
   const tenantsSafePage = Math.min(tenantsPage, tenantsTotalPages);
-  const currentPageTenants = tenants.slice((tenantsSafePage - 1) * adminPageSize, tenantsSafePage * adminPageSize);
+  const currentPageTenants = paginate(tenants, tenantsSafePage, adminPageSize);
 
   const auditTotalPages = Math.max(1, Math.ceil(audit.length / adminPageSize));
   const auditSafePage = Math.min(auditPage, auditTotalPages);
-  const currentPageAudit = audit.slice((auditSafePage - 1) * adminPageSize, auditSafePage * adminPageSize);
+  const currentPageAudit = paginate(audit, auditSafePage, adminPageSize);
 
   function AdminPageBtn({ disabled, children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
     return <button className={`px-3 py-1.5 rounded-md border border-[var(--border)] font-inherit text-xs font-bold ${disabled ? "bg-transparent text-[var(--muted-foreground)] cursor-not-allowed opacity-50" : "bg-[var(--card)] text-[var(--foreground)] cursor-pointer"}`} disabled={disabled} {...props}>{children}</button>;

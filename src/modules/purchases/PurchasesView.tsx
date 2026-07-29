@@ -6,7 +6,7 @@ import { usePurchases, useDeletePurchase, useCreatePurchase } from "@/hooks/quer
 import type { CreatePurchasePayload } from "@/hooks/queries/dashboard";
 import { toast } from "sonner";
 import { Plus, ShoppingCart, Trash2, X, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -31,7 +31,7 @@ export function PurchasesView() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(purchases.length / PAGE_SIZE));
-  const pagePurchases = purchases.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pagePurchases = paginate(purchases, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
   const toggleSelectAll = () => {

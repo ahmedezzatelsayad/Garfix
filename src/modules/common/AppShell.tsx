@@ -10,7 +10,8 @@ import { toast } from "sonner";
 import { AICopilotBubble } from "@/modules/ai/AICopilotBubble";
 import { CommandPaletteProvider } from "@/components/garfix/CommandPaletteProvider";
 import { ErrorBoundary } from "@/components/garfix/ErrorBoundary";
-import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
+import { AppFooter } from "@/components/garfix/AppFooter";
+import { OnboardingScreen } from "./OnboardingScreen";
 
 // Lazy-load heavy views
 const DashboardView = lazy(() => import("@/modules/dashboard/DashboardView").then((m) => ({ default: m.DashboardView })));
@@ -91,6 +92,14 @@ export default function AppShell() {
 
   if (!user) return null;
 
+  // First-run onboarding: if companies have finished loading and the user
+  // has zero companies, show the company-creation wizard instead of the
+  // dashboard. Without this, the dashboard renders with no active company
+  // → all API queries 401/empty → views either show "no data" or crash
+  // on undefined fields. This is the gap that produced the user's complaint
+  // "مفيش onboarding ومفيش داش بورد".
+  const showOnboarding = !loadingCompanies && companies.length === 0;
+
   return (
     <CommandPaletteProvider>
       <div
@@ -140,28 +149,37 @@ export default function AppShell() {
                 </div>
               }
             >
-              {view === "dash" && <DashboardView />}
-              {view === "invoices" && <InvoicesView />}
-              {view === "clients" && <ClientsView />}
-              {view === "catalog" && <CatalogView />}
-              {view === "purchases" && <PurchasesView />}
-              {view === "hr" && <HRView />}
-              {view === "accounting" && <AccountingView />}
-              {view === "settings" && <SettingsView activeCompany={activeCompany} onUpdated={refreshCompanies} />}
-              {view === "saas" && (isAdmin || isFounder) && <SaaSControlPanel />}
-              {view === "team" && (perms.settings_access || isAdmin || isFounder) && <TeamView />}
-              {view === "platform-admin" && isFounder && <PlatformAdminPanel />}
-              {view === "audit" && (isAdmin || isFounder) && <AuditView />}
-              {view === "bulk-input" && <BulkInputView />}
-              {view === "reports" && <ReportsView />}
-              {view === "account" && <AccountView />}
-              {view === "inventory" && (perms.settings_access || isAdmin || isFounder) && <InventoryView />}
-              {view === "automation" && (perms.settings_access || isAdmin || isFounder) && <AutomationView />}
-              {view === "ai-agents" && <AIAgentsView />}
+              {showOnboarding ? (
+                <OnboardingScreen />
+              ) : (
+                <>
+                  {view === "dash" && <DashboardView />}
+                  {view === "invoices" && <InvoicesView />}
+                  {view === "clients" && <ClientsView />}
+                  {view === "catalog" && <CatalogView />}
+                  {view === "purchases" && <PurchasesView />}
+                  {view === "hr" && <HRView />}
+                  {view === "accounting" && <AccountingView />}
+                  {view === "settings" && <SettingsView activeCompany={activeCompany} onUpdated={refreshCompanies} />}
+                  {view === "saas" && (isAdmin || isFounder) && <SaaSControlPanel />}
+                  {view === "team" && (perms.settings_access || isAdmin || isFounder) && <TeamView />}
+                  {view === "platform-admin" && isFounder && <PlatformAdminPanel />}
+                  {view === "audit" && (isAdmin || isFounder) && <AuditView />}
+                  {view === "bulk-input" && <BulkInputView />}
+                  {view === "reports" && <ReportsView />}
+                  {view === "account" && <AccountView />}
+                  {view === "inventory" && (perms.settings_access || isAdmin || isFounder) && <InventoryView />}
+                  {view === "automation" && (perms.settings_access || isAdmin || isFounder) && <AutomationView />}
+                  {view === "ai-agents" && <AIAgentsView />}
+                </>
+              )}
             </Suspense>
             </ErrorBoundary>
           </main>
-          <ProfessionalFooter variant="app" version={process.env.NEXT_PUBLIC_APP_VERSION || '12'} />
+          <AppFooter
+            version={process.env.NEXT_PUBLIC_APP_VERSION || "12"}
+            commitSha={process.env.COMMIT_SHA}
+          />
         </div>
 
         <AICopilotBubble />
