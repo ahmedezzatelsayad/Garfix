@@ -4,7 +4,8 @@
  * Behavior:
  *   - Unauthenticated users  → render the public marketing landing page
  *                              (EnhancedLandingPage) with Sign In / Get
- *                              Started buttons that route to /login.
+ *                              Started buttons that route to /login and
+ *                              /signup respectively.
  *   - Authenticated users    → render <AppShell />, which is the canonical
  *                              authenticated shell hosting the Sidebar +
  *                              Topbar + ALL 18 accounting module views
@@ -44,9 +45,7 @@ export default function Home() {
   }, [router]);
 
   const handleRegister = useCallback(() => {
-    // No /register page yet — route to /login for now. When /register is
-    // added, change this to router.push("/register").
-    router.push("/login");
+    router.push("/signup");
   }, [router]);
 
   // ── 1. Session resolving → neutral loader ───────────────────────────────

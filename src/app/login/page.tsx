@@ -169,6 +169,13 @@ export default function LoginPage() {
                 )}
               </Button>
 
+              <p className="text-sm text-muted-foreground text-center">
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="font-medium text-primary underline hover:opacity-80">
+                  Create one
+                </Link>
+              </p>
+
               <p className="text-xs text-muted-foreground text-center">
                 By signing in you agree to our{" "}
                 <Link href="/terms" className="underline hover:text-foreground">
