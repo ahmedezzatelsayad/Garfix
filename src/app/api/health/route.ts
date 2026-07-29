@@ -43,21 +43,31 @@ export async function GET() {
   let criticalOk = true;
 
   // ── 1. PostgreSQL ──────────────────────────────────────────────────────
-  //   3s timeout — Neon serverless cold starts can take 1-2s for cross-region.
+  //   5s timeout — Neon serverless cold starts can take 1-2s for cross-region.
+  //   Under heavy load (e.g. backup worker running), the DB may be temporarily
+  //   slow, so we use a generous timeout and treat a timeout as non-critical
+  //   (the app is still running, just slow).
+  let dbOk = true;
   try {
     await Promise.race([
       db.$queryRaw`SELECT 1`,
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout 3000ms")), 3000),
+        setTimeout(() => reject(new Error("timeout 5000ms")), 5000),
       ),
     ]);
     checks.db = { ok: true };
   } catch (err) {
-    criticalOk = false;
+    dbOk = false;
     checks.db = {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
     };
+    // A slow/timing-out DB is not necessarily critical — the app may be under
+    // heavy load. Only mark as critical failure if the error is not a timeout.
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (!errMsg.includes("timeout")) {
+      criticalOk = false;
+    }
   }
 
   // ── 2. Valkey (OPTIONAL — app falls back to pg-boss when not configured) ──

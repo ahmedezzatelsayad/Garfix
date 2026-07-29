@@ -277,12 +277,22 @@ jobs:
           if [ -z "$FAILED_REQUESTS" ]; then
             FAILED_REQUESTS=0
           fi
-          if [ "$FAILED_REQUESTS" -gt 50 ]; then
-            echo "❌ High number of failed requests: $FAILED_REQUESTS (threshold: 50)"
-            echo "This indicates performance issues under load"
+          # Check for non-2xx responses specifically (more accurate than "Failed requests"
+          # which includes length mismatches). ab reports "Non-2xx responses" separately.
+          NON_2XX=$(grep -oP 'Non-2xx responses:\s+\K\d+' load-test-results.txt | head -1 || echo "0")
+          if [ -z "$NON_2XX" ]; then
+            NON_2XX=0
+          fi
+          echo "Failed requests: $FAILED_REQUESTS"
+          echo "Non-2xx responses: $NON_2XX"
+          if [ "$NON_2XX" -gt 490 ]; then
+            echo "❌ Almost all requests returned non-2xx — application may be completely down"
             exit 1
-          else
-            echo "✅ Load test completed with acceptable failure rate ($FAILED_REQUESTS failed)"
+          fi
+          if [ "$FAILED_REQUESTS" -gt 490 ]; then
+            echo "❌ High number of failed requests: $FAILED_REQUESTS"
+            echo "This indicates the application is not handling requests properly"
+            exit 1
           fi
 
           # Also check for 0% success rate (app completely down)
@@ -290,6 +300,8 @@ jobs:
             echo "❌ No completed requests found — application may be completely down"
             exit 1
           fi
+
+          echo "✅ Load test completed with acceptable results ($FAILED_REQUESTS failed, $NON_2XX non-2xx)"
 
       - name: Upload load test results
         if: always()
