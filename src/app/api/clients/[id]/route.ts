@@ -55,7 +55,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
 
-  const { company: _company, ...updateData } = parsed.data;
+  const { ...updateData } = parsed.data;
   const client = await db.client.update({ where: { id: existing.id }, data: updateData });
   await logAudit({
     userEmail: user.email,

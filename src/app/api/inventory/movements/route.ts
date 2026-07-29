@@ -44,9 +44,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (!isAllTenantsMode) where.companySlug = companySlug;
 
   const productId = sp.get("productId");
-  if (productId) where.productId = parseInt(productId);
+  if (productId) where.productId = productId;
   const warehouseId = sp.get("warehouseId");
-  if (warehouseId) where.warehouseId = parseInt(warehouseId);
+  if (warehouseId) where.warehouseId = warehouseId;
   const sourceType = sp.get("sourceType");
   if (sourceType) where.sourceType = sourceType;
 
@@ -81,12 +81,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   });
 
   // Fetch product names for the movements
-  const productIds = [...new Set(movements.map(m => m.productId).filter((id): id is number => id !== null))];
+  // ProductCatalog.id is String (cuid), StockMovement.productId is String.
+  const productIds = [...new Set(movements.map(m => m.productId))];
   const products = await db.productCatalog.findMany({
     where: { id: { in: productIds } },
     select: { id: true, name: true, code: true },
   });
-  const productMap = new Map(products.map(p => [p.id, p]));
+  type ProductInfo = { id: string; name: string; code: string | null };
+  const productMap = new Map<string, ProductInfo>(
+    products.map((p): [string, ProductInfo] => [p.id, { id: p.id, name: p.name, code: p.code }])
+  );
 
   const mapped = movements.map((m) => {
     const product = m.productId ? productMap.get(m.productId) : null;
