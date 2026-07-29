@@ -112,12 +112,17 @@
     "@opentelemetry/core": "^2.10.0",
     "@opentelemetry/exporter-prometheus": "^0.221.0",
     "@opentelemetry/propagator-jaeger": "^2.10.0",
+    "@sigstore/core": ">=4.0.1",
     "exceljs/uuid": "^11.1.1",
+    "ip-address": ">=10.1.1",
     "js-yaml": "^5.2.2",
     "next/sharp": "^0.35.0",
+    "picomatch": ">=4.0.5",
     "postcss": "8.5.24",
     "prismjs": "^1.30.0",
     "sharp": "^0.35.0",
+    "sigstore": ">=5.0.0",
+    "tar": ">=7.5.22",
     "uuid": "^11.1.1",
   },
   "packages": {
@@ -2680,8 +2685,6 @@
     "lowlight/fault": ["fault@1.0.4", "", { "dependencies": { "format": "^0.2.0" } }, "sha512-CJ0HCB5tL5fYTEA7ToAq5+kTwd++Borf1/bifxd9iT70QcXr4MRrO3Llf8Ifs70q+SJcGHFtnIE/Nw6giCtECA=="],
 
     "mdast-util-frontmatter/escape-string-regexp": ["escape-string-regexp@5.0.0", "", {}, "sha512-/veY75JbMK4j1yjvuUxuVsiS/hr/4iHs9FTT6cgTexxdE0Ly/glccBAkloH/DofkjRbZU3bnoj38mOmhkZ0lHw=="],
-
-    "micromatch/picomatch": ["picomatch@2.3.2", "", {}, "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA=="],
 
     "node-exports-info/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
