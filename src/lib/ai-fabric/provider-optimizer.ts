@@ -334,10 +334,8 @@ export async function seedProviderConfigs(): Promise<void> {
   for (const taskType of tasks) {
     const defaults = DEFAULT_PROVIDERS[taskType];
     await db.providerConfig.upsert({
-      where: { companySlug_provider_taskType: { companySlug: "platform", provider: "default", taskType } },
+      where: { taskType },
       create: {
-        companySlug: "platform",
-        provider: "default",
         taskType,
         primaryProvider: defaults.primary,
         fallbackProvider: defaults.fallback,
