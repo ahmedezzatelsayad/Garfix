@@ -11,7 +11,15 @@ import { AICopilotBubble } from "@/modules/ai/AICopilotBubble";
 import { CommandPaletteProvider } from "@/components/garfix/CommandPaletteProvider";
 import { ErrorBoundary } from "@/components/garfix/ErrorBoundary";
 import { AppFooter } from "@/components/garfix/AppFooter";
-import { OnboardingScreen } from "./OnboardingScreen";
+// Wire the real 7-step SetupWizard instead of the bare OnboardingScreen stub.
+// SetupWizard has been in the repo since 2025-09 but was never rendered — it
+// handles company creation, country selection, business type, feature
+// toggles (employees/warehouse/WhatsApp), an AI smart-parse demo, and a
+// completion step that auto-generates a chart of accounts. OnboardingScreen
+// was a single-form stub created during a previous fix that ignored this
+// existing component. We keep OnboardingScreen around as a fallback if
+// SetupWizard itself errors out (defensive ErrorBoundary inside the wizard).
+import { SetupWizard } from "@/modules/onboarding/SetupWizard";
 
 // Lazy-load heavy views
 const DashboardView = lazy(() => import("@/modules/dashboard/DashboardView").then((m) => ({ default: m.DashboardView })));
@@ -24,7 +32,7 @@ const AccountingView = lazy(() => import("@/modules/accounting/AccountingView").
 const SettingsView = lazy(() => import("@/modules/settings/SettingsView").then((m) => ({ default: m.SettingsView })));
 const SaaSControlPanel = lazy(() => import("@/modules/saas/SaaSControlPanel").then((m) => ({ default: m.SaaSControlPanel })));
 const PlatformAdminPanel = lazy(() => import("@/modules/admin/PlatformAdminPanel").then((m) => ({ default: m.PlatformAdminPanel })));
-const AuditView = lazy(() => import("@/modules/admin/AuditView").then((m) => ({ default: m.AuditView })));
+const AuditView = lazy(() => import("@/modules/admin/EnhancedAuditView").then((m) => ({ default: m.EnhancedAuditView })));
 const BulkInputView = lazy(() => import("@/modules/bulk-input/BulkInputView").then((m) => ({ default: m.BulkInputView })));
 const ReportsView = lazy(() => import("@/modules/reports/ReportsView").then((m) => ({ default: m.ReportsView })));
 const TeamView = lazy(() => import("@/modules/team/TeamView").then((m) => ({ default: m.TeamView })));
@@ -103,7 +111,7 @@ export default function AppShell() {
   return (
     <CommandPaletteProvider>
       <div
-        className="flex flex-col sm:flex-row min-h-dvh bg-[#F9FAFB] text-foreground"
+        className="flex flex-col sm:flex-row min-h-dvh bg-background text-foreground"
         dir="rtl"
       >
         <Sidebar
@@ -150,7 +158,20 @@ export default function AppShell() {
               }
             >
               {showOnboarding ? (
-                <OnboardingScreen />
+                // Real 7-step onboarding wizard — was orphan in the repo
+                // since 2025-09. The previous fix rendered a 250-line
+                // OnboardingScreen stub here instead, which is why users saw
+                // "no onboarding" — the stub barely explained anything and
+                // immediately threw users into a dashboard with no company.
+                // SetupWizard takes over the full screen (its own min-h-screen
+                // gradient background) and calls onComplete when the user
+                // finishes the final step, which triggers refreshCompanies()
+                // → companies list populates → showOnboarding flips false →
+                // the real dashboard mounts.
+                <SetupWizard
+                  onComplete={async () => { await refreshCompanies(); }}
+                  onSkip={async () => { await refreshCompanies(); }}
+                />
               ) : (
                 <>
                   {view === "dash" && <DashboardView />}

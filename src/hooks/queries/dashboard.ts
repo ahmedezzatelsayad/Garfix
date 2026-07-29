@@ -487,11 +487,24 @@ export function useCreateBackup() {
 
 /**
  * Fetch the list of all companies the user has access to.
+ *
+ * `enabled: !!user` would be ideal but this hook is called from
+ * BrandProvider which lives above AuthProvider's user state. Instead
+ * we rely on the consumer (BrandProvider) to ignore 401s when user is
+ * null. The hook itself is unconditional so TanStack can cache the
+ * result for the next mount.
  */
 export function useCompanies() {
   return useQuery<CompanyListResponse, ApiError>({
     queryKey: queryKeys.companies.lists(),
     queryFn: () => apiGet<CompanyListResponse>("/api/companies"),
+    retry: (failureCount, error) => {
+      // Don't retry 401s — they mean the user isn't signed in yet.
+      // AuthContext will trigger a refetch indirectly via its own
+      // refresh() flow when the user logs in.
+      if (error?.status === 401) return false;
+      return failureCount < 1;
+    },
   });
 }
 

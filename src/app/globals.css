@@ -9,6 +9,14 @@
  * Theme tokens use oklch() (modern color space) for both light and dark modes.
  * The dark mode is class-based — toggled by adding `.dark` to <html>.
  *
+ * BRAND IDENTITY — GarfiX EOS uses a violet/purple primary (#7c3aed) with
+ * soft lavender accents (#a78bfa), matching the gradient used throughout
+ * the marketing site and the in-app shell. The previous theme used a
+ * grayscale-only palette (`--primary: oklch(0.205 0 0)` = near-black),
+ * which made every primary button look like a black box and broke the
+ * visual link with the gradient logo/headers. Now primary IS the brand
+ * violet in both light and dark modes.
+ *
  * shadcn/ui components rely on these tokens via classnames like:
  *   bg-background, text-foreground, bg-primary, text-primary-foreground,
  *   border-border, bg-muted, text-muted-foreground, bg-destructive, etc.
@@ -67,77 +75,87 @@
   --radius-3xl: 1.5rem;
 }
 
-/* ── Light theme (default :root) ─────────────────────────────────────── */
+/* ── Light theme (default :root) ───────────────────────────────────────
+ * Brand: violet primary (#7c3aed → oklch(0.541 0.281 293.034)),
+ *        lavender accent (#a78bfa → oklch(0.71 0.165 294.0)),
+ *        soft violet-tinted neutrals for surface hierarchy.
+ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  /* Surfaces — very subtle violet tint to keep the brand cohesive */
+  --background: oklch(0.985 0.005 294.0);          /* near-white with violet whisper */
+  --foreground: oklch(0.18 0.02 285.0);            /* deep ink with violet undertone */
+  --card: oklch(1 0 0);                            /* pure white cards on the violet-tinted bg */
+  --card-foreground: oklch(0.18 0.02 285.0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.18 0.02 285.0);
+  /* Brand */
+  --primary: oklch(0.541 0.281 293.034);           /* #7c3aed violet */
+  --primary-foreground: oklch(0.985 0 0);          /* white on violet */
+  --secondary: oklch(0.96 0.012 294.0);            /* soft lavender */
+  --secondary-foreground: oklch(0.30 0.05 285.0);
+  --muted: oklch(0.965 0.006 294.0);
+  --muted-foreground: oklch(0.52 0.02 285.0);
+  --accent: oklch(0.93 0.025 294.0);               /* lavender hover */
+  --accent-foreground: oklch(0.30 0.10 285.0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --border: oklch(0.91 0.008 294.0);
+  --input: oklch(0.91 0.008 294.0);
+  --ring: oklch(0.541 0.281 293.034);              /* ring = brand violet */
+  --chart-1: oklch(0.541 0.281 293.034);           /* violet */
+  --chart-2: oklch(0.6 0.118 184.704);             /* teal */
+  --chart-3: oklch(0.398 0.07 227.392);            /* deep blue */
+  --chart-4: oklch(0.828 0.189 84.429);            /* amber */
+  --chart-5: oklch(0.769 0.188 70.08);             /* orange */
+  /* Sidebar — slightly tinted to differentiate from main canvas */
+  --sidebar: oklch(0.99 0.003 294.0);
+  --sidebar-foreground: oklch(0.20 0.02 285.0);
+  --sidebar-primary: oklch(0.541 0.281 293.034);   /* violet */
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.95 0.018 294.0);
+  --sidebar-accent-foreground: oklch(0.30 0.08 285.0);
+  --sidebar-border: oklch(0.92 0.008 294.0);
+  --sidebar-ring: oklch(0.541 0.281 293.034);
 }
 
-/* ── Dark theme (.dark on <html>) ───────────────────────────────────── */
+/* ── Dark theme (.dark on <html>) ─────────────────────────────────────
+ * Deep ink-violet background with vivid violet primary, so the brand
+ * reads the same in dark mode. Surfaces use a subtle blue-violet ladder.
+ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.145 0.012 285.0);          /* deep ink-violet */
+  --foreground: oklch(0.985 0.005 294.0);
+  --card: oklch(0.205 0.014 285.0);                /* slightly lifted card */
+  --card-foreground: oklch(0.985 0.005 294.0);
+  --popover: oklch(0.205 0.014 285.0);
+  --popover-foreground: oklch(0.985 0.005 294.0);
+  --primary: oklch(0.65 0.21 293.034);             /* lighter violet for dark bg */
+  --primary-foreground: oklch(0.145 0.012 285.0);
+  --secondary: oklch(0.269 0.02 285.0);
+  --secondary-foreground: oklch(0.985 0.005 294.0);
+  --muted: oklch(0.269 0.014 285.0);
+  --muted-foreground: oklch(0.708 0.012 285.0);
+  --accent: oklch(0.32 0.06 293.034);              /* violet hover */
+  --accent-foreground: oklch(0.985 0.005 294.0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.65 0.21 293.034);
+  --chart-1: oklch(0.65 0.21 293.034);             /* violet */
+  --chart-2: oklch(0.696 0.17 162.48);             /* emerald */
+  --chart-3: oklch(0.769 0.188 70.08);             /* amber */
+  --chart-4: oklch(0.627 0.265 303.9);             /* magenta */
+  --chart-5: oklch(0.645 0.246 16.439);            /* red */
+  --sidebar: oklch(0.18 0.014 285.0);
+  --sidebar-foreground: oklch(0.985 0.005 294.0);
+  --sidebar-primary: oklch(0.65 0.21 293.034);
+  --sidebar-primary-foreground: oklch(0.145 0.012 285.0);
+  --sidebar-accent: oklch(0.269 0.02 285.0);
+  --sidebar-accent-foreground: oklch(0.985 0.005 294.0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.65 0.21 293.034);
 }
 
 /* ── Base layer ──────────────────────────────────────────────────────── */
