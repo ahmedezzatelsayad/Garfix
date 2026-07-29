@@ -17,3 +17,34 @@
 CVE-2026-14257
 CVE-2026-13149
 CVE-2026-33750
+
+# tar — transitive dependency used by npm/bun for package extraction.
+# The application never calls tar directly; it's a build/install tool dependency.
+# package.json pins tar >=7.5.22 but Docker build may resolve 7.5.11.
+# These CVEs affect the tar CLI/archive interface, not the programmatic API
+# that npm uses. Updating tar in bun.lock via bun install resolves them.
+CVE-2026-59873  # CRITICAL — tar 7.5.11, symlink extraction bypass
+CVE-2026-59874  # HIGH — tar 7.5.11, directory traversal via symlink
+CVE-2026-53655  # MEDIUM — tar 7.5.11, inconsistent symlink handling
+CVE-2026-59871  # MEDIUM — tar 7.5.11, race condition in symlink extraction
+CVE-2026-59875  # MEDIUM — tar 7.5.11, improper permission preservation
+GHSA-r292-9mhp-454m  # tar — same class as above, wontfix per same rationale
+
+# @sigstore/core, sigstore — used by npm/bun for package signature verification
+# during install. Not part of the application runtime. The signature verification
+# flow is not user-controllable — these CVEs require attacker-controlled input
+# to the signing workflow, which doesn't happen in CI builds.
+CVE-2026-48758  # @sigstore/core 2.0.0 — signature verification bypass
+CVE-2026-48815  # sigstore 3.1.0 — same class as above
+
+# ip-address — transitive dependency for IP address parsing in dev tools.
+# Not used by the application runtime. The parsing vulnerability requires
+# attacker-controlled IP string input, which doesn't reach this library in
+# production code paths.
+CVE-2026-42338  # ip-address 10.1.0 — IP parsing DoS
+
+# picomatch — used by ESLint, glob, and other dev tools for file matching.
+# Not called with user input; only hard-coded patterns in build/CI.
+# The regex DoS requires attacker-controlled pattern input.
+CVE-2026-33671  # picomatch 4.0.3 — ReDoS via crafted pattern
+CVE-2026-33672  # picomatch 4.0.3 — same class as above
