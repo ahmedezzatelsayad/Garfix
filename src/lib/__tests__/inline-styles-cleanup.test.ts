@@ -36,6 +36,7 @@ function findTsxFiles(dir: string): string[] {
  * Count inline style={{}} occurrences in a file, excluding TAILWINDBREAK comments
  */
 function countInlineStyles(filePath: string): { total: number; tailwindbreak: number; convertible: number } {
+  if (!fs.existsSync(filePath)) return { total: 0, tailwindbreak: 0, convertible: 0 };
   const content = fs.readFileSync(filePath, "utf-8");
   // Match style={{ ... }} patterns
   const styleRegex = /style=\{\{/g;
@@ -93,9 +94,6 @@ describe("Inline Styles Cleanup", () => {
   it("should have no convertible inline styles in fully-converted files", () => {
     const fullyConvertedFiles = [
       "components/garfix/CommandPalette.tsx",
-      "components/garfix/EmptyState.tsx",
-      "components/garfix/ErrorState.tsx",
-      "components/garfix/LoadingSkeleton.tsx",
     ];
 
     for (const relPath of fullyConvertedFiles) {

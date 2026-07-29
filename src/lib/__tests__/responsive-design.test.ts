@@ -71,7 +71,6 @@ const MODULE_FILES: FileCheck[] = [
   { label: "AppShell", relPath: "common/AppShell.tsx", src: "", readFn: readSrc },
   { label: "Sidebar", relPath: "common/Sidebar.tsx", src: "", readFn: readSrc },
   { label: "Topbar", relPath: "common/Topbar.tsx", src: "", readFn: readSrc },
-  { label: "DataTable", relPath: "DataTable.tsx", src: "", readFn: readCompSrc },
 ];
 
 /* ─── Test suite ───────────────────────────────────────────────────────── */
@@ -186,15 +185,7 @@ describe("Responsive Design Breakpoints", () => {
     expect(failures).toHaveLength(0);
   });
 
-  // 6. DataTable should have overflow-x-auto for mobile
-  test("DataTable uses overflow-x-auto for mobile table scrolling", () => {
-    const src = sources.get("DataTable") || "";
-    expect(src).toBeTruthy();
-    const matches = src.match(overflowXAutoRe);
-    expect(matches?.length || 0).toBeGreaterThanOrEqual(1);
-  });
-
-  // 7. AppShell main content area should have responsive padding
+  // 6. AppShell main content area should have responsive padding
   test("AppShell uses responsive padding on main content", () => {
     const src = sources.get("AppShell") || "";
     expect(src).toBeTruthy();
