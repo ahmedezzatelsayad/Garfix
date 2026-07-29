@@ -497,7 +497,6 @@ export interface APIContractMap {
   "/api/accounting/supplier-statement": { GET: Record<string, unknown> };
   "/api/accounting/budget-vs-actual": { GET: Record<string, unknown> };
   "/api/accounting/period-comparison": { GET: Record<string, unknown> };
-  "/api/accounting/cash-flow": { GET: Record<string, unknown> };
   "/api/accounting/export-excel": { POST: Record<string, unknown> };
   "/api/accounting/financial-dashboard": { GET: Record<string, unknown> };
   "/api/accounting/accounting-audit": { GET: PaginatedResponse<AuditLogDTO> };
