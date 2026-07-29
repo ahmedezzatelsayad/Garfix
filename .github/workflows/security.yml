@@ -359,8 +359,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
+          # Pinned BuildKit image for reproducible builds.
+          # NOTE: inline YAML comments after driver-opts values are passed
+          # literally to docker buildx, causing 'invalid reference format'.
+          # Keep comments on their own line.
           driver-opts: |
-            image=moby/buildkit:v0.15.2  # pinned for reproducibility
+            image=moby/buildkit:v0.15.2
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -405,14 +409,14 @@ jobs:
           timeout: "10m"
 
       - name: Upload Trivy scan results to GitHub Security tab
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
           category: "trivy-container-scan"
 
       - name: Upload Trivy scan results as artifact
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         uses: actions/upload-artifact@v4
         with:
           name: trivy-container-scan-results
