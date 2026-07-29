@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useClients, useDeleteClient, useBulkDeleteClients } from "@/hooks/queries";
 import { toast } from "sonner";
 import { Search, Users, Trash2, Edit2, Eye, Download, Upload, Plus, ChevronLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 import type { Client } from "./types";
 
 interface ClientListProps {
@@ -48,7 +48,7 @@ export function ClientList({ companySlug, onSelectClient, onAddNew, onEdit, onIm
   const clients: Client[] = data?.clients || [];
 
   const totalPages = Math.max(1, Math.ceil(clients.length / pageSize));
-  const currentPageClients = clients.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const currentPageClients = paginate(clients, currentPage, pageSize);
   const safePage = Math.min(currentPage, totalPages);
 
   const toggleSelectAll = () => {

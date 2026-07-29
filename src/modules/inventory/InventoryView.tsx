@@ -12,7 +12,7 @@ import {
   Package, Plus, Trash2, Boxes, AlertTriangle, CheckCircle2,
   XCircle, Warehouse as WarehouseIcon, ArrowDownUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 
 type Tab = "warehouses" | "stock";
 
@@ -87,9 +87,9 @@ export function InventoryView() {
 
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
-  const allItems = tab === "warehouses" ? warehouses : items;
+  const allItems: Array<{ id: number }> = tab === "warehouses" ? warehouses : items;
   const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
-  const pageItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageItems = paginate(allItems, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
   const tabs: Array<{ key: Tab; label: string }> = [

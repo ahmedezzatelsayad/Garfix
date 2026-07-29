@@ -9,7 +9,7 @@ import {
   Plus, Search, FileText, Trash2, Edit2, Printer, X, ArrowRight, Download, DollarSign,
   CheckCircle2, Clock, AlertTriangle, BarChart3, ListChecks, ChevronLeft,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
@@ -63,7 +63,7 @@ export function InvoicesView() {
 
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const currentPageInvoices = filteredInvoices.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const currentPageInvoices = paginate(filteredInvoices, safePage, pageSize);
 
   const paidInvoices = allInvoices.filter((inv: Invoice) => inv.status === "paid");
   const pendingInvoices = allInvoices.filter((inv: Invoice) => inv.status === "sent" || inv.status === "partial");

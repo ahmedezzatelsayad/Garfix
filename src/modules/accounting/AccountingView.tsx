@@ -21,7 +21,7 @@ import {
   Calendar, DollarSign, ArrowUpDown,
   FileText, Receipt, Globe, CreditCard, Building2, Package, Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 
 /* ─── Lazy-loaded sub-view imports ──────────────────────────────────────── */
 const LazyArApView = lazy(() => import("@/modules/accounting/ArApView"));
@@ -162,7 +162,7 @@ export function AccountingView() {
 
   const allItems = itemsForTab();
   const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
-  const pageItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageItems = paginate(allItems, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
   const toggleSelectAll = () => {

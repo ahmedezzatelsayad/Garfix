@@ -23,7 +23,7 @@ import {
 import {
   PERMISSION_CATALOG, ROLE_PRESETS, LOCKED_PERMS,
 } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 
 interface Member {
   uid: string;
@@ -79,7 +79,7 @@ export function TeamView() {
   const pageSize = 20;
 
   const totalPages = Math.max(1, Math.ceil(members.length / pageSize));
-  const pageMembers = members.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageMembers = paginate(members, currentPage, pageSize);
   const safePage = Math.min(currentPage, totalPages);
 
   const toggleSelectAll = () => {

@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSaaSUsers, useSaaSPayments, useCompanies, useCreateSaaSUser, useUpdateSaaSUser, useDeleteSaaSUser } from "@/hooks/queries";
 import { toast } from "sonner";
 import { Building2, Users, CreditCard, Plus, X, Edit2, Trash2, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, paginate } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -41,9 +41,22 @@ export function SaaSControlPanel() {
   const { data: companiesData, isLoading: companiesLoading } = useCompanies();
   const { data: paymentsData, isLoading: paymentsLoading } = useSaaSPayments();
 
-  const users: User[] = (usersData as User[] | undefined) ?? [];
-  const companies: Company[] = (companiesData as { companies?: Company[] } | undefined)?.companies ?? [];
-  const payments: Payment[] = (paymentsData as Payment[] | undefined) ?? [];
+  // API response shape guards:
+  //   /api/saas/users    → { users: [...] }   (NOT a bare array)
+  //   /api/saas/payments → { payments: [...] } (NOT a bare array)
+  //   /api/companies     → { companies: [...] }
+  // Previously the code cast `usersData as User[]` which lied to TS and let
+  // the page call `.slice()` on an object → "T.slice is not a function".
+  const usersObj = (usersData ?? {}) as { users?: User[] };
+  const paymentsObj = (paymentsData ?? {}) as { payments?: Payment[] };
+  const companiesObj = (companiesData ?? {}) as { companies?: Company[] };
+  const users: User[] = Array.isArray(usersData)
+    ? (usersData as unknown as User[])
+    : Array.isArray(usersObj.users) ? usersObj.users : [];
+  const companies: Company[] = Array.isArray(companiesObj.companies) ? companiesObj.companies : [];
+  const payments: Payment[] = Array.isArray(paymentsData)
+    ? (paymentsData as unknown as Payment[])
+    : Array.isArray(paymentsObj.payments) ? paymentsObj.payments : [];
 
   const loading = usersLoading || companiesLoading || paymentsLoading;
 
@@ -53,11 +66,11 @@ export function SaaSControlPanel() {
 
   const usersTotalPages = Math.max(1, Math.ceil(users.length / saasPageSize));
   const usersSafePage = Math.min(usersPage, usersTotalPages);
-  const currentPageUsers = users.slice((usersSafePage - 1) * saasPageSize, usersSafePage * saasPageSize);
+  const currentPageUsers = paginate(users, usersSafePage, saasPageSize);
 
   const companiesTotalPages = Math.max(1, Math.ceil(companies.length / saasPageSize));
   const companiesSafePage = Math.min(companiesPage, companiesTotalPages);
-  const currentPageCompanies = companies.slice((companiesSafePage - 1) * saasPageSize, companiesSafePage * saasPageSize);
+  const currentPageCompanies = paginate(companies, companiesSafePage, saasPageSize);
 
   const saasPageBtnClass = (disabled: boolean): string =>
     cn("py-1.5 px-3 rounded-md border border-border font-inherit text-xs font-bold", disabled ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer");
