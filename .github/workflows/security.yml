@@ -407,6 +407,9 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           timeout: "10m"
+          # Wontfix list — see .trivyignore for documented justifications.
+          # Each CVE in that file has a comment explaining why it's accepted.
+          trivyignores: .trivyignore
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always() && hashFiles('trivy-results.sarif') != ''

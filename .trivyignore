@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Trivy ignore list — CVEs explicitly accepted as wontfix with justification
+# ─────────────────────────────────────────────────────────────────────────────
+# Each entry MUST have:
+#   1. CVE ID
+#   2. Affected package + version
+#   3. Severity
+#   4. Justification (why it's not exploitable in this codebase)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# brace-expansion — used by ESLint/minimatch for file globbing during dev/CI.
+# No user input reaches brace-expansion (it's called with hard-coded glob
+# patterns like 'src/**/*.ts'). The v5.x line breaks minimatch v3 which
+# ESLint uses, so we cannot override to v5.0.8. DoS via unbounded expansion
+# requires attacker-controlled input which we don't have.
+# Mirrors the wontfix entry in .github/workflows/security.yml.
+CVE-2026-14257
+CVE-2026-13149
+CVE-2026-33750
