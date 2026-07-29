@@ -417,6 +417,12 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: "trivy-container-scan"
+        # GHAS LIMITATION: Same as CodeQL — upload-sarif requires GitHub
+        # Advanced Security (GHAS) on private repos. This repo is private
+        # and does not have GHAS purchased. The SARIF file itself is
+        # uploaded as a CI artifact (next step) for offline review.
+        # Trivy itself still runs and fails the job on real CVE findings.
+        continue-on-error: true
 
       - name: Upload Trivy scan results as artifact
         if: always() && hashFiles('trivy-results.sarif') != ''
