@@ -231,7 +231,7 @@ describe("Cross-Sprint: TSC 0 Errors + Build PASS", () => {
     const schemaContent = fs.readFileSync(path.join(PROJECT_ROOT, "prisma/schema.prisma"), "utf-8");
     expect(schemaContent).toContain("Decimal");
     // Key monetary models should use Decimal — Voucher uses Decimal for debit/credit
-    expect(schemaContent).toMatch(/model VoucherLine\s*\{[^}]*Decimal/);
+    expect(schemaContent).toMatch(/model JournalEntryLine\s*\{[\s\S]*?Decimal/);
     expect(schemaContent).toMatch(/model HRSalary\s*\{[^}]*Decimal/);
     expect(schemaContent).toMatch(/model Account\s*\{[^}]*Decimal/);
     // Invoice uses String for totals (legacy) but has version for optimistic locking

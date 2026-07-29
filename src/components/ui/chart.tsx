@@ -29,7 +29,7 @@ const THEMES = { light: "", dark: ".dark" } as const
 const IDENT_RE = /^[A-Za-z0-9_-]+$/;
 const COLOR_RE = /^(#[0-9a-fA-F]{3,8}|(?:rgb|hsl|oklch)\(\s*[^();]*\s*\))$/;
 const DECL_RE = new RegExp(
-  "^\\s*--color-(" + IDENT_RE.source.slice(1, -1) + ")\\s*:\\s*([^;]+);\\s*$"
+  "^\\s*--color-(" + IDENT_RE.source.slice(1, -1) + ")\\s*:\\s*([^;]+?);?\\s*$"
 );
 
 /**
@@ -58,7 +58,7 @@ export function sanitizeChartCss(raw: string): string {
     // `.dark [data-chart=<ident>]`. We accept the empty-string prefix
     // (light theme) — selector "" + " " is normalised below.
     const selMatch = selector.match(
-      /^(?:([A-Za-z0-9_-]*)\s+)?\[data-chart=([A-Za-z0-9_-]+)\]$/
+      /^(?:([.A-Za-z0-9_-]*)\s+)?\[data-chart=([A-Za-z0-9_-]+)\]$/
     );
     if (!selMatch) continue;
     const [, prefix, chartId] = selMatch;

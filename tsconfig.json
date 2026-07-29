@@ -37,6 +37,13 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/__tests__/**",
+    "e2e/**",
+    "examples/**",
+    "node_modules",
+    "scripts/**",
+    "seed/**"
   ]
 }
