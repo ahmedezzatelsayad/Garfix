@@ -389,7 +389,11 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         id: trivy
-        uses: aquasecurity/trivy-action@v0.28.0  # v-prefixed tag (per upstream convention)
+        # NOTE: v0.28.0 → v0.34.0 of trivy-action depend on setup-trivy@v0.2.1
+        # which was DELETED upstream (likely part of the 2026-03 supply-chain
+        # attack response). Use v0.36.0 — the post-incident release that pins
+        # setup-trivy by commit hash (3fb12ec...) instead of tag.
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: garfix-scan:latest
           format: sarif
