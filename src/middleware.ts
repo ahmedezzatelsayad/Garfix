@@ -29,6 +29,7 @@ const PUBLIC_ROUTES = [
 // These get security headers applied but skip the auth check.
 const PUBLIC_PAGE_PREFIXES = [
   "/",
+  "/login",
   "/contact",
   "/cookies",
   "/privacy",
@@ -38,6 +39,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/partners",
   "/refund",
   "/api-docs",
+  "/founder-panel",  // founder-panel has its own auth check inside the page
 ];
 
 function isPublicPage(pathname: string): boolean {

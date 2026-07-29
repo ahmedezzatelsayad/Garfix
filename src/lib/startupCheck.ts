@@ -118,13 +118,21 @@ export function isSecretWeak(value: string, opts: { minLength?: number } = {}): 
   const minLength = opts.minLength ?? 32;
   if (typeof value !== "string" || value.length < minLength) return true;
   if (WEAK_SECRET_PATTERNS.some((re) => re.test(value))) return true;
-  // Entropy heuristic: unique-character ratio. A 32-char string with only
-  // 8 unique characters is almost certainly a hand-typed placeholder like
-  // `garfix-build-secret-key-32-chars-long!!`.
+  // Absolute floor on character variety. A 32+ char secret with fewer than
+  // 10 distinct characters is almost certainly a hand-typed placeholder
+  // (e.g. `aaaa....`, `1234512345...`). Hex output from `openssl rand -hex`
+  // has up to 16 unique chars and passes; base64 has up to 64.
+  //
+  // NOTE: the previous implementation used `unique < value.length / 3` as a
+  // Shannon-style entropy heuristic. This REJECTED ALL HEX-ENCODED SECRETS
+  // — a 64-char hex string has at most 16 unique chars (0-9, a-f), which is
+  // < 64/3 ≈ 21.3, so every `openssl rand -hex 64` output was rejected.
+  // That check was the root cause of Vercel 500s: instrumentation.ts threw
+  // on boot, killing every request. The absolute floor below catches the
+  // same hand-typed placeholders without rejecting legitimate hex/base64
+  // secrets.
   const unique = new Set(value).size;
-  if (unique < value.length / 3) return true;
-  // Reject secrets that are just one repeated character / very low variety.
-  if (unique < 4) return true;
+  if (unique < 10) return true;
   return false;
 }
 
