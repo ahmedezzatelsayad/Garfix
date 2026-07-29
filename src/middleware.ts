@@ -30,6 +30,7 @@ const PUBLIC_ROUTES = [
 const PUBLIC_PAGE_PREFIXES = [
   "/",
   "/login",
+  "/signup",
   "/contact",
   "/cookies",
   "/privacy",
