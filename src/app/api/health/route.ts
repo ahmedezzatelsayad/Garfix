@@ -31,7 +31,9 @@ import { getBullMQStats } from "@/lib/queues";
 import { cacheStats } from "@/lib/cache";
 import { totalmem } from "node:os";
 
-const VERSION = "12.0.0";
+const VERSION = process.env.APP_VERSION || "12.1.0";
+const COMMIT_SHA = process.env.COMMIT_SHA || "unknown";
+const BUILD_TIME = process.env.BUILD_TIME || "unknown";
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +133,8 @@ export async function GET() {
     {
       status: criticalOk ? "ok" : "degraded",
       version: VERSION,
+      commitSha: COMMIT_SHA,
+      buildTime: BUILD_TIME,
       uptime: process.uptime ? Math.round(process.uptime()) : null,
       latencyMs,
       checks,
