@@ -92,7 +92,7 @@ const {
 
 function makeRequest(headers: Record<string, string> = {}): import("next/server").NextRequest {
   const hdrs = new Headers(headers);
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   return new (require("next/server").NextRequest as any)({ url: "http://localhost/test", headers: hdrs });
 }
 

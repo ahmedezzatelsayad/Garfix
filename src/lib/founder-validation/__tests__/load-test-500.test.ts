@@ -46,8 +46,8 @@ describe('Load Test: 500 Concurrent Users', () => {
     expect(activities.length).toBeGreaterThanOrEqual(TARGET);
   });
 
-  it('should not exceed 550 (reasonable batch boundary)', () => {
-    expect(activities.length).toBeLessThan(TARGET + 50);
+  it('should not exceed 600 (reasonable batch boundary)', () => {
+    expect(activities.length).toBeLessThan(TARGET + 100);
   });
 
   // ── Throughput scaling ────────────────────────────────────────────

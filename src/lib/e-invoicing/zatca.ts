@@ -366,7 +366,7 @@ export function computeInvoiceHash(xml: string): string {
   // When deployed on Node.js runtime, this will use crypto.createHash('sha256')
   try {
     // Dynamic import for Node.js crypto (SSR only)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const nodeCrypto = require("node:crypto");
     return nodeCrypto.createHash("sha256").update(xml, "utf8").digest("hex");
   } catch {
@@ -844,7 +844,7 @@ export function signZatcaInvoice(
     // the invoice hash and certificate. This placeholder will be replaced
     // when real ZATCA CSID/CCD certificates are injected.
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const nodeCrypto = require("node:crypto");
 
     // Sign with ECDSA P-256 (placeholder: uses provided key material)
