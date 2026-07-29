@@ -87,10 +87,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where: { id: { in: productIds } },
     select: { id: true, name: true, code: true },
   });
-  type ProductInfo = { id: string; name: string; code: string | null };
-  const productMap = new Map<string, ProductInfo>(
-    products.map((p): [string, ProductInfo] => [p.id, { id: p.id, name: p.name, code: p.code }])
-  );
+  const productMap = new Map<string, { id: string; name: string; code: string | null }>(products.map(p => [p.id, { id: p.id, name: p.name, code: p.code }]));
 
   const mapped = movements.map((m) => {
     const product = m.productId ? productMap.get(m.productId) : null;
