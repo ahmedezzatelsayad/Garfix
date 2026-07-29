@@ -25,19 +25,26 @@ datasource db {
 
 // ─── AppUser (replaces User — matches db.appUser) ───
 
+// AppUser — the canonical user model used across all auth + RBAC code.
+// Fields `passwordHash`, `displayName`, `companies`, `permissions` are
+// intentionally NOT camelCased — the auth API routes (register/login/me/
+// refresh/change-password/forgot/reset) and src/lib/auth.ts read/write
+// them by these exact names. JSON-encoded fields (`companies`, `permissions`)
+// store arrays/objects as TEXT to avoid join tables for the simple RBAC
+// model. `role` defaults to "employee" (NOT "user") so new signups match
+// ROLE_DEFAULTS in AuthContext.
 model AppUser {
   uid           String   @id @default(cuid())
   email         String   @unique
-  name          String?
-  password      String?
-  role          String   @default("user")  // user, admin, accountant, viewer
-  companyId     String?
-  companySlug   String?
-  emailVerified Boolean  @default(true)
+  passwordHash  String
+  displayName   String   @default("")
+  role          String   @default("employee")
+  companies     String   @default("[]") // JSON array of company slugs
+  permissions   String   @default("{}") // JSON object of permission → 0/1
+  emailVerified Boolean  @default(false)
   tokenVersion  Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  company       Company? @relation(fields: [companyId], references: [id])
 
   mFASecrets    MFASecret[]
   sessions      SessionRegistry[]
@@ -61,7 +68,6 @@ model Company {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  users             AppUser[]
   accounts          Account[]
   clients           Client[]
   suppliers         Supplier[]
