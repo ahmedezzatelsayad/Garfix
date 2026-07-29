@@ -41,6 +41,7 @@ model AppUser {
 
   mFASecrets    MFASecret[]
   sessions      SessionRegistry[]
+  @@map("app_users")
 }
 
 
@@ -82,6 +83,7 @@ model Company {
   invoices          Invoice[]
   quotations        Quotation[]
   purchaseOrders    PurchaseOrder[]
+  @@map("companies")
 }
 
 // ─── Account (Chart of Accounts — matches db.account) ───
@@ -105,6 +107,7 @@ model Account {
   openingBalances OpeningBalanceEntry[]
   journalEntryLines JournalEntryLine[]
   @@unique([code, companyId])
+  @@map("accounts")
 }
 
 // ─── Client (Accounts Receivable — matches db.client) ───
@@ -126,6 +129,7 @@ model Client {
   company     Company?  @relation(fields: [companyId], references: [id])
   paymentVouchers PaymentVoucher[]
   invoices     Invoice[]
+  @@map("clients")
 }
 
 // ─── Supplier (Accounts Payable — matches db.supplier) ───
@@ -172,6 +176,7 @@ model ProductCatalog {
   productAliases ProductAlias[]
   productMatchAudits ProductMatchAudit[]
   matchOverrides   MatchOverride[]
+  @@map("product_catalog")
 }
 
 // ─── Inventory Item (matches db.inventoryItem) ───
@@ -192,6 +197,7 @@ model InventoryItem {
   product       ProductCatalog @relation(fields: [productId], references: [id])
   company       Company?  @relation(fields: [companyId], references: [id])
   warehouseRef  Warehouse? @relation(fields: [warehouseId], references: [id])
+  @@map("inventory_items")
 }
 
 // ─── Warehouse (matches db.warehouse) ───
@@ -206,6 +212,7 @@ model Warehouse {
   updatedAt   DateTime @updatedAt
   inventoryItems InventoryItem[]
   company     Company? @relation(fields: [companyId], references: [id])
+  @@map("warehouses")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -229,6 +236,7 @@ model FiscalPeriod {
   company     Company  @relation(fields: [companyId], references: [id])
   openingBalances OpeningBalanceEntry[]
   @@unique([name, companyId])
+  @@map("fiscal_periods")
 }
 
 // ─── Journal Entry (matches db.journalEntry — renamed from Voucher) ───
@@ -255,6 +263,7 @@ model JournalEntry {
   company       Company  @relation(fields: [companyId], references: [id])
   lines         JournalEntryLine[]
   @@unique([number, companyId])
+  @@map("journal_entries")
 }
 
 // ─── Journal Entry Line (matches db.journalEntryLine — renamed from VoucherLine) ───
@@ -269,6 +278,7 @@ model JournalEntryLine {
   journalEntryId String
   account      Account  @relation(fields: [accountId], references: [id])
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  @@map("journal_entry_lines")
 }
 
 // ─── Payment Voucher (matches db.paymentVoucher) ───
@@ -294,6 +304,7 @@ model PaymentVoucher {
   company       Company  @relation(fields: [companyId], references: [id])
   installmentSchedules InstallmentSchedule[]
   @@unique([number, companyId])
+  @@map("payment_vouchers")
 }
 
 // ─── Installment Schedule (matches db.installmentSchedule) ───
@@ -327,6 +338,7 @@ model OpeningBalanceEntry {
   period        FiscalPeriod @relation(fields: [periodId], references: [id])
   company       Company  @relation(fields: [companyId], references: [id])
   @@unique([accountId, periodId])
+  @@map("opening_balance_entries")
 }
 
 // ─── Profit Distribution (matches existing) ───
@@ -381,6 +393,7 @@ model LetterOfCredit {
   company       Company  @relation(fields: [companyId], references: [id])
   lcDocuments   LetterOfCreditDocument[]
   @@unique([number, companyId])
+  @@map("letters_of_credit")
 }
 
 model LetterOfCreditDocument {
@@ -416,6 +429,7 @@ model BankAccount {
   company       Company  @relation(fields: [companyId], references: [id])
   bankTransactions    BankTransaction[]
   bankReconciliations BankReconciliation[]
+  @@map("bank_accounts")
 }
 
 // ─── Bank Transaction (matches db.bankTransaction) ───
@@ -436,6 +450,7 @@ model BankTransaction {
   updatedAt     DateTime @updatedAt
   bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
   bankReconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id])
+  @@map("bank_transactions")
 }
 
 // ─── Bank Reconciliation (matches db.bankReconciliation) ───
@@ -455,6 +470,7 @@ model BankReconciliation {
   updatedAt     DateTime @updatedAt
   bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
   bankTransactions BankTransaction[]
+  @@map("bank_reconciliations")
 }
 
 // ─── Fixed Asset (matches db.fixedAsset) ───
@@ -478,6 +494,7 @@ model FixedAsset {
   company       Company  @relation(fields: [companyId], references: [id])
   depreciationEntries DepreciationEntry[]
   @@unique([code, companyId])
+  @@map("fixed_assets")
 }
 
 // ─── Depreciation Entry (matches db.depreciationEntry) ───
@@ -493,6 +510,7 @@ model DepreciationEntry {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   fixedAsset    FixedAsset @relation(fields: [assetId], references: [id])
+  @@map("depreciation_entries")
 }
 
 // ─── Budget (matches db.budget) ───
@@ -509,6 +527,7 @@ model Budget {
   updatedAt     DateTime @updatedAt
   company       Company  @relation(fields: [companyId], references: [id])
   budgetLines   BudgetLine[]
+  @@map("budgets")
 }
 
 model BudgetLine {
@@ -539,6 +558,7 @@ model CostCenter {
   company       Company  @relation(fields: [companyId], references: [id])
   budgetLines   BudgetLine[]
   @@unique([code, companyId])
+  @@map("cost_centers")
 }
 
 // ─── FX Revaluation (matches db.fxRevaluation) ───
@@ -554,6 +574,7 @@ model FxRevaluation {
   companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("fx_revaluations")
 }
 
 // ─── Inter-Company Transaction (matches db.interCompanyTransaction) ───
@@ -568,6 +589,7 @@ model InterCompanyTransaction {
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("inter_company_transactions")
 }
 
 // ─── Landed Cost Allocation (matches db.landedCostAllocation/landedCostLine) ───
@@ -583,6 +605,7 @@ model LandedCostAllocation {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   lines         LandedCostLine[]
+  @@map("landed_cost_allocations")
 }
 
 model LandedCostLine {
@@ -594,6 +617,7 @@ model LandedCostLine {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   landedCostAllocation LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  @@map("landed_cost_lines")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -622,6 +646,7 @@ model Employee {
   leaveRequests HRLeaveRequest[]
   performances  HRPerformance[]
   @@unique([code, companyId])
+  @@map("hr_employees")
 }
 
 // ─── HR Salary (matches db.hRSalary) ───
@@ -636,6 +661,7 @@ model HRSalary {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   employee      Employee @relation(fields: [employeeId], references: [id])
+  @@map("hr_salaries")
 }
 
 // ─── HR Commission (matches db.hRCommission) ───
@@ -649,6 +675,7 @@ model HRCommission {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   employee      Employee @relation(fields: [employeeId], references: [id])
+  @@map("hr_commissions")
 }
 
 // ─── HR Attendance (matches db.hRAttendance) ───
@@ -663,6 +690,7 @@ model HRAttendance {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   employee      Employee @relation(fields: [employeeId], references: [id])
+  @@map("hr_attendance")
 }
 
 // ─── HR Leave Request (matches db.hRLeaveRequest) ───
@@ -678,6 +706,7 @@ model HRLeaveRequest {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   employee      Employee @relation(fields: [employeeId], references: [id])
+  @@map("hr_leave_requests")
 }
 
 // ─── HR Performance (matches db.hRPerformance) ───
@@ -692,6 +721,7 @@ model HRPerformance {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   employee      Employee @relation(fields: [employeeId], references: [id])
+  @@map("hr_performance")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -723,6 +753,7 @@ model Invoice {
   client        Client?   @relation(fields: [clientId], references: [id])
   eInvoice      EInvoice?
   paymentTransactions PaymentTransaction[]
+  @@map("invoices")
 }
 
 // ─── Purchase Invoice (matches db.purchaseInvoice) ───
@@ -742,6 +773,7 @@ model PurchaseInvoice {
   updatedAt     DateTime @updatedAt
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
   company       Company?  @relation(fields: [companyId], references: [id])
+  @@map("purchase_invoices")
 }
 
 
@@ -760,6 +792,7 @@ model Quotation {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   company       Company? @relation(fields: [companyId], references: [id])
+  @@map("quotations")
 }
 
 // ─── Purchase Order (matches db.purchaseOrder) ───
@@ -777,6 +810,7 @@ model PurchaseOrder {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   company       Company? @relation(fields: [companyId], references: [id])
+  @@map("purchase_orders")
 }
 
 // ─── Stock Movement (matches db.stockMovement) ───
@@ -792,6 +826,7 @@ model StockMovement {
   companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("stock_movements")
 }
 
 
@@ -810,6 +845,7 @@ model PaymentTransaction {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  @@map("payment_transactions")
 }
 
 // ─── Refund Transaction (matches db.refundTransaction) ───
@@ -840,6 +876,7 @@ model PostDatedCheck {
   companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("post_dated_checks")
 }
 
 // ─── Tax Filing (matches db.taxFiling) ───
@@ -855,6 +892,7 @@ model TaxFiling {
   companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("tax_filings")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -880,6 +918,7 @@ model EInvoice {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   invoice           Invoice  @relation(fields: [invoiceId], references: [id])
+  @@map("e_invoices")
 }
 
 // ─── ZATCA Certificate (matches db.zatcaCertificate) ───
@@ -912,6 +951,7 @@ model ProductAlias {
   updatedAt     DateTime @updatedAt
   product       ProductCatalog @relation(fields: [productId], references: [id])
   @@unique([alias, companySlug, language])
+  @@map("product_aliases")
 }
 
 model ProductMatchAudit {
@@ -924,6 +964,7 @@ model ProductMatchAudit {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   product       ProductCatalog? @relation(fields: [matchedProductId], references: [id])
+  @@map("product_match_audit")
 }
 
 model MatchOverride {
@@ -936,6 +977,7 @@ model MatchOverride {
   updatedAt     DateTime @updatedAt
   product       ProductCatalog @relation(fields: [productId], references: [id])
   @@unique([inputText, companySlug])
+  @@map("match_overrides")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -979,6 +1021,7 @@ model RolePermission {
   updatedAt     DateTime @updatedAt
   // Note: RolePermission.role is not a FK to AppUser.role — it's a standalone mapping
   @@unique([role, permissionKey])
+  @@map("role_permissions")
 }
 
 // ─── Email Verification (matches db.emailVerification) ───
@@ -992,6 +1035,7 @@ model EmailVerification {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@unique([email, code])
+  @@map("email_verifications")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1009,6 +1053,7 @@ model PlatformSettings {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   history       PlatformSettingsHistory[]
+  @@map("platform_settings")
 }
 
 // ─── Platform Settings History (matches db.platformSettingsHistory) ───
@@ -1021,6 +1066,7 @@ model PlatformSettingsHistory {
   changedBy     String?
   createdAt     DateTime @default(now())
   setting       PlatformSettings @relation(fields: [settingId], references: [id])
+  @@map("platform_settings_history")
 }
 
 // ─── Feature Flag (matches db.featureFlag) ───
@@ -1035,6 +1081,7 @@ model FeatureFlag {
   targetSlugs   String?  // JSON array of company slugs, null = all
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("feature_flags")
 }
 
 // ─── Support Ticket (matches db.supportTicket) ───
@@ -1050,6 +1097,7 @@ model SupportTicket {
   assignedTo    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("support_tickets")
 }
 
 // ─── Landing Content (matches db.landingContent) ───
@@ -1067,6 +1115,7 @@ model LandingContent {
   locale        String   @default("ar")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("landing_content")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1085,6 +1134,7 @@ model AuditLog {
   companySlug   String?
   details       String?  // JSON
   createdAt     DateTime @default(now())
+  @@map("audit_logs")
 }
 
 // ─── Accounting Audit Log (matches db.accountingAuditLog) ───
@@ -1098,6 +1148,7 @@ model AccountingAuditLog {
   performedBy   String?
   details       String?
   createdAt     DateTime @default(now())
+  @@map("accounting_audit_logs")
 }
 
 // ─── Admin Audit Log (matches db.adminAuditLog) ───
@@ -1109,6 +1160,7 @@ model AdminAuditLog {
   targetSlug    String?
   details       String?
   createdAt     DateTime @default(now())
+  @@map("admin_audit_logs")
 }
 
 // ─── Tamper Evidence Chain (matches db.tamperEvidenceChain) ───
@@ -1139,6 +1191,7 @@ model AIRequestLog {
   costUsd     Decimal  @default(0)
   latencyMs   Int      @default(0)
   createdAt   DateTime @default(now())
+  @@map("ai_request_logs")
 }
 
 // ─── AI Usage Log (matches db.aIUsageLog) ───
@@ -1153,6 +1206,7 @@ model AIUsageLog {
   costUsd     Decimal  @default(0)
   requestType String?
   createdAt   DateTime @default(now())
+  @@map("ai_usage_logs")
 }
 
 // ─── AI Memory Entry (matches db.aIMemoryEntry) ───
@@ -1164,6 +1218,7 @@ model AIMemoryEntry {
   content        String
   lastAccessedAt DateTime @default(now())
   createdAt      DateTime @default(now())
+  @@map("ai_memory_entries")
 }
 
 // ─── AI Memory Note (matches db.aIMemoryNote) ───
@@ -1176,6 +1231,7 @@ model AIMemoryNote {
   confidence     Float    @default(1.0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  @@map("ai_memory_notes")
 }
 
 // ─── AI Model Registry (matches db.aIModelRegistry) ───
@@ -1190,6 +1246,7 @@ model AIModelRegistry {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  @@map("ai_model_registry")
 }
 
 // ─── AI Benchmark Result (matches db.aIBenchmarkResult) ───
@@ -1203,6 +1260,7 @@ model AIBenchmarkResult {
   latencyMs   Int      @default(0)
   costUsd     Float    @default(0)
   createdAt   DateTime @default(now())
+  @@map("ai_benchmark_results")
 }
 
 // ─── AI Processing Log (matches db.aIProcessingLog) ───
@@ -1219,6 +1277,7 @@ model AIProcessingLog {
   latencyMs   Int      @default(0)
   success     Boolean  @default(true)
   createdAt   DateTime @default(now())
+  @@map("ai_processing_logs")
 }
 
 // ─── AI Fabric Cache Entry (matches db.aIFabricCacheEntry) ───
@@ -1231,6 +1290,7 @@ model AIFabricCacheEntry {
   hitCount   Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  @@map("ai_fabric_cache_entries")
 }
 
 // ─── Budget Config (matches db.budgetConfig) ───
@@ -1243,6 +1303,7 @@ model BudgetConfig {
   hardStopEnabled  Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  @@map("budget_configs")
 }
 
 // ─── Company Runtime (matches db.companyRuntime) ───
@@ -1256,6 +1317,7 @@ model CompanyRuntime {
   maxAcceptableLatencyMs Int?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  @@map("company_runtimes")
 }
 
 // ─── Notification (matches db.notification) ───
@@ -1268,6 +1330,7 @@ model Notification {
   title       String
   body        String?
   createdAt   DateTime @default(now())
+  @@map("notifications")
 }
 
 // ─── Job Queue (matches db.jobQueue) ───
@@ -1284,6 +1347,7 @@ model JobQueue {
   startedAt   DateTime?
   completedAt DateTime?
   createdAt   DateTime @default(now())
+  @@map("job_queue")
 }
 
 // ─── Provider Config (matches db.providerConfig) ───
@@ -1294,6 +1358,7 @@ model ProviderConfig {
   fallbackProvider String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  @@map("provider_configs")
 }
 
 // ─── Rule Candidate (matches db.ruleCandidate) ───
@@ -1309,6 +1374,7 @@ model RuleCandidate {
   status           String   @default("observing") // observing, promoted, rejected
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  @@map("rule_candidates")
 }
 
 // ─── Global Pattern (matches db.globalPattern) ───
@@ -1322,6 +1388,7 @@ model GlobalPattern {
   confidence              Float    @default(1.0)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+  @@map("global_patterns")
 }
 
 // ─── Profit Snapshot (matches db.profitSnapshot) ───
@@ -1338,6 +1405,7 @@ model ProfitSnapshot {
   profitUsd     Decimal  @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("profit_snapshots")
 }
 
 // ─── AI Score Snapshot (matches db.aiScoreSnapshot) ───
@@ -1354,6 +1422,7 @@ model AIScoreSnapshot {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   @@unique([companySlug, period])
+  @@map("ai_score_snapshots")
 }
 
 // ─── Compiled Rule (matches db.compiledRule) ───
@@ -1369,6 +1438,7 @@ model CompiledRule {
   status                  String   @default("pending_review")
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+  @@map("compiled_rules")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1386,6 +1456,7 @@ model AutomationRule {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   executionLogs AutomationExecutionLog[]
+  @@map("automation_rules")
 }
 
 model AutomationExecutionLog {
@@ -1399,6 +1470,7 @@ model AutomationExecutionLog {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   rule          AutomationRule @relation(fields: [ruleId], references: [id])
+  @@map("automation_execution_logs")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1445,6 +1517,7 @@ model InvoiceBrainHeaderMap {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@unique([companySlug, headerName, language])
+  @@map("invoice_brain_header_maps")
 }
 
 model InvoiceBrainTemplate {
@@ -1456,6 +1529,7 @@ model InvoiceBrainTemplate {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   @@unique([companySlug, templateName])
+  @@map("invoice_brain_templates")
 }
 
 model InvoiceTemplate {
@@ -1465,6 +1539,7 @@ model InvoiceTemplate {
   companySlug   String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("invoice_templates")
 }
 
 model InvoiceTemplateSettings {
@@ -1476,6 +1551,7 @@ model InvoiceTemplateSettings {
   footerText    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("invoice_template_settings")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1493,6 +1569,7 @@ model Announcement {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("announcements")
 }
 
 // ─── Chat History (matches db.chatHistory) ───
@@ -1505,6 +1582,7 @@ model ChatHistory {
   content       String
   sessionId     String?
   createdAt     DateTime @default(now())
+  @@map("chat_history")
 }
 
 // ─── Idempotency Key (matches db.idempotencyKey) ───
@@ -1518,6 +1596,7 @@ model IdempotencyKey {
   responseBody  String?
   createdAt     DateTime @default(now())
   expiresAt     DateTime
+  @@map("idempotency_keys")
 }
 
 // ─── Setup Wizard Progress (matches db.setupWizardProgress) ───
@@ -1529,6 +1608,7 @@ model SetupWizardProgress {
   completed     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("setup_wizard_progress")
 }
 
 // ─── Subscription Schedule (matches db.subscriptionSchedule) ───
@@ -1553,6 +1633,7 @@ model WPSFile {
   uploadDate    DateTime @default(now())
   processed     Boolean  @default(false)
   createdAt     DateTime @default(now())
+  @@map("wps_files")
 }
 
 // ─── Module (matches db.module) ───
@@ -1566,6 +1647,7 @@ model Module {
   requiredPlan  String   @default("trial")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  @@map("modules")
 }
 
 // Keep the existing Post model for compatibility
