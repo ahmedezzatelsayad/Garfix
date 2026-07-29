@@ -73,4 +73,4 @@ export interface StockMovement {
   note: string | null; createdBy: string; createdAt: string;
 }
 
-export type Tab = "stats" | "tenants" | "announcements" | "tickets" | "audit" | "ai-settings" | "queue-failures" | "stock-ledger" | "feature-flags" | "ai-usage" | "ai-orchestration" | "review-queue" | "landing-content" | "integrations" | "retention-cleanup" | "plans" | "backups";
+export type Tab = "stats" | "tenants" | "announcements" | "tickets" | "audit" | "ai-settings" | "queue-failures" | "stock-ledger" | "feature-flags" | "ai-usage" | "ai-orchestration" | "review-queue" | "landing-content" | "integrations" | "retention-cleanup" | "plans" | "backups" | "webhooks";

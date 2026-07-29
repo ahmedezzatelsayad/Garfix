@@ -37,6 +37,10 @@ const IntegrationsTab = dynamic(() => import("./IntegrationsTab").then(m => ({ d
 const RetentionCleanupTab = dynamic(() => import("./RetentionCleanupTab").then(m => ({ default: m.RetentionCleanupTab })));
 const PlansTab = dynamic(() => import("./PlansTab").then(m => ({ default: m.PlansTab })));
 const BackupsTab = dynamic(() => import("./BackupsTab").then(m => ({ default: m.BackupsTab })));
+// Wire the existing-but-orphan WebhookManagementView (631 lines, full CRUD +
+// delivery history + retry + test-fire UI). Was unreachable from any tab
+// before this commit.
+const WebhookManagementView = dynamic(() => import("./WebhookManagementView").then(m => ({ default: m.WebhookManagementView })));
 
 export function PlatformAdminPanel() {
   const [tab, setTab] = useState<Tab>("stats");
@@ -114,6 +118,7 @@ export function PlatformAdminPanel() {
     { key: "retention-cleanup", label: "التنظيف الدوري", icon: <Database size={14} /> },
     { key: "plans", label: "الباقات", icon: <Gauge size={14} /> },
     { key: "backups", label: "النسخ الاحتياطي", icon: <HardDriveDownload size={14} /> },
+    { key: "webhooks", label: "Webhooks", icon: <Plug size={14} /> },
   ];
 
   const pieData = stats ? Object.entries(stats.byPlan).map(([k, v], i) => ({
@@ -617,6 +622,7 @@ export function PlatformAdminPanel() {
           {tab === "retention-cleanup" && <RetentionCleanupTab />}
           {tab === "plans" && <PlansTab />}
           {tab === "backups" && <BackupsTab />}
+          {tab === "webhooks" && <WebhookManagementView />}
         </div>
       )}
 

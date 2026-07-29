@@ -114,7 +114,10 @@ export function Sidebar({
       <aside
         className={cn(
           "garfix-scroll fixed top-0 bottom-0 right-0 z-50 w-[260px]",
-          "flex flex-col border-s border-sidebar-border bg-white text-sidebar-foreground shadow-card",
+          // Use theme tokens (bg-sidebar / text-sidebar-foreground) so the
+          // sidebar respects light/dark mode. Previously hardcoded `bg-white`
+          // which made the sidebar permanently white even in dark mode.
+          "flex flex-col border-s border-sidebar-border bg-sidebar text-sidebar-foreground shadow-card",
           "transform transition-transform duration-200 ease-out",
           mobileOpen ? "translate-x-0" : "translate-x-full",
           // Desktop: always visible, regardless of mobileOpen state

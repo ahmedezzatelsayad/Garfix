@@ -47,8 +47,18 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const companiesQuery = useCompanies();
   const [companies, setCompanies] = useState<CompanyInfo[]>([]);
   const [activeSlug, setActiveSlugState] = useState<string | null>(null);
-  const [loadingCompanies, setLoadingCompanies] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  // Initial state `true` so AppShell doesn't briefly flash the OnboardingScreen
+  // (which checks `!loadingCompanies && companies.length === 0`) on the very
+  // first render before TanStack Query has had a chance to flip isLoading on.
+  // Previously this defaulted to `false`, causing a 1-frame onboarding flash
+  // even for users with companies.
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  // Default to "light" — the dashboard shell uses light surfaces (bg-background,
+  // bg-card, bg-sidebar) with dark text. Defaulting to "dark" caused white
+  // text on white surfaces (invisible) until the user manually toggled themes.
+  // Users who prefer dark can still flip it from the Sidebar toggle, and their
+  // choice is persisted to localStorage.
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   // Load theme from localStorage on mount
   useEffect(() => {
@@ -78,7 +88,10 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       setLoadingCompanies(false);
       return;
     }
-    setLoadingCompanies(companiesQuery.isLoading);
+    // While user is set but TanStack hasn't started loading yet, treat as
+    // loading so AppShell shows the Suspense fallback rather than flashing
+    // the OnboardingScreen for one frame.
+    setLoadingCompanies(companiesQuery.isLoading || companiesQuery.isPending);
     if (companiesQuery.data?.companies) {
       // Map QueryCompany → CompanyInfo (they share the same shape for most fields)
       const mapped: CompanyInfo[] = companiesQuery.data.companies.map((c: QueryCompany) => ({
@@ -116,6 +129,20 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       setCompanies([]);
     }
   }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);
+
+  // When the user logs in (transitions from null → set), force a refetch of
+  // companies. Without this, TanStack's cached 401 from the unauthenticated
+  // attempt would persist and the user would see "no companies" until they
+  // manually refreshed the page.
+  useEffect(() => {
+    if (user) {
+      // Only refetch if the query is stale or errored (avoids hammering on every render).
+      if (companiesQuery.isError || companiesQuery.isStale) {
+        void companiesQuery.refetch();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const refreshCompanies = useCallback(async () => {
     await companiesQuery.refetch();
