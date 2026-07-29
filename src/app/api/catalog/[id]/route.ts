@@ -54,10 +54,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   // Try the specific permission first; if it fails, fall back to settings_access
   // (admins/founder always pass via settings_access).
   const neededPerm = touchesPrices ? "manage_wholesale_prices" : "edit_inventory";
-  let access = await requirePermissionForCompany(req, neededPerm, existing.companySlug);
+  let access = await requirePermissionForCompany(req, neededPerm, existing.companySlug ?? "");
   if ("error" in access) {
     // Fallback: settings_access (admin/manager gate)
-    access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
+    access = await requirePermissionForCompany(req, "settings_access", existing.companySlug ?? "");
     if ("error" in access) {
       return NextResponse.json(
         { error: touchesPrices ? "يتطلب هذا الإجراء صلاحية «إدارة أسعار الجملة» أو «الإعدادات»" : "يتطلب هذا الإجراء صلاحية «تعديل المخزون» أو «الإعدادات»" },
@@ -77,7 +77,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     data.wholesalePrice = num(parsed.data.wholesalePrice, 3).toFixed(3);
   const product = await db.productCatalog.update({ where: { id: existing.id }, data });
   await logAudit({
-    userEmail: user.email, userUid: user.uid,
+    userEmail: user.email, userUid: user.uid ?? "",
     action: touchesPrices ? "update_price" : "update", entity: "product", entityId: product.id, companySlug: existing.companySlug,
     details: touchesPrices ? { touchedPrices: true } : undefined,
   });
@@ -92,13 +92,13 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if (!existing) return apiError("Product not found", 404);
 
   // Enforce permission + company access
-  const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
+  const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug ?? "");
   if ("error" in access) return access.error;
   const user = access.user;
 
   await db.productCatalog.delete({ where: { id: existing.id } });
   await logAudit({
-    userEmail: user.email, userUid: user.uid,
+    userEmail: user.email, userUid: user.uid ?? "",
     action: "delete", entity: "product", entityId: existing.id, companySlug: existing.companySlug,
   });
   return NextResponse.json({ ok: true });

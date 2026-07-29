@@ -73,8 +73,8 @@ export async function recordSpend(
   });
 
   // Check if alert threshold crossed
-  if (config.monthlyBudgetUsd > 0) {
-    const pct = (config.currentSpendUsd / config.monthlyBudgetUsd) * 100;
+  if (Number(config.monthlyBudgetUsd) > 0) {
+    const pct = (Number(config.currentSpendUsd) / Number(config.monthlyBudgetUsd)) * 100;
     const threshold = config.alertThresholdPct;
     const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
     const lastAlertMonth = alertedThisMonth.get(companySlug);
@@ -101,7 +101,7 @@ export async function recordSpend(
           companySlug,
           type: "general",
           title: `AI Budget Alert: ${Math.round(pct)}% used`,
-          body: `${companySlug} has spent $${config.currentSpendUsd.toFixed(2)} of $${config.monthlyBudgetUsd.toFixed(2)} monthly AI budget (${Math.round(pct)}%). Threshold: ${threshold}%.`,
+          body: `${companySlug} has spent $${Number(config.currentSpendUsd).toFixed(2)} of $${Number(config.monthlyBudgetUsd).toFixed(2)} monthly AI budget (${Math.round(pct)}%). Threshold: ${threshold}%.`,
         },
       });
       alertedThisMonth.set(companySlug, currentMonth);
@@ -133,18 +133,18 @@ export async function getBudgetStatus(companySlug: string): Promise<BudgetStatus
 
   if (!config) return null;
 
-  const spendPct = config.monthlyBudgetUsd > 0
-    ? (config.currentSpendUsd / config.monthlyBudgetUsd) * 100
+  const spendPct = Number(config.monthlyBudgetUsd) > 0
+    ? (Number(config.currentSpendUsd) / Number(config.monthlyBudgetUsd)) * 100
     : 0;
 
-  const alertTriggered = spendPct >= config.alertThresholdPct;
-  const hardStopActive = config.hardStopEnabled && config.currentSpendUsd >= config.monthlyBudgetUsd;
+  const alertTriggered = spendPct >= Number(config.alertThresholdPct);
+  const hardStopActive = config.hardStopEnabled && Number(config.currentSpendUsd) >= Number(config.monthlyBudgetUsd);
   const forecast = await forecastMonthlySpend(companySlug);
 
   return {
     companySlug,
-    monthlyBudgetUsd: config.monthlyBudgetUsd,
-    currentSpendUsd: config.currentSpendUsd,
+    monthlyBudgetUsd: Number(config.monthlyBudgetUsd),
+    currentSpendUsd: Number(config.currentSpendUsd),
     spendPct,
     alertTriggered,
     hardStopActive,
@@ -170,7 +170,7 @@ export async function checkBudgetGate(companySlug: string): Promise<boolean> {
   if (!config.hardStopEnabled) return true;  // Hard stop not enabled
 
   // Gate blocks if at or over budget
-  return config.currentSpendUsd < config.monthlyBudgetUsd;
+  return Number(config.currentSpendUsd) < Number(config.monthlyBudgetUsd);
 }
 
 /**
@@ -210,7 +210,7 @@ export async function forecastMonthlySpend(
     _sum: { costUsd: true },
   });
 
-  const totalSpend = currentSpend._sum.costUsd ?? 0;
+  const totalSpend = Number(currentSpend._sum.costUsd ?? 0);
   const forecasted = totalSpend * (DAYS_PER_MONTH / daysElapsed);
 
   return Math.round(forecasted * 100) / 100; // 2 decimal places

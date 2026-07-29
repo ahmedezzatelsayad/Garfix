@@ -106,19 +106,19 @@ export const PUT = withErrorHandler(async (req: NextRequest) => {
   const user = access.user;
 
   const prefix = `product.matching.${companySlug}.`;
-  const updates: { key: string; value: string; category: string; valueType: string; description: string }[] = [];
+  const updates: { key: string; value: string; category: string; valueType: string; description: string; companySlug: string }[] = [];
 
   if (typeof autoMatchThreshold === "number") {
-    updates.push({ key: `${prefix}autoThreshold`, value: JSON.stringify(autoMatchThreshold), category: "product-matching", valueType: "number", description: "Auto-match confidence threshold" });
+    updates.push({ key: `${prefix}autoThreshold`, value: JSON.stringify(autoMatchThreshold), category: "product-matching", valueType: "number", description: "Auto-match confidence threshold", companySlug });
   }
   if (typeof suggestedThreshold === "number") {
-    updates.push({ key: `${prefix}suggestedThreshold`, value: JSON.stringify(suggestedThreshold), category: "product-matching", valueType: "number", description: "Suggested (review queue) threshold" });
+    updates.push({ key: `${prefix}suggestedThreshold`, value: JSON.stringify(suggestedThreshold), category: "product-matching", valueType: "number", description: "Suggested (review queue) threshold", companySlug });
   }
   if (evidenceWeights) {
-    updates.push({ key: `${prefix}weights`, value: JSON.stringify({ ...DEFAULT_EVIDENCE_WEIGHTS, ...evidenceWeights }), category: "product-matching", valueType: "json", description: "Evidence signal weights (text/brand/category/historical/semantic)" });
+    updates.push({ key: `${prefix}weights`, value: JSON.stringify({ ...DEFAULT_EVIDENCE_WEIGHTS, ...evidenceWeights }), category: "product-matching", valueType: "json", description: "Evidence signal weights (text/brand/category/historical/semantic)", companySlug });
   }
   if (signalFlags) {
-    updates.push({ key: `${prefix}flags`, value: JSON.stringify({ ...DEFAULT_SIGNAL_FLAGS, ...signalFlags }), category: "product-matching", valueType: "json", description: "Per-signal feature flags (enable/disable each evidence signal)" });
+    updates.push({ key: `${prefix}flags`, value: JSON.stringify({ ...DEFAULT_SIGNAL_FLAGS, ...signalFlags }), category: "product-matching", valueType: "json", description: "Per-signal feature flags (enable/disable each evidence signal)", companySlug });
   }
 
   for (const u of updates) {

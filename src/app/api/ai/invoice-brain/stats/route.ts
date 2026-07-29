@@ -77,7 +77,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       topTemplates: topTemplates.map((t) => ({
         fingerprint: t.fingerprint,
         sampleCount: t.sampleCount,
-        lastUsedAt: t.lastUsedAt.toISOString(),
+        lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
         createdAt: t.createdAt.toISOString(),
       })),
       recentLogs: recentLogs.slice(0, 10).map((l) => ({

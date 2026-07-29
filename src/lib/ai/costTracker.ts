@@ -55,16 +55,15 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<void> {
   try {
     await db.aIUsageLog.create({
       data: {
-        companySlug: params.companySlug || null,
+        companySlug: params.companySlug ?? '',
         userUid: params.userUid || null,
         provider: params.provider,
-        model: params.model,
         endpoint: params.endpoint,
         tokensIn: params.tokensIn,
         tokensOut: params.tokensOut,
         totalTokens: params.tokensIn + params.tokensOut,
         estimatedCost,
-        processingMs: params.processingMs ?? null,
+        processingMs: params.processingMs ?? undefined,
         success: params.success,
         errorMessage: params.errorMessage || null,
       },

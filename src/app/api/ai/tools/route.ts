@@ -413,7 +413,7 @@ async function executeIntent(
         }
         const clients = await db.client.findMany({
           where, orderBy: { createdAt: "desc" }, take: limit,
-          select: { id: true, name: true, phone: true, email: true, company: true },
+          select: { id: true, name: true, phone: true, email: true, companySlug: true },
         });
         const summary = `وجدت ${clients.length} عميل:\n${clients.map((c) => `• ${c.name} — ${c.phone || "لا هاتف"}`).join("\n")}`;
         return { ok: true, summary, data: clients };
@@ -476,6 +476,8 @@ async function executeIntent(
             email: (params.email as string) || null,
             address: (params.address as string) || null,
             companySlug,
+            code: `AI-${Date.now().toString().slice(-6)}`,
+            companyId: 0,
           },
         });
         await logAudit({
@@ -541,9 +543,9 @@ async function executeIntent(
             const item = await tx.inventoryItem.update({
               where: { id: existing.id },
               data: {
-                quantity: newQty.toFixed(3),
-                reorderLevel: existing.reorderLevel,
-                reorderQty: existing.reorderQty,
+                quantity: Math.round(newQty),
+                reorderLevel: Number(existing.reorderLevel) || 0,
+                reorderQty: Number(existing.reorderQty) || 0,
               },
             });
             if (Math.abs(signedDelta) > 0.0001) {
@@ -559,8 +561,9 @@ async function executeIntent(
           const item = await tx.inventoryItem.create({
             data: {
               companySlug, warehouseId, productId,
-              quantity: newQty.toFixed(3),
-              reorderLevel: "0", reorderQty: "0",
+              quantity: Math.round(newQty),
+              reorderLevel: 0, reorderQty: 0,
+              companyId: 0,
             },
           });
           if (newQty > 0) {

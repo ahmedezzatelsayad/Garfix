@@ -89,6 +89,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     await db.platformSettings.create({
       data: {
         key: settingKey,
+        companySlug: "platform",
         category: "landing_content",
         valueType: "json",
         value: serialized,

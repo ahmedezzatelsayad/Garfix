@@ -56,15 +56,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         } else {
           operatingExpenses += -net;
         }
-        operatingDetails.push({ code: acc.code, nameAr: acc.nameAr, amount: net });
+        operatingDetails.push({ code: acc.code, nameAr: acc.nameAr ?? "", amount: net });
       } else if (acc.code.startsWith("15") || acc.type === "asset" && acc.code.startsWith("15")) {
         // Fixed assets = investing
         investingActivities += net;
-        investingDetails.push({ code: acc.code, nameAr: acc.nameAr, amount: net });
+        investingDetails.push({ code: acc.code, nameAr: acc.nameAr ?? "", amount: net });
       } else if (acc.type === "liability" && (acc.code.startsWith("2") || acc.code.startsWith("3"))) {
         // Loans/equity = financing
         financingActivities += net;
-        financingDetails.push({ code: acc.code, nameAr: acc.nameAr, amount: net });
+        financingDetails.push({ code: acc.code, nameAr: acc.nameAr ?? "", amount: net });
       }
     }
   }

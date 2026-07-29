@@ -36,8 +36,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       : {
           isActive: true,
           AND: [
-            { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-            { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+            { OR: [{ startsAt: { lte: new Date() } }, { startsAt: { lte: now } }] },
+            { OR: [{ endsAt: { gte: new Date() } }, { endsAt: { gte: now } }] },
           ],
         },
     orderBy: { createdAt: "desc" },
@@ -79,16 +79,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const data = parsed.data;
   const a = await db.announcement.create({
     data: {
+      companySlug: "platform",
       title: data.title, body: data.body, type: data.type,
       targetPlans: JSON.stringify(data.targetPlans),
-      startsAt: data.startsAt ? new Date(data.startsAt) : null,
-      endsAt: data.endsAt ? new Date(data.endsAt) : null,
-      isActive: data.isActive, createdBy: result.user.email,
+      startsAt: data.startsAt ? new Date(data.startsAt) : new Date(),
+      endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
+      isActive: data.isActive, 
     },
   });
   await logAdminAction({
     adminEmail: result.user.email, action: "create_announcement",
-    targetType: "announcement", targetId: a.id,
+    targetType: "announcement", targetId: String(a.id),
   });
   return NextResponse.json({ ok: true, announcement: a });
 });

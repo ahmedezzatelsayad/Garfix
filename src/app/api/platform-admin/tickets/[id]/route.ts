@@ -22,7 +22,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;
 
-  const { id } = await params;
+  const { id: idStr } = await params;
+  const id = parseInt(idStr);
   const existing = await db.supportTicket.findUnique({ where: { id } });
   if (!existing) return apiError("Ticket not found", 404);
 

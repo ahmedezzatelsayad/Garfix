@@ -114,7 +114,7 @@ export async function appendToChain(params: {
           contentHash: computeHash(contentHash, prevHash),
           prevHash,
           chainOrder,
-          companySlug: params.companySlug ?? null,
+          companySlug: params.companySlug ?? "system",
         },
       });
     });

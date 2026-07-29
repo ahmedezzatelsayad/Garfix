@@ -109,7 +109,7 @@ export async function contributePattern(
   if (existing) {
     const newCount = existing.contributingCompaniesCount + 1;
     const newConfidence = Math.round(
-      ((existing.confidence * existing.contributingCompaniesCount + confidence) / newCount) * 10000,
+      ((Number(existing.confidence) * existing.contributingCompaniesCount + confidence) / newCount) * 10000,
     ) / 10000;
 
     await db.globalPattern.update({
@@ -117,7 +117,7 @@ export async function contributePattern(
       data: {
         contributingCompaniesCount: newCount,
         confidence: newConfidence,
-        suggestedSku: existing.suggestedSku || sku || null,
+        suggestedSku: existing.suggestedSku || sku,
         suggestedVatCategory: existing.suggestedVatCategory || vatCategory || null,
         suggestedCategory: existing.suggestedCategory || category || null,
       },
@@ -125,8 +125,9 @@ export async function contributePattern(
   } else {
     await db.globalPattern.create({
       data: {
+        companySlug: "global",
         patternKey,
-        suggestedSku: sku || null,
+        suggestedSku: sku,
         suggestedVatCategory: vatCategory || null,
         suggestedCategory: category || null,
         contributingCompaniesCount: 1,
@@ -161,7 +162,7 @@ export async function lookupGlobalPattern(
     suggestedVatCategory: pattern.suggestedVatCategory,
     suggestedCategory: pattern.suggestedCategory,
     contributingCompaniesCount: pattern.contributingCompaniesCount,
-    confidence: pattern.confidence,
+    confidence: Number(pattern.confidence),
   };
 }
 
@@ -187,7 +188,7 @@ export async function getPatternStats(): Promise<PatternStats> {
 
   return {
     totalPatterns,
-    avgConfidence: Math.round((agg._avg.confidence ?? 0) * 10000) / 10000,
+    avgConfidence: Math.round(Number(agg._avg.confidence ?? 0) * 10000) / 10000,
     avgContributingCompanies: Math.round((agg._avg.contributingCompaniesCount ?? 0) * 100) / 100,
     topPatterns: topPatterns.map((p) => ({
       patternKey: p.patternKey,
@@ -195,7 +196,7 @@ export async function getPatternStats(): Promise<PatternStats> {
       suggestedVatCategory: p.suggestedVatCategory,
       suggestedCategory: p.suggestedCategory,
       contributingCompaniesCount: p.contributingCompaniesCount,
-      confidence: p.confidence,
+      confidence: Number(p.confidence),
     })),
   };
 }

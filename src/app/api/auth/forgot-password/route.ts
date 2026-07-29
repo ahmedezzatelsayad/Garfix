@@ -49,7 +49,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await db.emailVerification.create({
       data: {
-        userId: user.uid,
+        email: user.email,
+        userId: user.id,
         codeHash,
         purpose: "password_reset",
         expiresAt,

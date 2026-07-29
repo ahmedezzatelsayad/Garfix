@@ -413,7 +413,7 @@ export async function reopenFiscalPeriod(
           description: `Reopen period ${periodName} — reversal of closing JE #${closingJE.id}`,
           status: "posted",
           sourceType: "reversal",
-          sourceId: closingJE.id,
+          sourceId: String(closingJE.id),
           createdBy: userEmail,
           lines: { create: swappedLines },
         },
@@ -422,19 +422,21 @@ export async function reopenFiscalPeriod(
       reversalJEId = reversal.id;
 
       // Update account balances for the reversal
-      const accountIds = [...new Set(swappedLines.map((l) => l.accountId))];
+      const accountIds = [...new Set(swappedLines.map((l) => l.accountId))].filter((id): id is number => id !== null);
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
       const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
       const deltas = new Map<number, number>();
       for (const line of swappedLines) {
-        const acc = accountMap.get(line.accountId);
+        const aid = line.accountId ?? 0;
+        if (aid === 0) continue;
+        const acc = accountMap.get(aid);
         if (!acc) continue;
         const isDebitNormal = acc.type === "asset" || acc.type === "expense" || acc.type === "contra_revenue";
         const delta = isDebitNormal
           ? num(line.debit, 3) - num(line.credit, 3)
           : num(line.credit, 3) - num(line.debit, 3);
-        deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+        deltas.set(aid, (deltas.get(aid) || 0) + delta);
       }
 
       for (const [accountId, delta] of deltas) {

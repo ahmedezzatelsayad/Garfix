@@ -212,6 +212,7 @@ export async function findPreemptableJob(
 
   for (const rt of runtimes) {
     const slug = rt.company.slug;
+    if (!slug) continue;
     if (excludeCompanySlug && slug === excludeCompanySlug) continue;
 
     const slaTier = (rt.slaTier as SLATier) || planToSlaTier(rt.company.plan);

@@ -23,7 +23,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+  const access = await requirePermissionForCompany(req, "finance_access", data.companySlug ?? "");
   if ("error" in access) return access.error;
   const user = access.user;
 
@@ -41,26 +41,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const lines: Array<{ accountId: number; debit: string; credit: string; description: string }> = [];
   for (const entry of draftEntries) {
-    const amount = num(entry.amount, 3);
-    const isDebitNormal = entry.account.type === "asset" || entry.account.type === "expense";
-
-    if (isDebitNormal) {
-      totalDebit += amount;
-      lines.push({
-        accountId: entry.accountId,
-        debit: amount.toFixed(3),
-        credit: "0.000",
-        description: `رصيد افتتاحي - ${entry.account.nameAr}`,
-      });
-    } else {
-      totalCredit += amount;
-      lines.push({
-        accountId: entry.accountId,
-        debit: "0.000",
-        credit: amount.toFixed(3),
-        description: `رصيد افتتاحي - ${entry.account.nameAr}`,
-      });
-    }
+    if (!entry.account || !entry.accountId) continue;
+    const debitAmt = num(entry.debit, 3);
+    const creditAmt = num(entry.credit, 3);
+    totalDebit += debitAmt;
+    totalCredit += creditAmt;
+    lines.push({
+      accountId: entry.accountId,
+      debit: debitAmt.toFixed(3),
+      credit: creditAmt.toFixed(3),
+      description: `رصيد افتتاحي - ${entry.account.nameAr ?? entry.account.name}`,
+    });
   }
 
   // Balancing line to equity if not balanced
@@ -98,7 +89,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const je = await tx.journalEntry.create({
       data: {
         companySlug: data.companySlug,
-        date: jeDate,
+        date: jeDate ?? new Date().toISOString(),
         description: "ترحيل أرصدة افتتاحية",
         reference: "OB-OPENING",
         status: "posted",
@@ -139,7 +130,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   });
 
   await logAudit({
-    userEmail: user.email, userUid: user.uid,
+    userEmail: user.email, userUid: user.uid ?? "",
     action: "post", entity: "opening_balance", companySlug: data.companySlug,
     details: { jeId: result.jeId, entriesPosted: result.entriesPosted, totalDebit: result.totalDebit.toFixed(3), totalCredit: result.totalCredit.toFixed(3) },
   });

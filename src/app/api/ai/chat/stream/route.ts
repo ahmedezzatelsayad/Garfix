@@ -317,7 +317,6 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
             role: "user",
             content: lastUserMsg.content,
             conversationId,
-            model: outcome.model,
           },
         });
         await db.chatHistory.create({
@@ -327,7 +326,6 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
             role: "assistant",
             content: fullReply,
             conversationId,
-            model: outcome.model,
           },
         });
 

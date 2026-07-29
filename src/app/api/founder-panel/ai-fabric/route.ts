@@ -75,7 +75,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>>
     const totalCascadeRequests = cascadeGroups.reduce((s, g) => s + g._count, 0);
     const cascadeBreakdown: Record<string, number> = {};
     for (const g of cascadeGroups) {
-      cascadeBreakdown[g.resolvedBy] =
+      cascadeBreakdown[g.resolvedBy ?? "unknown"] =
         totalCascadeRequests > 0
           ? Math.round((g._count / totalCascadeRequests) * 1000) / 10
           : 0;
@@ -86,8 +86,8 @@ export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>>
       where: { periodStart: { gte: periodStart }, periodEnd: { lte: periodEnd } },
       _sum: { revenueUsd: true, aiCostUsd: true },
     });
-    const totalRevenue = profitAgg._sum.revenueUsd ?? 0;
-    const totalAiCost = profitAgg._sum.aiCostUsd ?? 0;
+    const totalRevenue = Number(profitAgg._sum.revenueUsd ?? 0);
+    const totalAiCost = Number(profitAgg._sum.aiCostUsd ?? 0);
     const grossAiMargin = Math.round((totalRevenue - totalAiCost) * 100) / 100;
 
     return NextResponse.json({

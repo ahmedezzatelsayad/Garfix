@@ -32,9 +32,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const sessionUser: SessionUser = {
-    uid: dbUser.uid,
+    uid: dbUser.uid ?? "",
     email: dbUser.email,
-    displayName: dbUser.displayName,
+    displayName: dbUser.displayName ?? "",
     role: dbUser.role,
     companies: parseJson<string[]>(dbUser.companies, []),
     permissions: parseJson<Record<string, number>>(dbUser.permissions, {}),

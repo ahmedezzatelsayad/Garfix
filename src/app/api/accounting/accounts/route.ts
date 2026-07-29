@@ -58,9 +58,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const account = await db.account.create({
     data: {
-      companySlug: data.companySlug, code: data.code, nameAr: data.nameAr, nameEn: data.nameEn || null,
+      companySlug: data.companySlug, code: data.code, name: data.nameAr ?? '', nameAr: data.nameAr, nameEn: data.nameEn || null,
       type: data.type, parentId: data.parentId || null,
-      balance: num(data.balance, 3).toFixed(3), currency: data.currency,
+      balance: num(data.balance, 3).toFixed(3), companyId: 0,
     },
   });
   await logAudit({

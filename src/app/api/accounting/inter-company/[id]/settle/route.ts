@@ -120,7 +120,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
         description: `Inter-company settlement with ${existing.companySlugTo} — transaction #${transactionId}`,
         status: "posted",
         sourceType: "inter_company_settlement",
-        sourceId: transactionId,
+        sourceId: String(transactionId),
         createdBy: user.email,
         lines: {
           create: [
@@ -149,7 +149,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
         description: `Inter-company settlement with ${existing.companySlugFrom} — transaction #${transactionId}`,
         status: "posted",
         sourceType: "inter_company_settlement",
-        sourceId: transactionId,
+        sourceId: String(transactionId),
         createdBy: user.email,
         lines: {
           create: [

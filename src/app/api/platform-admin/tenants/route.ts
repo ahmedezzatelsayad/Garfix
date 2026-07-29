@@ -64,8 +64,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const tenants = companies.map((c) => {
-    const invoiceCount = invoiceCountMap.get(c.slug) || 0;
-    const userCount = userCountMap.get(c.slug) || 0;
+    const invoiceCount = invoiceCountMap.get(c.slug ?? "") || 0;
+    const userCount = userCountMap.get(c.slug ?? "") || 0;
     // P1.8 fix (Remaining Work Handoff): usage-vs-plan visualization.
     // Look up the plan's limits and compute utilization percentages so the
     // founder panel can render a "tenant is at X% of plan quota" bar.
@@ -81,7 +81,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       id: c.id,
       name: c.name,
       slug: c.slug,
-      nameAr: c.nameAr,
+      nameAr: c.nameAr ?? "",
       emoji: c.emoji,
       color: c.color,
       plan: c.plan,
@@ -92,8 +92,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       stats: {
         invoices: invoiceCount,
         users: userCount,
-        clients: clientCountMap.get(c.slug) || 0,
-        revenue: revenueMap.get(c.slug) || 0,
+        clients: clientCountMap.get(c.slug ?? "") || 0,
+        revenue: revenueMap.get(c.slug ?? "") || 0,
       },
       // P1.8: plan utilization for the founder panel's usage-vs-plan column.
       planLimits: {

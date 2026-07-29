@@ -142,7 +142,7 @@ export async function getExplainabilitySummary(companyId: string, periodDays: nu
   let totalCost = 0;
 
   for (const log of logs) {
-    byStage[log.resolvedBy] = (byStage[log.resolvedBy] || 0) + 1;
+    byStage[log.resolvedBy ?? "unknown"] = (byStage[log.resolvedBy ?? "unknown"] || 0) + 1;
     totalLatency += log.latencyMs;
     totalCost += Number(log.costUsd) || 0;
   }

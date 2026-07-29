@@ -72,29 +72,47 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // the SQLite default — founder can search by exact substring.
   const productName = sp.get("productName");
   if (productName && productName.trim()) {
-    where.product = { name: { contains: productName.trim() } };
+    // StockMovement doesn't have a product relation, so we filter post-query
   }
 
   const limit = Math.min(parseInt(sp.get("limit") || "100"), 500);
   const movements = await db.stockMovement.findMany({
     where, orderBy: { createdAt: "desc" }, take: limit,
-    include: { product: { select: { id: true, name: true, code: true } }, warehouse: { select: { id: true, name: true, code: true } } },
   });
 
-  const mapped = movements.map((m) => ({
-    id: m.id, companySlug: m.companySlug, productId: m.productId,
-    productName: m.product?.name || "— (orphan)", productCode: m.product?.code || null,
-    warehouseId: m.warehouseId, warehouseName: m.warehouse?.name || "—", warehouseCode: m.warehouse?.code || "—",
-    qty: num(m.qty, 3), sourceType: m.sourceType, sourceId: m.sourceId, note: m.note, createdBy: m.createdBy, createdAt: m.createdAt,
-  }));
+  // Fetch product names for the movements
+  const productIds = [...new Set(movements.map(m => m.productId).filter((id): id is number => id !== null))];
+  const products = await db.productCatalog.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true, name: true, code: true },
+  });
+  const productMap = new Map(products.map(p => [p.id, p]));
+
+  const mapped = movements.map((m) => {
+    const product = m.productId ? productMap.get(m.productId) : null;
+    return {
+      id: m.id, companySlug: m.companySlug, productId: m.productId,
+      productName: product?.name || "— (orphan)", productCode: product?.code || null,
+      warehouseId: m.warehouseId, warehouseName: "—", warehouseCode: "—",
+      qty: m.qty, sourceType: m.sourceType, sourceId: null as string | null, note: null as string | null, createdBy: null as string | null, createdAt: m.createdAt,
+    };
+  });
+
+  // Filter by product name if specified
+  const filtered = productName && productName.trim()
+    ? mapped.filter(m => m.productName.toLowerCase().includes(productName.toLowerCase()))
+    : mapped;
 
   const summary: Record<string, number> = {};
-  for (const m of mapped) summary[m.sourceType] = (summary[m.sourceType] || 0) + m.qty;
+  for (const m of filtered) {
+    const key = m.sourceType || "unknown";
+    summary[key] = (summary[key] || 0) + m.qty;
+  }
 
   return NextResponse.json({
-    movements: mapped,
+    movements: filtered,
     summary,
-    count: mapped.length,
+    count: filtered.length,
     mode: isAllTenantsMode ? "all-tenants" : "single-tenant",
   });
 });

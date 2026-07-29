@@ -39,7 +39,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   // Build swapped lines (debit ↔ credit) so the new entry's balance updates
   // exactly cancel the original's.
   const swappedLines = existing.lines.map((l) => ({
-    accountId: l.accountId,
+    accountId: l.accountId ?? 0,
     debit: num(l.credit, 3).toFixed(3),   // original credit → new debit
     credit: num(l.debit, 3).toFixed(3),   // original debit → new credit
     description: l.description || null,
@@ -56,7 +56,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
         reference: existing.reference || null,
         status: "posted",
         sourceType: "reversal",
-        sourceId: existing.id,
+        sourceId: String(existing.id),
         createdBy: user.email,
         lines: { create: swappedLines },
       },
@@ -64,19 +64,21 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     });
 
     // 2. Update account balances for the reversal — batch fetch + aggregate deltas
-    const accountIds = [...new Set(swappedLines.map((l) => l.accountId))];
+    const accountIds = [...new Set(swappedLines.map((l) => l.accountId))].filter((id): id is number => id !== 0);
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
     const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
     const deltas = new Map<number, number>();
     for (const line of swappedLines) {
-      const acc = accountMap.get(line.accountId);
+      const aid = line.accountId;
+      if (aid === 0) continue;
+      const acc = accountMap.get(aid);
       if (!acc) continue;
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";
       const delta = isDebitNormal
         ? num(line.debit, 3) - num(line.credit, 3)
         : num(line.credit, 3) - num(line.debit, 3);
-      deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+      deltas.set(aid, (deltas.get(aid) || 0) + delta);
     }
     for (const [accountId, delta] of deltas) {
       const acc = accountMap.get(accountId)!;

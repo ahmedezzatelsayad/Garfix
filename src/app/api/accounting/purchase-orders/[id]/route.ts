@@ -21,9 +21,6 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 
   const purchaseOrder = await db.purchaseOrder.findUnique({
     where: { id: poId },
-    include: {
-      supplier: { select: { id: true, name: true, nameEn: true, email: true, phone: true, address: true } },
-    },
   });
   if (!purchaseOrder) return apiError("Purchase order not found", 404);
 
@@ -116,7 +113,6 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const updated = await db.purchaseOrder.update({
     where: { id: poId },
     data: updateData,
-    include: { supplier: { select: { id: true, name: true } } },
   });
 
   await logAudit({

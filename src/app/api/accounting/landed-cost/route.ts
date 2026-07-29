@@ -35,9 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       totalCost: num(a.totalCost, 3),
       lines: a.lines.map((l) => ({
         ...l,
-        allocatedCost: num(l.allocatedCost, 3),
-        baseQuantity: num(l.baseQuantity ?? "0", 3),
-        baseValue: num(l.baseValue ?? "0", 3),
+        allocatedCost: num(l.allocatedAmount, 3),
       })),
     })),
   });
@@ -108,17 +106,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         costType: data.costType,
         totalCost: totalCostStr,
         allocationMethod: data.allocationMethod,
+        lineItems: JSON.stringify(data.lines),
         lines: {
           create: data.lines.map((l, i) => ({
-            inventoryItemId: l.itemId ?? null,
-            productCatalogId: l.productId ?? null,
-            allocatedCost: allocationResult.lines[i].allocatedCost,
-            baseQuantity: l.baseQuantity
-              ? (typeof l.baseQuantity === "number" ? num(l.baseQuantity, 3).toFixed(3) : String(l.baseQuantity))
-              : null,
-            baseValue: l.baseValue
-              ? (typeof l.baseValue === "number" ? num(l.baseValue, 3).toFixed(3) : String(l.baseValue))
-              : null,
+            productId: l.itemId ?? l.productId ?? null,
+            allocatedAmount: allocationResult.lines[i].allocatedCost,
+            proportionalWeight: 0,
           })),
         },
       },

@@ -131,14 +131,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const company = await db.company.create({
     data: {
       name: data.name,
+      code: slug,
       slug,
       nameAr: data.nameAr || data.name,
       emoji: data.emoji || "🏢",
       color: data.color || "#7c3aed",
-      phone: data.phone || null,
-      email: data.email || null,
       address: data.address || null,
-      vatNumber: data.vatNumber || null,
       currency: data.currency || "KWD",
       country: data.country || null,
       defaultTaxRate: data.defaultTaxRate || "0",

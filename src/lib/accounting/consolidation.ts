@@ -128,8 +128,9 @@ export async function consolidateGroup(
     const balanceMap = new Map<number, number>();
     for (const entry of entries) {
       for (const line of entry.lines) {
-        const current = balanceMap.get(line.accountId) || 0;
-        balanceMap.set(line.accountId, current + num(line.debit, 3) - num(line.credit, 3));
+        const aid = line.accountId ?? 0;
+        const current = balanceMap.get(aid) || 0;
+        balanceMap.set(aid, current + num(line.debit, 3) - num(line.credit, 3));
       }
     }
 
@@ -150,7 +151,7 @@ export async function consolidateGroup(
       if (!targetMap.has(code)) {
         targetMap.set(code, {
           code,
-          nameAr: acc.nameAr,
+          nameAr: acc.nameAr ?? "",
           nameEn: acc.nameEn || undefined,
           type: acc.type,
           totalBalance: "0.000",
@@ -363,7 +364,9 @@ async function createEliminationJE(
 
   // Update account balances
   for (const line of entry.lines) {
-    const acc = await db.account.findUnique({ where: { id: line.accountId } });
+    const aid = line.accountId ?? 0;
+    if (aid === 0) continue;
+    const acc = await db.account.findUnique({ where: { id: aid } });
     if (!acc) continue;
     const isDebitNormal = acc.type === "asset" || acc.type === "expense";
     const delta = isDebitNormal
@@ -520,7 +523,9 @@ export async function createInterCompanySettlement(
 
     // Update account balances for both companies
     for (const line of jeFrom.lines) {
-      const acc = await tx.account.findUnique({ where: { id: line.accountId } });
+      const aid = line.accountId ?? 0;
+      if (aid === 0) continue;
+      const acc = await tx.account.findUnique({ where: { id: aid } });
       if (!acc) continue;
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";
       const delta = isDebitNormal
@@ -534,7 +539,9 @@ export async function createInterCompanySettlement(
     }
 
     for (const line of jeTo.lines) {
-      const acc = await tx.account.findUnique({ where: { id: line.accountId } });
+      const aid = line.accountId ?? 0;
+      if (aid === 0) continue;
+      const acc = await tx.account.findUnique({ where: { id: aid } });
       if (!acc) continue;
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";
       const delta = isDebitNormal
@@ -550,6 +557,7 @@ export async function createInterCompanySettlement(
     // Create the InterCompanyTransaction record
     const transaction = await tx.interCompanyTransaction.create({
       data: {
+        companySlug: companySlugFrom,
         companySlugFrom,
         companySlugTo,
         amount: amountStr,

@@ -62,7 +62,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
     }),
     // oversell: stockMovement rows whose sourceType='sale' AND note contains 'oversell'
     db.stockMovement.count({
-      where: { companySlug: slug, sourceType: "sale", note: { contains: "oversell" } },
+      where: { companySlug: slug, sourceType: "sale", reference: { contains: "oversell" } },
     }),
     // lastActivity = newest record across invoices / stockMovements / users
     db.stockMovement.findFirst({
@@ -219,18 +219,18 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.journalEntryLine.deleteMany({ where: { entry: { companySlug: slug } } });
     await tx.journalEntry.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
+      data: { deletedAt: now,  },
     });
     await tx.account.deleteMany({ where: { companySlug: slug } });
 
     // 4. Invoices + purchases (SOFT-DELETE for retention)
     await tx.invoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
+      data: { deletedAt: now,  },
     });
     await tx.purchaseInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
+      data: { deletedAt: now,  },
     });
 
     // 5. Clients (physical)
@@ -239,14 +239,14 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     // 6. E-invoices (SOFT-DELETE) + deliveries (physical)
     await tx.eInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
+      data: { deletedAt: now,  },
     });
     await tx.orderDelivery.deleteMany({ where: { companySlug: slug } }).catch(() => {});
 
     // 7. Payment transactions (SOFT-DELETE)
     await tx.paymentTransaction.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
+      data: { deletedAt: now,  },
     });
 
     // 7b. StockMovement + ProductMatchAudit (physical — operational)
@@ -262,7 +262,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     // (companies column is a JSON-encoded string array; use string contains)
     const users = await tx.appUser.findMany({ where: { companies: { contains: slug } } });
     if (users.length > 0) {
-      await tx.notification.deleteMany({ where: { userUid: { in: users.map(u => u.uid) } } }).catch(() => {});
+      await tx.notification.deleteMany({ where: { userUid: { in: users.map(u => u.uid).filter(Boolean) as string[] } } }).catch(() => {});
     }
 
     // 10. Finally: delete the company itself

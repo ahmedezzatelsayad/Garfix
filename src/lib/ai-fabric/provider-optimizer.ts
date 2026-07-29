@@ -134,7 +134,7 @@ export async function getProviderRouting(taskType: AIRequestType): Promise<Provi
   }
 
   // Check ProviderConfig table
-  const config = await db.providerConfig.findUnique({
+  const config = await db.providerConfig.findFirst({
     where: { taskType },
   });
 
@@ -142,8 +142,8 @@ export async function getProviderRouting(taskType: AIRequestType): Promise<Provi
   let fallbackProvider: string;
 
   if (config) {
-    primaryProvider = config.primaryProvider;
-    fallbackProvider = config.fallbackProvider;
+    primaryProvider = config.primaryProvider ?? "";
+    fallbackProvider = config.fallbackProvider ?? "";
   } else {
     const defaults = DEFAULT_PROVIDERS[taskType] || DEFAULT_PROVIDERS.other;
     primaryProvider = defaults.primary;
@@ -334,8 +334,10 @@ export async function seedProviderConfigs(): Promise<void> {
   for (const taskType of tasks) {
     const defaults = DEFAULT_PROVIDERS[taskType];
     await db.providerConfig.upsert({
-      where: { taskType },
+      where: { companySlug_provider_taskType: { companySlug: "platform", provider: "default", taskType } },
       create: {
+        companySlug: "platform",
+        provider: "default",
         taskType,
         primaryProvider: defaults.primary,
         fallbackProvider: defaults.fallback,

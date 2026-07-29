@@ -36,9 +36,7 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
       totalCost: num(allocation.totalCost, 3),
       lines: allocation.lines.map((l) => ({
         ...l,
-        allocatedCost: num(l.allocatedCost, 3),
-        baseQuantity: num(l.baseQuantity ?? "0", 3),
-        baseValue: num(l.baseValue ?? "0", 3),
+        allocatedCost: num(l.allocatedAmount, 3),
       })),
     },
   });

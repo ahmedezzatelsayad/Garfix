@@ -198,8 +198,9 @@ export async function calculateZakat(
   const balanceMap = new Map<number, number>();
   for (const entry of entries) {
     for (const line of entry.lines) {
-      const current = balanceMap.get(line.accountId) || 0;
-      balanceMap.set(line.accountId, current + num(line.debit, 3) - num(line.credit, 3));
+      const aid = line.accountId ?? 0;
+      const current = balanceMap.get(aid) || 0;
+      balanceMap.set(aid, current + num(line.debit, 3) - num(line.credit, 3));
     }
   }
 
@@ -225,7 +226,7 @@ export async function calculateZakat(
   // Long-term investments typically stored in a specific account type or deduced
   // For simplicity, we look for accounts with code patterns related to investments
   const investmentAccounts = accounts.filter(
-    (a) => a.code.startsWith("13") || a.code.startsWith("14") || a.nameAr.includes("استثمار") || a.nameEn?.toLowerCase().includes("investment"),
+    (a) => a.code.startsWith("13") || a.code.startsWith("14") || (a.nameAr ?? '').includes("استثمار") || a.nameEn?.toLowerCase().includes("investment"),
   );
   for (const acc of investmentAccounts) {
     let balance = balanceMap.get(acc.id) || num(acc.balance, 3);
@@ -300,7 +301,7 @@ export async function getFilingReminders(
     distinct: ["country"],
   });
   for (const f of existingFilings) {
-    if (!countries.includes(f.country)) countries.push(f.country);
+    if (!countries.includes(f.country ?? "")) countries.push(f.country ?? "");
   }
 
   const reminders: FilingReminder[] = [];
@@ -441,7 +442,7 @@ export async function checkRetentionCompliance(
     distinct: ["country"],
   });
   for (const f of existingFilings) {
-    if (!countries.includes(f.country)) countries.push(f.country);
+    if (!countries.includes(f.country ?? "")) countries.push(f.country ?? "");
   }
 
   const now = new Date();

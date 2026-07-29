@@ -75,6 +75,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       companySlug,
       name,
+      type: trigger,
       trigger,
       condition: JSON.stringify(condition || {}),
       actions: JSON.stringify(actions),

@@ -105,7 +105,7 @@ export async function scanOverdueInvoices(): Promise<number> {
             list = [];
             adminsByCompany.set(slug, list);
           }
-          list.push(u.uid);
+          list.push(u.uid ?? "");
         }
       } catch {
         // malformed companies field — skip
@@ -188,7 +188,7 @@ export async function scanExpiringResidences(): Promise<number> {
             list = [];
             adminsByCompany.set(slug, list);
           }
-          list.push(u.uid);
+          list.push(u.uid ?? "");
         }
       } catch {
         // malformed companies field — skip
@@ -249,7 +249,7 @@ export async function scanExpiringSubscriptions(): Promise<number> {
 
     for (const company of companies) {
       await createNotification({
-        userUid: founder.uid,
+        userUid: founder.uid ?? "",
         companySlug: company.slug,
         type: "subscription_expiring",
         title: `اشتراك تجريبي ينتهي قريباً: ${company.nameAr || company.name}`,

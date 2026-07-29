@@ -26,7 +26,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;
 
-  const { id } = await params;
+  const { id: idStr } = await params;
+  const id = parseInt(idStr);
   const existing = await db.announcement.findUnique({ where: { id } });
   if (!existing) return apiError("Announcement not found", 404);
 
@@ -53,7 +54,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     adminEmail: founder.email,
     action: "update_announcement",
     targetType: "announcement",
-    targetId: existing.id,
+    targetId: String(existing.id),
     changes: updateData,
   });
 
@@ -65,7 +66,8 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;
 
-  const { id } = await params;
+  const { id: idStr } = await params;
+  const id = parseInt(idStr);
   const existing = await db.announcement.findUnique({ where: { id } });
   if (!existing) return apiError("Announcement not found", 404);
 
@@ -75,7 +77,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     adminEmail: founder.email,
     action: "delete_announcement",
     targetType: "announcement",
-    targetId: existing.id,
+    targetId: String(existing.id),
   });
 
   return NextResponse.json({ ok: true });

@@ -99,7 +99,7 @@ export async function saveProfitSnapshot(
     },
     _sum: { costUsd: true },
   });
-  const aiCostUsd = aiCostAgg._sum.costUsd ?? 0;
+  const aiCostUsd = Number(aiCostAgg._sum.costUsd ?? 0);
 
   // ── 3. Infra cost (estimated) ─────────────────────────────────────────
   // Source: ESTIMATED_INFRA_COST_PER_DAY × daysInPeriod (no real metering in sandbox)
@@ -144,18 +144,18 @@ export async function saveProfitSnapshot(
       companySlug,
       periodStart,
       periodEnd,
-      revenueUsd,
-      infraCostUsd,
-      aiCostUsd,
-      workerCostUsd,
-      profitUsd,
+      revenueUsd: revenueUsd,
+      infraCostUsd: infraCostUsd,
+      aiCostUsd: aiCostUsd,
+      workerCostUsd: workerCostUsd,
+      profitUsd: profitUsd,
     },
     update: {
-      revenueUsd,
-      infraCostUsd,
-      aiCostUsd,
-      workerCostUsd,
-      profitUsd,
+      revenueUsd: revenueUsd,
+      infraCostUsd: infraCostUsd,
+      aiCostUsd: aiCostUsd,
+      workerCostUsd: workerCostUsd,
+      profitUsd: profitUsd,
     },
   });
 
@@ -202,11 +202,11 @@ export async function getProfitHistory(
     companySlug: s.companySlug,
     periodStart: s.periodStart,
     periodEnd: s.periodEnd,
-    revenueUsd: s.revenueUsd,
-    infraCostUsd: s.infraCostUsd,
-    aiCostUsd: s.aiCostUsd,
-    workerCostUsd: s.workerCostUsd,
-    profitUsd: s.profitUsd,
+    revenueUsd: Number(s.revenueUsd),
+    infraCostUsd: Number(s.infraCostUsd),
+    aiCostUsd: Number(s.aiCostUsd),
+    workerCostUsd: Number(s.workerCostUsd),
+    profitUsd: Number(s.profitUsd),
   }));
 }
 
@@ -244,11 +244,11 @@ export async function getPlatformProfit(
     companySlug: "platform",
     periodStart,
     periodEnd,
-    revenueUsd: Math.round((agg._sum.revenueUsd ?? 0) * 100) / 100,
-    infraCostUsd: Math.round((agg._sum.infraCostUsd ?? 0) * 100) / 100,
-    aiCostUsd: Math.round((agg._sum.aiCostUsd ?? 0) * 100) / 100,
-    workerCostUsd: Math.round((agg._sum.workerCostUsd ?? 0) * 100) / 100,
-    profitUsd: Math.round((agg._sum.profitUsd ?? 0) * 100) / 100,
+    revenueUsd: Math.round(Number(agg._sum.revenueUsd ?? 0) * 100) / 100,
+    infraCostUsd: Math.round(Number(agg._sum.infraCostUsd ?? 0) * 100) / 100,
+    aiCostUsd: Math.round(Number(agg._sum.aiCostUsd ?? 0) * 100) / 100,
+    workerCostUsd: Math.round(Number(agg._sum.workerCostUsd ?? 0) * 100) / 100,
+    profitUsd: Math.round(Number(agg._sum.profitUsd ?? 0) * 100) / 100,
     companyCount,
   };
 }

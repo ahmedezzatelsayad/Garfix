@@ -54,7 +54,7 @@ export async function registerWebhook(params: {
     },
   });
 
-  return endpoint.id;
+  return String(endpoint.id);
 }
 
 /** Dispatch an event to all matching webhooks for a tenant. */
@@ -153,7 +153,7 @@ export async function processPendingDeliveries(): Promise<{
           "Content-Type": "application/json",
           "X-Garfix-Signature": `sha256=${signature}`,
           "X-Garfix-Event": delivery.eventType,
-          "X-Garfix-Delivery": delivery.id,
+          "X-Garfix-Delivery": String(delivery.id),
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10_000),
@@ -162,7 +162,7 @@ export async function processPendingDeliveries(): Promise<{
       if (response.ok) {
         await db.webhookDelivery.update({
           where: { id: delivery.id },
-          data: { status: "success", statusCode: response.status, deliveredAt: new Date() },
+          data: { status: "success", statusCode: response.status },
         });
         succeeded++;
       } else {

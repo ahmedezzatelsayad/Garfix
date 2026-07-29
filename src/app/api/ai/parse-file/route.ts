@@ -98,7 +98,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const user = permCheck.user;
 
   // SEC-FIX: Rate limit AI endpoints to prevent cost abuse
-  const limited = await rateLimitResponse(req, "ai-parse-file", LIMITS.AI_BULK, user.uid);
+  const limited = await rateLimitResponse(req, "ai-parse-file", LIMITS.AI_BULK, user.uid ?? "");
   if (limited) return limited;
 
   const body = await parseJsonBody(req);
@@ -111,7 +111,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const t0 = Date.now();
-  logger.info("[parse-file] starting", { user: user.uid, companySlug, fileName, size: fileBase64.length });
+  logger.info("[parse-file] starting", { user: user.uid ?? "", companySlug, fileName, size: fileBase64.length });
 
   try {
     // Parse the Excel file using exceljs
@@ -183,10 +183,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // P0 FIX: log the AI call even though JSON parsing failed — the
       // provider call itself succeeded; the failure is downstream.
       void logAiUsage({
-        companySlug: companySlug || null,
-        userUid: user.uid,
+        companySlug: companySlug ?? "",
+        userUid: user.uid ?? "",
         provider: "z-ai",
-        model: "z-ai-glm",
+        model: 'z-ai-glm',
         endpoint: "parse-file",
         tokensIn: aiResult.usage.prompt_tokens || 0,
         tokensOut: aiResult.usage.completion_tokens || 0,
@@ -207,10 +207,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // ai_usage_logs with real token counts + the AI provider call latency
     // (aiResult.processingMs), distinct from the whole-handler processingMs.
     void logAiUsage({
-      companySlug: companySlug || null,
-      userUid: user.uid,
+      companySlug: companySlug ?? "",
+      userUid: user.uid ?? "",
       provider: "z-ai",
-      model: "z-ai-glm",
+      model: 'z-ai-glm',
       endpoint: "parse-file",
       tokensIn: aiResult.usage.prompt_tokens || 0,
       tokensOut: aiResult.usage.completion_tokens || 0,
@@ -220,9 +220,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await db.aIProcessingLog.create({
       data: {
-        companySlug: companySlug || null,
+        companySlug: companySlug ?? "",
         endpoint: "parse-file",
-        model: "z-ai-glm",
         provider: "z-ai",
         ordersCount: orders.length,
         itemsCount,
@@ -235,8 +234,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
 
     await logAudit({
-      userEmail: user.email, userUid: user.uid,
-      action: "ai_parse_file", entity: "ai", companySlug: companySlug || null,
+      userEmail: user.email, userUid: user.uid ?? "",
+      action: "ai_parse_file", entity: "ai", companySlug: companySlug ?? "",
       details: { fileName, rowsParsed: rows.length, ordersExtracted: orders.length, processingMs, aiMs: aiResult.processingMs },
     });
 
@@ -248,7 +247,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         inputTokens: aiResult.usage.prompt_tokens || 0,
         outputTokens: aiResult.usage.completion_tokens || 0,
         totalTokens: aiResult.usage.total_tokens || 0,
-        model: "z-ai-glm",
         rowsParsed: rows.length,
         ordersCount: orders.length,
         itemsCount,
@@ -260,10 +258,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // P0 FIX: log the failed AI call when the handler itself errored
     // (e.g. upstream provider threw before returning a completion).
     void logAiUsage({
-      companySlug: companySlug || null,
-      userUid: user.uid,
+      companySlug: companySlug ?? "",
+      userUid: user.uid ?? "",
       provider: "z-ai",
-      model: "z-ai-glm",
+      model: 'z-ai-glm',
       endpoint: "parse-file",
       tokensIn: 0,
       tokensOut: 0,

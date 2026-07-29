@@ -160,11 +160,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const user = access.user;
 
   // SEC-FIX: Rate limit AI endpoints to prevent cost abuse
-  const limited = await rateLimitResponse(req, "ai-parse-image", LIMITS.AI_BULK, user.uid);
+  const limited = await rateLimitResponse(req, "ai-parse-image", LIMITS.AI_BULK, user.uid ?? "");
   if (limited) return limited;
 
   const t0 = Date.now();
-  logger.info("[parse-image] starting", { user: user.uid, companySlug, imageSize: imageBase64.length });
+  logger.info("[parse-image] starting", { user: user.uid ?? "", companySlug, imageSize: imageBase64.length });
 
   try {
     // Use the VLM (Vision Language Model) from z-ai-web-dev-sdk
@@ -178,7 +178,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // SEC-M3C4 (Cycle 4): verify magic bytes match the declared MIME type.
     if (!verifyImageMagicBytes(imageBuf, mimeType)) {
       logger.warn("[parse-image] magic-byte mismatch — rejecting", {
-        user: user.uid,
+        user: user.uid ?? "",
         declaredMime: mimeType,
         firstBytes: imageBuf.subarray(0, 8).toString("hex"),
       });
@@ -190,7 +190,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // decoding + auto-product-add + DB writes).
     const aiT0 = Date.now();
     const completion = await ai.chat.completions.createVision({
-      model: "glm-4.5v",
       messages: [
         { role: "system", content: buildVisionPrompt() },
         {
@@ -220,10 +219,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // P0 FIX: log the VLM call even though JSON parsing failed — the
       // provider call itself succeeded; tokens were consumed.
       void logAiUsage({
-        companySlug: companySlug || null,
-        userUid: user.uid,
+        companySlug: companySlug ?? "",
+        userUid: user.uid ?? "",
         provider: "z-ai",
-        model: "z-ai-vlm",
+        model: 'z-ai-glm',
         endpoint: "parse-image",
         tokensIn: usage.prompt_tokens || 0,
         tokensOut: usage.completion_tokens || 0,
@@ -244,10 +243,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // ai_usage_logs with real token counts + the VLM call latency (aiMs),
     // distinct from the whole-handler processingMs.
     void logAiUsage({
-      companySlug: companySlug || null,
-      userUid: user.uid,
+      companySlug: companySlug ?? "",
+      userUid: user.uid ?? "",
       provider: "z-ai",
-      model: "z-ai-vlm",
+      model: 'z-ai-glm',
       endpoint: "parse-image",
       tokensIn: usage.prompt_tokens || 0,
       tokensOut: usage.completion_tokens || 0,
@@ -274,7 +273,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       if (newProducts.length > 0) {
         await db.productCatalog.createMany({
           data: newProducts.map((p) => ({
-            companySlug, name: p.name, sellingPrice: p.sellingPrice, aliases: "[]",
+            companySlug, name: p.name, sellingPrice: p.sellingPrice ?? "0", sku: `AUTO-${Date.now().toString().slice(-6)}`, companyId: 0,
           })),
         });
         logger.info("[parse-image] auto-added products", { count: newProducts.length, companySlug });
@@ -283,13 +282,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await db.aIProcessingLog.create({
       data: {
-        companySlug: companySlug || null,
+        companySlug: companySlug ?? "",
         endpoint: "parse-image",
-        model: "z-ai-vlm",
         provider: "z-ai",
         ordersCount: orders.length,
         itemsCount,
-        processingMs,
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0,
         totalTokens: usage.total_tokens || 0,
@@ -299,10 +296,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await logAudit({
       userEmail: user.email,
-      userUid: user.uid,
+      userUid: user.uid ?? "",
       action: "ai_parse_image",
       entity: "ai",
-      companySlug: companySlug || null,
+      companySlug: companySlug ?? "",
       details: { ordersCount: orders.length, itemsCount, processingMs, imageSize: imageBase64.length },
     });
 
@@ -314,7 +311,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0,
         totalTokens: usage.total_tokens || 0,
-        model: "z-ai-vlm",
         ordersCount: orders.length,
         itemsCount,
       },
@@ -326,10 +322,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // P0 FIX: log the failed VLM call when the handler itself errored
     // (e.g. upstream provider threw before returning a completion).
     void logAiUsage({
-      companySlug: companySlug || null,
-      userUid: user.uid,
+      companySlug: companySlug ?? "",
+      userUid: user.uid ?? "",
       provider: "z-ai",
-      model: "z-ai-vlm",
+      model: 'z-ai-glm',
       endpoint: "parse-image",
       tokensIn: 0,
       tokensOut: 0,
@@ -340,9 +336,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await db.aIProcessingLog.create({
       data: {
-        companySlug: companySlug || null,
+        companySlug: companySlug ?? "",
         endpoint: "parse-image",
-        model: "z-ai-vlm",
         provider: "z-ai",
         ordersCount: 0,
         itemsCount: 0,

@@ -98,7 +98,7 @@ export async function computeAndSaveScore(companySlug: string): Promise<AIScoreR
     ruleHitPct = Math.round((ruleCount / totalRequests) * 1000) / 10;
     aiCallPct = Math.round((aiCount / totalRequests) * 1000) / 10;
 
-    const totalCost = logs.reduce((sum, l) => sum + l.costUsd, 0);
+    const totalCost = logs.reduce((sum, l) => sum + Number(l.costUsd), 0);
     avgCostPerRequest = Math.round((totalCost / totalRequests) * 1e6) / 1e6;
   }
 
@@ -117,15 +117,13 @@ export async function computeAndSaveScore(companySlug: string): Promise<AIScoreR
       score,
       cacheHitPct,
       ruleHitPct,
-      aiCallPct,
-      avgCostPerRequest,
+      breakdown: JSON.stringify({ aiCallPct, avgCostPerRequest }),
     },
     update: {
       score,
       cacheHitPct,
       ruleHitPct,
-      aiCallPct,
-      avgCostPerRequest,
+      breakdown: JSON.stringify({ aiCallPct, avgCostPerRequest }),
     },
   });
 
@@ -174,11 +172,11 @@ export async function getLatestScore(
 
   return {
     period: snapshot.period,
-    score: snapshot.score,
-    cacheHitPct: snapshot.cacheHitPct,
-    ruleHitPct: snapshot.ruleHitPct,
-    aiCallPct: snapshot.aiCallPct,
-    avgCostPerRequest: snapshot.avgCostPerRequest,
+    score: Number(snapshot.score),
+    cacheHitPct: Number(snapshot.cacheHitPct),
+    ruleHitPct: Number(snapshot.ruleHitPct),
+    aiCallPct: snapshot.breakdown ? (JSON.parse(snapshot.breakdown) as { aiCallPct: number }).aiCallPct : 0,
+    avgCostPerRequest: snapshot.breakdown ? (JSON.parse(snapshot.breakdown) as { avgCostPerRequest: number }).avgCostPerRequest : 0,
   };
 }
 
@@ -195,16 +193,19 @@ export async function getAllScores(): Promise<AIScoreResult[]> {
     orderBy: { score: "asc" },
   });
 
-  return snapshots.map((s) => ({
-    companySlug: s.companySlug,
-    period: s.period,
-    score: s.score,
-    cacheHitPct: s.cacheHitPct,
-    ruleHitPct: s.ruleHitPct,
-    aiCallPct: s.aiCallPct,
-    avgCostPerRequest: s.avgCostPerRequest,
-    alerted: s.score < SCORE_ALERT_THRESHOLD,
-  }));
+  return snapshots.map((s) => {
+    const breakdown = s.breakdown ? (JSON.parse(s.breakdown) as { aiCallPct: number; avgCostPerRequest: number }) : { aiCallPct: 0, avgCostPerRequest: 0 };
+    return {
+      companySlug: s.companySlug,
+      period: s.period,
+      score: Number(s.score),
+      cacheHitPct: Number(s.cacheHitPct),
+      ruleHitPct: Number(s.ruleHitPct),
+      aiCallPct: breakdown.aiCallPct,
+      avgCostPerRequest: breakdown.avgCostPerRequest,
+      alerted: Number(s.score) < SCORE_ALERT_THRESHOLD,
+    };
+  });
 }
 
 // ─── Internal: triggerScoreAlerts ───────────────────────────────────────────

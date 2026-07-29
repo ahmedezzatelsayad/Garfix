@@ -110,7 +110,8 @@ export async function getAllocationMap(): Promise<Record<string, AllocationInfo>
   let totalIdleExcess = 0;
 
   for (const rt of runtimes) {
-    const slug = rt.company.slug;
+    const slug = rt.company.slug ?? "";
+    if (!slug) continue;
     const tier = planToTier(rt.company.plan);
     const ceiling = TIER_WORKER_LIMITS[tier] as number;
     const queueDepth = await getCompanyQueueDepth(slug);

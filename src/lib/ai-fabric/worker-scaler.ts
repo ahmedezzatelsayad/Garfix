@@ -125,7 +125,7 @@ export async function scaleWorkers(): Promise<void> {
   });
 
   for (const rt of runtimes) {
-    const slug = rt.company.slug;
+    const slug = rt.company.slug ?? "";
     const tier = planToTier(rt.company.plan);
     const ceiling = TIER_WORKER_LIMITS[tier] as number;
     const queueName = `${AI_QUEUE_PREFIX}${slug}`;
@@ -195,7 +195,8 @@ export async function getActiveWorkerCounts(): Promise<Record<string, number>> {
 
   const map: Record<string, number> = {};
   for (const rt of runtimes) {
-    map[rt.company.slug] = rt.workerPoolSize;
+    const slug = rt.company.slug;
+    if (slug) map[slug] = rt.workerPoolSize;
   }
   return map;
 }

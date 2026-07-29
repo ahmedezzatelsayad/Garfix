@@ -42,9 +42,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where,
     orderBy: { date: "desc" },
     take: 500,
-    include: {
-      supplier: { select: { id: true, name: true, nameEn: true, email: true, phone: true } },
-    },
   });
 
   return apiOk({
@@ -138,9 +135,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       total: totals.total,
       notes: data.notes || null,
       status: "draft",
-    },
-    include: {
-      supplier: { select: { id: true, name: true, nameEn: true, email: true, phone: true } },
     },
   });
 

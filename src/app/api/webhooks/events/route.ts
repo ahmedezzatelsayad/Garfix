@@ -95,7 +95,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Verify the endpoint exists and belongs to the company
   const endpoint = await db.webhookEndpoint.findUnique({
-    where: { id: validation.data.endpointId },
+    where: { id: Number(validation.data.endpointId) },
   });
   if (!endpoint) return apiError("Endpoint not found", 404);
   if (endpoint.companySlug !== companySlug && !isFounder) {

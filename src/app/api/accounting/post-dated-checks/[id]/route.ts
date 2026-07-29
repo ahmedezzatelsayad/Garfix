@@ -41,7 +41,6 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 
   const check = await db.postDatedCheck.findFirst({
     where: { id: parseInt(id), companySlug },
-    include: { client: true, supplier: true, glAccount: true },
   });
   if (!check) return apiError("Post-dated check not found", 404);
 

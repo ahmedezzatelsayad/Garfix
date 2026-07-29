@@ -180,19 +180,19 @@ export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData>> {
     const snapshots = await db.profitSnapshot.findMany({ orderBy: { periodStart: "asc" }, take: 14 });
     const pnlChartData = snapshots.map((s) => ({
       date: s.periodStart.toISOString().slice(5, 10),
-      revenue: Math.round(s.revenueUsd * 100) / 100,
-      aiCost: Math.round(s.aiCostUsd * 100) / 100,
-      infraCost: Math.round(s.infraCostUsd * 100) / 100,
-      profit: Math.round(s.profitUsd * 100) / 100,
+      revenue: Math.round(Number(s.revenueUsd) * 100) / 100,
+      aiCost: Math.round(Number(s.aiCostUsd) * 100) / 100,
+      infraCost: Math.round(Number(s.infraCostUsd) * 100) / 100,
+      profit: Math.round(Number(s.profitUsd) * 100) / 100,
     }));
     
     // Cascade chart data
     const cascadeChartData: FinOpsData["cascadeChartData"] = cascadeGroups
       .map((g) => ({
-        stage: g.resolvedBy,
+        stage: g.resolvedBy ?? "unknown",
         count: g._count,
         pct: totalRequestsMtd > 0 ? Math.round((g._count / totalRequestsMtd) * 1000) / 10 : 0,
-        fill: CASCADE_COLORS[g.resolvedBy] ?? "hsl(0, 0%, 70%)",
+        fill: CASCADE_COLORS[g.resolvedBy ?? "unknown"] ?? "hsl(0, 0%, 70%)",
       }))
       .sort((a, b) => b.count - a.count);
     

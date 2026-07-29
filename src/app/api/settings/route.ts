@@ -76,7 +76,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     } else {
       await db.platformSettings.create({
         data: {
-          key, category: key.split(".")[0] || "general",
+          key, companySlug: "platform", category: key.split(".")[0] || "general",
           valueType, value: newValue, updatedBy: result.user.email,
         },
       });

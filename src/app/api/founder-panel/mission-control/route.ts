@@ -158,7 +158,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MissionControl
     const totalCascadeRequests = cascadeGroups.reduce((s, g) => s + g._count, 0);
     const cascadePcts: Record<string, number> = {};
     for (const g of cascadeGroups) {
-      cascadePcts[g.resolvedBy] =
+      cascadePcts[g.resolvedBy ?? "unknown"] =
         totalCascadeRequests > 0
           ? Math.round((g._count / totalCascadeRequests) * 1000) / 10
           : 0;

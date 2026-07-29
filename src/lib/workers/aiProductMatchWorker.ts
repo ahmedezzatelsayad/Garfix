@@ -160,17 +160,14 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
           source: "ai",
           confidence: aiResult.confidence,
           isVerified: true,
-          createdBy: "ai-resolver",
         },
         create: {
           productCatalogId: candidateProductId,
           companySlug,
           alias: newProductName.trim(),
-          language: "unspecified",
           source: "ai",
           confidence: aiResult.confidence,
           isVerified: true,
-          createdBy: "ai-resolver",
         },
       });
       logger.info("[ai-worker] alias auto-linked by AI", {

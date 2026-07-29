@@ -87,12 +87,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const progress = await db.setupWizardProgress.upsert({
       where: { companySlug: data.companySlug },
       update: {
-        currentStep: data.step || existing?.currentStep || 1,
+        currentStep: String(data.step || existing?.currentStep || 1),
         data: JSON.stringify(mergedData),
       },
       create: {
         companySlug: data.companySlug,
-        currentStep: data.step || 1,
+        currentStep: String(data.step || 1),
         data: JSON.stringify(mergedData),
       },
     });
@@ -123,13 +123,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     if (existing === 0) {
       await db.account.createMany({
         data: template.map((a) => ({
+          companyId: company.id,
           companySlug,
           code: a.code,
+          name: a.nameAr ?? a.nameEn,
           nameAr: a.nameAr,
           nameEn: a.nameEn,
           type: a.type,
           balance: a.balance || "0",
-          currency: company.currency,
         })),
       });
       accountsCreated = template.length;
@@ -170,7 +171,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     where: { companySlug },
     update: {
       completed: true,
-      currentStep: 10,
+      currentStep: "10",
       data: JSON.stringify({
         businessType,
         hasEmployees: data.hasEmployees,
@@ -181,7 +182,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     create: {
       companySlug,
       completed: true,
-      currentStep: 10,
+      currentStep: "10",
       data: JSON.stringify({
         businessType,
         hasEmployees: data.hasEmployees,

@@ -79,9 +79,10 @@ async function safeRun(job: string, fn: () => Promise<string>): Promise<CronJobR
 async function getActiveCompanies(): Promise<Array<{ slug: string }>> {
   try {
     const { db } = await import("@/lib/db");
-    return db.company.findMany({
+    const companies = await db.company.findMany({
       select: { slug: true },
     });
+    return companies.filter((c): c is { slug: string } => c.slug !== null);
   } catch {
     return [];
   }

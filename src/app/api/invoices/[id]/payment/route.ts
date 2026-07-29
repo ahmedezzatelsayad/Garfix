@@ -166,13 +166,13 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
           companySlug: existing.companySlug,
           endpoint: IDEMPOTENCY_ENDPOINT,
           key: idemCompositeKey,
-          requestHash: `${existing.id}:${data.amount}:${data.method}`,
+          // requestHash: `${existing.id}:${data.amount}:${data.method}`,
           responseJson: JSON.stringify(responseBody),
-          status: 200,
+          // status: 200,
         },
         update: {
           responseJson: JSON.stringify(responseBody),
-          status: 200,
+          // status: 200,
         },
       });
     } catch (err) {

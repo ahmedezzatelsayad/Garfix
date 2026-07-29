@@ -52,8 +52,7 @@ const UpdateSchema = z.object({
   defaultTaxRate: z.string().optional(),
   openrouterModel: z.string().optional(),
   weekendDays: z.string().optional(),
-  ramadanHours: z.boolean().optional(),
-});
+  ramadanHours: z.boolean().optional() });
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -86,8 +85,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   }
   const company = await db.company.update({
     where: { slug },
-    data: parsed.data,
-  });
+    data: parsed.data });
   await logAudit({
     userEmail: user.email,
     userUid: user.uid,
@@ -95,16 +93,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     entity: "company",
     entityId: company.id,
     companySlug: slug,
-    details: parsed.data,
-  });
+    details: parsed.data });
   return NextResponse.json({ ok: true, company });
 });
 
 // P0.3 fix: schema for the safe DELETE — matches tenants/[slug] contract.
 const DeleteSchema = z.object({
   hardDelete: z.boolean().default(false),
-  typeToConfirm: z.string().optional(),
-});
+  typeToConfirm: z.string().optional() });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   // P0.3 fix: use requireFounder (not inline isFounderEmail) so the
@@ -127,20 +123,17 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     // Financial records retained — same behavior as tenants/[slug] soft-delete.
     await db.company.update({
       where: { slug },
-      data: { deletedAt: new Date(), subscriptionStatus: "suspended" },
-    });
+      data: { deletedAt: new Date(), subscriptionStatus: "suspended" } });
     await logAdminAction({
       adminEmail: founder.email,
       action: "soft_delete_company_legacy_route",
       targetType: "company",
       targetId: String(existing.id),
-      changes: { slug, name: existing.name, route: "companies/[slug]" },
-    });
+      changes: { slug, name: existing.name, route: "companies/[slug]" } });
     return NextResponse.json({
       ok: true,
       mode: "soft",
-      message: `Company "${existing.name}" suspended. Use /api/platform-admin/tenants/${slug} for the canonical delete endpoint.`,
-    });
+      message: `Company "${existing.name}" suspended. Use /api/platform-admin/tenants/${slug} for the canonical delete endpoint.` });
   }
 
   // Hard delete: requires type-to-confirm matching the company name.
@@ -153,8 +146,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     action: "hard_delete_company_legacy_route",
     targetType: "company",
     targetId: String(existing.id),
-    changes: { slug, name: existing.name, plan: existing.plan, route: "companies/[slug]" },
-  });
+    changes: { slug, name: existing.name, plan: existing.plan, route: "companies/[slug]" } });
 
   // Cascade: financial records SOFT-DELETE (retention), operational records PHYSICAL DELETE.
   // Mirrors the tenants/[slug] DELETE transaction shape exactly.
@@ -173,27 +165,22 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.journalEntryLine.deleteMany({ where: { entry: { companySlug: slug } } }).catch(() => {});
     await tx.journalEntry.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
-    }).catch(() => {});
+      data: { deletedAt: now } }).catch(() => {});
     await tx.account.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.invoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
-    }).catch(() => {});
+      data: { deletedAt: now } }).catch(() => {});
     await tx.purchaseInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
-    }).catch(() => {});
+      data: { deletedAt: now } }).catch(() => {});
     await tx.client.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.eInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
-    }).catch(() => {});
+      data: { deletedAt: now } }).catch(() => {});
     await tx.orderDelivery.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.paymentTransaction.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now, deletedBy: founderEmail },
-    }).catch(() => {});
+      data: { deletedAt: now } }).catch(() => {});
     await tx.stockMovement.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.productMatchAudit.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.setupWizardProgress.deleteMany({ where: { companySlug: slug } }).catch(() => {});
@@ -205,6 +192,5 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   return NextResponse.json({
     ok: true,
     mode: "hard",
-    message: `Company "${existing.name}" deleted. Financial records retained for 5-year tax compliance. (Legacy route — prefer /api/platform-admin/tenants/${slug}.)`,
-  });
+    message: `Company "${existing.name}" deleted. Financial records retained for 5-year tax compliance. (Legacy route — prefer /api/platform-admin/tenants/${slug}.)` });
 });
