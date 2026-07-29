@@ -72,7 +72,18 @@ ENV NEXT_TELEMETRY_DISABLED=1
 #   addgroup/adduser, which alpine doesn't ship by default). The
 #   HEALTHCHECK below is rewritten to use Node's built-in `fetch` instead
 #   of curl.
-RUN apk add --no-cache shadow
+#
+# CONT-002 FIX: remove npm + bundled deps from production image.
+#   The node:22-alpine base image ships with npm and its bundled deps
+#   (tar@7.5.11, picomatch@4.0.3, sigstore@3.1.0, @sigstore/core@2.0.0,
+#   ip-address@10.1.0). These have known CVEs (CVE-2026-59873 CRITICAL,
+#   CVE-2026-33671 HIGH, CVE-2026-48815 HIGH, etc.). Since we run a
+#   Next.js standalone server.js directly with `node server.js`, npm
+#   is NOT needed at runtime. Removing it eliminates 12+ CVEs from the
+#   production image.
+RUN apk add --no-cache shadow && \
+    npm uninstall -g npm && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
