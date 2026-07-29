@@ -442,7 +442,7 @@ function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: B
 
   // Auto-set currency when selecting source account
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     if (fromAccount) setCurrency(fromAccount.currency);
   }, [fromAccount]);
 

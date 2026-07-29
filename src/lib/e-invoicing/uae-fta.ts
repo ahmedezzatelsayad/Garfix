@@ -365,7 +365,7 @@ export function determineUaeFtaInvoiceType(invoice: Record<string, unknown>): Ua
  */
 export function computeUaeFtaInvoiceHash(xml: string): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const nodeCrypto = require("node:crypto");
     return nodeCrypto.createHash("sha256").update(xml, "utf8").digest("hex");
   } catch {
@@ -856,7 +856,7 @@ export function signUaeFtaInvoice(
   const invoiceHash = computeUaeFtaInvoiceHash(xml);
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const nodeCrypto = require("node:crypto");
 
     // Sign with PKI (placeholder: uses provided key material)
