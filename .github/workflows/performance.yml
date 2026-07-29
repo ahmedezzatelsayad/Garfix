@@ -215,13 +215,16 @@ jobs:
 
       - name: Run Prisma migrations
         run: |
-          echo "Running Prisma migrations..."
-          if ! bun run db:deploy 2>&1 | tee migrate-output.txt; then
-            echo "❌ Prisma migration FAILED — app may not start correctly"
+          echo "Pushing database schema..."
+          # Use db:push instead of migrate deploy because the migration files
+          # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
+          # db:push reads the Prisma schema directly and syncs it to the database.
+          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
+            echo "❌ Prisma db push FAILED — app may not start correctly"
             echo "Review migrate-output.txt for details"
             exit 1
           fi
-          echo "✅ Migrations applied successfully"
+          echo "✅ Database schema synced successfully"
 
       - name: Start application
         run: |

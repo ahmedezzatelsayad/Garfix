@@ -14,6 +14,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { db } from "./db";
 import { logger } from "./logger";
 import { enqueue, QUEUE_NAMES } from "./queues";
@@ -75,37 +76,60 @@ function resolveSafeBackupPath(label: string, ts: string): string | null {
 }
 
 /**
- * Run a backup. Copies the SQLite database file to BACKUP_DIR with a
- * timestamped name. Returns the file path on success.
+ * Run a backup. Uses pg_dump for PostgreSQL or VACUUM INTO for SQLite.
+ * Returns the file path on success.
  */
 export async function runBackup(label = "scheduled"): Promise<BackupResult> {
   const start = Date.now();
+  const dbUrl = process.env.DATABASE_URL || "";
+  const isPostgres = dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://");
+
   try {
     await fs.mkdir(BACKUP_DIR, { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    const dbPath = (process.env.DATABASE_URL || "").replace(/^file:/, "");
-    if (!dbPath) {
-      throw new Error("DATABASE_URL not set or not a file path");
-    }
     const backupPath = resolveSafeBackupPath(label, ts);
     if (!backupPath) {
       throw new Error("Invalid backup label — refused to proceed (path traversal or invalid characters)");
     }
 
+    if (isPostgres) {
+      // PostgreSQL backup: use pg_dump via child_process
+      const encPath = backupPath.replace(/\.db$/, ".sql.enc");
+      const dumpPath = backupPath.replace(/\.db$/, ".sql");
+      try {
+        // pg_dump is the standard PostgreSQL backup tool.
+        // If not installed, the backup fails gracefully (non-fatal).
+        // execFileSync is imported at the top of this 'use node' module.
+        execFileSync("pg_dump", [dbUrl, "-f", dumpPath], { timeout: 30000 });
+        // Encrypt the dump file
+        const rawBuffer = await fs.readFile(dumpPath);
+        const b64Content = rawBuffer.toString("base64");
+        const encrypted = encryptSecret(b64Content);
+        await fs.writeFile(encPath, encrypted);
+        await fs.unlink(dumpPath); // remove unencrypted temp file
+        const durationMs = Date.now() - start;
+        const stat = await fs.stat(encPath);
+        logger.info("[backup] PostgreSQL backup completed (pg_dump, encrypted)", { backupPath: encPath, size: stat.size, durationMs });
+        await pruneOldBackups();
+        return { ok: true, filePath: encPath, size: stat.size, durationMs };
+      } catch (pgErr) {
+        logger.warn("[backup] pg_dump not available or failed — skipping PostgreSQL backup", {
+          err: pgErr instanceof Error ? pgErr.message : String(pgErr),
+        });
+        return { ok: false, durationMs: Date.now() - start, error: `pg_dump failed: ${pgErr instanceof Error ? pgErr.message : String(pgErr)}` };
+      }
+    }
+
+    // SQLite backup (original logic)
+    const dbPath = dbUrl.replace(/^file:/, "");
+    if (!dbPath) {
+      throw new Error("DATABASE_URL not set or not a file path");
+    }
     // For SQLite, the simplest safe backup is to use Prisma's $executeRaw to
     // call the SQLite backup API. better-sqlite3 supports this via .backup().
     // Prisma doesn't expose .backup() directly, so we fall back to file copy
     // after a VACUUM INTO — which produces a consistent snapshot.
     try {
-      // P0 FIX (SQL injection): use $executeRaw with a parameterized approach.
-      // SQLite's VACUUM INTO doesn't accept bound parameters for the filename,
-      // so we MUST validate the filename strictly before interpolation.
-      // backupPath is the validated ABSOLUTE path; its filename portion is
-      // confirmed to match ^[a-zA-Z0-9._-]+\.db$ and the full path is
-      // confirmed to stay inside BACKUP_DIR.
-      //
-      // v1.2: escape ALL single quotes in the path (not just in the filename)
-      // so paths containing quotes (rare but legal on Linux) are safe.
       const sql = `VACUUM INTO '${backupPath.replace(/'/g, "''")}'`;
       await db.$executeRawUnsafe(sql);
     } catch (vacErr) {
@@ -145,7 +169,7 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
 async function pruneOldBackups(): Promise<void> {
   try {
     const files = await fs.readdir(BACKUP_DIR);
-    const backups = files.filter((f) => f.endsWith(".db.enc")).sort(); // ISO timestamps sort naturally
+    const backups = files.filter((f) => f.endsWith(".db.enc") || f.endsWith(".sql.enc")).sort(); // ISO timestamps sort naturally
     if (backups.length <= MAX_BACKUPS) return;
     const toDelete = backups.slice(0, backups.length - MAX_BACKUPS);
     for (const f of toDelete) {
@@ -163,7 +187,7 @@ export async function listBackups(): Promise<Array<{ name: string; size: number;
     const files = await fs.readdir(BACKUP_DIR);
     const result: Array<{ name: string; size: number; createdAt: Date }> = [];
     for (const f of files) {
-      if (!f.endsWith(".db.enc")) continue;
+      if (!f.endsWith(".db.enc") && !f.endsWith(".sql.enc")) continue;
       const stat = await fs.stat(path.join(BACKUP_DIR, f));
       result.push({ name: f, size: stat.size, createdAt: stat.mtime });
     }
