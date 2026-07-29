@@ -254,8 +254,9 @@ describe("P1.3: E-Invoicing retry + ack-polling", () => {
 
   it("pollSubmissionAck returns TIMEOUT when budget exhausted", async () => {
     const { pollSubmissionAck } = await import("@/lib/e-invoicing/retry");
-    const result = await pollSubmissionAck({
-      checkStatus: async () => ({ state: "PENDING" }),
+    type TestState = "CLEARED" | "REJECTED" | "PENDING" | "TIMEOUT";
+    const result = await pollSubmissionAck<TestState>({
+      checkStatus: async () => ({ state: "PENDING" as TestState }),
       successStates: ["CLEARED"],
       failureStates: ["REJECTED"],
       pendingStates: ["PENDING"],

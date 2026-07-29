@@ -16,7 +16,7 @@
  *  - We control matchProduct's behavior via the `tx` argument that
  *    syncInventoryOnSale/Purchase pass to it. Specifically, `tx.productAlias.
  *    findUnique` is a stateful mock whose return values are queued per-test.
- *  - We monkey-patch `db.featureFlag` and `db.platformSettingss` (used by
+ *  - We monkey-patch `db.featureFlag` and `db.platformSettings` (used by
  *    matchProduct's getTenantConfig) in beforeAll/afterAll. We do NOT use
  *    `mock.module("@/lib/db", …)` because that would also leak into
  *    productMatcher.test.ts.
@@ -48,7 +48,7 @@ import { invalidateKillSwitchCache } from "@/lib/productMatcher";
 // Import the sync entrypoints AFTER the db import is resolved.
 import { syncInventoryOnSale, syncInventoryOnPurchase } from "@/lib/inventorySync";
 
-// ─── Monkey-patch db.featureFlag + db.platformSettingss ─────────────────────────
+// ─── Monkey-patch db.featureFlag + db.platformSettings ─────────────────────────
 //
 // matchProduct's getTenantConfig reads the kill-switch flag + per-tenant
 // thresholds from the global `db` (not from `tx`). We need it to return
@@ -56,18 +56,18 @@ import { syncInventoryOnSale, syncInventoryOnPurchase } from "@/lib/inventorySyn
 // them in afterAll so other test files are unaffected.
 
 const _origFeatureFlag = (db as any).featureFlag;
-const _origPlatformSettings = (db as any).platformSettingss;
+const _origPlatformSettings = (db as any).platformSettings;
 
 beforeAll(() => {
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSettingss = { findMany: async () => [] };
+  (db as any).platformSettings = { findMany: async () => [] };
 });
 
 afterAll(() => {
   (db as any).featureFlag = _origFeatureFlag;
-  (db as any).platformSettingss = _origPlatformSettings;
+  (db as any).platformSettings = _origPlatformSettings;
 });
 
 // ─── tx mock factory ──────────────────────────────────────────────────────────

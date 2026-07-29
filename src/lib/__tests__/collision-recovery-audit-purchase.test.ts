@@ -52,7 +52,7 @@
  * =============
  * Same monkey-patching pattern as `collision-recovery-audit.test.ts`:
  * - Use the REAL `matchProduct` (not mocked).
- * - Monkey-patch `db.featureFlag` + `db.platformSettingss` so the matcher's
+ * - Monkey-patch `db.featureFlag` + `db.platformSettings` so the matcher's
  *   `getTenantConfig` sees kill-switch ON + no custom thresholds.
  * - Build a fresh fake `tx` per test via `makeTx(opts)` whose every Prisma
  *   method is a `mock()` so we can assert call counts + arg shapes.
@@ -63,21 +63,21 @@ import { db } from "@/lib/db";
 import { invalidateKillSwitchCache } from "@/lib/productMatcher";
 import { syncInventoryOnPurchase } from "@/lib/inventorySync";
 
-// ─── Monkey-patch db.featureFlag + db.platformSettingss ─────────────────────────
+// ─── Monkey-patch db.featureFlag + db.platformSettings ─────────────────────────
 
 const _origFeatureFlag = (db as any).featureFlag;
-const _origPlatformSettings = (db as any).platformSettingss;
+const _origPlatformSettings = (db as any).platformSettings;
 
 beforeAll(() => {
   (db as any).featureFlag = {
     findUnique: async () => ({ key: "product-auto-matching", isActive: true }),
   };
-  (db as any).platformSettingss = { findMany: async () => [] };
+  (db as any).platformSettings = { findMany: async () => [] };
 });
 
 afterAll(() => {
   (db as any).featureFlag = _origFeatureFlag;
-  (db as any).platformSettingss = _origPlatformSettings;
+  (db as any).platformSettings = _origPlatformSettings;
 });
 
 // ─── tx mock factory ──────────────────────────────────────────────────────────

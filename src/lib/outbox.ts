@@ -92,9 +92,17 @@ export interface OutboxEventRow {
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
-const MAX_ATTEMPTS = parseInt(process.env.OUTBOX_MAX_ATTEMPTS || "10", 10);
-const BATCH_SIZE = parseInt(process.env.OUTBOX_BATCH_SIZE || "50", 10);
-const RELAY_INTERVAL_MS = parseInt(process.env.OUTBOX_RELAY_INTERVAL_MS || "1000", 10);
+// Read at call time (not module load) so tests can override via env vars
+// without needing to re-import the module.
+function getMaxAttempts(): number {
+  return parseInt(process.env.OUTBOX_MAX_ATTEMPTS || "10", 10);
+}
+function getBatchSize(): number {
+  return parseInt(process.env.OUTBOX_BATCH_SIZE || "50", 10);
+}
+function getRelayIntervalMs(): number {
+  return parseInt(process.env.OUTBOX_RELAY_INTERVAL_MS || "1000", 10);
+}
 
 // ─── Producer API ──────────────────────────────────────────────────────────
 
@@ -154,9 +162,9 @@ let relayRunning = false;
 export function startOutboxRelay(): void {
   if (relayTimer) return;
   logger.info("[outbox] relay worker starting", {
-    intervalMs: RELAY_INTERVAL_MS,
-    batchSize: BATCH_SIZE,
-    maxAttempts: MAX_ATTEMPTS,
+    intervalMs: getRelayIntervalMs(),
+    batchSize: getBatchSize(),
+    maxAttempts: getMaxAttempts(),
   });
   relayTimer = setInterval(async () => {
     if (relayRunning) return;
@@ -170,7 +178,7 @@ export function startOutboxRelay(): void {
     } finally {
       relayRunning = false;
     }
-  }, RELAY_INTERVAL_MS);
+  }, getRelayIntervalMs());
   // Don't keep the process alive just for the relay — instrumentation.ts
   // owns the lifecycle.
   relayTimer.unref?.();
@@ -203,7 +211,7 @@ export async function processOutboxBatch(): Promise<{
   const events = await db.outboxEvent.findMany({
     where: { status: "pending" },
     orderBy: { createdAt: "asc" },
-    take: BATCH_SIZE,
+    take: getBatchSize(),
   });
 
   let published = 0;
@@ -236,7 +244,7 @@ export async function processOutboxBatch(): Promise<{
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       const newAttempts = evt.attempts + 1;
-      const isDead = newAttempts >= MAX_ATTEMPTS;
+      const isDead = newAttempts >= getMaxAttempts();
       await db.outboxEvent.update({
         where: { id: evt.id },
         data: {
