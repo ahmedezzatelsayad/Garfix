@@ -1336,17 +1336,22 @@ model Notification {
 // ─── Job Queue (matches db.jobQueue) ───
 
 model JobQueue {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   queue       String
   type        String
-  data        String   @default("{}")
-  status      String   @default("pending") // pending, running, completed, failed
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
-  scheduledAt DateTime @default(now())
+  data        String    @default("{}")
+  status      String    @default("pending") // pending, running, completed, failed
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  scheduledAt DateTime  @default(now())
   startedAt   DateTime?
   completedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  @@index([status, scheduledAt])
+  @@index([status, lockedAt])
   @@map("job_queue")
 }
 

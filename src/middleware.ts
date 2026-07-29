@@ -25,6 +25,30 @@ const PUBLIC_ROUTES = [
   "/api/landing-content",
 ];
 
+// Non-API page routes that don't require authentication (landing page, legal pages, etc.)
+// These get security headers applied but skip the auth check.
+const PUBLIC_PAGE_PREFIXES = [
+  "/",
+  "/contact",
+  "/cookies",
+  "/privacy",
+  "/terms",
+  "/help",
+  "/status",
+  "/partners",
+  "/refund",
+  "/api-docs",
+];
+
+function isPublicPage(pathname: string): boolean {
+  // Exact match on root
+  if (pathname === "/") return true;
+  // Prefix match (e.g. /contact, /privacy)
+  return PUBLIC_PAGE_PREFIXES.some(
+    (p) => p !== "/" && (pathname === p || pathname.startsWith(p + "/")),
+  );
+}
+
 // Routes exempt from CSRF verification even though they are POST and protected.
 // Auth refresh only rotates tokens (no state change) and cannot be read cross-origin
 // (access token is httpOnly). Including it in CSRF enforcement would break
@@ -126,11 +150,19 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
   const ip = getClientIp(req);
 
-  // ── 1. Public routes: rate-limit by IP, skip auth ──────────────────────
+  // ── 1. Public API routes: rate-limit by IP, skip auth ──────────────────
   if (isPublicRoute(pathname)) {
     const limited = await rateLimitResponse(req, "pub", GENERAL_API_LIMIT, ip);
     if (limited) return withSecurityHeaders(limited, pathname);
 
+    const response = NextResponse.next();
+    return withSecurityHeaders(response, pathname);
+  }
+
+  // ── 1b. Public page routes (/, /contact, /privacy, etc.): skip auth ────
+  // Security headers are still applied. These are marketing/legal pages that
+  // shouldn't require login.
+  if (isPublicPage(pathname)) {
     const response = NextResponse.next();
     return withSecurityHeaders(response, pathname);
   }
