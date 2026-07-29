@@ -47,8 +47,9 @@ RUN bun run db:generate
 RUN bun run build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────
-# Use Node.js for runtime — Next.js standalone server.js requires Node.js APIs
-# (Bun 1.3.x has native module compatibility issues with Next.js standalone)
+# Use Node.js for runtime — `next start` requires Node.js.
+# Standard Next.js output (no standalone) — works the same way as
+# chat.z.ai publish flow, simplifying ops.
 #
 # MED-006 (Cycle 2 NOTE): base images are pinned by TAG, not by digest.
 #   Pinning by digest would prevent supply-chain attacks via upstream image
@@ -66,39 +67,37 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Install bun runtime (small footprint) so we can use `bun run start`
+RUN npm install -g bun
+
 # HIGH-006 FIX (Cycle 2): remove `curl` from the production image.
-#   `curl` is a common attacker tool for lateral movement and data
-#   exfiltration once RCE is achieved. We install only `shadow` (for
-#   addgroup/adduser, which alpine doesn't ship by default). The
-#   HEALTHCHECK below is rewritten to use Node's built-in `fetch` instead
-#   of curl.
-#
-# CONT-002 FIX: remove npm + bundled deps from production image.
-#   The node:22-alpine base image ships with npm and its bundled deps
-#   (tar@7.5.11, picomatch@4.0.3, sigstore@3.1.0, @sigstore/core@2.0.0,
-#   ip-address@10.1.0). These have known CVEs (CVE-2026-59873 CRITICAL,
-#   CVE-2026-33671 HIGH, CVE-2026-48815 HIGH, etc.). Since we run a
-#   Next.js standalone server.js directly with `node server.js`, npm
-#   is NOT needed at runtime. Removing it eliminates 12+ CVEs from the
-#   production image.
-RUN apk add --no-cache shadow && \
-    npm uninstall -g npm && \
-    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN apk add --no-cache shadow
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Create storage directory for backups
 RUN mkdir -p /app/storage/backups && chown nextjs:nodejs /app/storage
 
-# Copy standalone build output
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy standard Next.js build output (no standalone)
+COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/bun.lock ./bun.lock
+COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
+COPY --from=builder /app/tailwind.config.ts ./tailwind.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/components.json ./components.json
+COPY --from=builder /app/eslint.config.mjs ./eslint.config.mjs
+
+# Copy node_modules (production deps only) — install with --production
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy Prisma schema and migrations for runtime
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy .env if present (chat.z.ai / Docker Compose usually inject env vars at runtime)
+COPY --from=builder /app/.env* ./
 
 USER nextjs
 
@@ -109,9 +108,8 @@ ENV HOSTNAME="0.0.0.0"
 
 # HIGH-006 FIX (Cycle 2): replace curl-based HEALTHCHECK with a Node-based
 #   one. Node 22 has a built-in global `fetch` so no extra dependencies are
-#   needed. The check is identical in semantics: GET /api/health, exit 0 on
-#   2xx, exit 1 otherwise.
+#   needed.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["bun", "run", "start"]
