@@ -99,8 +99,9 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
       try {
         // pg_dump is the standard PostgreSQL backup tool.
         // If not installed, the backup fails gracefully (non-fatal).
-        // execFileSync is imported at the top of this 'use node' module.
-        execFileSync("pg_dump", [dbUrl, "-f", dumpPath], { timeout: 30000 });
+        // Strip Prisma-specific query params that pg_dump doesn't understand.
+        const cleanUrl = dbUrl.replace(/[?&](schema|connection_limit|pool_timeout|connect_timeout|sslmode|sslaccept)=[^&]*/g, "").replace(/\?$/, "").replace(/&$/, "");
+        execFileSync("pg_dump", [cleanUrl, "-f", dumpPath], { timeout: 30000 });
         // Encrypt the dump file
         const rawBuffer = await fs.readFile(dumpPath);
         const b64Content = rawBuffer.toString("base64");
