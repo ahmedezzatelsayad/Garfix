@@ -53,27 +53,26 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: [{ updatedAt: "desc" }],
     include: {
       product: true,
-      warehouse: true,
     },
     take: 500,
   });
 
   const mapped = items.map((it) => {
-    const qty = num(it.quantity, 3);
-    const reorder = num(it.reorderLevel, 3);
+    const qty = it.quantity;
+    const reorder = it.reorderLevel;
     const itemStatus = computeStatus(qty, reorder);
     return {
       id: it.id,
       companySlug: it.companySlug,
       warehouseId: it.warehouseId,
-      warehouseName: it.warehouse?.name || "—",
-      warehouseCode: it.warehouse?.code || "—",
+      warehouseName: it.warehouse || "—",
+      warehouseCode: "—",
       productId: it.productId,
       productCode: it.product?.code || null,
       productName: it.product?.name || "—",
       quantity: qty,
       reorderLevel: reorder,
-      reorderQty: num(it.reorderQty, 3),
+      reorderQty: it.reorderQty,
       batchNumber: it.batchNumber,
       expiryDate: it.expiryDate,
       status: itemStatus,
@@ -122,7 +121,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const newQuantity =
     data.mode === "adjust"
-      ? num(existing?.quantity || "0", 3) + num(data.quantity, 3)
+      ? (existing?.quantity || 0) + num(data.quantity, 3)
       : num(data.quantity, 3);
 
   if (newQuantity < 0) {
@@ -134,15 +133,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // recordStockMovement must be called on manual adjustments so the
     // StockMovement ledger stays consistent with InventoryItem.quantity.
     // Wrapped in a transaction so the ledger + inventory update atomically.
-    const prevQty = num(existing.quantity, 3);
+    const prevQty = existing.quantity || 0;
     const signedDelta = newQuantity - prevQty; // +ve = stock in, -ve = stock out
     const updated = await db.$transaction(async (tx) => {
       const item = await tx.inventoryItem.update({
         where: { id: existing.id },
         data: {
-          quantity: newQuantity.toFixed(3),
-          reorderLevel: num(data.reorderLevel, 3).toFixed(3),
-          reorderQty: num(data.reorderQty, 3).toFixed(3),
+          quantity: newQuantity,
+          reorderLevel: num(data.reorderLevel, 3),
+          reorderQty: num(data.reorderQty, 3),
           batchNumber: data.batchNumber ?? existing.batchNumber,
           expiryDate: data.expiryDate ?? existing.expiryDate,
         },
@@ -188,13 +187,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const item = await tx.inventoryItem.create({
       data: {
         companySlug: data.companySlug,
+        companyId: 0,
         warehouseId: data.warehouseId,
         productId: data.productId,
-        quantity: initialQty.toFixed(3),
-        reorderLevel: num(data.reorderLevel, 3).toFixed(3),
-        reorderQty: num(data.reorderQty, 3).toFixed(3),
+        quantity: initialQty,
+        reorderLevel: num(data.reorderLevel, 3),
+        reorderQty: num(data.reorderQty, 3),
         batchNumber: data.batchNumber || null,
-        expiryDate: data.expiryDate || null,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
       },
     });
     if (initialQty > 0) {

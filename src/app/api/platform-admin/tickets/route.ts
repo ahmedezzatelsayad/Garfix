@@ -23,7 +23,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where = founder ? {} : { userEmail: user.email };
   const tickets = await db.supportTicket.findMany({
     where, orderBy: { createdAt: "desc" }, take: 200,
-    include: { replies: true },
+    
   });
   return NextResponse.json({ tickets });
 });

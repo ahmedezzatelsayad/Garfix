@@ -152,7 +152,7 @@ export async function runDepreciationForPeriod(
       // Skip if already exists
       results.push({
         assetId: asset.id,
-        assetName: asset.nameAr,
+        assetName: asset.nameAr ?? asset.nameEn ?? "",
         period,
         depreciationAmount: existingEntry.depreciationAmount.toString(),
         bookValueAfter: existingEntry.bookValueAfter.toString(),
@@ -206,7 +206,7 @@ export async function runDepreciationForPeriod(
             status: "posted",
             createdBy,
             sourceType: "depreciation",
-            sourceId: entry.id,
+            sourceId: String(entry.id),
             lines: {
               create: [
                 {
@@ -279,7 +279,7 @@ export async function runDepreciationForPeriod(
 
     results.push({
       assetId: asset.id,
-      assetName: asset.nameAr,
+      assetName: asset.nameAr ?? asset.nameEn ?? "",
       period,
       depreciationAmount: monthlyAmount,
       bookValueAfter: depreciation.newBookValue,
@@ -390,7 +390,7 @@ export async function disposeAsset(
         accountId: asset.depreciationAccountId,
         debit: accumulated.toFixed(3),
         credit: "0.000",
-        description: `Remove accumulated depreciation for disposed asset: ${asset.nameAr}`,
+        description: `Remove accumulated depreciation for disposed asset: ${asset.nameAr ?? asset.nameEn ?? ""}`,
       });
     }
 
@@ -400,7 +400,7 @@ export async function disposeAsset(
         accountId: asset.glAccountId,
         debit: "0.000",
         credit: cost.toFixed(3),
-        description: `Remove disposed asset from books: ${asset.nameAr}`,
+        description: `Remove disposed asset from books: ${asset.nameAr ?? asset.nameEn ?? ""}`,
       });
     }
 
@@ -415,7 +415,7 @@ export async function disposeAsset(
           accountId: bankAccount.glAccountId,
           debit: proceeds.toFixed(3),
           credit: "0.000",
-          description: `Proceeds from asset disposal: ${asset.nameAr}`,
+          description: `Proceeds from asset disposal: ${asset.nameAr ?? asset.nameEn ?? ""}`,
         });
       }
     }
@@ -440,7 +440,7 @@ export async function disposeAsset(
             accountId: gainLossAccount.id,
             debit: "0.000",
             credit: num(gainLoss, 3).toFixed(3),
-            description: `Gain on disposal of asset: ${asset.nameAr}`,
+            description: `Gain on disposal of asset: ${asset.nameAr ?? asset.nameEn ?? ""}`,
           });
         } else {
           // Loss on disposal — debit
@@ -448,7 +448,7 @@ export async function disposeAsset(
             accountId: gainLossAccount.id,
             debit: num(Math.abs(gainLoss), 3).toFixed(3),
             credit: "0.000",
-            description: `Loss on disposal of asset: ${asset.nameAr}`,
+            description: `Loss on disposal of asset: ${asset.nameAr ?? asset.nameEn ?? ""}`,
           });
         }
       }
@@ -458,13 +458,13 @@ export async function disposeAsset(
       data: {
         companySlug,
         date: disposalDate,
-        description: `Asset disposal: ${asset.nameAr} (${disposalType})`,
+        description: `Asset disposal: ${asset.nameAr ?? asset.nameEn ?? ""} (${disposalType})`,
         reference: `DISP-${assetId}-${disposalDate}`,
         currency: "KWD",
         status: "posted",
         createdBy,
         sourceType: "asset_disposal",
-        sourceId: assetId,
+        sourceId: String(assetId),
         lines: {
           create: lines,
         },
@@ -515,7 +515,7 @@ export async function disposeAsset(
 
   return {
     assetId,
-    assetName: asset.nameAr,
+    assetName: asset.nameAr ?? asset.nameEn ?? "",
     disposalType,
     disposalAmount: proceeds.toFixed(3),
     disposalDate,

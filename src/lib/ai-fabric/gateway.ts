@@ -40,7 +40,7 @@ async function cacheStage(
   if (!entry) return { hit: false, data: null };
 
   // Check expiry
-  if (entry.expiresAt < new Date()) {
+  if (entry.expiresAt && entry.expiresAt < new Date()) {
     // Expired — clean up asynchronously (don't block the cascade)
     db.cacheEntry.delete({ where: { key } }).catch(() => {});
     return { hit: false, data: null };

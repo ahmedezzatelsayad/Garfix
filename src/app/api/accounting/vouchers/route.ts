@@ -47,7 +47,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       client: { select: { id: true, name: true } },
       supplier: { select: { id: true, name: true } },
       bankAccount: { select: { id: true, bankName: true, accountName: true } },
-      journalEntry: { select: { id: true, status: true } },
     },
   });
 

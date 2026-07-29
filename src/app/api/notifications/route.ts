@@ -35,7 +35,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (action === "mark_all_read") {
     await db.notification.updateMany({
       where: { userUid: user.uid, isRead: false },
-      data: { isRead: true, readAt: new Date() },
+      data: { isRead: true, read: true },
     });
     return NextResponse.json({ ok: true });
   }
@@ -46,7 +46,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         id: Number((body as Record<string, unknown>).id),
         userUid: user.uid, // ensure ownership
       },
-      data: { isRead: true, readAt: new Date() },
+      data: { isRead: true, read: true },
     });
     return NextResponse.json({ ok: true });
   }

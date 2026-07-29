@@ -41,8 +41,7 @@ export async function GET(
     const lc = await db.letterOfCredit.findFirst({
       where: { id, companySlug },
       include: {
-        supplier: { select: { id: true, name: true, nameEn: true } },
-        bankAccount: { select: { id: true, bankName: true, accountNumber: true, currency: true, balance: true } },
+        supplier: { select: { id: true, name: true } },
       },
     });
 
@@ -52,9 +51,9 @@ export async function GET(
       id: lc.id,
       lcNumber: lc.lcNumber,
       supplierId: lc.supplierId,
-      supplierName: lc.supplier.name,
+      supplierName: lc.supplier?.name ?? '',
       bankAccountId: lc.bankAccountId,
-      bankName: lc.bankAccount.bankName,
+      bankName: lc.bankAccountId ?? '',
       amount: num(lc.amount, 3),
       currency: lc.currency,
       issueDate: lc.issueDate,

@@ -35,8 +35,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     for (const line of entry.lines) {
       const debit = num(line.debit, 3);
       const credit = num(line.credit, 3);
-      const current = balanceMap.get(line.accountId) || 0;
-      balanceMap.set(line.accountId, current + debit - credit);
+      const aid = line.accountId ?? 0;
+      const current = balanceMap.get(aid) ?? 0;
+      balanceMap.set(aid, current + debit - credit);
     }
   }
 
@@ -54,7 +55,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     if (acc.type === "liability" || acc.type === "equity" || acc.type === "revenue" || acc.type === "contra_revenue") {
       balance = -balance;
     }
-    const item = { code: acc.code, nameAr: acc.nameAr, balance: Math.round(balance * 1000) / 1000 };
+    const item = { code: acc.code, nameAr: acc.nameAr ?? '', balance: Math.round(balance * 1000) / 1000 };
 
     if (acc.type === "asset" || acc.type === "contra_asset") {
       assets.push(item);

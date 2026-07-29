@@ -27,23 +27,11 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
       client: { select: { id: true, name: true } },
       supplier: { select: { id: true, name: true } },
       bankAccount: { select: { id: true, bankName: true, accountName: true, currency: true } },
-      glAccount: { select: { id: true, code: true, nameAr: true } },
-      journalEntry: {
-        select: {
-          id: true,
-          status: true,
-          description: true,
-          reference: true,
-          lines: {
-            include: { account: { select: { code: true, nameAr: true } } },
-          },
-        },
-      },
     },
   });
   if (!voucher) return apiError("Voucher not found", 404);
 
-  const access = await requirePermissionForCompany(req, "finance_access", voucher.companySlug);
+  const access = await requirePermissionForCompany(req, "finance_access", voucher.companySlug ?? "");
   if ("error" in access) return access.error;
 
   // Check if request is for print view
@@ -104,7 +92,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   });
   if (!voucher) return apiError("Voucher not found", 404);
 
-  const companySlug = data.companySlug || voucher.companySlug;
+  const companySlug = data.companySlug ?? (voucher.companySlug ?? '');
   const access = await requirePermissionForCompany(req, "finance_access", companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
@@ -118,7 +106,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     });
 
     await logAudit({
-      userEmail: user.email, userUid: user.uid,
+      userEmail: user.email, userUid: user.uid ?? "",
       action: "approve", entity: "voucher", entityId: voucherId, companySlug,
       details: { voucherNumber: voucher.voucherNumber, priorStatus: voucher.status },
     });
@@ -132,7 +120,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     const result = await cancelVoucher(companySlug, voucherId, data.reason, user.email);
 
     await logAudit({
-      userEmail: user.email, userUid: user.uid,
+      userEmail: user.email, userUid: user.uid ?? "",
       action: "cancel", entity: "voucher", entityId: voucherId, companySlug,
       details: { voucherNumber: voucher.voucherNumber, reason: data.reason, reversedJEId: result.reversedJEId },
     });

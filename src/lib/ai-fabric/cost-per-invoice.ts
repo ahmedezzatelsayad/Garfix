@@ -83,7 +83,7 @@ export async function getCostPerInvoice(
   const aiResolvedLogs = aiLogs.filter((l) => l.resolvedBy === "ai");
   const nonAiResolvedLogs = aiLogs.filter((l) => l.resolvedBy !== "ai");
 
-  const aiCostTotal = aiResolvedLogs.reduce((sum, l) => sum + l.costUsd, 0);
+  const aiCostTotal = aiResolvedLogs.reduce((sum, l) => sum + Number(l.costUsd), 0);
   const nonAiCostTotal = nonAiResolvedLogs.length * INFRA_COST_PER_INVOICE;
 
   // Invoices without AI logs get infra cost

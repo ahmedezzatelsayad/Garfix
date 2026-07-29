@@ -108,36 +108,38 @@ export async function exportToAccountantExcel(
 ): Promise<ExportResult> {
   const company = await db.company.findUnique({
     where: { slug: companySlug },
-    select: { name: true, nameAr: true, currency: true },
+    select: { name: true, currency: true },
   });
   if (!company) throw new Error("Company not found");
 
   const fileNameSuffix = `${companySlug}_${periodFrom}_${periodTo}_${exportType}`;
 
+  const companyData = { name: company.name, nameAr: null as string | null, currency: company.currency };
+
   if (exportType === "trial_balance" || exportType === "full_package") {
-    const tbData = await generateTrialBalanceData(companySlug, periodFrom, periodTo, company);
+    const tbData = await generateTrialBalanceData(companySlug, periodFrom, periodTo, companyData);
     if (exportType === "trial_balance") {
       return { fileName: `ميزان_مراجعة_${fileNameSuffix}.xlsx`, data: tbData };
     }
     // full_package includes all — we'll accumulate
     const allData: Record<string, unknown> = { trialBalance: tbData };
 
-    const glData = await generateGeneralLedgerData(companySlug, periodFrom, periodTo, company);
+    const glData = await generateGeneralLedgerData(companySlug, periodFrom, periodTo, companyData);
     allData.generalLedger = glData;
 
-    const jeData = await generateJournalEntriesData(companySlug, periodFrom, periodTo, company);
+    const jeData = await generateJournalEntriesData(companySlug, periodFrom, periodTo, companyData);
     allData.journalEntries = jeData;
 
     return { fileName: `حزمة_كاملة_${fileNameSuffix}.xlsx`, data: allData };
   }
 
   if (exportType === "general_ledger") {
-    const glData = await generateGeneralLedgerData(companySlug, periodFrom, periodTo, company);
+    const glData = await generateGeneralLedgerData(companySlug, periodFrom, periodTo, companyData);
     return { fileName: `دفتر_الأستاذ_${fileNameSuffix}.xlsx`, data: glData };
   }
 
   if (exportType === "journal_entries") {
-    const jeData = await generateJournalEntriesData(companySlug, periodFrom, periodTo, company);
+    const jeData = await generateJournalEntriesData(companySlug, periodFrom, periodTo, companyData);
     return { fileName: `قيود_يومية_${fileNameSuffix}.xlsx`, data: jeData };
   }
 
@@ -287,8 +289,8 @@ async function generateJournalEntriesData(
         "البيان": entry.description || "",
         "المرجع": entry.reference || "",
         "الحالة": entry.status,
-        "رمز الحساب": line.account.code,
-        "اسم الحساب": line.account.nameAr,
+        "رمز الحساب": line.account?.code ?? "",
+        "اسم الحساب": line.account?.nameAr ?? "",
         "مدين": num(line.debit, 3).toFixed(3),
         "دائن": num(line.credit, 3).toFixed(3),
         "وصف السطر": line.description || "",
@@ -321,14 +323,14 @@ export async function logAccountingChange(
   beforeState: Record<string, unknown> | null,
   afterState: Record<string, unknown> | null,
   reason: string | null,
-): Promise<{ id: number; companySlug: string; userEmail: string; action: string; entity: string; entityId: number | null; createdAt: Date }> {
+): Promise<{ id: number; companySlug: string; userEmail: string; action: string; entity: string; entityId: string | null; createdAt: Date }> {
   const entry = await db.accountingAuditLog.create({
     data: {
       companySlug,
       userEmail,
       action,
       entity,
-      entityId: entityId ?? null,
+      entityId: entityId != null ? String(entityId) : null,
       beforeState: beforeState ? JSON.stringify(beforeState) : null,
       afterState: afterState ? JSON.stringify(afterState) : null,
       reason,

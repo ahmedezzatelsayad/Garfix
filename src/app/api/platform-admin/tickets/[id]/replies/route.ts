@@ -22,7 +22,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const user = result.user;
 
   const { id } = await params;
-  const existing = await db.supportTicket.findUnique({ where: { id } });
+  const existing = await db.supportTicket.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Ticket not found", 404);
 
   // Owners can reply to their own tickets; only the founder can reply to any
@@ -48,8 +48,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     const r = await tx.ticketReply.create({
       data: {
         ticketId: existing.id,
-        senderEmail: user.email,
-        senderRole,
+        authorEmail: user.email,
         body: parsed.data.body,
       },
     });

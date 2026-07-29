@@ -61,7 +61,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const checks = await db.postDatedCheck.findMany({
     where,
     orderBy: [{ dueDate: "asc" }],
-    include: { client: true, supplier: true, glAccount: true },
   });
 
   return NextResponse.json({

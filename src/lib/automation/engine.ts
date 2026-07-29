@@ -63,8 +63,8 @@ export async function fireEvent(event: TriggerEvent): Promise<void> {
         {
           id: rule.id,
           name: rule.name,
-          condition: rule.condition,
-          actions: rule.actions,
+          condition: rule.condition ?? "",
+          actions: rule.actions ?? "",
           companySlug: rule.companySlug,
         },
         event,

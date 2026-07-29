@@ -57,7 +57,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       id: true,
       companySlug: true,
       provider: true,
-      model: true,
       endpoint: true,
       tokensIn: true,
       tokensOut: true,
@@ -71,7 +70,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   });
 
   const totalCalls = all.length;
-  const totalCost = all.reduce((s, r) => s + (r.estimatedCost || 0), 0);
+  const totalCost = all.reduce((s, r) => s + Number(r.estimatedCost || 0), 0);
   const totalTokensIn = all.reduce((s, r) => s + r.tokensIn, 0);
   const totalTokensOut = all.reduce((s, r) => s + r.tokensOut, 0);
   const totalTokens = all.reduce((s, r) => s + r.totalTokens, 0);
@@ -104,7 +103,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     const key = `${r.createdAt.getFullYear()}-${String(r.createdAt.getMonth() + 1).padStart(2, "0")}-${String(r.createdAt.getDate()).padStart(2, "0")}`;
     if (!dayBuckets[key]) dayBuckets[key] = { calls: 0, cost: 0 };
     dayBuckets[key].calls += 1;
-    dayBuckets[key].cost += r.estimatedCost || 0;
+    dayBuckets[key].cost += Number(r.estimatedCost || 0);
   }
   const last30Days = Object.entries(dayBuckets).map(([date, v]) => ({
     date,
@@ -118,7 +117,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     const key = r.companySlug || "(none)";
     const prev = perCompanyMap.get(key) || { calls: 0, cost: 0, tokens: 0 };
     prev.calls += 1;
-    prev.cost += r.estimatedCost || 0;
+    prev.cost += Number(r.estimatedCost || 0);
     prev.tokens += r.totalTokens;
     perCompanyMap.set(key, prev);
   }
@@ -146,7 +145,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   for (const r of all) {
     const prev = perEndpointMap.get(r.endpoint) || { calls: 0, cost: 0, tokens: 0, successCount: 0, failureCount: 0, latencies: [] };
     prev.calls += 1;
-    prev.cost += r.estimatedCost || 0;
+    prev.cost += Number(r.estimatedCost || 0);
     prev.tokens += r.totalTokens;
     if (r.success) prev.successCount += 1; else prev.failureCount += 1;
     if (typeof r.processingMs === "number" && r.processingMs > 0) prev.latencies.push(r.processingMs);
@@ -173,13 +172,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     .sort((a, b) => b.calls - a.calls);
 
   // ── Per model breakdown ─────────────────────────────────────────────────
+  // AIUsageLog doesn't have a model field, so we use provider as a proxy
   const perModelMap = new Map<string, { calls: number; cost: number; tokens: number }>();
   for (const r of all) {
-    const prev = perModelMap.get(r.model) || { calls: 0, cost: 0, tokens: 0 };
+    const modelKey = r.provider || "unknown";
+    const prev = perModelMap.get(modelKey) || { calls: 0, cost: 0, tokens: 0 };
     prev.calls += 1;
-    prev.cost += r.estimatedCost || 0;
+    prev.cost += Number(r.estimatedCost || 0);
     prev.tokens += r.totalTokens;
-    perModelMap.set(r.model, prev);
+    perModelMap.set(modelKey, prev);
   }
   const perModel = Array.from(perModelMap.entries())
     .map(([model, v]) => ({
@@ -202,7 +203,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     const prev = perCompanyMonthlyMap.get(key) || { companySlug: slug, month, calls: 0, tokens: 0, cost: 0 };
     prev.calls += 1;
     prev.tokens += r.totalTokens;
-    prev.cost += r.estimatedCost || 0;
+    prev.cost += Number(r.estimatedCost || 0);
     perCompanyMonthlyMap.set(key, prev);
   }
   const perCompanyMonthly = Array.from(perCompanyMonthlyMap.values())
@@ -224,7 +225,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       id: r.id,
       companySlug: r.companySlug,
       provider: r.provider,
-      model: r.model,
+      model: r.provider || "unknown",
       endpoint: r.endpoint,
       errorMessage: r.errorMessage,
       createdAt: r.createdAt.toISOString(),

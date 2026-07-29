@@ -56,7 +56,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!dbUser) return apiError("المستخدم غير موجود", 404);
 
   // Verify current password
-  const ok = await verifyPassword(currentPassword, dbUser.passwordHash);
+  const ok = await verifyPassword(currentPassword, dbUser.passwordHash ?? "");
   if (!ok) {
     return apiError("كلمة المرور الحالية غير صحيحة", 401);
   }
@@ -64,7 +64,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // SEC-L2 FIX (Cycle 1): reject new password == current password.
   // This prevents a user from "changing" to the same password (which would
   // silently reset tokenVersion and lock other sessions for no benefit).
-  const sameAsCurrent = await verifyPassword(newPassword, dbUser.passwordHash);
+  const sameAsCurrent = await verifyPassword(newPassword, dbUser.passwordHash ?? "");
   if (sameAsCurrent) {
     return apiError("كلمة المرور الجديدة يجب أن تكون مختلفة عن الحالية", 400);
   }
@@ -88,7 +88,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   await logAudit({
     userEmail: user.email,
-    userUid: user.uid,
+    userUid: user.uid ?? "",
     action: "password_change",
     entity: "auth",
   });

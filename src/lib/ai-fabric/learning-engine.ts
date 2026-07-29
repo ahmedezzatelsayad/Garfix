@@ -112,14 +112,14 @@ export async function recordObservation(
   if (matchesExisting) {
     // New output matches the consistent one → confidence increases
     // Count of matching samples = old matching + 1
-    const matchingCount = Math.round(existing.confidence * existing.sampleCount) + 1;
+    const matchingCount = Math.round(Number(existing.confidence) * existing.sampleCount) + 1;
     newConfidence = matchingCount / newSampleCount;
     newConsistentOutput = existing.consistentOutput;
   } else {
     // New output doesn't match → confidence decreases
     // The consistent output stays the same (it was the majority before)
     // Matching count stays the same, total increases
-    const matchingCount = Math.round(existing.confidence * existing.sampleCount);
+    const matchingCount = Math.round(Number(existing.confidence) * existing.sampleCount);
     newConfidence = matchingCount / newSampleCount;
 
     // Check if the new output should become the consistent output
@@ -168,7 +168,7 @@ export async function promoteCandidates(): Promise<PromotionResult> {
   });
 
   for (const candidate of candidates) {
-    if (candidate.confidence >= MIN_CONFIDENCE) {
+    if (Number(candidate.confidence) >= MIN_CONFIDENCE) {
       // Promote!
       await db.ruleCandidate.update({
         where: { id: candidate.id },
@@ -182,7 +182,7 @@ export async function promoteCandidates(): Promise<PromotionResult> {
         sampleCount: candidate.sampleCount,
         confidence: candidate.confidence,
       });
-    } else if (candidate.confidence < 0.5) {
+    } else if (Number(candidate.confidence) < 0.5) {
       // Reject — too inconsistent to ever be useful
       await db.ruleCandidate.update({
         where: { id: candidate.id },

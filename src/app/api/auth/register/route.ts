@@ -80,7 +80,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (existing) {
     await logAudit({
       userEmail: normalizedEmail,
-      userUid: existing.uid,
+      userUid: existing.uid ?? "",
       action: "register_duplicate_attempt",
       entity: "auth",
       entityId: null,
@@ -121,5 +121,5 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // SEC-H2: still return the generic message — but include the new uid so
   // the legitimate client can proceed. The uid alone doesn't reveal whether
   // a future attempt with the same email will succeed.
-  return NextResponse.json({ ...GENERIC_REGISTER_RESPONSE, uid: user.uid, isFounder: founder });
+  return NextResponse.json({ ...GENERIC_REGISTER_RESPONSE, uid: user.uid ?? "", isFounder: founder });
 });

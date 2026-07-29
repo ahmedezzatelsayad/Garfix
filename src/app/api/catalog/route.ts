@@ -52,7 +52,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json({
     products: products.map((p) => ({
       ...p,
-      aliases: parseJsonField(p.aliases, []),
+      aliases: parseJsonField(p.code, []),
       purchasePrice: p.purchasePrice ? num(p.purchasePrice, 3) : null,
       sellingPrice: p.sellingPrice ? num(p.sellingPrice, 3) : null,
       wholesalePrice: p.wholesalePrice ? num(p.wholesalePrice, 3) : null,
@@ -77,10 +77,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       companySlug: data.companySlug,
       code: data.code || null,
       name: data.name,
-      aliases: JSON.stringify(data.aliases),
-      purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : null,
-      sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : null,
-      wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : null,
+      sku: data.code || "",
+      companyId: 0,
+      purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : 0,
+      sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : 0,
+      wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : 0,
     },
   });
   await logAudit({

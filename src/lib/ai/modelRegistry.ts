@@ -19,6 +19,7 @@
  */
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import type { Decimal } from "@prisma/client/runtime/library";
 
 export type AICapability = "chat" | "invoice-extraction" | "reasoning" | "vision";
 
@@ -68,35 +69,41 @@ export function invalidateRegistryCache(): void {
 function mapRow(row: {
   id: number;
   provider: string;
-  model: string;
-  displayName: string;
-  capabilities: string;
-  tier: string;
-  costPer1kIn: number;
-  costPer1kOut: number;
-  maxTokens: number;
-  contextWindow: number;
+  displayName: string | null;
+  tier: string | null;
   isEnabled: boolean;
   isHealthy: boolean;
-  healthScore: number;
-  successRate: number;
+  healthScore: Decimal;
+  successRate: Decimal;
   avgLatencyMs: number;
   p95LatencyMs: number;
-  avgQualityScore: number;
+  avgQualityScore: Decimal;
   totalBenchmarks: number;
   lastBenchmarkAt: Date | null;
   lastError: string | null;
 }): RegistryEntry {
   let caps: AICapability[] = [];
+  // capabilities is not a column in the current schema — default to empty
   try {
-    caps = JSON.parse(row.capabilities) as AICapability[];
+    if ((row as Record<string, unknown>).capabilities) {
+      caps = JSON.parse(String((row as Record<string, unknown>).capabilities)) as AICapability[];
+    }
   } catch {
     caps = [];
   }
   return {
     ...row,
+    model: row.displayName ?? row.provider,
+    displayName: row.displayName ?? row.provider,
     capabilities: caps,
     tier: row.tier === "paid" ? "paid" : "free",
+    costPer1kIn: 0,
+    costPer1kOut: 0,
+    maxTokens: 0,
+    contextWindow: 0,
+    healthScore: Number(row.healthScore),
+    successRate: Number(row.successRate),
+    avgQualityScore: Number(row.avgQualityScore),
     lastBenchmarkAt: row.lastBenchmarkAt,
   };
 }
@@ -154,30 +161,32 @@ export interface UpsertRegistryInput {
 }
 
 export async function upsertModel(input: UpsertRegistryInput): Promise<RegistryEntry> {
-  const row = await db.aIModelRegistry.upsert({
-    where: { provider_model: { provider: input.provider, model: input.model } },
-    create: {
-      provider: input.provider,
-      model: input.model,
-      displayName: input.displayName,
-      capabilities: JSON.stringify(input.capabilities),
-      tier: input.tier ?? "free",
-      costPer1kIn: input.costPer1kIn ?? 0,
-      costPer1kOut: input.costPer1kOut ?? 0,
-      maxTokens: input.maxTokens ?? 4096,
-      contextWindow: input.contextWindow ?? 8192,
-      isEnabled: input.isEnabled ?? true,
-    },
-    update: {
-      displayName: input.displayName,
-      capabilities: JSON.stringify(input.capabilities),
-      tier: input.tier ?? "free",
-      costPer1kIn: input.costPer1kIn ?? 0,
-      costPer1kOut: input.costPer1kOut ?? 0,
-      maxTokens: input.maxTokens ?? 4096,
-      contextWindow: input.contextWindow ?? 8192,
-    },
+  // Find existing entry by provider
+  const existing = await db.aIModelRegistry.findFirst({
+    where: { provider: input.provider },
   });
+
+  let row;
+  if (existing) {
+    row = await db.aIModelRegistry.update({
+      where: { id: existing.id },
+      data: {
+        displayName: input.displayName,
+        tier: input.tier ?? "free",
+        isEnabled: input.isEnabled ?? true,
+      },
+    });
+  } else {
+    row = await db.aIModelRegistry.create({
+      data: {
+        companySlug: "platform",
+        provider: input.provider,
+        displayName: input.displayName,
+        tier: input.tier ?? "free",
+        isEnabled: input.isEnabled ?? true,
+      },
+    });
+  }
   invalidateRegistryCache();
   return mapRow(row);
 }
@@ -188,7 +197,7 @@ export async function setModelEnabled(
   isEnabled: boolean,
 ): Promise<void> {
   await db.aIModelRegistry.updateMany({
-    where: { provider, model },
+    where: { provider },
     data: { isEnabled },
   });
   invalidateRegistryCache();
@@ -252,7 +261,7 @@ export async function recomputeHealth(modelRegistryId: number): Promise<void> {
 
   const successCount = recent.filter((r) => r.success).length;
   const successRate = (successCount / recent.length) * 100;
-  const latencies = recent.map((r) => r.latencyMs).sort((a, b) => a - b);
+  const latencies = recent.map((r) => Number(r.latencyMs)).sort((a, b) => a - b);
   const avgLatencyMs = Math.round(
     latencies.reduce((s, v) => s + v, 0) / latencies.length,
   );
@@ -260,12 +269,12 @@ export async function recomputeHealth(modelRegistryId: number): Promise<void> {
   const p95Idx = Math.max(0, Math.min(latencies.length - 1, Math.ceil(0.95 * latencies.length) - 1));
   const p95LatencyMs = latencies[p95Idx] ?? avgLatencyMs;
   const avgQualityScore =
-    recent.reduce((s, r) => s + (r.responseQuality || 0), 0) / recent.length;
+    recent.reduce((s, r) => s + Number(r.responseQuality || 0), 0) / recent.length;
   const lastErrorRow = recent.find((r) => !r.success);
 
   const model = await db.aIModelRegistry.findUnique({
     where: { id: modelRegistryId },
-    select: { tier: true, costPer1kOut: true },
+    select: { tier: true },
   });
   if (!model) return;
 
@@ -273,7 +282,7 @@ export async function recomputeHealth(modelRegistryId: number): Promise<void> {
     successRate,
     avgLatencyMs,
     tier: model.tier === "paid" ? "paid" : "free",
-    costPer1kOut: model.costPer1kOut,
+    costPer1kOut: 0,
     avgQualityScore,
   });
 

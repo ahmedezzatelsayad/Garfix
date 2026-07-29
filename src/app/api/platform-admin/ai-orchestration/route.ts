@@ -121,7 +121,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   }
 
   await db.aIModelRegistry.updateMany({
-    where: { provider, model },
+    where: { provider, displayName: model },
     data: { isEnabled },
   });
 

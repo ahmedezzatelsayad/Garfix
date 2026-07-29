@@ -84,7 +84,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const { deliveryId } = body as { deliveryId?: string };
   if (!deliveryId) return apiError("deliveryId is required", 400);
 
-  const delivery = await db.webhookDelivery.findUnique({ where: { id: deliveryId } });
+  const delivery = await db.webhookDelivery.findUnique({ where: { id: Number(deliveryId) } });
   if (!delivery) return apiError("Delivery not found", 404);
 
   // Verify it belongs to the user's company
@@ -101,7 +101,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Reset the delivery for retry
   const maxAttempts = delivery.maxAttempts;
   await db.webhookDelivery.update({
-    where: { id: deliveryId },
+    where: { id: Number(deliveryId) },
     data: {
       status: "pending",
       attempts: 0,
@@ -121,7 +121,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 async function computeDeliveryStats(companySlug: string) {
   const deliveries = await db.webhookDelivery.findMany({
     where: { endpoint: { companySlug } },
-    select: { status: true, statusCode: true, createdAt: true, deliveredAt: true },
+    select: { status: true, statusCode: true, createdAt: true, updatedAt: true },
   });
 
   const total = deliveries.length;
@@ -132,8 +132,8 @@ async function computeDeliveryStats(companySlug: string) {
 
   // Average latency for successful deliveries
   const latencies = deliveries
-    .filter((d) => d.status === "success" && d.deliveredAt && d.createdAt)
-    .map((d) => new Date(d.deliveredAt!).getTime() - new Date(d.createdAt).getTime());
+    .filter((d) => d.status === "success" && d.createdAt)
+    .map((d) => new Date(d.updatedAt).getTime() - new Date(d.createdAt).getTime());
   const avgLatencyMs = latencies.length > 0
     ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
     : 0;

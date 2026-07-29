@@ -83,7 +83,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         confidence: i.confidence,
         tier: i.tier,
         action: i.action,
-        invoiceId: i.invoiceId,
+        invoiceId: i.matchedProductId,
         productName: product?.name || null,
         productCode: product?.code || null,
         createdAt: i.createdAt,

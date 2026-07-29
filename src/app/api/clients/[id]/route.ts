@@ -47,7 +47,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!existing) return apiError("Client not found", 404);
 
   // Enforce permission + company access
-  const access = await requirePermissionForCompany(req, "edit_customer", existing.companySlug);
+  const access = await requirePermissionForCompany(req, "edit_customer", existing.companySlug ?? "");
   if ("error" in access) return access.error;
   const user = access.user;
 
@@ -55,10 +55,11 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
 
-  const client = await db.client.update({ where: { id: existing.id }, data: parsed.data });
+  const { company: _company, ...updateData } = parsed.data;
+  const client = await db.client.update({ where: { id: existing.id }, data: updateData });
   await logAudit({
     userEmail: user.email,
-    userUid: user.uid,
+    userUid: user.uid ?? "",
     action: "update",
     entity: "client",
     entityId: client.id,
@@ -75,18 +76,18 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if (!existing) return apiError("Client not found", 404);
 
   // Enforce permission + company access
-  const access = await requirePermissionForCompany(req, "delete_customer", existing.companySlug);
+  const access = await requirePermissionForCompany(req, "delete_customer", existing.companySlug ?? "");
   if ("error" in access) return access.error;
   const user = access.user;
 
   // DB-005 FIX: Soft delete instead of hard delete
   await db.client.update({
     where: { id: existing.id },
-    data: { deletedAt: new Date(), deletedBy: user.email },
+    data: { deletedAt: new Date() },
   });
   await logAudit({
     userEmail: user.email,
-    userUid: user.uid,
+    userUid: user.uid ?? "",
     action: "delete",
     entity: "client",
     entityId: existing.id,

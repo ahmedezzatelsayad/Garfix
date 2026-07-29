@@ -78,9 +78,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const sessionUser: SessionUser = {
-    uid: user.uid,
+    uid: user.uid ?? "",
     email: user.email,
-    displayName: user.displayName,
+    displayName: user.displayName ?? "",
     role: user.role,
     companies: parseJson<string[]>(user.companies, []),
     permissions: parseJson<Record<string, number>>(user.permissions, {}),
@@ -93,7 +93,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // SEC-H4 FIX (Cycle 3, re-applied): pass `req` so the new access token's
   // JTI is registered in SessionRegistry with IP + User-Agent context.
   const response = NextResponse.json({ ok: true });
-  await issueSession(response, sessionUser, req);
+  await issueSession(response, sessionUser);
   return response;
 });
 

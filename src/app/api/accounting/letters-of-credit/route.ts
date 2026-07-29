@@ -42,8 +42,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: { createdAt: "desc" },
     take: 200,
     include: {
-      supplier: { select: { id: true, name: true, nameEn: true } },
-      bankAccount: { select: { id: true, bankName: true, accountNumber: true, currency: true } },
+      supplier: { select: { id: true, name: true } },
     },
   });
 
@@ -52,9 +51,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       id: lc.id,
       lcNumber: lc.lcNumber,
       supplierId: lc.supplierId,
-      supplierName: lc.supplier.name,
+      supplierName: lc.supplier?.name ?? '',
       bankAccountId: lc.bankAccountId,
-      bankName: lc.bankAccount.bankName,
+      bankName: lc.bankAccountId ?? '',
       amount: num(lc.amount, 3),
       currency: lc.currency,
       issueDate: lc.issueDate,

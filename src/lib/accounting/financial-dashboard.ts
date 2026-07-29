@@ -452,7 +452,7 @@ export async function getBudgetVsActual(
       },
       include: {
         lines: {
-          where: { accountId: { in: accountIds } },
+          where: { accountId: { in: accountIds.filter((id): id is number => id !== null) } },
           include: { account: true },
         },
       },
@@ -475,13 +475,13 @@ export async function getBudgetVsActual(
     // Build budget vs actual comparison
     const accounts: BudgetVsActualAccount[] = budgets.map((b) => {
       const planned = num(b.plannedAmount, 3);
-      const actual = actualMap.get(b.accountId) || num(b.actualAmount, 3);
+      const actual = actualMap.get(b.accountId ?? 0) || num(b.actualAmount, 3);
       const variance = actual - planned;
       const variancePercent = planned !== 0 ? ((variance / Math.abs(planned)) * 100) : null;
 
       return {
-        code: b.account.code,
-        nameAr: b.account.nameAr,
+        code: b.account?.code ?? "",
+        nameAr: b.account?.nameAr ?? "",
         planned,
         actual,
         variance,
@@ -491,7 +491,7 @@ export async function getBudgetVsActual(
 
     // Update budget actual amounts
     for (const b of budgets) {
-      const actual = actualMap.get(b.accountId) || num(b.actualAmount, 3);
+      const actual = actualMap.get(b.accountId ?? 0) || num(b.actualAmount, 3);
       const variance = actual - num(b.plannedAmount, 3);
       await db.budget.update({
         where: { id: b.id },

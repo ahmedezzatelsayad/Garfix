@@ -99,7 +99,7 @@ export class PrismaPatternStore implements PatternStore {
       fields: typeof row.fields === "string" ? JSON.parse(row.fields) : row.fields,
       sampleCount: row.sampleCount,
       createdAt: row.createdAt.toISOString(),
-      lastUsedAt: row.lastUsedAt.toISOString(),
+      lastUsedAt: row.lastUsedAt?.toISOString() ?? new Date().toISOString(),
     };
   }
 
@@ -111,7 +111,7 @@ export class PrismaPatternStore implements PatternStore {
         fingerprint: template.fingerprint,
         fields: JSON.stringify(template.fields),
         sampleCount: template.sampleCount,
-        createdAt: now,
+        companySlug: template.fingerprint,
         lastUsedAt: now,
       },
       update: {

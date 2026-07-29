@@ -58,7 +58,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       if (!acc) continue;
       const key = acc.code;
       if (!accountMap.has(key)) {
-        accountMap.set(key, { code: acc.code, nameAr: acc.nameAr, type: acc.type, amount: 0 });
+        accountMap.set(key, { code: acc.code, nameAr: acc.nameAr ?? "", type: acc.type, amount: 0 });
       }
       const item = accountMap.get(key)!;
       const debit = num(line.debit, 3);

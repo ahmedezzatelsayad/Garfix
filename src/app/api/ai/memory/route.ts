@@ -50,7 +50,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const notes = await db.aIMemoryNote.findMany({
-    where: { companySlug, entityType, entityId },
+    where: { companySlug, entityType, entityId: String(entityId) },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -88,7 +88,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       companySlug: data.companySlug,
       entityType: data.entityType,
-      entityId: data.entityId,
+      entityId: data.entityId != null ? String(data.entityId) : null,
       note: data.note,
       createdBy: user.email,
     },
@@ -103,7 +103,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     companySlug: data.companySlug,
     details: {
       entityType: data.entityType,
-      entityId: data.entityId,
+      entityId: data.entityId != null ? String(data.entityId) : null,
       notePreview: data.note.slice(0, 80),
     },
   });

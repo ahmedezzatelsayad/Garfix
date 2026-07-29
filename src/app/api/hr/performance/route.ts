@@ -46,21 +46,21 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const data = parsed.data;
 
   // Enforce permission + company access
-  const access = await requirePermissionForCompany(req, "employee_management", data.companySlug);
+  const access = await requirePermissionForCompany(req, "employee_management", data.companySlug ?? "");
   if ("error" in access) return access.error;
   const user = access.user;
 
   const p = await db.hRPerformance.create({
     data: {
       companySlug: data.companySlug, employeeId: data.employeeId, period: data.period,
-      kpiScore: data.kpiScore ?? null, attendScore: data.attendScore ?? null,
-      teamScore: data.teamScore ?? null, overallScore: data.overallScore ?? null,
-      rating: data.rating || null, strengths: data.strengths || null,
+      kpiScore: data.kpiScore != null ? data.kpiScore : 0, attendScore: data.attendScore != null ? data.attendScore : 0,
+      teamScore: data.teamScore != null ? data.teamScore : 0, overallScore: data.overallScore != null ? data.overallScore : 0,
+      rating: data.rating ?? "", strengths: data.strengths || null,
       improvements: data.improvements || null, reviewerNote: data.reviewerNote || null,
     },
   });
   await logAudit({
-    userEmail: user.email, userUid: user.uid,
+    userEmail: user.email, userUid: user.uid ?? "",
     action: "create", entity: "performance", entityId: p.id, companySlug: data.companySlug,
   });
   return NextResponse.json({ ok: true, performance: p });

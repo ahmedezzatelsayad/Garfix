@@ -140,7 +140,7 @@ export async function clusterAIRequests(
 
   for (const [, group] of groupMap) {
     const count = group.logs.length;
-    const totalCost = group.logs.reduce((sum, l) => sum + l.costUsd, 0);
+    const totalCost = group.logs.reduce((sum, l) => sum + Number(l.costUsd), 0);
     const totalTokens = group.logs.reduce((sum, l) => sum + (l.tokensUsed || 0), 0);
 
     // Most common provider

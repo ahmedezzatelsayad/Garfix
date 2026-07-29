@@ -66,11 +66,11 @@ export async function resolveAmbiguousMatch(
     orderBy: { createdAt: "desc" },
     take: 1,
   });
-  if (cached && cached.confidence >= 0.9 && cached.aiModel) {
+  if (cached && Number(cached.confidence) >= 0.9 && cached.aiModel) {
     const [provider, ...modelParts] = cached.aiModel.split("/");
     return {
       same_product: cached.tier === "auto-match",
-      confidence: cached.confidence,
+      confidence: Number(cached.confidence),
       reasoning_ar: cached.aiReasoning || "Cached",
       suggested_canonical_name: candidate.name,
       provider: provider as ProviderType,

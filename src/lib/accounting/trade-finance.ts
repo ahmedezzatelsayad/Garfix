@@ -51,6 +51,7 @@ export async function trackLetterOfCredit(
     const lc = await db.letterOfCredit.create({
       data: {
         companySlug,
+        number: lcData.lcNumber,
         lcNumber: lcData.lcNumber,
         supplierId: lcData.supplierId,
         bankAccountId: lcData.bankAccountId,
@@ -64,6 +65,7 @@ export async function trackLetterOfCredit(
           ? JSON.stringify(lcData.documentsRequired)
           : null,
         notes: lcData.notes || null,
+        companyId: 0,
       },
     });
 
@@ -244,7 +246,7 @@ export async function utilizeLC(
           reference: `LC-${existing.lcNumber}`,
           status: "posted",
           sourceType: "letter_of_credit",
-          sourceId: lcId,
+          sourceId: String(lcId),
           createdBy: userEmail,
           lines: {
             create: [
@@ -446,13 +448,12 @@ export async function allocateLandedCost(
           costType: allocationData.costType,
           totalCost: toNum(totalCost),
           allocationMethod: method,
+          lineItems: JSON.stringify(allocationData.lines),
           lines: {
             create: allocationData.lines.map((l) => ({
-              inventoryItemId: l.inventoryItemId || null,
               productId: l.productId || null,
-              allocatedCost: toNum(l.allocatedCost),
-              baseQuantity: l.baseQuantity || null,
-              baseValue: l.baseValue || null,
+              allocatedAmount: toNum(l.allocatedCost),
+              proportionalWeight: 0,
             })),
           },
         },
@@ -461,9 +462,9 @@ export async function allocateLandedCost(
 
       // Update inventory item costs
       for (const line of allocation.lines) {
-        if (line.inventoryItemId) {
-          const item = await tx.inventoryItem.findUnique({
-            where: { id: line.inventoryItemId },
+        if (line.productId) {
+          const item = await tx.inventoryItem.findFirst({
+            where: { productId: line.productId, companySlug },
           });
           if (item) {
             // Add allocated cost to the product's cost (via product catalog)
@@ -475,7 +476,7 @@ export async function allocateLandedCost(
                 // FIX #12: ProductCatalog uses `purchasePrice`, NOT `cost`.
                 const currentCost = num(product.purchasePrice, 3);
                 const qty = num(item.quantity, 3);
-                const lineCost = num(line.allocatedCost, 3);
+                const lineCost = num(line.allocatedAmount, 3);
                 const perUnitCost = qty > 0 ? lineCost / qty : 0;
                 await tx.productCatalog.update({
                   where: { id: item.productId },
@@ -497,7 +498,7 @@ export async function allocateLandedCost(
           reference: `LandedCost-${allocation.id}`,
           status: "posted",
           sourceType: "landed_cost_allocation",
-          sourceId: allocation.id,
+          sourceId: String(allocation.id),
           createdBy: userEmail,
           lines: {
             create: [
@@ -555,11 +556,8 @@ export async function allocateLandedCost(
         allocationMethod: result.allocation.allocationMethod,
         lines: result.allocation.lines.map((l) => ({
           id: l.id,
-          inventoryItemId: l.inventoryItemId,
           productId: l.productId,
-          allocatedCost: num(l.allocatedCost, 3),
-          baseQuantity: l.baseQuantity ? num(l.baseQuantity, 3) : null,
-          baseValue: l.baseValue ? num(l.baseValue, 3) : null,
+          allocatedCost: num(l.allocatedAmount, 3),
         })),
         createdAt: result.allocation.createdAt,
       },
@@ -826,7 +824,7 @@ export async function calculateFxRevaluation(
               reference: `FX-Rev-${revaluation.id}`,
               status: "posted",
               sourceType: "fx_revaluation",
-              sourceId: revaluation.id,
+              sourceId: String(revaluation.id),
               createdBy: userEmail,
               lines: { create: lines },
             },

@@ -1255,8 +1255,8 @@ async function buildResult(args: BuildResultArgs): Promise<MatchResult> {
 export async function confirmAlias(companySlug: string, productId: number, alias: string, createdBy: string): Promise<void> {
   await db.productAlias.upsert({
     where: { companySlug_alias: { companySlug, alias: alias.trim() } },
-    update: { isVerified: true, confidence: 1.0, source: "manual", createdBy },
-    create: { productCatalogId: productId, companySlug, alias: alias.trim(), source: "manual", confidence: 1.0, isVerified: true, createdBy },
+    update: { isVerified: true, confidence: 1.0, source: "manual" },
+    create: { productCatalogId: productId, companySlug, alias: alias.trim(), source: "manual", confidence: 1.0, isVerified: true },
   });
 }
 
@@ -1288,13 +1288,9 @@ export async function recordMatchOverride(params: {
     data: {
       companySlug,
       inputText: inputText.trim(),
-      inputNormalized,
-      fromProductId,
-      toProductId,
-      chosenAlias: chosenAlias?.trim() || null,
+      chosenAlias: chosenAlias?.trim() || "",
       auditId: auditId ?? null,
       reason: reason?.trim() || null,
-      overriddenBy,
     },
   });
   logger.info("[product-matcher] match override recorded (learning engine)", {
@@ -1337,7 +1333,7 @@ export async function undoMatches(auditIds: number[], undoneBy: string): Promise
       const audit = await db.productMatchAudit.findUnique({ where: { id } });
       if (!audit) { errors.push(`Audit ${id} not found`); continue; }
       if (audit.isUndone) { errors.push(`Audit ${id} already undone`); continue; }
-      await db.productMatchAudit.update({ where: { id }, data: { isUndone: true, undoneBy, undoneAt: new Date() } });
+      await db.productMatchAudit.update({ where: { id }, data: { isUndone: true, undoneBy } });
       if (audit.matchedAlias && audit.tier === "auto-match") {
         await db.productAlias.deleteMany({ where: { companySlug: audit.companySlug, alias: audit.matchedAlias } }).catch(() => {});
       }

@@ -151,7 +151,7 @@ export async function reconcileAccountBalances(
       discrepancies.push({
         accountId: acc.id,
         accountCode: acc.code,
-        accountNameAr: acc.nameAr,
+        accountNameAr: acc.nameAr ?? "",
         accountType: acc.type,
         storedBalance: storedBalance.toFixed(3),
         derivedBalance: derivedBalance.toFixed(3),
@@ -234,9 +234,10 @@ export async function recalculateAndFixAllBalances(
   // Build per-account line map for efficient calculation
   const linesByAccount = new Map<number, typeof allLines>();
   for (const line of allLines) {
-    const existing = linesByAccount.get(line.accountId) || [];
+    const aid = line.accountId ?? 0;
+    const existing = linesByAccount.get(aid) || [];
     existing.push(line);
-    linesByAccount.set(line.accountId, existing);
+    linesByAccount.set(aid, existing);
   }
 
   const beforeAfter: { accountId: number; accountCode: string; before: string; after: string; difference: string }[] = [];

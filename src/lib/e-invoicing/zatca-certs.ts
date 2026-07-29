@@ -171,8 +171,8 @@ export async function storeZatcaCertificate(
     id: certificate.id,
     companySlug: certificate.companySlug,
     certificateType: certificate.certificateType as ZatcaCertificateType,
-    serialNumber: certificate.serialNumber,
-    expiryDate: certificate.expiryDate,
+    serialNumber: certificate.serialNumber ?? "",
+    expiryDate: certificate.expiryDate ?? new Date(),
     status: certificate.status as ZatcaCertificateStatus,
     createdAt: certificate.createdAt,
     updatedAt: certificate.updatedAt,
@@ -224,8 +224,8 @@ export async function retrieveZatcaCertificate(
       id: certificate.id,
       companySlug: certificate.companySlug,
       certificateType: certificate.certificateType as ZatcaCertificateType,
-      serialNumber: certificate.serialNumber,
-      expiryDate: certificate.expiryDate,
+      serialNumber: certificate.serialNumber ?? "",
+      expiryDate: certificate.expiryDate ?? new Date(),
       status: certificate.status as ZatcaCertificateStatus,
       createdAt: certificate.createdAt,
       updatedAt: certificate.updatedAt,
@@ -579,6 +579,13 @@ export async function checkCertificateExpiry(
 
   const now = new Date();
   const expiry = cert.expiryDate;
+  if (!expiry) {
+    return {
+      isExpiringSoon: false,
+      daysRemaining: 0,
+      expiryDate: null,
+    };
+  }
   const daysRemaining = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
   const isExpiringSoon = daysRemaining <= EXPIRY_WARNING_DAYS;

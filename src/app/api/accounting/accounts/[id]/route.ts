@@ -15,7 +15,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const existing = await db.account.findUnique({ where: { id: parseInt(id) } });
   if (!existing) return apiError("Account not found", 404);
 
-  const access = await requirePermissionForCompany(req, "finance_access", existing.companySlug);
+  const access = await requirePermissionForCompany(req, "finance_access", existing.companySlug ?? "");
   if ("error" in access) return access.error;
   const user = access.user;
 
@@ -28,7 +28,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   await db.account.delete({ where: { id: existing.id } });
 
   await logAudit({
-    userEmail: user.email, userUid: user.uid,
+    userEmail: user.email, userUid: user.uid ?? "",
     action: "delete", entity: "account", entityId: existing.id, companySlug: existing.companySlug,
     details: { code: existing.code, nameAr: existing.nameAr },
   });

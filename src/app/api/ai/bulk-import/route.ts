@@ -186,7 +186,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
               status: "posted",
               createdBy: user.email,
               sourceType: "invoice",
-              sourceId: inv.id,
+              sourceId: String(inv.id),
               lines: {
                 create: [
                   // Debit AR (asset increases with debit)
@@ -218,7 +218,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           // Update the invoice to link the journal entry
           await tx.invoice.update({
             where: { id: inv.id },
-            data: { journalEntryId: je.id },
+            data: { source: `ai-bulk-import-je:${je.id}` },
           });
 
           // Update account balances

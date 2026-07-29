@@ -81,8 +81,8 @@ export async function buildCompanySnapshot(
   let totalQuantity = 0;
   let lowStockItems = 0;
   for (const item of inventoryItems) {
-    const qty = parseFloat(item.quantity) || 0;
-    const reorder = parseFloat(item.reorderLevel) || 0;
+    const qty = item.quantity || 0;
+    const reorder = item.reorderLevel || 0;
     totalQuantity += qty;
     if (qty <= reorder) {
       lowStockItems++;
@@ -118,29 +118,33 @@ export async function buildCompanySnapshot(
     recentDecisions: recentDecisions.map((d) => ({
       id: d.id,
       content: d.content,
-      lastAccessedAt: d.lastAccessedAt.toISOString(),
+      lastAccessedAt: (d.lastAccessedAt ?? new Date()).toISOString(),
     })),
   };
 
   // ── Cache the snapshot in AIMemoryEntry ────────────────────────────────
   // Source: db.aIMemoryEntry with category='digital-twin'
+  const existingEntryId = await getSnapshotEntryId(companySlug);
   try {
-    await db.aIMemoryEntry.upsert({
-      where: {
-        id: await getSnapshotEntryId(companySlug),
-      },
-      create: {
-        companySlug,
-        category: "digital-twin",
-        content: JSON.stringify(snapshot),
-      },
-      update: {
-        content: JSON.stringify(snapshot),
-        lastAccessedAt: new Date(),
-      },
-    });
+    if (existingEntryId) {
+      await db.aIMemoryEntry.update({
+        where: { id: existingEntryId },
+        data: {
+          content: JSON.stringify(snapshot),
+          lastAccessedAt: new Date(),
+        },
+      });
+    } else {
+      await db.aIMemoryEntry.create({
+        data: {
+          companySlug,
+          category: "digital-twin",
+          content: JSON.stringify(snapshot),
+        },
+      });
+    }
   } catch {
-    // If upsert fails (e.g., no existing entry), fall back to create
+    // If update/create fails, fall back to create
     await db.aIMemoryEntry.create({
       data: {
         companySlug,
@@ -183,7 +187,7 @@ export async function getCachedSnapshot(
   if (!entry) return null;
 
   // Check if cache is still valid (15-minute TTL)
-  const ageMs = Date.now() - entry.lastAccessedAt.getTime();
+  const ageMs = Date.now() - (entry.lastAccessedAt ?? new Date()).getTime();
   if (ageMs > SNAPSHOT_TTL_MS) {
     return null; // expired — caller should rebuild
   }

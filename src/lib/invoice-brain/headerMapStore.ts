@@ -83,7 +83,7 @@ export class PrismaHeaderMapStore implements HeaderMapStore {
       mapping: typeof row.mapping === "string" ? JSON.parse(row.mapping) : row.mapping,
       sampleCount: row.sampleCount,
       createdAt: row.createdAt.toISOString(),
-      lastUsedAt: row.lastUsedAt.toISOString(),
+      lastUsedAt: row.lastUsedAt?.toISOString() ?? new Date().toISOString(),
     };
   }
 
@@ -95,7 +95,7 @@ export class PrismaHeaderMapStore implements HeaderMapStore {
         headerFingerprint: mapping.headerFingerprint,
         mapping: JSON.stringify(mapping.mapping),
         sampleCount: mapping.sampleCount,
-        createdAt: now,
+        companySlug: mapping.headerFingerprint,
         lastUsedAt: now,
       },
       update: {

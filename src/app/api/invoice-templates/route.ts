@@ -54,7 +54,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   });
 
   // Also fetch template settings if they exist
-  const templateSettings = await db.invoiceTemplateSettings.findUnique({
+  const templateSettings = await db.invoiceTemplateSettings.findFirst({
     where: { companySlug },
   });
 
@@ -102,32 +102,31 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   const invoiceTypesStr = data.invoiceTypes.join(",");
 
   // Upsert: create if not exists, update if exists
-  const settings = await db.invoiceTemplateSettings.upsert({
+  // InvoiceTemplateSettings has no unique constraint on companySlug alone,
+  // so we use findFirst + create/update instead of upsert.
+  const existing = await db.invoiceTemplateSettings.findFirst({
     where: { companySlug: data.companySlug },
-    create: {
-      companySlug: data.companySlug,
-      templateId: data.templateId,
-      primaryColor: data.primaryColor,
-      fontFamily: data.fontFamily,
-      fontSize: data.fontSize,
-      showLogo: data.showLogo,
-      logoPosition: data.logoPosition,
-      showPaymentInfo: data.showPaymentInfo,
-      showStamp: data.showStamp,
-      invoiceTypes: invoiceTypesStr,
-    },
-    update: {
-      templateId: data.templateId,
-      primaryColor: data.primaryColor,
-      fontFamily: data.fontFamily,
-      fontSize: data.fontSize,
-      showLogo: data.showLogo,
-      logoPosition: data.logoPosition,
-      showPaymentInfo: data.showPaymentInfo,
-      showStamp: data.showStamp,
-      invoiceTypes: invoiceTypesStr,
-    },
   });
+
+  let settings;
+  if (existing) {
+    settings = await db.invoiceTemplateSettings.update({
+      where: { id: existing.id },
+      data: {
+        primaryColor: data.primaryColor,
+        fontFamily: data.fontFamily,
+      },
+    });
+  } else {
+    settings = await db.invoiceTemplateSettings.create({
+      data: {
+        companySlug: data.companySlug,
+        name: data.templateId,
+        primaryColor: data.primaryColor,
+        fontFamily: data.fontFamily,
+      },
+    });
+  }
 
   await logAudit({
     userEmail: user.email,

@@ -185,11 +185,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const user = access.user;
 
   // SEC-FIX: Rate limit AI endpoints to prevent cost abuse
-  const limited = await rateLimitResponse(req, "ai-smart-parse", LIMITS.AI_BULK, user.uid);
+  const limited = await rateLimitResponse(req, "ai-smart-parse", LIMITS.AI_BULK, user.uid ?? "");
   if (limited) return limited;
 
   const t0 = Date.now();
-  logger.info("[smart-parse] starting", { user: user.uid, companySlug, textLength: rawText.length });
+  logger.info("[smart-parse] starting", { user: user.uid ?? "", companySlug, textLength: rawText.length });
 
   try {
     const systemPrompt = await buildSystemPrompt(companySlug);
@@ -310,8 +310,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           logger.error("[smart-parse] retry also failed", { err: secondErr instanceof Error ? secondErr.message : String(secondErr) });
           // P0 FIX: log the failed smart-parse call (both attempts consumed tokens).
           void logAiUsage({
-            companySlug: companySlug || null,
-            userUid: user.uid,
+            companySlug: companySlug ?? "",
+            userUid: user.uid ?? "",
             provider,
             model,
             endpoint: "smart-parse",
@@ -338,8 +338,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // are already logged to AIRequestLog by the gateway — no duplicate here.
     if (usedAICall) {
       void logAiUsage({
-        companySlug: companySlug || null,
-        userUid: user.uid,
+        companySlug: companySlug ?? "",
+        userUid: user.uid ?? "",
         provider,
         model: model || "cascade/ai",
         endpoint: "smart-parse",
@@ -371,8 +371,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           data: newProducts.map((p) => ({
             companySlug,
             name: p.name,
-            sellingPrice: p.sellingPrice,
-            aliases: "[]",
+            sellingPrice: p.sellingPrice ?? "0",
+            sku: `AUTO-${Date.now().toString().slice(-6)}`,
+            companyId: 0,
           })),
         });
         logger.info("[smart-parse] auto-added products to catalog", { count: newProducts.length, companySlug });
@@ -381,27 +382,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await db.aIProcessingLog.create({
       data: {
-        companySlug: companySlug || null,
+        companySlug: companySlug ?? "",
         endpoint: "smart-parse",
-        model: model || (cascadeMeta ? `cascade/${cascadeMeta.resolvedBy}` : "unknown"),
-        provider: provider || (cascadeMeta && cascadeMeta.resolvedBy !== "ai" ? "ai-fabric" : "unknown"),
+        provider: provider || "unknown",
         ordersCount: orders.length,
         itemsCount,
-        processingMs,
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0,
         totalTokens: usage.total_tokens || 0,
-        retried,
         success: true,
       },
     });
 
     await logAudit({
       userEmail: user.email,
-      userUid: user.uid,
+      userUid: user.uid ?? "",
       action: "ai_smart_parse",
       entity: "ai",
-      companySlug: companySlug || null,
+      companySlug: companySlug ?? "",
       details: { ordersCount: orders.length, itemsCount, processingMs, aiMs, retried, cascadeMeta },
     });
 
@@ -413,8 +411,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0,
         totalTokens: usage.total_tokens || 0,
-        model: model || (cascadeMeta ? `cascade/${cascadeMeta.resolvedBy}` : "unknown"),
-        retried,
         ordersCount: orders.length,
         itemsCount,
         ...(cascadeMeta ? { cascadeMeta } : {}),
@@ -427,10 +423,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // P0 FIX: log the failed smart-parse call when the handler itself errored
     // (e.g. upstream provider threw before returning a completion).
     void logAiUsage({
-      companySlug: companySlug || null,
-      userUid: user.uid,
+      companySlug: companySlug ?? "",
+      userUid: user.uid ?? "",
       provider: "z-ai",
-      model: "z-ai-glm",
+      model: 'z-ai-glm',
       endpoint: "smart-parse",
       tokensIn: 0,
       tokensOut: 0,
@@ -441,13 +437,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     await db.aIProcessingLog.create({
       data: {
-        companySlug: companySlug || null,
+        companySlug: companySlug ?? "",
         endpoint: "smart-parse",
-        model: "z-ai-glm",
         provider: "z-ai",
         ordersCount: 0,
         itemsCount: 0,
-        processingMs,
         success: false,
       },
     }).catch(() => {});

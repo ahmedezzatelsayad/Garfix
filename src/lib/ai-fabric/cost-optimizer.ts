@@ -57,7 +57,7 @@ export async function getCascadeBreakdown(
       resolvedBy: stage,
       count,
       percentage: totalRequests > 0 ? Math.round((count / totalRequests) * 1000) / 10 : 0,
-      totalCostUsd: Math.round(totalCost * 1e6) / 1e6,
+      totalCostUsd: Math.round(Number(totalCost) * 1e6) / 1e6,
       avgLatencyMs: count > 0 ? Math.round(totalLatency / count) : 0,
     };
   }).filter((e) => e.count > 0);
@@ -91,12 +91,12 @@ export async function calculateSavedCost(
   });
 
   const totalRequests = allLogs.length;
-  const actualCostUsd = allLogs.reduce((sum, l) => sum + l.costUsd, 0);
+  const actualCostUsd = allLogs.reduce((sum, l) => sum + Number(l.costUsd), 0);
 
   // Calculate average AI call cost (only from resolvedBy='ai' records)
   const aiLogs = allLogs.filter((l) => l.resolvedBy === "ai");
   const avgAiCostPerCall = aiLogs.length > 0
-    ? aiLogs.reduce((sum, l) => sum + l.costUsd, 0) / aiLogs.length
+    ? aiLogs.reduce((sum, l) => sum + Number(l.costUsd), 0) / aiLogs.length
     : 0;
 
   // Hypothetical: if ALL requests went to AI
@@ -110,14 +110,14 @@ export async function calculateSavedCost(
   const breakdown = CASCADE_STAGES.map((stage) => {
     const stageLogs = allLogs.filter((l) => l.resolvedBy === stage);
     const count = stageLogs.length;
-    const totalCost = stageLogs.reduce((sum, l) => sum + l.costUsd, 0);
+    const totalCost = stageLogs.reduce((sum, l) => sum + Number(l.costUsd), 0);
     const totalLatency = stageLogs.reduce((sum, l) => sum + l.latencyMs, 0);
 
     return {
       resolvedBy: stage,
       count,
       percentage: totalRequests > 0 ? Math.round((count / totalRequests) * 1000) / 10 : 0,
-      totalCostUsd: Math.round(totalCost * 1e6) / 1e6,
+      totalCostUsd: Math.round(Number(totalCost) * 1e6) / 1e6,
       avgLatencyMs: count > 0 ? Math.round(totalLatency / count) : 0,
     };
   }).filter((e) => e.count > 0);
@@ -127,9 +127,9 @@ export async function calculateSavedCost(
     periodStart,
     periodEnd,
     totalRequests,
-    actualCostUsd: Math.round(actualCostUsd * 1e6) / 1e6,
-    hypotheticalAiOnlyCostUsd: Math.round(hypotheticalAiOnlyCostUsd * 1e6) / 1e6,
-    savedUsd: Math.round(savedUsd * 1e6) / 1e6,
+    actualCostUsd: Math.round(Number(actualCostUsd) * 1e6) / 1e6,
+    hypotheticalAiOnlyCostUsd: Math.round(Number(hypotheticalAiOnlyCostUsd) * 1e6) / 1e6,
+    savedUsd: Math.round(Number(savedUsd) * 1e6) / 1e6,
     savingsPct,
     breakdown,
   };
@@ -154,11 +154,11 @@ export async function getPlatformSavings(
   });
 
   const totalRequests = allLogs.length;
-  const actualCostUsd = allLogs.reduce((sum, l) => sum + l.costUsd, 0);
+  const actualCostUsd = allLogs.reduce((sum, l) => sum + Number(l.costUsd), 0);
 
   const aiLogs = allLogs.filter((l) => l.resolvedBy === "ai");
   const avgAiCostPerCall = aiLogs.length > 0
-    ? aiLogs.reduce((sum, l) => sum + l.costUsd, 0) / aiLogs.length
+    ? aiLogs.reduce((sum, l) => sum + Number(l.costUsd), 0) / aiLogs.length
     : 0;
 
   const hypotheticalAiOnlyCostUsd = totalRequests * avgAiCostPerCall;
@@ -170,14 +170,14 @@ export async function getPlatformSavings(
   const breakdown = CASCADE_STAGES.map((stage) => {
     const stageLogs = allLogs.filter((l) => l.resolvedBy === stage);
     const count = stageLogs.length;
-    const totalCost = stageLogs.reduce((sum, l) => sum + l.costUsd, 0);
+    const totalCost = stageLogs.reduce((sum, l) => sum + Number(l.costUsd), 0);
     const totalLatency = stageLogs.reduce((sum, l) => sum + l.latencyMs, 0);
 
     return {
       resolvedBy: stage,
       count,
       percentage: totalRequests > 0 ? Math.round((count / totalRequests) * 1000) / 10 : 0,
-      totalCostUsd: Math.round(totalCost * 1e6) / 1e6,
+      totalCostUsd: Math.round(Number(totalCost) * 1e6) / 1e6,
       avgLatencyMs: count > 0 ? Math.round(totalLatency / count) : 0,
     };
   }).filter((e) => e.count > 0);
@@ -187,9 +187,9 @@ export async function getPlatformSavings(
     periodStart,
     periodEnd,
     totalRequests,
-    actualCostUsd: Math.round(actualCostUsd * 1e6) / 1e6,
-    hypotheticalAiOnlyCostUsd: Math.round(hypotheticalAiOnlyCostUsd * 1e6) / 1e6,
-    savedUsd: Math.round(savedUsd * 1e6) / 1e6,
+    actualCostUsd: Math.round(Number(actualCostUsd) * 1e6) / 1e6,
+    hypotheticalAiOnlyCostUsd: Math.round(Number(hypotheticalAiOnlyCostUsd) * 1e6) / 1e6,
+    savedUsd: Math.round(Number(savedUsd) * 1e6) / 1e6,
     savingsPct,
     breakdown,
   };

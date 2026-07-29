@@ -76,7 +76,7 @@ export async function PATCH(
     if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "مدخلات غير صالحة", 400);
 
     const data = parsed.data;
-    const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+    const access = await requirePermissionForCompany(req, "finance_access", data.companySlug ?? "");
     if ("error" in access) return access.error;
     const user = access.user;
 
@@ -94,7 +94,7 @@ export async function PATCH(
         existing.fromCurrency,
         existing.toCurrency,
         num(existing.rate, 3),
-        existing.period,
+        existing.period ?? "",
         user.email,
         true,
       );
@@ -109,7 +109,7 @@ export async function PATCH(
 
       await logAudit({
         userEmail: user.email,
-        userUid: user.uid,
+        userUid: user.uid ?? "",
         action: "post",
         entity: "fx_revaluation",
         entityId: id,
@@ -137,7 +137,7 @@ export async function PATCH(
 
       await logAudit({
         userEmail: user.email,
-        userUid: user.uid,
+        userUid: user.uid ?? "",
         action: "unpost",
         entity: "fx_revaluation",
         entityId: id,
@@ -155,7 +155,7 @@ export async function PATCH(
         existing.fromCurrency,
         existing.toCurrency,
         newRate,
-        existing.period,
+        existing.period ?? "",
         user.email,
         existing.status === "posted",
       );
@@ -164,7 +164,7 @@ export async function PATCH(
 
       await logAudit({
         userEmail: user.email,
-        userUid: user.uid,
+        userUid: user.uid ?? "",
         action: "recalculate",
         entity: "fx_revaluation",
         entityId: result.result?.revaluationId,
