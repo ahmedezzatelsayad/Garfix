@@ -271,7 +271,6 @@ async function persistEnqueue(queue: QueueName, payload: JobPayload): Promise<nu
   try {
     const row = await db.jobQueue.create({
       data: {
-        companySlug: "system",
         queue,
         type: payload.type,
         data: JSON.stringify(payload.data ?? {}),
