@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({
@@ -55,8 +55,10 @@ export const metadata: Metadata = {
  * is on <html> on the very first paint. Prevents the light-mode flash that
  * dark-mode-preferring users would otherwise see for one frame.
  *
- * Reads from localStorage("garfix:theme"). If no preference is stored, falls
- * back to the OS preference via prefers-color-scheme.
+ * Reads from localStorage("garfix:theme") — the same key next-themes is
+ * configured to use in Providers.tsx (storageKey="garfix:theme"). If no
+ * preference is stored, falls back to the OS preference via
+ * prefers-color-scheme.
  *
  * `suppressHydrationWarning` on <html> is required because this script
  * mutates the className before React renders, causing a hydration mismatch
@@ -68,7 +70,7 @@ const themeInitScript = `
     var stored = localStorage.getItem('garfix:theme');
     var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     var theme = stored || (prefersDark ? 'dark' : 'light');
-    if (theme === 'dark') {
+    if (theme === 'dark' || theme === 'system' && prefersDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');

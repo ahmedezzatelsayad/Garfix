@@ -15,6 +15,10 @@ export {
   aiCircuitBreaker,
   paymentCircuitBreaker,
   externalApiCircuitBreaker,
+  // Per-service breakers (Audit 4 fix — prevent cross-service breaker aliasing)
+  webhookCircuitBreaker,
+  eInvoicingCircuitBreaker,
+  whatsappCircuitBreaker,
 } from "./circuit-breaker";
 
 // Re-export the CircuitBreaker class itself

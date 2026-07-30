@@ -174,10 +174,24 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const authResult = await resolveAuth(req);
 
   if (!authResult.ok || !authResult.user) {
-    const response = NextResponse.json(
-      { error: authResult.error || "Unauthorized" },
-      { status: authResult.status || 401 },
-    );
+    // For API routes: return JSON 401 (clients expect JSON).
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.json(
+        { error: authResult.error || "Unauthorized" },
+        { status: authResult.status || 401 },
+      );
+      return withSecurityHeaders(response, pathname);
+    }
+    // For page routes: redirect to /login with returnTo param.
+    // Previously this returned a JSON 401 for ALL routes including pages,
+    // which meant unauthenticated users hitting an unknown page saw a raw
+    // JSON {"error":"Unauthorized"} instead of the branded not-found.tsx
+    // or the login redirect. Now unknown pages fall through to Next.js's
+    // 404 handler (not-found.tsx) and protected pages redirect to login.
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("returnTo", pathname + req.nextUrl.search);
+    const response = NextResponse.redirect(loginUrl);
     return withSecurityHeaders(response, pathname);
   }
 

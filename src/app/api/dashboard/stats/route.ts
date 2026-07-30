@@ -93,11 +93,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (bypassCache) {
     logger.debug("[dashboard] cache bypassed", { user: user.uid, companySlug });
     const stats = await computeStats(user.uid, companiesForCache, user.role, companySlug);
-    return NextResponse.json(stats);
+    return NextResponse.json({ stats });
   }
 
   const stats = await cached(cacheKey, CACHE_TTL_SECONDS, () =>
     computeStats(user.uid, companiesForCache, user.role, companySlug),
   );
-  return NextResponse.json(stats);
+  return NextResponse.json({ stats });
 });

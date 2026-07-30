@@ -10,6 +10,8 @@
  * @module founder-validation
  */
 
+import { logger } from "@/lib/logger";
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION 0: Seeded PRNG (mulberry32) — deterministic, reproducible
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2258,37 +2260,37 @@ export async function runFounderValidation(
   const seed = config.seed ?? 42;
 
   // ── Phase 1: Generate enterprise data ──
-  console.log(`[Founder Validation] Generating ${config.companyCount} companies (seed=${seed})...`);
+  logger.info(`[Founder Validation] Generating ${config.companyCount} companies (seed=${seed})...`);
   const companies = seedEnterpriseData({ companyCount: config.companyCount, seed });
-  console.log(`[Founder Validation] Generated ${companies.length} companies with ${companies.reduce((s, c) => s + c.invoices.length, 0)} total invoices`);
+  logger.info(`[Founder Validation] Generated ${companies.length} companies with ${companies.reduce((s, c) => s + c.invoices.length, 0)} total invoices`);
 
   // ── Phase 2: Telemetry collection ──
   let telemetry: TelemetryEntry[] = [];
   if (config.generateTelemetry !== false) {
-    console.log('[Founder Validation] Generating telemetry...');
+    logger.info('[Founder Validation] Generating telemetry...');
     const collector = new TelemetryCollector(companies);
     telemetry = collector.generateAll(new SeededRandom(seed + 1));
-    console.log(`[Founder Validation] Collected ${telemetry.length} telemetry entries`);
+    logger.info(`[Founder Validation] Collected ${telemetry.length} telemetry entries`);
   }
 
   // ── Phase 3: Calculate metrics ──
-  console.log('[Founder Validation] Calculating metrics...');
+  logger.info('[Founder Validation] Calculating metrics...');
   const metrics = calculateMetrics(companies, telemetry);
 
   // ── Phase 4: E2E Journey ──
   let e2eResult: E2EJourneyResult | null = null;
   if (config.runE2E && companies.length > 0) {
-    console.log('[Founder Validation] Running E2E tenant journey...');
+    logger.info('[Founder Validation] Running E2E tenant journey...');
     const e2eCompany = companies[0];
     e2eResult = await simulateE2ETenantJourney(e2eCompany, {
       skipAiCalls: !config.apiKey,
       realApiKey: config.apiKey,
     });
-    console.log(`[Founder Validation] E2E journey ${e2eResult.passed ? 'PASSED' : 'FAILED'} (${e2eResult.totalDurationMs}ms)`);
+    logger.info(`[Founder Validation] E2E journey ${e2eResult.passed ? 'PASSED' : 'FAILED'} (${e2eResult.totalDurationMs}ms)`);
   }
 
   // ── Phase 5: Generate report ──
-  console.log('[Founder Validation] Generating founder report...');
+  logger.info('[Founder Validation] Generating founder report...');
   const report = generateFounderReport(companies, telemetry, seed);
   report.e2eJourneyResult = e2eResult;
 
@@ -2329,7 +2331,7 @@ export async function runFounderValidation(
     `═══════════════════════════════════════════════════════════════`,
   ].join('\n');
 
-  console.log(summary);
+  logger.info(JSON.stringify(summary, null, 2));
 
   return {
     config,

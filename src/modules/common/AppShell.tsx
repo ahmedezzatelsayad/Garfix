@@ -210,15 +210,15 @@ export default function AppShell() {
                   {view === "hr" && <HRView />}
                   {view === "accounting" && <AccountingView />}
                   {view === "settings" && <SettingsView activeCompany={activeCompany} onUpdated={refreshCompanies} />}
-                  {view === "saas" && (isAdmin || isFounder) && <SaaSControlPanel />}
-                  {view === "team" && (perms.settings_access || isAdmin || isFounder) && <TeamView />}
-                  {view === "platform-admin" && isFounder && <PlatformAdminPanel />}
-                  {view === "audit" && (isAdmin || isFounder) && <AuditView />}
+                  {view === "saas" && (isAdmin || isFounder ? <SaaSControlPanel /> : <NoAccessView label="إدارة المنصة" />)}
+                  {view === "team" && ((perms.settings_access || isAdmin || isFounder) ? <TeamView /> : <NoAccessView label="الفريق" />)}
+                  {view === "platform-admin" && (isFounder ? <PlatformAdminPanel /> : <NoAccessView label="إدارة المؤسس" />)}
+                  {view === "audit" && ((isAdmin || isFounder) ? <AuditView /> : <NoAccessView label="سجل التدقيق" />)}
                   {view === "bulk-input" && <BulkInputView />}
                   {view === "reports" && <ReportsView />}
                   {view === "account" && <AccountView />}
-                  {view === "inventory" && (perms.settings_access || isAdmin || isFounder) && <InventoryView />}
-                  {view === "automation" && (perms.settings_access || isAdmin || isFounder) && <AutomationView />}
+                  {view === "inventory" && ((perms.settings_access || isAdmin || isFounder) ? <InventoryView /> : <NoAccessView label="المخزون" />)}
+                  {view === "automation" && ((perms.settings_access || isAdmin || isFounder) ? <AutomationView /> : <NoAccessView label="الأتمتة" />)}
                   {view === "ai-agents" && <AIAgentsView />}
                 </>
               )}
@@ -234,5 +234,24 @@ export default function AppShell() {
         <AICopilotBubble />
       </div>
     </CommandPaletteProvider>
+  );
+}
+
+/** Fallback rendered when a user navigates to a hash view they don't have
+ * permission to see (e.g. #platform-admin as a non-founder). Previously the
+ * AppShell rendered NOTHING for these views — a blank main area with no
+ * explanation, which users interpreted as "the app is broken".
+ */
+function NoAccessView({ label }: { label: string }) {
+  return (
+    <div className="p-8 md:p-12 text-center" dir="rtl">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-destructive/10 text-destructive mb-3">
+        !
+      </div>
+      <h2 className="text-lg sm:text-xl font-extrabold mb-1">لا تملك صلاحية الوصول</h2>
+      <p className="text-sm text-muted-foreground">
+        هذه الصفحة ({label}) متاحة للمسؤولين فقط. تواصل مع مدير المنصة إذا كنت تعتقد أن هذا خطأ.
+      </p>
+    </div>
   );
 }

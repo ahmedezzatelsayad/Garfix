@@ -22,7 +22,9 @@ const UpdateSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-async function loadForUser(id: number, user: AuthPayload) {
+async function loadForUser(id: string, user: AuthPayload) {
+  // ProductCatalog.id is a cuid (String). Previously this was parseInt(id)
+  // which produced NaN for cuid strings → every lookup returned null → 404.
   const p = await db.productCatalog.findUnique({ where: { id } });
   if (!p) return null;
   if (!assertCompanyAccess(user, p.companySlug)) return null;
@@ -33,7 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadForUser(parseInt(id), result.user);
+  const existing = await loadForUser(id, result.user);
   if (!existing) return apiError("Product not found", 404);
 
   if (!hasPermission(result.user, "view_inventory")) {
@@ -47,7 +49,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadForUser(parseInt(id), result.user);
+  const existing = await loadForUser(id, result.user);
   if (!existing) return apiError("Product not found", 404);
 
   const body = await parseJsonBody(req);
@@ -102,7 +104,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadForUser(parseInt(id), result.user);
+  const existing = await loadForUser(id, result.user);
   if (!existing) return apiError("Product not found", 404);
 
   // Enforce permission + company access

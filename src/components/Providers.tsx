@@ -40,7 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="garfix:theme">
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <BrandProvider>
