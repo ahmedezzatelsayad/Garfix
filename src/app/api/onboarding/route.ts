@@ -25,6 +25,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;
 
+  // Check for sentinel slug first (user skipped onboarding without company)
+  const sentinelSlug = `user-${user.uid}`;
+  const sentinelProgress = await db.setupWizardProgress.findUnique({ where: { companySlug: sentinelSlug } });
+  if (sentinelProgress?.completed) {
+    return NextResponse.json({ step: 10, completed: true, data: {}, companySlug: sentinelSlug });
+  }
+
   // Find the user's first company
   const companies = user.companies.length > 0 ? user.companies : [];
   if (companies.length === 0) {
@@ -101,22 +108,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // ─── action === "complete" ────────────────────────────────────────────────
-  if (!data.companySlug) return apiError("companySlug required to complete onboarding", 400);
-  if (!data.businessType) return apiError("businessType required", 400);
-  const companySlug = data.companySlug;
+  // companySlug is optional — if omitted, creates a sentinel record (user-${uid})
+  // so the user can skip onboarding without creating a company first.
+  const companySlug = data.companySlug || `user-${user.uid}`;
+  const isSentinel = companySlug.startsWith("user-");
 
-  const access = await requirePermissionForCompany(req, "settings_access", companySlug);
-  if ("error" in access) return access.error;
+  if (!isSentinel) {
+    const access = await requirePermissionForCompany(req, "settings_access", companySlug);
+    if ("error" in access) return access.error;
+  }
 
-  const company = await db.company.findUnique({ where: { slug: companySlug } });
-  if (!company) return apiError("Company not found", 404);
+  const company = isSentinel ? null : await db.company.findUnique({ where: { slug: companySlug } });
+  if (!isSentinel && !company) return apiError("Company not found", 404);
 
-  const countryConfig = getCountryConfig(company.country);
-  const businessType = data.businessType as BusinessType;
+  const countryConfig = company ? getCountryConfig(company.country) : null;
+  const businessType = data.businessType as BusinessType | undefined;
 
-  // 1. Generate chart of accounts from template
+  // 1. Generate chart of accounts from template (only if company exists + businessType provided)
   let accountsCreated = 0;
-  if (data.generateAccounts) {
+  if (data.generateAccounts && company && businessType) {
     const template = getAccountTemplate(businessType);
     // Check if accounts already exist (avoid duplicates)
     const existing = await db.account.count({ where: { companySlug } });
@@ -138,9 +148,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   }
 
-  // 2. Activate recommended modules
+  // 2. Activate recommended modules (only if company exists + businessType provided)
   let modulesActivated = 0;
-  if (data.activateModules) {
+  if (data.activateModules && businessType) {
     const recommended = getRecommendedModules({
       businessType,
       hasEmployees: data.hasEmployees ?? false,
@@ -157,14 +167,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     logger.info("[onboarding] modules activated", { companySlug, modulesActivated, recommended });
   }
 
-  // 3. Update company settings based on wizard answers
-  await db.company.update({
-    where: { slug: companySlug },
-    data: {
-      defaultTaxRate: countryConfig?.defaultTaxRate || company.defaultTaxRate,
-      currency: countryConfig?.currency || company.currency,
-    },
-  });
+  // 3. Update company settings based on wizard answers (only if company exists)
+  if (company) {
+    await db.company.update({
+      where: { slug: companySlug },
+      data: {
+        defaultTaxRate: countryConfig?.defaultTaxRate || company.defaultTaxRate,
+        currency: countryConfig?.currency || company.currency,
+      },
+    });
+  }
 
   // 4. Mark onboarding as complete
   await db.setupWizardProgress.upsert({
@@ -173,10 +185,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       completed: true,
       currentStep: 10,
       data: JSON.stringify({
-        businessType,
+        businessType: businessType || null,
         hasEmployees: data.hasEmployees,
         hasWarehouse: data.hasWarehouse,
         usesWhatsApp: data.usesWhatsApp,
+        skipped: isSentinel,
       }),
     },
     create: {
@@ -184,10 +197,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       completed: true,
       currentStep: 10,
       data: JSON.stringify({
-        businessType,
+        businessType: businessType || null,
         hasEmployees: data.hasEmployees,
         hasWarehouse: data.hasWarehouse,
         usesWhatsApp: data.usesWhatsApp,
+        skipped: isSentinel,
       }),
     },
   });
@@ -199,11 +213,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     entity: "company",
     companySlug,
     details: {
-      businessType,
+      businessType: businessType || null,
       accountsCreated,
       modulesActivated,
       hasEmployees: data.hasEmployees,
       usesWhatsApp: data.usesWhatsApp,
+      skipped: isSentinel,
     },
   });
 
@@ -213,9 +228,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     summary: {
       accountsCreated,
       modulesActivated,
-      businessType,
-      country: company.country,
-      currency: countryConfig?.currency || company.currency,
+      businessType: businessType || null,
+      country: company?.country || null,
+      currency: countryConfig?.currency || company?.currency || null,
     },
   });
 });

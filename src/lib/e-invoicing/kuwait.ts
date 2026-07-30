@@ -745,7 +745,7 @@ export async function submitKuwaitInvoiceWithRetry(
     attempts++;
     const r = await submitKuwaitInvoice(payload);
     if (!r.ok && r.submissionStatus === "rejected") {
-      const err = new Error(r.rejectionReason || "Kuwait rejected invoice") as Error & { status: number };
+      const err = new Error(((r as unknown as Record<string, unknown>).rejectionReason as string) || "Kuwait rejected invoice") as Error & { status: number };
       err.status = 422;
       throw err;
     }
