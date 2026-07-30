@@ -413,11 +413,32 @@ function createProvider(config: AiProviderConfig): AiProvider | null {
 /**
  * Call AI with automatic fallback chain.
  * Tries providers in priority order until one succeeds.
+ *
+ * SAFETY NET: z-ai (sandbox, no API key needed) is ALWAYS appended as the
+ * last-resort fallback, even if it's not in the configured providers list.
+ * This guarantees AI never goes fully dark — even when OpenRouter /
+ * Anthropic / OpenAI are configured but invalid / expired / rate-limited.
  */
 export async function callAI(options: ChatOptions): Promise<ChatResult> {
   const providers = await getAiProviders();
 
-  for (const config of providers) {
+  // Build the effective chain: configured providers + z-ai as last resort
+  // (deduped — if z-ai is already in the chain, don't duplicate it)
+  const hasZai = providers.some(p => p.provider === "z-ai" && p.isEnabled);
+  const effectiveChain = hasZai
+    ? providers
+    : [
+        ...providers,
+        {
+          provider: "z-ai" as ProviderType,
+          apiKey: null,
+          model: "z-ai-glm",
+          isEnabled: true,
+          priority: 999,
+        },
+      ];
+
+  for (const config of effectiveChain) {
     const provider = createProvider(config);
     if (!provider) continue;
 
@@ -432,7 +453,9 @@ export async function callAI(options: ChatOptions): Promise<ChatResult> {
     }
   }
 
-  // All providers failed
+  // All providers failed (including z-ai) — this should be extremely rare
+  // since z-ai is a sandbox SDK that doesn't require network calls to a paid
+  // API. If we get here, the z-ai SDK itself is broken.
   throw new Error("جميع مزودي الذكاء الاصطناعي فشلوا. تحقق من الإعدادات.");
 }
 

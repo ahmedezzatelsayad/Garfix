@@ -53,20 +53,26 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   // Previously this defaulted to `false`, causing a 1-frame onboarding flash
   // even for users with companies.
   const [loadingCompanies, setLoadingCompanies] = useState(true);
-  // Default to "light" — the dashboard shell uses light surfaces (bg-background,
-  // bg-card, bg-sidebar) with dark text. Defaulting to "dark" caused white
-  // text on white surfaces (invisible) until the user manually toggled themes.
-  // Users who prefer dark can still flip it from the Sidebar toggle, and their
-  // choice is persisted to localStorage.
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  // Default to "light" — but layout.tsx's theme-init script has already set
+  // the .dark class on <html> based on localStorage OR prefers-color-scheme
+  // BEFORE React hydrates. Here we just initialize React state to match
+  // what the script did, so React and the DOM agree.
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    // Sync with whatever the layout.tsx theme-init script already did.
+    // This avoids a redundant .dark class toggle on first effect run.
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  });
 
-  // Load theme from localStorage on mount
+  // Load theme from localStorage on mount (in case it differs from the
+  // theme-init script's OS-preference default — the user explicitly chose
+  // a theme earlier and we should honor that choice over OS preference).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem(THEME_KEY) as "light" | "dark" | null;
-    // One-time init: read theme from localStorage on mount. Runs once (deps []), no cascading render.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored) setTheme(stored);
+    if (stored && stored !== theme) setTheme(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Apply theme to <html>
