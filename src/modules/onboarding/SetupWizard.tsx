@@ -7,7 +7,6 @@ import {
   useOnboardingStatus, useCheckCompanySlug, useCompleteOnboarding,
   useCreateCompany, useUpdateOnboardingCompany, useSmartParse,
 } from "@/hooks/queries";
-import type { CompleteOnboardingPayload } from "@/hooks/queries/onboarding";
 import { toast } from "sonner";
 import {
   Check, ChevronLeft, ChevronRight, Building2, Globe, Briefcase,
@@ -175,7 +174,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
           hasEmployees: merged.hasEmployees,
           hasWarehouse: merged.hasWarehouse,
           usesWhatsApp: merged.usesWhatsApp,
-        } as unknown as CompleteOnboardingPayload);
+        });
       } catch { /* silent — progress save is best-effort */ }
     }
   }, [data, completeOnboardingMutation]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface ApiEndpoint {
@@ -542,11 +543,7 @@ export default function ApiDocsPage() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
-      <footer className="max-w-7xl mx-auto px-4 py-6 text-center text-sm text-gray-400 border-t">
-        {isRtl
-          ? "موثقة API Garfix EOS — ملف OpenAPI متاح في docs/api/openapi.yaml"
-          : "Garfix EOS API Documentation — OpenAPI spec available at docs/api/openapi.yaml"}
-      </footer>
+      <ProfessionalFooter variant="landing" version={process.env.NEXT_PUBLIC_APP_VERSION || "12"} />
     </div>
   );
 }

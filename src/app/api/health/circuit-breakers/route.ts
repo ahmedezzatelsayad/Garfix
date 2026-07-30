@@ -13,7 +13,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api";
-import { getHealthDashboard, getAllBreakers, externalBreakers } from "@/lib/circuit-breaker";
+import {
+  getHealthDashboard,
+  getAllBreakers,
+} from "@/lib/circuit-breaker/circuit-breaker";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
