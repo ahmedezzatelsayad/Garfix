@@ -39,7 +39,7 @@ const moduleFiles = [
   'settings/CompanySettingsForm.tsx',
   'settings/SettingsView.tsx',
   'clients/ClientProfile.tsx',
-  'admin/AuditView.tsx',
+  'admin/EnhancedAuditView.tsx',
   'accounting/AccountingView.tsx',
   'accounting/ArApView.tsx',
   'accounting/PayrollWpsView.tsx',

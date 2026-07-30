@@ -213,8 +213,11 @@ export const queryKeys = {
   // ─── Catalog ──────────────────────────────────────────────────────────
   catalog: {
     all: ["catalog"] as const,
-    list: (companySlug: string) =>
-      [...queryKeys.catalog.all, "list", companySlug] as const,
+    list: (args: string | { companySlug: string; search?: string }) => {
+      if (typeof args === "string") return [...queryKeys.catalog.all, "list", args] as const;
+      const { companySlug, search } = args;
+      return [...queryKeys.catalog.all, "list", companySlug, search ?? ""] as const;
+    },
     detail: (id: string) =>
       [...queryKeys.catalog.all, "detail", id] as const,
   },
