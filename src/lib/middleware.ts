@@ -173,6 +173,16 @@ export async function requirePermissionForCompany(
 
 import { isFounderEmail } from "./founder";
 
+// Founder-gate pattern (see docs/security/idor-audit.md):
+//   Routes that legitimately need cross-tenant access (e.g. managing
+//   platform-wide feature flags or announcements) call `requireFounder(req)`
+//   at the very top of the handler, before any `findUnique({ where: { id } })`.
+//   The Semgrep rule in .semgrep/idor-findUnique.yml treats a nearby
+//   `requireFounder(req)` call as proof that the founder-gate pattern is in
+//   effect and the unscoped query is intentional.
+//   This helper additionally enforces `emailVerified === true` as
+//   defense-in-depth against stolen-cookie attacks on unverified founder
+//   accounts.
 export async function requireFounder(req: NextRequest): Promise<{ user: AuthPayload } | NextResponse> {
   const authResult = await requireAuth(req);
   if (authResult instanceof NextResponse) return authResult;

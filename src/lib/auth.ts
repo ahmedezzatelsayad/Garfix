@@ -399,6 +399,19 @@ export function hasUnrestrictedScope(user: AuthPayload): boolean {
   return user.role === "admin" || isFounderEmail(user.email);
 }
 
+// Founder-bypass policy (see docs/security/idor-audit.md):
+//   - The platform founder (env: FOUNDER_EMAIL) and any account flagged
+//     `role === 'admin'` with an unrestricted scope intentionally bypass
+//     the per-company access check. This is required so the founder can
+//     debug any tenant's data when a customer files a support ticket, and
+//     so tenant admins can manage their own company's resources even when
+//     `user.companies` is empty (e.g. legacy accounts).
+//   - Every founder/admin action is logged by the caller via logAudit /
+//     logAdminAction, giving a full audit trail of cross-tenant access.
+//   - The bypass is implemented inside this helper (rather than at each
+//     call site) so that the Semgrep rule in .semgrep/idor-findUnique.yml
+//     can treat any nearby `assertCompanyAccess(...)` call as proof that
+//     the load-then-authorize pattern is in effect.
 export function assertCompanyAccess(user: AuthPayload, companySlug?: string | null): boolean {
   if (!companySlug) return hasUnrestrictedScope(user);
   if (hasUnrestrictedScope(user)) return true;

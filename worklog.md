@@ -253,3 +253,31 @@ Stage Summary:
 - Production Queue: pg-boss 3-tier ✓
 - CI/CD: GitHub Actions + Docker ✓
 - Commit: 9538628 pushed to origin/main
+
+---
+Task ID: P3-idor-audit-response
+Agent: Super Z (main)
+Task: Respond to internal audit review (9.5/10) — close documentation gaps, add Semgrep rule, add Founder-bypass comments, fix missed IDOR gap
+
+Work Log:
+- Read worklog.md to understand prior P0/P1/P2 work (commits ee8b23a, 427828b)
+- Fetched origin/main and discovered 5 new upstream commits including 5ca82cf "fix(security): eliminate row-existence oracle across 25 API routes (P2 IDOR hardening)" — this is the prior session's IDOR work (the "53 across 26 files" in the audit review matches the upstream commit message)
+- Reconciled the "57 ↔ 53 ↔ 35" numbers from the audit review: 53 = upstream P2 scan total, 49 = upstream-applied (Groups A+B+C+D), 4 = upstream Group E (intentionally skipped, ai/bulk-import), 10 = remaining strict-pattern calls after 5ca82cf (clean rescan on 2026-07-31)
+- Ran clean `rg "findUnique\(\s*\{\s*where\s*:\s*\{\s*id\s*\}\s*\}\s*\)" src/app/api/` — 10 call sites in 9 files match the strict IDOR pattern. All 9 files are properly defended via one of three patterns: (1) load-then-authorize via assertCompanyAccess (clients, employees, catalog, ai/memory), (2) founder-gate-before via requireFounder (feature-flags, announcements), (3) founder-bypass pattern from upstream 5ca82cf (webhooks/endpoints, tickets/replies)
+- DISCOVERED IDOR GAP: src/app/api/platform-admin/tickets/[id]/route.ts was missed by upstream 5ca82cf Group D — the sibling replies/route.ts was fixed but this file still had the 404-vs-403 existence-leak oracle (row-missing → 404 "Ticket not found", wrong-user → 403 "Forbidden"). An attacker could enumerate valid ticket IDs by observing the response status
+- FIXED the gap by applying the same Group D founder-bypass pattern: founder uses findUnique({where:{id}}) for platform-wide access, non-founder uses findFirst({where:{id,userEmail}}) — both paths return 404 on miss, closing the oracle
+- Created docs/security/idor-audit.md — full reconciliation table (53/49/4/10), upstream Groups A-E summary, and 10-row exception table covering every remaining findUnique({where:{id}}) call site with file:line, defense pattern, audit-ref back to GATE3_IDOR_AUDIT.md, and rationale
+- Created .semgrep/idor-findUnique.yml — Semgrep rule that forbids findUnique({where:{id}}) in src/app/api/ except when (a) requireFounder(req) is called earlier in the function, (b) assertCompanyAccess(...) is called within 5 lines after, (c) isFounderEmail(...) is called within 5 lines after, or (d) the line is marked with `// idor-audit: exception` and listed in the doc
+- Added Founder-bypass policy comment block above assertCompanyAccess() in src/lib/auth.ts — explains why founder/admin bypass is intentional, where it's logged, and why the bypass is in the helper rather than at each call site
+- Added Founder-gate pattern comment block above requireFounder() in src/lib/middleware.ts — explains the pattern, the emailVerified defense-in-depth, and how the Semgrep rule treats it
+- Ran multi-tenant-isolation.test.ts + auth-advanced.test.ts: 133 pass / 0 fail (security primitives intact)
+- Ran eslint on all 3 modified source files: clean (0 errors)
+- Verified 1 pre-existing outbox test failure (P1.1 processOutboxBatch marks events as dead) exists on origin/main HEAD before my changes — not a regression from this commit
+
+Stage Summary:
+- IDOR GAP CLOSED: src/app/api/platform-admin/tickets/[id]/route.ts — applied upstream 5ca82cf Group D pattern (founder-bypass with findFirst({where:{id,userEmail}}) for non-founder), eliminating the 404-vs-403 existence-leak oracle
+- docs/security/idor-audit.md created — full reconciliation of the "53/35" numbers + 10-row exception table covering every remaining findUnique({where:{id}}) call site
+- .semgrep/idor-findUnique.yml created — automated regression-prevention rule with 4 allow-paths (founder-gate, assertCompanyAccess, isFounderEmail, explicit-exception marker)
+- 3 source files touched with comment-only additions (auth.ts, middleware.ts) + 1 file with functional IDOR fix (tickets/[id]/route.ts)
+- 133/133 multi-tenant + auth tests pass; ESLint clean
+- Closes audit notes #1 (57↔53 reconciliation), #2 (remaining-cases documentation gap), #4 (founder bypass comments), and the Semgrep-rule suggestion from the audit review

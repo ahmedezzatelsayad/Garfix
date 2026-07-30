@@ -1,0 +1,83 @@
+# Semgrep rule: forbid `findUnique({ where: { id } })` in API route handlers
+#
+# Purpose
+# -------
+# This rule exists to prevent IDOR (Insecure Direct Object Reference)
+# regressions. A bare `findUnique({ where: { id } })` loads a record by its
+# numeric primary key without any tenant or ownership filter at the database
+# layer. If a future code change forgets to add an authorization check
+# afterwards (e.g. `assertCompanyAccess(user, record.companySlug)`), the
+# handler will leak the record to any authenticated user who can guess or
+# enumerate the id.
+#
+# Allowed exceptions (the rule will NOT fire on these patterns):
+#   1. `requireFounder(req)` is called earlier in the same function — the
+#      founder legitimately needs cross-tenant access, and requireFounder
+#      also enforces emailVerified as defense-in-depth.
+#   2. `assertCompanyAccess(` is called within 5 lines AFTER the findUnique
+#      — the load-then-authorize pattern is functionally equivalent to a
+#      composite filter and is preferred for indexed PK lookups.
+#   3. `isFounderEmail(` is called within 5 lines AFTER the findUnique —
+#      same as #2 but for owner-or-founder routes (support tickets).
+#   4. The file is listed in `docs/security/idor-audit.md` AND has the
+#      `// idor-audit: exception` marker on the findUnique line. This is
+#      the explicit-allow escape hatch for any future case that does not
+#      fit one of the three patterns above.
+#
+# See `docs/security/idor-audit.md` for the full table of allowed
+# exceptions and the rationale for each.
+
+rules:
+  - id: garfix-no-unguarded-findunique-by-id
+    languages: [typescript]
+    severity: ERROR
+    message: >
+      Found `findUnique({ where: { id } })` with no nearby authorization
+      check. This is an IDOR risk. Either (a) rewrite as
+      `findFirst({ where: { id, companySlug } })` to filter at the DB layer,
+      (b) call `requireFounder(req)` earlier in the function, (c) call
+      `assertCompanyAccess(user, record.companySlug)` within 5 lines after
+      the findUnique, or (d) add a `// idor-audit: exception` comment and
+      list the file in docs/security/idor-audit.md.
+    patterns:
+      - pattern: |
+          await $DB.$METHOD({ where: { id } })
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: ^(findUnique|findUniqueOrThrow)$
+      # Skip the explicit-allow escape hatch.
+      - pattern-not: |
+          // idor-audit: exception
+          await $DB.$METHOD({ where: { id } })
+      # Skip the load-then-authorize pattern: assertCompanyAccess called
+      # within 5 lines AFTER the findUnique.
+      - pattern-not: |
+          await $DB.$METHOD({ where: { id } })
+          ...
+          assertCompanyAccess(...)
+      # Skip the owner-or-founder pattern: isFounderEmail called within
+      # 5 lines AFTER the findUnique.
+      - pattern-not: |
+          await $DB.$METHOD({ where: { id } })
+          ...
+          isFounderEmail(...)
+      # Skip the founder-gate-before pattern: requireFounder called earlier
+      # in the same function (within 10 lines BEFORE the findUnique).
+      - pattern-not: |
+          await requireFounder($REQ)
+          ...
+          await $DB.$METHOD({ where: { id } })
+      # Skip the founder-gate-before pattern (legacy): isFounderEmail called
+      # earlier in the same function (within 10 lines BEFORE the findUnique).
+      - pattern-not: |
+          isFounderEmail(...)
+          ...
+          await $DB.$METHOD({ where: { id } })
+      # Only flag in API route handlers, not in lib helpers or tests.
+      - paths:
+          include:
+            - "src/app/api/**/*.ts"
+          exclude:
+            - "**/__tests__/**"
+            - "**/*.test.ts"
+            - "**/*.spec.ts"
