@@ -26,6 +26,9 @@ import {
   aiCircuitBreaker,
   paymentCircuitBreaker,
   externalApiCircuitBreaker,
+  webhookCircuitBreaker,
+  eInvoicingCircuitBreaker,
+  whatsappCircuitBreaker,
 } from "@/lib/circuit-breaker";
 
 // ─── Error class ───────────────────────────────────────────────────────────
@@ -63,8 +66,9 @@ function resolveCircuitBreaker(url: string): CircuitBreaker | null {
   // Payment/SaaS endpoints — calls external payment gateways (MyFatoorah, etc.)
   if (url.startsWith("/api/saas/payments/")) return paymentCircuitBreaker;
 
-  // Webhook delivery endpoints — calls external client servers
-  if (url.startsWith("/api/webhooks/")) return externalApiCircuitBreaker;
+  // Webhook delivery endpoints — calls external client servers (own breaker
+  // so a webhook failure doesn't trip the AI breaker)
+  if (url.startsWith("/api/webhooks/")) return webhookCircuitBreaker;
 
   // Product matching — may call external AI APIs
   if (url.startsWith("/api/product-matching/")) return externalApiCircuitBreaker;
@@ -72,11 +76,11 @@ function resolveCircuitBreaker(url: string): CircuitBreaker | null {
   // Integration endpoints — calls external third-party services
   if (url.startsWith("/api/integrations/")) return externalApiCircuitBreaker;
 
-  // E-invoicing endpoints — calls government tax authority APIs
-  if (url.startsWith("/api/e-invoicing/")) return externalApiCircuitBreaker;
+  // E-invoicing endpoints — calls government tax authority APIs (slow recovery)
+  if (url.startsWith("/api/e-invoicing/")) return eInvoicingCircuitBreaker;
 
   // WhatsApp integration — calls Meta/WhatsApp Business API
-  if (url.startsWith("/api/whatsapp/")) return externalApiCircuitBreaker;
+  if (url.startsWith("/api/whatsapp/")) return whatsappCircuitBreaker;
 
   // Storage endpoints — may call external cloud storage
   if (url.startsWith("/api/storage/")) return externalApiCircuitBreaker;
@@ -103,15 +107,84 @@ async function withCircuitBreaker<T>(url: string, fn: () => Promise<T>): Promise
 
 // ─── Core fetch helpers ────────────────────────────────────────────────────
 
+/**
+ * Default request timeout — 30s. Hung requests would otherwise hang React
+ * Query indefinitely. AI streaming endpoints (/api/ai/chat/stream) bypass
+ * this via the `stream: true` option.
+ */
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+/**
+ * Global 401 handler — when the access token has expired AND the refresh
+ * attempt also fails, we redirect to /login. We only do this ONCE per page
+ * load to avoid a redirect loop when multiple in-flight requests all 401.
+ */
+let isRedirectingToLogin = false;
+function handle401(): void {
+  if (isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+  // Defer the redirect so any pending toast.error() calls can render first.
+  setTimeout(() => {
+    if (typeof window !== "undefined") {
+      // Preserve the current path so login can redirect back after success.
+      const returnUrl = encodeURIComponent(window.location.pathname + window.location.hash);
+      window.location.href = `/login?returnTo=${returnUrl}&reason=expired`;
+    }
+  }, 100);
+}
+
+/**
+ * Wrap authedFetch with a timeout via AbortController. Mutates `init` to add
+ * the signal. If the fetch doesn't resolve in `timeoutMs`, aborts and throws
+ * an ApiError with status 0 (network-style).
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await authedFetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(0, { error: "انتهت مهلة الطلب. حاول مرة أخرى." });
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Unified response handler — checks status, parses JSON, surfaces ApiError.
+ * - 401 → triggers global redirect to /login (after refresh attempt fails)
+ * - 429 → returns ApiError with retry hint in body
+ * - 5xx → returns ApiError
+ */
+async function handleResponse(res: Response): Promise<{ ok: boolean; status: number; body: unknown }> {
+  if (res.ok) {
+    if (res.status === 204 || res.headers.get("content-length") === "0") {
+      return { ok: true, status: res.status, body: undefined };
+    }
+    return { ok: true, status: res.status, body: await res.json() };
+  }
+  const errBody = await res.json().catch(() => ({ error: "Request failed" }));
+  if (res.status === 401) {
+    // AuthContext's authedFetch already attempted a refresh; if we're here,
+    // refresh failed → redirect to login.
+    handle401();
+  }
+  throw new ApiError(res.status, errBody as Record<string, unknown>);
+}
+
 /** Typed GET request — parses JSON, throws ApiError on non-ok responses. */
 export async function apiGet<T>(url: string): Promise<T> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: "Request failed" }));
-      throw new ApiError(res.status, body as Record<string, unknown>);
-    }
-    return res.json() as Promise<T>;
+    const res = await fetchWithTimeout(url, { method: "GET" });
+    const { body } = await handleResponse(res);
+    return body as T;
   });
 }
 
@@ -121,19 +194,13 @@ export async function apiPost<TReq, TRes = void>(
   body?: TReq,
 ): Promise<TRes> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ error: "Request failed" }));
-      throw new ApiError(res.status, errBody as Record<string, unknown>);
-    }
-    if (res.status === 204 || res.headers.get("content-length") === "0") {
-      return undefined as TRes;
-    }
-    return res.json() as Promise<TRes>;
+    const { body: respBody } = await handleResponse(res);
+    return respBody as TRes;
   });
 }
 
@@ -143,19 +210,13 @@ export async function apiPatch<TReq, TRes = void>(
   body: TReq,
 ): Promise<TRes> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ error: "Request failed" }));
-      throw new ApiError(res.status, errBody as Record<string, unknown>);
-    }
-    if (res.status === 204 || res.headers.get("content-length") === "0") {
-      return undefined as TRes;
-    }
-    return res.json() as Promise<TRes>;
+    const { body: respBody } = await handleResponse(res);
+    return respBody as TRes;
   });
 }
 
@@ -165,34 +226,22 @@ export async function apiPut<TReq, TRes = void>(
   body: TReq,
 ): Promise<TRes> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ error: "Request failed" }));
-      throw new ApiError(res.status, errBody as Record<string, unknown>);
-    }
-    if (res.status === 204 || res.headers.get("content-length") === "0") {
-      return undefined as TRes;
-    }
-    return res.json() as Promise<TRes>;
+    const { body: respBody } = await handleResponse(res);
+    return respBody as TRes;
   });
 }
 
 /** Typed DELETE request. */
 export async function apiDelete<TRes = void>(url: string): Promise<TRes> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url, { method: "DELETE" });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ error: "Request failed" }));
-      throw new ApiError(res.status, errBody as Record<string, unknown>);
-    }
-    if (res.status === 204 || res.headers.get("content-length") === "0") {
-      return undefined as TRes;
-    }
-    return res.json() as Promise<TRes>;
+    const res = await fetchWithTimeout(url, { method: "DELETE" });
+    const { body: respBody } = await handleResponse(res);
+    return respBody as TRes;
   });
 }
 
@@ -204,15 +253,10 @@ export async function apiUpload<TRes>(
   formData: FormData,
 ): Promise<TRes> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url, {
-      method: "POST",
-      body: formData,
-    });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({ error: "Upload failed" }));
-      throw new ApiError(res.status, errBody as Record<string, unknown>);
-    }
-    return res.json() as Promise<TRes>;
+    // 2-minute timeout for uploads (large files)
+    const res = await fetchWithTimeout(url, { method: "POST", body: formData }, 120_000);
+    const { body } = await handleResponse(res);
+    return body as TRes;
   });
 }
 
@@ -227,9 +271,10 @@ export async function apiUpload<TRes>(
  */
 export async function apiDownloadBlob(url: string): Promise<Blob> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url);
+    const res = await fetchWithTimeout(url, { method: "GET" }, 60_000);
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({ error: "Download failed" }));
+      if (res.status === 401) handle401();
       throw new ApiError(res.status, errBody as Record<string, unknown>);
     }
     return res.blob();
@@ -248,13 +293,18 @@ export async function apiPostBlob<TReq>(
   body?: TReq,
 ): Promise<Blob> {
   return withCircuitBreaker(url, async () => {
-    const res = await authedFetch(url, {
-      method: "POST",
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      60_000,
+    );
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({ error: "Download failed" }));
+      if (res.status === 401) handle401();
       throw new ApiError(res.status, errBody as Record<string, unknown>);
     }
     return res.blob();

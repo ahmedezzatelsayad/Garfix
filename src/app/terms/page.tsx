@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FileText } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 
@@ -131,9 +132,9 @@ export default function TermsPage() {
           <h2 className="text-xl font-extrabold text-white mb-3">10. التواصل</h2>
           <p>
             لأي استفسارات حول هذه الشروط والأحكام، يمكنك التواصل معنا عبر{" "}
-            <a href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
               صفحة التواصل
-            </a>{" "}
+            </Link>{" "}
             أو من خلال مركز المساعدة المتاح على المنصة.
           </p>
         </section>

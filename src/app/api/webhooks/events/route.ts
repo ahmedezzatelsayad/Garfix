@@ -94,8 +94,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!validation.ok) return validation.response;
 
   // Verify the endpoint exists and belongs to the company
+  // WebhookEndpoint.id is a cuid (String). Previously this was Number(endpointId)
+  // which produced NaN for cuid strings → every test event 404'd.
   const endpoint = await db.webhookEndpoint.findUnique({
-    where: { id: Number(validation.data.endpointId) },
+    where: { id: validation.data.endpointId },
   });
   if (!endpoint) return apiError("Endpoint not found", 404);
   if (endpoint.companySlug !== companySlug && !isFounder) {

@@ -84,7 +84,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const { deliveryId } = body as { deliveryId?: string };
   if (!deliveryId) return apiError("deliveryId is required", 400);
 
-  const delivery = await db.webhookDelivery.findUnique({ where: { id: Number(deliveryId) } });
+  // WebhookDelivery.id is a cuid (String). Previously this was Number(deliveryId)
+  // which produced NaN for cuid strings → every retry 404'd.
+  const delivery = await db.webhookDelivery.findUnique({ where: { id: deliveryId } });
   if (!delivery) return apiError("Delivery not found", 404);
 
   // Verify it belongs to the user's company
@@ -101,7 +103,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Reset the delivery for retry
   const maxAttempts = delivery.maxAttempts;
   await db.webhookDelivery.update({
-    where: { id: Number(deliveryId) },
+    where: { id: deliveryId },
     data: {
       status: "pending",
       attempts: 0,

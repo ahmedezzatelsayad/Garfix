@@ -20,7 +20,7 @@ interface TopbarProps {
   user: { displayName: string; email: string };
   activeCompany: CompanyInfo | null;
   onOpenMobile: () => void;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   toggleTheme: () => void;
 }
 

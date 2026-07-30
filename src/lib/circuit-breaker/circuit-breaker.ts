@@ -430,11 +430,44 @@ export const externalBreakers = {
 
 // ─── Sprint 2 Legacy Aliases ────────────────────────────────────────────
 
-/** Alias for AI service breaker (Sprint 2 compatibility). */
+/**
+ * Per-service circuit breakers — each external dependency gets its OWN breaker
+ * so a failure in one doesn't trip another. Previously `externalApiCircuitBreaker`
+ * was aliased to `externalBreakers.openrouter`, which meant a webhook delivery
+ * failure could trip the AI breaker (and vice versa) — a single OpenRouter
+ * rate-limit would silence all webhook calls until the breaker reset.
+ */
+
+/** Alias for AI service breaker. */
 export const aiCircuitBreaker = externalBreakers.openrouter;
 
-/** Alias for payment service breaker (Sprint 2 compatibility). */
+/** Alias for payment service breaker. */
 export const paymentCircuitBreaker = externalBreakers.myFatoorah;
 
-/** Alias for generic external API breaker (Sprint 2 compatibility). */
-export const externalApiCircuitBreaker = externalBreakers.openrouter;
+/** Webhook delivery — external client servers (separate from AI). */
+export const webhookCircuitBreaker = getCircuitBreaker({
+  name: "webhook-delivery",
+  failureThreshold: 5,
+  resetTimeout: 30000,
+  successThreshold: 2,
+});
+
+/** Generic external API breaker — used by storage, integrations, product-matching.
+ *  Separate from AI and webhook breakers. */
+export const externalApiCircuitBreaker = getCircuitBreaker({
+  name: "external-api",
+  failureThreshold: 5,
+  resetTimeout: 30000,
+  successThreshold: 2,
+});
+
+/** E-invoicing breaker — government tax authorities (slower recovery). */
+export const eInvoicingCircuitBreaker = getCircuitBreaker({
+  name: "e-invoicing",
+  failureThreshold: 3,
+  resetTimeout: 120000,
+  successThreshold: 2,
+});
+
+/** WhatsApp integration breaker. */
+export const whatsappCircuitBreaker = externalBreakers.whatsapp;

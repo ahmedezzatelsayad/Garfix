@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 
@@ -122,13 +123,13 @@ export default function RefundPage() {
           <h2 className="text-xl font-extrabold text-white mb-3">8. التواصل</h2>
           <p>
             لطرح أي أسئلة حول سياسة الاسترداد أو لتقديم طلب استرداد، يمكنك التواصل معنا عبر{" "}
-            <a href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
               صفحة التواصل
-            </a>{" "}
+            </Link>{" "}
             أو زيارة{" "}
-            <a href="/help" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/help" className="text-[#c4b5fd] underline hover:text-white transition-colors">
               مركز المساعدة
-            </a>. فريق الدعم متاح على مدار الساعة لمساعدتك.
+            </Link>. فريق الدعم متاح على مدار الساعة لمساعدتك.
           </p>
         </section>
       </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand, type CompanyInfo } from "@/context/BrandContext";
 import { useCreateCompany } from "@/hooks/queries";
@@ -25,7 +24,7 @@ interface SidebarProps {
   setActiveSlug: (slug: string | null) => void;
   loadingCompanies: boolean;
   onLogout: () => void;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   toggleTheme: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;

@@ -21,8 +21,9 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   }
   const user = result.user;
   const { id } = await params;
-  const clientId = parseInt(id, 10);
-  if (!Number.isFinite(clientId)) return apiError("Invalid client id", 400);
+  // Client.id is a cuid (String) — do NOT parseInt, that produces NaN.
+  const clientId = id;
+  if (!clientId) return apiError("Invalid client id", 400);
 
   const client = await db.client.findUnique({ where: { id: clientId } });
   if (!client) return apiError("Client not found", 404);

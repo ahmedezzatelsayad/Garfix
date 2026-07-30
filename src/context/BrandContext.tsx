@@ -1,9 +1,16 @@
 /**
  * BrandContext — Active company + theme + UI state.
+ *
+ * Theme handling delegates to next-themes (mounted in Providers.tsx). We do
+ * NOT keep a parallel theme state here — that would race with next-themes'
+ * own <html>.classList manipulation and cause flicker / inconsistency.
+ * The layout.tsx inline theme-init script still runs before hydration to
+ * prevent the first-paint flash; next-themes picks up from there.
  */
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useTheme } from "next-themes";
 import { useAuth } from "./AuthContext";
 import { useCompanies } from "@/hooks/queries";
 import type { Company as QueryCompany } from "@/hooks/queries/dashboard";
@@ -33,18 +40,18 @@ interface BrandContextValue {
   setActiveSlug: (slug: string | null) => void;
   loadingCompanies: boolean;
   refreshCompanies: () => Promise<void>;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   toggleTheme: () => void;
 }
 
 const BrandContext = createContext<BrandContextValue | null>(null);
 
 const STORAGE_KEY = "garfix:active-slug";
-const THEME_KEY = "garfix:theme";
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const companiesQuery = useCompanies();
+  const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
   const [companies, setCompanies] = useState<CompanyInfo[]>([]);
   const [activeSlug, setActiveSlugState] = useState<string | null>(null);
   // Initial state `true` so AppShell doesn't briefly flash the OnboardingScreen
@@ -53,38 +60,13 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   // Previously this defaulted to `false`, causing a 1-frame onboarding flash
   // even for users with companies.
   const [loadingCompanies, setLoadingCompanies] = useState(true);
-  // Default to "light" — but layout.tsx's theme-init script has already set
-  // the .dark class on <html> based on localStorage OR prefers-color-scheme
-  // BEFORE React hydrates. Here we just initialize React state to match
-  // what the script did, so React and the DOM agree.
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    // Sync with whatever the layout.tsx theme-init script already did.
-    // This avoids a redundant .dark class toggle on first effect run.
-    return document.documentElement.classList.contains("dark") ? "dark" : "light";
-  });
 
-  // Load theme from localStorage on mount (in case it differs from the
-  // theme-init script's OS-preference default — the user explicitly chose
-  // a theme earlier and we should honor that choice over OS preference).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(THEME_KEY) as "light" | "dark" | null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored && stored !== theme) setTheme(stored);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Apply theme to <html>
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+  // Derive theme from next-themes (single source of truth).
+  const theme = (nextTheme === "dark" ? "dark" : nextTheme === "light" ? "light" : "system") as "light" | "dark" | "system";
 
   const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
-  }, []);
+    setNextTheme(theme === "dark" ? "light" : "dark");
+  }, [theme, setNextTheme]);
 
   // Sync companies from TanStack Query to local state
   useEffect(() => {

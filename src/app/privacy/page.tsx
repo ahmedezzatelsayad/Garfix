@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Shield } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 
@@ -132,9 +133,9 @@ export default function PrivacyPage() {
           <p>
             نستخدم ملفات تعريف الارتباط والتقنيات المشابهة لتحسين تجربتك. للحصول على تفاصيل كاملة حول
             كيفية استخدامنا لهذه التقنيات وخيارات التحكم المتاحة لك، يُرجى الاطلاع على{" "}
-            <a href="/cookies" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/cookies" className="text-[#c4b5fd] underline hover:text-white transition-colors">
               سياسة إدارة ملفات تعريف الارتباط
-            </a>.
+            </Link>.
           </p>
         </section>
 
@@ -167,9 +168,9 @@ export default function PrivacyPage() {
           <p>
             إذا كان لديك أي أسئلة أو استفسارات حول سياسة الخصوصية أو كيفية تعاملنا مع بياناتك،
             يمكنك التواصل معنا من خلال{" "}
-            <a href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
               صفحة التواصل
-            </a>{" "}
+            </Link>{" "}
             أو إرسال بريد إلكتروني إلى فريق حماية البيانات. نلتزم بالرد على جميع الاستفسارات
             المتعلقة بالخصوصية خلال مدة لا تتجاوز 30 يوماً.
           </p>

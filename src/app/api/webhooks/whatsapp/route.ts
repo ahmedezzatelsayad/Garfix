@@ -229,10 +229,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the company with this phone number ID
+    // P0 SECURITY FIX (Audit 6): the `where` clause was commented out, which
+    // meant findFirst() returned ANY company (default ordering) — incoming
+    // WhatsApp messages from company A were attributed to whatever company
+    // happened to be first in the table. This is a multi-tenant isolation
+    // breach. Restore the filter on whatsappPhoneNumberId.
     const company = await db.company.findFirst({
       where: {
-        // whatsappPhoneNumberId: phoneNumberId,
-        // whatsappEnabled: true,
+        whatsappPhoneNumberId: phoneNumberId,
+        whatsappEnabled: true,
       },
       select: {
         id: true,
