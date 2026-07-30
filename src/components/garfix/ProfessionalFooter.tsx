@@ -17,10 +17,10 @@ const FOOTER_LINKS: FooterLinkGroup[] = [
   {
     title: "المنصة",
     links: [
-      { label: "عن GARFIX", href: "#about", icon: <Info size={13} /> },
-      { label: "المزايا", href: "#features", icon: <Shield size={13} /> },
-      { label: "الأسعار", href: "#pricing", icon: <FileText size={13} /> },
-      { label: "الأسئلة الشائعة", href: "#faq", icon: <HelpCircle size={13} /> },
+      { label: "عن GARFIX", href: "/#about", icon: <Info size={13} /> },
+      { label: "المزايا", href: "/#features", icon: <Shield size={13} /> },
+      { label: "الأسعار", href: "/#pricing", icon: <FileText size={13} /> },
+      { label: "الأسئلة الشائعة", href: "/#faq", icon: <HelpCircle size={13} /> },
     ],
   },
   {

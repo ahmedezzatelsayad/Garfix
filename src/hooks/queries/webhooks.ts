@@ -11,7 +11,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/hooks/api-client";
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -139,7 +139,8 @@ export function useUpdateWebhookEndpoint() {
   return useMutation<WebhookEndpointDetailResponse, ApiError, UpdateWebhookEndpointPayload>({
     mutationFn: (payload) => {
       const { id, ...body } = payload;
-      return apiPatch<typeof body, WebhookEndpointDetailResponse>(
+      // Server exports PUT not PATCH — use apiPut to match.
+      return apiPut<typeof body, WebhookEndpointDetailResponse>(
         `/api/webhooks/endpoints/${id}`,
         body,
       );
@@ -183,8 +184,10 @@ export function useRetryWebhookDelivery() {
 
   return useMutation<Record<string, unknown>, ApiError, { deliveryId: string }>({
     mutationFn: ({ deliveryId }) =>
-      apiPost<Record<string, unknown>, Record<string, unknown>>(
-        `/api/webhooks/deliveries/${deliveryId}/retry`,
+      // Server route is POST /api/webhooks/deliveries with { deliveryId } body
+      // (no /:id/retry sub-route exists).
+      apiPost<Record<string, unknown>, { deliveryId: string }>(
+        "/api/webhooks/deliveries",
         { deliveryId },
       ),
     onSuccess: () => {
@@ -204,12 +207,21 @@ export function useRetryWebhookDelivery() {
  * any query caches automatically.
  */
 export function useTestWebhookEndpoint() {
-  return useMutation<Record<string, unknown>, ApiError, { endpointId: string }>({
-    mutationFn: ({ endpointId }) =>
-      apiPost<Record<string, unknown>, Record<string, unknown>>(
-        `/api/webhooks/endpoints/${endpointId}/test`,
-        { endpointId },
-      ),
+  return useMutation<
+    Record<string, unknown>,
+    ApiError,
+    { endpointId: string; eventType?: string }
+  >({
+    mutationFn: ({ endpointId, eventType }) =>
+      // Server route is POST /api/webhooks/events with { endpointId, eventType } body
+      // (no /endpoints/:id/test sub-route exists).
+      apiPost<
+        Record<string, unknown>,
+        { endpointId: string; eventType: string }
+      >("/api/webhooks/events", {
+        endpointId,
+        eventType: eventType || "system.error_alert",
+      }),
   });
 }
 

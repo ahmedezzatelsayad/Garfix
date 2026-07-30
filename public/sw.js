@@ -10,8 +10,11 @@ const PAGE_CACHE = "garfix-pages-v12";
 const APP_SHELL = [
   "/",
   "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/icon-72.png",
+  "/favicon.ico",
+  "/logo.svg",
 ];
 
 // Maximum cache ages (in seconds)
@@ -197,8 +200,8 @@ self.addEventListener("push", (event) => {
     const title = data.title || "GARFIX — إشعار جديد";
     const options = {
       body: data.body || "لديك إشعار جديد في GARFIX",
-      icon: "/icon-192.png",
-      badge: "/icon-72.png",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-72.png",
       dir: "rtl",
       lang: "ar",
       vibrate: [100, 50, 100],
@@ -218,7 +221,7 @@ self.addEventListener("push", (event) => {
     event.waitUntil(
       self.registration.showNotification("GARFIX — إشعار جديد", {
         body: event.data.text() || "لديك إشعار جديد",
-        icon: "/icon-192.png",
+        icon: "/icons/icon-192.png",
         dir: "rtl",
         lang: "ar",
       })

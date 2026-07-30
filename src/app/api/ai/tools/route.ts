@@ -107,6 +107,72 @@ const IntentSchema = z.object({
   confirmToken: z.string().optional(),
 });
 
+// Static catalog of supported AI tool intents — used by the GET handler so
+// the client (useAITools hook) can render a tool list without round-tripping
+// through the POST execute endpoint.
+const TOOL_CATALOG: Array<{
+  intent: string;
+  description: string;
+  parameters: Array<Record<string, unknown>>;
+}> = [
+  {
+    intent: "create_invoice",
+    description: "Create a new invoice for a client",
+    parameters: [
+      { name: "clientId", type: "string", required: true },
+      { name: "items", type: "array", required: true },
+      { name: "dueDate", type: "string", required: false },
+    ],
+  },
+  {
+    intent: "list_invoices",
+    description: "List recent invoices with optional filters",
+    parameters: [
+      { name: "status", type: "string", required: false },
+      { name: "limit", type: "number", required: false },
+    ],
+  },
+  {
+    intent: "list_clients",
+    description: "List clients with optional search",
+    parameters: [
+      { name: "search", type: "string", required: false },
+    ],
+  },
+  {
+    intent: "get_client_balance",
+    description: "Fetch the outstanding balance for a specific client",
+    parameters: [
+      { name: "clientId", type: "string", required: true },
+    ],
+  },
+  {
+    intent: "mark_invoice_paid",
+    description: "Mark an existing invoice as paid (destructive — requires confirmation)",
+    parameters: [
+      { name: "invoiceId", type: "string", required: true },
+    ],
+  },
+  {
+    intent: "create_client",
+    description: "Create a new client record",
+    parameters: [
+      { name: "name", type: "string", required: true },
+      { name: "email", type: "string", required: false },
+      { name: "phone", type: "string", required: false },
+    ],
+  },
+  {
+    intent: "adjust_inventory",
+    description: "Adjust inventory quantities for a product (destructive — requires confirmation)",
+    parameters: [
+      { name: "productId", type: "number", required: true },
+      { name: "delta", type: "number", required: false },
+      { name: "newQty", type: "number", required: false },
+    ],
+  },
+];
+
 interface ToolPreview {
   description: string;
   affectedRecords?: Array<{ type: string; id?: string | number; name?: string }>;
@@ -119,6 +185,16 @@ interface ToolResult {
   data?: unknown;
   reviewQueueWarnings?: string[];
 }
+
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const result = await resolveAuth(req);
+  if (!result.ok || !result.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Return the static catalog — no per-user filtering, all authenticated
+  // users see the same list. Permissions are enforced at POST execute time.
+  return NextResponse.json({ tools: TOOL_CATALOG });
+});
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
