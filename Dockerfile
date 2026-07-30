@@ -85,7 +85,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/bun.lock ./bun.lock
 COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
-COPY --from=builder /app/tailwind.config.ts ./tailwind.config.ts
+# Tailwind v4 — config is in globals.css via @theme inline, no tailwind.config.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/components.json ./components.json
 COPY --from=builder /app/eslint.config.mjs ./eslint.config.mjs
@@ -96,8 +96,10 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy Prisma schema and migrations for runtime
 COPY --from=builder /app/prisma ./prisma
 
-# Copy .env if present (chat.z.ai / Docker Compose usually inject env vars at runtime)
-COPY --from=builder /app/.env* ./
+# Note: .env files are intentionally NOT copied into the image. Secrets must
+# be provided at runtime via environment variables (docker run -e, docker-compose
+# environment:, or Vercel project env vars). Baking .env into the image makes
+# secrets extractable via `docker history`.
 
 USER nextjs
 

@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense, lazy } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import { Sidebar } from "./Sidebar";
@@ -65,8 +66,12 @@ const VALID_VIEWS: ViewKey[] = ["dash", "invoices", "clients", "catalog", "purch
 
 function parseHash(): ViewKey {
   if (typeof window === "undefined") return "dash";
-  const h = window.location.hash.replace(/^#/, "") as ViewKey;
-  return VALID_VIEWS.includes(h) ? h : "dash";
+  // Hash may carry trailing query params, e.g. `#settings?tab=billing&payment=success`
+  // (MyFatoorah callback redirects). Strip everything after `?` so the view key
+  // resolves correctly; the payment-param is read separately by useSearchParams().
+  const raw = window.location.hash.replace(/^#/, "");
+  const key = raw.split("?", 1)[0] as ViewKey;
+  return VALID_VIEWS.includes(key) ? key : "dash";
 }
 
 export default function AppShell() {
@@ -75,12 +80,35 @@ export default function AppShell() {
   // Lazy-initialize from the URL hash so we don't need a setState-in-effect on mount
   const [view, setView] = useState<ViewKey>(() => parseHash());
   const [mobileSidebar, setMobileSidebar] = useState(false);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const onHash = () => setView(parseHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  // Surface MyFatoorah payment callback result as a toast. The callback
+  // redirects to /?payment=<status>#settings so this runs once on mount.
+  // Without this, paying users landed on the dashboard with zero feedback.
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (!payment) return;
+    if (payment === "success") {
+      toast.success("تمت عملية الدفع بنجاح! مفاعلاتك مُفعّلة الآن.");
+    } else if (payment === "failed" || payment === "error") {
+      toast.error("تعذّر إتمام عملية الدفع. يُرجى المحاولة مرة أخرى أو التواصل مع الدعم.");
+    } else if (payment === "cancelled") {
+      toast.info("تم إلغاء عملية الدفع.");
+    }
+    // Clear the param so a refresh doesn't re-show the toast.
+    if (typeof window !== "undefined" && window.history.replaceState) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      url.searchParams.delete("tab");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
 
   const navigate = useCallback((v: ViewKey) => {
     window.location.hash = v;

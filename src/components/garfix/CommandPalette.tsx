@@ -5,6 +5,7 @@ import {
   Search, FileText, Users, LayoutDashboard, Package, ShoppingCart,
   UserCog, Calculator, BarChart3, Settings, Building2, Shield, History,
   Plus, Sparkles, User, CornerDownLeft, ArrowUp, ArrowDown, X, Boxes,
+  Zap, Bot,
 } from "lucide-react";
 import { useBrand } from "@/context/BrandContext";
 import { useInvoices, useClients } from "@/hooks/queries";
@@ -41,6 +42,8 @@ const NAV_ITEMS: NavItem[] = [
   { hash: "saas", label: "إدارة المنصة", labelEn: "SaaS", keywords: ["saas", "منصة", "إدارة"], icon: Building2 },
   { hash: "platform-admin", label: "إدارة المؤسس", labelEn: "Platform Admin", keywords: ["platform", "admin", "مؤسس", "إدارة"], icon: Shield },
   { hash: "audit", label: "سجل التدقيق", labelEn: "Audit", keywords: ["audit", "تدقيق", "سجل"], icon: History },
+  { hash: "automation", label: "الأتمتة", labelEn: "Automation", keywords: ["automation", "أتمتة", "automate", "rule", "قواعد"], icon: Zap },
+  { hash: "ai-agents", label: "وكلاء الـ AI", labelEn: "AI Agents", keywords: ["ai", "agents", "وكلاء", "ذكاء", "bot"], icon: Bot },
 ];
 
 // ─── Quick actions ──────────────────────────────────────────────────────────

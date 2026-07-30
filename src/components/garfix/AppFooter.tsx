@@ -1,22 +1,6 @@
 "use client";
 
-/**
- * AppFooter — minimal compact footer used INSIDE the authenticated AppShell.
- *
- * This is intentionally NOT the marketing footer (ProfessionalFooter).
- * Marketing footers belong on the landing page only — putting a giant
- * newsletter-signup + 3-column-link footer inside the dashboard wasted
- * vertical space and made the app feel like a marketing site.
- *
- * The app footer just shows:
- *   - Product version
- *   - Build/commit (truncated)
- *   - A "send feedback" link
- *   - Quick legal links (Privacy / Terms / Status)
- *
- * One line, ~36px tall. No background images, no social icons, no
- * newsletter form.
- */
+import Link from "next/link";
 
 interface AppFooterProps {
   version?: string;
@@ -44,33 +28,33 @@ export function AppFooter({ version = "12", commitSha }: AppFooterProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <a
+          <Link
             href="/status"
             className="hover:text-foreground transition-colors no-underline"
           >
             حالة الخدمة
-          </a>
+          </Link>
           <span className="text-muted-foreground/30">·</span>
-          <a
+          <Link
             href="/help"
             className="hover:text-foreground transition-colors no-underline"
           >
             مركز المساعدة
-          </a>
+          </Link>
           <span className="text-muted-foreground/30">·</span>
-          <a
+          <Link
             href="/privacy"
             className="hover:text-foreground transition-colors no-underline"
           >
             الخصوصية
-          </a>
+          </Link>
           <span className="text-muted-foreground/30">·</span>
-          <a
+          <Link
             href="/terms"
             className="hover:text-foreground transition-colors no-underline"
           >
             الشروط
-          </a>
+          </Link>
         </div>
 
         <div className="text-muted-foreground/60 hidden sm:block">

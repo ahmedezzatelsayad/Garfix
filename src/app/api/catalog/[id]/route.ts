@@ -1,11 +1,11 @@
 /**
  * /api/catalog/[id]
- * PATCH / DELETE
+ * GET / PATCH / DELETE
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, type AuthPayload } from "@/lib/auth";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -28,6 +28,20 @@ async function loadForUser(id: number, user: AuthPayload) {
   if (!assertCompanyAccess(user, p.companySlug)) return null;
   return p;
 }
+
+export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  const result = await resolveAuth(req);
+  if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const existing = await loadForUser(parseInt(id), result.user);
+  if (!existing) return apiError("Product not found", 404);
+
+  if (!hasPermission(result.user, "view_inventory")) {
+    return NextResponse.json({ error: "ليس لديك صلاحية: view_inventory" }, { status: 403 });
+  }
+
+  return NextResponse.json({ product: existing });
+});
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const result = await resolveAuth(req);

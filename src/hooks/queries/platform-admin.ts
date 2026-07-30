@@ -417,7 +417,8 @@ export function useClearQueueFailures() {
 
   return useMutation<{ ok: boolean }, ApiError, void>({
     mutationFn: () =>
-      apiPost<Record<string, unknown>, { ok: boolean }>("/api/platform-admin/queue-failures?clear=1", {}),
+      // Server route is GET-only with ?clear=1 query param (no POST handler).
+      apiGet<{ ok: boolean; count: number }>("/api/platform-admin/queue-failures?clear=1"),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.platformAdmin.queueFailures(),

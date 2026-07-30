@@ -15,12 +15,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GarfiX EOS — AI-Native Business Platform",
+  metadataBase: new URL("https://garfix.app"),
+  title: {
+    default: "GarfiX EOS — AI-Native Business Platform",
+    template: "%s · GarfiX EOS",
+  },
   description: "Modular Enterprise Monolith with 16-Stage AI Cascade Pipeline. Accounting, HR, E-Invoicing, and more.",
   keywords: ["GarfiX", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI", "accounting", "HR", "e-invoicing"],
   authors: [{ name: "GarfiX Team" }],
+  manifest: "/manifest.json",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     title: "GarfiX EOS",
@@ -28,11 +38,15 @@ export const metadata: Metadata = {
     url: "https://garfix.app",
     siteName: "GarfiX",
     type: "website",
+    locale: "ar_SA",
   },
   twitter: {
     card: "summary_large_image",
     title: "GarfiX EOS",
     description: "AI-Native Business Platform",
+  },
+  alternates: {
+    canonical: "/",
   },
 };
 

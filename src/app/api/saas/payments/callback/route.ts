@@ -18,7 +18,7 @@ export const GET = async (req: NextRequest) => {
 
   if (isError || !paymentId) {
     return NextResponse.redirect(
-      new URL("/#settings?tab=billing&payment=cancelled", url.origin),
+      new URL("/?payment=cancelled#settings", url.origin),
     );
   }
 
@@ -28,7 +28,7 @@ export const GET = async (req: NextRequest) => {
     if (!cfg?.api_key || !cfg?.base_url) {
       logger.error("[payments:callback] MyFatoorah not configured");
       return NextResponse.redirect(
-        new URL("/#settings?tab=billing&payment=error", url.origin),
+        new URL("/?payment=error#settings", url.origin),
       );
     }
 
@@ -78,17 +78,18 @@ export const GET = async (req: NextRequest) => {
       }
     }
 
-    // Redirect user back to app
+    // Redirect user back to app — query BEFORE hash so AppShell's
+    // parseHash() can resolve `settings` and useSearchParams() can read `payment`.
     const redirectStatus = isPaid ? "success" : "failed";
     return NextResponse.redirect(
-      new URL(`/#settings?tab=billing&payment=${redirectStatus}`, url.origin),
+      new URL(`/?payment=${redirectStatus}#settings`, url.origin),
     );
   } catch (err) {
     logger.error("[payments:callback] error", {
       err: err instanceof Error ? err.message : String(err),
     });
     return NextResponse.redirect(
-      new URL("/#settings?tab=billing&payment=error", url.origin),
+      new URL("/?payment=error#settings", url.origin),
     );
   }
 };
