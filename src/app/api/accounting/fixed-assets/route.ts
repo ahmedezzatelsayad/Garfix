@@ -101,20 +101,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Validate GL accounts belong to the company
   if (data.glAccountId) {
-    const gl = await db.account.findUnique({ where: { id: data.glAccountId } });
-    if (!gl || gl.companySlug !== data.companySlug) return apiError("GL asset account does not belong to this company", 400);
+    const gl = await db.account.findFirst({ where: { id: data.glAccountId, companySlug: data.companySlug } });
+    if (!gl) return apiError("GL asset account does not belong to this company", 400);
     if (gl.type !== "asset") return apiError("Fixed asset must be linked to an asset-type GL account", 400);
   }
 
   if (data.depreciationAccountId) {
-    const dep = await db.account.findUnique({ where: { id: data.depreciationAccountId } });
-    if (!dep || dep.companySlug !== data.companySlug) return apiError("Depreciation account does not belong to this company", 400);
+    const dep = await db.account.findFirst({ where: { id: data.depreciationAccountId, companySlug: data.companySlug } });
+    if (!dep) return apiError("Depreciation account does not belong to this company", 400);
     if (dep.type !== "contra_asset") return apiError("Depreciation account must be a contra-asset type", 400);
   }
 
   if (data.expenseAccountId) {
-    const exp = await db.account.findUnique({ where: { id: data.expenseAccountId } });
-    if (!exp || exp.companySlug !== data.companySlug) return apiError("Expense account does not belong to this company", 400);
+    const exp = await db.account.findFirst({ where: { id: data.expenseAccountId, companySlug: data.companySlug } });
+    if (!exp) return apiError("Expense account does not belong to this company", 400);
     if (exp.type !== "expense") return apiError("Depreciation expense must be an expense-type GL account", 400);
   }
 

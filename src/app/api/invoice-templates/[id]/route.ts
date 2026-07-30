@@ -5,7 +5,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -29,12 +30,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.invoiceTemplate.findUnique({ where: { id: id } });
-  if (!existing) return apiError("القالب غير موجود", 404);
-
-  const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "settings_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.invoiceTemplate.findUnique({ where: { id: id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("القالب غير موجود", 404);
+  }
 
   const body = await parseJsonBody(req);
   const parsed = UpdateSchema.safeParse(body);
@@ -60,12 +63,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.invoiceTemplate.findUnique({ where: { id: id } });
-  if (!existing) return apiError("القالب غير موجود", 404);
-
-  const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "settings_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.invoiceTemplate.findUnique({ where: { id: id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("القالب غير موجود", 404);
+  }
 
   // Don't delete the default template if it's the only one
   if (existing.isDefault) {

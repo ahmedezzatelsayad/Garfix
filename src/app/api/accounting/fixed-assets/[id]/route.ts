@@ -5,7 +5,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { disposeAsset } from "@/lib/accounting/fixed-assets";
 import { num } from "@/lib/money";
@@ -38,6 +39,10 @@ export async function GET(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
+    // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
+    const access = await requirePermission(req, "finance_access");
+    if ("error" in access) return access.error;
+    const user = access.user;
     const asset = await db.fixedAsset.findUnique({
       where: { id: parseInt(id, 10) },
       include: {
@@ -50,13 +55,9 @@ export async function GET(
         },
       },
     });
-
-    if (!asset) return apiError("Fixed asset not found", 404);
-
-    // SEC-C5 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
-    // guard that PATCH/Dispose already enforced.
-    const access = await requirePermissionForCompany(req, "finance_access", asset.companySlug);
-    if ("error" in access) return access.error;
+    if (!asset || !assertCompanyAccess(user, asset.companySlug)) {
+      return apiError("Fixed asset not found", 404);
+    }
 
     return apiOk({
       ...asset,
@@ -137,22 +138,21 @@ export async function PATCH(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.fixedAsset.findUnique({ where: { id: assetId } });
+    const existing = await db.fixedAsset.findFirst({ where: { id: assetId, companySlug: data.companySlug } });
     if (!existing) return apiError("Fixed asset not found", 404);
-    if (existing.companySlug !== data.companySlug) return apiError("Asset does not belong to this company", 403);
 
     // Validate GL accounts if updating
     if (data.glAccountId) {
-      const gl = await db.account.findUnique({ where: { id: data.glAccountId } });
-      if (!gl || gl.companySlug !== data.companySlug) return apiError("GL account does not belong to this company", 400);
+      const gl = await db.account.findFirst({ where: { id: data.glAccountId, companySlug: data.companySlug } });
+      if (!gl) return apiError("GL account does not belong to this company", 400);
     }
     if (data.depreciationAccountId) {
-      const dep = await db.account.findUnique({ where: { id: data.depreciationAccountId } });
-      if (!dep || dep.companySlug !== data.companySlug) return apiError("Depreciation account does not belong to this company", 400);
+      const dep = await db.account.findFirst({ where: { id: data.depreciationAccountId, companySlug: data.companySlug } });
+      if (!dep) return apiError("Depreciation account does not belong to this company", 400);
     }
     if (data.expenseAccountId) {
-      const exp = await db.account.findUnique({ where: { id: data.expenseAccountId } });
-      if (!exp || exp.companySlug !== data.companySlug) return apiError("Expense account does not belong to this company", 400);
+      const exp = await db.account.findFirst({ where: { id: data.expenseAccountId, companySlug: data.companySlug } });
+      if (!exp) return apiError("Expense account does not belong to this company", 400);
     }
 
     const updateData: Record<string, unknown> = {};

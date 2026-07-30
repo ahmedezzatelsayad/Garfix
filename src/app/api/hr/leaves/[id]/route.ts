@@ -5,7 +5,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -23,12 +24,14 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.hRLeaveRequest.findUnique({ where: { id: parseInt(id) } });
-  if (!existing) return apiError("Leave request not found", 404);
-
-  const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.hRLeaveRequest.findUnique({ where: { id: parseInt(id) } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Leave request not found", 404);
+  }
 
   const body = await parseJsonBody(req);
   const parsed = UpdateSchema.safeParse(body);
@@ -59,12 +62,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.hRLeaveRequest.findUnique({ where: { id: parseInt(id) } });
-  if (!existing) return apiError("Leave request not found", 404);
-
-  const access = await requirePermissionForCompany(req, "employee_management", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.hRLeaveRequest.findUnique({ where: { id: parseInt(id) } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Leave request not found", 404);
+  }
 
   await db.hRLeaveRequest.delete({ where: { id: existing.id } });
   await logAudit({

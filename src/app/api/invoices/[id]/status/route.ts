@@ -7,7 +7,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -27,13 +28,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!existing || existing.deletedAt) return apiError("Invoice not found", 404);
-
-  // Enforce permission + company access
-  const access = await requirePermissionForCompany(req, "edit_invoice", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "edit_invoice");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
+  if (!existing || existing.deletedAt || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Invoice not found", 404);
+  }
 
   const body = await parseJsonBody(req);
   const parsed = StatusSchema.safeParse(body);

@@ -22,15 +22,13 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   }
 
   const { id } = await ctx.params;
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: id } });
-  if (!endpoint) return apiError("Endpoint not found", 404);
-
-  // Verify the endpoint belongs to the user's company
   const companySlug = result.user.companies?.[0];
-  if (endpoint.companySlug !== companySlug) {
-    const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
-    if (!isFounder) return apiError("Access denied", 403);
-  }
+  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  // IDOR fix: tenant filter in WHERE; founder bypasses via findUnique
+  const endpoint = isFounder
+    ? await db.webhookEndpoint.findUnique({ where: { id: id } })
+    : await db.webhookEndpoint.findFirst({ where: { id: id, companySlug } });
+  if (!endpoint) return apiError("Endpoint not found", 404);
 
   // Mask the secret
   return apiOk({
@@ -54,17 +52,16 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   }
 
   const { id } = await ctx.params;
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: id } });
-  if (!endpoint) return apiError("Endpoint not found", 404);
-
   const companySlug = result.user.companies?.[0];
   const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
-  if (endpoint.companySlug !== companySlug && !isFounder) {
-    return apiError("Access denied", 403);
-  }
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }
+  // IDOR fix: tenant filter in WHERE; founder bypasses via findUnique
+  const endpoint = isFounder
+    ? await db.webhookEndpoint.findUnique({ where: { id: id } })
+    : await db.webhookEndpoint.findFirst({ where: { id: id, companySlug } });
+  if (!endpoint) return apiError("Endpoint not found", 404);
 
   const body = await parseJsonBody(req);
   const validation = validateBody(UpdateEndpointSchema, body);
@@ -105,17 +102,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContex
   }
 
   const { id } = await ctx.params;
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: id } });
-  if (!endpoint) return apiError("Endpoint not found", 404);
-
   const companySlug = result.user.companies?.[0];
   const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
-  if (endpoint.companySlug !== companySlug && !isFounder) {
-    return apiError("Access denied", 403);
-  }
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }
+  // IDOR fix: tenant filter in WHERE; founder bypasses via findUnique
+  const endpoint = isFounder
+    ? await db.webhookEndpoint.findUnique({ where: { id: id } })
+    : await db.webhookEndpoint.findFirst({ where: { id: id, companySlug } });
+  if (!endpoint) return apiError("Endpoint not found", 404);
 
   // Delete associated deliveries first
   await db.webhookDelivery.deleteMany({ where: { endpointId: id } });

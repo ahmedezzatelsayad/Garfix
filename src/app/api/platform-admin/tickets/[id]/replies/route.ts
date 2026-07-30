@@ -22,7 +22,16 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const user = result.user;
 
   const { id } = await params;
-  const existing = await db.supportTicket.findUnique({ where: { id: parseInt(id) } });
+  const isFounder = isFounderEmail(user.email);
+
+  // IDOR mitigation: per-user scope (NOT company-tenant). Non-founders can only
+  // access their own tickets; founder has platform-wide access. Using findFirst
+  // with userEmail filter for non-founders closes the 404-vs-403 existence leak
+  // (a non-founder gets 404 for any ticket not their own, including valid tickets
+  // owned by others — no existence oracle).
+  const existing = isFounder
+    ? await db.supportTicket.findUnique({ where: { id: parseInt(id) } })
+    : await db.supportTicket.findFirst({ where: { id: parseInt(id), userEmail: user.email } });
   if (!existing) return apiError("Ticket not found", 404);
 
   // Owners can reply to their own tickets; only the founder can reply to any
@@ -30,10 +39,6 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   // to their own companies and must NOT masquerade as platform staff on other
   // tenants' tickets.
   // SEC-H4C4 (Cycle 4): close platform-admin bypass.
-  const isFounder = isFounderEmail(user.email);
-  if (!isFounder && existing.userEmail !== user.email) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const body = await parseJsonBody(req);
   const parsed = ReplySchema.safeParse(body);

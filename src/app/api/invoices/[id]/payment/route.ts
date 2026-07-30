@@ -15,7 +15,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -42,13 +43,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const invoiceId = parseInt(id, 10);
   if (!Number.isInteger(invoiceId) || invoiceId <= 0) return apiError("Invalid invoice id", 400);
 
-  const existing = await db.invoice.findUnique({ where: { id: invoiceId } });
-  if (!existing || existing.deletedAt) return apiError("Invoice not found", 404);
-
-  // Enforce permission + company access (recording payments is a financial action)
-  const access = await requirePermissionForCompany(req, "finance_access", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "finance_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.invoice.findUnique({ where: { id: invoiceId } });
+  if (!existing || existing.deletedAt || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Invoice not found", 404);
+  }
 
   const body = await parseJsonBody(req);
   const parsed = PaymentSchema.safeParse(body);

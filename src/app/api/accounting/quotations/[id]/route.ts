@@ -6,7 +6,8 @@
  */
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -20,16 +21,19 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const { id } = await params;
   const quotationId = parseInt(id);
 
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "finance_access");
+  if ("error" in access) return access.error;
+  const user = access.user;
   const quotation = await db.quotation.findUnique({
     where: { id: quotationId },
     include: {
       client: { select: { id: true, name: true, email: true, phone: true, address: true } },
     },
   });
-  if (!quotation) return apiError("Quotation not found", 404);
-
-  const access = await requirePermissionForCompany(req, "finance_access", quotation.companySlug);
-  if ("error" in access) return access.error;
+  if (!quotation || !assertCompanyAccess(user, quotation.companySlug)) {
+    return apiError("Quotation not found", 404);
+  }
 
   return apiOk({
     ...quotation,
@@ -66,13 +70,13 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  const quotation = await db.quotation.findUnique({ where: { id: quotationId } });
-  if (!quotation) return apiError("Quotation not found", 404);
-
-  const companySlug = data.companySlug || quotation.companySlug;
+  const companySlug = data.companySlug;
   const access = await requirePermissionForCompany(req, "finance_access", companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
+
+  const quotation = await db.quotation.findFirst({ where: { id: quotationId, companySlug } });
+  if (!quotation) return apiError("Quotation not found", 404);
 
   // Can only modify draft quotations (except status changes)
   if (quotation.status !== "draft" && data.lineItems) {
@@ -135,12 +139,14 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const { id } = await params;
   const quotationId = parseInt(id);
 
-  const quotation = await db.quotation.findUnique({ where: { id: quotationId } });
-  if (!quotation) return apiError("Quotation not found", 404);
-
-  const access = await requirePermissionForCompany(req, "finance_access", quotation.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "finance_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const quotation = await db.quotation.findUnique({ where: { id: quotationId } });
+  if (!quotation || !assertCompanyAccess(user, quotation.companySlug)) {
+    return apiError("Quotation not found", 404);
+  }
 
   if (quotation.status !== "draft" && quotation.status !== "rejected") {
     return apiError("Only draft or rejected quotations can be deleted", 400);
