@@ -115,8 +115,41 @@ export function InvoicesView() {
     setSelectedIds(new Set());
   };
 
-  // Export CSV placeholder (stub was empty)
-  const handleExportCSV = () => { toast.info("سيتم إضافة تصدير CSV قريبًا"); };
+  // Export invoices as CSV — client-side generation from already-loaded data.
+  // No server round-trip needed; the user has at most 100 invoices in memory
+  // (cursor pagination). For larger exports, a server-side streaming endpoint
+  // would be needed (TODO: /api/invoices/export when cursor pagination limit
+  // becomes a real constraint).
+  const handleExportCSV = () => {
+    if (!allInvoices.length) {
+      toast.info("لا توجد فواتير لتصديرها");
+      return;
+    }
+    const headers = ["رقم الفاتورة", "العميل", "التاريخ", "الاستحقاق", "الحالة", "الإجمالي", "المدفوع", "المتبقي"];
+    const rows = allInvoices.map((inv) => [
+      inv.invoiceNumber ?? "",
+      inv.clientName ?? "",
+      inv.issueDate ? new Date(inv.issueDate).toISOString().slice(0, 10) : "",
+      inv.dueDate ? new Date(inv.dueDate).toISOString().slice(0, 10) : "",
+      inv.status ?? "",
+      String(inv.total ?? 0),
+      String(inv.paid ?? 0),
+      String(Math.max(0, (inv.total ?? 0) - (inv.paid ?? 0))),
+    ]);
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+    // Prepend BOM so Excel reads Arabic correctly
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `garfix-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`تم تصدير ${allInvoices.length} فاتورة`);
+  };
 
   // Quick-action event listener
   useEffect(() => {

@@ -55,13 +55,14 @@ interface UpdateCatalogItemPayload {
 
 // ─── useCatalog ─────────────────────────────────────────────────────────────
 
-export function useCatalog(companySlug: string) {
+export function useCatalog(companySlug: string, search?: string) {
   return useQuery<CatalogListResponse, ApiError>({
-    queryKey: queryKeys.catalog.list(companySlug),
-    queryFn: () =>
-      apiGet<CatalogListResponse>(
-        `/api/catalog?companySlug=${encodeURIComponent(companySlug)}`,
-      ),
+    queryKey: queryKeys.catalog.list({ companySlug, search }),
+    queryFn: () => {
+      const params = new URLSearchParams({ companySlug });
+      if (search && search.trim()) params.set("search", search.trim());
+      return apiGet<CatalogListResponse>(`/api/catalog?${params.toString()}`);
+    },
     enabled: !!companySlug,
   });
 }

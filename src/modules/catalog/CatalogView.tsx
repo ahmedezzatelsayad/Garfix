@@ -27,7 +27,7 @@ const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border tex
 export function CatalogView() {
   const { activeCompany } = useBrand();
   const [search, setSearch] = useState("");
-  const { data, isLoading, refetch } = useCatalog(activeCompany?.slug || "");
+  const { data, isLoading, refetch } = useCatalog(activeCompany?.slug || "", search);
   const deleteMutation = useDeleteCatalogItem();
 
   // API returns { products: [...] }; the hook now types this correctly.
