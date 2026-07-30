@@ -319,14 +319,21 @@ async function generatePreview(intent: string, params: Record<string, unknown>, 
     }
     case "get_client_balance": {
       const clientId = params.clientId as number;
-      const client = await db.client.findUnique({ where: { id: clientId } });
+      const slug = params.companySlug as string;
+      // IDOR FIX: scope by companySlug in WHERE — a user from company A
+      // must NOT be able to preview a client belonging to company B by
+      // guessing/enumerating clientId. Previously the findUnique had no
+      // tenancy filter at all.
+      const client = await db.client.findFirst({ where: { id: clientId, companySlug: slug } });
       return {
         description: `سيتم عرض رصيد العميل "${client?.name || `#${clientId}`}"`,
       };
     }
     case "mark_invoice_paid": {
       const invoiceId = params.invoiceId as number;
-      const inv = await db.invoice.findUnique({ where: { id: invoiceId } });
+      const slug = params.companySlug as string;
+      // IDOR FIX: scope by companySlug in WHERE (same rationale as above).
+      const inv = await db.invoice.findFirst({ where: { id: invoiceId, companySlug: slug } });
       if (!inv) return { description: "⚠️ الفاتورة غير موجودة" };
       return {
         description: `سيتم تعليم الفاتورة ${inv.invoiceNumber} (${inv.clientName}) كمكتملة الدفع بقيمة ${num(inv.total, 3)}`,
@@ -345,18 +352,24 @@ async function generatePreview(intent: string, params: Record<string, unknown>, 
       const warehouseId = Number(params.warehouseId);
       const mode = (params.mode as "set" | "adjust") || "adjust";
       const delta = Number(params.quantity);
+      const slug = params.companySlug as string;
+      // IDOR FIX: scope by companySlug in WHERE — previously fetch-then-verify
+      // (fetch the row first, then check companySlug after). Although the
+      // post-fetch check caught the breach, the row was still read from disk,
+      // leaking existence + numeric id. findFirst with companySlug in WHERE
+      // closes the breach at the database layer.
       const [product, warehouse] = await Promise.all([
-        db.productCatalog.findUnique({ where: { id: productId } }),
-        db.warehouse.findUnique({ where: { id: warehouseId } }),
+        db.productCatalog.findFirst({ where: { id: productId, companySlug: slug } }),
+        db.warehouse.findFirst({ where: { id: warehouseId, companySlug: slug } }),
       ]);
-      if (!product || product.companySlug !== (params.companySlug as string)) {
+      if (!product) {
         return { description: "⚠️ المنتج غير موجود أو لا يتبع لهذه الشركة" };
       }
-      if (!warehouse || warehouse.companySlug !== (params.companySlug as string)) {
+      if (!warehouse) {
         return { description: "⚠️ المستودع غير موجود أو لا يتبع لهذه الشركة" };
       }
-      const existing = await db.inventoryItem.findUnique({
-        where: { warehouseId_productId: { warehouseId, productId } },
+      const existing = await db.inventoryItem.findFirst({
+        where: { warehouseId, productId, companySlug: slug },
       });
       const currentQty = num(existing?.quantity || "0", 3);
       const newQty = mode === "adjust" ? currentQty + delta : delta;
@@ -497,8 +510,9 @@ async function executeIntent(
 
       case "get_client_balance": {
         const clientId = Number(params.clientId);
-        const client = await db.client.findUnique({ where: { id: clientId } });
-        if (!client || client.companySlug !== companySlug) {
+        // IDOR FIX: scope by companySlug in WHERE — previously fetch-then-verify.
+        const client = await db.client.findFirst({ where: { id: clientId, companySlug } });
+        if (!client) {
           return { ok: false, summary: "العميل غير موجود" };
         }
         const invoices = await db.invoice.findMany({
@@ -520,8 +534,9 @@ async function executeIntent(
           return { ok: false, summary: "ليس لديك صلاحية مالية لتسجيل المدفوعات" };
         }
         const invoiceId = Number(params.invoiceId);
-        const existing = await db.invoice.findUnique({ where: { id: invoiceId } });
-        if (!existing || existing.companySlug !== companySlug) {
+        // IDOR FIX: scope by companySlug in WHERE — previously fetch-then-verify.
+        const existing = await db.invoice.findFirst({ where: { id: invoiceId, companySlug } });
+        if (!existing) {
           return { ok: false, summary: "الفاتورة غير موجودة" };
         }
         const newPaid = existing.total;
@@ -587,19 +602,20 @@ async function executeIntent(
         // here (rather than HTTP-rewriting to /api/inventory/items) to avoid
         // cookie-forwarding complexity — but the audit trail + StockMovement
         // recording + oversell block + permission gate are IDENTICAL.
+        // IDOR FIX: scope by companySlug in WHERE — previously fetch-then-verify.
         const [product, warehouse] = await Promise.all([
-          db.productCatalog.findUnique({ where: { id: productId } }),
-          db.warehouse.findUnique({ where: { id: warehouseId } }),
+          db.productCatalog.findFirst({ where: { id: productId, companySlug } }),
+          db.warehouse.findFirst({ where: { id: warehouseId, companySlug } }),
         ]);
-        if (!product || product.companySlug !== companySlug) {
+        if (!product) {
           return { ok: false, summary: "المنتج غير موجود أو لا يتبع لهذه الشركة" };
         }
-        if (!warehouse || warehouse.companySlug !== companySlug) {
+        if (!warehouse) {
           return { ok: false, summary: "المستودع غير موجود أو لا يتبع لهذه الشركة" };
         }
 
-        const existing = await db.inventoryItem.findUnique({
-          where: { warehouseId_productId: { warehouseId, productId } },
+        const existing = await db.inventoryItem.findFirst({
+          where: { warehouseId, productId, companySlug },
         });
         const prevQty = num(existing?.quantity || "0", 3);
         const newQty = mode === "adjust" ? prevQty + quantity : quantity;
