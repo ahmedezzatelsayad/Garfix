@@ -187,4 +187,24 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* garfix-scroll — alias of scrollbar-thin, used throughout the app shell
+   * (Sidebar, AppShell main, company dropdowns). Previously this class name
+   * was referenced but not defined, so all scrollable regions fell back to
+   * the browser default scrollbar which looked jarring in dark mode. */
+  .garfix-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .garfix-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .garfix-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 3px;
+  }
+  .garfix-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }

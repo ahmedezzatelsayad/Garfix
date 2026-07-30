@@ -6,10 +6,16 @@
  * instead of raw `authedFetch` to ensure consistent error handling and typing.
  *
  * Circuit Breaker Integration (Sprint 3):
- * - AI endpoints (/api/ai/*) → aiCircuitBreaker
  * - Payment endpoints (/api/saas/payments/*) → paymentCircuitBreaker
  * - External API endpoints → externalApiCircuitBreaker
- * - Internal endpoints (accounting, hr, etc.) → NO circuit breaker
+ * - Internal endpoints (accounting, hr, /api/ai/*, etc.) → NO circuit breaker
+ *
+ * NOTE: /api/ai/* was previously wrapped in aiCircuitBreaker, but that caused
+ * a permanent "Circuit breaker 'openrouter' is open" error after 5 failures.
+ * The server-side aiProvider has its own fallback chain (z-ai always appended
+ * as last resort) so AI calls should never fast-fail on the client. The
+ * aiCircuitBreaker is still exported via getCircuitBreakerState/Metrics for
+ * admin dashboards to inspect its state, but no longer gates /api/ai/* calls.
  */
 "use client";
 
@@ -44,11 +50,16 @@ export class ApiError extends Error {
  * Returns null for internal endpoints that don't need circuit breaker
  * protection (they're within our own infrastructure and don't call
  * external services).
+ *
+ * NOTE: /api/ai/* is intentionally NOT wrapped in a client-side circuit
+ * breaker. The server-side aiProvider has its OWN fallback chain (z-ai
+ * sandbox is always appended as last-resort), so AI calls should never
+ * fast-fail on the client. Previously the client-side `aiCircuitBreaker`
+ * would trip OPEN after 5 failures (e.g. OpenRouter rate-limit) and then
+ * ALL subsequent AI browser calls would fast-fail with "Circuit breaker
+ * 'openrouter' is open" forever — even after the upstream recovered.
  */
 function resolveCircuitBreaker(url: string): CircuitBreaker | null {
-  // AI service endpoints — calls external AI providers (OpenRouter, etc.)
-  if (url.startsWith("/api/ai/")) return aiCircuitBreaker;
-
   // Payment/SaaS endpoints — calls external payment gateways (MyFatoorah, etc.)
   if (url.startsWith("/api/saas/payments/")) return paymentCircuitBreaker;
 

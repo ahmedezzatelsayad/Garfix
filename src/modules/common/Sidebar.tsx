@@ -113,7 +113,10 @@ export function Sidebar({
       */}
       <aside
         className={cn(
-          "garfix-scroll fixed top-0 bottom-0 right-0 z-50 w-[260px]",
+          // z-[200] so the mobile drawer overlays the Topbar (z-[100]) and
+          // the backdrop (z-[199]). Previously z-50 which left the Topbar
+          // covering the drawer's top portion on mobile.
+          "garfix-scroll fixed top-0 bottom-0 right-0 z-[200] w-[260px]",
           // Use theme tokens (bg-sidebar / text-sidebar-foreground) so the
           // sidebar respects light/dark mode. Previously hardcoded `bg-white`
           // which made the sidebar permanently white even in dark mode.
