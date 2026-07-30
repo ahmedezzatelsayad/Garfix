@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -30,13 +30,14 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.purchaseInvoice.findUnique({ where: { id: id } });
-  if (!existing) return apiError("Purchase invoice not found", 404);
-
-  // Enforce permission + company access (editing purchases is an admin/manager function)
-  const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "settings_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.purchaseInvoice.findUnique({ where: { id: id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Purchase invoice not found", 404);
+  }
 
   const body = await parseJsonBody(req);
   const parsed = UpdateSchema.safeParse(body);
@@ -78,13 +79,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.purchaseInvoice.findUnique({ where: { id: id } });
-  if (!existing) return apiError("Purchase invoice not found", 404);
-
-  // Enforce permission + company access
-  const access = await requirePermissionForCompany(req, "settings_access", existing.companySlug);
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "settings_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.purchaseInvoice.findUnique({ where: { id: id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Purchase invoice not found", 404);
+  }
 
   await db.purchaseInvoice.delete({ where: { id: existing.id } });
   await logAudit({

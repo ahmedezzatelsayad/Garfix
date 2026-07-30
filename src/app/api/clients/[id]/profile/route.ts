@@ -25,12 +25,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const clientId = id;
   if (!clientId) return apiError("Invalid client id", 400);
 
+  // IDOR mitigation: 404 on wrong-tenant (closes existence-leak oracle)
   const client = await db.client.findUnique({ where: { id: clientId } });
-  if (!client) return apiError("Client not found", 404);
-
-  // Verify tenant scoping
-  if (!assertCompanyAccess(user, client.companySlug)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!client || !assertCompanyAccess(user, client.companySlug)) {
+    return apiError("Client not found", 404);
   }
 
   // Verify view_customers permission (founder/admin bypass)

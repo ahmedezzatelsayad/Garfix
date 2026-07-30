@@ -15,6 +15,7 @@ import { withErrorHandler, apiError, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
 
 const Schema = z.object({
+  companySlug: z.string().min(1),
   employeeId: z.number().int(),
   endDate: z.string().optional(),
 });
@@ -23,14 +24,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const body = await parseJsonBody(req);
   const parsed = Schema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
-  const { employeeId, endDate } = parsed.data;
+  const { companySlug, employeeId, endDate } = parsed.data;
 
-  const employee = await db.employee.findUnique({ where: { id: employeeId } });
-  if (!employee) return apiError("الموظف غير موجود", 404);
-
-  // Check permission + company access
-  const access = await requirePermissionForCompany(req, "employee_management", employee.companySlug);
+  // IDOR fix: tenant filter in WHERE (DB-layer enforcement)
+  const access = await requirePermissionForCompany(req, "employee_management", companySlug);
   if ("error" in access) return access.error;
+  const user = access.user;
+  const employee = await db.employee.findFirst({ where: { id: employeeId, companySlug } });
+  if (!employee) return apiError("الموظف غير موجود", 404);
 
   if (!employee.joinDate) {
     return apiError("تاريخ الالتحاق غير محدد لهذا الموظف", 400);

@@ -6,7 +6,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -31,6 +32,10 @@ export async function GET(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
+    // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
+    const access = await requirePermission(req, "finance_access");
+    if ("error" in access) return access.error;
+    const user = access.user;
     const account = await db.bankAccount.findUnique({
       where: { id: parseInt(id, 10) },
       include: {
@@ -42,14 +47,9 @@ export async function GET(
         },
       },
     });
-
-    if (!account) return apiError("Bank account not found", 404);
-
-    // SEC-C4 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
-    // guard that PATCH/DELETE already enforced. Any unauthenticated user with a
-    // sequential id could read any tenant's bank account number + IBAN + balance.
-    const access = await requirePermissionForCompany(req, "finance_access", account.companySlug);
-    if ("error" in access) return access.error;
+    if (!account || !assertCompanyAccess(user, account.companySlug)) {
+      return apiError("Bank account not found", 404);
+    }
 
     return apiOk({
       ...account,
@@ -78,14 +78,13 @@ export async function PATCH(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.bankAccount.findUnique({ where: { id: accountId } });
+    const existing = await db.bankAccount.findFirst({ where: { id: accountId, companySlug: data.companySlug } });
     if (!existing) return apiError("Bank account not found", 404);
-    if (existing.companySlug !== data.companySlug) return apiError("Bank account does not belong to this company", 403);
 
     // Validate GL account if updating
     if (data.glAccountId) {
-      const glAccount = await db.account.findUnique({ where: { id: data.glAccountId } });
-      if (!glAccount || glAccount.companySlug !== data.companySlug) {
+      const glAccount = await db.account.findFirst({ where: { id: data.glAccountId, companySlug: data.companySlug } });
+      if (!glAccount) {
         return apiError("GL account does not belong to this company", 400);
       }
       if (glAccount.type !== "asset") {
@@ -145,9 +144,8 @@ export async function DELETE(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.bankAccount.findUnique({ where: { id: accountId } });
+    const existing = await db.bankAccount.findFirst({ where: { id: accountId, companySlug } });
     if (!existing) return apiError("Bank account not found", 404);
-    if (existing.companySlug !== companySlug) return apiError("Bank account does not belong to this company", 403);
 
     // Soft delete: set isActive = false
     const account = await db.bankAccount.update({

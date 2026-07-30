@@ -4,7 +4,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler } from "@/lib/api";
 
@@ -12,12 +13,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.account.findUnique({ where: { id: parseInt(id) } });
-  if (!existing) return apiError("Account not found", 404);
-
-  const access = await requirePermissionForCompany(req, "finance_access", existing.companySlug ?? "");
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "finance_access");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.account.findUnique({ where: { id: parseInt(id) } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Account not found", 404);
+  }
 
   // Block deletion if any journal lines reference this account
   const lineCount = await db.journalEntryLine.count({ where: { accountId: existing.id } });

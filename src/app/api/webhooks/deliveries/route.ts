@@ -86,14 +86,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // WebhookDelivery.id is a cuid (String). Previously this was Number(deliveryId)
   // which produced NaN for cuid strings → every retry 404'd.
-  const delivery = await db.webhookDelivery.findUnique({ where: { id: deliveryId } });
+  // IDOR fix: tenant filter via nested endpoint.companySlug; founder bypasses
+  const delivery = isFounder
+    ? await db.webhookDelivery.findUnique({ where: { id: deliveryId } })
+    : await db.webhookDelivery.findFirst({ where: { id: deliveryId, endpoint: { companySlug } } });
   if (!delivery) return apiError("Delivery not found", 404);
-
-  // Verify it belongs to the user's company
-  const endpoint = await db.webhookEndpoint.findUnique({ where: { id: delivery.endpointId } });
-  if (!endpoint || endpoint.companySlug !== companySlug) {
-    if (!isFounder) return apiError("Access denied", 403);
-  }
 
   // Only retry failed or retried deliveries
   if (delivery.status !== "failed" && delivery.status !== "retried") {

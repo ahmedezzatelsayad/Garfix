@@ -63,10 +63,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   // H1 FIX: filter out soft-deleted invoices on GET.
+  // IDOR mitigation: 404 (not 403) on wrong-tenant to close existence-leak oracle
   const invoice = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!invoice || invoice.deletedAt) return apiError("Invoice not found", 404);
-  if (!assertCompanyAccess(result.user, invoice.companySlug)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!invoice || invoice.deletedAt || !assertCompanyAccess(result.user, invoice.companySlug)) {
+    return apiError("Invoice not found", 404);
   }
   return NextResponse.json({
     invoice: {
@@ -85,11 +85,14 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!existing || existing.deletedAt) return apiError("Invoice not found", 404);
-  const access = await requirePermissionForCompany(req, "edit_invoice", existing.companySlug);
+  // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
+  const access = await requirePermission(req, "edit_invoice");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
+  if (!existing || existing.deletedAt || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Invoice not found", 404);
+  }
 
   const body = await parseJsonBody(req);
   const parsed = UpdateSchema.safeParse(body);
@@ -199,12 +202,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
-  if (!existing) return apiError("Invoice not found", 404);
-  if (existing.deletedAt) return apiError("Invoice already deleted", 400);
-  const access = await requirePermissionForCompany(req, "delete_invoice", existing.companySlug);
+  // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
+  const access = await requirePermission(req, "delete_invoice");
   if ("error" in access) return access.error;
   const user = access.user;
+  const existing = await db.invoice.findUnique({ where: { id: parseInt(id) } });
+  if (!existing || existing.deletedAt || !assertCompanyAccess(user, existing.companySlug)) {
+    return apiError("Invoice not found", 404);
+  }
 
   // ── Kuwait Decree 10/2026: retention enforcement ──────────────────────
   // Check retention period before allowing soft-delete

@@ -105,18 +105,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Validate warehouse + product belong to the same company
   const [warehouse, product] = await Promise.all([
-    db.warehouse.findUnique({ where: { id: data.warehouseId } }),
-    db.productCatalog.findUnique({ where: { id: data.productId } }),
+    db.warehouse.findFirst({ where: { id: data.warehouseId, companySlug: data.companySlug } }),
+    db.productCatalog.findFirst({ where: { id: data.productId, companySlug: data.companySlug } }),
   ]);
-  if (!warehouse || warehouse.companySlug !== data.companySlug) {
+  if (!warehouse) {
     return apiError("المستودع غير موجود أو لا يتبع لهذه الشركة", 400);
   }
-  if (!product || product.companySlug !== data.companySlug) {
+  if (!product) {
     return apiError("المنتج غير موجود أو لا يتبع لهذه الشركة", 400);
   }
 
-  const existing = await db.inventoryItem.findUnique({
-    where: { warehouseId_productId: { warehouseId: data.warehouseId, productId: data.productId } },
+  const existing = await db.inventoryItem.findFirst({
+    where: { warehouseId: data.warehouseId, productId: data.productId, companySlug: data.companySlug },
   });
 
   const newQuantity =

@@ -5,7 +5,8 @@
  */
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -19,13 +20,16 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const { id } = await params;
   const poId = parseInt(id);
 
+  // IDOR mitigation: 404 on wrong-tenant
+  const access = await requirePermission(req, "finance_access");
+  if ("error" in access) return access.error;
+  const user = access.user;
   const purchaseOrder = await db.purchaseOrder.findUnique({
     where: { id: poId },
   });
-  if (!purchaseOrder) return apiError("Purchase order not found", 404);
-
-  const access = await requirePermissionForCompany(req, "finance_access", purchaseOrder.companySlug);
-  if ("error" in access) return access.error;
+  if (!purchaseOrder || !assertCompanyAccess(user, purchaseOrder.companySlug)) {
+    return apiError("Purchase order not found", 404);
+  }
 
   return apiOk({
     ...purchaseOrder,
@@ -62,13 +66,13 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  const purchaseOrder = await db.purchaseOrder.findUnique({ where: { id: poId } });
-  if (!purchaseOrder) return apiError("Purchase order not found", 404);
-
-  const companySlug = data.companySlug || purchaseOrder.companySlug;
+  const companySlug = data.companySlug;
   const access = await requirePermissionForCompany(req, "finance_access", companySlug);
   if ("error" in access) return access.error;
   const user = access.user;
+
+  const purchaseOrder = await db.purchaseOrder.findFirst({ where: { id: poId, companySlug } });
+  if (!purchaseOrder) return apiError("Purchase order not found", 404);
 
   // Can only modify draft POs (except status changes)
   if (purchaseOrder.status !== "draft" && data.lineItems) {

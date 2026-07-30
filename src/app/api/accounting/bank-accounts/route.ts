@@ -74,8 +74,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Validate GL account belongs to the same company if provided
   if (data.glAccountId) {
-    const glAccount = await db.account.findUnique({ where: { id: data.glAccountId } });
-    if (!glAccount || glAccount.companySlug !== data.companySlug) {
+    const glAccount = await db.account.findFirst({ where: { id: data.glAccountId, companySlug: data.companySlug } });
+    if (!glAccount) {
       return apiError("GL account does not belong to this company", 400);
     }
     if (glAccount.type !== "asset") {

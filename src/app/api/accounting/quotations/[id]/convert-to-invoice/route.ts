@@ -25,11 +25,10 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  const quotation = await db.quotation.findUnique({
-    where: { id: quotationId },
+  const quotation = await db.quotation.findFirst({
+    where: { id: quotationId, companySlug: data.companySlug },
   });
   if (!quotation) return apiError("Quotation not found", 404);
-  if (quotation.companySlug !== data.companySlug) return apiError("Quotation does not belong to this company", 403);
 
   const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
   if ("error" in access) return access.error;
@@ -58,7 +57,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
 
   // Get client name for invoice
   const client = quotation.clientId
-    ? await db.client.findUnique({ where: { id: quotation.clientId } })
+    ? await db.client.findFirst({ where: { id: quotation.clientId, companySlug: data.companySlug } })
     : null;
 
   // Wrap invoice creation + quotation update in a transaction for atomicity
