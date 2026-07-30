@@ -24,18 +24,23 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
   const { id: idStr } = await params;
   const id = parseInt(idStr);
-  const existing = await db.supportTicket.findUnique({ where: { id } });
+  const isFounder = isFounderEmail(user.email);
+  // IDOR mitigation (parity with upstream 5ca82cf Group D for replies route):
+  // founder retains findUnique for platform-wide access; non-founder uses
+  // findFirst with userEmail filter so that both "row missing" and
+  // "row exists but wrong user" return 404 — closing the 404-vs-403
+  // existence-leak oracle that would otherwise let an attacker enumerate
+  // valid ticket IDs.
+  // SEC-H3C4 (Cycle 4): close platform-admin bypass — previously any tenant admin
+  // could act on ANY ticket in the platform.
+  const existing = isFounder
+    ? await db.supportTicket.findUnique({ where: { id } })
+    : await db.supportTicket.findFirst({ where: { id, userEmail: user.email } });
   if (!existing) return apiError("Ticket not found", 404);
 
   // Only the owner or the founder can touch a ticket. Tenant admins (role==="admin")
   // are scoped to their own companies and must NOT be able to close / reopen /
   // reprioritize other tenants' private support tickets.
-  // SEC-H3C4 (Cycle 4): close platform-admin bypass — previously any tenant admin
-  // could act on ANY ticket in the platform.
-  const isFounder = isFounderEmail(user.email);
-  if (!isFounder && existing.userEmail !== user.email) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const body = await parseJsonBody(req);
   const parsed = UpdateSchema.safeParse(body);
