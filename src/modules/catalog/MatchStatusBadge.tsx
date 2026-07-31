@@ -5,19 +5,20 @@
  *
  * يعرض حالة كل بند بعد الاستخراج:
  * - ✅ مطابق (matched) - تم ربطه بمنتج موجود في الكتالوج
+ * - 🧠 متعلم (ml-learned) - تم التعرف عليه عبر التعلم الآلي
  * - 🔵 منتج جديد (new) - سيتم إضافته للمخزن تلقائياً
  * - ⚠️ يحتاج مراجعة (review) - التطابقة غير مؤكدة (AI resolver)
  * - ❌ خطأ (error) - فشل في المطابقة أو الربط
  */
 
-import { CheckCircle2, PlusCircle, AlertTriangle, XCircle, Search } from "lucide-react";
+import { CheckCircle2, PlusCircle, AlertTriangle, XCircle, Search, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
-export type MatchStatus = "matched" | "new" | "review" | "error" | "pending";
+export type MatchStatus = "matched" | "ml-learned" | "new" | "review" | "error" | "pending";
 
 interface MatchStatusBadgeProps {
   status: MatchStatus;
@@ -33,6 +34,10 @@ interface MatchStatusBadgeProps {
   size?: "sm" | "md";
   /** عرض زر التغيير */
   showOverride?: boolean;
+  /** معرف النمط المتعلم (لحالات ml-learned) */
+  patternId?: string;
+  /** عدد مرات تأكيد هذا النمط */
+  patternConfirmCount?: number;
 }
 
 // ─── Status Config ─────────────────────────────────────────────────────
@@ -50,6 +55,13 @@ const STATUS_CONFIG: Record<MatchStatus, {
     color: "text-green-700",
     bgColor: "bg-green-50",
     borderColor: "border-green-200",
+  },
+  "ml-learned": {
+    label: "متعلم 🧠",
+    icon: Brain,
+    color: "text-purple-700",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200",
   },
   new: {
     label: "منتج جديد",
@@ -91,6 +103,8 @@ export function MatchStatusBadge({
   onOverride,
   size = "sm",
   showOverride = true,
+  patternId,
+  patternConfirmCount,
 }: MatchStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
@@ -129,12 +143,18 @@ export function MatchStatusBadge({
           config.color,
           config.bgColor,
           config.borderColor,
-          "font-medium border cursor-default select-none"
+          "font-medium border cursor-default select-none",
+          status === "ml-learned" && "animate-pulse"
         )}
+        title={status === "ml-learned" ? `نمط متعلم #${patternId?.slice(0, 8)} - مؤكد ${patternConfirmCount || 0} مرة` : undefined}
       >
         <Icon size={size === "sm" ? 12 : 14} />
         <span>{config.label}</span>
         {renderConfidence()}
+        {/* Pattern confirm count for ML matches */}
+        {status === "ml-learned" && patternConfirmCount !== undefined && patternConfirmCount > 1 && (
+          <span className="text-[9px] opacity-70">×{patternConfirmCount}</span>
+        )}
       </Badge>
 
       {/* Matched Product Name */}
@@ -181,8 +201,19 @@ export function getMatchStatusFromResult(result?: {
   method?: string;
   confidence?: number;
   error?: string;
+  source?: string;
 }): MatchStatus {
   if (!result || !result.method) return "pending";
+  
+  // Check for ML-based methods first
+  if (result.method === "ml-pattern" || result.method === "ml-enhanced") {
+    return "ml-learned";
+  }
+  
+  // Check source for ML indication
+  if (result.source?.startsWith("ml-")) {
+    return "ml-learned";
+  }
   
   switch (result.method) {
     case "exact":
