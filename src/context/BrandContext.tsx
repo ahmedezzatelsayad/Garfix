@@ -135,7 +135,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         void companiesQuery.refetch();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [user?.uid]);
 
   const refreshCompanies = useCallback(async () => {

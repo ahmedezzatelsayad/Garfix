@@ -107,10 +107,18 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
   // Use a Proxy to intercept every method call on every model.
   // For each call, we wrap it in a $transaction that sets the session
   // variable first, then runs the original query.
+  //
+  // P3.3 (Cycle 5): expose `__tenantSlug` via the Proxy's `get` trap instead
+  // of `Object.defineProperty`. The previous `defineProperty` call failed
+  // when called twice on Proxies backed by the same `db` (the first call
+  // made the property non-configurable, so the second call threw
+  // "Attempting to change value of a readonly property").
   const scoped = new Proxy(db as unknown as TenantScopedDb, {
     get(target, prop, receiver) {
+      // Expose the tenant slug for diagnostic / assertion purposes
+      if (prop === "__tenantSlug") return companySlug;
       // Pass through non-model properties (e.g. $transaction, $queryRaw)
-      if (typeof prop !== "string" || prop.startsWith("$") || prop === "__tenantSlug") {
+      if (typeof prop !== "string" || prop.startsWith("$")) {
         return Reflect.get(target, prop, receiver);
       }
       const model = (target as unknown as Record<string, unknown>)[prop];
@@ -132,7 +140,6 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
     },
   });
 
-  Object.defineProperty(scoped, "__tenantSlug", { value: companySlug });
   innerCache!.set(companySlug, scoped);
   return scoped;
 }
@@ -208,16 +215,24 @@ export async function verifyRlsForSlug(
 
 // ─── Internals ─────────────────────────────────────────────────────────────
 
-let _isSqliteCache: boolean | null = null;
-
+// P3.3 (Cycle 5): removed the module-level `_isSqliteCache` boolean. The
+// previous cache broke test isolation — once any test set DATABASE_URL to
+// `file:./test.db`, every subsequent Postgres-path test saw the cached
+// `true` and skipped the proxy. `process.env.DATABASE_URL` access is a
+// property read (microseconds), so the cache had no measurable perf
+// benefit. Removing it makes the function pure and idempotent.
 function isSqlite(db: PrismaClient): boolean {
-  if (_isSqliteCache !== null) return _isSqliteCache;
   // Detect by checking the datasource URL. In test/dev this may be
   // SQLite even if the schema says Postgres.
   const url = process.env.DATABASE_URL || "";
-  _isSqliteCache = url.startsWith("file:") || url.startsWith("sqlite:");
-  if (_isSqliteCache) {
-    logger.info("[db-rls] SQLite detected — RLS wrapper is a no-op");
+  const sqlite = url.startsWith("file:") || url.startsWith("sqlite:");
+  if (sqlite) {
+    // Only log once per process to avoid spamming (best-effort).
+    if (!_loggedSqliteNotice) {
+      logger.info("[db-rls] SQLite detected — RLS wrapper is a no-op");
+      _loggedSqliteNotice = true;
+    }
   }
-  return _isSqliteCache;
+  return sqlite;
 }
+let _loggedSqliteNotice = false;

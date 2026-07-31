@@ -43,7 +43,6 @@
 | الملف | الوظيفة |
 |-------|---------|
 | `audit.ts` | Audit trail — تسجيل كل عملية مع full context |
-| `auditExport.ts` | تصدير سجلات المراجعة — CSV, PDF, JSON formats |
 | `tamperAudit.ts` | حماية من التلاعب — hash chains, integrity verification |
 | `observatory.ts` | مرصد المراقبة — real-time system health & metrics dashboard data |
 | `usageMeter.ts` | قياس الاستخدام — per-tenant feature & API usage metering |
@@ -57,7 +56,6 @@
 | `aiConfig.ts` | إعدادات AI — model config, feature flags, tenant overrides |
 | `aiProductResolver.ts` | محلل المنتجات AI — intelligent product matching via LLM |
 | `aiAgents.ts` | وكلاء AI — autonomous agent orchestration for multi-step tasks |
-| `embeddingCache.ts` | تخزين مؤقت للـ embedding vectors — semantic similarity reuse |
 
 ### المحاسبة والمالية
 

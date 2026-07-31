@@ -79,7 +79,12 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const data = parsed.data;
   const email = data.email.toLowerCase();
 
-  const existing = await db.appUser.findUnique({ where: { email } });
+  // P3.2 (Cycle 5): omit passwordHash — invite flow only reads identity +
+  // companies + permissions (never authenticates).
+  const existing = await db.appUser.findUnique({
+    where: { email },
+    omit: { passwordHash: true },
+  });
 
   let user: { uid: string; email: string; displayName: string; role: string; companies: string; permissions: string };
   let temporaryPassword: string | null = null;

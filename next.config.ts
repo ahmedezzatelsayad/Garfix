@@ -42,10 +42,44 @@ const nextConfig: NextConfig = {
     "bcryptjs",
   ],
   experimental: {
+    // P3.7 (Cycle 5): added all 26 @radix-ui/react-* packages actually
+    // imported by src/components/ui/*. Each `import * as X from
+    // "@radix-ui/react-Y"` was previously pulling the entire package into
+    // the client bundle even when only one component was used. Next.js's
+    // optimizer tree-shakes these barrel imports, reducing first-load JS
+    // for every page that uses any Radix UI component.
     optimizePackageImports: [
       'lucide-react',
       'recharts',
       '@prisma/client',
+      // Radix UI primitives (curated list of packages actually imported):
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-aspect-ratio',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-collapsible',
+      '@radix-ui/react-context-menu',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-hover-card',
+      '@radix-ui/react-label',
+      '@radix-ui/react-menubar',
+      '@radix-ui/react-navigation-menu',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-radio-group',
+      '@radix-ui/react-scroll-area',
+      '@radix-ui/react-select',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-slider',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-toast',
+      '@radix-ui/react-toggle',
+      '@radix-ui/react-toggle-group',
+      '@radix-ui/react-tooltip',
     ],
   },
   turbopack: { root: __dirname },

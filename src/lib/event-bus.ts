@@ -112,9 +112,53 @@ export class EventBus {
 // Singleton event bus
 export const eventBus = new EventBus();
 
-// Helper to emit events with telemetry
-import { startSpan, endSpan, logEvent } from "./telemetry";
+// ─────────────────────────────────────────────────────────────────────────────
+// P3.5 (Cycle 5): inlined minimal span/log helpers previously provided by the
+// deleted `src/lib/telemetry.ts` (legacy console-based provider). The full
+// OpenTelemetry SDK lives in `src/lib/telemetry-sdk.ts` and is wired through
+// `instrumentation.ts` at boot; these helpers exist only so `emitEvent` can
+// record a structured log line per event for dev debugging.
+// ─────────────────────────────────────────────────────────────────────────────
+interface Span {
+  name: string;
+  startTime: number;
+  endTime?: number;
+  attributes: Record<string, string | number | boolean>;
+  status: "ok" | "error";
+}
 
+function startSpan(
+  name: string,
+  attributes?: Record<string, string | number | boolean>,
+): Span {
+  return {
+    name,
+    startTime: Date.now(),
+    attributes: attributes || {},
+    status: "ok",
+  };
+}
+
+function endSpan(span: Span, status?: "ok" | "error"): void {
+  span.endTime = Date.now();
+  span.status = status || span.status;
+  const duration = span.endTime - span.startTime;
+  console.log(
+    `[event-bus] span: ${span.name} | ${span.status} | ${duration}ms | attrs: ${JSON.stringify(span.attributes)}`,
+  );
+}
+
+function logEvent(
+  level: "debug" | "info" | "warn" | "error",
+  message: string,
+  attributes?: Record<string, unknown>,
+): void {
+  console.log(
+    `[event-bus:${level}] ${message} | ${JSON.stringify(attributes || {})}`,
+  );
+}
+
+// Helper to emit events with telemetry
 export async function emitEvent<T extends EventName>(eventType: T, payload: DomainEvents[T]): Promise<void> {
   const span = startSpan(`event:${eventType}`, { eventType, companySlug: (payload as Record<string, unknown>).companySlug as string || "system" });
   try {

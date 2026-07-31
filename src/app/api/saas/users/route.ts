@@ -96,7 +96,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("لا يمكن للمدير العادي إنشاء حسابات مديرين — تواصل مع المؤسس", 403);
   }
 
-  const existing = await db.appUser.findUnique({ where: { email: data.email.toLowerCase() } });
+  // P3.2 (Cycle 5): omit passwordHash — existence check only.
+  const existing = await db.appUser.findUnique({
+    where: { email: data.email.toLowerCase() },
+    omit: { passwordHash: true },
+  });
   if (existing) return apiError("هذا البريد مسجّل مسبقاً", 409);
 
   const passwordHash = await hashPassword(data.password);

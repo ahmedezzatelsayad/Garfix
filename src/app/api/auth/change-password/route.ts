@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { resolveAuth, hashPassword, verifyPassword, revokeAccessSession } from "@/lib/auth";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { logAudit } from "@/lib/audit";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
@@ -34,6 +35,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "غير مصرّح" }, { status: 401 });
   }
   const user = result.user;
+
+  // P3.1 (Cycle 5): rate-limit per IP to prevent brute-force of the current
+  // password field. A stolen access token (e.g. via XSS or device theft)
+  // lets an attacker call this endpoint; without a rate limit they could
+  // brute-force `currentPassword` at line speed and then change it to lock
+  // out the legitimate user. 5/15min/IP mirrors the LOGIN limit.
+  const rlErr = await rateLimitResponse(req, "auth:change-pw", LIMITS.CHANGE_PW);
+  if (rlErr) return rlErr;
 
   const body = await parseJsonBody(req);
   const parsed = Schema.safeParse(body);

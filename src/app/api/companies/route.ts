@@ -204,7 +204,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     },
   });
   try {
-    const updatedUser = await db.appUser.findUnique({ where: { uid: user.uid } });
+    // P3.2 (Cycle 5): omit passwordHash — re-issue session only reads
+    // identity + role + companies fields.
+    const updatedUser = await db.appUser.findUnique({
+      where: { uid: user.uid },
+      omit: { passwordHash: true },
+    });
     if (updatedUser) {
       const { issueSession } = await import("@/lib/auth");
       await issueSession(response, {

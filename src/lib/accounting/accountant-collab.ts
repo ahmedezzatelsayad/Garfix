@@ -73,8 +73,12 @@ export async function createExternalAccountantAccess(
     });
   }
 
-  // Also ensure the accountant user has this company in their companies list
-  const user = await db.appUser.findUnique({ where: { email: accountantEmail } });
+  // Also ensure the accountant user has this company in their companies list.
+  // P3.2 (Cycle 5): omit passwordHash — only `companies` is read.
+  const user = await db.appUser.findUnique({
+    where: { email: accountantEmail },
+    omit: { passwordHash: true },
+  });
   if (user) {
     const companies: string[] = JSON.parse(user.companies || "[]");
     if (!companies.includes(companySlug)) {

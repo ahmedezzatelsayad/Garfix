@@ -117,7 +117,10 @@ interface CircuitState_ {
 
 const WINDOW_SIZE = 20;
 const FAILURE_RATE_THRESHOLD = 0.5;  // open at >50% failures in window
-const COOLDOWN_MS = 30_000;          // 30s before HALF_OPEN
+// P3.3 (Cycle 5): env-overridable cooldown so operators can tune the
+// circuit-breaker recovery time without a code change, and so tests can
+// exercise the HALF_OPEN transition without waiting 30 real seconds.
+const COOLDOWN_MS = parseInt(process.env.AI_CIRCUIT_COOLDOWN_MS || "30000", 10);
 const LATENCY_ALPHA = 0.3;           // EMA smoothing for latency
 const COST_ALPHA = 0.3;              // EMA smoothing for cost
 const CONFIDENCE_ALPHA = 0.3;        // EMA smoothing for confidence

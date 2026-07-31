@@ -129,8 +129,12 @@ export const DELETE = withErrorHandler(async (req: NextRequest) => {
     },
   });
 
-  // Also remove the company from the accountant's companies list
-  const accountantUser = await db.appUser.findUnique({ where: { email: data.accountantEmail } });
+  // Also remove the company from the accountant's companies list.
+  // P3.2 (Cycle 5): omit passwordHash — only `companies` is read.
+  const accountantUser = await db.appUser.findUnique({
+    where: { email: data.accountantEmail },
+    omit: { passwordHash: true },
+  });
   if (accountantUser) {
     const companies: string[] = JSON.parse(accountantUser.companies || "[]");
     const updated = companies.filter((c) => c !== data.companySlug);
