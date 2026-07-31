@@ -12,6 +12,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { AIDashboardInsights } from "@/components/garfix";
 
 interface Stats {
   totalInvoices: number;
@@ -161,6 +162,36 @@ export function DashboardView() {
           color="#f59e0b"
         />
       </div>
+
+      {/* AI Insights Widget */}
+      <AIDashboardInsights
+        insights={[
+          {
+            id: 'insight-1',
+            type: stats.totalOutstanding > 0 ? 'warning' : 'success',
+            title: stats.totalOutstanding > 0 ? 'فواتير تحتاج متابعة' : 'أداء مالي ممتاز',
+            message: stats.totalOutstanding > 0 
+              ? `لديك مستحقات بقيمة ${stats.totalOutstanding.toLocaleString('ar-EG')} ${activeCompany?.currency || ''} تحتاج متابعة`
+              : 'جميع الفواتير تم تحصيلها بنجاح!',
+            actionLabel: stats.totalOutstanding > 0 ? 'عرض الفواتير' : undefined,
+            onAction: stats.totalOutstanding > 0 ? () => window.location.hash = '#invoices' : undefined,
+          },
+          {
+            id: 'insight-2',
+            type: 'info',
+            title: 'ملخص الشهر الحالي',
+            message: `إجمالي ${stats.totalInvoices} فاتورة بإيرادات ${stats.totalRevenue.toLocaleString('ar-EG')} ${activeCompany?.currency || ''}`,
+          },
+          {
+            id: 'insight-3',
+            type: stats.clientsCount > 10 ? 'opportunity' : 'info',
+            title: stats.clientsCount > 10 ? 'قاعدة عملاء قوية' : 'نمو قاعدة العملاء',
+            message: `لديك ${stats.clientsCount} عميل${stats.clientsCount > 10 ? ' - فرصة لبرنامج ولاء!' : ' - حاول الوصول لـ 10 عملاء هذا الشهر'}`,
+          },
+        ]}
+        isLoading={loading}
+        onRefresh={() => window.location.reload()}
+      />
 
       {/* Charts row — stack on mobile, 2-col on lg+ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
