@@ -1,0 +1,1042 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * GarfiX AI - Contextual Integration Components (Phase 2)
+ * 
+ * This file contains all AI-enhanced UI components for:
+ * - Empty States with AI onboarding
+ * - Smart Form fields (Auto-fill, Validate, Categorize)
+ * - Table AI features (Search, Summarize, Export)
+ * 
+ * All components use the new GarfiX AI branding and design system.
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+"use client";
+
+import * as React from "react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { 
+  GarfixAIIcon, 
+  GarfixAIBadge,
+} from "./GarfixAIIcon"
+import {
+  AIInlineSuggestion,
+  AITooltip,
+  type AISuggestion,
+} from "./GarfixAIComponents"
+import { Badge } from "@/components/ui/badge"
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 1: AI-Enhanced Empty States
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * AIEmptyState - Enhanced empty state with AI assistance
+ * Replaces boring "no data" messages with helpful AI-guided onboarding
+ */
+interface AIEmptyStateProps {
+  /** Type of empty state (determines illustration and message) */
+  type: "invoices" | "clients" | "products" | "reports" | "search" | "general"
+  /** Custom title override */
+  title?: string
+  /** Custom description override */
+  description?: string
+  /** Primary action button */
+  primaryAction?: {
+    label: string
+    onClick: () => void
+    variant?: "default" | "gradient" | "outline"
+  }
+  /** Secondary AI-powered action */
+  aiAction?: {
+    label: string
+    onClick: () => void
+    description?: string
+  }
+  /** Additional suggestions */
+  suggestions?: AISuggestion[]
+  /** Show animated illustration */
+  animated?: boolean
+  /** Compact mode for sidebars/drawers */
+  compact?: boolean
+  className?: string
+}
+
+export function AIEmptyState({
+  type,
+  title,
+  description,
+  primaryAction,
+  aiAction,
+  suggestions = [],
+  animated = true,
+  compact = false,
+  className,
+}: AIEmptyStateProps) {
+  
+  // Type-specific defaults
+  const defaults = {
+    invoices: {
+      title: "لا توجد فواتير بعد",
+      description: "ابدأ رحلتك مع GarfiX AI - يمكنني مساعدتك في إنشاء فاتورتك الأولى بذكاء",
+      aiLabel: "أنشئ فاتورة بالـ AI",
+      aiDesc: "صف لي ما تريد فوترة وسأقوم بالباقي",
+    },
+    clients: {
+      title: "قائمة العملاء فارغة",
+      description: "دعني أساعدك في إضافة عملائك الأولين - يمكنني استخراج بياناتهم من أي مصدر",
+      aiLabel: "أضف عميل بالـ AI",
+      aiDesc: "صِف لي العميل أو أرفق معلومات",
+    },
+    products: {
+      title: "الكتالوغ فارغ",
+      description: "GarfiX AI يمكنه مساعدتك في بناء كتالوج منتجاتك بسرعة",
+      aiLabel: "بناء كتالوغ بالـ AI",
+      aiDesc: "صف منتجاتك وسأضيفها لك",
+    },
+    reports: {
+      title: "لا توجد تقارير بعد",
+      description="احتاج بيانات أكثر لإنشاء تحليلات ذكية",
+      aiLabel: "اطلب تقرير ذكي",
+      aiDesc: "أخبرني ماذا تريد تحليله",
+    },
+    search: {
+      title: "لا توجد نتائج",
+      description: "جرب البحث بلغة طبيعية أو دعني أساعدك في إيجاد ما تبحث عنه",
+      aiLabel: "اسأل GarfiX AI",
+      aiDesc: "صف ما تبحث عنه بكلماتك",
+    },
+    general: {
+      title: "لا توجد بيانات",
+      description: "دعني أساعدك في البداية",
+      aiLabel: "اطلب المساعدة",
+      aiDesc: "كيف يمكنني مساعدتك؟",
+    },
+  }
+
+  const config = defaults[type]
+  
+  return (
+    <div className={cn(
+      "flex flex-col items-center justify-center text-center py-8 px-4 animate-fade-in empty-state-mobile",
+      compact ? "py-6" : "py-12 md:py-16",
+      className
+    )}>
+      {/* Animated AI Illustration */}
+      <div className={cn(
+        "relative mb-6",
+        compact ? "size-16" : "size-24 md:size-32"
+      )}>
+        {/* Glow background */}
+        <div className={cn(
+          "absolute inset-0 rounded-full bg-primary/10 blur-xl",
+          animated && "animate-pulse-slow"
+        )} />
+        
+        {/* Main icon */}
+        <GarfixAIIcon 
+          size={compact ? "lg" : "xl"} 
+          glow 
+          animated={animated}
+          className="relative z-10"
+        />
+
+        {/* Floating particles */}
+        {animated && (
+          <>
+            <span className="absolute top-0 end-0 size-2 rounded-full bg-primary/40 animate-float" style={{ animationDelay: '0s' }} />
+            <span className="absolute bottom-4 start-0 size-1.5 rounded-full bg-accent/60 animate-float" style={{ animationDelay: '1s' }} />
+            <span className="absolute top-1/2 start-1/3 size-1 rounded-full bg-primary/30 animate-float" style={{ animationDelay: '2s' }} />
+          </>
+        )}
+      </div>
+
+      {/* Title */}
+      <h3 className={cn(
+        "font-semibold text-foreground mb-2",
+        compact ? "text-sm" : "text-lg md:text-xl"
+      )}>
+        {title || config.title}
+      </h3>
+
+      {/* Description */}
+      <p className={cn(
+        "text-muted-foreground max-w-xs mx-auto leading-relaxed mb-6",
+        compact ? "text-xs" : "text-sm"
+      )}>
+        {description || config.description}
+      </p>
+
+      {/* Action Buttons */}
+      <div className={cn(
+        "flex flex-col sm:flex-row items-center gap-3 w-full max-w-md",
+        compact && "gap-2"
+      )}>
+        {/* Primary Action */}
+        {primaryAction && (
+          <Button
+            onClick={primaryAction.onClick}
+            variant={primaryAction.variant || "gradient"}
+            size={compact ? "sm" : "default"}
+            className={cn("min-w-[140px] touch-lg haptic-medium", !compact && "shadow-brand-sm")}
+          >
+            {primaryAction.label}
+          </Button>
+        )}
+
+        {/* AI Action */}
+        {aiAction && (
+          <div className="flex items-center gap-2">
+            <GarfixAIIcon size="xs" />
+            <AIInlineSuggestion
+              label={aiAction.label || config.aiLabel}
+              onClick={aiAction.onClick}
+              variant="prominent"
+              animated
+            />
+          </div>
+        )}
+      </div>
+
+      {/* AI Description Tooltip */}
+      {aiAction?.description && (
+        <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
+          <GarfixAIIcon size="xs" />
+          {aiAction.description || config.aiDesc}
+        </p>
+      )}
+
+      {/* Suggestions Grid */}
+      {suggestions.length > 0 && !compact && (
+        <div className="mt-8 w-full max-w-lg">
+          <p className="text-xs font-medium text-muted-foreground mb-3">
+            اقتراحات سريعة:
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {suggestions.map((suggestion) => (
+              <AIInlineSuggestion
+                key={suggestion.id}
+                {...suggestion}
+                variant="subtle"
+                className="justify-start"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 2: Smart Form Field Components
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * AIFormField - Form field with AI assistance
+ * Provides auto-fill, validation, and explanation capabilities
+ */
+interface AIFormFieldProps {
+  label: string
+  /** Field value */
+  value: string
+  /** On change handler */
+  onChange: (value: string) => void
+  /** Placeholder */
+  placeholder?: string
+  /** Enable AI auto-fill */
+  enableAutoFill?: boolean
+  /** On AI auto-fill request */
+  onAutoFill?: () => void
+  /** Enable AI validation */
+  enableValidation?: boolean
+  /** Validation status */
+  validationStatus?: "idle" | "validating" | "valid" | "invalid"
+  /** Validation message */
+  validationMessage?: string
+  /** AI tooltip explanation */
+  explanation?: string
+  /** Field type */
+  type?: "text" | "number" | "textarea" | "select"
+  /** Required indicator */
+  required?: boolean
+  /** Error state */
+  error?: string
+  /** Disabled state */
+  disabled?: boolean
+  className?: string
+}
+
+export function AIFormField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  enableAutoFill = true,
+  onAutoFill,
+  enableValidation = true,
+  validationStatus = "idle",
+  validationMessage,
+  explanation,
+  type = "text",
+  required = false,
+  error,
+  disabled = false,
+  className,
+}: AIFormFieldProps) {
+  const [isFocused, setIsFocused] = React.useState(false)
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      {/* Label Row */}
+      <div className="flex items-center justify-between gap-2">
+        <label className={cn(
+          "text-sm font-medium flex items-center gap-2",
+          error && "text-destructive"
+        )}>
+          {label}
+          {required && <span className="text-destructive">*</span>}
+          
+          {/* Explanation tooltip */}
+          {explanation && (
+            <AITooltip content={explanation} position="top">
+              <button 
+                type="button"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+                </svg>
+              </button>
+            </AITooltip>
+          )}
+        </label>
+
+        {/* AI Actions Row */}
+        {(enableAutoFill || enableValidation) && isFocused && (
+          <div className="flex items-center gap-2 animate-fade-in">
+            {enableAutoFill && onAutoFill && (
+              <AIInlineSuggestion
+                label="تعبئة تلقائية"
+                onClick={onAutoFill}
+                variant="subtle"
+                className="text-[10px]"
+              />
+            )}
+
+            {validationStatus === "validating" && (
+              <GarfixAIBadge status="thinking" showLabel={false} size="sm" />
+            )}
+            
+            {validationStatus === "valid" && (
+              <span className="text-emerald-500 text-xs flex items-center gap-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                صحيح
+              </span>
+            )}
+            
+            {validationStatus === "invalid" && validationMessage && (
+              <span className="text-red-500 text-xs">{validationMessage}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Input Field */}
+      <div className="relative">
+        {type === "textarea" ? (
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            disabled={disabled}
+            rows={3}
+            className={cn(
+              "w-full px-4 py-3 rounded-lg border bg-background text-sm",
+              "placeholder:text-muted-foreground",
+              "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+              "transition-all duration-200 resize-none",
+              disabled && "opacity-50 cursor-not-allowed",
+              error && "border-destructive focus:ring-destructive/20",
+              // Mobile optimizations
+              "min-h-[48px] sm:min-h-0 text-base sm:text-sm"
+            )}
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            disabled={disabled}
+            className={cn(
+              "w-full px-4 py-3 rounded-lg border bg-background text-sm",
+              "placeholder:text-muted-foreground",
+              "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+              "transition-all duration-200",
+              disabled && "opacity-50 cursor-not-allowed",
+              error && "border-destructive focus:ring-destructive/20",
+              // Mobile optimizations
+              "min-h-[48px] sm:min-h-0 text-base sm:text-sm"
+            )}
+          />
+        )}
+
+        {/* AI Icon indicator when focused */}
+        {isFocused && enableAutoFill && (
+          <div className="absolute start-3 top-1/2 -translate-y-1/2 animate-fade-in sm:hidden">
+            <GarfixAIIcon size="xs" />
+          </div>
+        )}
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <p className="text-xs text-destructive flex items-center gap-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M15 9l-6 6m0-6l6 6"/>
+          </svg>
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * AICategorizer - AI-powered categorization chip group
+ * For tagging, categorizing, or classifying items
+ */
+interface AICategorizerProps {
+  /** Available categories */
+  categories: string[]
+  /** Selected categories */
+  selected: string[]
+  /** On selection change */
+  onSelect: (categories: string[]) => void
+  /** Allow AI suggestion */
+  allowAISuggest?: boolean
+  /** On AI suggest request */
+  onAISuggest?: () => void
+  /** Is AI suggesting */
+  isSuggesting?: boolean
+  /** AI suggested categories */
+  aiSuggestions?: string[]
+  /** Multi-select mode */
+  multiSelect?: boolean
+  className?: string
+}
+
+export function AICategorizer({
+  categories,
+  selected,
+  onSelect,
+  allowAISuggest = true,
+  onAISuggest,
+  isSuggesting = false,
+  aiSuggestions = [],
+  multiSelect = true,
+  className,
+}: AICategorizerProps) {
+  
+  const toggleCategory = (category: string) => {
+    if (multiSelect) {
+      if (selected.includes(category)) {
+        onSelect(selected.filter(c => c !== category))
+      } else {
+        onSelect([...selected, category])
+      }
+    } else {
+      onSelect([category])
+    }
+  }
+
+  return (
+    <div className={cn("space-y-3", className)}>
+      {/* Categories Grid */}
+      <div className="flex flex-wrap gap-2">
+        {categories.map((category) => {
+          const isSelected = selected.includes(category)
+          const isAISuggested = aiSuggestions.includes(category)
+          
+          return (
+            <button
+              key={category}
+              onClick={() => toggleCategory(category)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                "active-press focus-ring",
+                isSelected
+                  ? "bg-primary text-primary-foreground shadow-brand-sm"
+                  : [
+                      "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      isAISuggested && "border border-primary/30 bg-primary/5"
+                    ]
+              )}
+            >
+              {category}
+              {isAISuggested && (
+                <GarfixAIIcon size="xs" className="size-3" />
+              )}
+              {isSelected && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* AI Suggest Button */}
+      {allowAISuggest && onAISuggest && (
+        <div className="flex items-center gap-2 pt-2 border-t">
+          {isSuggesting ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <GarfixAIBadge status="thinking" showLabel={false} size="sm" />
+              <span>GarfiX AI يقترح التصنيفات...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <GarfixAIIcon size="xs" />
+              <AIInlineSuggestion
+                label="اقترح تصنيفات بالـ AI"
+                onClick={onAISuggest}
+                variant="subtle"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 3: Smart Table Components
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * AISearchBar - AI-enhanced search for tables/lists
+ * Supports natural language queries and smart filters
+ */
+interface AISearchBarProps {
+  /** Search query */
+  query: string
+  /** On query change */
+  onQueryChange: (query: string) => void
+  /** On search submit */
+  onSearch: (query: string) => void
+  /** Placeholder text */
+  placeholder?: string
+  /** Enable AI natural language search */
+  enableAINaturalSearch?: boolean
+  /** On AI search request */
+  onAISearch?: (query: string) => void
+  /** Is AI processing */
+  isAIProcessing?: boolean
+  /** Search suggestions */
+  suggestions?: string[]
+  /** Recent searches */
+  recentSearches?: string[]
+  /** Clear recent searches */
+  onClearRecent?: () => void
+  className?: string
+}
+
+export function AISearchBar({
+  query,
+  onQueryChange,
+  onSearch,
+  placeholder = "بحث...",
+  enableAINaturalSearch = true,
+  onAISearch,
+  isAIProcessing = false,
+  suggestions = [],
+  recentSearches = [],
+  onClearRecent,
+  className,
+}: AISearchBarProps) {
+  const [focused, setFocused] = React.useState(false)
+  const [showSuggestions, setShowSuggestions] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  return (
+    <div className={cn("relative", className)}>
+      {/* Search Input Container */}
+      <div className={cn(
+        "relative flex items-center gap-3 px-4 py-3 bg-background rounded-xl border transition-all duration-200",
+        focused
+          ? "border-primary ring-2 ring-primary/20 shadow-brand-sm"
+          : "border-border hover:border-border/80"
+      )}>
+        {/* Search Icon / AI Icon */}
+        <div className="start-0 shrink-0">
+          {focused && enableAINaturalSearch ? (
+            <GarfixAIIcon size="xs" animated={isAIProcessing} />
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-muted-foreground">
+              <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          )}
+        </div>
+
+        {/* Input */}
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onFocus={() => { setFocused(true); setShowSuggestions(true) }}
+          onBlur={() => { setFocused(false); setTimeout(() => setShowSuggestions(false), 200) }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) {
+              onSearch(query.trim())
+              setShowSuggestions(false)
+            }
+          }}
+          placeholder={
+            focused && enableAINaturalSearch 
+              ? "اكتب باللغة الطبيعية مثال: 'فواتير هذا الشهر لأحمد'" 
+              : placeholder
+          }
+          className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none min-h-[44px] sm:min-h-0 text-base sm:text-sm"
+        />
+
+        {/* AI Badge when focused */}
+        {focused && enableAINaturalSearch && (
+          <div className="animate-fade-in hidden sm:flex">
+            <GarfixAIBadge 
+              status={isAIProcessing ? "thinking" : "idle"} 
+              showLabel 
+              size="sm" 
+            />
+          </div>
+        )}
+
+        {/* Clear button */}
+        {query && (
+          <button
+            onClick={() => { onQueryChange(""); inputRef.current?.focus() }}
+            className="shrink-0 p-1 rounded hover:bg-accent transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Suggestions Dropdown */}
+      {showSuggestions && (suggestions.length > 0 || recentSearches.length > 0) && (
+        <div className="absolute top-full mt-2 w-full bg-popover border rounded-xl shadow-brand-lg z-50 animate-fade-in overflow-hidden">
+          {/* AI Natural Language Hint */}
+          {focused && enableAINaturalSearch && (
+            <div className="px-4 py-2 bg-primary/5 border-b flex items-center gap-2">
+              <GarfixAIIcon size="xs" />
+              <span className="text-xs text-primary font-medium">بحث ذكي باللغة الطبيعية</span>
+            </div>
+          )}
+
+          {/* Recent Searches */}
+          {recentSearches.length > 0 && (
+            <div className="p-2">
+              <div className="flex items-center justify-between px-2 py-1">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">عمليات بحث حديثة</span>
+                {onClearRecent && (
+                  <button 
+                    onClick={onClearRecent}
+                    className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    مسح الكل
+                  </button>
+                )}
+              </div>
+              {recentSearches.slice(0, 5).map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => { onQueryChange(item); onSearch(item); }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  {item}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* AI Suggestions */}
+          {suggestions.length > 0 && (
+            <div className="p-2 border-t">
+              <span className="block px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase">اقتراحات</span>
+              {suggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => { 
+                    if (onAISearch) {
+                      onAISearch(suggestion)
+                    } else {
+                      onQueryChange(suggestion)
+                      onSearch(suggestion)
+                    }
+                    setShowSuggestions(false)
+                  }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <GarfixAIIcon size="xs" />
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * AISummaryCard - AI-generated summary of table/list data
+ * Shows insights and key metrics at a glance
+ */
+interface AISummaryCardProps {
+  /** Summary title */
+  title: string
+  /** Summary text/content */
+  summary: string
+  /** Key metrics */
+  metrics?: Array<{
+    label: string
+    value: string | number
+    change?: number
+    changeType?: "positive" | "negative" | "neutral"
+  }>
+  /** AI-generated insights */
+  insights?: string[]
+  /** Actions user can take */
+  actions?: Array<{
+    label: string
+    onClick: () => void
+  }>
+  /** Loading state */
+  isLoading?: boolean
+  /** Error state */
+  error?: string
+  /** On regenerate */
+  onRegenerate?: () => void
+  className?: string
+}
+
+export function AISummaryCard({
+  title,
+  summary,
+  metrics = [],
+  insights = [],
+  actions = [],
+  isLoading = false,
+  error,
+  onRegenerate,
+  className,
+}: AISummaryCardProps) {
+  
+  if (isLoading) {
+    return (
+      <Card className={cn("overflow-hidden", className)}>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="h-6 bg-muted rounded w-1/3 animate-shimmer" />
+            <div className="space-y-2">
+              <div className="h-4 bg-muted rounded w-full animate-shimmer" />
+              <div className="h-4 bg-muted rounded w-5/6 animate-shimmer" />
+            </div>
+            <div className="grid grid-cols-3 gap-4 pt-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-16 bg-muted rounded animate-shimmer" />
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className={cn("border-destructive/30", className)}>
+        <CardContent className="p-6 text-center">
+          <p className="text-sm text-destructive mb-3">{error}</p>
+          {onRegenerate && (
+            <Button variant="outline" size="sm" onClick={onRegenerate}>
+              إعادة المحاولة
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card variant="elevated" className={cn("overflow-hidden", className)}>
+      {/* Gradient accent bar */}
+      <div className="h-1 gradient-primary" />
+      
+      <CardContent className="p-6 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <GarfixAIIcon size="sm" glow />
+            <div>
+              <h3 className="font-semibold">{title}</h3>
+              <p className="text-xs text-muted-foreground">ملخص ذكي بواسطة GarfiX AI</p>
+            </div>
+          </div>
+          
+          {onRegenerate && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onRegenerate}
+              className="shrink-0"
+              title="إعادة توليد الملخص"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+            </Button>
+          )}
+        </div>
+
+        {/* Summary Text */}
+        <p className="text-sm text-foreground leading-relaxed">{summary}</p>
+
+        {/* Metrics Grid */}
+        {metrics.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-{metrics.length} gap-4 pt-4 border-t">
+            {metrics.map((metric, index) => (
+              <div key={index} className="text-center">
+                <p className="text-2xl font-bold text-foreground">{metric.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{metric.label}</p>
+                {metric.change !== undefined && (
+                  <p className={cn(
+                    "text-xs font-medium mt-1 flex items-center justify-center gap-1",
+                    metric.changeType === "positive" && "text-emerald-600",
+                    metric.changeType === "negative" && "text-red-500",
+                    metric.changeType === "neutral" && "text-muted-foreground"
+                  )}>
+                    {metric.changeType === "positive" && "↑"}
+                    {metric.changeType === "negative" && "↓"}
+                    {Math.abs(metric.change)}%
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Insights List */}
+        {insights.length > 0 && (
+          <ul className="space-y-2 pt-4 border-t">
+            {insights.map((insight, index) => (
+              <li key={index} className="flex items-start gap-2 text-sm">
+                <GarfixAIIcon size="xs" className="mt-0.5 shrink-0" />
+                <span>{insight}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Actions */}
+        {actions.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-4 border-t">
+            {actions.map((action, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={action.onClick}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * AIExportMenu - AI-assisted data export
+ * Suggests export formats and options based on context
+ */
+interface AIExportMenuProps {
+  /** Trigger element (child) */
+  children: React.ReactNode
+  /** Available export formats */
+  formats?: Array<{
+    id: string
+    label: string
+    extension: string
+    icon?: React.ReactNode
+    recommended?: boolean
+  }>
+  /** On export request */
+  onExport: (formatId: string, options: Record<string, unknown>) => void
+  /** AI-suggested format based on data */
+  aiSuggestedFormat?: string
+  /** Data context for AI suggestion */
+  dataContext?: {
+    recordCount: number
+    columns: string
+    hasCharts: boolean
+  }
+  className?: string
+}
+
+export function AIExportMenu({
+  children,
+  formats = [
+    { id: "csv", label: "CSV", extension: ".csv", recommended: true },
+    { id: "excel", label: "Excel", extension: ".xlsx" },
+    { id: "pdf", label: "PDF", extension: ".pdf" },
+    { id: "json", label: "JSON", extension: ".json" },
+  ],
+  onExport,
+  aiSuggestedFormat,
+  dataContext,
+  className,
+}: AIExportMenuProps) {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const [selectedFormat, setSelectedFormat] = React.useState(aiSuggestedFormat || formats[0]?.id)
+
+  return (
+    <div className={cn("relative inline-block", className)}>
+      {/* Trigger */}
+      <div onClick={() => setIsOpen(!isOpen)}>
+        {children}
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setIsOpen(false)} 
+          />
+          
+          {/* Menu */}
+          <div className="absolute bottom-full left-0 mb-2 w-72 bg-popover border rounded-xl shadow-brand-lg z-50 animate-fade-in overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
+              <div className="flex items-center gap-2 mb-1">
+                <GarfixAIIcon size="xs" />
+                <span className="text-sm font-semibold">تصدير ذكي</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {dataContext 
+                  ? `GarfiX AI يقترح أفضل صيغة لـ ${dataContext.recordCount} سجل`
+                  : "اختر صيغة التصدير المناسبة"
+                }
+              </p>
+            </div>
+
+            {/* Format Options */}
+            <div className="p-2">
+              {formats.map((format) => (
+                <button
+                  key={format.id}
+                  onClick={() => setSelectedFormat(format.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                    selectedFormat === format.id
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "hover:bg-accent"
+                  )}
+                >
+                  <div className={cn(
+                    "size-4 rounded-full border-2 flex items-center justify-center",
+                    selectedFormat === format.id
+                      ? "border-primary"
+                      : "border-muted-foreground/30"
+                  )}>
+                    {selectedFormat === format.id && (
+                      <div className="size-2 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 text-start">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{format.label}</span>
+                      {format.recommended && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          مقترح
+                        </span>
+                      )}
+                      {aiSuggestedFormat === format.id && (
+                        <GarfixAIIcon size="xs" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{format.extension}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-3 border-t bg-muted/30 flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsOpen(false)}
+                className="flex-1"
+              >
+                إلغاء
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  onExport(selectedFormat, {})
+                  setIsOpen(false)
+                }}
+                className="flex-1 gradient-primary"
+              >
+                تصدير
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Exports
+export {
+  // Re-export types for convenience
+  type AIEmptyStateProps,
+  type AIFormFieldProps,
+  type AICategorizerProps,
+  type AISearchBarProps,
+  type AISummaryCardProps,
+  type AIExportMenuProps,
+}
+
+// Default export
+export default AIEmptyState
