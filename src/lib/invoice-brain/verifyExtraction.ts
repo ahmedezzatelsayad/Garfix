@@ -42,10 +42,15 @@ const AI_FALLBACK_THRESHOLD = 0.5;
 
 /**
  * Relative tolerance for approximate equality checks (e.g. quantity × price ≈ total).
- * 0.25 = 25% tolerance, accommodating tax, rounding, and discounts not captured
+ * 0.15 = 15% tolerance, accommodating tax, rounding, and discounts not captured
  * in the schema fields.
+ *
+ * FIX: Reduced from 0.25 (25%) to 0.15 (15%) for stricter validation.
+ * The previous tolerance was too permissive and could pass invoices with
+ * significant extraction errors as "verified". 15% is still generous enough
+ * for legitimate tax/rounding variations while catching more real errors.
  */
-const RELATIVE_TOLERANCE = 0.25;
+const RELATIVE_TOLERANCE = 0.15;
 
 /** Minimum number of digits for something to look like a phone number. */
 const PHONE_MIN_DIGITS = 7;

@@ -26,11 +26,13 @@ export interface InvoiceTemplate {
   sampleCount: number;
   createdAt: string;
   lastUsedAt: string;
+  /** Company slug for multi-tenant isolation (FIX: was storing fingerprint here!) */
+  companySlug?: string;
 }
 
 export interface PatternStore {
   get(fingerprint: string): Promise<InvoiceTemplate | null>;
-  save(template: InvoiceTemplate): Promise<void>;
+  save(template: InvoiceTemplate, companySlug?: string): Promise<void>;
   touch(fingerprint: string): Promise<void>;
   stats(): Promise<{ totalTemplates: number; totalHits: number }>;
 }
@@ -60,8 +62,12 @@ export class JsonFilePatternStore implements PatternStore {
     return (await this.load())[fingerprint] ?? null;
   }
 
-  async save(template: InvoiceTemplate): Promise<void> {
+  async save(template: InvoiceTemplate, _companySlug?: string): Promise<void> {
     const db = await this.load();
+    // Store companySlug on the template for future reference
+    if (_companySlug) {
+      template.companySlug = _companySlug;
+    }
     db[template.fingerprint] = template;
     await this.persist();
   }
@@ -103,20 +109,24 @@ export class PrismaPatternStore implements PatternStore {
     };
   }
 
-  async save(template: InvoiceTemplate): Promise<void> {
+  async save(template: InvoiceTemplate, companySlug?: string): Promise<void> {
     const now = new Date();
+    // FIX: Use actual companySlug instead of fingerprint!
+    const slug = companySlug || template.companySlug || "default";
+    
     await db.invoiceBrainTemplate.upsert({
       where: { fingerprint: template.fingerprint },
       create: {
         fingerprint: template.fingerprint,
         fields: JSON.stringify(template.fields),
         sampleCount: template.sampleCount,
-        companySlug: template.fingerprint,
+        companySlug: slug, // ✅ FIXED: Now stores real companySlug
         lastUsedAt: now,
       },
       update: {
         fields: JSON.stringify(template.fields),
         sampleCount: template.sampleCount,
+        companySlug: slug, // Also update on template refresh
         lastUsedAt: now,
       },
     });
