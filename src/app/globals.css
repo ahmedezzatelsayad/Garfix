@@ -718,3 +718,109 @@
     }
   }
 }
+
+/* ── GarfiX AI Brand Animations ─────────────────────────────────── */
+@layer utilities {
+  /* Slow pulse for AI icon (gentler than default) */
+  .animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+  }
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(0.98); }
+  }
+
+  /* Ping animation for glow effect */
+  .animate-ping-slow {
+    animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes ping-slow {
+    75%, 100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  /* Glow drop shadow for AI elements */
+  .drop-shadow-glow-purple {
+    filter: drop-shadow(0 0 8px oklch(0.65 0.21 293.034 / 50%))
+            drop-shadow(0 0 16px oklch(0.65 0.21 293.034 / 30%));
+  }
+
+  /* Thinking/processing animation */
+  .ai-thinking {
+    position: relative;
+  }
+  .ai-thinking::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    background: linear-gradient(
+      45deg,
+      oklch(0.65 0.21 293.034 / 20%),
+      oklch(0.65 0.21 293.034 / 5%),
+      oklch(0.65 0.21 293.034 / 20%)
+    );
+    background-size: 200% 200%;
+    animation: thinking-border 2s linear infinite;
+    border-radius: inherit;
+    z-index: -1;
+  }
+  @keyframes thinking-border {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  /* AI text gradient animation */
+  .animate-text-shimmer {
+    background-size: 200% auto;
+    animation: text-shimmer 3s linear infinite;
+  }
+  @keyframes text-shimmer {
+    to { background-position: 200% center; }
+  }
+
+  /* Floating particles effect for AI sections */
+  .ai-particles::before,
+  .ai-particles::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: oklch(0.65 0.21 293.034);
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: float-particle 6s ease-in-out infinite;
+  }
+  .ai-particles::before {
+    top: 20%;
+    left: 10%;
+    animation-delay: 0s;
+  }
+  .ai-particles::after {
+    top: 60%;
+    right: 15%;
+    animation-delay: 2s;
+    width: 6px;
+    height: 6px;
+  }
+  @keyframes float-particle {
+    0%, 100% { 
+      transform: translateY(0) translateX(0); 
+      opacity: 0.3; 
+    }
+    25% { 
+      transform: translateY(-20px) translateX(10px); 
+      opacity: 0.6; 
+    }
+    50% { 
+      transform: translateY(-10px) translateX(-5px); 
+      opacity: 0.4; 
+    }
+    75% { 
+      transform: translateY(-25px) translateX(15px); 
+      opacity: 0.5; 
+    }
+  }
+}
