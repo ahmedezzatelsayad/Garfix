@@ -27,6 +27,20 @@ const nextConfig: NextConfig = {
     BUILD_TIME: buildTime,
     APP_VERSION: "12.1.0",
   },
+  // Mark heavy Node-only packages as external so they're loaded from
+  // node_modules at runtime instead of bundled. This reduces the serverless
+  // function size dramatically and avoids Edge Runtime tracing warnings.
+  serverExternalPackages: [
+    "@opentelemetry/sdk-node",
+    "@opentelemetry/auto-instrumentations-node",
+    "@opentelemetry/exporter-metrics-otlp-http",
+    "@opentelemetry/exporter-trace-otlp-http",
+    "@opentelemetry/sdk-metrics",
+    "pg-boss",
+    "ioredis",
+    "jsonwebtoken",
+    "bcryptjs",
+  ],
   experimental: {
     optimizePackageImports: [
       'lucide-react',
