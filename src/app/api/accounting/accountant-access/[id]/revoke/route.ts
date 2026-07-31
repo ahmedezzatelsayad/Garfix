@@ -45,8 +45,12 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     return apiError("No accountant access found for this email in this company", 404);
   }
 
-  // Remove the company from the accountant's companies list
-  const accountantUser = await db.appUser.findUnique({ where: { email: data.accountantEmail } });
+  // Remove the company from the accountant's companies list.
+  // P3.2 (Cycle 5): omit passwordHash — only `companies` is read.
+  const accountantUser = await db.appUser.findUnique({
+    where: { email: data.accountantEmail },
+    omit: { passwordHash: true },
+  });
   if (accountantUser) {
     const companies: string[] = JSON.parse(accountantUser.companies || "[]");
     const updated = companies.filter((c) => c !== data.companySlug);

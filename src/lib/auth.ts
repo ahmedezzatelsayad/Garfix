@@ -374,8 +374,14 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   const refreshPayload = verifyRefreshToken(refresh);
   if (!refreshPayload) return { ok: false, error: "Unauthorized", status: 401 };
 
-  // Look up user — verify token version matches (invalidates old sessions)
-  const user = await db.appUser.findUnique({ where: { uid: refreshPayload.uid } });
+  // Look up user — verify token version matches (invalidates old sessions).
+  // P3.2 (Cycle 5): omit passwordHash — refresh-flow only reads identity +
+  // tokenVersion fields. Loading the bcrypt hash into memory on every
+  // silent refresh (every 15min per active user) was unnecessary exposure.
+  const user = await db.appUser.findUnique({
+    where: { uid: refreshPayload.uid },
+    omit: { passwordHash: true },
+  });
   if (!user) return { ok: false, error: "Unauthorized", status: 401 };
   if (user.tokenVersion !== refreshPayload.tv) {
     return { ok: false, error: "Session revoked", status: 401 };

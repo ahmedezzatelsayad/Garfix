@@ -23,7 +23,12 @@ const UpdateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { uid } = await params;
-  const existing = await db.appUser.findUnique({ where: { uid } });
+  // P3.2 (Cycle 5): omit passwordHash — PATCH only reads identity + role +
+  // companies fields (never authenticates the user).
+  const existing = await db.appUser.findUnique({
+    where: { uid },
+    omit: { passwordHash: true },
+  });
   if (!existing) return apiError("User not found", 404);
 
   const body = await parseJsonBody(req);
@@ -155,7 +160,12 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const founder = founderAccess.user;
 
   const { uid } = await params;
-  const existing = await db.appUser.findUnique({ where: { uid } });
+  // P3.2 (Cycle 5): omit passwordHash — DELETE only reads email for
+  // founder-check + audit log.
+  const existing = await db.appUser.findUnique({
+    where: { uid },
+    omit: { passwordHash: true },
+  });
   if (!existing) return apiError("User not found", 404);
 
   // The founder cannot delete their own account (would lock the system)

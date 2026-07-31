@@ -25,8 +25,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Fetch the latest user from DB (in case permissions/companies changed)
-  const dbUser = await db.appUser.findUnique({ where: { uid: result.user.uid } });
+  // Fetch the latest user from DB (in case permissions/companies changed).
+  // P3.2 (Cycle 5): omit passwordHash — this route only reads identity fields
+  // (uid, email, displayName, role, companies, permissions, emailVerified,
+  // tokenVersion). Loading the bcrypt hash into memory on every /auth/me
+  // call (which fires on every page load) was an unnecessary exposure.
+  const dbUser = await db.appUser.findUnique({
+    where: { uid: result.user.uid },
+    omit: { passwordHash: true },
+  });
   if (!dbUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }

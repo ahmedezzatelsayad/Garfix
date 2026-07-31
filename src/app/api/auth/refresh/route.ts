@@ -29,6 +29,7 @@ import {
   blacklistToken,
   type SessionUser,
 } from "@/lib/auth";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import jwt from "jsonwebtoken";
 import { withErrorHandler } from "@/lib/api";
 
@@ -38,6 +39,15 @@ export const runtime = "nodejs";
 const REFRESH_TTL = parseInt(process.env.JWT_REFRESH_TTL_SECONDS || "2592000", 10); // 30 days
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P3.1 (Cycle 5): rate-limit per IP to prevent refresh-token replay / DoS
+  // amplification. Each call hits the DB (appUser.findUnique) + Valkey
+  // (blacklist lookup) + signs two JWTs — an unthrottled attacker could
+  // amplify DB load via repeated refresh attempts. 30/min/IP is generous
+  // for legitimate clients (access TTL is 15min, so even a buggy client
+  // retrying every 30s stays under 2/min).
+  const rlErr = await rateLimitResponse(req, "auth:refresh", LIMITS.REFRESH);
+  if (rlErr) return rlErr;
+
   // Try refresh from cookie
   const refresh = req.cookies.get("inv_refresh")?.value;
   if (!refresh) {
@@ -52,7 +62,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await clearSession(res);
     return res;
   }
-  const user = await db.appUser.findUnique({ where: { uid: payload.uid } });
+  // P3.2 (Cycle 5): defense-in-depth — omit passwordHash from the result.
+  // This route only reads `tokenVersion`, `email`, `displayName`, `role`,
+  // `companies`, `permissions`, and `emailVerified`. Loading `passwordHash`
+  // into memory on every refresh (15min TTL × every user) was an unnecessary
+  // exposure — a future `...user` spread into a JSON response would leak the
+  // bcrypt hash. Prisma 6 supports `omit` at the query level natively.
+  const user = await db.appUser.findUnique({
+    where: { uid: payload.uid },
+    omit: { passwordHash: true },
+  });
   if (!user || user.tokenVersion !== payload.tv) {
     const res = NextResponse.json({ error: "Session revoked" }, { status: 401 });
     await clearSession(res);

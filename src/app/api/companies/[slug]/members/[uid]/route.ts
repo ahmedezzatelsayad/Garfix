@@ -37,7 +37,11 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if ("error" in access) return access.error;
   const admin = access.user;
 
-  const existing = await db.appUser.findUnique({ where: { uid } });
+  // P3.2 (Cycle 5): omit passwordHash — PATCH reads identity + companies only.
+  const existing = await db.appUser.findUnique({
+    where: { uid },
+    omit: { passwordHash: true },
+  });
   if (!existing) return apiError("User not found", 404);
 
   // Confirm this user is actually a member of this company
@@ -123,7 +127,11 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if ("error" in access) return access.error;
   const admin = access.user;
 
-  const existing = await db.appUser.findUnique({ where: { uid } });
+  // P3.2 (Cycle 5): omit passwordHash — DELETE reads email + companies only.
+  const existing = await db.appUser.findUnique({
+    where: { uid },
+    omit: { passwordHash: true },
+  });
   if (!existing) return apiError("User not found", 404);
 
   // Founder cannot be removed from a company

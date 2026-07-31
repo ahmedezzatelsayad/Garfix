@@ -109,6 +109,21 @@ export const LIMITS = {
   REGISTER: { windowMs: 60 * 60 * 1000, maxAttempts: 3 },
   OTP_VERIFY: { windowMs: 5 * 60 * 1000, maxAttempts: 5 },
   PASSWORD_RESET: { windowMs: 60 * 60 * 1000, maxAttempts: 3 },
+  // P3.1 (Cycle 5): close brute-force vector on POST /api/auth/change-password.
+  //   The endpoint verifies the user's CURRENT password before accepting a new
+  //   one. Without a rate limit, an attacker who stole an access token could
+  //   brute-force the current password field at line-speed. 5 attempts per 15
+  //   minutes per IP mirrors the LOGIN limit; legitimate users rarely change
+  //   their password more than once per session.
+  CHANGE_PW: { windowMs: 15 * 60 * 1000, maxAttempts: 5, lockoutMs: 15 * 60 * 1000 },
+  // P3.1 (Cycle 5): close refresh-token replay / DoS vector on POST /api/auth/refresh.
+  //   Each call hits the DB (appUser.findUnique) + Valkey (blacklist lookup) +
+  //   signs two JWTs. An unthrottled attacker could amplify DB load via repeated
+  //   refresh attempts even though rotation limits them to one valid new token
+  //   per stolen refresh token. 30/min/IP is generous for legitimate clients
+  //   (access TTL is 15min, so even a buggy client retrying every 30s stays
+  //   under 2/min) while still catching brute-force amplification.
+  REFRESH: { windowMs: 60 * 1000, maxAttempts: 30 },
   AI_CHAT: { windowMs: 60 * 1000, maxAttempts: 10 },
   AI_BULK: { windowMs: 60 * 1000, maxAttempts: 3 },
   API_READ: { windowMs: 60 * 1000, maxAttempts: 60 },
