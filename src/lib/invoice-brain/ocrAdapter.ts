@@ -16,14 +16,17 @@
  * structured, so the brain's fingerprint will be content-based (see
  * fingerprint.ts fix) and AI will be used more often until phrasings repeat.
  */
+import { logger } from "@/lib/logger"; // ✅ FIX: Use unified logger instead of console.warn
+
 export async function ocrImageToText(
   buffer: Buffer,
   lang: string = "ara+eng"
 ): Promise<string> {
   // AR-004: Warn if called from a production route handler
   if (process.env.NODE_ENV === "production") {
-    console.warn(
-      "[ocrAdapter] WARNING: OCR is CPU-intensive and blocks the event loop. " +
+    // ✅ FIXED: Now uses structured logger instead of console.warn
+    logger.warn(
+      "[ocrAdapter] OCR is CPU-intensive and blocks the event loop. " +
       "For production, offload OCR to a queue worker (see enqueue() in queues.ts)."
     );
   }

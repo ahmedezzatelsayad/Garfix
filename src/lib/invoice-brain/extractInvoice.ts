@@ -42,8 +42,10 @@ const MIN_FIELDS_TO_SAVE_TEMPLATE = 5;
 
 export async function extractInvoice(
   text: string,
-  store: PatternStore
+  store: PatternStore,
+  options?: { companySlug?: string }
 ): Promise<ExtractionResult> {
+  const companySlug = options?.companySlug;
   const fingerprint = fingerprintText(text);
 
   // 1) Fast path: known template for this shape?
@@ -89,8 +91,8 @@ export async function extractInvoice(
         sampleCount: 1,
         createdAt: new Date().toISOString(),
         lastUsedAt: new Date().toISOString(),
-      });
-      logger.info("[brain] learned new template", { fingerprint, fieldsCount: fields.length });
+      }, companySlug); // ✅ FIX: Pass companySlug for multi-tenant isolation
+      logger.info("[brain] learned new template", { fingerprint, fieldsCount: fields.length, companySlug });
     } else {
       logger.info("[brain] AI ok but too few fields to save a template", { fingerprint, fieldsCount: fields.length });
     }
