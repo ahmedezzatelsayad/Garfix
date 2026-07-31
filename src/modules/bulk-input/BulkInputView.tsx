@@ -10,16 +10,25 @@ import {
 import {
   Sparkles, Image as ImageIcon, FileText, Upload, X, Check, Loader2,
   Trash2, Edit2, Plus, Save, AlertCircle, ChevronDown, ChevronUp, FileSpreadsheet,
-  Brain, Zap, AlertTriangle, ListChecks,
+  Brain, Zap, AlertTriangle, ListChecks, Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+import { MatchStatusBadge, getMatchStatusFromResult } from "@/modules/catalog/MatchStatusBadge";
 
 interface ParsedItem {
   name: string;
   qty: number;
   unitPrice: number;
+  // 🆕 Match result from product matcher (optional)
+  matchResult?: {
+    method?: string;
+    confidence?: number;
+    error?: string;
+    productId?: string;
+    productName?: string;
+  };
 }
 
 interface ParsedOrder {
@@ -845,16 +854,31 @@ export function BulkInputView() {
                             </tr>
                           </thead>
                           <tbody>
-                            {order.items.map((item, itemIdx) => (
-                              <tr key={itemIdx} className="border-b border-border">
-                                <td className="py-1.5 px-2">{item.name}</td>
-                                <td className="py-1.5 px-2 text-center">{item.qty}</td>
-                                <td className="py-1.5 px-2 text-center [direction:ltr]">{item.unitPrice.toFixed(3)}</td>
-                                <td className="py-1.5 px-2 [direction:ltr] text-start font-bold">
-                                  {(item.qty * item.unitPrice).toFixed(3)}
-                                </td>
-                              </tr>
-                            ))}
+                            {order.items.map((item, itemIdx) => {
+                              // 🆕 Determine match status based on item data
+                              const matchStatus = getMatchStatusFromResult(item.matchResult);
+                              
+                              return (
+                                <tr key={itemIdx} className="border-b border-border">
+                                  <td className="py-1.5 px-2">
+                                    <div className="flex items-center gap-2">
+                                      <span>{item.name}</span>
+                                      {/* 🆕 Match Status Badge */}
+                                      <MatchStatusBadge
+                                        status={matchStatus}
+                                        size="sm"
+                                        showOverride={false}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="py-1.5 px-2 text-center">{item.qty}</td>
+                                  <td className="py-1.5 px-2 text-center [direction:ltr]">{item.unitPrice.toFixed(3)}</td>
+                                  <td className="py-1.5 px-2 [direction:ltr] text-start font-bold">
+                                    {(item.qty * item.unitPrice).toFixed(3)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                         </div>
