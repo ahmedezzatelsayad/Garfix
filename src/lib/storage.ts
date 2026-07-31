@@ -13,11 +13,21 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { logger } from "./logger";
 
-// EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path
-// P0 NFT FIX: path.join(process.cwd(), ...) causes NFT to trace the entire project
-// because cwd() is dynamic. Using /*turbopackIgnore: true*/ tells Turbopack/Webpack
-// to NOT trace this path at build time — storage is a runtime-only filesystem concern.
-const STORAGE_DIR = process.env.STORAGE_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "storage");
+// EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path.
+//
+// LAZY EVALUATION: STORAGE_DIR is computed on first use (not at module load)
+// so that `process.cwd()` is NOT read when Turbopack statically analyzes
+// this module for the NFT (Node File Tracing) list. Reading process.cwd()
+// at module top-level causes Turbopack to trace the entire project root
+// (including next.config.ts) into the serverless bundle, generating an
+// "Encountered unexpected file in NFT list" warning.
+let _STORAGE_DIR: string | null = null;
+function getStorageDir(): string {
+  if (_STORAGE_DIR === null) {
+    _STORAGE_DIR = process.env.STORAGE_DIR || path.join(process.cwd(), "storage");
+  }
+  return _STORAGE_DIR;
+}
 
 /** MIME type allowlist — only these types may be saved to storage. */
 const ALLOWED_MIME_TYPES = new Set([
@@ -57,7 +67,7 @@ function verifyMagicBytes(buf: Buffer, mimeType: string): boolean {
 
 async function ensureStorageDir(): Promise<void> {
   try {
-    await fs.mkdir(STORAGE_DIR, { recursive: true });
+    await fs.mkdir(getStorageDir(), { recursive: true });
   } catch (err) {
     logger.error("[storage] failed to create storage dir", { err: err instanceof Error ? err.message : String(err) });
     throw err;
@@ -92,7 +102,7 @@ export async function saveBase64(
 
   const ext = mimeType.split("/")[1] || "bin";
   const key = `${randomUUID()}.${ext}`;
-  const fullPath = path.join(STORAGE_DIR, key);
+  const fullPath = path.join(getStorageDir(), key);
   await fs.writeFile(fullPath, buffer);
   logger.debug("[storage] file saved", { key, size: buffer.length });
   return key;
@@ -101,7 +111,7 @@ export async function saveBase64(
 /** Read a file from storage as a Buffer. */
 export async function readAsBuffer(key: string): Promise<Buffer | null> {
   try {
-    const fullPath = path.join(STORAGE_DIR, key);
+    const fullPath = path.join(getStorageDir(), key);
     return await fs.readFile(fullPath);
   } catch {
     return null;
@@ -111,7 +121,7 @@ export async function readAsBuffer(key: string): Promise<Buffer | null> {
 /** Delete a file from storage. */
 export async function remove(key: string): Promise<void> {
   try {
-    const fullPath = path.join(STORAGE_DIR, key);
+    const fullPath = path.join(getStorageDir(), key);
     await fs.unlink(fullPath);
   } catch (err) {
     logger.warn("[storage] failed to delete file", { err: err instanceof Error ? err.message : String(err), key });

@@ -227,6 +227,9 @@ async function createBullWorker(
     logger.error("[queues] BullMQ worker error", { queue: name, err: err.message });
   });
 
+  // Touch WORKER_ID() so the lazy cache is populated on first register.
+  // (Side-effect-free; the value is only used downstream by handlers.)
+  void WORKER_ID();
   bullWorkers.set(name, worker);
   logger.info("[queues] BullMQ worker started", { queue: name });
 }
@@ -240,7 +243,18 @@ const STALE_LOCK_THRESHOLD_MS = 5 * 60 * 1000;
 
 const deadLetters = new Map<QueueName, FailedJobRecord[]>();
 
-const WORKER_ID = `worker-${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+// WORKER_ID is evaluated lazily on first use (not at module load) so that
+// `process.pid` is NOT read when Turbopack statically analyzes this module
+// for the Edge Instrumentation bundle. Reading process.pid at module
+// top-level triggers an Edge Runtime warning even though this module is
+// only ever executed in the Node.js runtime.
+let _WORKER_ID: string | null = null;
+function WORKER_ID(): string {
+  if (_WORKER_ID === null) {
+    _WORKER_ID = `worker-${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+  return _WORKER_ID;
+}
 
 // ─── In-process helpers (fallback) ──────────────────────────────────────
 
@@ -318,7 +332,7 @@ async function runWithRetries(queue: QueueName, payload: JobPayload, jobId: numb
   await updateJobStatus(jobId, {
     status: "running",
     lockedAt: new Date(),
-    lockedBy: WORKER_ID,
+    lockedBy: WORKER_ID(),
     startedAt: new Date(),
     attempts: 0,
   });
@@ -375,7 +389,7 @@ async function runWithRetries(queue: QueueName, payload: JobPayload, jobId: numb
 export function registerWorker(queue: QueueName, handler: JobHandler): void {
   handlers.set(queue, handler);
   const mode = USE_BULLMQ ? "bullmq" : USE_PGBOSS ? "pg-boss" : "in-process";
-  logger.info("[queues] worker registered", { queue, workerId: WORKER_ID, mode });
+  logger.info("[queues] worker registered", { queue, workerId: WORKER_ID(), mode });
 
   // If BullMQ is already initialized, start the worker immediately
   if (USE_BULLMQ && bullInitialized) {
@@ -700,7 +714,7 @@ export function getConnection(): import("ioredis").default | null {
 
 /** Expose the worker ID. */
 export function getWorkerId(): string {
-  return WORKER_ID;
+  return WORKER_ID();
 }
 
 /**
