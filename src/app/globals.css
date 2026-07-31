@@ -170,6 +170,191 @@
   }
 }
 
+/* ── GarfiX Delight System — Shadows, Gradients & Animations ──────────
+ * Level 1 UI enhancements for a more lovable, polished SaaS experience.
+ * Adds: brand-colored shadows, gradient utilities, glassmorphism,
+ * micro-interaction helpers, and smooth transition presets.
+ */
+
+@layer utilities {
+  /* ═══ Brand Shadow System (violet-tinted depth) ═══ */
+  --shadow-brand-xs: 0 1px 2px oklch(0.541 0.281 293.034 / 6%);
+  --shadow-brand-sm: 0 2px 8px oklch(0.541 0.281 293.034 / 10%);
+  --shadow-brand-md: 0 4px 16px oklch(0.541 0.281 293.034 / 14%);
+  --shadow-brand-lg: 0 8px 32px oklch(0.541 0.281 293.034 / 18%);
+  --shadow-brand-xl: 0 16px 48px oklch(0.541 0.281 293.034 / 22%);
+  --shadow-brand-glow: 0 0 24px oklch(0.541 0.281 293.034 / 30%);
+
+  .shadow-brand-xs { box-shadow: var(--shadow-brand-xs); }
+  .shadow-brand-sm { box-shadow: var(--shadow-brand-sm); }
+  .shadow-brand-md { box-shadow: var(--shadow-brand-md); }
+  .shadow-brand-lg { box-shadow: var(--shadow-brand-lg); }
+  .shadow-brand-xl { box-shadow: var(--shadow-brand-xl); }
+  .shadow-brand-glow { box-shadow: var(--shadow-brand-glow); }
+
+  /* Hover shadow transition helper */
+  .shadow-hover {
+    transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .shadow-hover:hover {
+    box-shadow: var(--shadow-brand-md);
+  }
+
+  /* ═══ Gradient Utilities ═══ */
+  .gradient-primary {
+    background: linear-gradient(135deg, oklch(0.541 0.281 293.034) 0%, oklch(0.65 0.21 293.034) 100%);
+  }
+  .gradient-primary-hover {
+    background: linear-gradient(135deg, oklch(0.58 0.26 293.034) 0%, oklch(0.70 0.20 293.034) 100%);
+  }
+  
+  .gradient-accent {
+    background: linear-gradient(135deg, oklch(0.71 0.165 294.0) 0%, oklch(0.60 0.118 184.704) 100%);
+  }
+  
+  .gradient-surface {
+    background: linear-gradient(180deg, oklch(1 0 0) 0%, oklch(0.985 0.005 294.0) 100%);
+  }
+  .dark .gradient-surface {
+    background: linear-gradient(180deg, oklch(0.205 0.014 285.0) 0%, oklch(0.145 0.012 285.0) 100%);
+  }
+
+  /* Text gradient (for headings/accents) */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, oklch(0.541 0.281 293.034), oklch(0.71 0.165 294.0));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ═══ Glassmorphism Utilities ═══ */
+  .glass {
+    background: oklch(1 0 0 / 70%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid oklch(0 0 0 / 8%);
+  }
+  .dark .glass {
+    background: oklch(0.205 0.014 285.0 / 70%);
+    border: 1px solid oklch(1 0 0 / 10%);
+  }
+
+  .glass-strong {
+    background: oklch(1 0 0 / 85%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid oklch(0 0 0 / 12%);
+  }
+  .dark .glass-strong {
+    background: oklch(0.205 0.014 285.0 / 85%);
+    border: 1px solid oklch(1 0 0 / 15%);
+  }
+
+  /* ═══ Micro-interaction Helpers ═══ */
+  /* Smooth lift on hover */
+  .hover-lift {
+    transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-brand-md);
+  }
+
+  /* Scale on hover (for icons/buttons) */
+  .hover-scale {
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hover-scale:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Press effect (button press feedback) */
+  .active-press:active {
+    transform: scale(0.97);
+  }
+
+  /* Glow pulse animation (for important elements) */
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 0 oklch(0.541 0.281 293.034 / 0%); }
+    50% { box-shadow: 0 0 20px oklch(0.541 0.281 293.034 / 25%); }
+  }
+
+  /* Subtle float animation (for empty states/illustrations) */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Shimmer loading effect */
+  .animate-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .animate-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(1 0 0 / 40%) 50%,
+      transparent 100%
+    );
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  .dark .animate-shimmer::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(1 0 0 / 8%) 50%,
+      transparent 100%
+    );
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* Smooth fade in */
+  .animate-fade-in {
+    animation: fade-in 300ms ease-out forwards;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Stagger children animation (for lists/grids) */
+  .stagger-children > * {
+    animation: fade-in 400ms ease-out backwards;
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+  .stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+  .stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+
+  /* ═══ Focus Ring Enhancement ═══ */
+  .focus-ring {
+    outline: none;
+  }
+  .focus-ring:focus-visible {
+    outline: 2px solid oklch(0.541 0.281 293.034);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+}
+
 /* ── Custom scrollbar (subtle, theme-aware) ──────────────────────────── */
 @layer utilities {
   .scrollbar-thin {
@@ -206,5 +391,330 @@
   }
   .garfix-scroll::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* ═══ Mobile-First Enhancements (Level 1 UI Delight) ═══ */
+  
+  /* ── Safe Area Insets (notch/punch-hole phones) ── */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-start {
+    padding-start: env(safe-area-inset-left, 0px);
+  }
+  .safe-end {
+    padding-end: env(safe-area-inset-right, 0px);
+  }
+  .safe-all {
+    padding: 
+      env(safe-area-inset-top, 0px)
+      env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
+  }
+
+  /* ── Touch Target Utilities ── */
+  /* Ensure minimum 44x44 touch targets (iOS HIG / WCAG) */
+  .touch-target {
+    position: relative;
+  }
+  .touch-target::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    /* Debug: uncomment to visualize touch targets */
+    /* background: rgba(255,0,0,0.1); border-radius: inherit; */
+  }
+  
+  /* Larger touch targets for mobile */
+  @media (max-width: 768px) {
+    .touch-lg {
+      min-height: 48px;
+      min-width: 48px;
+    }
+    .touch-xl {
+      min-height: 56px;
+      min-width: 56px;
+    }
+  }
+
+  /* ── Touch Ripple Effect ── */
+  .touch-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  .touch-ripple::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, oklch(1 0 0 / 30%) 0%, transparent 70%);
+    opacity: 0;
+    transform: scale(0);
+    transition: transform 0.5s ease-out, opacity 0.3s ease-out;
+    pointer-events: none;
+  }
+  .touch-ripple:active::after {
+    opacity: 1;
+    transform: scale(2);
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+  }
+
+  /* ── Pull-to-refresh Visual Indicator ── */
+  .pull-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    margin-top: -40px;
+    transition: transform 0.3s ease-out, opacity 0.2s ease-out;
+    opacity: 0;
+  }
+  .pull-indicator.pulling {
+    transform: translateY(40px);
+    opacity: 1;
+  }
+  .pull-indicator.ready {
+    transform: translateY(50px);
+  }
+  .pull-indicator svg {
+    animation: pull-spin 1s linear infinite paused;
+  }
+  .pull-indicator.ready svg {
+    animation-play-state: running;
+  }
+  @keyframes pull-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Bottom Sheet / Floating Action Button Styles ── */
+  .fab-container {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+  }
+  
+  @media (min-width: 768px) {
+    .fab-container {
+      bottom: 24px;
+      left: auto;
+      right: 24px;
+      transform: none;
+    }
+  }
+
+  /* FAB with safe area awareness */
+  .fab-safe {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 16px;
+    right: 16px;
+    z-index: 50;
+  }
+  @media (min-width: 768px) {
+    .fab-safe {
+      left: auto;
+      right: 24px;
+      width: auto;
+    }
+  }
+
+  /* ── Mobile Card Swipe Hint ── */
+  @media (max-width: 768px) {
+    .swipe-hint {
+      position: relative;
+    }
+    .swipe-hint::after {
+      content: '';
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 32px;
+      height: 4px;
+      background: oklch(0 0 0 / 15%);
+      border-radius: 2px;
+    }
+    .dark .swipe-hint::after {
+      background: oklch(1 0 0 / 20%);
+    }
+  }
+
+  /* ── Mobile Optimized Scroll ── */
+  @media (max-width: 768px) {
+    /* Smoother scrolling on iOS */
+    .smooth-scroll {
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    
+    /* Prevent overscroll bounce on specific elements */
+    .no-overscroll {
+      overscroll-behavior: contain;
+    }
+    
+    /* Full bleed cards on mobile */
+    .mobile-full-bleed {
+      margin-inline: -16px;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+    
+    /* Stack layout for mobile */
+    .mobile-stack > * {
+      width: 100%;
+    }
+  }
+
+  /* ── Mobile Input Enhancements ── */
+  @media (max-width: 768px) {
+    /* Larger inputs for touch */
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="password"],
+    input[type="search"],
+    select,
+    textarea {
+      min-height: 48px;
+      font-size: 16px !important; /* Prevent zoom on focus iOS */
+    }
+    
+    /* Better select dropdown on mobile */
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left 12px center;
+      padding-left: 36px;
+    }
+  }
+
+  /* ── Mobile Animation Performance ── */
+  @media (max-width: 768px) {
+    /* Reduce animations for performance */
+    .reduce-motion-mobile {
+      animation-duration: 150ms !important;
+      transition-duration: 150ms !important;
+    }
+    
+    /* GPU-accelerated transforms only */
+    .gpu-layer {
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    
+    /* Disable hover effects on touch devices (no hover state) */
+    @media (hover: none) and (pointer: coarse) {
+      .hover-lift:hover,
+      .hover-scale:hover {
+        transform: none;
+        box-shadow: inherit;
+      }
+      
+      /* Show hover styles on tap instead */
+      .hover-lift:active,
+      .hover-scale:active {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-brand-sm);
+      }
+    }
+  }
+
+  /* ── Mobile Navigation Bar (Bottom Nav) Support ── */
+  .mobile-nav-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: oklch(1 0 0 / 95%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid oklch(0 0 0 / 8%);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 100;
+  }
+  .dark .mobile-nav-bar {
+    background: oklch(0.18 0.014 285.0 / 95%);
+    border-top-color: oklch(1 0 0 / 10%);
+  }
+
+  /* ── Status Bar Spacer ── */
+  .status-bar-spacer {
+    height: env(safe-area-inset-top, 0px);
+    min-height: 44px; /* Minimum for non-notch devices */
+  }
+
+  /* ── Haptic Feedback Visual Cues ── */
+  .haptic-light {
+    /* Visual cue for light haptic feedback */
+    transition: transform 50ms ease-out;
+  }
+  .haptic-light:active {
+    transform: scale(0.98);
+  }
+  
+  .haptic-medium {
+    /* Visual cue for medium haptic feedback */
+    transition: transform 80ms ease-out, opacity 80ms ease-out;
+  }
+  .haptic-medium:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+  
+  .haptic-heavy {
+    /* Visual cue for heavy haptic feedback */
+    transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .haptic-heavy:active {
+    transform: scale(0.94);
+    box-shadow: inset 0 2px 8px oklch(0 0 0 / 15%);
+  }
+
+  /* ── Skeleton Loading (Mobile Optimized) ── */
+  @media (max-width: 768px) {
+    .skeleton-mobile {
+      background: linear-gradient(
+        90deg,
+        oklch(0.965 0.006 294.0) 25%,
+        oklch(0.985 0.005 294.0) 50%,
+        oklch(0.965 0.006 294.0) 75%
+      );
+      background-size: 200% 100%;
+      animation: skeleton-shimmer-mobile 1.5s ease-in-out infinite;
+    }
+    .dark .skeleton-mobile {
+      background: linear-gradient(
+        90deg,
+        oklch(0.269 0.014 285.0) 25%,
+        oklch(0.289 0.014 285.0) 50%,
+        oklch(0.269 0.014 285.0) 75%
+      );
+      background-size: 200% 100%;
+    }
+    @keyframes skeleton-shimmer-mobile {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  }
+
+  /* ── Empty State Mobile Adjustments ── */
+  @media (max-width: 768px) {
+    .empty-state-mobile {
+      padding: 24px 16px;
+    }
+    .empty-state-mobile [data-slot="illustration"] {
+      size: 64px;
+    }
   }
 }
