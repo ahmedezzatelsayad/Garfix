@@ -1,0 +1,996 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * GarfiX AI - Smart Actions Components (Phase 3)
+ * 
+ * This file contains all AI-powered smart action components:
+ * - Invoice Intelligence (Auto-fill, Describe, Extract, Translate)
+ * - Dashboard Insights (Forecast, Alerts, Suggestions)
+ * - Smart Navigation (Natural language, Context-aware)
+ * 
+ * All components leverage the GarfiX AI branding and design system.
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+"use client";
+
+import * as React from "react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { KpiCard } from "@/components/ui/card"
+import {
+  GarfixAIIcon,
+  GarfixAIBadge,
+} from "./GarfixAIIcon"
+import {
+  AIInlineSuggestion,
+  AITooltip,
+} from "./GarfixAIComponents"
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 1: Invoice Intelligence Components
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * AIInvoiceAssistant - Complete AI assistant for invoice creation
+ * Provides multiple AI-powered actions for invoice workflow
+ */
+interface AIInvoiceAssistantProps {
+  /** Current step in invoice creation */
+  currentStep?: "client" | "items" | "details" | "review"
+  /** On AI describe (text to invoice) */
+  onDescribe?: (description: string) => void
+  /** On AI extract (from image/PDF) */
+  onExtract?: () => void
+  /** On AI translate */
+  onTranslate?: (direction: "to-en" | "to-ar") => void
+  /** On AI validate */
+  onValidate?: () => void
+  /** On AI detect anomalies */
+  onDetectAnomalies?: () => void
+  /** Is AI processing any action */
+  isProcessing?: boolean
+  /** Current processing action label */
+  processingLabel?: string
+  /** Show compact mode (for sidebars) */
+  compact?: boolean
+  className?: string
+}
+
+export function AIInvoiceAssistant({
+  currentStep = "client",
+  onDescribe,
+  onExtract,
+  onTranslate,
+  onValidate,
+  onDetectAnomalies,
+  isProcessing = false,
+  processingLabel,
+  compact = false,
+  className,
+}: AIInvoiceAssistantProps) {
+
+  const actions = [
+    {
+      id: "describe",
+      label: "وصف بالذكاء",
+      description: "اكتب ما تريد فوترة وسأنشئها تلقائياً",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      ),
+      onClick: onDescribe,
+      available: !!onDescribe,
+      variant: "primary" as const,
+    },
+    {
+      id: "extract",
+      label: "استخراج من صورة",
+      description: "ارفع صورة أو PDF لاستخراج البيانات",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+      ),
+      onClick: onExtract,
+      available: !!onExtract,
+      variant: "default" as const,
+    },
+    {
+      id: "translate",
+      label: "ترجمة",
+      description: "ترجم الفاتورة للعربية/الإنجليزية",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 8l6 6M4 14l6 6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>
+        </svg>
+      ),
+      onClick: () => onTranslate?.("to-en"),
+      available: !!onTranslate,
+      variant: "default" as const,
+    },
+    {
+      id: "validate",
+      label: "تحقق ذكي",
+      description: "تحقق من صحة البيانات والأخطاء المحتملة",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+      ),
+      onClick: onValidate,
+      available: !!onValidate,
+      variant: "default" as const,
+    },
+    {
+      id: "anomaly",
+      label: "كشف أخطاء",
+      description: "اكتشف الشذوذ والتناقضات في الفاتورة",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      ),
+      onClick: onDetectAnomalies,
+      available: !!onDetectAnomalies,
+      variant: "outline" as const,
+    },
+  ]
+
+  const availableActions = actions.filter(a => a.available)
+
+  if (compact) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <div className="flex items-center gap-2 mb-3">
+          <GarfixAIIcon size="sm" animated />
+          <span className="text-sm font-semibold">مساعد الذكاء الاصطناعي</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2">
+          {availableActions.map((action) => (
+            <div key={action.id} className="flex items-center gap-2">
+              <span className="text-muted-foreground">{action.icon}</span>
+              <AIInlineSuggestion
+                label={action.label}
+                onClick={() => action.onClick?.()}
+                variant="subtle"
+                className="justify-start text-xs py-1.5 px-2 flex-1"
+              />
+            </div>
+          ))}
+        </div>
+
+        {isProcessing && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+            <GarfixAIBadge status="thinking" showLabel={false} size="sm" />
+            <span>{processingLabel || "GarfiX AI يعالج..."}</span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <Card variant="elevated" className={cn("overflow-hidden", className)}>
+      {/* Header with gradient */}
+      <div className="h-1 gradient-primary" />
+      
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-3 text-base">
+          <GarfixAIIcon size="md" glow animated />
+          <div>
+            <h3>مساعد إنشاء الفواتير</h3>
+            <p className="text-xs text-muted-foreground font-normal mt-0.5">
+              استخدم قوة GarfiX AI لتسريع إنشاء الفواتير
+            </p>
+          </div>
+          
+          {isProcessing && (
+            <GarfixAIBadge status="thinking" className="ms-auto" />
+          )}
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Processing State */}
+        {isProcessing && (
+          <div className="ai-thinking rounded-lg p-4 bg-muted/50">
+            <div className="flex items-center gap-3 mb-2">
+              <GarfixAIBadge status="thinking" showLabel={false} />
+              <span className="text-sm font-medium">{processingLabel || "جاري المعالجة..."}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full animate-pulse-slow" style={{ width: '60%' }} />
+            </div>
+          </div>
+        )}
+
+        {/* Action Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {availableActions.map((action) => (
+            <button
+              key={action.id}
+              onClick={() => action.onClick?.()}
+              disabled={isProcessing}
+              className={cn(
+                "flex items-start gap-3 p-4 rounded-xl border transition-all duration-200",
+                "hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5",
+                "active:scale-[0.98] focus-ring text-start",
+                isProcessing && "opacity-50 pointer-events-none",
+                action.variant === "primary" && "bg-primary/5 border-primary/20"
+              )}
+            >
+              <div className={cn(
+                "size-10 rounded-lg flex items-center justify-center shrink-0",
+                action.variant === "primary" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+              )}>
+                {action.icon}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{action.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  {action.description}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Quick Tip */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+          <GarfixAIIcon size="xs" className="mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">نصيحة:</strong> يمكنك كتابة وصف مبسط للفاتورة مثل 
+            "فاتورة بيع منتجات لأحمد بمبلغ 5000 ريال شامل الضريبة" 
+            وسأقوم بإنشائها لك تلقائياً!
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * AIDescribeInput - Natural language invoice description input
+ * Converts user's natural language into structured invoice data
+ */
+interface AIDescribeInputProps {
+  /** Input value */
+  value: string
+  /** On change */
+  onChange: (value: string) => void
+  /** On submit for AI processing */
+  onSubmit: (description: string) => void
+  /** Is processing */
+  isProcessing?: boolean
+  /** Placeholder examples */
+  examples?: string[]
+  className?: string
+}
+
+export function AIDescribeInput({
+  value,
+  onChange,
+  onSubmit,
+  isProcessing = false,
+  examples = [
+    "فاتورة بيع لأحمد علي بمبلغ 5000 ريال ضريبة 15%",
+    "إيصال دفعة مقدمة من شركة النور 10000 ريال",
+    "فاتورة خدمات تصميم 3 أيام × 2000 ريال",
+  ],
+  className,
+}: AIDescribeInputProps) {
+  const [focused, setFocused] = React.useState(false)
+  const [showExamples, setShowExamples] = React.useState(false)
+
+  return (
+    <div className={cn("space-y-3", className)}>
+      {/* Main Input */}
+      <div className={cn(
+        "relative rounded-2xl border overflow-hidden transition-all duration-300",
+        focused && "border-primary ring-2 ring-primary/20 shadow-brand-sm"
+      )}>
+        {/* AI Header when focused */}
+        {focused && (
+          <div className="px-4 py-2 bg-gradient-to-r from-primary/5 to-transparent border-b flex items-center gap-2">
+            <GarfixAIIcon size="xs" animated={isProcessing} />
+            <span className="text-xs font-medium text-primary">
+              {isProcessing ? "أحلل وصفك..." : "صف فاتورتك باللغة الطبيعية"}
+            </span>
+          </div>
+        )}
+
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => { setFocused(true); setShowExamples(true) }}
+          onBlur={() => setFocused(false)}
+          placeholder={
+            focused 
+              ? "مثال: فاتورة بيع منتجات لشركة ABC بمبلغ 15000 ريال، ضريبة 15%， مدة سداد 30 يوم..."
+              : "اكتب هنا وصفاً للفاتورة التي تريد إنشاءها..."
+          }
+          rows={3}
+          disabled={isProcessing}
+          className={cn(
+            "w-full px-4 py-3 bg-transparent text-sm placeholder:text-muted-foreground",
+            "focus:outline-none resize-none min-h-[120px]",
+            isProcessing && "opacity-70"
+          )}
+        />
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowExamples(!showExamples)}
+              className="text-xs"
+            >
+              أمثلة
+            </Button>
+            
+            {value.length > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                {value.length} حرف
+              </span>
+            )}
+          </div>
+
+          <Button
+            onClick={() => onSubmit(value)}
+            disabled={!value.trim() || isProcessing}
+            size="sm"
+            className="gradient-primary"
+          >
+            {isProcessing ? (
+              <>
+                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                يحلل...
+              </>
+            ) : (
+              <>
+                أنشئ بالـ AI
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Examples Dropdown */}
+      {showExamples && !isProcessing && (
+        <div className="animate-fade-in space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">جرب أحد هذه الأمثلة:</p>
+          <div className="space-y-1.5">
+            {examples.map((example, index) => (
+              <button
+                key={index}
+                onClick={() => { onChange(example); setShowExamples(false) }}
+                className="w-full text-start px-3 py-2 rounded-lg text-sm bg-muted/50 hover:bg-muted transition-colors line-clamp-2"
+              >
+                "{example}"
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 2: Dashboard Insights Components
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * AIDashboardInsights - AI-generated insights widget for dashboard
+ * Shows forecasts, alerts, and suggestions
+ */
+interface AIDashboardInsightsProps {
+  /** Insights data */
+  insights?: Array<{
+    id: string
+    type: "forecast" | "alert" | "suggestion" | "achievement"
+    title: string
+    description: string
+    severity?: "info" | "warning" | "success" | "critical"
+    action?: {
+      label: string
+      onClick: () => void
+    }
+    timestamp?: Date
+  }>
+  /** Loading state */
+  isLoading?: boolean
+  /** Error state */
+  error?: string
+  /** On refresh insights */
+  onRefresh?: () => void
+  /** Max items to show */
+  maxItems?: number
+  /** Compact mode */
+  compact?: boolean
+  className?: string
+}
+
+export function AIDashboardInsights({
+  insights = [],
+  isLoading = false,
+  error,
+  onRefresh,
+  maxItems = 5,
+  compact = false,
+  className,
+}: AIDashboardInsightsProps) {
+
+  // Default demo insights if none provided
+  const defaultInsights: AIDashboardInsightsProps['insights'] = [
+    {
+      id: "1",
+      type: "forecast",
+      title: "توقع إيرادات الشهر القادم",
+      description: "بناءً على البيانات السابقة، من المتوقع تحقيق إيرادات بحوالي 45,000 ريال بزيادة 12% عن الشهر الماضي",
+      severity: "info",
+      action: { label: "عرض التفاصيل", onClick: () => {} },
+    },
+    {
+      id: "2",
+      type: "alert",
+      title: "فواتير متأخرة تحتاج متابعة",
+      description: "3 فواتير بقيمة 8,500 ريال تأخر سدادها أكثر من 30 يوم",
+      severity: "warning",
+      action: { label: "تابع الفواتير", onClick: () => {} },
+    },
+    {
+      id: "3",
+      type: "suggestion",
+      title: "فرصة تحسين التدفق النقدي",
+      description: "يمكنك تحسين التدفق النقدي بتقديم خصم 2% للدفع المبكر",
+      severity: "info",
+      action: { label: "تفعيل الاقتراح", onClick: () => {} },
+    },
+    {
+      id: "4",
+      type: "achievement",
+      title: "🎉 إنجاز رائع!",
+      description: "حققت هدف المبيعات الشهري بنسبة 103%",
+      severity: "success",
+    },
+  ]
+
+  const displayInsights = insights.length > 0 ? insights : defaultInsights
+  const visibleInsights = displayInsights.slice(0, maxItems)
+
+  const typeConfig = {
+    forecast: {
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+          <polyline points="17 6 23 6 23 12"/>
+        </svg>
+      ),
+      color: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30",
+    },
+    alert: {
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      ),
+      color: "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30",
+    },
+    suggestion: {
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+        </svg>
+      ),
+      color: "text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30",
+    },
+    achievement: {
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="8" r="6"/>
+          <path d="M15.477 12.89 17 22l-5-1.128a2 2 0 0 0-1.727.196l-2.273 1.632-2.273-1.632a2 2 0 0 0-1.727-.196L7 22l1.523-9.11"/>
+        </svg>
+      ),
+      color: "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30",
+    },
+  }
+
+  if (compact) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GarfixAIIcon size="sm" glow />
+            <span className="text-sm font-semibold">رؤى AI</span>
+          </div>
+          {onRefresh && (
+            <button onClick={onRefresh} className="p-1 hover:bg-accent rounded transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-12 bg-muted rounded-lg animate-shimmer" />
+            ))}
+          </div>
+        ) : error ? (
+          <p className="text-xs text-destructive">{error}</p>
+        ) : (
+          <div className="space-y-1.5">
+            {visibleInsights.map((insight) => {
+              const config = typeConfig[insight.type]
+              return (
+                <div
+                  key={insight.id}
+                  className="flex items-start gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                  onClick={insight.action?.onClick}
+                >
+                  <div className={cn("size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5", config?.color)}>
+                    {config?.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{insight.title}</p>
+                    <p className="text-[10px] text-muted-foreground line-clamp-1">{insight.description}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <Card variant="elevated" className={cn("overflow-hidden", className)}>
+      {/* Gradient header */}
+      <div className="h-1 gradient-primary" />
+      
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <GarfixAIIcon size="md" glow animated />
+            <div>
+              <h3>رؤى وتحليلات GarfiX AI</h3>
+              <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                رؤى ذكية مبنية على بياناتك
+              </p>
+            </div>
+          </div>
+          
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onRefresh}
+              title="تحديث الرؤى"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+            </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-20 bg-muted rounded-lg animate-shimmer" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-destructive mb-3">{error}</p>
+            <Button variant="outline" size="sm" onClick={onRefresh}>
+              إعادة المحاولة
+            </Button>
+          </div>
+        ) : (
+          <>
+            {visibleInsights.map((insight) => {
+              const config = typeConfig[insight.type]
+              return (
+                <div
+                  key={insight.id}
+                  className={cn(
+                    "flex items-start gap-4 p-4 rounded-xl border transition-all duration-200",
+                    "hover:shadow-sm hover:border-border/80",
+                    insight.severity === "critical" && "border-destructive/30 bg-destructive/5",
+                    insight.severity === "warning" && "border-amber-300 dark:border-amber-700"
+                  )}
+                >
+                  {/* Icon */}
+                  <div className={cn(
+                    "size-10 rounded-xl flex items-center justify-center shrink-0",
+                    config?.color
+                  )}>
+                    {config?.icon}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-sm">{insight.title}</h4>
+                      <Badge 
+                        variant={insight.severity === "success" ? "default" : "secondary"}
+                        className="text-[10px]"
+                      >
+                        {insight.type === "forecast" && "توقع"}
+                        {insight.type === "alert" && "تنبيه"}
+                        {insight.type === "suggestion" && "اقتراح"}
+                        {insight.type === "achievement" && "إنجاز"}
+                      </Badge>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {insight.description}
+                    </p>
+
+                    {/* Action button */}
+                    {insight.action && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={insight.action.onClick}
+                        className="mt-2"
+                      >
+                        {insight.action.label}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* See more link */}
+            {displayInsights.length > maxItems && (
+              <button className="w-full text-center text-sm text-primary hover:underline py-2">
+                عرض جميع الرؤى ({displayInsights.length})
+              </button>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * AIKpiCard - Enhanced KPI card with AI commentary
+ */
+interface AIKpiCardProps {
+  /** KPI title */
+  title: string
+  /** KPI value */
+  value: string | number
+  /** Change percentage */
+  change?: number
+  /** Change direction */
+  changeType?: "positive" | "negative" | "neutral"
+  /** Format type */
+  format?: "currency" | "number" | "percent"
+  /** AI commentary/insight about this KPI */
+  aiCommentary?: string
+  /** AI trend prediction */
+  aiTrend?: "up" | "down" | "stable"
+  /** Trend confidence (0-100) */
+  trendConfidence?: number
+  /** On click to see details */
+  onClick?: () => void
+  /** Loading state */
+  isLoading?: boolean
+  className?: string
+}
+
+export function AIKpiCard({
+  title,
+  value,
+  change,
+  changeType = "neutral",
+  format,
+  aiCommentary,
+  aiTrend,
+  trendConfidence,
+  onClick,
+  isLoading = false,
+  className,
+}: AIKpiCardProps) {
+
+  if (isLoading) {
+    return (
+      <Card className={cn("overflow-hidden", className)}>
+        <CardContent className="p-6">
+          <div className="space-y-3">
+            <div className="h-4 bg-muted rounded w-24 animate-shimmer" />
+            <div className="h-8 bg-muted rounded w-32 animate-shimmer" />
+            <div className="h-3 bg-muted rounded w-full animate-shimmer" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <KpiCard
+      title={title}
+      value={value}
+      change={change}
+      changeType={changeType}
+      format={format}
+      onClick={onClick}
+      className={cn(!!onClick && "cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200", className)}
+    >
+      {/* AI Commentary Section */}
+      {(aiCommentary || aiTrend) && (
+        <div className="mt-4 pt-4 border-t space-y-2">
+          {/* AI Commentary */}
+          {aiCommentary && (
+            <div className="flex items-start gap-2">
+              <GarfixAIIcon size="xs" className="mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {aiCommentary}
+              </p>
+            </div>
+          )}
+
+          {/* AI Trend Prediction */}
+          {aiTrend && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">توقع AI:</span>
+              <div className="flex items-center gap-1">
+                {aiTrend === "up" && (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
+                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                      <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                    <span className="text-xs text-emerald-600 font-medium">صاعد</span>
+                  </>
+                )}
+                {aiTrend === "down" && (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
+                      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+                      <polyline points="17 18 23 18 23 12"/>
+                    </svg>
+                    <span className="text-xs text-red-500 font-medium">هابط</span>
+                  </>
+                )}
+                {aiTrend === "stable" && (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    <span className="text-xs text-blue-500 font-medium">مستقر</span>
+                  </>
+                )}
+              </div>
+              
+              {trendConfidence !== undefined && (
+                <span className="text-[10px] text-muted-foreground">
+                  ({trendConfidence}% ثقة)
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </KpiCard>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 3: Smart Navigation Components
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * AISmartNav - Natural language navigation helper
+ * "Take me to..." or "Go to..." commands
+ */
+interface AISmartNavProps {
+  /** Navigation command */
+  command: string
+  /** On command change */
+  onCommandChange: (command: string) => void
+  /** On navigate request */
+  onNavigate: (destination: string) => void
+  /** Available destinations */
+  destinations?: Array<{
+    id: string
+    label: string
+    icon?: React.ReactNode
+    keywords?: string[]
+  }>
+  /** Is processing/navigating */
+  isNavigating?: boolean
+  /** Recent destinations */
+  recentDestinations?: string[]
+  className?: string
+}
+
+export function AISmartNav({
+  command,
+  onCommandChange,
+  onNavigate,
+  destinations = [
+    { id: "dashboard", label: "لوحة التحكم", keywords: ["رئيسية", "home", "main"] },
+    { id: "invoices", label: "الفواتير", keywords: ["فواتير", "invoices", "مبيعات"] },
+    { id: "clients", label: "العملاء", keywords: ["عملاء", "clients", "زبائن"] },
+    { id: "reports", label: "التقارير", keywords: ["تقارير", "reports", "تحليل"] },
+    { id: "settings", label: "الإعدادات", keywords: ["إعدادات", "settings"] },
+  ],
+  isNavigating = false,
+  recentDestinations = [],
+  className,
+}: AISmartNavProps) {
+
+  const [focused, setFocused] = React.useState(false)
+  const [filteredDestinations, setFilteredDestinations] = React.useState(destinations)
+
+  // Filter destinations based on command
+  React.useEffect(() => {
+    if (!command.trim()) {
+      setFilteredDestinations(destinations)
+      return
+    }
+
+    const lowerCmd = command.toLowerCase()
+    const filtered = destinations.filter(dest =>
+      dest.label.includes(command) ||
+      dest.keywords?.some(k => k.includes(lowerCmd)) ||
+      dest.id.includes(lowerCmd)
+    )
+    
+    setFilteredDestinations(filtered)
+  }, [command, destinations])
+
+  return (
+    <div className={cn("relative", className)}>
+      {/* Input Container */}
+      <div className={cn(
+        "relative flex items-center gap-3 px-4 py-3 bg-background rounded-xl border transition-all duration-200",
+        focused
+          ? "border-primary ring-2 ring-primary/20 shadow-brand-sm"
+          : "border-border hover:border-border/80"
+      )}>
+        {/* Command prefix */}
+        <span className="text-muted-foreground text-sm shrink-0">
+          خذني إلى
+        </span>
+
+        {/* Input */}
+        <input
+          type="text"
+          value={command}
+          onChange={(e) => onCommandChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 200)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && command.trim()) {
+              // Navigate to first match or use raw command
+              const match = filteredDestinations[0]
+              onNavigate(match?.id || command)
+            }
+          }}
+          placeholder="الفواتير، التقارير، عملاء أحمد..."
+          className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none min-h-[44px] sm:min-h-0 text-base sm:text-sm"
+          disabled={isNavigating}
+        />
+
+        {/* AI Badge */}
+        {focused && (
+          <div className="animate-fade-in hidden sm:flex">
+            <GarfixAIBadge status={isNavigating ? "active" : "idle"} showLabel size="sm" />
+          </div>
+        )}
+
+        {/* Loading indicator */}
+        {isNavigating && (
+          <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        )}
+      </div>
+
+      {/* Suggestions Dropdown */}
+      {focused && (filteredDestinations.length > 0 || recentDestinations.length > 0) && (
+        <div className="absolute top-full mt-2 w-full bg-popover border rounded-xl shadow-brand-lg z-50 animate-fade-in overflow-hidden">
+          {/* Filtered Destinations */}
+          {filteredDestinations.length > 0 && (
+            <div className="p-2">
+              <span className="block px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase">
+                الوجهات المقترحة
+              </span>
+              {filteredDestinations.slice(0, 5).map((dest) => (
+                <button
+                  key={dest.id}
+                  onClick={() => { onNavigate(dest.id); setFocused(false) }}
+                  className="w-full text-start px-3 py-2.5 rounded-lg text-sm hover:bg-accent transition-colors flex items-center gap-3"
+                >
+                  <GarfixAIIcon size="xs" />
+                  <span>{dest.label}</span>
+                  <span className="ms-auto text-[10px] text-muted-foreground">
+                    {dest.id}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Recent Destinations */}
+          {recentDestinations.length > 0 && (
+            <div className="p-2 border-t">
+              <span className="block px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase">
+                آخر الوجهات
+              </span>
+              {recentDestinations.slice(0, 3).map((dest, index) => (
+                <button
+                  key={index}
+                  onClick={() => { onNavigate(dest); setFocused(false) }}
+                  className="w-full text-start px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  {dest}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* No results hint */}
+          {filteredDestinations.length === 0 && command.trim() && (
+            <div className="p-4 text-center">
+              <GarfixAIIcon size="sm" className="mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-muted-foreground">
+                لم أجد وجهة مطابقة
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                جرب كلمات مختلفة أو تصفح الأقسام المتاحة
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Exports
+export {
+  type AIInvoiceAssistantProps,
+  type AIDescribeInputProps,
+  type AIDashboardInsightsProps,
+  type AIKpiCardProps,
+  type AISmartNavProps,
+}
+
+export default AIInvoiceAssistant
