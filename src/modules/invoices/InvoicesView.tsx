@@ -12,6 +12,8 @@ import {
 import { cn, paginate } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPicker";
+import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -669,6 +671,11 @@ function InvoiceForm({
   const [discount, setDiscount] = useState(editing?.discount ?? 0);
   const [notes, setNotes] = useState(editing?.notes || "");
   const [saving, setSaving] = useState(false);
+  
+  // 🆕 Product Picker State
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createDialogIndex, setCreateDialogIndex] = useState<number | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Record<number, ProductOption>>({});
 
   const updateItem = (i: number, field: keyof LineItem, value: string | number) => {
     setLineItems((items) => items.map((it, idx) => {
@@ -682,6 +689,35 @@ function InvoiceForm({
   };
   const addItem = () => setLineItems((items) => [...items, { description: "", qty: 1, price: 0 }]);
   const removeItem = (i: number) => setLineItems((items) => items.filter((_, idx) => idx !== i));
+  
+  // 🆕 Handle product selection
+  const handleProductSelect = (index: number, product: ProductOption | null) => {
+    if (product) {
+      setSelectedProducts(prev => ({ ...prev, [index]: product }));
+      updateItem(index, "description", product.name);
+      if (product.sellingPrice != null) {
+        updateItem(index, "price", product.sellingPrice);
+      }
+    } else {
+      setSelectedProducts(prev => {
+        const next = { ...prev };
+        delete next[index];
+        return next;
+      });
+    }
+  };
+  
+  // 🆕 Handle quick create
+  const handleOpenCreateDialog = (index: number) => {
+    setCreateDialogIndex(index);
+    setShowCreateDialog(true);
+  };
+  
+  const handleProductCreated = (product: any) => {
+    if (createDialogIndex !== null) {
+      handleProductSelect(createDialogIndex, product as ProductOption);
+    }
+  };
 
   const subtotal = lineItems.reduce((s, it) => s + (Number(it.qty) * Number(it.price)), 0);
   const discounted = Math.max(0, subtotal - Number(discount));
@@ -830,12 +866,17 @@ function InvoiceForm({
         </div>
         <div className="flex flex-col gap-2">
           {lineItems.map((it, i) => (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_80px_100px_110px_32px] gap-2 items-center">
-              <input
-                placeholder="وصف البند"
-                value={it.description}
-                onChange={(e) => updateItem(i, "description", e.target.value)}
-                className={inputStyle}
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-[1.5fr_80px_100px_110px_32px] gap-2 items-center">
+              {/* 🆕 Product Picker instead of plain input */}
+              <ProductPicker
+                companySlug={company.slug}
+                value={selectedProducts[i] || null}
+                onChange={(product) => handleProductSelect(i, product)}
+                onDescriptionChange={(desc) => updateItem(i, "description", desc)}
+                onCreateNew={() => handleOpenCreateDialog(i)}
+                placeholder="🔍 ابحث عن منتج أو اكتب اسم جديد..."
+                showStock
+                showPrice
               />
               <div className="flex gap-2 items-center sm:contents">
                 <input
@@ -913,6 +954,22 @@ function InvoiceForm({
           {saving ? "جارٍ الحفظ…" : (editing ? "حفظ التعديلات" : "إنشاء الفاتورة")}
         </button>
       </div>
+
+      {/* 🆕 Quick Create Product Dialog */}
+      <QuickCreateProductDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        companySlug={company.slug}
+        initialData={
+          createDialogIndex !== null
+            ? {
+                name: lineItems[createDialogIndex]?.description,
+                sellingPrice: lineItems[createDialogIndex]?.price,
+              }
+            : undefined
+        }
+        onCreated={handleProductCreated}
+      />
     </div>
   );
 }
