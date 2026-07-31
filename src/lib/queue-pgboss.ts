@@ -44,7 +44,18 @@ const MAX_DEAD_LETTER_PER_QUEUE = 100;
 
 const DEAD_LETTER_SUFFIX = "__dead-letter";
 
-const WORKER_ID = `pgboss-worker-${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+// WORKER_ID is evaluated lazily on first use (not at module load) so that
+// `process.pid` is NOT read when Turbopack statically analyzes this module
+// for the Edge Instrumentation bundle. Reading process.pid at module
+// top-level triggers an Edge Runtime warning even though this module is
+// only ever executed in the Node.js runtime.
+let _WORKER_ID: string | null = null;
+function WORKER_ID(): string {
+  if (_WORKER_ID === null) {
+    _WORKER_ID = `pgboss-worker-${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+  return _WORKER_ID;
+}
 
 // ─── pg-boss instance ──────────────────────────────────────────────────
 
@@ -253,7 +264,7 @@ async function registerPgBossWorker(queueName: QueueName, handler: JobHandler): 
       }
     });
 
-    logger.info("[queue-pgboss] worker registered", { queue: queueName, workerId: WORKER_ID });
+    logger.info("[queue-pgboss] worker registered", { queue: queueName, workerId: WORKER_ID() });
   } catch (err) {
     logger.error("[queue-pgboss] worker registration failed", {
       queue: queueName,
@@ -269,7 +280,7 @@ async function registerPgBossWorker(queueName: QueueName, handler: JobHandler): 
  */
 export function registerWorker(queue: QueueName, handler: JobHandler): void {
   handlers.set(queue, handler);
-  logger.info("[queue-pgboss] handler registered", { queue, workerId: WORKER_ID });
+  logger.info("[queue-pgboss] handler registered", { queue, workerId: WORKER_ID() });
 
   if (bossStarted && boss) {
     registerPgBossWorker(queue, handler).catch((err) => {
@@ -532,5 +543,5 @@ export function isPgBossRunning(): boolean {
 
 /** Expose the worker ID. */
 export function getWorkerId(): string {
-  return WORKER_ID;
+  return WORKER_ID();
 }

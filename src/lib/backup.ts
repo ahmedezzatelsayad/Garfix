@@ -20,8 +20,22 @@ import { logger } from "./logger";
 import { enqueue, QUEUE_NAMES } from "./queues";
 import { encryptSecret, decryptSecret } from "./cryptoVault";
 
-// EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path
-const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), "storage", "backups");
+// EA-004 FIX: Use relative path based on cwd() instead of hardcoded /home/z/ path.
+//
+// LAZY EVALUATION: BACKUP_DIR is computed on first use (not at module load)
+// so that `process.cwd()` is NOT read when Turbopack statically analyzes
+// this module for the Edge Instrumentation bundle. Reading process.cwd()
+// at module top-level triggers an Edge Runtime warning even though this
+// module is only ever executed in the Node.js runtime.
+let _BACKUP_DIR: string | null = null;
+function getBackupDir(): string {
+  if (_BACKUP_DIR === null) {
+    _BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), "storage", "backups");
+  }
+  return _BACKUP_DIR;
+}
+/** Exported so sibling workers (backupWorker.ts) reuse the same lazy cache. */
+export { getBackupDir };
 const MAX_BACKUPS = parseInt(process.env.BACKUP_KEEP_MAX || "30", 10);
 
 export interface BackupResult {
@@ -59,6 +73,7 @@ function sanitizeLabel(label: string): string {
 function resolveSafeBackupPath(label: string, ts: string): string | null {
   const safeLabel = sanitizeLabel(label);
   const backupName = `garfix-${safeLabel}-${ts}.db`;
+  const BACKUP_DIR = getBackupDir();
   const candidate = path.join(BACKUP_DIR, backupName);
   // Path-traversal guard: real path must start with BACKUP_DIR
   const resolvedBase = path.resolve(BACKUP_DIR);
@@ -85,7 +100,7 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
   const isPostgres = dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://");
 
   try {
-    await fs.mkdir(BACKUP_DIR, { recursive: true });
+    await fs.mkdir(getBackupDir(), { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const backupPath = resolveSafeBackupPath(label, ts);
     if (!backupPath) {
@@ -169,6 +184,7 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
 /** Delete old backups beyond MAX_BACKUPS. */
 async function pruneOldBackups(): Promise<void> {
   try {
+    const BACKUP_DIR = getBackupDir();
     const files = await fs.readdir(BACKUP_DIR);
     const backups = files.filter((f) => f.endsWith(".db.enc") || f.endsWith(".sql.enc")).sort(); // ISO timestamps sort naturally
     if (backups.length <= MAX_BACKUPS) return;
@@ -185,6 +201,7 @@ async function pruneOldBackups(): Promise<void> {
 /** List existing backups. */
 export async function listBackups(): Promise<Array<{ name: string; size: number; createdAt: Date }>> {
   try {
+    const BACKUP_DIR = getBackupDir();
     const files = await fs.readdir(BACKUP_DIR);
     const result: Array<{ name: string; size: number; createdAt: Date }> = [];
     for (const f of files) {

@@ -53,6 +53,21 @@ export async function register(): Promise<void> {
 
   logger.info("[instrumentation] Server starting up...");
 
+  // ── Edge Runtime short-circuit ─────────────────────────────────────────
+  // When Turbopack compiles the Edge variant of instrumentation.ts (which
+  // it does for static analysis even though `config.runtime = "nodejs"`),
+  // process.env.NEXT_RUNTIME is replaced with the literal string "edge".
+  // This branch becomes unreachable and Turbopack tree-shakes ALL the
+  // dynamic imports below (bootstrap, outbox, telemetry, etc.) out of the
+  // Edge bundle, eliminating all remaining Edge Runtime warnings.
+  //
+  // In the Node.js runtime, NEXT_RUNTIME === "nodejs" and we proceed
+  // normally with full server initialization.
+  if (process.env.NEXT_RUNTIME !== "nodejs") {
+    logger.info("[instrumentation] Skipping server bootstrap (non-nodejs runtime)");
+    return;
+  }
+
   try {
     // ── Step 1: Database Initialization ──────────────────────────────────
     logger.info("[instrumentation] Initializing database connection...");

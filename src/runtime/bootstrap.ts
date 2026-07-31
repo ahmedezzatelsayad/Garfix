@@ -55,9 +55,13 @@ import { logger } from "@/lib/logger";
 // Worker registration functions — DYNAMIC imports only
 // These modules use node:fs, node:path, etc. which must NOT be traced
 // during `next build`. They're only needed at runtime startup.
-
-// Queue utilities
-import { recoverPendingJobs } from "@/lib/queues";
+//
+// CRITICAL: `recoverPendingJobs` is also imported dynamically below (not
+// statically) so Turbopack does not trace queues.ts (which uses process.pid
+// at module top-level) into the Edge Instrumentation bundle. This single
+// static import was the root cause of all 14 remaining Edge Runtime
+// warnings (queues.ts → backup.ts → cryptoVault.ts, tamperAudit.ts).
+// See commit history for "fix(deploy): eliminate Edge Runtime warnings".
 
 /**
  * Bootstrap result status.
@@ -167,6 +171,10 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
     let jobsRecovered = 0;
 
     try {
+      // Dynamic import — see file header comment for rationale.
+      // Static import would cause Turbopack to trace queues.ts (which uses
+      // process.pid at module top-level) into the Edge Instrumentation bundle.
+      const { recoverPendingJobs } = await import("@/lib/queues");
       const recovery = await recoverPendingJobs();
       jobsRecovered = recovery.recovered;
 
