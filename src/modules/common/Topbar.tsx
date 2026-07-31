@@ -7,14 +7,12 @@
  * bg-muted, text-muted-foreground, bg-primary/10, text-primary, border-border)
  * so the Topbar reads correctly in BOTH light and dark modes.
  *
- * Previously this file was full of hardcoded `bg-white`, `bg-gray-50`,
- * `text-gray-400`, and the brand-purple-50 / brand-purple utility classes
- * which DON'T EXIST in globals.css tokens — so they were no-ops, leaving
- * the Topbar permanently white and the company badge / plan pill invisible.
+ * Enhanced with GarfiX AI status indicator for "AI Everywhere" presence.
  */
 import { Menu, Search } from "lucide-react";
 import type { CompanyInfo } from "@/context/BrandContext";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { AIStatusBar } from "@/components/garfix";
 
 interface TopbarProps {
   user: { displayName: string; email: string };
@@ -94,6 +92,15 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
         </kbd>
       </button>
 
+      {/* GarfiX AI Status - Everywhere Presence */}
+      <AIStatusBar
+        status="online"
+        lastActivity="جاهز للمساعدة"
+        onClick={() => window.dispatchEvent(new CustomEvent('open-ai-copilot'))}
+        compact
+        className="hidden sm:flex"
+      />
+      
       <NotificationsDropdown />
     </header>
   );
