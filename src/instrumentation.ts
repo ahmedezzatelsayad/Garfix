@@ -17,10 +17,30 @@
  * Dynamic imports inside register() only execute at server startup,
  * AFTER the build completes. This prevents Turbopack/Webpack from
  * tracing these Node-only modules during the build phase.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * RUNTIME FIX (deployment blocker): Next.js 16 compiles instrumentation.ts
+ * for BOTH the Node.js runtime AND the Edge Runtime by default. The Edge
+ * version pulls in Node-only modules (process.on, process.exit, node:fs,
+ * node:crypto) through the import chain, creating an invalid Edge bundle
+ * that Vercel rejects during deployment ("Deploying outputs..." hangs).
+ *
+ * Setting `runtime: "nodejs"` skips the Edge instrumentation bundle
+ * entirely, eliminating all 25 Edge Runtime warnings and unblocking
+ * deployment. This mirrors the same fix already applied to middleware.ts
+ * (see SEC-M3 FIX in src/middleware.ts).
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { logger } from "@/lib/logger";
+
+// Pin instrumentation to Node.js runtime only. Without this, Next.js 16
+// also compiles an Edge Runtime variant of instrumentation.ts, which fails
+// because register() uses process.on(), process.exit(), and dynamically
+// imports Node-only modules (node:fs, node:crypto, node:child_process).
+export const config = {
+  runtime: "nodejs" as const,
+};
 
 /**
  * register — Called by Next.js on server startup.
@@ -145,23 +165,6 @@ export async function register(): Promise<void> {
       });
     }
 
-    // ── Step 4: Process-Level Error Handlers ─────────────────────────────
-    process.on("uncaughtException", (error: Error) => {
-      logger.error("[instrumentation] UNCAUGHT EXCEPTION", {
-        error: error.message,
-        stack: error.stack,
-      });
-      if (process.env.NODE_ENV === "production") {
-        setTimeout(() => process.exit(1), 1000);
-      }
-    });
-
-    process.on("unhandledRejection", (reason: unknown) => {
-      logger.error("[instrumentation] UNHANDLED REJECTION", {
-        reason: reason instanceof Error ? reason.message : String(reason),
-      });
-    });
-
     // ── Step 4: Initialize Observability (Sprint 3) ────────────────────────
     logger.info("[instrumentation] Initializing observability services...");
     const { initTelemetry, shutdownTelemetry } = await import("@/lib/telemetry/tracing");
@@ -170,61 +173,39 @@ export async function register(): Promise<void> {
     await initPubSub();
     logger.info("[instrumentation] ✓ Observability services initialized");
 
-    // ── Step 5: Process-Level Error Handlers ─────────────────────────────
-    process.on("uncaughtException", (error: Error) => {
-      logger.error("[instrumentation] UNCAUGHT EXCEPTION", {
-        error: error.message,
-        stack: error.stack,
-      });
-      if (process.env.NODE_ENV === "production") {
-        setTimeout(() => process.exit(1), 1000);
-      }
-    });
-
-    process.on("unhandledRejection", (reason: unknown) => {
-      logger.error("[instrumentation] UNHANDLED REJECTION", {
-        reason: reason instanceof Error ? reason.message : String(reason),
-      });
-    });
-
-    // ── Step 6: Graceful Shutdown Hooks ──────────────────────────────────
-    const shutdown = async (signal: string): Promise<void> => {
-      logger.info(`[instrumentation] Received ${signal}, initiating graceful shutdown...`);
-      const shutdownTimeout = setTimeout(() => {
-        logger.warn("[instrumentation] Forced shutdown after timeout");
-        process.exit(1);
-      }, 10000);
-      try {
-        // Shutdown observability services (upstream Sprint 3)
-        shutdownTelemetry();
-        const { shutdownAllBreakers } = await import("@/lib/circuit-breaker/circuit-breaker");
-        shutdownAllBreakers();
-
-        // Stop the background timers started in Steps 3b/3e so they
-        // don't fire during shutdown or keep the event loop alive (P2.2+P2.3)
+    // ── Step 5: Process-Level Error Handlers + Graceful Shutdown ─────────
+    // These use process.on() / process.exit() which are Node.js-only APIs.
+    // Guard with NEXT_RUNTIME check so Turbopack doesn't trace them into
+    // the Edge Runtime bundle (eliminates Edge Runtime warnings that were
+    // blocking Vercel deployment).
+    if (process.env.NEXT_RUNTIME === "nodejs") {
+      const { setupProcessHandlers } = await import("@/lib/process-handlers");
+      setupProcessHandlers(logger, async () => {
+        // Graceful shutdown callback — mirrors the old inline shutdown logic
         try {
-          const { stopOutboxRelay } = await import("@/lib/outbox");
-          stopOutboxRelay();
-        } catch { /* best-effort */ }
-        try {
-          const { stopMaintenanceCrons } = await import("@/lib/maintenance-cron");
-          stopMaintenanceCrons();
-        } catch { /* best-effort */ }
-        logger.info("[instrumentation] Graceful shutdown complete");
-      } catch (err) {
-        logger.error("[instrumentation] Error during shutdown", {
-          error: err instanceof Error ? err.message : String(err),
-        });
-      } finally {
-        clearTimeout(shutdownTimeout);
-        process.exit(0);
-      }
-    };
+          shutdownTelemetry();
+          const { shutdownAllBreakers } = await import("@/lib/circuit-breaker/circuit-breaker");
+          shutdownAllBreakers();
+          try {
+            const { stopOutboxRelay } = await import("@/lib/outbox");
+            stopOutboxRelay();
+          } catch { /* best-effort */ }
+          try {
+            const { stopMaintenanceCrons } = await import("@/lib/maintenance-cron");
+            stopMaintenanceCrons();
+          } catch { /* best-effort */ }
+          logger.info("[instrumentation] Graceful shutdown complete");
+        } catch (err) {
+          logger.error("[instrumentation] Error during shutdown", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      });
+    } else {
+      logger.info("[instrumentation] Skipping process handlers (non-nodejs runtime)");
+    }
 
-    process.on("SIGTERM", () => shutdown("SIGTERM"));
-    process.on("SIGINT", () => shutdown("SIGINT"));
-
-    // ── Complete ──────────────────────────────────────────────────────────
+    // ── Step 6: Complete ────────────────────────────────────────────────
     const totalDuration = Date.now() - startTime;
     logger.info(`[instrumentation] ✓ Server ready (${totalDuration}ms)`);
 

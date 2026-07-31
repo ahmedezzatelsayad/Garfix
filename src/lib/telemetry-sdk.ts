@@ -130,8 +130,15 @@ export async function startTelemetry(): Promise<boolean> {
         });
       }
     };
-    process.on("SIGTERM", shutdown);
-    process.on("SIGINT", shutdown);
+
+    // Guard process.on calls — they're Node.js-only and trigger Edge
+    // Runtime warnings during build even though this module is dynamically
+    // imported. The NEXT_RUNTIME check prevents Turbopack from tracing
+    // them into the Edge bundle.
+    if (process.env.NEXT_RUNTIME === "nodejs") {
+      process.on("SIGTERM", shutdown);
+      process.on("SIGINT", shutdown);
+    }
 
     return true;
   } catch (err) {
