@@ -5,7 +5,7 @@ import { useBrand } from "@/context/BrandContext";
 import { useDashboardStats } from "@/hooks/queries/dashboard";
 import {
   FileText, Users, DollarSign, TrendingUp, AlertCircle, ArrowLeft,
-  CheckCircle2,
+  CheckCircle2, Loader2, Building2,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -42,22 +42,70 @@ const tooltipStyle = {
 };
 
 export function DashboardView() {
-  const { activeCompany } = useBrand();
-  const { data: statsData, isLoading: loading, error: statsError } = useDashboardStats(activeCompany?.slug || "");
+  const { activeCompany, companies } = useBrand();
+  
+  // Use active company slug, or empty string for all companies (unrestricted users)
+  // This ensures dashboard loads even when no specific company is selected
+  const companySlug = activeCompany?.slug || "";
+  const { data: statsData, isLoading: loading, error: statsError } = useDashboardStats(companySlug);
   const stats = statsData?.stats ?? null;
+
+  // Show onboarding-like state if user has no companies at all
+  if (!loading && companies.length === 0) {
+    return (
+      <div className="p-8 md:p-12 text-center" dir="rtl">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-10 text-purple-600 mb-4">
+          <Building2 size={32} />
+        </div>
+        <h2 className="text-xl font-bold mb-2">مرحباً بك في GarfiX! 🎉</h2>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          لبدء استخدام لوحة التحكم، يرجى إ completing إعداد الشركة أولاً.
+          <br />قم بإنشاء شركتك الأولى من خلال معالج الإعداد.
+        </p>
+        <button
+          onClick={() => window.location.hash = "#settings"}
+          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          ⚡ بدء الإعداد
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
       <div className="p-8 md:p-12 text-center text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3" />
         جارٍ تحميل لوحة التحكم…
       </div>
     );
   }
 
+  if (statsError) {
+    console.error("[Dashboard] Error loading stats:", statsError);
+  }
+
   if (!stats) {
     return (
-      <div className="p-8 md:p-12 text-center text-muted-foreground">
-        تعذّر تحميل البيانات. حاول مرة أخرى.
+      <div className="p-8 md:p-12 text-center text-muted-foreground" dir="rtl">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-10 text-yellow-600 mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-xl font-bold mb-2">لا توجد بيانات بعد</h2>
+        <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+          {activeCompany 
+            ? `لا توجد فواتير أو بيانات لشركة "${activeCompany.nameAr || activeCompany.name}" بعد.`
+            : "لا توجد بيانات لعرضها. قم بإنشاء فواتير أولية لرؤية الإحصائيات هنا."
+          }
+        </p>
+        {activeCompany && (
+          <button
+            onClick={() => window.location.hash = "#invoices"}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            📝 إنشاء أول فاتورة
+          </button>
+        )}
       </div>
     );
   }
