@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Search, Users, Trash2, Edit2, Eye, Download, Upload, Plus, ChevronLeft } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
 import type { Client } from "./types";
+import { EmptyClients } from "@/components/garfix";
 
 interface ClientListProps {
   companySlug: string;
@@ -191,10 +192,23 @@ export function ClientList({ companySlug, onSelectClient, onAddNew, onEdit, onIm
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
         ) : clients.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <Users size={36} className="opacity-30 mb-2 mx-auto" />
-            <div>لا يوجد عملاء بعد</div>
-          </div>
+          <EmptyClients
+            primaryAction={{
+              label: "إضافة عميل جديد",
+              onClick: onAddNew,
+              variant: "gradient",
+            }}
+            aiAction={{
+              label: "استيراد ذكي",
+              onClick: onImport,
+              description: 'استيراد من Excel أو جهات اتصال',
+            }}
+            suggestions={[
+              { id: 's1', label: 'استيراد من CSV', onClick: onImport },
+              { id: 's2', label: 'مزامنة جهات الاتصال', onClick: () => toast.info('قريباً') },
+              { id: 's3', label: 'إضافة يدوية سريعة', onClick: onAddNew },
+            ]}
+          />
         ) : (
           <>
           {/* Desktop / tablet table */}

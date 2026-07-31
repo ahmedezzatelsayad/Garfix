@@ -15,6 +15,7 @@ import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
 import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPicker";
 import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
+import { EmptyInvoices, AISearchBar } from "@/components/garfix";
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -390,10 +391,26 @@ export function InvoicesView() {
         {loading ? (
           <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
         ) : invoices.length === 0 ? (
-          <div className="p-8 md:p-12 text-center text-muted-foreground">
-            <FileText size={36} className="opacity-30 mb-2" />
-            <div>لا توجد فواتير بعد. ابدأ بإنشاء فاتورة جديدة.</div>
-          </div>
+          <EmptyInvoices
+            primaryAction={{
+              label: "إنشاء فاتورة جديدة",
+              onClick: () => setShowForm(true),
+              variant: "gradient",
+            }}
+            aiAction={{
+              label: "أنشئ بالـ AI",
+              onClick: () => {
+                window.dispatchEvent(new CustomEvent('open-ai-copilot'));
+                toast.info('اسأل GarfiX AI إنشاء فاتورة');
+              },
+              description: 'صف فاتورتك باللغة الطبيعية',
+            }}
+            suggestions={[
+              { id: 's1', label: 'استيراد من Excel', onClick: () => toast.info('قريباً') },
+              { id: 's2', label: 'نسخ فاتورة سابقة', onClick: () => toast.info('قريباً') },
+              { id: 's3', label: 'عرض تعليمي', onClick: () => toast.info('قريباً') },
+            ]}
+          />
         ) : (
           <>
           {/* Part 2.2 fix: responsive table→card. Desktop: table. Mobile: stacked cards. */}

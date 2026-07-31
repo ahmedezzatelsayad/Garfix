@@ -7,6 +7,7 @@ import type { CreateCatalogItemPayload } from "@/hooks/queries/catalog";
 import { toast } from "sonner";
 import { Plus, Search, Package, Trash2, Edit2, X, Loader2 } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
+import { EmptyProducts } from "@/components/garfix";
 
 const PAGE_SIZE = 20;
 
@@ -105,7 +106,23 @@ export function CatalogView() {
 
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {isLoading ? <div className="p-8 md:p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : products.length === 0 ? (
-          <div className="p-8 md:p-12 text-center text-muted-foreground"><Package size={36} className="opacity-30 mb-2" /><div>لا توجد منتجات بعد</div></div>
+          <EmptyProducts
+            primaryAction={{
+              label: "إضافة منتج جديد",
+              onClick: () => setShowForm(true),
+              variant: "gradient",
+            }}
+            aiAction={{
+              label: "استيراد منتجات",
+              onClick: () => toast.info('قريباً'),
+              description: 'استيراد من Excel أو صور',
+            }}
+            suggestions={[
+              { id: 's1', label: 'إضافة يدوية', onClick: () => setShowForm(true) },
+              { id: 's2', label: 'استيراد من CSV', onClick: () => toast.info('قريباً') },
+              { id: 's3', label: 'مسح ضوئي للباركود', onClick: () => toast.info('قريباً') },
+            ]}
+          />
         ) : (
           <>
           {/* Desktop table */}

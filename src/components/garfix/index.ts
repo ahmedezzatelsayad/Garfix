@@ -13,13 +13,28 @@ export { AICopilotBubble, AIInlineSuggestion, AICommandInput, AIStatusBar, AIToo
 
 // ── Phase 2: Contextual Integration ──────────────────────────
 
-// TODO: Re-enable after fixing TypeScript errors
-// export { AIEmptyState, AIFormField, AICategorizer, AISearchBar, AISummaryCard, AIExportMenu } from './GarfixAIContextual'
+export { 
+  AIEmptyState,
+  AIFormField,
+  AICategorizer,
+  AISearchBar,
+  AISummaryCard,
+  EmptyInvoices,
+  EmptyClients,
+  EmptyProducts,
+  EmptyReports,
+  EmptySearch,
+} from './GarfixAIContextual'
 
 // ── Phase 3: Smart Actions ───────────────────────────────────
 
-// TODO: Re-enable after fixing TypeScript errors  
-// export { AIInvoiceAssistant, AIDescribeInput, AIDashboardInsights, AIKpiCard, AISmartNav } from './GarfixAISmartActions'
+export { 
+  AIInvoiceAssistant,
+  AIDescribeInput,
+  AIDashboardInsights,
+  AIKpiCard,
+  AISmartNav,
+} from './GarfixAISmartActions'
 
 // ── Phase 4: Proactive Intelligence ─────────────────────────
 
