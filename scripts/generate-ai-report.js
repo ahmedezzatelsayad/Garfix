@@ -1,558 +1,582 @@
-/**
- * GarfiX AI Enterprise System - Comprehensive Report Generator
- * 
- * Generates a detailed technical report about the AI system implementation
- */
-
-const { Document, Packer, Paragraph, TextRun, Header, Footer,
-        AlignmentType, HeadingLevel, PageNumber, Table, TableRow, TableCell,
-        WidthType, BorderStyle, ShadingType, PageBreak, SectionType,
-        TableOfContents } = require("docx");
+const {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  Header, Footer, PageNumber, AlignmentType, HeadingLevel, WidthType,
+  BorderStyle, ShadingType, PageBreak, LevelFormat, TableOfContents,
+  NumberFormat,
+} = require("docx");
 const fs = require("fs");
 
-// ── Palette (Professional Tech Report) ──────────────────────
+// Palette - Tech/Enterprise theme
 const P = {
-  primary: "#7C3AED",    // Violet/Purple
-  secondary: "#1E293B",  // Dark slate
-  accent: "#06B6D4",     // Cyan
-  success: "#10B981",    // Green
-  warning: "#F59E0B",    // Amber
-  danger: "#EF4444",     // Red
-  body: "#334155",       // Slate
-  light: "#F8FAFC",      // Light background
+  primary: "#0F172A",
+  body: "#1E293B",
+  secondary: "#64748B",
+  accent: "#3B82F6",
+  surface: "#F1F5F9",
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444"
 };
 
 const c = (hex) => hex.replace("#", "");
 
-// ── Component Builders ─────────────────────────────────────
-
+// Helper functions
 function heading(text, level = HeadingLevel.HEADING_1) {
+  const sizes = { [HeadingLevel.HEADING_1]: 32, [HeadingLevel.HEADING_2]: 28, [HeadingLevel.HEADING_3]: 24 };
   return new Paragraph({
     heading: level,
-    spacing: { before: level === HeadingLevel.HEADING_1 ? 400 : 300, after: 200 },
+    spacing: { before: level === HeadingLevel.HEADING_1 ? 400 : 300, after: 200, line: 360 },
     children: [
-      new TextRun({ 
-        text, 
-        bold: true, 
+      new TextRun({
+        text,
+        bold: true,
+        size: sizes[level] || 24,
         color: c(P.primary),
-        font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
-        size: level === HeadingLevel.HEADING_1 ? 36 : level === HeadingLevel.HEADING_2 ? 28 : 24
+        font: { ascii: "Arial", eastAsia: "Arial" }
       })
     ]
   });
 }
 
-function body(text) {
+function bodyPara(text) {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { line: 360, after: 200 },
-    indent: { firstLine: 480 },
+    spacing: { after: 200, line: 360 },
     children: [
-      new TextRun({ 
-        text, 
-        size: 24, 
+      new TextRun({
+        text,
+        size: 22,
         color: c(P.body),
-        font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" }
+        font: { ascii: "Arial", eastAsia: "Arial" }
       })
     ]
   });
 }
 
-function bullet(text) {
+function bulletItem(text, reference = "main-bullets") {
   return new Paragraph({
-    spacing: { line: 320, after: 120 },
-    indent: { left: 720 },
+    numbering: { reference, level: 0 },
+    spacing: { after: 120, line: 340 },
     children: [
-      new TextRun({ text: "• ", size: 24, color: c(P.accent) }),
-      new TextRun({ 
-        text, 
-        size: 24, 
+      new TextRun({
+        text,
+        size: 22,
         color: c(P.body),
-        font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" }
+        font: { ascii: "Arial", eastAsia: "Arial" }
       })
     ]
   });
 }
 
-function metricCard(title, value, subtitle, color = P.accent) {
+// Cover Recipe R1 - Pure Paragraph Left
+function buildCoverR1() {
+  return [
+    new Paragraph({ spacing: { before: 4000 } }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 0, after: 0, line: 500 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "GarfiX EOS",
+          bold: true,
+          size: 72,
+          color: c(P.accent),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 200, after: 0, line: 440 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "Enterprise AI System",
+          bold: true,
+          size: 48,
+          color: c(P.primary),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 100, after: 400, line: 380 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "Technical Implementation Report",
+          size: 28,
+          color: c(P.secondary),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+    new Paragraph({ spacing: { before: 1500 } }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 0, after: 80, line: 320 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "Version: 2.0 Enterprise",
+          size: 22,
+          color: c(P.secondary),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 80, after: 80, line: 320 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "Date: August 2025",
+          size: 22,
+          color: c(P.secondary),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 80, after: 80, line: 320 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "Stack: Next.js 16 + BullMQ + Valkey + Gemini AI",
+          size: 22,
+          color: c(P.secondary),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 80, after: 0, line: 320 },
+      indent: { left: 1440 },
+      children: [
+        new TextRun({
+          text: "Region: MENA SaaS ERP Platform",
+          size: 22,
+          color: c(P.secondary),
+          font: { ascii: "Arial", eastAsia: "Arial" }
+        })
+      ]
+    }),
+  ];
+}
+
+// Create data table helper
+function createDataTable(headers, rows) {
+  const headerRow = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: headers.map(h => 
+      new TableCell({
+        shading: { type: ShadingType.CLEAR, fill: P.primary },
+        margins: { top: 80, bottom: 80, left: 120, right: 120 },
+        width: { size: 100 / headers.length, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: h, bold: true, size: 20, color: "FFFFFF", font: { ascii: "Arial", eastAsia: "Arial" } })]
+        })]
+      })
+    )
+  });
+
+  const dataRows = rows.map((row, idx) => new TableRow({
+    cantSplit: true,
+    children: row.map((cell, cellIdx) => 
+      new TableCell({
+        shading: { type: ShadingType.CLEAR, fill: idx % 2 === 0 ? P.surface : "#FFFFFF" },
+        margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        width: { size: 100 / row.length, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          alignment: cellIdx === 0 ? AlignmentType.LEFT : AlignmentType.CENTER,
+          children: [new TextRun({ text: String(cell), size: 19, color: c(P.body), font: { ascii: "Arial", eastAsia: "Arial" } })]
+        })]
+      })
+    )
+  }));
+
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    columnWidths: [2500, 7500],
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 25, type: WidthType.PERCENTAGE },
-            shading: { fill: color, type: ShadingType.CLEAR },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE }
-            },
-            children: [new Paragraph({ children: [] })]
-          }),
-          new TableCell({
-            width: { size: 75, type: WidthType.PERCENTAGE },
-            shading: { fill: color + "20", type: ShadingType.CLEAR },
-            borders: {
-              top: { style: BorderStyle.SINGLE, size: 1, color: color },
-              bottom: { style: BorderStyle.SINGLE, size: 1, color: color },
-              left: { style: BorderStyle.SINGLE, size: 1, color: color },
-              right: { style: BorderStyle.SINGLE, size: 1, color: color }
-            },
-            children: [
-              new Paragraph({ spacing: { before: 100, after: 50 }, children: [
-                new TextRun({ text: title, bold: true, size: 20, color: c(color) })
-              ]}),
-              new Paragraph({ spacing: { after: 100 }, children: [
-                new TextRun({ text: value, bold: true, size: 32, color: c(P.secondary) })
-              ]}),
-              ...(subtitle ? [new Paragraph({ spacing: { after: 100 }, children: [
-                new TextRun({ text: subtitle, size: 18, color: c(P.body) })
-              ]})] : [])
-            ]
-          })
-        ]
-      })
-    ]
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "#CBD5E1" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "#CBD5E1" },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "#E2E8F0" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "#E2E8F0" }
+    },
+    rows: [headerRow, ...dataRows]
   });
 }
 
-function infoBox(title, content, type = 'info') {
-  const colors = {
-    info: { bg: "#EFF6FF", border: "#3B82F6", title: "#1D4ED8" },
-    warning: { bg: "#FFFBEB", border: "#F59E0B", title: "#D97706" },
-    success: { bg: "#ECFDF5", border: "#10B981", title: "#059669" },
-    danger: { bg: "#FEF2F2", border: "#EF4444", title: "#DC2626" }
-  };
-  const theme = colors[type] || colors.info;
-  
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            shading: { fill: theme.bg, type: ShadingType.CLEAR },
-            borders: {
-              top: { style: BorderStyle.SINGLE, size: 8, color: theme.border },
-              bottom: { style: BorderStyle.SINGLE, size: 8, color: theme.border },
-              left: { style: BorderStyle.SINGLE, size: 8, color: theme.border },
-              right: { style: BorderStyle.SINGLE, size: 8, color: theme.border }
-            },
-            margins: { top: 200, bottom: 200, left: 300, right: 300 },
-            children: [
-              new Paragraph({ spacing: { after: 100 }, alignment: AlignmentType.CENTER, children: [
-                new TextRun({ text: title, bold: true, size: 22, color: c(theme.title) })
-              ]}),
-              ...content.split('\n').map(line => new Paragraph({
-                spacing: { after: 80 },
-                children: [new TextRun({ text: line, size: 20, color: c(P.body) })]
-              }))
-            ]
-          })
-        ]
-      })
-    ]
-  });
-}
-
-function codeBlock(code) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            shading: { fill: "#1E293B", type: ShadingType.CLEAR },
-            borders: {
-              top: { style: BorderStyle.SINGLE, size: 1, color: "#334155" },
-              bottom: { style: BorderStyle.SINGLE, size: 1, color: "#334155" },
-              left: { style: BorderStyle.SINGLE, size: 1, color: "#334155" },
-              right: { style: BorderStyle.SINGLE, size: 1, color: "#334155" }
-            },
-            margins: { top: 150, bottom: 150, left: 200, right: 200 },
-            children: code.split('\n').map(line => new Paragraph({
-              spacing: { after: 40, line: 276 },
-              children: [new TextRun({ 
-                text: line || " ", 
-                size: 18, 
-                font: "Consolas",
-                color: c("#E2E8F0")
-              })]
-            }))
-          })
-        ]
-      })
-    ]
-  });
-}
-
-// ── Document Content ───────────────────────────────────────
-
+// Main Document
 const doc = new Document({
   styles: {
     default: {
       document: {
-        run: { 
-          font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" }, 
-          size: 24, 
-          color: c(P.body) 
+        run: {
+          font: { ascii: "Arial", eastAsia: "Arial" },
+          size: 22,
+          color: c(P.body)
         },
         paragraph: { spacing: { line: 360 } }
       }
     }
   },
+  numbering: {
+    config: [
+      {
+        reference: "main-bullets",
+        levels: [{
+          level: 0,
+          format: LevelFormat.BULLET,
+          text: "\u2022",
+          alignment: AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
+        }]
+      },
+      {
+        reference: "feature-bullets",
+        levels: [{
+          level: 0,
+          format: LevelFormat.BULLET,
+          text: "\u2022",
+          alignment: AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
+        }]
+      },
+      {
+        reference: "api-bullets",
+        levels: [{
+          level: 0,
+          format: LevelFormat.BULLET,
+          text: "\u2022",
+          alignment: AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 720, hanging: 360 } } }
+        }]
+      }
+    ]
+  },
   sections: [
-    // ── Cover Section ───────────────────────────────────
+    // Section 1: Cover Page
     {
       properties: {
         page: { margin: { top: 0, bottom: 0, left: 0, right: 0 } }
       },
+      children: buildCoverR1()
+    },
+
+    // Section 2: TOC
+    {
+      properties: {
+        page: {
+          margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 },
+          pageNumbers: { start: 1, formatType: NumberFormat.UPPER_ROMAN }
+        }
+      },
       children: [
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          columnWidths: [10000],
-          rows: [
-            // Spacer
-            new TableRow({ height: { value: 2000, rule: "exact" }, children: [
-              new TableCell({ shading: { fill: P.primary, type: ShadingType.CLEAR }, children: [new Paragraph({ children: [new TextRun("")] })] })
-            ] }),
-            // Title area
-            new TableRow({ children: [
-              new TableCell({ 
-                shading: { fill: P.primary, type: ShadingType.CLEAR },
-                margins: { top: 400, bottom: 400, left: 600, right: 600 },
-                children: [
-                  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [
-                    new TextRun({ text: "GARFIX EOS", bold: true, size: 48, color: c("#FFFFFF"), font: "Calibri" })
-                  ]}),
-                  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [
-                    new TextRun({ text: "Enterprise SaaS ERP System", size: 28, color: c("#C4B5FD"), font: "Calibri" })
-                  ]}),
-                  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 400 }, children: [
-                    new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━━", size: 20, color: c("#A78BFA") })
-                  ]}),
-                  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [
-                    new TextRun({ text: "GarfiX AI Enterprise System", bold: true, size: 40, color: c("#FFFFFF"), font: "Calibri" })
-                  ]}),
-                  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [
-                    new TextRun({ text: "Comprehensive Technical Report v2.0", size: 24, color: c("#DDD6FE"), font: "Calibri" })
-                  ]})
-                ]
-              })
-            ]}),
-            // Bottom info
-            new TableRow({ height: { value: 2400, rule: "exact" }, children: [
-              new TableCell({ 
-                shading: { fill: P.primary, type: ShadingType.CLEAR },
-                margins: { left: 600, right: 600 },
-                verticalAlign: "bottom",
-                children: [
-                  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 100 }, children: [
-                    new TextRun({ text: "Multi-Key Gemini Integration | Queue-Based Workers | Auto-Scaling", size: 20, color: c("#C4B5FD") })
-                  ]}),
-                  new Paragraph({ alignment: AlignmentType.CENTER, children: [
-                    new TextRun({ text: `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, size: 18, color: c("#A78BFA") })
-                  ]})
-                ]
-              })
-            ]})
-          ]
-        })
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+          children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, color: c(P.primary), font: { ascii: "Arial", eastAsia: "Arial" } })]
+        }),
+        new TableOfContents(),
+        new Paragraph({ children: [new PageBreak()] })
       ]
     },
 
-    // ── Body Section ─────────────────────────────────────
+    // Section 3: Body Content
     {
       properties: {
-        page: { margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 } }
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 },
+          pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL }
+        }
       },
       headers: {
         default: new Header({
-          children: [new Paragraph({ 
+          children: [new Paragraph({
             alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: "GarfiX AI Enterprise System | Technical Report", size: 18, color: c("#94A3B8") })] 
+            children: [new TextRun({ text: "GarfiX EOS - Enterprise AI System Report", size: 18, color: c(P.secondary), font: { ascii: "Arial", eastAsia: "Arial" } })]
+          })]
+        })
+      },
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: c(P.secondary) })]
           })]
         })
       },
       children: [
-        // ── Executive Summary ─────────────────────────
-        heading("Executive Summary"),
+        // Executive Summary
+        heading("1. Executive Summary"),
         
-        body("This comprehensive report documents the complete implementation of GarfiX AI Enterprise System, a sophisticated multi-key load balancing and queue-based processing architecture designed for the MENA region's ERP platform. The system leverages Google Gemini Free Tier API keys distributed across five family member accounts to achieve a combined capacity of 75 requests per minute (RPM), enabling enterprise-grade artificial intelligence capabilities without incurring any costs."),
-
-        body("The implementation addresses critical challenges including rate limiting at the pool level, automatic failover mechanisms, health monitoring for each API key, quota tracking, weighted load balancing strategies, and real-time metrics visualization through an intuitive dashboard interface. The architecture follows enterprise patterns with circuit breakers, back-pressure handling, and pool-aware auto-scaling that respects overall system capacity rather than allowing individual components to over-commit resources."),
-
-        infoBox("Key Achievements", "✅ 5 Gemini API Keys Integrated (75 RPM Total Capacity)\n✅ Zero-Cost Operation (Google Free Tier)\n✅ Queue-Based Processing (No Request Rejection)\n✅ Real-Time Health Monitoring & Alerts\n✅ Automatic Failover with Circuit Breakers\n✅ Pool-Aware Auto-Scaling\n✅ Arabic RTL Dashboard Interface\n✅ Comprehensive Metrics API", "success"),
-
-        // ── System Architecture ─────────────────────────
-        heading("System Architecture Overview"),
+        bodyPara("This comprehensive technical report documents the complete implementation of the GarfiX EOS Enterprise AI System, a production-ready artificial intelligence infrastructure designed specifically for MENA region SaaS ERP operations. The system represents a significant architectural evolution from basic AI integration to a fully enterprise-grade solution with advanced load balancing, health monitoring, and auto-scaling capabilities."),
         
-        heading("High-Level Architecture", HeadingLevel.HEADING_2),
+        bodyPara("The implementation addresses critical production requirements including high availability through multi-key API management, intelligent request routing with weighted load balancing, automatic failover mechanisms with circuit breaker patterns, and real-time metrics collection for operational visibility. The system is built on Google Gemini's free tier infrastructure, maximizing cost efficiency while maintaining enterprise-grade reliability through sophisticated pool management and queue-based job processing."),
         
-        body("The GarfiX AI system follows a layered architecture pattern that separates concerns across multiple abstraction levels. At the foundation lies the Google Generative AI SDK which provides direct access to Gemini models. Above this sits the Advanced Load Balancer component that manages key distribution, health monitoring, and circuit breaker logic. The Worker Router layer handles job classification and routing to specialized processing functions. Finally, the Rate Limiter component enforces pool-level constraints to prevent overload conditions."),
+        bodyPara("Key achievements include the successful deployment of six specialized AI worker types covering chat interactions, invoice processing, smart parsing, and domain-specific agents for accounting, sales, and inventory management. Each worker operates through a unified queue system ensuring consistent processing, fair resource allocation, and complete observability across all AI operations."),
 
-        body("The integration with BullMQ queue system ensures that all AI operations are processed asynchronously, providing resilience against temporary failures and enabling back-pressure handling when demand exceeds capacity. This design choice means that the system will never reject incoming requests due to rate limiting; instead, excess requests are queued for later processing with estimated wait times provided to clients."),
+        // Architecture Overview
+        heading("2. System Architecture Overview"),
 
-        codeBlock(`┌─────────────────────────────────────────────────────────┐
-│                 GarfiX AI Architecture               │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  Client → API → RateLimiter → BullMQ → WorkerRouter   │
-│                                        │                │
-│                              ┌───────┴───────┐         │
-│                              │   Workers     │         │
-│                              │ ├─ Chat       │         │
-│                              │ ├─ Invoice    │         │
-│                              │ ├─ Parse      │         │
-│                              │ ├─ Accounting │         │
-│                              │ ├─ Sales      │         │
-│                              │ └─ Inventory  │         │
-│                              └───────┬───────┘         │
-│                                      │                 │
-│                         ┌────────────▼────────────┐    │
-│                         │ Advanced Load Balancer  │    │
-│                         │ • Weighted Strategy    │    │
-│                         │ • Health Checks        │    │
-│                         │ • Circuit Breakers     │    │
-│                         └────────────┬────────────┘    │
-│                                      │                 │
-│                    ┌─────────────────┼─────────────┐  │
-│                    ▼                 ▼              ▼  │
-│               ┌────────┐    ┌────────┐    ┌────────┐│
-│               │ Key 1  │    │ Key 2  │...│ Key 5  ││
-│               │ 15 RPM │    │ 15 RPM │   │ 15 RPM ││
-│               └────────┘    └────────┘    └────────┘│
-│                                                         │
-│              Total: 75 RPM | 5M Tokens/Day           │
-└─────────────────────────────────────────────────────────┘`),
+        heading("2.1 Core Infrastructure Stack", HeadingLevel.HEADING_2),
 
-        // ── Components Deep Dive ────────────────────────
-        heading("Core Components Implementation", HeadingLevel.HEADING_2),
-        
-        heading("1. Advanced Load Balancer (advanced-loadbalancer.ts)", HeadingLevel.HEADING_3),
-        
-        body("The Advanced Load Balancer represents a significant enhancement over basic round-robin distribution. It implements five distinct balancing strategies that can be selected based on operational requirements. The weighted strategy, configured as the default, calculates a composite score for each key based on remaining RPM capacity (70% weight) and available token quota (30% weight), then probabilistically routes requests to favor healthier keys."),
+        bodyPara("The Enterprise AI System is architected as a layered platform integrating multiple technologies to ensure reliability, scalability, and maintainability. The foundation rests on Next.js 16 with React 19 for the application framework, leveraging TypeScript for type safety across all components. The queue management layer utilizes BullMQ with Valkey as the primary message broker, providing robust job persistence and delivery guarantees with automatic fallback to pg-boss for PostgreSQL-based queuing when Redis infrastructure is unavailable."),
 
-        bullet("Health Check System: Every 30 seconds, each key receives a minimal ping request to verify connectivity. The system tracks consecutive failures, last error messages, and response latency using exponential moving averages with a smoothing factor of 0.3."),
-
-        bullet("Circuit Breaker Pattern: When a key accumulates 3 consecutive failures, its circuit transitions from CLOSED to OPEN state, blocking all traffic for 60 seconds. After cooldown, it enters HALF-OPEN state allowing limited test traffic before full recovery or re-opening."),
-
-        bullet("Quota Tracking: The balancer maintains daily counters for requests and tokens per key, enabling proactive alerting when consumption approaches the 1 million token daily limit imposed by Google's free tier."),
-
-        heading("2. AI Queue Workers System (aiWorkers.ts)", HeadingLevel.HEADING_3),
-        
-        body("The Queue Workers system transforms all AI operations from synchronous API calls into asynchronous background jobs processed through BullMQ. This architectural decision provides several critical benefits: resilience against transient failures, natural back-pressure handling, priority-based execution, and horizontal scaling capability across multiple server instances."),
-
-        body("Six specialized workers handle different aspects of AI processing. The Chat Agent manages conversational interactions with memory persistence and context awareness. The Invoice Brain performs intelligent extraction with pattern learning that reduces API calls over time as it recognizes recurring invoice formats. The Smart Parse worker handles multi-format document analysis including PDF optical character recognition and WhatsApp message parsing. Three specialist agents provide domain-specific expertise for accounting, sales, and inventory operations."),
-
-        heading("3. Pool-Level Rate Limiter", HeadingLevel.HEADING_3),
-        
-        body("Unlike traditional per-client rate limiting, the Pool-Level Rate Limiter enforces constraints on aggregate system capacity rather than individual user quotas. This prevents the scenario where multiple healthy agents collectively overwhelm the shared key pool. The limiter maintains a sliding window of request timestamps spanning 60 seconds, providing accurate real-time RPM calculations."),
-
-        body("When the pool approaches its 75 RPM capacity limit, the limiter automatically transitions from immediate processing to queue-based deferral. Requests are never rejected due to rate limiting; instead, they enter the BullMQ queue with estimated wait times calculated based on current depth and historical processing rates. Only when the queue exceeds 1000 pending jobs does the system return a polite retry recommendation to prevent unbounded memory growth."),
-
-        heading("4. Enhanced Auto-Scaler (enhanced-worker-scaler.ts)", HeadingLevel.HEADING_3),
-        
-        body("The Enhanced Auto-Scaler introduces pool-awareness to the worker scaling decisions. Traditional scalers might increase worker count based solely on queue depth, potentially exacerbating overload situations. This enhanced version calculates a health factor combining pool utilization percentage (60% weight) and key health ratio (40% weight), then applies multiplicative scaling factors: 1.0x for healthy pools, 0.5x for degraded pools, and 0.25x for critical pools."),
-
-        body("The scaler implements graduated response thresholds. Queue depths below 50 trigger no action (normal operation). Depths between 150-300 initiate monitoring with scale-up consideration after two consecutive checks. Depths exceeding 300 trigger immediate emergency scaling with doubled step sizes. Conversely, three consecutive checks showing empty queues initiate gradual scale-down to conserve resources during low-demand periods."),
-
-        // ── Capacity Planning ────────────────────────────
-        heading("Capacity & Performance Analysis", HeadingLevel.HEADING_2),
-        
-        heading("Theoretical Maximum Capacity", HeadingLevel.HEADING_3),
-
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          columnWidths: [3500, 3000, 3500],
-          rows: [
-            new TableRow({
-              tableHeader: true,
-              children: ["Metric", "Value", "Notes"].map(h => 
-                new TableCell({
-                  shading: { fill: P.primary, type: ShadingType.CLEAR },
-                  children: [new Paragraph({ 
-                    alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: h, bold: true, size: 22, color: c("#FFFFFF") })] 
-                  })]
-                })
-              )
-            }),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Total RPM Capacity", size: 20 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "75 RPM", bold: true, size: 22, color: c(P.success) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "5 keys × 15 RPM each", size: 18, color: c("#64748B") })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Hourly Capacity", size: 20 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "4,500 requests", bold: true, size: 22, color: c(P.success) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Sustained throughput", size: 18, color: c("#64748B") })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Daily Capacity", size: 20 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "108,000 requests", bold: true, size: 22, color: c(P.success) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "24-hour continuous", size: 18, color: c("#64748B") })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Token Quota (Total)", size: 20 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "5 Million/day", bold: true, size: 22, color: c(P.success) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "1M per key free tier", size: 18, color: c("#64748B") })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Invoice Processing", size: 20 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "36,000-108,000/day", bold: true, size: 22, color: c(P.success) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Depends on complexity", size: 18, color: c("#64748B") })] })] })
-            ]})
+        createDataTable(
+          ["Layer", "Technology", "Purpose"],
+          [
+            ["Application Framework", "Next.js 16 / React 19", "UI & API Routes"],
+            ["Queue System", "BullMQ + Valkey", "Job Management"],
+            ["Fallback Queue", "pg-boss", "PostgreSQL Backup"],
+            ["AI Provider", "Google Gemini 2.0 Flash", "LLM Processing"],
+            ["Load Balancing", "Custom AdvancedBalancer", "Multi-Key Routing"],
+            ["Monitoring", "Metrics Collector", "Real-time Analytics"]
           ]
+        ),
+
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
+
+        heading("2.2 Component Interaction Flow", HeadingLevel.HEADING_2),
+
+        bodyPara("The system implements a sophisticated request flow that ensures optimal resource utilization and fault tolerance. Incoming AI requests enter through dedicated API endpoints which validate authentication and rate limits before enqueueing jobs to the appropriate worker queues. The AdvancedGeminiLoadBalancer examines the current health status of all available API keys, applying the configured balancing strategy to select the optimal key for each request."),
+
+        bodyPara("Selected requests are then processed by specialized workers that handle domain-specific logic such as invoice extraction with structured data parsing, smart document analysis with context awareness, or conversational AI with memory persistence. Throughout this process, the MetricsCollector captures performance data including response times, token consumption, error rates, and queue depths, feeding this information to both the dashboard UI and alerting systems."),
+
+        // Components Built
+        heading("3. Core Components Implementation"),
+
+        heading("3.1 Advanced Load Balancer (advanced-loadbalancer.ts)", HeadingLevel.HEADING_2),
+
+        bodyPara("The AdvancedGeminiLoadBalancer represents the centerpiece of the enterprise AI system, implementing production-grade multi-key management with intelligent routing capabilities. This approximately 450-line module provides five distinct balancing strategies optimized for different operational scenarios, from simple round-robin distribution to sophisticated weighted algorithms that consider remaining quota capacity, historical latency, and current connection counts."),
+
+        bodyPara("The health monitoring subsystem performs comprehensive checks every 30 seconds for each registered API key, tracking circuit breaker state transitions between CLOSED (normal operation), OPEN (failure isolation), and HALF-OPEN (recovery testing) states. This pattern prevents cascade failures by automatically isolating problematic keys while allowing graceful recovery testing without impacting overall system availability."),
+
+        createDataTable(
+          ["Feature", "Implementation", "Configuration"],
+          [
+            ["Health Check Interval", "30 seconds per key", "Configurable via HEALTH_CHECK_INTERVAL_MS"],
+            ["Circuit Breaker Threshold", "3 consecutive failures", "FAILURE_THRESHOLD constant"],
+            ["Cooldown Period", "60 seconds", "COOLDOWN_DURATION_MS"],
+            ["Balancing Strategies", "5 options", "weighted, round-robin, least-connections, least-latency, priority"],
+            ["Latency Tracking", "Exponential Moving Average", "EMA_ALPHA = 0.3 default"],
+            ["Quota Tracking", "Daily tokens per key", "DAILY_QUOTA_PER_KEY = 1M tokens"]
+          ]
+        ),
+
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
+
+        heading("3.2 AI Workers System (aiWorkers.ts)", HeadingLevel.HEADING_2),
+
+        bodyPara("The AI Workers module establishes the queue-based processing architecture that transforms direct API calls into managed, observable, and scalable job workflows. This approximately 550-line implementation defines six specialized worker types, each handling specific business domains while sharing common infrastructure for metrics collection, error handling, and resource management."),
+
+        bodyPara("The ChatWorker handles conversational AI interactions with context window management and response streaming capabilities. InvoiceExtractWorker specializes in financial document processing, extracting structured data from invoices including vendor information, line items, tax calculations, and payment terms. SmartParseWorker provides intelligent document analysis with schema validation and field mapping. Three additional SpecialistAgent workers handle domain-specific operations for accounting automation, sales intelligence, and inventory optimization."),
+
+        createDataTable(
+          ["Worker Type", "Queue Name", "Primary Function", "Priority"],
+          [
+            ["ai-chat", "ai:chat-queue", "Conversational AI responses", "High"],
+            ["ai-invoice-extract", "ai:invoice-queue", "Invoice data extraction", "Medium"],
+            ["ai-smart-parse", "ai:parse-queue", "Document smart parsing", "Medium"],
+            ["ai-agent-accounting", "ai:accounting-queue", "Accounting automation", "Normal"],
+            ["ai-agent-sales", "ai:sales-queue", "Sales intelligence", "Normal"],
+            ["ai-agent-inventory", "ai:inventory-queue", "Inventory optimization", "Low"]
+          ]
+        ),
+
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
+
+        heading("3.3 Enhanced Worker Scaler (enhanced-worker-scaler.ts)", HeadingLevel.HEADING_2),
+
+        bodyPara("The EnhancedWorkerScaler provides dynamic scaling decisions based on real-time system state, replacing the basic scaler with pool-aware logic that considers overall system health rather than just queue depth. This approximately 270-line implementation introduces health factor calculations that modify scaling aggressiveness based on whether the API key pool is operating in healthy, degraded, or critical states."),
+
+        bodyPara("Scaling decisions incorporate four queue depth thresholds (LOW at 50 jobs, MEDIUM at 150, HIGH at 300, CRITICAL at 500) combined with pool health factors (1.0x for healthy pools encouraging aggressive scaling, 0.5x for degraded pools requiring conservative approaches, and 0.25x for critical pools limiting expansion). This dual-factor approach prevents over-provisioning during infrastructure stress while ensuring adequate capacity during normal operations."),
+
+        // Enterprise Features
+        heading("4. Enterprise Features Implementation"),
+
+        heading("4.1 Health Check System", HeadingLevel.HEADING_2),
+
+        bodyPara("The per-key health monitoring system provides continuous visibility into API key status with automated failure detection and recovery. Each key undergoes comprehensive health evaluation every 30 seconds, checking response latency against configurable thresholds, verifying authentication validity, and confirming rate limit headroom. The system maintains sliding windows of recent requests enabling statistical analysis of performance trends and anomaly detection."),
+
+        bodyPara("Health status transitions trigger appropriate callbacks throughout the system, enabling coordinated responses to degradation events. When a key enters a degraded state, the load balancer automatically reduces its selection weight while increasing traffic to healthier alternatives. Critical failures activate circuit breakers that completely isolate failing keys until recovery testing confirms restored functionality."),
+
+        heading("4.2 Quota Tracking & Management", HeadingLevel.HEADING_2),
+
+        bodyPara("The quota management system tracks token consumption at both individual key and pool levels, enforcing daily limits while providing visibility into remaining capacity. Google Gemini free tier provides 1 million tokens per day per key, totaling 5 million tokens daily across the five-key pool. The system maintains rolling counters that reset at midnight UTC, with administrative endpoints available for manual quota resets during testing or emergency scenarios."),
+
+        bodyPara("Real-time quota visibility enables proactive capacity planning, with dashboard displays showing current consumption rates, projected exhaustion times, and recommendations for workload distribution. The weighted load balancer incorporates remaining quota into routing decisions, naturally distributing requests toward keys with more available capacity and preventing any single key from premature exhaustion."),
+
+        heading("4.3 Weighted Load Balancing Strategies", HeadingLevel.HEADING_2),
+
+        bodyPara("The system implements five distinct load balancing strategies, each optimized for different operational requirements and traffic patterns. The default weighted strategy calculates selection probabilities based on composite scores combining remaining RPM quota, token quota, recent success rate, and inverse latency, producing intelligent routing that maximizes overall pool utilization while maintaining individual key health."),
+
+        createDataTable(
+          ["Strategy", "Algorithm", "Best Use Case", "Complexity"],
+          [
+            ["Weighted (Default)", "Composite score ranking", "Production mixed workloads", "O(n)"],
+            ["Round-Robin", "Sequential rotation", "Uniform request distribution", "O(1)"],
+            ["Least-Connections", "Active request counting", "Variable-duration tasks", "O(n)"],
+            ["Least-Latency", "EMA latency sorting", "Latency-sensitive apps", "O(n log n)"],
+            ["Priority", "Fixed priority order", "Tiered key quality", "O(1)"]
+          ]
+        ),
+
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
+
+        heading("4.4 Automatic Failover & Circuit Breaker", HeadingLevel.HEADING_2),
+
+        bodyPara("The failover mechanism ensures continuous operation even when individual API keys experience failures or degradation. Upon detecting a failed request, the system immediately attempts retry with an alternative healthy key before reporting failure to the client. This transparent failover occurs within the load balancer layer, requiring no intervention from calling code and maintaining consistent behavior across all worker types."),
+
+        bodyPara("The circuit breaker pattern prevents cascade failures by isolating repeatedly failing keys after three consecutive errors. Once opened, the circuit redirects all traffic away from the failing key for a 60-second cooldown period, after which it enters half-open state allowing test requests to verify recovery. Successful test requests close the circuit and restore normal traffic flow, while failures reopen the circuit for another cooldown period."),
+
+        heading("4.5 Pool-Level Rate Limiting", HeadingLevel.HEADING_2),
+
+        bodyPara("The pool-level rate limiter enforces a hard cap of 75 requests per minute across all five API keys combined (15 RPM per key), matching Google Gemini free tier limitations. Rather than rejecting excess requests, the system implements back-pressure handling by enqueuing overflow jobs for later processing once capacity becomes available. This approach maintains system stability under burst conditions while preserving all submitted work."),
+
+        bodyPara("Rate limiting decisions consider both instantaneous RPM calculations over sliding windows and predicted future capacity based on active job completion estimates. When queue depth exceeds configurable thresholds, the system triggers scaling events to increase worker concurrency, and emits warnings when approaching critical capacity limits."),
+
+        // Metrics Dashboard
+        heading("5. Metrics & Monitoring System"),
+
+        heading("5.1 Real-Time Metrics Collection", HeadingLevel.HEADING_2),
+
+        bodyPara("The AIMetricsCollector class provides comprehensive telemetry across all AI operations, capturing data points essential for operational monitoring and capacity planning. Metrics are collected at multiple granularities including per-request latency measurements, per-key performance statistics, per-worker throughput counts, and aggregate pool-level summaries."),
+
+        bodyPara("The metrics API endpoint (/api/ai/metrics) serves real-time data to dashboard components with support for filtered views focusing on specific metric categories. Available views include full snapshots combining all data, pool-level summaries showing aggregate status, detailed per-key breakdowns, and worker-specific performance statistics."),
+
+        createDataTable(
+          ["Metric Category", "Data Points", "Refresh Rate", "Retention"],
+          [
+            ["Pool Status", "Health factor, RPM, queue depth", "Real-time", "Session"],
+            ["Per-Key Health", "Circuit state, latency EMA, quotas", "30 seconds", "24 hours"],
+            ["Worker Stats", "Jobs processed, avg duration, errors", "Per-job", "24 hours"],
+            ["Alerts", "Info/Warning/Error/Critical events", "Event-driven", "7 days"]
+          ]
+        ),
+
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
+
+        heading("5.2 Admin Dashboard Integration", HeadingLevel.HEADING_2),
+
+        bodyPara("The admin dashboard component provides visual representation of all collected metrics through interactive widgets displaying pool status indicators, per-key health cards with color-coded status badges, real-time performance charts showing RPM trends and latency distributions, queue depth monitors with threshold alerts, and alert notification panels with severity filtering."),
+
+        bodyPara("Dashboard updates utilize efficient polling with configurable intervals, minimizing server load while maintaining responsive display updates. Administrative actions available through the interface include manual quota resets for testing purposes, forced circuit breaker state transitions for troubleshooting, and worker count adjustments for capacity tuning."),
+
+        // Capacity Planning
+        heading("6. Capacity & Performance Specifications"),
+
+        heading("6.1 Throughput Calculations", HeadingLevel.HEADING_2),
+
+        bodyPara("Based on the five-key Google Gemini free tier configuration, the system achieves substantial processing capacity suitable for small to medium enterprise workloads. The theoretical maximum throughput reaches 75 requests per minute (4,500 per hour, 108,000 per day) under sustained operation, with practical throughput varying based on request complexity and response generation requirements."),
+
+        createDataTable(
+          ["Metric", "Per Key", "Pool Total (5 Keys)", "Daily Maximum"],
+          [
+            ["Rate Limit (RPM)", "15", "75", "108,000 requests"],
+            ["Token Quota", "1M tokens", "5M tokens", "5M tokens"],
+            ["Chat Requests*", "~50K", "~250K", "~250K conversations"],
+            ["Invoice Processing*", "~25K", "~125K", "~125K invoices"],
+            ["Smart Parse Operations*", "~33K", "~165K", "~165K documents"]
+          ]
+        ),
+
+        new Paragraph({
+          spacing: { before: 100, after: 200 },
+          children: [new TextRun({ text: "*Estimates based on average token consumption per operation type", italics: true, size: 18, color: c(P.secondary), font: { ascii: "Arial", eastAsia: "Arial" } })]
         }),
 
-        new Paragraph({ spacing: { before: 300, after: 200 }, children: [] }),
+        heading("6.2 Scaling Characteristics", HeadingLevel.HEADING_2),
 
-        heading("Real-World Scenarios", HeadingLevel.HEADING_3),
+        bodyPara("The auto-scaler dynamically adjusts worker concurrency based on queue depth and pool health, ensuring efficient resource utilization across variable workload patterns. During low-traffic periods, the system maintains minimal worker counts reducing overhead, while automatically scaling up during demand spikes to prevent queue accumulation and maintain response time service level objectives."),
 
-        body("For a medium-sized Egyptian company with 50 employees processing approximately 50 invoices daily, the system operates at less than 1% of its total capacity. Even large enterprises with 500+ employees generating 500+ invoices daily would utilize only 5-15% of available capacity. This substantial headroom ensures consistent performance even during peak periods such as month-end closing or promotional campaigns."),
+        bodyPara("Scale-up decisions trigger when queue depth exceeds 50 jobs (LOW threshold) with healthy pool status, adding workers incrementally until reaching maximum configured concurrency or queue depth reduction. Scale-down decisions occur when queues remain below threshold for extended periods, gracefully reducing worker count to release resources while maintaining buffer capacity for potential traffic bursts."),
 
-        infoBox("Capacity Example: Medium Company (50 Employees)", "• Daily Invoices: 50-100\n• Monthly Volume: 1,000-2,500\n• Annual Estimate: 12,000-30,000\n• System Utilization: < 1%\n• Headroom Available: 99%+\n\nConclusion: More than sufficient for normal operations with ample room for growth.", "info"),
+        // API Reference
+        heading("7. API Reference"),
 
-        // ── Risk Mitigation ────────────────────────────────
-        heading("Risk Assessment & Mitigation Strategies", HeadingLevel.HEADING_2),
+        heading("7.1 Metrics Endpoint", HeadingLevel.HEADING_2),
 
-        heading("Identified Risks", HeadingLevel.HEADING_3),
+        bodyPara("The /api/ai/metrics endpoint provides comprehensive access to all collected AI system metrics with flexible filtering options. Authentication is required for all requests, with admin privileges necessary for write operations such as quota resets."),
 
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          columnWidths: [3000, 2500, 4500],
-          rows: [
-            new TableRow({
-              tableHeader: true,
-              children: ["Risk", "Severity", "Mitigation Strategy"].map(h => 
-                new TableCell({
-                  shading: { fill: P.secondary, type: ShadingType.CLEAR },
-                  children: [new Paragraph({ 
-                    alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: h, bold: true, size: 20, color: c("#FFFFFF") })] 
-                  })]
-                })
-              )
-            }),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Key Account Suspension", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "HIGH", bold: true, size: 18, color: c(P.danger) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Circuit breaker isolates failed keys; automatic failover to remaining keys reduces capacity gracefully (75→60→45→30→15 RPM)", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Pool Overload (>75 RPM)", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "MEDIUM", bold: true, size: 18, color: c(P.warning) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Hard cap enforcement; excess requests queue instead of failing; back-pressure with wait time estimates", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Regional Service Disruption", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "MEDIUM", bold: true, size: 18, color: c(P.warning) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Queue-based processing survives temporary outages; jobs persist until service restoration", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Quota Exhaustion (Tokens)", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "LOW", bold: true, size: 18, color: c(P.success) })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Per-key tracking with alerts at 90%; daily automatic reset; weighted balancing distributes load", size: 18 })] })] })
-            ]})
+        createDataTable(
+          ["Method", "Parameters", "Response", "Auth Required"],
+          [
+            ["GET /api/ai/metrics", "None (full snapshot)", "Complete metrics object", "User"],
+            ["GET ?section=pool", "section=pool", "Pool summary only", "User"],
+            ["GET ?section=keys", "section=keys", "Per-key details only", "User"],
+            ["GET ?section=workers", "section=workers", "Worker statistics only", "User"],
+            ["POST action=reset", "action=reset-quotas", "Reset confirmation", "Admin"]
           ]
-        }),
+        ),
 
-        new Paragraph({ spacing: { before: 300, after: 200 }, children: [] }),
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
 
-        // ── Dashboard UI ───────────────────────────────────
-        heading("Dashboard Interface", HeadingLevel.HEADING_2),
+        heading("7.2 Worker Job Enqueue Helpers", HeadingLevel.HEADING_2),
 
-        body("The administrative dashboard provides real-time visibility into all aspects of the AI system's operation. Accessible at /founder-panel/ai-dashboard within the founder panel, the interface features an Arabic-first RTL design with comprehensive monitoring capabilities."),
+        bodyPara("The system exports typed helper functions for enqueueing jobs to each worker queue, providing compile-time type safety and IDE autocompletion support. These helpers abstract the underlying queue complexity, allowing application code to submit AI jobs with simple function calls while the system handles routing, prioritization, and monitoring."),
 
-        body("The dashboard implements four main views accessible via tab navigation. The Overview tab presents a high-level utilization gauge alongside summary metric cards for today's activity, active workers, and queue status. The Keys tab displays individual health cards for each of the five Gemini API keys, showing RPM utilization progress bars, token quota consumption, latency statistics, and consecutive failure counts. The Workers tab provides performance breakdowns for all six AI worker types with active job counts and average processing times. The Queue tab visualizes pending and running job counts with success rate indicators."),
+        bulletItem("enqueueChatJob(message, options) - Submit conversational AI requests", "api-bullets"),
+        bulletItem("enqueueInvoiceExtractJob(invoiceData, options) - Process invoice documents", "api-bullets"),
+        bulletItem("enqueueSmartParseJob(document, schema, options) - Intelligent document parsing", "api-bullets"),
+        bulletItem("enqueueAgentJob(agentType, payload, options) - Domain-specific agent tasks", "api-bullets"),
 
-        bullet("Auto-refresh functionality updates data every 10 seconds when enabled, ensuring administrators have near-real-time visibility into system health without manual intervention."),
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
 
-        bullet("Alert system categorizes notifications by severity: informational status updates (blue), warnings for elevated metrics (amber), errors for individual component failures (red), and critical alerts requiring immediate attention (dark red with emphasis)."),
+        // Files Summary
+        heading("8. Deliverables Summary"),
 
-        bullet("Administrative controls include manual refresh triggers, daily quota reset capability (with confirmation dialog), and auto-refresh toggle for bandwidth-constrained environments."),
+        bodyPara("This implementation produced seven deliverable artifacts comprising the complete Enterprise AI System. All files have been committed to the main branch and pushed to the GitHub repository at github.com/ahmedezzatelsayad/Garfix."),
 
-        // ── Files Created ────────────────────────────────
-        heading("Deliverables & File Structure", HeadingLevel.HEADING_2),
-
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          columnWidths: [4500, 2000, 3500],
-          rows: [
-            new TableRow({
-              tableHeader: true,
-              children: ["File Path", "Size", "Purpose"].map(h => 
-                new TableCell({
-                  shading: { fill: P.primary, type: ShadingType.CLEAR },
-                  children: [new Paragraph({ 
-                    alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: h, bold: true, size: 20, color: c("#FFFFFF") })] 
-                  })]
-                })
-              )
-            }),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "src/lib/workers/aiWorkers.ts", font: "Consolas", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "~22 KB", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Queue Workers + Rate Limiter + Metrics", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "src/lib/ai/advanced-loadbalancer.ts", font: "Consolas", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "~19 KB", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Advanced LB + Health Checks + Circuit Breaker", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "src/lib/ai-fabric/enhanced-worker-scaler.ts", font: "Consolas", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "~12 KB", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Pool-Aware Auto-Scaler", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "src/app/api/ai/metrics/route.ts", font: "Consolas", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "~12 KB", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Metrics Dashboard API Endpoint", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "src/app/founder-panel/ai-dashboard/page.tsx", font: "Consolas", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "~27 KB", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Admin Dashboard UI (RTL Arabic)", size: 18 })] })] })
-            ]}),
-            new TableRow({ children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "src/lib/ai/ENTERPRISE-AI-SYSTEM.md", font: "Consolas", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "~27 KB", size: 18 })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Complete Technical Documentation", size: 18 })] })] })
-            ]})
+        createDataTable(
+          ["File", "Status", "Lines", "Description"],
+          [
+            ["src/lib/workers/aiWorkers.ts", "NEW", "~550", "Core AI Workers with BullMQ"],
+            ["src/lib/ai/advanced-loadbalancer.ts", "NEW", "~450", "Advanced Multi-Key Load Balancer"],
+            ["src/app/api/ai/metrics/route.ts", "NEW", "~280", "Metrics API Endpoint"],
+            ["src/lib/ai-fabric/enhanced-worker-scaler.ts", "NEW", "~270", "Pool-Aware Auto Scaler"],
+            ["src/lib/ai/ENTERPRISE-AI-SYSTEM.md", "NEW", "~500+", "Technical Documentation"],
+            ["src/lib/ai/index.ts", "MODIFIED", "+15", "Module Exports Update"],
+            ["Admin Dashboard UI", "MODIFIED", "+400", "Metrics Visualization Component"]
           ]
-        }),
+        ),
 
-        new Paragraph({ spacing: { before: 300, after: 200 }, children: [] }),
+        new Paragraph({ spacing: { before: 200, after: 200 } }),
 
-        // ── Conclusion ────────────────────────────────────
-        heading("Conclusion & Recommendations", HeadingLevel.HEADING_2),
+        // Conclusion
+        heading("9. Conclusions & Recommendations"),
 
-        body("The GarfiX AI Enterprise System represents a production-ready implementation of sophisticated AI infrastructure specifically tailored for the MENA region's ERP market. By leveraging multiple free-tier API accounts with intelligent load balancing, the system achieves enterprise-grade capacity at zero operational cost for AI services."),
+        bodyPara("The GarfiX EOS Enterprise AI System implementation successfully transforms basic AI integration into a production-ready, enterprise-grade platform capable of supporting real business workloads. The architecture demonstrates mature patterns including circuit breaker fault isolation, weighted load balancing with health-awareness, comprehensive metrics collection, and dynamic auto-scaling that collectively ensure reliable operation under varying conditions."),
 
-        body("The queue-based architecture ensures reliability under varying load conditions, while the comprehensive monitoring dashboard provides administrators with the visibility needed to maintain optimal performance. The automatic failover mechanisms and circuit breakers protect against individual key failures, and the pool-aware auto-scaling prevents cascading overload scenarios."),
+        bodyPara("The system is immediately operational for development and staging environments, with the 75 RPM pool capacity and 5 million daily token quota sufficient for initial user onboarding and feature validation. Production deployment should include additional monitoring integration, alerting channel configuration (email, Slack, etc.), and consideration of premium API tiers if workload growth exceeds free tier capacities."),
 
-        infoBox("Recommendations for Production Deployment", "1. Deploy from Egypt/MENA region for optimal API latency\n2. Configure webhook notifications for critical alerts\n3. Set up automated daily quota reset via cron job\n4. Monitor initial usage patterns for 2 weeks before adjusting thresholds\n5. Consider adding notification channels (Slack/Email) for admin alerts\n6. Implement backup provider integration (OpenRouter) for additional redundancy", "warning"),
-
-        body("Future enhancements may include integration with additional AI providers beyond Google Gemini, implementation of predictive scaling based on historical patterns, addition of cost tracking for potential paid-tier upgrades, and development of tenant-specific AI customization options allowing companies to fine-tune behavior for their specific use cases.")
+        bodyPara("Recommended next steps include comprehensive load testing to validate scaling behavior under realistic traffic patterns, integration testing across all six worker types with production data samples, dashboard UX refinement based on administrator feedback, and documentation expansion with operational runbooks for common scenarios such as key rotation, incident response, and capacity planning."),
       ]
     }
   ]
 });
 
-// ── Generate Document ─────────────────────────────────────
+// Generate document
+async function main() {
+  try {
+    const buffer = await Packer.toBuffer(doc);
+    fs.writeFileSync("/home/z/my-project/download/GarfiX_EOS_Enterprise_AI_System_Report.docx", buffer);
+    console.log("Report generated successfully: /home/z/my-project/download/GarfiX_EOS_Enterprise_AI_System_Report.docx");
+  } catch (error) {
+    console.error("Error generating report:", error);
+    process.exit(1);
+  }
+}
 
-Packer.toBuffer(doc).then(buffer => {
-  fs.writeFileSync("/home/z/my-project/download/GarfiX_AI_Enterprise_System_Report.docx", buffer);
-  console.log("✅ Report generated successfully!");
-  console.log("📄 Location: /home/z/my-project/download/GarfiX_AI_Enterprise_System_Report.docx");
-}).catch(err => {
-  console.error("❌ Error generating report:", err);
-});
+main();
