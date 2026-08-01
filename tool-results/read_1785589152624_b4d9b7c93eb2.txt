@@ -1,0 +1,932 @@
+     1→"use client";
+     2→
+     3→import { useState, useRef, useCallback } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { toast } from "sonner";
+     6→import {
+     7→  useSmartParse, useExtractInvoice, useParseImageJson,
+     8→  useParseFileJson, useBulkImport,
+     9→} from "@/hooks/queries";
+    10→import {
+    11→  Sparkles, Image as ImageIcon, FileText, Upload, X, Check, Loader2,
+    12→  Trash2, Edit2, Plus, Save, AlertCircle, ChevronDown, ChevronUp, FileSpreadsheet,
+    13→  Brain, Zap, AlertTriangle, ListChecks, Package,
+    14→} from "lucide-react";
+    15→import { cn } from "@/lib/utils";
+    16→import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+    17→import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+    18→import { MatchStatusBadge, getMatchStatusFromResult } from "@/modules/catalog/MatchStatusBadge";
+    19→
+    20→interface ParsedItem {
+    21→  name: string;
+    22→  qty: number;
+    23→  unitPrice: number;
+    24→  // 🆕 Match result from product matcher (optional)
+    25→  matchResult?: {
+    26→    method?: string;
+    27→    confidence?: number;
+    28→    error?: string;
+    29→    productId?: string;
+    30→    productName?: string;
+    31→  };
+    32→}
+    33→
+    34→interface ParsedOrder {
+    35→  clientName: string;
+    36→  clientPhone: string;
+    37→  clientAddress: string;
+    38→  clientEmail?: string;
+    39→  items: ParsedItem[];
+    40→  taxRate: number;
+    41→  shipping: number;
+    42→  discount: number;
+    43→  notes: string;
+    44→  [key: string]: unknown;
+    45→}
+    46→
+    47→interface Meta {
+    48→  processingMs: number;
+    49→  model: string;
+    50→  ordersCount: number;
+    51→  itemsCount: number;
+    52→  totalTokens?: number;
+    53→  retried?: boolean;
+    54→  // brain-specific (only when brainMode is used)
+    55→  source?: "pattern" | "ai" | "mixed" | "ai-error";
+    56→  templatesCount?: number;
+    57→  totalHits?: number;
+    58→  skippedCount?: number;
+    59→  aiError?: string | null;
+    60→}
+    61→
+    62→const SAMPLE_TEXT = `📍 العنوان: الكويت - حولي - شارع ابن خلدون
+    63→📞 الهاتف: 50001234
+    64→👤 العميل: أحمد محمد
+    65→
+    66→🛠️ الطلب:
+    67→٢ ماتور ١٦ دينار
+    68→٣ فيلتر ٤.٥ دينار
+    69→١ زيت ٢ دينار
+    70→
+    71→💰 الإجمالي: ٢٦.٥ دينار
+    72→🚚 التوصيل: ٢ دينار
+    73→
+    74→---
+    75→📍 العنوان: السالمية - قطعة ٣
+    76→📞 55667788
+    77→👤 سارة عبدالله
+    78→
+    79→🛠️ الطلب:
+    80→واحد كمبروسر ٤٥ دينار
+    81→٢ تيل فرامل ١٠ دينار
+    82→
+    83→🚚 التوصيل: مجاني`;
+    84→
+    85→type Tab = "text" | "image" | "file";
+    86→
+    87→export function BulkInputView() {
+    88→  const { activeCompany } = useBrand();
+    89→  const [tab, setTab] = useState<Tab>("text");
+    90→  const [rawText, setRawText] = useState("");
+    91→  const [imageBase64, setImageBase64] = useState<string | null>(null);
+    92→  const [imagePreview, setImagePreview] = useState<string | null>(null);
+    93→  const [fileBase64, setFileBase64] = useState<string | null>(null);
+    94→  const [fileName, setFileName] = useState<string | null>(null);
+    95→  const [orders, setOrders] = useState<ParsedOrder[]>([]);
+    96→  const [meta, setMeta] = useState<Meta | null>(null);
+    97→  const [loading, setLoading] = useState(false);
+    98→  const [saving, setSaving] = useState(false);
+    99→  const [autoAddProducts, setAutoAddProducts] = useState(true);
+   100→  const [createJournalEntries, setCreateJournalEntries] = useState(false);
+   101→  const [brainMode, setBrainMode] = useState(true); // 🧠 learning mode (pattern + AI fallback)
+   102→  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+   103→  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+   104→  // GATE 5 fix — persistent reviewQueueWarnings banner state.
+   105→  // Survives refresh-free navigation between tabs in the SPA; cleared only when
+   106→  // the user explicitly dismisses it or starts a new parse/save cycle.
+   107→  const [reviewQueueWarnings, setReviewQueueWarnings] = useState<string[]>([]);
+   108→  const [showWarningsBanner, setShowWarningsBanner] = useState(true);
+   109→  const [showReviewQueue, setShowReviewQueue] = useState(false);
+   110→  const fileInputRef = useRef<HTMLInputElement>(null);
+   111→
+   112→  const smartParseMutation = useSmartParse();
+   113→  const extractInvoiceMutation = useExtractInvoice();
+   114→  const parseImageMutation = useParseImageJson();
+   115→  const parseFileMutation = useParseFileJson();
+   116→  const bulkImportMutation = useBulkImport();
+   117→
+   118→  const handleParseText = useCallback(() => {
+   119→    if (!activeCompany) {
+   120→      toast.error("اختر شركة أولاً");
+   121→      return;
+   122→    }
+   123→    if (!rawText.trim()) {
+   124→      toast.error("الصق نصاً للمعالجة");
+   125→      return;
+   126→    }
+   127→    setLoading(true);
+   128→    setOrders([]);
+   129→    setMeta(null);
+   130→    setReviewQueueWarnings([]);
+   131→    setShowWarningsBanner(true);
+   132→
+   133→    const extractPayload = { rawText, companySlug: activeCompany.slug, autoAddProducts };
+   134→    const smartParsePayload = { content: rawText, rawText, companySlug: activeCompany.slug, autoAddProducts };
+   135→
+   136→    const onSuccess = (data: Record<string, unknown>) => {
+   137→      setOrders((data as { orders?: ParsedOrder[] }).orders || []);
+   138→      setMeta((data as { meta?: Meta }).meta || null);
+   139→      const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
+   140→      if (ordersList.length === 0) {
+   141→        toast.warning("لم يتم استخراج أي طلبات من النص");
+   142→      } else {
+   143→        const src = (data as { meta?: Meta }).meta?.source;
+   144→        const badge = brainMode && src
+   145→          ? src === "pattern" ? " (بدون ذكاء اصطناعي ✓)"
+   146→          : src === "ai" ? " (ذكاء اصطناعي + تعلّم قالب جديد)"
+   147→          : src === "mixed" ? " (مختلط)"
+   148→          : ""
+   149→          : "";
+   150→        toast.success(`تم استخراج ${ordersList.length} طلب${badge}`);
+   151→      }
+   152→      setLoading(false);
+   153→    };
+   154→    const onError = (err: Error) => {
+   155→      toast.error(err.message || "خطأ في المعالجة");
+   156→      setLoading(false);
+   157→    };
+   158→
+   159→    if (brainMode) {
+   160→      extractInvoiceMutation.mutate(extractPayload, { onSuccess, onError });
+   161→    } else {
+   162→      smartParseMutation.mutate(smartParsePayload, { onSuccess, onError });
+   163→    }
+   164→  }, [activeCompany, rawText, autoAddProducts, brainMode, smartParseMutation, extractInvoiceMutation]);
+   165→
+   166→  const handleParseImage = useCallback(() => {
+   167→    if (!activeCompany) {
+   168→      toast.error("اختر شركة أولاً");
+   169→      return;
+   170→    }
+   171→    if (!imageBase64) {
+   172→      toast.error("ارفع صورة أولاً");
+   173→      return;
+   174→    }
+   175→    setLoading(true);
+   176→    setOrders([]);
+   177→    setMeta(null);
+   178→    setReviewQueueWarnings([]);
+   179→    setShowWarningsBanner(true);
+   180→
+   181→    parseImageMutation.mutate(
+   182→      { imageBase64, mimeType: "image/jpeg", companySlug: activeCompany.slug, autoAddProducts },
+   183→      {
+   184→        onSuccess: (data: Record<string, unknown>) => {
+   185→          const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
+   186→          setOrders(ordersList);
+   187→          setMeta((data as { meta?: Meta }).meta || null);
+   188→          if (ordersList.length === 0) {
+   189→            toast.warning("لم يتم استخراج أي طلبات من الصورة");
+   190→          } else {
+   191→            toast.success(`تم استخراج ${ordersList.length} طلب من الصورة`);
+   192→          }
+   193→          setLoading(false);
+   194→        },
+   195→        onError: (err: Error) => {
+   196→          toast.error(err.message || "خطأ في المعالجة");
+   197→          setLoading(false);
+   198→        },
+   199→      },
+   200→    );
+   201→  }, [activeCompany, imageBase64, autoAddProducts, parseImageMutation]);
+   202→
+   203→  const handleParseFile = useCallback(() => {
+   204→    if (!activeCompany) { toast.error("اختر شركة أولاً"); return; }
+   205→    if (!fileBase64 || !fileName) { toast.error("ارفع ملف أولاً"); return; }
+   206→    setLoading(true);
+   207→    setOrders([]);
+   208→    setMeta(null);
+   209→    setReviewQueueWarnings([]);
+   210→    setShowWarningsBanner(true);
+   211→
+   212→    parseFileMutation.mutate(
+   213→      { fileBase64, fileName, companySlug: activeCompany.slug },
+   214→      {
+   215→        onSuccess: (data: Record<string, unknown>) => {
+   216→          const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
+   217→          setOrders(ordersList);
+   218→          setMeta((data as { meta?: Meta }).meta || null);
+   219→          if (ordersList.length === 0) {
+   220→            toast.warning("لم يتم استخراج أي طلبات من الملف");
+   221→          } else {
+   222→            toast.success(`تم استخراج ${ordersList.length} طلب من الملف`);
+   223→          }
+   224→          setLoading(false);
+   225→        },
+   226→        onError: (err: Error) => {
+   227→          toast.error(err.message || "خطأ في المعالجة");
+   228→          setLoading(false);
+   229→        },
+   230→      },
+   231→    );
+   232→  }, [activeCompany, fileBase64, fileName, parseFileMutation]);
+   233→
+   234→  const handleImageUpload = useCallback((file: File) => {
+   235→    if (file.size > 5 * 1024 * 1024) {
+   236→      toast.error("حجم الصورة يجب أن يكون أقل من 5 ميجابايت");
+   237→      return;
+   238→    }
+   239→    const reader = new FileReader();
+   240→    reader.onload = () => {
+   241→      const result = reader.result as string;
+   242→      setImagePreview(result);
+   243→      // Strip data URL prefix for transmission
+   244→      const base64 = result.replace(/^data:[^;]+;base64,/, "");
+   245→      setImageBase64(base64);
+   246→    };
+   247→    reader.readAsDataURL(file);
+   248→  }, []);
+   249→
+   250→  const handleSave = useCallback(() => {
+   251→    if (!activeCompany || orders.length === 0) return;
+   252→    setSaving(true);
+   253→    bulkImportMutation.mutate(
+   254→      { companySlug: activeCompany.slug, orders, createJournalEntries },
+   255→      {
+   256→        onSuccess: (data: Record<string, unknown>) => {
+   257→          const created = (data as { created?: unknown[] }).created?.length || 0;
+   258→          const errors = (data as { errors?: unknown[] }).errors?.length || 0;
+   259→          const newWarnings: string[] = Array.isArray((data as { reviewQueueWarnings?: unknown }).reviewQueueWarnings) ? (data as { reviewQueueWarnings: string[] }).reviewQueueWarnings : [];
+   260→          if (newWarnings.length > 0) {
+   261→            setReviewQueueWarnings(newWarnings);
+   262→            setShowWarningsBanner(true);
+   263→          }
+   264→          if (created > 0 && errors === 0) {
+   265→            toast.success(`تم إنشاء ${created} فاتورة بنجاح`);
+   266→          } else if (created > 0 && errors > 0) {
+   267→            toast.warning(`تم إنشاء ${created} فاتورة، فشل ${errors}`);
+   268→          } else {
+   269→            toast.error(`فشل إنشاء كل الفواتير (${errors})`);
+   270→          }
+   271→          if (newWarnings.length > 0) {
+   272→            toast.warning(`⚠️ ${newWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
+   273→          }
+   274→          if (created > 0) {
+   275→            setOrders([]);
+   276→            setMeta(null);
+   277→            setRawText("");
+   278→            setImageBase64(null);
+   279→            setImagePreview(null);
+   280→            setFileBase64(null);
+   281→            setFileName(null);
+   282→          }
+   283→          setSaving(false);
+   284→        },
+   285→        onError: (err: Error) => {
+   286→          toast.error(err.message || "خطأ في الحفظ");
+   287→          setSaving(false);
+   288→        },
+   289→      },
+   290→    );
+   291→  }, [activeCompany, orders, createJournalEntries, bulkImportMutation]);
+   292→
+   293→  const updateOrder = (idx: number, updates: Partial<ParsedOrder>) => {
+   294→    setOrders((arr) => arr.map((o, i) => (i === idx ? { ...o, ...updates } : o)));
+   295→  };
+   296→  const removeOrder = (idx: number) => {
+   297→    setOrders((arr) => arr.filter((_, i) => i !== idx));
+   298→  };
+   299→  const updateItem = (orderIdx: number, itemIdx: number, updates: Partial<ParsedItem>) => {
+   300→    setOrders((arr) => arr.map((o, oi) => {
+   301→      if (oi !== orderIdx) return o;
+   302→      return {
+   303→        ...o,
+   304→        items: o.items.map((it, ii) => (ii === itemIdx ? { ...it, ...updates } : it)),
+   305→      };
+   306→    }));
+   307→  };
+   308→  const addItem = (orderIdx: number) => {
+   309→    setOrders((arr) => arr.map((o, oi) => {
+   310→      if (oi !== orderIdx) return o;
+   311→      return { ...o, items: [...o.items, { name: "", qty: 1, unitPrice: 0 }] };
+   312→    }));
+   313→  };
+   314→  const removeItem = (orderIdx: number, itemIdx: number) => {
+   315→    setOrders((arr) => arr.map((o, oi) => {
+   316→      if (oi !== orderIdx) return o;
+   317→      return { ...o, items: o.items.filter((_, ii) => ii !== itemIdx) };
+   318→    }));
+   319→  };
+   320→
+   321→  if (!activeCompany) {
+   322→    return (
+   323→      <div className="p-8 md:p-12 text-center text-muted-foreground">
+   324→        اختر شركة أولاً
+   325→      </div>
+   326→    );
+   327→  }
+   328→
+   329→  const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+   330→  const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+   331→
+   332→  return (
+   333→    <div className="flex flex-col gap-4">
+   334→      {/* Header */}
+   335→      <div>
+   336→        <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
+   337→          <Sparkles size={20} /> الإدخال المجمع بالذكاء الاصطناعي
+   338→        </h1>
+   339→        <p className="text-[13px] text-muted-foreground">
+   340→          حوّل النصوص أو الصور إلى فواتير تلقائياً — مدعوم بـ GLM
+   341→        </p>
+   342→      </div>
+   343→
+   344→      {/* GATE 5 fix — persistent review-queue / oversell warnings banner.
+   345→          Uses shadcn Alert with variant="destructive" (red banner).
+   346→          Shows whenever reviewQueueWarnings.length > 0 and the user hasn't dismissed it.
+   347→          Each warning is shown verbatim so the founder/tenant can act on it.
+   348→          The banner is rendered ABOVE the tab switcher so it's impossible to miss. */}
+   349→      {reviewQueueWarnings.length > 0 && showWarningsBanner && (
+   350→        <Alert variant="destructive" className="flex flex-col gap-2">
+   351→          <div className="flex items-start gap-2">
+   352→            <AlertTriangle className="shrink-0 mt-0.5" />
+   353→            <AlertTitle className="flex-1">
+   354→              ⚠️ {reviewQueueWarnings.length} صنف يحتاج مراجعة
+   355→            </AlertTitle>
+   356→            <button
+   357→              type="button"
+   358→              onClick={() => setShowWarningsBanner(false)}
+   359→              className="bg-transparent border-none cursor-pointer text-destructive p-1 -mt-1 -me-1 flex items-center hover:bg-destructive/10 rounded"
+   360→              aria-label="إخفاء البانر"
+   361→            >
+   362→              <X size={16} />
+   363→            </button>
+   364→          </div>
+   365→          <AlertDescription>
+   366→            <div className="flex flex-col gap-2">
+   367→              <ul className="m-0 ps-5 flex flex-col gap-1 list-disc">
+   368→                {reviewQueueWarnings.slice(0, 5).map((w, i) => (
+   369→                  <li key={i} className="text-[12px] leading-[1.5] text-foreground">
+   370→                    {w}
+   371→                  </li>
+   372→                ))}
+   373→                {reviewQueueWarnings.length > 5 && (
+   374→                  <li className="text-[11px] text-muted-foreground">
+   375→                    + {reviewQueueWarnings.length - 5} تحذيرات أخرى…
+   376→                  </li>
+   377→                )}
+   378→              </ul>
+   379→              <div className="flex flex-wrap gap-2 mt-1">
+   380→                <button
+   381→                  type="button"
+   382→                  onClick={() => setShowReviewQueue(true)}
+   383→                  className="inline-flex items-center gap-1.5 text-[12px] font-bold text-destructive underline bg-transparent border-none cursor-pointer p-0 hover:opacity-80"
+   384→                >
+   385→                  <ListChecks size={14} /> فتح صفحة مراجعة التطابقات
+   386→                </button>
+   387→                <button
+   388→                  type="button"
+   389→                  onClick={() => { setReviewQueueWarnings([]); setShowWarningsBanner(false); }}
+   390→                  className="bg-transparent border border-border rounded-[6px] py-1 px-2 cursor-pointer text-[11px] text-muted-foreground hover:bg-muted"
+   391→                >
+   392→                  مسح التحذيرات
+   393→                </button>
+   394→              </div>
+   395→            </div>
+   396→          </AlertDescription>
+   397→        </Alert>
+   398→      )}
+   399→
+   400→      {/* Tab switcher — wraps on mobile, single row on desktop */}
+   401→      <div className="flex flex-wrap gap-1.5">
+   402→        <button
+   403→          onClick={() => setTab("text")}
+   404→          className={cn(
+   405→            "inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] border border-border text-[13px] font-bold cursor-pointer",
+   406→            tab === "text" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   407→          )}
+   408→        >
+   409→          <FileText size={14} /> من نص
+   410→        </button>
+   411→        <button
+   412→          onClick={() => setTab("image")}
+   413→          className={cn(
+   414→            "inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] border border-border text-[13px] font-bold cursor-pointer",
+   415→            tab === "image" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   416→          )}
+   417→        >
+   418→          <ImageIcon size={14} /> من صورة
+   419→        </button>
+   420→        <button
+   421→          onClick={() => setTab("file")}
+   422→          className={cn(
+   423→            "inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] border border-border text-[13px] font-bold cursor-pointer",
+   424→            tab === "file" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   425→          )}
+   426→        >
+   427→          <FileSpreadsheet size={14} /> من ملف Excel
+   428→        </button>
+   429→      </div>
+   430→
+   431→      {/* Input area */}
+   432→      {tab === "text" ? (
+   433→        <div className="bg-card rounded-[14px] border border-border p-5">
+   434→          <div className="flex justify-between items-center mb-2.5">
+   435→            <label className={labelStyle}>الصق نص الطلبات (واتساب، إيصال، ملاحظات...)</label>
+   436→            <button
+   437→              onClick={() => setRawText(SAMPLE_TEXT)}
+   438→              className="bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer"
+   439→            >
+   440→              جرّب مثالاً
+   441→            </button>
+   442→          </div>
+   443→          <textarea
+   444→            value={rawText}
+   445→            onChange={(e) => setRawText(e.target.value)}
+   446→            placeholder="📍 العنوان: ...
+   447→📞 الهاتف: ...
+   448→👤 العميل: ...
+   449→
+   450→🛠️ الطلب:
+   451→٢ ماتور ١٦ دينار
+   452→٣ فيلتر ٤.٥ دينار"
+   453→            rows={10}
+   454→            className={cn(inputStyle, "resize-y font-mono [direction:rtl]")}
+   455→          />
+   456→          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 mt-2.5">
+   457→            <label className="flex items-center gap-1.5 text-[12px] cursor-pointer">
+   458→              <input
+   459→                type="checkbox"
+   460→                checked={autoAddProducts}
+   461→                onChange={(e) => setAutoAddProducts(e.target.checked)}
+   462→              />
+   463→              إضافة المنتجات الجديدة تلقائياً للكتالوج
+   464→            </label>
+   465→            <button
+   466→              onClick={handleParseText}
+   467→              disabled={loading || !rawText.trim()}
+   468→              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+   469→            >
+   470→              {loading ? <Loader2 size={14} className="animate-spin" /> : brainMode ? <Brain size={14} /> : <Sparkles size={14} />}
+   471→              {loading ? "جارٍ التحليل…" : brainMode ? "تحليل ذكي (يتعلّم)" : "تحليل بالذكاء الاصطناعي"}
+   472→            </button>
+   473→          </div>
+   474→          {/* 🧠 brain mode toggle */}
+   475→          <div
+   476→            className={cn(
+   477→              "mt-3 py-2.5 px-3 rounded-[10px] flex items-center justify-between gap-2.5 border",
+   478→              brainMode ? "border-[var(--primary)]" : "border-[var(--border)]"
+   479→            )}
+   480→            style={{
+   481→              background: brainMode ? "color-mix(in srgb, var(--primary) 8%, var(--card))" : "var(--muted)",
+   482→            }} /* TAILWINDBREAK: CSS color-mix function for dynamic brain mode background */
+   483→          >
+   484→            <label className="flex items-center gap-2 text-[12px] cursor-pointer font-bold">
+   485→              <Brain size={16} color="var(--primary)" />
+   486→              وضع التعلّم التلقائي
+   487→              <span className="text-muted-foreground font-normal">
+   488→                {brainMode
+   489→                  ? "— يستخدم القوالب المحفوظة أولاً (مجاني)، والذكاء الاصطناعي فقط للأشكال الجديدة، ثم يحفظها كقالب"
+   490→                  : "— مغلق: كل تحليل يستخدم الذكاء الاصطناعي"}
+   491→              </span>
+   492→            </label>
+   493→            <button
+   494→              onClick={() => setBrainMode((v) => !v)}
+   495→              role="switch"
+   496→              aria-checked={brainMode}
+   497→              className={cn(
+   498→                "w-11 h-6 rounded-lg border-none cursor-pointer relative shrink-0 transition-colors duration-150",
+   499→                brainMode ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+   500→              )}
+   501→            >
+   502→              <span
+   503→                className={cn(
+   504→                  "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-[left] duration-150",
+   505→                  brainMode ? "left-[22px]" : "left-[2px]"
+   506→                )}
+   507→              />
+   508→            </button>
+   509→          </div>
+   510→        </div>
+   511→      ) : (
+   512→        <div className="bg-card rounded-[14px] border border-border p-5">
+   513→          <label className={labelStyle}>ارفع صورة الفاتورة أو الإيصال</label>
+   514→          <input
+   515→            ref={fileInputRef}
+   516→            type="file"
+   517→            accept="image/*"
+   518→            onChange={(e) => {
+   519→              const file = e.target.files?.[0];
+   520→              if (file) handleImageUpload(file);
+   521→            }}
+   522→            className="hidden"
+   523→          />
+   524→          {!imagePreview ? (
+   525→            <button
+   526→              onClick={() => fileInputRef.current?.click()}
+   527→              className="w-full p-12 rounded-lg bg-muted border-2 border-dashed border-border text-muted-foreground text-[14px] font-bold cursor-pointer flex flex-col items-center gap-2.5"
+   528→            >
+   529→              <Upload size={32} />
+   530→              <div>اضغط لرفع صورة</div>
+   531→              <div className="text-[11px] font-normal">PNG, JPG حتى 5 ميجابايت</div>
+   532→            </button>
+   533→          ) : (
+   534→            <div className="relative">
+   535→              <img
+   536→                src={imagePreview}
+   537→                alt="Uploaded"
+   538→                className="w-full max-h-[300px] object-contain rounded-[10px] border border-border"
+   539→              />
+   540→              <button
+   541→                onClick={() => { setImageBase64(null); setImagePreview(null); }}
+   542→                className="absolute top-2 left-2 bg-black/70 text-white border-none rounded-[6px] p-1.5 cursor-pointer flex items-center"
+   543→              >
+   544→                <X size={14} />
+   545→              </button>
+   546→            </div>
+   547→          )}
+   548→          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 mt-2.5">
+   549→            <label className="flex items-center gap-1.5 text-[12px] cursor-pointer">
+   550→              <input
+   551→                type="checkbox"
+   552→                checked={autoAddProducts}
+   553→                onChange={(e) => setAutoAddProducts(e.target.checked)}
+   554→              />
+   555→              إضافة المنتجات الجديدة تلقائياً للكتالوج
+   556→            </label>
+   557→            <button
+   558→              onClick={handleParseImage}
+   559→              disabled={loading || !imageBase64}
+   560→              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+   561→            >
+   562→              {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+   563→              {loading ? "جارٍ تحليل الصورة…" : "تحليل الصورة"}
+   564→            </button>
+   565→          </div>
+   566→        </div>
+   567→      )}
+   568→
+   569→      {/* File upload tab */}
+   570→      {tab === "file" && (
+   571→        <div className="bg-card rounded-[14px] border border-border p-5">
+   572→          <label className={labelStyle}>ارفع ملف Excel أو CSV</label>
+   573→          <input
+   574→            type="file"
+   575→            accept=".xlsx,.xls,.csv"
+   576→            ref={fileInputRef}
+   577→            onChange={(e) => {
+   578→              const file = e.target.files?.[0];
+   579→              if (!file) return;
+   580→              if (file.size > 5 * 1024 * 1024) { toast.error("حجم الملف يجب أن يكون أقل من 5 ميجابايت"); return; }
+   581→              const reader = new FileReader();
+   582→              reader.onload = () => {
+   583→                const result = reader.result as string;
+   584→                const base64 = result.replace(/^data:[^;]+;base64,/, "");
+   585→                setFileBase64(base64);
+   586→                setFileName(file.name);
+   587→                toast.success(`تم تحميل ${file.name}`);
+   588→              };
+   589→              reader.readAsDataURL(file);
+   590→            }}
+   591→            className="hidden"
+   592→          />
+   593→          {!fileName ? (
+   594→            <button
+   595→              onClick={() => fileInputRef.current?.click()}
+   596→              className="w-full p-12 rounded-lg bg-muted border-2 border-dashed border-border text-muted-foreground text-[14px] font-bold cursor-pointer flex flex-col items-center gap-2.5"
+   597→            >
+   598→              <FileSpreadsheet size={32} />
+   599→              <div>اضغط لرفع ملف Excel أو CSV</div>
+   600→              <div className="text-[11px] font-normal">xlsx, xls, csv حتى 5 ميجابايت</div>
+   601→            </button>
+   602→          ) : (
+   603→            <div className="flex items-center gap-2.5 p-3.5 rounded-[10px] bg-muted border border-border">
+   604→              <FileSpreadsheet size={20} className="text-primary" />
+   605→              <div className="flex-1">
+   606→                <div className="text-[13px] font-bold">{fileName}</div>
+   607→                <div className="text-[11px] text-muted-foreground">جاهز للتحليل</div>
+   608→              </div>
+   609→              <button
+   610→                onClick={() => { setFileName(null); setFileBase64(null); }}
+   611→                className="bg-transparent border border-border text-muted-foreground rounded-[6px] p-1 cursor-pointer flex"
+   612→              >
+   613→                <X size={14} />
+   614→              </button>
+   615→            </div>
+   616→          )}
+   617→          <div className="flex justify-end mt-2.5">
+   618→            <button
+   619→              onClick={handleParseFile}
+   620→              disabled={loading || !fileBase64}
+   621→              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+   622→            >
+   623→              {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+   624→              {loading ? "جارٍ تحليل الملف…" : "تحليل الملف"}
+   625→            </button>
+   626→          </div>
+   627→        </div>
+   628→      )}
+   629→
+   630→      {/* Meta info */}
+   631→      {meta && (
+   632→        <div className="py-3 px-4 rounded-[10px] bg-accent border border-border text-[12px] text-accent-foreground flex gap-4 flex-wrap">
+   633→          <span>⏱️ {meta.processingMs}ms</span>
+   634→          <span>📋 {meta.ordersCount} طلب</span>
+   635→          <span>📦 {meta.itemsCount} عنصر</span>
+   636→          {meta.totalTokens ? <span>🧮 {meta.totalTokens} tokens</span> : null}
+   637→          <span>🤖 {meta.model}</span>
+   638→          {meta.retried ? <span className="text-destructive">⚠️ تطلب إعادة محاولة</span> : null}
+   639→        </div>
+   640→      )}
+   641→
+   642→      {/* Parsed orders */}
+   643→      {orders.length > 0 && (
+   644→        <div className="flex flex-col gap-3">
+   645→          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5">
+   646→            <h2 className="text-[16px] font-bold">
+   647→              الطلبات المستخرجة ({orders.length})
+   648→            </h2>
+   649→            <div className="flex flex-wrap gap-2.5 items-center">
+   650→              <label className="flex items-center gap-1 text-[11px] cursor-pointer">
+   651→                <input
+   652→                  type="checkbox"
+   653→                  checked={createJournalEntries}
+   654→                  onChange={(e) => setCreateJournalEntries(e.target.checked)}
+   655→                />
+   656→                إنشاء قيود محاسبية
+   657→              </label>
+   658→              <button
+   659→                onClick={handleSave}
+   660→                disabled={saving}
+   661→                className="inline-flex items-center justify-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+   662→              >
+   663→                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+   664→                {saving ? "جارٍ الحفظ…" : `حفظ ${orders.length} فاتورة`}
+   665→              </button>
+   666→            </div>
+   667→          </div>
+   668→
+   669→          {orders.map((order, idx) => {
+   670→            const isExpanded = expandedIdx === idx;
+   671→            const isEditing = editingIdx === idx;
+   672→            const subtotal = order.items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
+   673→            const taxAmount = (subtotal * order.taxRate) / 100;
+   674→            const total = subtotal + taxAmount + order.shipping - order.discount;
+   675→            return (
+   676→              <div
+   677→                key={idx}
+   678→                className="bg-card rounded-lg border border-border overflow-hidden"
+   679→              >
+   680→                {/* Order header */}
+   681→                <div
+   682→                  className="py-3 px-4 border-b border-border flex flex-wrap justify-between items-center gap-2 bg-muted"
+   683→                >
+   684→                  <div className="flex items-center gap-2.5">
+   685→                    <button
+   686→                      onClick={() => setExpandedIdx(isExpanded ? null : idx)}
+   687→                      className="bg-transparent border-none cursor-pointer text-muted-foreground flex items-center"
+   688→                    >
+   689→                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+   690→                    </button>
+   691→                    <div>
+   692→                      <div className="text-[13px] font-bold">
+   693→                        {order.clientName || `طلب #${idx + 1}`}
+   694→                      </div>
+   695→                      <div className="text-[11px] text-muted-foreground">
+   696→                        {order.items.length} عنصر • {order.clientPhone || "بدون هاتف"}
+   697→                      </div>
+   698→                    </div>
+   699→                  </div>
+   700→                  <div className="flex items-center gap-2.5">
+   701→                    <div className="text-[16px] font-extrabold text-primary">
+   702→                      {total.toFixed(3)} {activeCompany.currency}
+   703→                    </div>
+   704→                    <button
+   705→                      onClick={() => setEditingIdx(isEditing ? null : idx)}
+   706→                      className="bg-transparent border border-border text-muted-foreground rounded-[6px] p-1 cursor-pointer flex"
+   707→                      title="تعديل"
+   708→                    >
+   709→                      <Edit2 size={12} />
+   710→                    </button>
+   711→                    <button
+   712→                      onClick={() => removeOrder(idx)}
+   713→                      className="bg-transparent border border-border text-destructive rounded-[6px] p-1 cursor-pointer flex"
+   714→                      title="حذف"
+   715→                    >
+   716→                      <Trash2 size={12} />
+   717→                    </button>
+   718→                  </div>
+   719→                </div>
+   720→
+   721→                {/* Order body (when expanded) */}
+   722→                {isExpanded && (
+   723→                  <div className="p-4">
+   724→                    {isEditing ? (
+   725→                      <div className="flex flex-col gap-3">
+   726→                        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2.5">
+   727→                          <div>
+   728→                            <label className={labelStyle}>اسم العميل</label>
+   729→                            <input
+   730→                              value={order.clientName}
+   731→                              onChange={(e) => updateOrder(idx, { clientName: e.target.value })}
+   732→                              className={inputStyle}
+   733→                            />
+   734→                          </div>
+   735→                          <div>
+   736→                            <label className={labelStyle}>الهاتف</label>
+   737→                            <input
+   738→                              value={order.clientPhone}
+   739→                              onChange={(e) => updateOrder(idx, { clientPhone: e.target.value })}
+   740→                              className={inputStyle}
+   741→                              dir="ltr"
+   742→                            />
+   743→                          </div>
+   744→                          <div>
+   745→                            <label className={labelStyle}>البريد</label>
+   746→                            <input
+   747→                              value={order.clientEmail || ""}
+   748→                              onChange={(e) => updateOrder(idx, { clientEmail: e.target.value })}
+   749→                              className={inputStyle}
+   750→                              dir="ltr"
+   751→                            />
+   752→                          </div>
+   753→                          <div>
+   754→                            <label className={labelStyle}>العنوان</label>
+   755→                            <input
+   756→                              value={order.clientAddress}
+   757→                              onChange={(e) => updateOrder(idx, { clientAddress: e.target.value })}
+   758→                              className={inputStyle}
+   759→                            />
+   760→                          </div>
+   761→                        </div>
+   762→                        <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2.5">
+   763→                          <div>
+   764→                            <label className={labelStyle}>الضريبة (%)</label>
+   765→                            <input
+   766→                              type="number"
+   767→                              value={order.taxRate}
+   768→                              onChange={(e) => updateOrder(idx, { taxRate: Number(e.target.value) })}
+   769→                              className={inputStyle}
+   770→                              dir="ltr"
+   771→                            />
+   772→                          </div>
+   773→                          <div>
+   774→                            <label className={labelStyle}>الشحن</label>
+   775→                            <input
+   776→                              type="number"
+   777→                              value={order.shipping}
+   778→                              onChange={(e) => updateOrder(idx, { shipping: Number(e.target.value) })}
+   779→                              className={inputStyle}
+   780→                              dir="ltr"
+   781→                            />
+   782→                          </div>
+   783→                          <div>
+   784→                            <label className={labelStyle}>الخصم</label>
+   785→                            <input
+   786→                              type="number"
+   787→                              value={order.discount}
+   788→                              onChange={(e) => updateOrder(idx, { discount: Number(e.target.value) })}
+   789→                              className={inputStyle}
+   790→                              dir="ltr"
+   791→                            />
+   792→                          </div>
+   793→                        </div>
+   794→                        <div>
+   795→                          <label className={labelStyle}>ملاحظات</label>
+   796→                          <input
+   797→                            value={order.notes}
+   798→                            onChange={(e) => updateOrder(idx, { notes: e.target.value })}
+   799→                            className={inputStyle}
+   800→                          />
+   801→                        </div>
+   802→                        <div>
+   803→                          <div className="flex justify-between items-center mb-2">
+   804→                            <label className={cn(labelStyle, "mb-0")}>البنود</label>
+   805→                            <button
+   806→                              onClick={() => addItem(idx)}
+   807→                              className="bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"
+   808→                            >
+   809→                              <Plus size={12} /> إضافة
+   810→                            </button>
+   811→                          </div>
+   812→                          {order.items.map((item, itemIdx) => (
+   813→                            <div key={itemIdx} className="grid grid-cols-[1fr_60px_80px_32px] sm:grid-cols-[1fr_70px_100px_32px] gap-2 mb-1.5">
+   814→                              <input
+   815→                                value={item.name}
+   816→                                onChange={(e) => updateItem(idx, itemIdx, { name: e.target.value })}
+   817→                                placeholder="اسم المنتج"
+   818→                                className={inputStyle}
+   819→                              />
+   820→                              <input
+   821→                                type="number"
+   822→                                value={item.qty}
+   823→                                onChange={(e) => updateItem(idx, itemIdx, { qty: Number(e.target.value) })}
+   824→                                className={inputStyle}
+   825→                                dir="ltr"
+   826→                              />
+   827→                              <input
+   828→                                type="number"
+   829→                                value={item.unitPrice}
+   830→                                onChange={(e) => updateItem(idx, itemIdx, { unitPrice: Number(e.target.value) })}
+   831→                                className={inputStyle}
+   832→                                dir="ltr"
+   833→                              />
+   834→                              <button
+   835→                                onClick={() => removeItem(idx, itemIdx)}
+   836→                                className="bg-transparent border border-border text-destructive rounded-[6px] cursor-pointer flex items-center justify-center"
+   837→                              >
+   838→                                <X size={12} />
+   839→                              </button>
+   840→                            </div>
+   841→                          ))}
+   842→                        </div>
+   843→                      </div>
+   844→                    ) : (
+   845→                      <div>
+   846→                        <div className="overflow-x-auto garfix-scroll">
+   847→                        <table className="w-full border-collapse text-[12px]">
+   848→                          <thead>
+   849→                            <tr className="border-b border-border">
+   850→                              <th className="text-start py-1.5 px-2 font-semibold text-muted-foreground">المنتج</th>
+   851→                              <th className="text-center py-1.5 px-2 font-semibold text-muted-foreground">كمية</th>
+   852→                              <th className="text-center py-1.5 px-2 font-semibold text-muted-foreground">سعر</th>
+   853→                              <th className="text-end py-1.5 px-2 font-semibold text-muted-foreground">إجمالي</th>
+   854→                            </tr>
+   855→                          </thead>
+   856→                          <tbody>
+   857→                            {order.items.map((item, itemIdx) => {
+   858→                              // 🆕 Determine match status based on item data
+   859→                              const matchStatus = getMatchStatusFromResult(item.matchResult);
+   860→                              
+   861→                              return (
+   862→                                <tr key={itemIdx} className="border-b border-border">
+   863→                                  <td className="py-1.5 px-2">
+   864→                                    <div className="flex items-center gap-2">
+   865→                                      <span>{item.name}</span>
+   866→                                      {/* 🆕 Match Status Badge */}
+   867→                                      <MatchStatusBadge
+   868→                                        status={matchStatus}
+   869→                                        size="sm"
+   870→                                        showOverride={false}
+   871→                                      />
+   872→                                    </div>
+   873→                                  </td>
+   874→                                  <td className="py-1.5 px-2 text-center">{item.qty}</td>
+   875→                                  <td className="py-1.5 px-2 text-center [direction:ltr]">{item.unitPrice.toFixed(3)}</td>
+   876→                                  <td className="py-1.5 px-2 [direction:ltr] text-start font-bold">
+   877→                                    {(item.qty * item.unitPrice).toFixed(3)}
+   878→                                  </td>
+   879→                                </tr>
+   880→                              );
+   881→                            })}
+   882→                          </tbody>
+   883→                        </table>
+   884→                        </div>
+   885→                        <div className="flex flex-wrap justify-end mt-2.5 gap-x-4 gap-y-1 text-[12px]">
+   886→                          <span>مجموع: <strong>{subtotal.toFixed(3)}</strong></span>
+   887→                          {order.taxRate > 0 && <span>ضريبة ({order.taxRate}%): <strong>{taxAmount.toFixed(3)}</strong></span>}
+   888→                          {order.shipping > 0 && <span>شحن: <strong>{order.shipping.toFixed(3)}</strong></span>}
+   889→                          {order.discount > 0 && <span>خصم: <strong>-{order.discount.toFixed(3)}</strong></span>}
+   890→                          <span className="font-extrabold text-primary">الإجمالي: {total.toFixed(3)}</span>
+   891→                        </div>
+   892→                        {(order.clientAddress || order.notes) && (
+   893→                          <div className="mt-2.5 pt-2.5 border-t border-border text-[11px] text-muted-foreground">
+   894→                            {order.clientAddress && <div>📍 {order.clientAddress}</div>}
+   895→                            {order.notes && <div>📝 {order.notes}</div>}
+   896→                          </div>
+   897→                        )}
+   898→                      </div>
+   899→                    )}
+   900→                  </div>
+   901→                )}
+   902→              </div>
+   903→            );
+   904→          })}
+   905→        </div>
+   906→      )}
+   907→
+   908→      {/* Empty state when no orders yet */}
+   909→      {!loading && orders.length === 0 && !meta && (
+   910→        <div className="p-10 text-center text-muted-foreground bg-card rounded-[14px] border border-border">
+   911→          <Sparkles size={36} className="opacity-30 mb-2.5" />
+   912→          <div className="text-[14px] font-bold mb-1">
+   913→            ابدأ بإدخال نص أو رفع صورة
+   914→          </div>
+   915→          <div className="text-[12px]">
+   916→            سيقوم الذكاء الاصطناعي باستخراج بيانات الطلبات تلقائياً
+   917→          </div>
+   918→        </div>
+   919→      )}
+   920→
+   921→      {showReviewQueue && activeCompany && (
+   922→        <ReviewQueueModal
+   923→          companySlug={activeCompany.slug}
+   924→          onClose={() => setShowReviewQueue(false)}
+   925→        />
+   926→      )}
+   927→    </div>
+   928→  );
+   929→}
+   930→
+   931→export default BulkInputView;
+   932→
