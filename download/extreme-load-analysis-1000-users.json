@@ -1,0 +1,129 @@
+{
+  "scenario": {
+    "concurrentUsers": 1000,
+    "invoicesPerUser": 100,
+    "totalPotentialAICalls": 100000,
+    "systemCapacityRPM": 75,
+    "overloadFactor": 1333
+  },
+  "burstImpact": {
+    "totalPotentialCalls": 100000,
+    "capacityPerSecond": 1,
+    "immediateOverflow": 99999,
+    "patternSavedFirstRun": 10000,
+    "actualAICallsNeeded": 90000,
+    "estimatedMinutes": 1200,
+    "estimatedHours": 20
+  },
+  "queueAnalysis": {
+    "initialQueueDepth": 90000,
+    "maxQueueSize": 5000,
+    "willOverflow": true,
+    "droppedRequests": 85000,
+    "timeToEmpty_min": 1200
+  },
+  "costAnalysis": {
+    "actualAICalls": 90000,
+    "inputTokens": 45000000,
+    "outputTokens": 18000000,
+    "estimatedCostUSD": 12.375,
+    "isFreeTier": true,
+    "limitation": "RPM limits, not cost"
+  },
+  "recommendations": [
+    {
+      "priority": "P0 - URGENT",
+      "title": "Enable Groq as Primary Provider",
+      "desc": "~6000 RPM free, <1s latency",
+      "impact": "Solves the problem completely",
+      "effort": "3 hours setup"
+    },
+    {
+      "priority": "P0 - URGENT",
+      "title": "Add Batch Consolidation",
+      "desc": "Merge multiple invoices into ONE AI call instead of 100",
+      "impact": "Reduces 90% of API calls",
+      "effort": "Prompt + parser modification"
+    },
+    {
+      "priority": "P1 - HIGH",
+      "title": "Increase Pattern Learning Rate",
+      "desc": "Improve fingerprints for more cache hits",
+      "impact": "70%+ of invoices without AI",
+      "effort": "Algorithm improvement"
+    },
+    {
+      "priority": "P1 - HIGH",
+      "title": "Client-side Rate Limiting",
+      "desc": "Prevent user from sending 100 at once",
+      "impact": "Prevents stress at source",
+      "effort": "UI throttle"
+    },
+    {
+      "priority": "P2 - MEDIUM",
+      "title": "Priority Queue",
+      "desc": "Process users round-robin not FIFO",
+      "impact": "Fair distribution",
+      "effort": "BullMQ config"
+    },
+    {
+      "priority": "P2 - MEDIUM",
+      "title": "Async + WebSocket Notifications",
+      "desc": "Tell user \"processing\" and ask to check later",
+      "impact": "Better UX",
+      "effort": "UI + API modification"
+    }
+  ],
+  "timeline": [
+    {
+      "minute": 1,
+      "queueDepth": 89925,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 2,
+      "queueDepth": 89850,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 3,
+      "queueDepth": 89775,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 4,
+      "queueDepth": 89700,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 5,
+      "queueDepth": 89625,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 6,
+      "queueDepth": 89550,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 7,
+      "queueDepth": 89475,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 8,
+      "queueDepth": 89400,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 9,
+      "queueDepth": 89325,
+      "processedThisMinute": 75
+    },
+    {
+      "minute": 10,
+      "queueDepth": 89250,
+      "processedThisMinute": 75
+    }
+  ]
+}
