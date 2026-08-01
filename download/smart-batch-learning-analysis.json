@@ -1,0 +1,45 @@
+{
+  "currentBehavior": {
+    "splitsAt": "--- only",
+    "scenarioA": {
+      "chunks": 100,
+      "aiCalls": "up to 100"
+    },
+    "scenarioB": {
+      "chunks": 1,
+      "aiCalls": 1,
+      "risk": "designed for single invoice"
+    }
+  },
+  "proposedSolution": {
+    "phase1": {
+      "invoices": 100,
+      "aiCalls": 100,
+      "purpose": "learning"
+    },
+    "phase2": {
+      "invoices": 100,
+      "aiCalls": 5,
+      "purpose": "new shapes only"
+    },
+    "savings": "95%"
+  },
+  "costComparison": {
+    "withoutLearning": {
+      "totalInvoices": 100000,
+      "aiCalls": 100000,
+      "time": "22 hours"
+    },
+    "withLearning_firstTime": {
+      "totalInvoices": 100000,
+      "aiCalls": 100000,
+      "time": "22 hours"
+    },
+    "withLearning_repeat": {
+      "totalInvoices": 100000,
+      "aiCalls": 5000,
+      "time": "1.1 hours",
+      "patternHits": 95000
+    }
+  }
+}
