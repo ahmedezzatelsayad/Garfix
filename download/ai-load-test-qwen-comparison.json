@@ -1,0 +1,6372 @@
+{
+  "generatedAt": "2026-08-01T09:55:25.363Z",
+  "scenarios": {
+    "5 Keys (Gemini Only)": {
+      "scenarioName": "5 Keys (Gemini Only)",
+      "config": {
+        "name": "5 Keys (Gemini Only)",
+        "description": "الإعداد الحالي - 5 مفاتيح Gemini Free",
+        "keys": [
+          {
+            "id": "gemini-1",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000
+          },
+          {
+            "id": "gemini-2",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000
+          },
+          {
+            "id": "gemini-3",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000
+          },
+          {
+            "id": "gemini-4",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000
+          },
+          {
+            "id": "gemini-5",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000
+          }
+        ],
+        "queueMaxSize": 1000,
+        "modelCharacteristics": {
+          "avgLatencyMs": 3500,
+          "tokenCostPer1K": 0,
+          "arabicSupport": "excellent",
+          "reliability": 0.98
+        }
+      },
+      "invoiceCount": 100000,
+      "timestamps": [
+        {
+          "hour": 1,
+          "totalProcessed": 75,
+          "backlog": 925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 4,
+          "totalProcessed": 75,
+          "backlog": 3925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 3923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 8,
+          "totalProcessed": 75,
+          "backlog": 7925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 7923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 12,
+          "totalProcessed": 75,
+          "backlog": 7925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 7923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 16,
+          "totalProcessed": 75,
+          "backlog": 7925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 7923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 20,
+          "totalProcessed": 75,
+          "backlog": 7925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 7923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 24,
+          "totalProcessed": 75,
+          "backlog": 7925,
+          "metrics": {
+            "pool": {
+              "currentRPM": 75,
+              "maxRPM": 75,
+              "utilizationPct": 100,
+              "totalProcessed": 75,
+              "totalRejected": 7923,
+              "keyCount": 5
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 75,
+                "pct": 100
+              },
+              "qwen": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 12,
+                "rpmLimit": 15,
+                "tokensUsed": "4,312",
+                "failures": 0,
+                "requests": 12,
+                "avgLatency": 3419
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "7,229",
+                "failures": 0,
+                "requests": 18,
+                "avgLatency": 3297
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 18,
+                "rpmLimit": 15,
+                "tokensUsed": "6,900",
+                "failures": 1,
+                "requests": 18,
+                "avgLatency": 3504
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 13,
+                "rpmLimit": 15,
+                "tokensUsed": "5,106",
+                "failures": 1,
+                "requests": 13,
+                "avgLatency": 3491
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 14,
+                "rpmLimit": 15,
+                "tokensUsed": "5,628",
+                "failures": 0,
+                "requests": 14,
+                "avgLatency": 3518
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        }
+      ],
+      "hourlyStats": [
+        {
+          "hour": 1,
+          "submitted": 12500,
+          "processed": 75,
+          "backlog": 925,
+          "totalSubmitted": 12029,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 93,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 2,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 1925,
+          "totalSubmitted": 24246,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 193,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 3,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 2925,
+          "totalSubmitted": 36270,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 293,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 4,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 3925,
+          "totalSubmitted": 48596,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 393,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 5,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 4925,
+          "totalSubmitted": 61647,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 493,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 6,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 5925,
+          "totalSubmitted": 74636,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 593,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 7,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 6925,
+          "totalSubmitted": 87385,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 693,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 8,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 9,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 10,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 11,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 12,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 13,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 14,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 15,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 16,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 17,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 18,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 19,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 20,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 21,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 22,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 23,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        },
+        {
+          "hour": 24,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 7925,
+          "totalSubmitted": 100000,
+          "totalProcessed": 75,
+          "poolUtilization": 100,
+          "queueUtilization": 793,
+          "geminiPct": 100,
+          "qwenPct": 0
+        }
+      ],
+      "finalMetrics": {
+        "totalTimeMs": 56,
+        "pool": {
+          "pool": {
+            "currentRPM": 75,
+            "maxRPM": 75,
+            "utilizationPct": 100,
+            "totalProcessed": 75,
+            "totalRejected": 7923,
+            "keyCount": 5
+          },
+          "models": {
+            "gemini": {
+              "count": 5,
+              "totalRPM": 75,
+              "processed": 75,
+              "pct": 100
+            },
+            "qwen": {
+              "count": 0,
+              "totalRPM": 0,
+              "processed": 0,
+              "pct": 0
+            }
+          },
+          "keys": [
+            {
+              "id": "gemini-1",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 12,
+              "rpmLimit": 15,
+              "tokensUsed": "4,312",
+              "failures": 0,
+              "requests": 12,
+              "avgLatency": 3419
+            },
+            {
+              "id": "gemini-2",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 18,
+              "rpmLimit": 15,
+              "tokensUsed": "7,229",
+              "failures": 0,
+              "requests": 18,
+              "avgLatency": 3297
+            },
+            {
+              "id": "gemini-3",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 18,
+              "rpmLimit": 15,
+              "tokensUsed": "6,900",
+              "failures": 1,
+              "requests": 18,
+              "avgLatency": 3504
+            },
+            {
+              "id": "gemini-4",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 13,
+              "rpmLimit": 15,
+              "tokensUsed": "5,106",
+              "failures": 1,
+              "requests": 13,
+              "avgLatency": 3491
+            },
+            {
+              "id": "gemini-5",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 14,
+              "rpmLimit": 15,
+              "tokensUsed": "5,628",
+              "failures": 0,
+              "requests": 14,
+              "avgLatency": 3518
+            }
+          ],
+          "circuitBreakerEvents": 0
+        },
+        "queue": {
+          "pending": 0,
+          "running": 7925,
+          "completed": 75,
+          "failed": 0,
+          "rejected": 92000,
+          "totalEnqueued": 8000,
+          "utilizationPct": 793
+        }
+      },
+      "completedSameDay": false,
+      "estimatedHours": "22.2"
+    },
+    "20 Keys (5 Gemini + 15 Qwen)": {
+      "scenarioName": "20 Keys (5 Gemini + 15 Qwen)",
+      "config": {
+        "name": "20 Keys (5 Gemini + 15 Qwen)",
+        "description": "سيناريو محسن - مزيج من النماذج",
+        "keys": [
+          {
+            "id": "gemini-1",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000,
+            "weight": 1
+          },
+          {
+            "id": "gemini-2",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000,
+            "weight": 1
+          },
+          {
+            "id": "gemini-3",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000,
+            "weight": 1
+          },
+          {
+            "id": "gemini-4",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000,
+            "weight": 1
+          },
+          {
+            "id": "gemini-5",
+            "type": "gemini",
+            "rpmLimit": 15,
+            "maxTokensDaily": 1000000,
+            "weight": 1
+          },
+          {
+            "id": "qwen-1",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-2",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-3",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-4",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-5",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-6",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-7",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-8",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-9",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-10",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-11",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-12",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-13",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-14",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          },
+          {
+            "id": "qwen-15",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2.5
+          }
+        ],
+        "queueMaxSize": 5000,
+        "modelCharacteristics": {
+          "qwen": {
+            "avgLatencyMs": 2500,
+            "tokenCostPer1K": 0.002,
+            "arabicSupport": "excellent",
+            "reliability": 0.99,
+            "contextWindow": 131072
+          },
+          "gemini": {
+            "avgLatencyMs": 3500,
+            "tokenCostPer1K": 0,
+            "arabicSupport": "excellent",
+            "reliability": 0.98,
+            "contextWindow": 1048576
+          }
+        }
+      },
+      "invoiceCount": 100000,
+      "timestamps": [
+        {
+          "hour": 1,
+          "totalProcessed": 1575,
+          "backlog": 3425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 3410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 4,
+          "totalProcessed": 1575,
+          "backlog": 18425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 18410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 8,
+          "totalProcessed": 1575,
+          "backlog": 38425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 38410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 12,
+          "totalProcessed": 1575,
+          "backlog": 38425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 38410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 16,
+          "totalProcessed": 1575,
+          "backlog": 38425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 38410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 20,
+          "totalProcessed": 1575,
+          "backlog": 38425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 38410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 24,
+          "totalProcessed": 1575,
+          "backlog": 38425,
+          "metrics": {
+            "pool": {
+              "currentRPM": 1575,
+              "maxRPM": 1575,
+              "utilizationPct": 100,
+              "totalProcessed": 1575,
+              "totalRejected": 38410,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 5,
+                "totalRPM": 75,
+                "processed": 111,
+                "pct": 7
+              },
+              "qwen": {
+                "count": 15,
+                "totalRPM": 1500,
+                "processed": 1464,
+                "pct": 93
+              }
+            },
+            "keys": [
+              {
+                "id": "gemini-1",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "8,566",
+                "failures": 2,
+                "requests": 24,
+                "avgLatency": 3458
+              },
+              {
+                "id": "gemini-2",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "8,124",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3468
+              },
+              {
+                "id": "gemini-3",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 24,
+                "rpmLimit": 15,
+                "tokensUsed": "10,389",
+                "failures": 0,
+                "requests": 24,
+                "avgLatency": 3572
+              },
+              {
+                "id": "gemini-4",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 19,
+                "rpmLimit": 15,
+                "tokensUsed": "7,146",
+                "failures": 1,
+                "requests": 19,
+                "avgLatency": 3416
+              },
+              {
+                "id": "gemini-5",
+                "type": "gemini",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 22,
+                "rpmLimit": 15,
+                "tokensUsed": "9,236",
+                "failures": 1,
+                "requests": 22,
+                "avgLatency": 3488
+              },
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 97,
+                "rpmLimit": 100,
+                "tokensUsed": "36,452",
+                "failures": 1,
+                "requests": 97,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 92,
+                "rpmLimit": 100,
+                "tokensUsed": "36,430",
+                "failures": 0,
+                "requests": 92,
+                "avgLatency": 2529
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "38,822",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2481
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,280",
+                "failures": 1,
+                "requests": 90,
+                "avgLatency": 2512
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,398",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2460
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "37,888",
+                "failures": 1,
+                "requests": 94,
+                "avgLatency": 2511
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,996",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2476
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 106,
+                "rpmLimit": 100,
+                "tokensUsed": "41,212",
+                "failures": 1,
+                "requests": 106,
+                "avgLatency": 2477
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 90,
+                "rpmLimit": 100,
+                "tokensUsed": "35,311",
+                "failures": 0,
+                "requests": 90,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 96,
+                "rpmLimit": 100,
+                "tokensUsed": "36,229",
+                "failures": 0,
+                "requests": 96,
+                "avgLatency": 2557
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 88,
+                "rpmLimit": 100,
+                "tokensUsed": "35,123",
+                "failures": 2,
+                "requests": 88,
+                "avgLatency": 2524
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 94,
+                "rpmLimit": 100,
+                "tokensUsed": "36,267",
+                "failures": 0,
+                "requests": 94,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 107,
+                "rpmLimit": 100,
+                "tokensUsed": "43,041",
+                "failures": 1,
+                "requests": 107,
+                "avgLatency": 2486
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "40,631",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2506
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,649",
+                "failures": 1,
+                "requests": 104,
+                "avgLatency": 2495
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        }
+      ],
+      "hourlyStats": [
+        {
+          "hour": 1,
+          "submitted": 12500,
+          "processed": 1575,
+          "backlog": 3425,
+          "totalSubmitted": 12326,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 69,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 2,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 8425,
+          "totalSubmitted": 24980,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 169,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 3,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 13425,
+          "totalSubmitted": 37039,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 269,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 4,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 18425,
+          "totalSubmitted": 50027,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 369,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 5,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 23425,
+          "totalSubmitted": 62233,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 468,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 6,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 28425,
+          "totalSubmitted": 74362,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 569,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 7,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 33425,
+          "totalSubmitted": 87007,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 669,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 8,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 9,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 10,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 11,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 12,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 13,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 14,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 15,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 16,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 17,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 18,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 19,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 20,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 21,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 22,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 23,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        },
+        {
+          "hour": 24,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 38425,
+          "totalSubmitted": 99250,
+          "totalProcessed": 1575,
+          "poolUtilization": 100,
+          "queueUtilization": 769,
+          "geminiPct": 7,
+          "qwenPct": 93
+        }
+      ],
+      "finalMetrics": {
+        "totalTimeMs": 911,
+        "pool": {
+          "pool": {
+            "currentRPM": 1575,
+            "maxRPM": 1575,
+            "utilizationPct": 100,
+            "totalProcessed": 1575,
+            "totalRejected": 38410,
+            "keyCount": 20
+          },
+          "models": {
+            "gemini": {
+              "count": 5,
+              "totalRPM": 75,
+              "processed": 111,
+              "pct": 7
+            },
+            "qwen": {
+              "count": 15,
+              "totalRPM": 1500,
+              "processed": 1464,
+              "pct": 93
+            }
+          },
+          "keys": [
+            {
+              "id": "gemini-1",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 24,
+              "rpmLimit": 15,
+              "tokensUsed": "8,566",
+              "failures": 2,
+              "requests": 24,
+              "avgLatency": 3458
+            },
+            {
+              "id": "gemini-2",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 22,
+              "rpmLimit": 15,
+              "tokensUsed": "8,124",
+              "failures": 1,
+              "requests": 22,
+              "avgLatency": 3468
+            },
+            {
+              "id": "gemini-3",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 24,
+              "rpmLimit": 15,
+              "tokensUsed": "10,389",
+              "failures": 0,
+              "requests": 24,
+              "avgLatency": 3572
+            },
+            {
+              "id": "gemini-4",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 19,
+              "rpmLimit": 15,
+              "tokensUsed": "7,146",
+              "failures": 1,
+              "requests": 19,
+              "avgLatency": 3416
+            },
+            {
+              "id": "gemini-5",
+              "type": "gemini",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 22,
+              "rpmLimit": 15,
+              "tokensUsed": "9,236",
+              "failures": 1,
+              "requests": 22,
+              "avgLatency": 3488
+            },
+            {
+              "id": "qwen-1",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 97,
+              "rpmLimit": 100,
+              "tokensUsed": "36,452",
+              "failures": 1,
+              "requests": 97,
+              "avgLatency": 2478
+            },
+            {
+              "id": "qwen-2",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 92,
+              "rpmLimit": 100,
+              "tokensUsed": "36,430",
+              "failures": 0,
+              "requests": 92,
+              "avgLatency": 2529
+            },
+            {
+              "id": "qwen-3",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 98,
+              "rpmLimit": 100,
+              "tokensUsed": "38,822",
+              "failures": 1,
+              "requests": 98,
+              "avgLatency": 2481
+            },
+            {
+              "id": "qwen-4",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 90,
+              "rpmLimit": 100,
+              "tokensUsed": "35,280",
+              "failures": 1,
+              "requests": 90,
+              "avgLatency": 2512
+            },
+            {
+              "id": "qwen-5",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 105,
+              "rpmLimit": 100,
+              "tokensUsed": "42,398",
+              "failures": 1,
+              "requests": 105,
+              "avgLatency": 2460
+            },
+            {
+              "id": "qwen-6",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 94,
+              "rpmLimit": 100,
+              "tokensUsed": "37,888",
+              "failures": 1,
+              "requests": 94,
+              "avgLatency": 2511
+            },
+            {
+              "id": "qwen-7",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 101,
+              "rpmLimit": 100,
+              "tokensUsed": "40,996",
+              "failures": 0,
+              "requests": 101,
+              "avgLatency": 2476
+            },
+            {
+              "id": "qwen-8",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 106,
+              "rpmLimit": 100,
+              "tokensUsed": "41,212",
+              "failures": 1,
+              "requests": 106,
+              "avgLatency": 2477
+            },
+            {
+              "id": "qwen-9",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 90,
+              "rpmLimit": 100,
+              "tokensUsed": "35,311",
+              "failures": 0,
+              "requests": 90,
+              "avgLatency": 2501
+            },
+            {
+              "id": "qwen-10",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 96,
+              "rpmLimit": 100,
+              "tokensUsed": "36,229",
+              "failures": 0,
+              "requests": 96,
+              "avgLatency": 2557
+            },
+            {
+              "id": "qwen-11",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 88,
+              "rpmLimit": 100,
+              "tokensUsed": "35,123",
+              "failures": 2,
+              "requests": 88,
+              "avgLatency": 2524
+            },
+            {
+              "id": "qwen-12",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 94,
+              "rpmLimit": 100,
+              "tokensUsed": "36,267",
+              "failures": 0,
+              "requests": 94,
+              "avgLatency": 2488
+            },
+            {
+              "id": "qwen-13",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 107,
+              "rpmLimit": 100,
+              "tokensUsed": "43,041",
+              "failures": 1,
+              "requests": 107,
+              "avgLatency": 2486
+            },
+            {
+              "id": "qwen-14",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 102,
+              "rpmLimit": 100,
+              "tokensUsed": "40,631",
+              "failures": 0,
+              "requests": 102,
+              "avgLatency": 2506
+            },
+            {
+              "id": "qwen-15",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 104,
+              "rpmLimit": 100,
+              "tokensUsed": "40,649",
+              "failures": 1,
+              "requests": 104,
+              "avgLatency": 2495
+            }
+          ],
+          "circuitBreakerEvents": 0
+        },
+        "queue": {
+          "pending": 0,
+          "running": 38425,
+          "completed": 1575,
+          "failed": 0,
+          "rejected": 59250,
+          "totalEnqueued": 40000,
+          "utilizationPct": 769
+        }
+      },
+      "completedSameDay": false,
+      "estimatedHours": "1.1"
+    },
+    "20 Keys (All Qwen Max)": {
+      "scenarioName": "20 Keys (All Qwen Max)",
+      "config": {
+        "name": "20 Keys (All Qwen Max)",
+        "description": "الأداء الأقصى - 20 مفتاح Qwen",
+        "keys": [
+          {
+            "id": "qwen-1",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-2",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-3",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-4",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-5",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-6",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-7",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-8",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-9",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-10",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-11",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-12",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-13",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-14",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-15",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-16",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-17",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-18",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-19",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          },
+          {
+            "id": "qwen-20",
+            "type": "qwen",
+            "rpmLimit": 100,
+            "maxTokensDaily": 5000000,
+            "weight": 2
+          }
+        ],
+        "queueMaxSize": 10000,
+        "modelCharacteristics": {
+          "avgLatencyMs": 2200,
+          "tokenCostPer1K": 0.0018,
+          "arabicSupport": "excellent",
+          "reliability": 0.995,
+          "contextWindow": 131072
+        }
+      },
+      "invoiceCount": 100000,
+      "timestamps": [
+        {
+          "hour": 1,
+          "totalProcessed": 2000,
+          "backlog": 8000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 7978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 4,
+          "totalProcessed": 2000,
+          "backlog": 38000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 37978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 8,
+          "totalProcessed": 2000,
+          "backlog": 78000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 77978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 12,
+          "totalProcessed": 2000,
+          "backlog": 78000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 77978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 16,
+          "totalProcessed": 2000,
+          "backlog": 78000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 77978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 20,
+          "totalProcessed": 2000,
+          "backlog": 78000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 77978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        },
+        {
+          "hour": 24,
+          "totalProcessed": 2000,
+          "backlog": 78000,
+          "metrics": {
+            "pool": {
+              "currentRPM": 2000,
+              "maxRPM": 2000,
+              "utilizationPct": 100,
+              "totalProcessed": 2000,
+              "totalRejected": 77978,
+              "keyCount": 20
+            },
+            "models": {
+              "gemini": {
+                "count": 0,
+                "totalRPM": 0,
+                "processed": 0,
+                "pct": 0
+              },
+              "qwen": {
+                "count": 20,
+                "totalRPM": 2000,
+                "processed": 2000,
+                "pct": 100
+              }
+            },
+            "keys": [
+              {
+                "id": "qwen-1",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "41,913",
+                "failures": 1,
+                "requests": 102,
+                "avgLatency": 2493
+              },
+              {
+                "id": "qwen-2",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 108,
+                "rpmLimit": 100,
+                "tokensUsed": "43,701",
+                "failures": 2,
+                "requests": 108,
+                "avgLatency": 2494
+              },
+              {
+                "id": "qwen-3",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "40,735",
+                "failures": 1,
+                "requests": 105,
+                "avgLatency": 2531
+              },
+              {
+                "id": "qwen-4",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "42,109",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2532
+              },
+              {
+                "id": "qwen-5",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,526",
+                "failures": 0,
+                "requests": 101,
+                "avgLatency": 2450
+              },
+              {
+                "id": "qwen-6",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 104,
+                "rpmLimit": 100,
+                "tokensUsed": "40,800",
+                "failures": 3,
+                "requests": 104,
+                "avgLatency": 2547
+              },
+              {
+                "id": "qwen-7",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "42,715",
+                "failures": 2,
+                "requests": 105,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-8",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,421",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2548
+              },
+              {
+                "id": "qwen-9",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 83,
+                "rpmLimit": 100,
+                "tokensUsed": "33,805",
+                "failures": 1,
+                "requests": 83,
+                "avgLatency": 2522
+              },
+              {
+                "id": "qwen-10",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 102,
+                "rpmLimit": 100,
+                "tokensUsed": "39,568",
+                "failures": 0,
+                "requests": 102,
+                "avgLatency": 2501
+              },
+              {
+                "id": "qwen-11",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,619",
+                "failures": 3,
+                "requests": 91,
+                "avgLatency": 2546
+              },
+              {
+                "id": "qwen-12",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 98,
+                "rpmLimit": 100,
+                "tokensUsed": "39,977",
+                "failures": 1,
+                "requests": 98,
+                "avgLatency": 2517
+              },
+              {
+                "id": "qwen-13",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "40,768",
+                "failures": 1,
+                "requests": 101,
+                "avgLatency": 2492
+              },
+              {
+                "id": "qwen-14",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 105,
+                "rpmLimit": 100,
+                "tokensUsed": "43,741",
+                "failures": 0,
+                "requests": 105,
+                "avgLatency": 2478
+              },
+              {
+                "id": "qwen-15",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 109,
+                "rpmLimit": 100,
+                "tokensUsed": "45,786",
+                "failures": 0,
+                "requests": 109,
+                "avgLatency": 2575
+              },
+              {
+                "id": "qwen-16",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "38,581",
+                "failures": 0,
+                "requests": 99,
+                "avgLatency": 2521
+              },
+              {
+                "id": "qwen-17",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 101,
+                "rpmLimit": 100,
+                "tokensUsed": "38,658",
+                "failures": 2,
+                "requests": 101,
+                "avgLatency": 2488
+              },
+              {
+                "id": "qwen-18",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 93,
+                "rpmLimit": 100,
+                "tokensUsed": "39,334",
+                "failures": 2,
+                "requests": 93,
+                "avgLatency": 2497
+              },
+              {
+                "id": "qwen-19",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 91,
+                "rpmLimit": 100,
+                "tokensUsed": "34,778",
+                "failures": 1,
+                "requests": 91,
+                "avgLatency": 2472
+              },
+              {
+                "id": "qwen-20",
+                "type": "qwen",
+                "healthy": true,
+                "circuitState": "closed",
+                "rpmUsed": 99,
+                "rpmLimit": 100,
+                "tokensUsed": "41,299",
+                "failures": 1,
+                "requests": 99,
+                "avgLatency": 2485
+              }
+            ],
+            "circuitBreakerEvents": 0
+          }
+        }
+      ],
+      "hourlyStats": [
+        {
+          "hour": 1,
+          "submitted": 12500,
+          "processed": 2000,
+          "backlog": 8000,
+          "totalSubmitted": 12889,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 80,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 2,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 18000,
+          "totalSubmitted": 25399,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 180,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 3,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 28000,
+          "totalSubmitted": 38429,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 280,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 4,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 38000,
+          "totalSubmitted": 51082,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 380,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 5,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 48000,
+          "totalSubmitted": 63168,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 480,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 6,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 58000,
+          "totalSubmitted": 75261,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 580,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 7,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 68000,
+          "totalSubmitted": 87632,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 680,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 8,
+          "submitted": 12500,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 9,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 10,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 11,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 12,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 13,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 14,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 15,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 16,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 17,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 18,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 19,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 20,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 21,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 22,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 23,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        },
+        {
+          "hour": 24,
+          "submitted": 0,
+          "processed": 0,
+          "backlog": 78000,
+          "totalSubmitted": 99705,
+          "totalProcessed": 2000,
+          "poolUtilization": 100,
+          "queueUtilization": 780,
+          "geminiPct": 0,
+          "qwenPct": 100
+        }
+      ],
+      "finalMetrics": {
+        "totalTimeMs": 2342,
+        "pool": {
+          "pool": {
+            "currentRPM": 2000,
+            "maxRPM": 2000,
+            "utilizationPct": 100,
+            "totalProcessed": 2000,
+            "totalRejected": 77978,
+            "keyCount": 20
+          },
+          "models": {
+            "gemini": {
+              "count": 0,
+              "totalRPM": 0,
+              "processed": 0,
+              "pct": 0
+            },
+            "qwen": {
+              "count": 20,
+              "totalRPM": 2000,
+              "processed": 2000,
+              "pct": 100
+            }
+          },
+          "keys": [
+            {
+              "id": "qwen-1",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 102,
+              "rpmLimit": 100,
+              "tokensUsed": "41,913",
+              "failures": 1,
+              "requests": 102,
+              "avgLatency": 2493
+            },
+            {
+              "id": "qwen-2",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 108,
+              "rpmLimit": 100,
+              "tokensUsed": "43,701",
+              "failures": 2,
+              "requests": 108,
+              "avgLatency": 2494
+            },
+            {
+              "id": "qwen-3",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 105,
+              "rpmLimit": 100,
+              "tokensUsed": "40,735",
+              "failures": 1,
+              "requests": 105,
+              "avgLatency": 2531
+            },
+            {
+              "id": "qwen-4",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 102,
+              "rpmLimit": 100,
+              "tokensUsed": "42,109",
+              "failures": 0,
+              "requests": 102,
+              "avgLatency": 2532
+            },
+            {
+              "id": "qwen-5",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 101,
+              "rpmLimit": 100,
+              "tokensUsed": "38,526",
+              "failures": 0,
+              "requests": 101,
+              "avgLatency": 2450
+            },
+            {
+              "id": "qwen-6",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 104,
+              "rpmLimit": 100,
+              "tokensUsed": "40,800",
+              "failures": 3,
+              "requests": 104,
+              "avgLatency": 2547
+            },
+            {
+              "id": "qwen-7",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 105,
+              "rpmLimit": 100,
+              "tokensUsed": "42,715",
+              "failures": 2,
+              "requests": 105,
+              "avgLatency": 2492
+            },
+            {
+              "id": "qwen-8",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 101,
+              "rpmLimit": 100,
+              "tokensUsed": "38,421",
+              "failures": 1,
+              "requests": 101,
+              "avgLatency": 2548
+            },
+            {
+              "id": "qwen-9",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 83,
+              "rpmLimit": 100,
+              "tokensUsed": "33,805",
+              "failures": 1,
+              "requests": 83,
+              "avgLatency": 2522
+            },
+            {
+              "id": "qwen-10",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 102,
+              "rpmLimit": 100,
+              "tokensUsed": "39,568",
+              "failures": 0,
+              "requests": 102,
+              "avgLatency": 2501
+            },
+            {
+              "id": "qwen-11",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 91,
+              "rpmLimit": 100,
+              "tokensUsed": "34,619",
+              "failures": 3,
+              "requests": 91,
+              "avgLatency": 2546
+            },
+            {
+              "id": "qwen-12",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 98,
+              "rpmLimit": 100,
+              "tokensUsed": "39,977",
+              "failures": 1,
+              "requests": 98,
+              "avgLatency": 2517
+            },
+            {
+              "id": "qwen-13",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 101,
+              "rpmLimit": 100,
+              "tokensUsed": "40,768",
+              "failures": 1,
+              "requests": 101,
+              "avgLatency": 2492
+            },
+            {
+              "id": "qwen-14",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 105,
+              "rpmLimit": 100,
+              "tokensUsed": "43,741",
+              "failures": 0,
+              "requests": 105,
+              "avgLatency": 2478
+            },
+            {
+              "id": "qwen-15",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 109,
+              "rpmLimit": 100,
+              "tokensUsed": "45,786",
+              "failures": 0,
+              "requests": 109,
+              "avgLatency": 2575
+            },
+            {
+              "id": "qwen-16",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 99,
+              "rpmLimit": 100,
+              "tokensUsed": "38,581",
+              "failures": 0,
+              "requests": 99,
+              "avgLatency": 2521
+            },
+            {
+              "id": "qwen-17",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 101,
+              "rpmLimit": 100,
+              "tokensUsed": "38,658",
+              "failures": 2,
+              "requests": 101,
+              "avgLatency": 2488
+            },
+            {
+              "id": "qwen-18",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 93,
+              "rpmLimit": 100,
+              "tokensUsed": "39,334",
+              "failures": 2,
+              "requests": 93,
+              "avgLatency": 2497
+            },
+            {
+              "id": "qwen-19",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 91,
+              "rpmLimit": 100,
+              "tokensUsed": "34,778",
+              "failures": 1,
+              "requests": 91,
+              "avgLatency": 2472
+            },
+            {
+              "id": "qwen-20",
+              "type": "qwen",
+              "healthy": true,
+              "circuitState": "closed",
+              "rpmUsed": 99,
+              "rpmLimit": 100,
+              "tokensUsed": "41,299",
+              "failures": 1,
+              "requests": 99,
+              "avgLatency": 2485
+            }
+          ],
+          "circuitBreakerEvents": 0
+        },
+        "queue": {
+          "pending": 0,
+          "running": 78000,
+          "completed": 2000,
+          "failed": 0,
+          "rejected": 19705,
+          "totalEnqueued": 80000,
+          "utilizationPct": 780
+        }
+      },
+      "completedSameDay": false,
+      "estimatedHours": "0.8"
+    }
+  },
+  "summary": {
+    "bestForVolume": "20 Keys (All Qwen Max)",
+    "bestCostEffective": "None completed same day"
+  }
+}
