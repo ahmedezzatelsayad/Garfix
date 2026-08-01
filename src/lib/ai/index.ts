@@ -6,8 +6,23 @@
  * 
  * CORE SYSTEM:
  * - Types & Interfaces
- * - Gemini Load Balancer (Multi-Key)
+ * - Gemini Load Balancer (Multi-Key) ⭐
+ * - Advanced Load Balancer (Enterprise) 🆕
  * - GarfiX Brain (Identity, Memory, Reasoning)
+ * 
+ * QUEUE WORKERS: 🆕
+ * - AI Workers (Chat, Invoice, Parse, Agents)
+ * - Rate Limiter (Pool-level 75 RPM cap)
+ * - Metrics Collector
+ * 
+ * SCALING: 🆕
+ * - Enhanced Auto-Scaler (Pool-aware)
+ * 
+ * MONITORING: 🆕
+ * - Health Checks per key
+ * - Quota Tracking
+ * - Circuit Breaker
+ * - Metrics Dashboard API
  * 
  * REACT HOOKS:
  * - useGarfiXAI - Main chat hook
@@ -60,3 +75,61 @@ export {
   getGarfixBrain,
   initGarfixBrain,
 } from './garfix-brain';
+
+// ── Advanced Load Balancer (Enterprise) 🆕 ───────────────────
+
+export {
+  AdvancedGeminiLoadBalancer,
+  getAdvancedLoadBalancer,
+  initAdvancedLoadBalancer,
+} from './advanced-loadbalancer';
+
+export type {
+  KeyHealthStatus,
+  PoolMetrics,
+  BalancingStrategy,
+} from './advanced-loadbalancer';
+
+// ── AI Queue Workers 🆕 ─────────────────────────────────────
+
+export {
+  // Workers
+  registerAIWorkers,
+  routeAIJob,
+  
+  // Enqueue helpers
+  enqueueChatJob,
+  enqueueInvoiceExtractJob,
+  enqueueSmartParseJob,
+  enqueueAgentJob,
+  
+  // Rate limiting & metrics
+  aiRateLimiter,
+  aiMetrics,
+  
+  // Constants
+  POOL_MAX_RPM,
+  QUEUE_SCALE_UP_THRESHOLD,
+  QUEUE_MAX_SIZE,
+} from '@/lib/workers/aiWorkers';
+
+export type {
+  AIWorkerType,
+  AIJobPayload,
+  AIJobResult,
+  AIMetricsSnapshot,
+} from '@/lib/workers/aiWorkers';
+
+// ── Enhanced Auto-Scaler 🆕 ────────────────────────────────
+
+export {
+  EnhancedWorkerScaler,
+  getEnhancedScaler,
+  scaleWorkers as enhancedScaleWorkers,
+  getActiveWorkerCounts as enhancedGetActiveWorkerCounts,
+} from '@/lib/ai-fabric/enhanced-worker-scaler';
+
+export type {
+  ScaleDecision,
+  ScalerConfig,
+} from '@/lib/ai-fabric/enhanced-worker-scaler';
