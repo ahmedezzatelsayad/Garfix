@@ -1,8 +1,15 @@
 /**
  * invoice-brain/index.ts — public API of the invoice-brain module.
  * 
- * 🆕 ENHANCED: Now includes Layout-based Fingerprinting, Smart Splitting,
- * and Confidence-Based Pattern Learning (User's suggestions implemented).
+ * 🚀 PRODUCTION-READY: Includes all 6 critical systems:
+ * 1. Layout-based Fingerprinting (v2)
+ * 2. Smart Multi-rule Splitting
+ * 3. Confidence-Based Pattern Learning
+ * 4. Pattern Versioning System
+ * 5. Drift Detection
+ * 6. Human Review Loop
+ * 7. High-Performance Fingerprint Cache
+ * 8. Comprehensive Telemetry & Metrics
  */
 export { InvoiceSchema, INVOICE_FIELDS } from "./schema";
 export type { Invoice, InvoiceField } from "./schema";
@@ -107,3 +114,94 @@ export {
   buildCompanyContext,
 } from "./garfixAdapter";
 export type { ParsedOrder, CompanyContext } from "./garfixAdapter";
+
+// ─── Benchmark Suite (NEW) ──────────────────────────────────
+export {
+  generateBenchmarkDataset,
+  generateQuickTestSet,
+  runBenchmark,
+  quickBenchmark,
+} from "./benchmark/runner";
+export type { 
+  BenchmarkResult, 
+  BenchmarkDataset, 
+  GeneratedInvoice, 
+  SupplierProfile as BenchmarkSupplier,
+  DatasetConfig,
+  MetricResult,
+  ProcessingTimeMetrics,
+  SupplierBreakdown,
+  ConfidenceDistribution,
+  SplitRuleStats,
+} from "./benchmark/runner";
+export { generateBenchmarkDataset as generateBenchmarkDatasetFromGenerator } from "./benchmark/dataset";
+
+// ─── Pattern Versioning (NEW) ─────────────────────────────
+export {
+  PatternVersionManager,
+  getPatternVersionManager,
+  migrateToVersioned,
+} from "./patternVersioning";
+export type {
+  VersionedPattern,
+  PatternVersion,
+  VersionStats,
+  VersionTransition,
+  PatternMetadata,
+} from "./patternVersioning";
+
+// ─── Drift Detection (NEW) ─────────────────────────────────
+export {
+  DriftDetector,
+  getDriftDetector,
+} from "./driftDetection";
+export type {
+  DriftDetectionResult,
+  DriftIndicator,
+  IndicatorDetail,
+  DriftBaseline,
+  DriftConfig,
+} from "./driftDetection";
+
+// ─── Human Review Loop (NEW) ───────────────────────────────
+export {
+  HumanReviewManager,
+  getHumanReviewManager,
+} from "./humanReview";
+export type {
+  ReviewItem,
+  ReviewStatus,
+  ReviewReason,
+  SuggestedAction,
+  ReviewCorrection,
+  ReviewQueueStats,
+} from "./humanReview";
+
+// ─── Fingerprint Cache (NEW) ──────────────────────────────
+export {
+  FingerprintCache,
+  getFingerprintCache,
+  getCachedOrCompute,
+  batchFingerprints,
+} from "./fingerprintCache";
+export type {
+  CacheEntry,
+  FingerprintCacheConfig,
+  CacheStats,
+} from "./fingerprintCache";
+
+// ─── Telemetry & Metrics (NEW) ─────────────────────────────
+export {
+  TelemetryCollector,
+  getTelemetryCollector,
+  recordExtraction,
+  METRIC_DEFINITIONS,
+} from "./telemetry";
+export type {
+  TelemetryEvent,
+  TelemetryEventType,
+  MetricDefinition,
+  MetricsSnapshot,
+  DashboardData,
+  HealthStatus,
+} from "./telemetry";
