@@ -37,10 +37,11 @@ const NAV_ITEMS: Array<{
   perm?: string;
   adminOnly?: boolean;
   founderOnly?: boolean;
+  isAiFeature?: boolean;
 }> = [
   { key: "dash", label: "لوحة التحكم", icon: LayoutDashboard },
   { key: "invoices", label: "الفواتير", icon: FileText, perm: "create_invoice" },
-  { key: "bulk-input", label: "إدخال مجمع بالـ AI", icon: Sparkles, perm: "create_invoice" },
+  { key: "bulk-input", label: "إدخال مجمع بالـ AI", icon: Sparkles, perm: "create_invoice", isAiFeature: true },
   { key: "clients", label: "العملاء", icon: Users, perm: "view_customers" },
   { key: "catalog", label: "المنتجات", icon: Package },
   { key: "inventory", label: "المخزون", icon: Boxes, perm: "settings_access" },
@@ -49,7 +50,7 @@ const NAV_ITEMS: Array<{
   { key: "accounting", label: "المحاسبة", icon: Calculator, perm: "finance_access" },
   { key: "reports", label: "التقارير", icon: BarChart3, perm: "reports_access" },
   { key: "automation", label: "الأتمتة", icon: Zap, perm: "settings_access" },
-  { key: "ai-agents", label: "وكلاء AI", icon: Bot },
+  { key: "ai-agents", label: "وكلاء AI", icon: Bot, isAiFeature: true },
   { key: "team", label: "فريقي", icon: Users, perm: "settings_access" },
   { key: "settings", label: "الإعدادات", icon: Settings, perm: "settings_access" },
   { key: "account", label: "حسابي", icon: User },
@@ -141,7 +142,7 @@ export function Sidebar({
         <div className="py-5 px-[18px] pb-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2.5">
             <div
-              className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xl font-black text-white shadow-[0_6px_20px_rgba(124,58,237,0.35)]"
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#047857] to-[#059669] flex items-center justify-center text-xl font-black text-white shadow-brand-md"
             >
               G
             </div>
@@ -241,14 +242,19 @@ export function Sidebar({
                 key={item.key}
                 onClick={() => navigate(item.key)}
                 className={cn(
-                  "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg border-none cursor-pointer font-inherit text-[13px] text-right transition-all duration-150 mb-0.5",
-                  active ? "bg-sidebar-primary text-white font-bold shadow-[0_2px_8px_rgba(124,58,237,0.3)]" : "bg-transparent text-sidebar-foreground font-medium",
+                  "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg border-none cursor-pointer font-inherit text-[13px] text-right transition-all duration-120 mb-0.5 active-press",
+                  active ? "bg-sidebar-primary text-white font-bold shadow-brand-sm" : "bg-transparent text-sidebar-foreground font-medium",
                 )}
                 onMouseEnter={(e) => { if (!active) e.currentTarget.classList.add("bg-sidebar-accent"); }}
                 onMouseLeave={(e) => { if (!active) e.currentTarget.classList.remove("bg-sidebar-accent"); }}
               >
                 <Icon size={16} />
                 <span className="flex-1">{item.label}</span>
+                {item.isAiFeature && (
+                  <span className="ai-badge text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                    AI
+                  </span>
+                )}
               </button>
             );
           })}
