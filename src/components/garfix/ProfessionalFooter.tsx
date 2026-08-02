@@ -71,43 +71,52 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
 
   const isLanding = variant === "landing";
 
-  // Color scheme based on variant
+  // Color scheme based on variant - DS v4.0 Emerald Theme
   const colors = isLanding
     ? {
-        bg: "bg-[rgba(15,10,30,0.95)]",
-        border: "border-[rgba(124,58,237,0.15)]",
+        bg: "bg-[#0b1220]",
+        border: "border-emerald-500/20",
+        accentLine: "from-emerald-500 via-emerald-400 to-emerald-600",
         text: "text-white/60",
-        textHover: "hover:text-[#c4b5fd]",
-        heading: "text-white/90",
+        textHover: "hover:text-emerald-400",
+        heading: "text-emerald-400",
         muted: "text-white/40",
         brand: "text-white",
         inputBg: "bg-white/[0.05]",
         inputBorder: "border-white/[0.1]",
+        buttonBg: "from-emerald-600 to-emerald-700",
+        logoBg: "from-emerald-600 to-emerald-700",
       }
     : {
-        bg: "bg-[var(--card)]",
-        border: "border-[var(--border)]",
+        bg: "bg-[#111827]",
+        border: "border-emerald-500/20",
+        accentLine: "from-emerald-500 via-emerald-400 to-emerald-600",
         text: "text-[var(--muted-foreground)]",
-        textHover: "hover:text-[var(--primary)]",
-        heading: "text-[var(--foreground)]",
+        textHover: "hover:text-emerald-500",
+        heading: "text-emerald-600 dark:text-emerald-400",
         muted: "text-[var(--muted-foreground)]",
         brand: "text-[var(--foreground)]",
         inputBg: "bg-[var(--background)]",
         inputBorder: "border-[var(--border)]",
+        buttonBg: "from-emerald-600 to-emerald-700",
+        logoBg: "from-emerald-600 to-emerald-700",
       };
 
   return (
     <footer
-      className={`${colors.bg} border-t ${colors.border} safe-bottom`}
+      className={`${colors.bg} safe-bottom relative`}
       dir="rtl"
     >
+      {/* DS v4.0 Gradient Accent Line */}
+      <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${colors.accentLine}`} />
+      
       {/* ── Main Footer Content ──────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-[5%] py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-11 h-11 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-[22px] font-black text-white shadow-[0_8px_24px_rgba(124,58,237,0.4)]">
+              <div className={`w-11 h-11 rounded-lg bg-gradient-to-br ${colors.logoBg} flex items-center justify-center text-[22px] font-black text-white shadow-brand-sm`}>
                 G
               </div>
               <div>
@@ -126,12 +135,12 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="بريدك الإلكتروني للنشرة البريدية"
-                className={`flex-1 px-3 py-2 rounded-lg ${colors.inputBg} border ${colors.inputBorder} ${colors.text} text-[12px] outline-none focus:border-[#7c3aed] transition-colors`}
+                className={`flex-1 px-3 py-2 rounded-lg ${colors.inputBg} border ${colors.inputBorder} ${colors.text} text-[12px] outline-none focus-ring focus:border-emerald-500 transition-all duration-150`}
                 dir="ltr"
               />
               <button
                 type="submit"
-                className="px-4 py-2 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white text-[12px] font-bold border-none cursor-pointer transition-all hover:shadow-[0_4px_12px_rgba(124,58,237,0.3)] whitespace-nowrap"
+                className={`px-4 py-2 rounded-lg bg-gradient-to-r ${colors.buttonBg} text-white text-[12px] font-bold border-none cursor-pointer active-press duration-150 hover:shadow-brand-sm whitespace-nowrap transition-shadow`}
               >
                 {subscribed ? "تم الاشتراك ✓" : "اشترك"}
               </button>
@@ -146,7 +155,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
                   target="_blank"
                   rel="noopener noreferrer"
                   title={s.label}
-                  className={`w-9 h-9 rounded-lg ${colors.inputBg} border ${colors.inputBorder} flex items-center justify-center text-[11px] font-bold ${colors.text} ${colors.textHover} transition-all no-underline`}
+                  className={`w-9 h-9 rounded-lg ${colors.inputBg} border ${colors.inputBorder} flex items-center justify-center text-[11px] font-bold ${colors.text} ${colors.textHover} hover-lift duration-120 transition-all no-underline hover:border-emerald-500/50`}
                 >
                   {s.icon}
                 </a>
@@ -157,7 +166,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
           {/* Link Groups */}
           {FOOTER_LINKS.map((group) => (
             <div key={group.title}>
-              <h3 className={`text-[13px] font-extrabold mb-4 ${colors.heading}`}>
+              <h3 className={`text-[13px] font-extrabold mb-4 ${colors.heading} uppercase tracking-wider`}>
                 {group.title}
               </h3>
               <ul className="list-none p-0 m-0 flex flex-col gap-2.5">
@@ -179,10 +188,10 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
       </div>
 
       {/* ── Bottom Bar ───────────────────────────────────────────────── */}
-      <div className={`border-t ${colors.border} py-5 px-[5%]`}>
+      <div className={`border-t ${colors.border} py-5 px-[5%] bg-[#0b1220]/50`}>
         <div className="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className={`text-[11px] ${colors.muted} flex flex-wrap items-center gap-x-2`}>
-            <span>&copy; {new Date().getFullYear()} GARFIX v1.5.1. جميع الحقوق محفوظة.</span>
+            <span>&copy; {new Date().getFullYear()} GARFIX v4.0. جميع الحقوق محفوظة.</span>
             <span className="mx-1">|</span>
             <span>صُنع بـ ❤️ في الكويت</span>
           </div>
@@ -208,7 +217,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
       {isLanding && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-6 left-6 z-50 w-11 h-11 rounded-full bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none cursor-pointer shadow-[0_4px_16px_rgba(124,58,237,0.4)] flex items-center justify-center transition-all hover:shadow-[0_6px_24px_rgba(124,58,237,0.6)] hover:-translate-y-1 max-md:hidden"
+          className="fixed bottom-6 left-6 z-50 w-11 h-11 rounded-full bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-none cursor-pointer shadow-brand-md flex items-center justify-center transition-all hover:shadow-brand-lg hover:-translate-y-1 active-press duration-150 max-md:hidden"
           aria-label="العودة للأعلى"
         >
           <ChevronUp size={20} />

@@ -92,14 +92,14 @@ export function NotificationsDropdown() {
         onClick={() => setOpen((v) => !v)}
         aria-label="الإشعارات"
         title="الإشعارات"
-        className="bg-muted border border-border w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground cursor-pointer relative transition-colors duration-150"
+        className="bg-muted border border-border w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground cursor-pointer relative transition-colors duration-150 hover-lift duration-120 active-press duration-150"
         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "var(--muted)"; }}
       >
         <Bell size={16} />
         {unreadCount > 0 && (
           <span
-            className="absolute top-[3px] right-[3px] min-w-[16px] h-4 px-1 rounded-lg bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-background"
+            className="absolute top-[3px] right-[3px] min-w-[16px] h-4 px-1 rounded-lg bg-emerald-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-background"
           >
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
@@ -108,18 +108,18 @@ export function NotificationsDropdown() {
 
       {open && (
         <div
-          className="absolute top-[calc(100%+8px)] left-0 w-[calc(100vw-32px)] sm:w-[350px] max-h-[440px] bg-popover border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.18)] z-[200] flex flex-col overflow-hidden"
+          className="absolute top-[calc(100%+8px)] left-0 w-[calc(100vw-32px)] sm:w-[350px] max-h-[440px] bg-popover border border-border rounded-xl shadow-brand-lg glass-strong z-[200] flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div
-            className="py-3 px-3.5 border-b border-border flex items-center justify-between bg-card"
+            className="py-3 px-3.5 border-b border-border border-t-2 border-t-emerald-500 flex items-center justify-between bg-card"
           >
             <div className="flex items-center gap-2">
               <Bell size={14} className="text-primary" />
               <span className="text-[13px] font-extrabold">الإشعارات</span>
               {unreadCount > 0 && (
                 <span
-                  className="bg-red-500 text-white text-[10px] font-bold py-0.5 px-[7px] rounded-[10px]"
+                  className="bg-emerald-500 text-white text-[10px] font-bold py-0.5 px-[7px] rounded-[10px]"
                 >
                   {unreadCount} غير مقروء
                 </span>
@@ -158,7 +158,7 @@ export function NotificationsDropdown() {
                     key={n.id}
                     type="button"
                     onClick={() => handleClickNotification(n)}
-                    className={cn("w-full flex gap-2.5 py-2.5 px-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-100 text-popover-foreground", n.isRead ? "bg-transparent" : "bg-accent")}
+                    className={cn("w-full flex gap-2.5 py-2.5 px-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-120 text-popover-foreground hover-lift", n.isRead ? "bg-transparent" : "bg-accent")}
                     onMouseEnter={(e) => { if (n.isRead) e.currentTarget.classList.add("bg-muted"); }}
                     onMouseLeave={(e) => { if (n.isRead) e.currentTarget.classList.remove("bg-muted"); }}
                   >
@@ -209,7 +209,7 @@ export function NotificationsDropdown() {
               type="button"
               onClick={markAllRead}
               disabled={markingAll || unreadCount === 0}
-              className={cn("w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-transparent border border-border text-foreground cursor-pointer font-inherit text-xs font-bold", markingAll || unreadCount === 0 ? "opacity-50" : "")}
+              className={cn("w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-transparent border border-border text-foreground cursor-pointer font-inherit text-xs font-bold active-press duration-150", markingAll || unreadCount === 0 ? "opacity-50" : "")}
             >
               <CheckCheck size={13} />
               {markingAll ? "جارٍ…" : "تعليم الكل كمقروء"}

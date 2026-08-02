@@ -75,7 +75,7 @@ export function SaaSControlPanel() {
   const currentPageCompanies = paginate(companies, companiesSafePage, saasPageSize);
 
   const saasPageBtnClass = (disabled: boolean): string =>
-    cn("py-1.5 px-3 rounded-md border border-border font-inherit text-xs font-bold", disabled ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer");
+    cn("py-1.5 px-3 rounded-md border border-border font-inherit text-xs font-bold hover-lift duration-120 active-press duration-150", disabled ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer");
 
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode; count: number }> = [
     { key: "users", label: "المستخدمون", icon: <Users size={14} />, count: users.length },
@@ -92,25 +92,25 @@ export function SaaSControlPanel() {
       </div>
       <div className="flex gap-1.5 overflow-x-auto garfix-scroll">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={cn("inline-flex items-center gap-1.5 py-2 px-4 rounded-[10px] border border-border font-inherit text-xs font-bold cursor-pointer whitespace-nowrap", tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
+          <button key={t.key} onClick={() => setTab(t.key)} className={cn("hover-lift duration-120 inline-flex items-center gap-1.5 py-2 px-4 rounded-[10px] border border-border font-inherit text-xs font-bold cursor-pointer whitespace-nowrap active-press duration-150", tab === t.key ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-brand-sm" : "bg-card text-muted-foreground")}>
             {t.icon} {t.label} ({t.count})
           </button>
         ))}
       </div>
 
       {loading ? <div className="p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : (
-        <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+        <div className="kpi-card bg-card rounded-[14px] border border-border overflow-hidden shadow-brand-md">
           {tab === "users" && (
             <>
               <div className="py-2 sm:py-3 px-3 sm:px-4 border-b border-border flex justify-between items-center">
                 <h3 className="text-sm font-bold">المستخدمون ({users.length})</h3>
-                <button onClick={() => setShowUserForm(true)} className="inline-flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-[11px] font-bold cursor-pointer"><Plus size={12} /> مستخدم جديد</button>
+                <button onClick={() => setShowUserForm(true)} className="active-press duration-150 inline-flex items-center gap-1 py-1.5 px-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-inherit text-[11px] font-bold cursor-pointer shadow-brand-sm"><Plus size={12} /> مستخدم جديد</button>
               </div>
               {showUserForm && <UserForm onClose={() => setShowUserForm(false)} onSaved={() => setShowUserForm(false)} />}
               {editingUser && <UserForm editTarget={editingUser} onClose={() => setEditingUser(null)} onSaved={() => setEditingUser(null)} />}
               {deletingUser && <DeleteUserConfirm user={deletingUser} onClose={() => setDeletingUser(null)} onDeleted={() => setDeletingUser(null)} />}
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="table-enterprise w-full border-collapse">
                   <thead><tr className="bg-muted">
                     <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الاسم</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">البريد</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الدور</th>
                     <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركات</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold hidden md:table-cell">المؤسس</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">إجراءات</th>
@@ -125,8 +125,8 @@ export function SaaSControlPanel() {
                         <td className="py-2.5 px-3 text-[13px] hidden md:table-cell">{u.isFounder ? "✓" : "—"}</td>
                         <td className="py-2.5 px-3 text-[13px]">
                           <div className="flex gap-1">
-                            <button onClick={() => setEditingUser(u)} disabled={u.isFounder} title={u.isFounder ? "لا يمكن تعديل المؤسس من هنا" : "تعديل"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-blue-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}><Edit2 size={14} /></button>
-                            <button onClick={() => setDeletingUser(u)} disabled={u.isFounder} title={u.isFounder ? "لا يمكن حذف المؤسس" : "حذف"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-red-500 p-0", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}><Trash2 size={14} /></button>
+                            <button onClick={() => setEditingUser(u)} disabled={u.isFounder} title={u.isFounder ? "لا يمكن تعديل المؤسس من هنا" : "تعديل"} className={cn("active-press duration-150 inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-emerald-500 p-0 hover-lift duration-120", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}><Edit2 size={14} /></button>
+                            <button onClick={() => setDeletingUser(u)} disabled={u.isFounder} title={u.isFounder ? "لا يمكن حذف المؤسس" : "حذف"} className={cn("active-press duration-150 inline-flex items-center justify-center w-7 h-7 rounded-md bg-transparent border border-border text-red-500 p-0 hover-lift duration-120", u.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")}><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -148,7 +148,7 @@ export function SaaSControlPanel() {
           {tab === "companies" && (
             <>
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="table-enterprise w-full border-collapse">
                   <thead><tr className="bg-muted">
                     <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">المعرّف</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الباقة</th>
                     <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الحالة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">تاريخ الإنشاء</th>
@@ -181,7 +181,7 @@ export function SaaSControlPanel() {
           )}
           {tab === "payments" && (
             <div className="overflow-x-auto garfix-scroll">
-              <table className="w-full border-collapse">
+              <table className="table-enterprise w-full border-collapse">
                 <thead><tr className="bg-muted">
                   <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الشركة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الباقة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">المبلغ</th>
                   <th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">الحالة</th><th className="text-right py-2.5 px-3 text-[11px] text-muted-foreground font-bold">التاريخ</th>
@@ -213,7 +213,7 @@ export function SaaSControlPanel() {
   );
 }
 
-const inputTW = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground font-inherit text-[13px] outline-none";
+const inputTW = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground font-inherit text-[13px] outline-none focus-ring"; // DS v4.0: focus-ring added
 const labelTW = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSaved: () => void; editTarget?: User }) {
@@ -268,7 +268,7 @@ function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSav
         <div><label className={labelTW}>الدور</label><select value={role} onChange={(e) => setRole(e.target.value)} className={inputTW}><option value="admin">مدير</option><option value="editor">محرّر</option><option value="employee">موظف</option><option value="viewer">مشاهد</option>{isEdit && <option value="inactive">غير نشط (محذوف ناعم)</option>}</select></div>
         {isEdit && (<div className="col-span-full"><label className={labelTW}>الشركات (افصل بفواصل)</label><input value={companiesText} onChange={(e) => setCompaniesText(e.target.value)} className={inputTW} dir="ltr" placeholder="company-1, company-2" /></div>)}
       </div>
-      <button onClick={submit} disabled={saving || isPending} className={cn("self-end py-2 px-5 rounded-lg bg-primary text-primary-foreground border-none font-inherit text-xs font-bold", saving || isPending ? "cursor-not-allowed opacity-70" : "cursor-pointer")}>{saving || isPending ? "جارٍ…" : (isEdit ? "حفظ" : "إنشاء")}</button>
+      <button onClick={submit} disabled={saving || isPending} className={cn("active-press duration-150 self-end py-2 px-5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-inherit text-xs font-bold shadow-brand-sm", saving || isPending ? "cursor-not-allowed opacity-70" : "cursor-pointer")}>{saving || isPending ? "جارٍ…" : (isEdit ? "حفظ" : "إنشاء")}</button>
     </div>
   );
 }

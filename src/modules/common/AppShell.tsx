@@ -276,7 +276,7 @@ export default function AppShell() {
   return (
     <CommandPaletteProvider>
       <div
-        className="flex flex-col sm:flex-row min-h-dvh bg-background text-foreground"
+        className="flex flex-col sm:flex-row min-h-dvh bg-[#0b1220] text-foreground dark:bg-[#0b1220]"
         dir="rtl"
       >
         <Sidebar
@@ -305,7 +305,7 @@ export default function AppShell() {
           On desktop (md+) the sidebar is a fixed rail on the right (RTL) so the main
           content needs margin-end: 260px to not sit under it.
         */}
-        <div className="flex flex-1 flex-col min-w-0 sm:me-[200px] md:me-[260px] garfix-scroll">
+        <div className="flex flex-1 flex-col min-w-0 sm:me-[200px] md:me-[260px] garfix-scroll transition-all duration-300">
           <Topbar
             user={user}
             activeCompany={activeCompany}
@@ -313,7 +313,7 @@ export default function AppShell() {
             theme={theme}
             toggleTheme={toggleTheme}
           />
-          <main className="flex-1 p-2 sm:p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)]">
+          <main className="flex-1 p-2 sm:p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)] glass">
             <ErrorBoundary>
             {/* ════════════════════════════════════════════════════════════
                 MULTI-SUSPENSE BOUNDARIES — Optimized Loading States
@@ -411,10 +411,10 @@ export default function AppShell() {
 function NoAccessView({ label }: { label: string }) {
   return (
     <div className="p-8 md:p-12 text-center" dir="rtl">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-destructive/10 text-destructive mb-3">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-3">
         !
       </div>
-      <h2 className="text-lg sm:text-xl font-extrabold mb-1">لا تملك صلاحية الوصول</h2>
+      <h2 className="text-lg sm:text-xl font-extrabold mb-1 text-emerald-400">لا تملك صلاحية الوصول</h2>
       <p className="text-sm text-muted-foreground">
         هذه الصفحة ({label}) متاحة للمسؤولين فقط. تواصل مع مدير المنصة إذا كنت تعتقد أن هذا خطأ.
       </p>

@@ -290,8 +290,10 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         .landing-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(4,120,87,0.12); backdrop-filter: blur(8px); transition: all 120ms ease; }
         .landing-card:hover { background: rgba(4,120,87,0.08); border-color: rgba(4,120,87,0.25); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(4,120,87,0.15); }
         .landing-section-title { background: linear-gradient(120deg, #6ee7b7, #059669, #6ee7b7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .pricing-highlight { background: linear-gradient(180deg,rgba(4,120,87,0.25),rgba(16,185,129,0.1)); border: 2px solid #047857; }
+        .pricing-highlight { background: linear-gradient(180deg,rgba(212,165,116,0.2),rgba(212,165,116,0.05)); border: 2px solid #d4a574; } /* DS v4.0: Gold accent for premium */
         .comparison-garfix { background: rgba(4,120,87,0.08); }
+        /* DS v4.0: Additional design system classes */
+        .glass { background: rgba(17,24,39,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(4,120,87,0.15); }
       `}</style>
 
       {/* ── Nav ──────────────────────────────────────────────────────── */}
@@ -313,11 +315,11 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         <div className="flex gap-2.5">
           <button
             onClick={onLogin}
-            className="bg-transparent text-white/85 border border-white/15 rounded-md px-[22px] py-2.5 text-sm font-bold cursor-pointer transition-all hover:bg-white/5 max-md:min-h-[44px]"
+            className="hover-lift duration-120 bg-transparent text-white/85 border border-white/15 rounded-md px-[22px] py-2.5 text-sm font-bold cursor-pointer transition-all hover:bg-white/5 max-md:min-h-[44px]"
           >تسجيل الدخول</button>
           <button
             onClick={onRegister}
-            className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-md px-[22px] py-2.5 text-sm font-extrabold cursor-pointer transition-all duration-150 shadow-[0_8px_24px_rgba(4,120,87,0.4)] hover:shadow-[0_12px_32px_rgba(4,120,87,0.5)] max-md:min-h-[44px]"
+            className="active-press duration-150 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-md px-[22px] py-2.5 text-sm font-extrabold cursor-pointer transition-all shadow-[0_8px_24px_rgba(4,120,87,0.4)] hover:shadow-[0_12px_32px_rgba(4,120,87,0.5)] max-md:min-h-[44px]"
           >ابدأ مجاناً</button>
         </div>
       </motion.nav>
@@ -348,7 +350,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         <motion.div variants={fadeUp} className="flex flex-wrap gap-3.5 justify-center">
           <button
             onClick={onRegister}
-            className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-9 py-4 text-base font-extrabold cursor-pointer transition-all duration-150 shadow-[0_12px_36px_rgba(4,120,87,0.5)] hover:shadow-[0_16px_40px_rgba(4,120,87,0.6)] inline-flex items-center gap-2 max-md:min-h-[44px]"
+            className="active-press duration-150 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-9 py-4 text-base font-extrabold cursor-pointer transition-all shadow-[0_12px_36px_rgba(4,120,87,0.5)] hover:shadow-[0_16px_40px_rgba(4,120,87,0.6)] inline-flex items-center gap-2 max-md:min-h-[44px]"
           >
             ابدأ تجربة مجانية ٣٠ يوماً
             <ChevronLeft size={18} />
@@ -401,7 +403,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1200px] mx-auto mb-12">
           {FEATURE_SHOWCASE.map((f, i) => (
             <motion.div key={i} variants={fadeUp}>
-              <Card className="landing-card cursor-default h-full">
+              <Card className="landing-card cursor-default h-full hover-lift duration-120 shadow-brand-md">
                 <CardHeader>
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mb-2`}>
                     {f.icon}
@@ -433,7 +435,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
             <motion.div
               key={i}
               variants={fadeUp}
-              className="p-6 rounded-2xl landing-card cursor-default"
+              className="p-6 rounded-2xl landing-card cursor-default hover-lift duration-120 shadow-brand-md"
             >
               <div className="text-[32px] mb-3">{f.icon}</div>
               <h3 className="text-lg font-extrabold mb-2">{f.title}</h3>
@@ -486,7 +488,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
           {PRICING_TIERS.map((tier) => (
             <motion.div key={tier.key} variants={scaleIn}>
               <Card className={cn(
-                "rounded-[18px] h-full relative",
+                "rounded-[18px] h-full relative kpi-card-gold",
                 tier.highlight ? "pricing-highlight" : "bg-white/[0.04] border border-white/[0.08]"
               )}>
                 {tier.badge && (
@@ -514,10 +516,10 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
                   <Button
                     onClick={onRegister}
                     className={cn(
-                      "w-full text-sm font-bold",
+                      "active-press duration-150 w-full text-sm font-bold shadow-brand-sm",
                       tier.highlight
-                        ? "bg-[linear-gradient(135deg,#047857,#10b981)] text-white hover:brightness-110"
-                        : "bg-white/10 text-white hover:bg-white/15"
+                        ? "bg-[linear-gradient(135deg,#d4a574,#c9956a)] text-white hover:brightness-110" /* DS v4.0: Gold for premium */
+                        : "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:brightness-110"
                     )}
                   >
                     {tier.price === 0 ? "ابدأ الآن" : "اختر الباقة"}
@@ -613,7 +615,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-[1100px] mx-auto">
           {TESTIMONIALS.map((t, i) => (
             <motion.div key={i} variants={fadeUp}>
-              <Card className="landing-card h-full">
+              <Card className="glass landing-card h-full">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-1 mb-3">
                     {Array(t.rating).fill(null).map((_, j) => (
@@ -679,7 +681,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
           <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={onRegister}
-              className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer transition-all duration-150 shadow-[0_12px_36px_rgba(4,120,87,0.5)] hover:shadow-[0_16px_40px_rgba(4,120,87,0.6)] inline-flex items-center gap-2.5 max-md:min-h-[44px]"
+              className="active-press duration-150 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer transition-all shadow-[0_12px_36px_rgba(4,120,87,0.5)] hover:shadow-[0_16px_40px_rgba(4,120,87,0.6)] inline-flex items-center gap-2.5 max-md:min-h-[44px]"
             >
               <Zap size={18} />
               ابدأ الآن مجاناً

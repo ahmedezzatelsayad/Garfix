@@ -71,7 +71,7 @@ export function TicketDetailDrawer({
       <SheetContent
         side="left"
         dir="rtl"
-        className="w-full sm:w-[min(640px,100vw)] max-w-none !gap-3 sm:!gap-3.5 overflow-y-auto p-3 sm:p-5"
+        className="w-full sm:w-[min(640px,100vw)] max-w-none !gap-3 sm:!gap-3.5 overflow-y-auto p-3 sm:p-5 shadow-brand-xl glass-strong"
         aria-describedby={undefined}
       >
         <SheetHeader className="p-0 !gap-1">
@@ -87,7 +87,7 @@ export function TicketDetailDrawer({
 
         <div className="flex gap-2 items-center">
           <label className="text-[11px] font-bold text-[var(--muted-foreground)]">الحالة:</label>
-          <select value={status} onChange={(e) => changeStatus(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[180px]">
+          <select value={status} onChange={(e) => changeStatus(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[180px] focus-ring transition-all">
             <option value="open">مفتوحة</option>
             <option value="pending">بانتظار المستخدم</option>
             <option value="resolved">تم الحل</option>
@@ -96,7 +96,7 @@ export function TicketDetailDrawer({
         </div>
 
         {ticket.body && (
-          <div className="p-2 sm:p-3 bg-[var(--muted)] rounded-[10px] text-[13px] leading-relaxed">
+          <div className="p-2 sm:p-3 bg-[var(--muted)] rounded-[10px] text-[13px] leading-relaxed glass">
             <div className="text-[10px] text-[var(--muted-foreground)] mb-1.5 font-bold">الرسالة الأصلية:</div>
             {ticket.body}
           </div>
@@ -108,7 +108,7 @@ export function TicketDetailDrawer({
             <div className="text-xs text-[var(--muted-foreground)] p-2">لا توجد ردود بعد</div>
           ) : (
             localReplies.map((r) => (
-              <div className="p-2 sm:p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)]" key={r.id}>
+              <div className="p-2 sm:p-2.5 bg-[var(--card)] rounded-lg border border-[var(--border)] glass" key={r.id}>
                 <div className="flex justify-between mb-1 text-[10px] text-[var(--muted-foreground)]">
                   <span className="font-bold">{r.senderEmail} ({r.senderRole})</span>
                   <span>{new Date(r.createdAt).toLocaleString("ar-EG")}</span>
@@ -125,13 +125,13 @@ export function TicketDetailDrawer({
             value={replyBody}
             onChange={(e) => setReplyBody(e.target.value)}
             rows={3}
-            className="resize-y min-h-[80px]"
+            className="resize-y min-h-[80px] focus-ring transition-all"
             placeholder="اكتب ردك هنا…"
           />
           <button
             onClick={sendReply}
             disabled={sending || !replyBody.trim()}
-            className="self-end inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: sending ? "not-allowed" : "pointer", opacity: (sending || !replyBody.trim()) ? 0.6 : 1 }}
+            className="self-end inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold active-press duration-150" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: sending ? "not-allowed" : "pointer", opacity: (sending || !replyBody.trim()) ? 0.6 : 1 }}
           >
             <Send size={14} /> {sending ? "جارٍ…" : "إرسال الرد"}
           </button>

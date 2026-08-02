@@ -26,12 +26,14 @@ interface FXRevaluation {
 
 type Tab = "lc" | "fx";
 
-/* ─── Shared Styles ─────────────────────────────────────────────────────────── */
+/* ─── Shared Styles (DS v4.0) ──────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+// DS v4.0: Added focus-ring for form inputs
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer";
+// DS v4.0: Added focus-ring for selects
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
@@ -133,13 +135,15 @@ export function TradeFinanceView() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
+      {/* Header - DS v4.0: Emerald accent color */}
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold flex items-center gap-2"><ShieldCheck size={20} /> التمويل التجاري</h1>
+          {/* DS v4.0: Section header with emerald accent */}
+          <h1 className="text-2xl font-extrabold flex items-center gap-2 text-[#047857]"><ShieldCheck size={20} /> التمويل التجاري</h1>
           <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
         </div>
-        <button onClick={() => tab === "lc" ? setShowLcForm(true) : setShowFxForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> {tab === "lc" ? "اعتماد جديد" : "حساب تقييم"}</button>
+        {/* DS v4.0: Action button with active-press */}
+        <button onClick={() => tab === "lc" ? setShowLcForm(true) : setShowFxForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press duration-150"><Plus size={16} /> {tab === "lc" ? "اعتماد جديد" : "حساب تقييم"}</button>
       </div>
 
       {/* Tabs */}
@@ -157,10 +161,53 @@ export function TradeFinanceView() {
         })}
       </div>
 
+      {/* DS v4.0: KPI Cards Section */}
+      {tab === "lc" && !showLcForm && !loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Total LCs - Standard KPI Card */}
+          <div className="kpi-card">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#047857]/15 flex items-center justify-center">
+                <Landmark size={20} className="text-[#047857]" />
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">إجمالي الاعتمادات</p>
+                <p className="text-xl font-bold text-[#047857]">{lcs.length}</p>
+              </div>
+            </div>
+          </div>
+          {/* Active LCs - GOLD KPI Card (Premium!) */}
+          <div className="kpi-card-gold">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#d4a574]/15 flex items-center justify-center">
+                <ShieldCheck size={20} className="text-[#d4a574]" />
+              </div>
+              <div>
+                <p className="text-[11px] opacity-80 font-medium">الاعتمادات النشطة</p>
+                <p className="text-xl font-bold">{lcs.filter(lc => lc.status === 'issued' || lc.status === 'amended').length}</p>
+              </div>
+            </div>
+          </div>
+          {/* Pending Approval - Standard KPI */}
+          <div className="kpi-card">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <Clock size={20} className="text-amber-500" />
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">قيد الموافقة</p>
+                <p className="text-xl font-bold text-amber-500">{lcs.filter(lc => lc.status === 'issued').length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "lc" ? (
         /* ── LC Tab ──────────────────────────────────────────────────────────── */
         showLcForm ? (
-          <div className="bg-card rounded-[14px] border border-border p-5">
+          {/* DS v4.0: Form card with hover-lift */}
+          <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">اعتماد مستندي جديد</h2>
               <button onClick={() => { setShowLcForm(false); resetLcForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -182,15 +229,17 @@ export function TradeFinanceView() {
               <div><label className={labelStyle}>تاريخ الإصدار</label><input value={lcIssueDate} onChange={(e) => setLcIssueDate(e.target.value)} className={inputStyle} type="date" /></div>
               <div><label className={labelStyle}>تاريخ الانتهاء</label><input value={lcExpiryDate} onChange={(e) => setLcExpiryDate(e.target.value)} className={inputStyle} type="date" /></div>
             </div>
+            {/* DS v4.0: Action buttons with active-press */}
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => { setShowLcForm(false); resetLcForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
-              <button onClick={handleCreateLc} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><Landmark size={14} /> إنشاء</button>
+              <button onClick={() => { setShowLcForm(false); resetLcForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer active-press duration-150">إلغاء</button>
+              <button onClick={handleCreateLc} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5 active-press duration-150"><Landmark size={14} /> إنشاء</button>
             </div>
           </div>
         ) : lcs.length === 0 ? <Empty label="اعتمادات مستندية" /> : (
-          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+          {/* DS v4.0: Table with enterprise styling */}
+          <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
             <div className="overflow-x-auto garfix-scroll">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-enterprise">
                 <thead><tr className="border-b border-border bg-muted">
                   <th className={thStyle}>رقم الاعتماد</th><th className={thStyle}>المورد</th>
                   <th className={thStyle}>البنك</th><th className={thStyle}>المبلغ</th>
@@ -224,7 +273,8 @@ export function TradeFinanceView() {
       ) : (
         /* ── FX Tab ──────────────────────────────────────────────────────────── */
         showFxForm ? (
-          <div className="bg-card rounded-[14px] border border-border p-5">
+          {/* DS v4.0: FX Form card with hover-lift */}
+          <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">حساب تقييم العملات</h2>
               <button onClick={() => { setShowFxForm(false); resetFxForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -257,14 +307,16 @@ export function TradeFinanceView() {
                 </select>
               </div>
             </div>
+            {/* DS v4.0: Action buttons with active-press */}
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => { setShowFxForm(false); resetFxForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
-              <button onClick={handleCreateFx} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><ArrowRightLeft size={14} /> حساب</button>
+              <button onClick={() => { setShowFxForm(false); resetFxForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer active-press duration-150">إلغاء</button>
+              <button onClick={handleCreateFx} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5 active-press duration-150"><ArrowRightLeft size={14} /> حساب</button>
             </div>
           </div>
         ) : fxEntries.length === 0 ? <Empty label="تقييمات عملات" /> : (
-          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-            {/* Summary cards */}
+          {/* DS v4.0: FX Table container with hover-lift */}
+          <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+            {/* Summary cards - DS v4.0: Using kpi-card classes */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-border">
               {(() => {
                 const totalRealizedGain = fxEntries.reduce((s, f) => s + f.realizedGain, 0);
@@ -272,20 +324,24 @@ export function TradeFinanceView() {
                 const totalUnrealizedGain = fxEntries.reduce((s, f) => s + f.unrealizedGain, 0);
                 const totalUnrealizedLoss = fxEntries.reduce((s, f) => s + f.unrealizedLoss, 0);
                 return [
-                  { label: "أرباح محققة", value: totalRealizedGain, badgeClass: "bg-emerald-500/20 text-emerald-500", textClass: "text-emerald-500", icon: <TrendingUp size={16} /> },
-                  { label: "خسائر محققة", value: totalRealizedLoss, badgeClass: "bg-red-500/20 text-red-500", textClass: "text-red-500", icon: <TrendingDown size={16} /> },
-                  { label: "أرباح غير محققة", value: totalUnrealizedGain, badgeClass: "bg-blue-500/20 text-blue-500", textClass: "text-blue-500", icon: <TrendingUp size={16} /> },
-                  { label: "خسائر غير محققة", value: totalUnrealizedLoss, badgeClass: "bg-amber-500/20 text-amber-500", textClass: "text-amber-500", icon: <TrendingDown size={16} /> },
+                  // DS v4.0: Emerald for gains
+                  { label: "أرباح محققة", value: totalRealizedGain, badgeClass: "bg-[#047857]/20 text-[#047857]", textClass: "text-[#047857]", icon: <TrendingUp size={16} />, cardClass: "kpi-card" },
+                  { label: "خسائر محققة", value: totalRealizedLoss, badgeClass: "bg-red-500/20 text-red-500", textClass: "text-red-500", icon: <TrendingDown size={16} />, cardClass: "kpi-card" },
+                  // DS v4.0: GOLD for unrealized gains (Premium financial data!)
+                  { label: "أرباح غير محققة", value: totalUnrealizedGain, badgeClass: "bg-[#d4a574]/20 text-[#d4a574]", textClass: "text-[#d4a574]", icon: <TrendingUp size={16} />, cardClass: "kpi-card-gold" },
+                  { label: "خسائر غير محققة", value: totalUnrealizedLoss, badgeClass: "bg-amber-500/20 text-amber-500", textClass: "text-amber-500", icon: <TrendingDown size={16} />, cardClass: "kpi-card" },
                 ].map((m, i) => (
-                  <div key={i} className="bg-background rounded-[10px] border border-border p-3 flex items-center gap-2">
+                  // DS v4.0: KPI card with hover effect
+                  <div key={i} className={cn(m.cardClass, "p-3 flex items-center gap-2")}
                     <div className={cn("w-8 h-8 rounded-md flex items-center justify-center", m.badgeClass)}>{m.icon}</div>
                     <div><p className="text-[11px] text-muted-foreground">{m.label}</p><p className={cn("text-[15px] font-bold", m.textClass)}>{fmt(m.value)}</p></div>
                   </div>
                 ));
               })()}
             </div>
+            {/* DS v4.0: Enterprise table */}
             <div className="overflow-x-auto garfix-scroll">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-enterprise">
                 <thead><tr className="border-b border-border bg-muted">
                   <th className={thStyle}>من</th><th className={thStyle}>إلى</th>
                   <th className={thStyle}>السعر</th><th className={thStyle}>الفترة</th>

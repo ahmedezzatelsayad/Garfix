@@ -1,14 +1,25 @@
 /**
  * ═════════════════════════════════════════════════════════════
- * GarfiX AI - Enhanced Chat Component (with Brain)
+ * GarfiX AI - Enhanced Chat Component (DS v4.0) (AI Component - GOLD Allowed! 🎉)
  * 
  * واجهة دردشة متكاملة مع جارفيكس AI الذكي
  * تدعم:
  * - 🧠 عرض عملية التفكير (Thinking Process)
  * - 💾 ذاكرة السياق
  * - 🔑 توزيع تلقائي على 5 مفاتيح (75 RPM)
- * - 🎯 اقتراحات ذكية
+ * - 🎯 اقتراحات ذكية (.ai-suggestion chips)
  * - 📱 تصميم RTL/Mobile-first
+ * 
+ * DS v4.0 Design System Applied:
+ * - Primary: Emerald Deep #047857
+ * - Accent: Champagne Gold #d4a574 (AI/Premium allowed!)
+ * - Chat container: shadow-brand-xl glass-strong
+ * - User messages: glass effect
+ * - AI messages: ai-card with gold accent border-left
+ * - Input: focus-ring with emerald
+ * - Send button: gradient-gold + active-press duration-150
+ * - Thinking: ai-thinking animation
+ * - Header: emerald-to-gold gradient
  * 
  * ═════════════════════════════════════════════════════════════
  */
@@ -60,7 +71,7 @@ const ThinkingIcon = () => (
 );
 
 const BrainIcon = () => (
-  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/30 animate-pulse-subtle">
+  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 via-[#d4a574] to-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-emerald-500/30 animate-pulse-subtle ai-badge">
     <span className="text-lg">🧠</span>
   </div>
 );
@@ -137,11 +148,11 @@ export function GarfiXChat({
 
   return (
     <div 
-      className={`flex flex-col h-full bg-background border border-border rounded-2xl shadow-xl shadow-purple-500/5 overflow-hidden ${className || ''}`}
+      className={`flex flex-col h-full bg-[#0b1220] border border-emerald-500/20 rounded-2xl shadow-brand-xl glass-strong overflow-hidden ${className || ''}`}
       dir={language === 'ar' ? 'rtl' : 'ltr'}
     >
-      {/* Header with Brain Status */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white">
+      {/* Header with Brain Status - DS v4.0 Emerald-Gold Gradient */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-600 via-[#d4a574] to-emerald-700 text-white">
         <div className="flex items-center gap-3">
           <BrainIcon />
           <div>
@@ -155,18 +166,18 @@ export function GarfiXChat({
         
         <button
           onClick={clearMessages}
-          className="px-3 py-1.5 text-xs rounded-lg bg-white/15 hover:bg-white/25 transition-all backdrop-blur-sm"
+          className="px-3 py-1.5 text-xs rounded-lg bg-white/15 hover:bg-white/25 transition-all backdrop-blur-sm hover-lift duration-120 active-press duration-150"
         >
           محادثة جديدة
         </button>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[350px] max-h-[550px] bg-gradient-to-b from-background to-muted/30">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[350px] max-h-[550px] bg-gradient-to-b from-[#111827] to-[#0b1220]">
         {/* Welcome Message */}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-[#d4a574]/30 dark:from-emerald-900/30 dark:to-[#d4a574]/20 flex items-center justify-center mb-4">
               <span className="text-3xl">🧠</span>
             </div>
             <h4 className="font-semibold text-lg mb-2">مرحباً! أنا جارفيكس</h4>
@@ -184,7 +195,7 @@ export function GarfiXChat({
                       setInputValue(suggestion);
                       inputRef.current?.focus();
                     }}
-                    className="px-4 py-2 text-sm rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors border border-primary/20"
+                    className="px-4 py-2 text-sm rounded-full ai-suggestion hover:bg-[#d4a574]/20 text-[#d4a574] transition-all duration-120 border border-[#d4a574]/30 hover-lift"
                   >
                     💡 {suggestion}
                   </button>
@@ -209,8 +220,8 @@ export function GarfiXChat({
             <div
               className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-tr-none'
-                  : 'bg-card border border-border rounded-tl-none shadow-sm'
+                  ? 'bg-emerald-600/90 text-white rounded-tr-none glass'
+                  : 'ai-card bg-[#111827] border border-[#d4a574]/30 border-r-[3px] border-r-[#d4a574] rounded-tl-none shadow-sm'
               }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -255,12 +266,12 @@ export function GarfiXChat({
         {isThinking && thoughtProcess.length > 0 && (
           <div className="flex gap-3">
             <BrainIcon />
-            <div className="px-4 py-3 rounded-2xl rounded-tl-none bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-200 dark:border-violet-800 max-w-[85%]">
-              <div className="flex items-center gap-2 text-sm text-violet-700 dark:text-violet-300 mb-2">
+            <div className="px-4 py-3 rounded-2xl rounded-tl-none bg-gradient-to-r from-emerald-50 to-[#d4a574]/10 dark:from-emerald-900/20 dark:to-[#d4a574]/10 border border-emerald-200 dark:border-emerald-800 max-w-[85%] ai-thinking">
+              <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300 mb-2">
                 <LoadingIcon />
-                <span className="font-medium">جارٍ التفكير...</span>
+                <span className="font-medium">🧠 جارٍ التفكير...</span>
               </div>
-              <ul className="space-y-1 text-xs text-violet-600 dark:text-violet-400">
+              <ul className="space-y-1 text-xs text-emerald-600 dark:text-emerald-400">
                 {thoughtProcess.map((thought, i) => (
                   <li key={i} className="animate-pulse" style={{ animationDelay: `${i * 200}ms` }}>
                     {thought}
@@ -275,7 +286,7 @@ export function GarfiXChat({
         {isLoading && !isThinking && (
           <div className="flex gap-3">
             <BrainIcon />
-            <div className="px-4 py-3 rounded-2xl rounded-tl-none bg-card border border-border">
+            <div className="px-4 py-3 rounded-2xl rounded-tl-none ai-card bg-[#111827] border border-white/[0.08]">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <LoadingIcon />
                 <span className="text-sm">جارٍ الكتابة...</span>
@@ -303,8 +314,8 @@ export function GarfiXChat({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="border-t p-4 bg-card/50 backdrop-blur-sm">
+      {/* Input Area - DS v4.0 */}
+      <div className="border-t border-emerald-500/20 p-4 bg-[#111827]/80 backdrop-blur-sm">
         <div className="flex gap-2 items-end">
           <textarea
             ref={inputRef}
@@ -314,14 +325,14 @@ export function GarfiXChat({
             placeholder={placeholder}
             rows={1}
             disabled={isLoading}
-            className="flex-1 px-4 py-3 rounded-xl border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary disabled:opacity-50 text-sm placeholder:text-muted-foreground/60"
+            className="flex-1 px-4 py-3 rounded-xl border border-white/[0.1] bg-[#0b1220] resize-none focus-ring focus:border-emerald-500 disabled:opacity-50 text-sm text-white placeholder:text-muted-foreground/60"
             style={{ minHeight: '48px', maxHeight: '120px' }}
           />
           
           <button
             onClick={handleSend}
             disabled={!inputValue.trim() || isLoading}
-            className="p-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[48px] min-h-[48px] flex items-center justify-center shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 active:scale-95"
+            className="p-3 rounded-xl bg-gradient-to-r from-[#d4a574] to-[#c9956c] text-white hover:from-[#e8c49a] hover:to-[#d4a574] transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[48px] min-h-[48px] flex items-center justify-center shadow-lg shadow-[#d4a574]/25 hover:shadow-[#d4a574]/40 active-press duration-150 gradient-gold"
           >
             {isLoading ? <LoadingIcon /> : <SendIcon />}
           </button>
@@ -337,7 +348,7 @@ export function GarfiXChat({
                   setInputValue(hint);
                   inputRef.current?.focus();
                 }}
-                className="px-3 py-1.5 text-xs rounded-full bg-muted hover:bg-primary/10 transition-colors text-muted-foreground hover:text-foreground"
+                className="px-3 py-1.5 text-xs rounded-full ai-suggestion bg-white/[0.05] hover:bg-[#d4a574]/15 transition-colors text-muted-foreground hover:text-[#d4a574] border border-white/[0.08] hover:border-[#d4a574]/30 hover-lift duration-120"
               >
                 {hint}
               </button>
@@ -346,7 +357,7 @@ export function GarfiXChat({
         )}
         
         {/* Powered by */}
-        <p className="text-[10px] text-center text-muted-foreground/50 mt-3">
+        <p className="text-[10px] text-center text-emerald-500/50 mt-3">
           ⚡ مدعوم بـ Google Gemini • تشفير من طرف إلى طرف • خصوصيتنا محمية 🔒
         </p>
       </div>

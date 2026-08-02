@@ -59,7 +59,7 @@ export function IntegrationsTab() {
   const configuring = integrations.find((i) => i.type === configuringType) || null;
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-brand-lg">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
         <h3 className="text-sm font-bold flex items-center gap-2">
           <Plug className="text-emerald-500" size={16} />
@@ -73,21 +73,21 @@ export function IntegrationsTab() {
       ) : (
         <div className="flex flex-col">
           {integrations.map((it) => (
-            <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex items-center justify-between gap-3 flex-wrap" key={it.type}>
+            <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex items-center justify-between gap-3 flex-wrap hover-lift duration-120 transition-all" key={it.type}>
               <div className="flex flex-col gap-[3px] flex-[1_1_240px] min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-extrabold">{it.name}</span>
-                  <code className="font-mono text-[10px] rounded bg-[var(--muted)] text-[var(--muted-foreground)] px-1.5 py-px">{it.type}</code>
+                  <code className="font-mono text-[10px] rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-px">{it.type}</code>
                 </div>
                 <div className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">{it.description}</div>
                 <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
                   {it.hasCredentials ? (
                     <>
-                      <span className="text-emerald-500 font-bold">● مُهيّأ</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">● مُهيّأ</span>
                       {it.credentialsLastUpdatedAt && <> • آخر تحديث: {new Date(it.credentialsLastUpdatedAt).toLocaleString("ar-EG")}</>}
                     </>
                   ) : (
-                    <span className="text-gray-400 font-bold">○ غير مُهيّأ</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-bold">○ غير مُهيّأ</span>
                   )}
                   {!it.isRegistered && <span className="text-red-500 mr-2"> • غير مسجّل</span>}
                 </div>
@@ -158,7 +158,7 @@ function IntegrationConfigDialog({
 
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent dir="rtl" className="max-w-[480px]">
+      <DialogContent dir="rtl" className="max-w-[480px] shadow-brand-xl glass-strong">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plug size={16} /> {integration.name}
@@ -188,7 +188,7 @@ function IntegrationConfigDialog({
           <button
             onClick={submit}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+            className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold active-press duration-150" /* TAILWINDBREAK: dynamic cursor/opacity */ style={{ cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
           >
             <Save size={14} /> {saving ? "جارٍ…" : "حفظ"}
           </button>

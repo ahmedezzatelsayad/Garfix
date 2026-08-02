@@ -2,13 +2,18 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * GarfiX AI Icon — Unique & Memorable
+ * GarfiX AI Icon — Unique & Memorable (DS v4.0)
  * 
  * Design Concept:
  * - "G" letterform with neural network nodes
  * - Central brain/AI core with connecting synapses
- * - Gradient violet-to-purple with glow effect
- * - Animated pulse when active
+ * - **Emerald Deep (#047857)** primary theme with **Champagne Gold (#d4a574)** accents (AI Premium!)
+ * - Animated pulse when active with gold shimmer for active states
+ * 
+ * DS v4.0 Classes Used:
+ * - `.ai-badge` — AI component badge styling
+ * - Emerald glow pulse animation
+ * - Gold shimmer effect on active state
  * 
  * Size Variants:
  * - xs: 16px (inline, badges)
@@ -25,6 +30,8 @@ interface GarfixAIIconProps {
   animated?: boolean
   /** Show glow effect */
   glow?: boolean
+  /** Show active state with gold shimmer */
+  active?: boolean
   /** Custom class names */
   className?: string
   /** Click handler */
@@ -35,6 +42,7 @@ export function GarfixAIIcon({
   size = "md", 
   animated = false,
   glow = false,
+  active = false,
   className,
   onClick 
 }: GarfixAIIconProps) {
@@ -54,9 +62,10 @@ export function GarfixAIIcon({
   return (
     <div 
       className={cn(
-        "relative inline-flex items-center justify-center",
+        "relative inline-flex items-center justify-center ai-badge",
         animated && "animate-pulse-slow",
-        onClick && "cursor-pointer hover-scale",
+        active && "ai-active",
+        onClick && "cursor-pointer hover-lift duration-120",
         className
       )}
       onClick={onClick}
@@ -71,22 +80,23 @@ export function GarfixAIIcon({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className={cn(
-          glow && "drop-shadow-glow-purple"
+          glow && "drop-shadow-glow-emerald",
+          active && "shimmer-gold"
         )}
       >
         {/* Definitions */}
         <defs>
-          {/* Main gradient */}
+          {/* Main gradient - Emerald Deep DS v4.0 */}
           <linearGradient id="gai-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#8B5CF6" />
-            <stop offset="50%" stopColor="#7C3AED" />
-            <stop offset="100%" stopColor="#6D28D9" />
+            <stop offset="0%" stopColor="#059669" />
+            <stop offset="50%" stopColor="#047857" />
+            <stop offset="100%" stopColor="#065F46" />
           </linearGradient>
           
-          {/* Glow gradient */}
+          {/* Glow gradient - Emerald */}
           <radialGradient id="gai-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#A78BFA" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
+            <stop offset="0%" stopColor="#10B981" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#047857" stopOpacity="0" />
           </radialGradient>
           
           {/* Inner highlight */}
@@ -95,13 +105,26 @@ export function GarfixAIIcon({
             <stop offset="100%" stopColor="white" stopOpacity="0" />
           </linearGradient>
 
-          {/* Animated gradient for pulse */}
+          {/* Animated gradient for pulse - Emerald */}
           <linearGradient id="gai-animated" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#A78BFA">
-              {animated && <animate attributeName="stop-color" values="#A78BFA;#C4B5FD;#A78BFA" dur="2s" repeatCount="indefinite" />}
+            <stop offset="0%" stopColor="#10B981">
+              {animated && <animate attributeName="stop-color" values="#10B981;#34D399;#10B981" dur="2s" repeatCount="indefinite" />}
             </stop>
-            <stop offset="100%" stopColor="#7C3AED">
-              {animated && <animate attributeName="stop-color" values="#7C3AED;#8B5CF6;#7C3AED" dur="2s" repeatCount="indefinite" />}
+            <stop offset="100%" stopColor="#047857">
+              {animated && <animate attributeName="stop-color" values="#047857;#059669;#047857" dur="2s" repeatCount="indefinite" />}
+            </stop>
+          </linearGradient>
+
+          {/* Gold shimmer gradient for active state - DS v4.0 Premium */}
+          <linearGradient id="gai-gold-shimmer" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#d4a574">
+              {active && <animate attributeName="stop-color" values="#d4a574;#e8c49a;#d4a574" dur="1.5s" repeatCount="indefinite" />}
+            </stop>
+            <stop offset="50%" stopColor="#c9956c">
+              {active && <animate attributeName="stop-color" values="#c9956c;#d4a574;#c9956c" dur="1.5s" repeatCount="indefinite" />}
+            </stop>
+            <stop offset="100%" stopColor="#b8845c">
+              {active && <animate attributeName="stop-color" values="#b8845c;#c9956c;#b8845c" dur="1.5s" repeatCount="indefinite" />}
             </stop>
           </linearGradient>
         </defs>
@@ -117,12 +140,12 @@ export function GarfixAIIcon({
           />
         )}
         
-        {/* Main background circle */}
+        {/* Main background circle - uses gold shimmer when active */}
         <circle
           cx="16"
           cy="16"
           r="14"
-          fill={animated ? "url(#gai-animated)" : "url(#gai-gradient)"}
+          fill={active ? "url(#gai-gold-shimmer)" : animated ? "url(#gai-animated)" : "url(#gai-gradient)"}
         />
 
         {/* Inner highlight for depth */}
