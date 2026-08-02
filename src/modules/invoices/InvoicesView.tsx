@@ -19,7 +19,7 @@ import {
   GarfixLoadingState,
 } from '@/components/ui/index-garfix-ds';
 import type { EnterpriseColumn } from '@/components/ui/index-garfix-ds';
-import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPicker";
 import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
@@ -728,7 +728,7 @@ export function InvoicesView() {
 
       {/* Task 14: ReviewQueueModal — opened from the persistent warnings banner. */}
       {showReviewQueue && activeCompany && (
-        <ReviewQueueModal
+        <LazyReviewQueueModal
           companySlug={activeCompany.slug}
           onClose={() => setShowReviewQueue(false)}
         />

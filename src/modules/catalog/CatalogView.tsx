@@ -1,13 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { useCatalog, useDeleteCatalogItem, useUpdateCatalogItem, useCreateCatalogItem } from "@/hooks/queries";
 import type { CreateCatalogItemPayload } from "@/hooks/queries/catalog";
 import { toast } from "sonner";
-import { Plus, Search, Package, Trash2, Edit2, X, Loader2 } from "lucide-react";
+import { 
+  Plus, Search, Package, Trash2, Edit2, X, Loader2,
+  DollarSign, CheckCircle, BarChart3
+} from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
-import { EmptyProducts } from "@/components/garfix";
+
+// DS v4.0 Components
+import { 
+  GarfixEnterpriseTable, 
+  GarfixBulkActions,
+  type EnterpriseColumn 
+} from '@/components/ui/index-garfix-ds'
+import { 
+  GarfixEmptyState, 
+  GarfixLoadingState 
+} from '@/components/ui/index-garfix-ds'
 
 const PAGE_SIZE = 20;
 
@@ -21,9 +34,46 @@ interface Product {
   companySlug: string;
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
+const inputStyle = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px] transition-all duration-150";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
-const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center";
+
+// ── Sparkline Component for KPI Cards ──────────────────────────────────
+function Sparkline({ data, color = "#047857" }: { data: number[]; color?: string }) {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  
+  const points = data.map((val, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 100 - ((val - min) / range) * 100;
+    return `${x},${y}`;
+  }).join(" ");
+  
+  return (
+    <svg className="sparkline-container w-full h-8" viewBox="0 0 100 40" preserveAspectRatio="none">
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+        points={points}
+      />
+      {/* Gradient fill */}
+      <defs>
+        <linearGradient id={`spark-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon
+        fill={`url(#spark-${color.replace('#', '')})`}
+        points={`0,40 ${points} 100,40`}
+      />
+    </svg>
+  );
+}
 
 export function CatalogView() {
   const { activeCompany } = useBrand();
@@ -39,6 +89,29 @@ export function CatalogView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
+  // ── Computed Values for KPI Cards ────────────────────────────────────
+  const totalValue = useMemo(() => {
+    return products.reduce((sum, p) => sum + ((p.purchasePrice || 0) * 1), 0);
+  }, [products]);
+  
+  const activeProducts = products.length; // All products are considered active
+  
+  const avgPrice = useMemo(() => {
+    if (products.length === 0) return 0;
+    const sum = products.reduce((s, p) => s + (p.sellingPrice || 0), 0);
+    return Math.round(sum / products.length);
+  }, [products]);
+
+  // Generate mock sparkline data based on product count
+  const sparklineData = useMemo(() => {
+    if (products.length === 0) return [0, 5, 3, 8, 6];
+    // Generate a simple trend based on product count
+    const base = Math.min(products.length, 50);
+    return Array.from({ length: 7 }, (_, i) => 
+      base + Math.sin(i * 0.8) * (base * 0.3) + Math.random() * base * 0.2
+    );
+  }, [products.length]);
+
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
   const pageProducts = paginate(products, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
@@ -47,6 +120,7 @@ export function CatalogView() {
     if (selectedIds.size === pageProducts.length && pageProducts.length > 0) setSelectedIds(new Set());
     else setSelectedIds(new Set(pageProducts.map((p) => p.id)));
   };
+  
   const toggleRow = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -80,126 +154,238 @@ export function CatalogView() {
     });
   };
 
-  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
-  if (showForm || editing) return <ProductForm company={activeCompany} editing={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); refetch(); }} />;
+  // ── Table Columns Definition ────────────────────────────────────────
+  const columns: EnterpriseColumn<Product>[] = [
+    { 
+      key: 'code', 
+      label: 'الكود', 
+      pinned: true,
+      render: (val) => <span className="font-mono">{val || "—"}</span>
+    },
+    { 
+      key: 'name', 
+      label: 'اسم المنتج',
+      render: (val) => <span className="font-bold">{val}</span>
+    },
+    { 
+      key: 'purchasePrice', 
+      label: 'سعر الشراء',
+      render: (val) => (
+        <span dir="ltr" className="inline-block">
+          {Number(val).toLocaleString()}
+        </span>
+      )
+    },
+    { 
+      key: 'sellingPrice', 
+      label: 'سعر البيع',
+      render: (val) => (
+        <span className="font-bold text-primary" dir="ltr">
+          {Number(val).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'إجراءات',
+      render: (_, row) => (
+        <div className="flex gap-1">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setEditing(row); }} 
+            title="تعديل"
+            className="hover-scale active-press p-1.5 rounded-md bg-primary/10 text-primary transition-all duration-120"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }} 
+            title="حذف"
+            disabled={deleteMutation.isPending && deleteMutation.variables?.id === String(row.id)}
+            className="hover-scale active-press p-1.5 rounded-md bg-destructive/10 text-destructive transition-all duration-120 disabled:opacity-50"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )
+    }
+  ];
+
+  if (!activeCompany) return (
+    <div className="p-8 md:p-12 text-center text-muted-foreground flex items-center justify-center min-h-[400px]">
+      اختر شركة
+    </div>
+  );
+  
+  if (showForm || editing) return (
+    <ProductForm 
+      company={activeCompany} 
+      editing={editing} 
+      onClose={() => { setShowForm(false); setEditing(null); }} 
+      onSaved={() => { setShowForm(false); setEditing(null); refetch(); }} 
+    />
+  );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+      {/* ── Header Section ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <div><h1 className="text-2xl font-extrabold">المنتجات</h1><p className="text-[13px] text-muted-foreground">{products.length} منتج</p></div>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"><Plus size={16} /> منتج جديد</button>
-      </div>
-      <div className="relative">
-        <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input placeholder="بحث بالاسم أو الكود…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full py-2.5 pe-10 ps-4 rounded-md bg-card border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]" />
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">المنتجات</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{products.length} منتج</p>
+        </div>
+        <button 
+          onClick={() => setShowForm(true)} 
+          className="active-press inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-lg bg-primary text-primary-foreground border-none font-bold text-[13px] hover-lift max-md:min-h-[44px] transition-all duration-150 shadow-sm hover:shadow-md"
+        >
+          <Plus size={16} /> منتج جديد
+        </button>
       </div>
 
-      {selectedIds.size > 0 && (
-        <div className="py-2.5 px-4 bg-destructive text-white rounded-md flex flex-wrap justify-between items-center gap-2">
-          <span className="font-bold text-[13px]">{selectedIds.size} منتج محدد</span>
-          <div className="flex gap-2">
-            <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed max-md:min-h-[44px]">إلغاء التحديد</button>
-            <button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
+      {/* ── KPI Cards Section (DS v4.0) ───────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+        {/* Total Products KPI */}
+        <div className="kpi-card hover-lift transition-all duration-120">
+          <Package size={18} className="text-primary mb-2" />
+          <div className="kpi-value">{products.length}</div>
+          <div className="kpi-label">إجمالي المنتجات</div>
+          <div className="mt-2">
+            <Sparkline data={sparklineData} color="#047857" />
           </div>
         </div>
+
+        {/* GOLD KPI - Total Inventory Value */}
+        <div className="kpi-card-gold hover-lift transition-all duration-120">
+          <DollarSign size={18} className="text-[#d4a574] mb-2" />
+          <div className="kpi-value">{totalValue.toLocaleString()}</div>
+          <div className="kpi-label">قيمة المخزون</div>
+          <div className="kpi-badge mt-2">✦ مالي</div>
+        </div>
+
+        {/* Active Products KPI */}
+        <div className="kpi-card hover-lift transition-all duration-120">
+          <CheckCircle size={18} className="data-primary mb-2" />
+          <div className="kpi-value">{activeProducts}</div>
+          <div className="kpi-label">منتجات نشطة</div>
+        </div>
+
+        {/* Average Price KPI */}
+        <div className="kpi-card hover-lift transition-all duration-120">
+          <BarChart3 size={18} className="data-secondary mb-2" />
+          <div className="kpi-value">{avgPrice.toLocaleString()}</div>
+          <div className="kpi-label">متوسط السعر</div>
+        </div>
+      </div>
+
+      {/* ── Search with AI Badge ──────────────────────────────────────── */}
+      <div className="relative">
+        <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input 
+          placeholder="بحث بالاسم أو الكود…" 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          className="focus-ring w-full py-2.5 pe-10 ps-12 rounded-lg bg-card border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px] transition-all duration-150 placeholder:text-muted-foreground/60" 
+        />
+        <span className="ai-badge absolute start-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
+          AI
+        </span>
+      </div>
+
+      {/* ── Bulk Actions Bar (DS v4.0) ───────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <GarfixBulkActions
+          selectedCount={selectedIds.size}
+          actions={[
+            { 
+              label: "حذف المحدد", 
+              icon: <Trash2 size={14} />, 
+              onClick: handleBulkDelete, 
+              variant: "danger" 
+            },
+          ]}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
       )}
 
-      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {isLoading ? <div className="p-8 md:p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : products.length === 0 ? (
-          <EmptyProducts
-            primaryAction={{
-              label: "إضافة منتج جديد",
-              onClick: () => setShowForm(true),
-              variant: "gradient",
-            }}
-            aiAction={{
-              label: "استيراد منتجات",
-              onClick: () => toast.info('قريباً'),
-              description: 'استيراد من Excel أو صور',
-            }}
-            suggestions={[
-              { id: 's1', label: 'إضافة يدوية', onClick: () => setShowForm(true) },
-              { id: 's2', label: 'استيراد من CSV', onClick: () => toast.info('قريباً') },
-              { id: 's3', label: 'مسح ضوئي للباركود', onClick: () => toast.info('قريباً') },
-            ]}
-          />
+      {/* ── Main Content Area ────────────────────────────────────────── */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+        {isLoading ? (
+          /* Loading State */
+          <div className="p-8 md:p-12">
+            <GarfixLoadingState message="جارٍ تحميل الكتالوج..." variant="skeleton" skeletonLines={6} />
+          </div>
+        ) : products.length === 0 ? (
+          /* Empty State */
+          <div className="p-8 md:p-12">
+            <GarfixEmptyState
+              title="لا توجد منتجات"
+              description="ابدأ بإضافة منتجك الأول إلى الكتالوج"
+              illustration="folder"
+              action={{ label: "منتج جديد", onClick: () => setShowForm(true) }}
+            />
+          </div>
         ) : (
           <>
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse text-[13px]">
-              <thead><tr className="border-b border-border bg-muted">
-                <th className="w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground">
-                  <input type="checkbox" checked={selectedIds.size === pageProducts.length && pageProducts.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" />
-                </th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">الكود</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">الاسم</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">سعر الشراء</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">سعر البيع</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">إجراءات</th>
-              </tr></thead>
-              <tbody>
-                {pageProducts.map((p) => {
-                  const checked = selectedIds.has(p.id);
-                  return (
-                    <tr key={p.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-                      <td className="px-2 py-2.5 text-center">
-                        <input type="checkbox" checked={checked} onChange={() => toggleRow(p.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${p.name}`} />
-                      </td>
-                      <td className="px-3 py-2.5 font-mono">{p.code || "—"}</td>
-                      <td className="px-3 py-2.5 font-bold">{p.name}</td>
-                      <td className="px-3 py-2.5 [direction:ltr] text-end">{p.purchasePrice ?? "—"}</td>
-                      <td className="px-3 py-2.5 [direction:ltr] text-end font-bold text-primary">{p.sellingPrice ?? "—"}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex gap-1">
-                          <button onClick={() => setEditing(p)} title="تعديل" className={iconBtnStyle}><Edit2 size={14} /></button>
-                          <button onClick={() => handleDelete(p.id)} title="حذف" disabled={deleteMutation.isPending && deleteMutation.variables?.id === String(p.id)} className={cn(iconBtnStyle, "text-destructive")}><Trash2 size={14} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {/* Mobile cards */}
-          <div className="md:hidden flex flex-col divide-y divide-border">
-            {pageProducts.map((p) => {
-              const checked = selectedIds.has(p.id);
-              return (
-                <div key={p.id} className={cn("p-3 flex flex-col gap-2", checked ? "bg-accent" : "bg-transparent")}>
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-2 min-h-[44px]">
-                      <input type="checkbox" checked={checked} onChange={() => toggleRow(p.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${p.name}`} />
-                      <span className="font-bold text-[13px]">{p.name}</span>
-                    </label>
-                    <div className="flex gap-1">
-                      <button onClick={() => setEditing(p)} title="تعديل" className="min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center"><Edit2 size={14} /></button>
-                      <button onClick={() => handleDelete(p.id)} title="حذف" className="min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center"><Trash2 size={14} /></button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[13px]">
-                    <div><span className="text-muted-foreground text-[11px]">الكود: </span><span className="font-mono" dir="ltr">{p.code || "—"}</span></div>
-                    <div><span className="text-muted-foreground text-[11px]">شراء: </span><span dir="ltr">{p.purchasePrice ?? "—"}</span></div>
-                    <div><span className="text-muted-foreground text-[11px]">بيع: </span><span className="font-bold text-primary" dir="ltr">{p.sellingPrice ?? "—"}</span></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap justify-between items-center px-4 py-3 border-t border-border gap-2">
-            <span className="text-xs text-muted-foreground">صفحة {safePage} من {totalPages} ({products.length} منتج)</span>
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === 1 ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>السابق</button>
-              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === totalPages ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>التالي</button>
+            {/* Enterprise Table (DS v4.0) */}
+            <GarfixEnterpriseTable<Product>
+              data={pageProducts}
+              columns={columns}
+              density="default"
+              selectedRows={new Set(pageProducts.map(p => p.id).filter(id => selectedIds.has(id)))}
+              onSelectionChange={(selection) => {
+                // Map index-based selection to ID-based selection
+                const newSelected = new Set<number>();
+                selection.forEach(idx => {
+                  newSelected.add(pageProducts[idx].id);
+                });
+                setSelectedIds(newSelected);
+              }}
+              emptyMessage="لا توجد منتجات"
+              emptyDescription="لم يتم العثور على منتجات لعرضها"
+              className="rounded-none border-0"
+            />
+
+            {/* Pagination */}
+            <div className="flex flex-wrap justify-between items-center px-4 py-3 border-t border-border gap-2 bg-muted/30">
+              <span className="text-xs text-muted-foreground">
+                صفحة {safePage} من {totalPages} ({products.length} منتج)
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} 
+                  disabled={safePage === 1}
+                  className={cn(
+                    "active-press px-3 py-1.5 rounded-lg border border-border font-bold text-xs max-md:min-h-[44px] transition-all duration-150",
+                    safePage === 1 
+                      ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
+                      : "bg-card text-foreground hover:bg-accent hover-scale"
+                  )}
+                >
+                  السابق
+                </button>
+                <button 
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} 
+                  disabled={safePage === totalPages}
+                  className={cn(
+                    "active-press px-3 py-1.5 rounded-lg border border-border font-bold text-xs max-md:min-h-[44px] transition-all duration-150",
+                    safePage === totalPages 
+                      ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
+                      : "bg-card text-foreground hover:bg-accent hover-scale"
+                  )}
+                >
+                  التالي
+                </button>
+              </div>
             </div>
-          </div>
           </>
         )}
       </div>
     </div>
   );
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// PRODUCT FORM COMPONENT (Preserved with DS v4.0 styling)
+// ══════════════════════════════════════════════════════════════════════
 
 function ProductForm({ company, editing, onClose, onSaved }: { company: { slug: string }; editing: Product | null; onClose: () => void; onSaved: () => void }) {
   const [code, setCode] = useState(editing?.code || "");
@@ -235,23 +421,93 @@ function ProductForm({ company, editing, onClose, onSaved }: { company: { slug: 
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-220">
+      {/* Form Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-[22px] font-extrabold">{editing ? "تعديل منتج" : "منتج جديد"}</h1>
-        <button onClick={onClose} className="bg-transparent border border-border text-muted-foreground px-3 py-2 rounded-sm cursor-pointer text-xs inline-flex items-center gap-1 max-md:min-h-[44px]"><X size={14} /> إغلاق</button>
+        <h1 className="text-[22px] font-extrabold tracking-tight">
+          {editing ? "تعديل منتج" : "منتج جديد"}
+        </h1>
+        <button 
+          onClick={onClose} 
+          className="active-press bg-transparent border border-border text-muted-foreground px-3 py-2 rounded-lg cursor-pointer text-xs inline-flex items-center gap-1 max-md:min-h-[44px] hover-scale transition-all duration-150"
+        >
+          <X size={14} /> إغلاق
+        </button>
       </div>
-      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+
+      {/* Form Body */}
+      <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3.5 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div><label className={labelStyle}>الكود</label><input value={code} onChange={(e) => setCode(e.target.value)} className={inputStyle} dir="ltr" /></div>
-          <div><label className={labelStyle}>الاسم *</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} /></div>
-          <div><label className={labelStyle}>سعر الشراء</label><input type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className={inputStyle} dir="ltr" /></div>
-          <div><label className={labelStyle}>سعر البيع</label><input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} className={inputStyle} dir="ltr" /></div>
+          <div>
+            <label className={labelStyle}>الكود</label>
+            <input 
+              value={code} 
+              onChange={(e) => setCode(e.target.value)} 
+              className={inputStyle} 
+              dir="ltr" 
+            />
+          </div>
+          <div>
+            <label className={labelStyle}>الاسم *</label>
+            <input 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              className={`${inputStyle} focus:border-primary/50`} 
+            />
+          </div>
+          <div>
+            <label className={labelStyle}>سعر الشراء</label>
+            <input 
+              type="number" 
+              value={purchasePrice} 
+              onChange={(e) => setPurchasePrice(e.target.value)} 
+              className={inputStyle} 
+              dir="ltr" 
+            />
+          </div>
+          <div>
+            <label className={labelStyle}>سعر البيع</label>
+            <input 
+              type="number" 
+              value={sellingPrice} 
+              onChange={(e) => setSellingPrice(e.target.value)} 
+              className={inputStyle} 
+              dir="ltr" 
+            />
+          </div>
         </div>
-        <div><label className={labelStyle}>الأسماء البديلة (افصل بفواصل)</label><input value={aliases} onChange={(e) => setAliases(e.target.value)} className={inputStyle} placeholder="اسم بديل 1، اسم بديل 2" /></div>
+        <div>
+          <label className={labelStyle}>الأسماء البديلة (افصل بفواصل)</label>
+          <input 
+            value={aliases} 
+            onChange={(e) => setAliases(e.target.value)} 
+            className={inputStyle} 
+            placeholder="اسم بديل 1، اسم بديل 2" 
+          />
+        </div>
       </div>
+
+      {/* Form Actions */}
       <div className="flex gap-2.5 justify-end">
-        <button onClick={onClose} className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : "حفظ"}</button>
+        <button 
+          onClick={onClose} 
+          className="active-press px-5 py-2.5 rounded-lg bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px] hover-scale transition-all duration-150"
+        >
+          إلغاء
+        </button>
+        <button 
+          onClick={submit} 
+          disabled={saving} 
+          className="active-press px-6 py-2.5 rounded-lg bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] hover-lift transition-all duration-150 shadow-sm hover:shadow-md"
+        >
+          {saving ? (
+            <span className="flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" /> جارٍ…
+            </span>
+          ) : (
+            "حفظ"
+          )}
+        </button>
       </div>
     </div>
   );

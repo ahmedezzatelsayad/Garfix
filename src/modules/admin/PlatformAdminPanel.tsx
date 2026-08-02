@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { AiProviderSettings } from "./AiProviderSettings";
-import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
@@ -631,7 +631,7 @@ export function PlatformAdminPanel() {
       )}
 
       {reviewQueueSlug && (
-        <ReviewQueueModal
+        <LazyReviewQueueModal
           companySlug={reviewQueueSlug}
           onClose={() => setReviewQueueSlug(null)}
         />

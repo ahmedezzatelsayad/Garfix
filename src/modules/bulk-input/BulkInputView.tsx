@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 import { MatchStatusBadge, getMatchStatusFromResult } from "@/modules/catalog/MatchStatusBadge";
 
 interface ParsedItem {
@@ -919,7 +919,7 @@ export function BulkInputView() {
       )}
 
       {showReviewQueue && activeCompany && (
-        <ReviewQueueModal
+        <LazyReviewQueueModal
           companySlug={activeCompany.slug}
           onClose={() => setShowReviewQueue(false)}
         />

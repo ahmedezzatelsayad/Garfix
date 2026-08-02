@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand, type CompanyInfo } from "@/context/BrandContext";
 import { useCreateCompany } from "@/hooks/queries";
 import type { ViewKey } from "./AppShell";
+import { preloadView } from "./AppShell";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Users, Package, ShoppingCart, UserCog,
@@ -90,6 +91,18 @@ export function Sidebar({
       alert(err instanceof Error ? err.message : "Failed to create company");
     }
   };
+
+  // ════════════════════════════════════════════════════════════════════
+  // PRELOADING — Load view chunks on hover for instant navigation
+  // Uses React.startTransition for low-priority preloading that doesn't
+  // interfere with user interactions. The chunk is cached after first hover.
+  // ════════════════════════════════════════════════════════════════════
+  const handleNavHover = useCallback((viewKey: ViewKey) => {
+    // Only preload if not already on this view
+    if (view !== viewKey) {
+      preloadView(viewKey);
+    }
+  }, [view]);
 
   return (
     <>
@@ -245,7 +258,13 @@ export function Sidebar({
                   "w-full flex items-center gap-3 py-2.5 px-3 rounded-lg border-none cursor-pointer font-inherit text-[13px] text-right transition-all duration-120 mb-0.5 active-press",
                   active ? "bg-sidebar-primary text-white font-bold shadow-brand-sm" : "bg-transparent text-sidebar-foreground font-medium",
                 )}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.classList.add("bg-sidebar-accent"); }}
+                onMouseEnter={(e) => {
+                  if (!active) {
+                    e.currentTarget.classList.add("bg-sidebar-accent");
+                    // Preload the view's chunk for instant navigation
+                    handleNavHover(item.key);
+                  }
+                }}
                 onMouseLeave={(e) => { if (!active) e.currentTarget.classList.remove("bg-sidebar-accent"); }}
               >
                 <Icon size={16} />
