@@ -1,0 +1,196 @@
+{
+  "sourceReport": "c278d2358d9f4a8263665346b5c757352e879e4d1e81f870d8a7091c2273b0c7",
+  "classifications": [
+    {
+      "gate": "piiRemoval",
+      "name": "PII Removal",
+      "originalVerdict": "❌ 511 PII incidents found - REJECT BATCH",
+      "category": "DATASET_ISSUE",
+      "rootCause": "PRODUCTION_DATA_CONTAINS_PII",
+      "severity": "CRITICAL",
+      "actionRequired": "PRE_PROCESSING_REQUIRED",
+      "owner": "Data Engineering",
+      "canFixWithoutModifyingGate": true,
+      "analysis": {
+        "incidentCount": 511,
+        "nature": "Production backup contains real customer data",
+        "isThisExpected": "YES - Production data normally has PII",
+        "realQuestion": "Will masked/anonymized data be used for Evaluation?",
+        "decisionPoint": {
+          "ifMaskingPlanned": "Re-classify as PRE_PROCESSING_REQUIRED (not FAIL)",
+          "ifNoMasking": "Keep as FAIL - Security violation risk",
+          "recommendation": "Document masking pipeline, re-run gate on masked data"
+        }
+      }
+    },
+    {
+      "gate": "supplierDistribution",
+      "name": "Supplier Distribution",
+      "originalVerdict": "❌ 4 supplier(s) exceed 10% - RESAMPLE",
+      "category": "STRATEGIC_DECISION_REQUIRED",
+      "rootCause": "SUPPLIER_CONCENTRATION_IN_PRODUCTION_DATA",
+      "severity": "CRITICAL",
+      "actionRequired": "STRATEGIC_DECISION_BEFORE_M2",
+      "owner": "CTO / Steering Committee",
+      "canFixWithoutModifyingGate": true,
+      "analysis": {
+        "uniqueSuppliers": 8,
+        "violations": [
+          {
+            "supplier": "tw_inv_tawfeer_v1",
+            "count": 80,
+            "percentage": "16.00%"
+          },
+          {
+            "supplier": "tw_inv_laqta_v1",
+            "count": 130,
+            "percentage": "26.00%"
+          },
+          {
+            "supplier": "tw_inv_mahhal_v1",
+            "count": 113,
+            "percentage": "22.60%"
+          },
+          {
+            "supplier": "tw_inv_boss_v1",
+            "count": 84,
+            "percentage": "16.80%"
+          }
+        ],
+        "interpretationA": {
+          "name": "BENCHMARK_RESEARCH_MODE",
+          "assumption": "Goal is fair, unbiased model evaluation",
+          "requirement": "No supplier > 10%",
+          "actionIfChosen": "Resample to balanced distribution",
+          "risk": "Less realistic evaluation, may not catch production issues"
+        },
+        "interpretationB": {
+          "name": "PRODUCTION_VALIDATION_MODE",
+          "assumption": "Goal is validate against real-world distribution",
+          "requirement": "Match production distribution (even if skewed)",
+          "actionIfChosen": "Accept current distribution as-is",
+          "risk": "Model may overfit to major suppliers, miss edge cases"
+        },
+        "productionReality": {
+          "topSuppliers": [
+            {
+              "supplier": "tw_inv_tawfeer_v1",
+              "pct": "16.00%"
+            },
+            {
+              "supplier": "tw_inv_laqta_v1",
+              "pct": "26.00%"
+            },
+            {
+              "supplier": "tw_inv_mahhal_v1",
+              "pct": "22.60%"
+            },
+            {
+              "supplier": "tw_inv_boss_v1",
+              "pct": "16.80%"
+            }
+          ],
+          "note": "These ARE the real companies in production",
+          "question": "Should validation reflect reality or ideal?"
+        },
+        "decisionPoint": {
+          "mustDecideBefore": "M2 (Dataset Freeze)",
+          "impacts": "Definition of PASS/FAIL for M1-005 and all future sampling",
+          "recommendation": "Document both options, decide based on project primary goal"
+        }
+      }
+    },
+    {
+      "gate": "templateCompliance",
+      "name": "Template Compliance (±%)",
+      "originalVerdict": "❌ Template distribution out of tolerance - ADJUST MIX",
+      "category": "DATASET_ISSUE",
+      "rootCause": "TEMPLATE_DISTRIBUTION_SKEW",
+      "severity": "MAJOR",
+      "actionRequired": "TARGETED_COLLECTION_OR_ACCEPTANCE",
+      "owner": "Data Team",
+      "canFixWithoutModifyingGate": true,
+      "analysis": {
+        "deviations": {
+          "Shared ERP": {
+            "target": "30%",
+            "actual": "81.40%",
+            "deviation": "51.40%",
+            "withinTolerance": false
+          },
+          "Arabic Only": {
+            "target": "20%",
+            "actual": "7.40%",
+            "deviation": "-12.60%",
+            "withinTolerance": false
+          },
+          "Mixed Language": {
+            "target": "30%",
+            "actual": "8.20%",
+            "deviation": "-21.80%",
+            "withinTolerance": false
+          },
+          "Low Quality": {
+            "target": "20%",
+            "actual": "3.00%",
+            "deviation": "-17.00%",
+            "withinTolerance": false
+          },
+          "Similar Suppliers": {
+            "target": "15%",
+            "actual": "0.00%",
+            "deviation": "-15.00%",
+            "withinTolerance": false
+          }
+        },
+        "likelyCause": "Production naturally generates more of certain template types",
+        "similarDecisionPoint": {
+          "likeSupplierDistribution": "Same strategic question applies",
+          "benchmarkMode": "Collect missing templates to meet spec targets",
+          "productionMode": "Accept natural distribution as representative"
+        }
+      }
+    },
+    {
+      "gate": "dataIntegrity",
+      "name": "Data Integrity (max corruption %)",
+      "originalVerdict": "❌ Corruption rate: 100.00% exceeds threshold - REMOVE BAD FILES",
+      "category": "DATASET_ISSUE",
+      "rootCause": "ACTUAL_CORRUPTION",
+      "severity": "CRITICAL",
+      "actionRequired": "DATA_RECOLLECTION",
+      "owner": "Data Team",
+      "canFixWithoutModifyingGate": true
+    }
+  ],
+  "decisions": [
+    {
+      "type": "PII_HANDLING_DECISION",
+      "currentStatus": "FAIL (as reported)",
+      "recommendedStatus": "PRE_PROCESSING_REQUIRED",
+      "rationale": "CTO Guidance: PII in backup is normal, not a dataset defect",
+      "action": "Implement PII Masking Pipeline → Re-run gate on masked output"
+    },
+    {
+      "type": "GOLDEN_DATASET_PURPOSE_DECISION",
+      "currentStatus": "FAIL (concentration > 10%)",
+      "optionA": "BENCHMARK_MODE → Resample required",
+      "optionB": "PRODUCTION_MODE → Accept as realistic",
+      "rationale": "CTO Guidance: Different goals require different distributions",
+      "blockingMilestone": "M2",
+      "urgency": "HIGH"
+    },
+    {
+      "type": "TEMPLATE_DISTRIBUTION_DECISION",
+      "tiedTo": "SUPPLIER_DISTRIBUTION_DECISION",
+      "willResolveWith": "Same strategic choice (Benchmark vs Production mode)"
+    }
+  ],
+  "metadata": {
+    "generatedAt": "2026-08-02T05:36:50.186Z",
+    "principle": "FIX_DATA_NOT_GATES",
+    "featureFreezeActive": true,
+    "toolModified": false,
+    "ctoGuidanceApplied": true
+  }
+}
