@@ -3,17 +3,17 @@
     "title": "GATE 1.5: ROBUSTNESS BENCHMARK REPORT",
     "subtitle": "Invoice Brain Matching System",
     "protocolVersion": "Protocol v1.0.0",
-    "status": "PASS_SYNTHETIC_ONLY",
-    "readinessLevel": "ENGINEERING_CANDIDATE_READY",
+    "status": "FAILED",
+    "readinessLevel": "NEEDS_IMPROVEMENT",
     "keyFindings": [
       "Dataset Difficulty: 54.4/100 (MODERATE)",
       "Weighted Average FMR: 0.75%",
       "Scenarios Passed: 10/11",
-      "Error Budget: WITHIN_BUDGET",
+      "Error Budget: BUDGET_EXCEEDED",
       "Validation Level: SYNTHETIC_WITH_STRESS_SCENARIOS"
     ],
-    "oneLineSummary": "FMR=0.75% at Difficulty=54.4/100 - PASS_SYNTHETIC_ONLY",
-    "ctoMessage": "Engineering Candidate Ready for Real Validation"
+    "oneLineSummary": "FMR=0.75% at Difficulty=54.4/100 - FAILED",
+    "ctoMessage": "Promising Framework, Requires Harder Validation Data"
   },
   "datasetMetadata": {
     "source": "SYNTHETIC_WITH_STRESS_SCENARIOS",
@@ -63,12 +63,12 @@
     "version": "1.0.0",
     "status": "FROZEN",
     "validationLevel": "SYNTHETIC_WITH_STRESS_SCENARIOS",
-    "freezeDate": "2026-08-02T01:34:07.344Z"
+    "freezeDate": "2026-08-02T01:38:47.261Z"
   },
   "gateVerdict": {
     "gate": "GATE_1.5_ROBUSTNESS",
-    "verdict": "PASS_SYNTHETIC_ONLY",
-    "rationale": "All robustness criteria met on meaningful difficulty dataset | ⚠️ VALIDATION ON GOLDEN DATASET REQUIRED FOR PRODUCTION",
+    "verdict": "FAILED",
+    "rationale": "One or more gate criteria not met",
     "criteria": {
       "fmrThreshold": 0.01,
       "minimumDifficulty": 35,
@@ -92,15 +92,29 @@
         "threshold": 0.8
       },
       "budgetCheck": {
-        "passed": true,
-        "actual": "WITHIN_BUDGET",
-        "threshold": "WITHIN_BUDGET"
+        "passed": false,
+        "actual": "BUDGET_EXCEEDED",
+        "threshold": "ALL_BUDGETS_WITHIN_LIMITS",
+        "details": [
+          {
+            "type": "falseMatch",
+            "budget": 0.005,
+            "consumed": 0.0768,
+            "overage": 0.0718
+          },
+          {
+            "type": "wrongSupplier",
+            "budget": 0.002,
+            "consumed": 0.039,
+            "overage": 0.037
+          }
+        ]
       }
     },
     "overallAssessment": {
-      "summary": "Gate 1.5: PASS_SYNTHETIC_ONLY",
-      "engineeringReadiness": "ENGINEERING_CANDIDATE_READY",
-      "productionReadiness": "NOT_READY_REQUIRES_GOLDEN_VALIDATION",
+      "summary": "Gate 1.5: FAILED",
+      "engineeringReadiness": "NEEDS_IMPROVEMENT",
+      "productionReadiness": "NOT_READY",
       "strengths": [
         "Low False Match Rate across all scenarios",
         "Consistent performance across diverse scenarios",
@@ -110,46 +124,44 @@
         "Results based on synthetic data - production evidence required"
       ],
       "nextSteps": [
-        "1. FREEZE current benchmark protocol (already done)",
-        "2. Acquire Golden Dataset from real production data",
-        "3. Run identical protocol without modifications",
-        "4. Compare synthetic vs real performance",
-        "5. If gap < 2× → Proceed to Phase D planning",
-        "6. If gap > 2× → Investigate simulation gaps"
+        "1. Address failed criteria identified above",
+        "2. Re-run robustness benchmark",
+        "3. Iterate until Gate 1.5 passes",
+        "4. Then proceed to Golden Dataset validation"
       ]
     }
   },
   "scenarioResults": [
     {
       "name": "Clean Baseline",
-      "fmr": "0.60% [0.20% – 1.75%]",
-      "precision": "99.40%",
-      "recall": "99.47%",
+      "fmr": "0.40% [0.11% – 1.45%] | n=500",
+      "precision": "99.60%",
+      "recall": "99.51%",
       "passed": "❌ FAIL",
       "sampleSize": 500,
       "latencyP50": "60ms"
     },
     {
       "name": "OCR Noise 5%",
-      "fmr": "0.60% [0.20% – 1.75%]",
+      "fmr": "0.60% [0.20% – 1.75%] | n=500",
       "precision": "99.40%",
-      "recall": "99.48%",
+      "recall": "99.46%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "65ms"
     },
     {
       "name": "OCR Noise 10%",
-      "fmr": "0.60% [0.20% – 1.75%]",
+      "fmr": "0.60% [0.20% – 1.75%] | n=500",
       "precision": "99.40%",
-      "recall": "99.33%",
+      "recall": "99.38%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "69ms"
     },
     {
       "name": "OCR Noise 20%",
-      "fmr": "1.20% [0.55% – 2.59%]",
+      "fmr": "1.20% [0.55% – 2.59%] | n=500",
       "precision": "98.80%",
       "recall": "98.79%",
       "passed": "✅ PASS",
@@ -158,94 +170,95 @@
     },
     {
       "name": "Supplier Name Typo",
-      "fmr": "0.60% [0.20% – 1.75%]",
+      "fmr": "0.60% [0.20% – 1.75%] | n=500",
       "precision": "99.40%",
-      "recall": "99.33%",
+      "recall": "99.42%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "68ms"
     },
     {
       "name": "Currency Swap",
-      "fmr": "0.60% [0.20% – 1.75%]",
+      "fmr": "0.60% [0.20% – 1.75%] | n=500",
       "precision": "99.40%",
-      "recall": "99.41%",
+      "recall": "99.42%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "66ms"
     },
     {
       "name": "Shared ERP Layout",
-      "fmr": "0.80% [0.31% – 2.04%]",
+      "fmr": "0.80% [0.31% – 2.04%] | n=500",
       "precision": "99.20%",
-      "recall": "99.11%",
+      "recall": "99.14%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "71ms"
     },
     {
       "name": "Missing Header Fields",
-      "fmr": "0.80% [0.31% – 2.04%]",
-      "precision": "99.20%",
-      "recall": "99.25%",
+      "fmr": "0.60% [0.20% – 1.75%] | n=500",
+      "precision": "99.40%",
+      "recall": "99.33%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "72ms"
     },
     {
       "name": "Duplicate Invoice Detection",
-      "fmr": "0.60% [0.20% – 1.75%]",
+      "fmr": "0.60% [0.20% – 1.75%] | n=500",
       "precision": "99.40%",
-      "recall": "99.31%",
+      "recall": "99.32%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "69ms"
     },
     {
       "name": "Partial/Incomplete Scan",
-      "fmr": "1.00% [0.43% – 2.32%]",
-      "precision": "99.00%",
-      "recall": "98.95%",
+      "fmr": "1.20% [0.55% – 2.59%] | n=500",
+      "precision": "98.80%",
+      "recall": "98.83%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "74ms"
     },
     {
       "name": "Arabic OCR Challenges",
-      "fmr": "1.00% [0.43% – 2.32%]",
-      "precision": "99.00%",
-      "recall": "98.94%",
+      "fmr": "1.20% [0.55% – 2.59%] | n=500",
+      "precision": "98.80%",
+      "recall": "98.88%",
       "passed": "✅ PASS",
       "sampleSize": 500,
       "latencyP50": "75ms"
     }
   ],
   "statisticalAnalysis": {
-    "overallFMR": "NaN% [NaN% – NaN%]",
+    "overallFMR": "NaN% [NaN% – NaN%] | n=5500",
     "methodology": "Wilson Score Interval with 95% Confidence Level",
     "totalSampleSize": 5500
   },
   "errorBudget": {
     "protocolVersion": "1.0.0",
-    "status": "WITHIN_BUDGET",
+    "status": "BUDGET_EXCEEDED",
     "summary": {
       "totalBudget": "3.00%",
       "remaining": "2.30%",
-      "used": "23.33%"
+      "used": "23.33%",
+      "reason": "Exceeded budgets: falseMatch, wrongSupplier"
     },
     "breakdown": {
       "falseMatch": {
         "budget": 0.005,
-        "consumed": 0.0772,
+        "consumed": 0.0768,
         "remaining": 0,
-        "percentageUsed": 1544,
+        "percentageUsed": 1536,
         "status": "EXCEEDED"
       },
       "wrongSupplier": {
         "budget": 0.002,
-        "consumed": 0.0397,
+        "consumed": 0.039,
         "remaining": 0,
-        "percentageUsed": 1982.5,
+        "percentageUsed": 1951.5,
         "status": "EXCEEDED"
       },
       "ocrFailure": {
@@ -274,12 +287,12 @@
       {
         "priority": "CRITICAL",
         "type": "falseMatch",
-        "message": "falseMatch budget exceeded by 0.0722"
+        "message": "falseMatch budget exceeded by 0.0718"
       },
       {
         "priority": "CRITICAL",
         "type": "wrongSupplier",
-        "message": "wrongSupplier budget exceeded by 0.0377"
+        "message": "wrongSupplier budget exceeded by 0.0370"
       }
     ]
   },

@@ -1,0 +1,189 @@
+{
+  "version": "1.0.0",
+  "status": "READY_FOR_DATA_COLLECTION",
+  "minimumSize": {
+    "totalInvoices": 5000,
+    "uniqueSuppliers": 100,
+    "uniqueTemplates": 30,
+    "dateRangeMonths": 12
+  },
+  "requiredDistribution": [
+    {
+      "category": "shared_erp_layout",
+      "name": "Shared ERP Templates",
+      "description": "Invoices from multiple suppliers using identical ERP systems (SAP, Oracle, etc.)",
+      "targetPercentage": 30,
+      "minimumPercentage": 20,
+      "maximumPercentage": 40,
+      "difficultyImpact": "HIGH",
+      "examples": [
+        "SAP Standard Template",
+        "Oracle EBS Default",
+        "Microsoft Dynamics"
+      ]
+    },
+    {
+      "category": "ocr_noise",
+      "name": "OCR Quality Issues",
+      "description": "Invoices with OCR errors due to scan quality, handwriting, stamps, etc.",
+      "targetPercentage": 25,
+      "minimumPercentage": 15,
+      "maximumPercentage": 35,
+      "difficultyImpact": "MEDIUM-HIGH",
+      "subcategories": {
+        "low_noise": {
+          "level": "<5%",
+          "target": 10
+        },
+        "medium_noise": {
+          "level": "5-15%",
+          "target": 10
+        },
+        "high_noise": {
+          "level": ">15%",
+          "target": 5
+        }
+      }
+    },
+    {
+      "category": "arabic_only",
+      "name": "Arabic-Only Invoices",
+      "description": "Invoices entirely in Arabic language (RTL)",
+      "targetPercentage": 20,
+      "minimumPercentage": 15,
+      "maximumPercentage": 30,
+      "difficultyImpact": "HIGH",
+      "challenges": [
+        "RTL text direction",
+        "Arabic numerals vs Hindi numerals",
+        "Mixed diacritics"
+      ]
+    },
+    {
+      "category": "arabic_english_mixed",
+      "name": "Arabic + English Mixed",
+      "description": "Invoices with both Arabic and English content (common in MENA region)",
+      "targetPercentage": 30,
+      "minimumPercentage": 20,
+      "maximumPercentage": 40,
+      "difficultyImpact": "HIGH",
+      "patterns": [
+        "Arabic body with English headers",
+        "Bilingual line items",
+        "Currency in English, text in Arabic"
+      ]
+    },
+    {
+      "category": "multi_page",
+      "name": "Multi-Page Invoices",
+      "description": "Invoices spanning multiple pages with continued data",
+      "targetPercentage": 15,
+      "minimumPercentage": 10,
+      "maximumPercentage": 25,
+      "difficultyImpact": "MEDIUM",
+      "pageRanges": {
+        "2 pages": 10,
+        "3-5 pages": 4,
+        "6+ pages": 1
+      }
+    },
+    {
+      "category": "low_quality_scan",
+      "name": "Low-Quality Scans",
+      "description": "Scanned invoices with quality issues (faded, skewed, rotated)",
+      "targetPercentage": 20,
+      "minimumPercentage": 15,
+      "maximumPercentage": 30,
+      "difficultyImpact": "HIGH",
+      "qualityIssues": [
+        "Faded text",
+        "Skewed alignment",
+        "Rotation >5°",
+        "Background noise",
+        "Stamps/annotations overlapping text"
+      ]
+    },
+    {
+      "category": "duplicate_suppliers",
+      "name": "Duplicate Supplier Variations",
+      "description": "Same supplier with different name variations across invoices",
+      "targetPercentage": 10,
+      "minimumPercentage": 5,
+      "maximumPercentage": 15,
+      "difficultyImpact": "CRITICAL",
+      "variationTypes": [
+        "Legal name vs Trade name",
+        "With/without \"Ltd\", \"LLC\", \"Co.\"",
+        "Spelling variations (El-/Al-, spaces)",
+        "English transliteration differences"
+      ]
+    },
+    {
+      "category": "similar_supplier_names",
+      "name": "Similar-Sounding Suppliers",
+      "description": "Different suppliers with very similar names (confusion risk)",
+      "targetPercentage": 15,
+      "minimumPercentage": 10,
+      "maximumPercentage": 20,
+      "difficultyImpact": "CRITICAL",
+      "examples": [
+        "\"Al Futtaim\" vs \"Al-Futtaim Group\"",
+        "\"Emirates Electrics\" vs \"Emirates Electric\"",
+        "\"ABC Trading\" vs \"ABC Trade\""
+      ]
+    }
+  ],
+  "metadataRequirements": {
+    "perInvoice": [
+      "invoice_id (unique identifier)",
+      "supplier_id (ground truth supplier)",
+      "supplier_name_variations (all known name variations)",
+      "invoice_date",
+      "total_amount",
+      "currency",
+      "line_items_count",
+      "template_type",
+      "ocr_confidence_score",
+      "scan_quality_score",
+      "language_detected",
+      "is_rtl",
+      "page_count",
+      "ground_truth_match_status (correct/wrong/partial)"
+    ],
+    "perSupplier": [
+      "supplier_id",
+      "legal_name",
+      "trade_names[]",
+      "active_periods",
+      "typical_template_types",
+      "known_similar_suppliers[]"
+    ]
+  },
+  "validationChecks": [
+    {
+      "check": "minimum_size_met",
+      "description": "Dataset meets minimum size requirements",
+      "severity": "CRITICAL"
+    },
+    {
+      "check": "distribution_coverage",
+      "description": "All categories meet minimum percentage thresholds",
+      "severity": "CRITICAL"
+    },
+    {
+      "check": "no_single_supplier_dominance",
+      "description": "No single supplier >10% of total invoices",
+      "severity": "WARNING"
+    },
+    {
+      "check": "temporal_distribution",
+      "description": "Invoices distributed across required date range",
+      "severity": "WARNING"
+    },
+    {
+      "check": "ground_truth_completeness",
+      "description": "All required metadata fields populated",
+      "severity": "CRITICAL"
+    }
+  ]
+}
