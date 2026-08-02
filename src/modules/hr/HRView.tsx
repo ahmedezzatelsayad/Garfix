@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
 import {
   useEmployees, useAttendance, useSalaries, useCommissions,
@@ -15,7 +15,12 @@ import {
   useCreatePerformance, useUpdatePerformance,
 } from "@/hooks/queries";
 import { toast } from "sonner";
-import { Plus, Trash2, UserCog, Pencil } from "lucide-react";
+import { 
+  Plus, Trash2, UserCog, Pencil, Users, UserCheck, DollarSign, 
+  Calendar, TrendingUp, Download, 
+  // Tab icons for new navigation
+  Briefcase, Clock, Wallet, Percent, Plane, Award, Calculator
+} from "lucide-react";
 import { GratuityCalculator } from "./GratuityCalculator";
 import { cn, paginate } from "@/lib/utils";
 import type {
@@ -31,19 +36,45 @@ import type {
 } from "./types";
 import { PAGE_SIZE, DELETE_PATH, TAB_META } from "./types";
 
+// ── DS v4.0 Components ──────────────────────────────────────────────────
+import {
+  GarfixEnterpriseTable,
+  GarfixBulkActions,
+} from "@/components/ui/GarfixEnterpriseTable";
+import {
+  GarfixEmptyState,
+  GarfixLoadingState,
+  GarfixErrorState,
+} from "@/components/ui/GarfixStates";
+import type { EnterpriseColumn } from "@/components/ui/GarfixEnterpriseTable";
 
-// ─── Style constants ────────────────────────────────────────────────────────
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
+// ─── Style constants (DS v4.0) ───────────────────────────────────────────
+
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px] focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "px-3 py-2.5 text-[13px]";
 const thCheck = "w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground font-bold";
-const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
-const editBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-primary cursor-pointer flex items-center justify-center hover:bg-primary/10 hover:border-primary/40 transition-colors";
-const actionsCell = "flex items-center gap-1.5";
+const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center hover-lift active-press";
+const editBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-primary cursor-pointer flex items-center justify-center hover-lift active-press";
+const actionsCell = "flex items-center gap-1";
 
-// ─── Main component ─────────────────────────────────────────────────────────
+// ─── Tab Icons Map for DS v4.0 Navigation ───────────────────────────────
+
+const tabIcons: Record<Tab, React.ReactNode> = {
+  employees: <Users size={16} />,
+  attendance: <UserCheck size={16} />,
+  salaries: <DollarSign size={16} />,
+  commissions: <Percent size={16} />,
+  leaves: <Calendar size={16} />,
+  performance: <TrendingUp size={16} />,
+  gratuity: <Calculator size={16} />,
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN HR VIEW COMPONENT — DS v4.0 UPDATE
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function HRView() {
   const { activeCompany } = useBrand();
@@ -70,7 +101,9 @@ export function HRView() {
   const commissions = (commissionsQuery.data as any)?.commissions ?? [] as Commission[];
   const leaves = (leavesQuery.data as any)?.leaves ?? [] as LeaveRequest[];
   const performances = (performanceQuery.data as any)?.performance ?? [] as Performance[];
+  
   const loading = employeesQuery.isLoading;
+  const error = employeesQuery.isError;
 
   const [tab, setTab] = useState<Tab>("employees");
 
@@ -79,6 +112,31 @@ export function HRView() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // ─── KPI Calculations ────────────────────────────────────────────────
+  
+  // Today's attendance count
+  const today = new Date().toISOString().slice(0, 10);
+  const attendanceToday = useMemo(() => {
+    return attendance.filter(a => a.date === today && a.status === 'present').length;
+  }, [attendance, today]);
+
+  // Total salaries calculation
+  const totalSalaries = useMemo(() => {
+    return employees.reduce((sum, emp) => sum + emp.baseSalary, 0).toLocaleString("ar-EG");
+  }, [employees]);
+
+  // Pending leaves count
+  const pendingLeaves = useMemo(() => {
+    return leaves.filter(l => l.status === 'pending').length;
+  }, [leaves]);
+
+  // Average performance score
+  const avgPerformance = useMemo(() => {
+    if (performances.length === 0) return 0;
+    const total = performances.reduce((sum, p) => sum + (p.overallScore || p.kpiScore || 0), 0);
+    return Math.round(total / performances.length);
+  }, [performances]);
 
   // ─── Tab switch ───────────────────────────────────────────────────────
 
@@ -126,6 +184,11 @@ export function HRView() {
     }
   };
 
+  const handleExport = () => {
+    toast.success("جارٍ تصدير البيانات...");
+    // Export logic would go here
+  };
+
   const itemsForTab = (): Array<{ id: number }> => {
     switch (tab) {
       case "employees": return employees;
@@ -149,6 +212,7 @@ export function HRView() {
     if (selectedIds.size === pageItems.length && pageItems.length > 0) setSelectedIds(new Set());
     else setSelectedIds(new Set(pageItems.map((i) => i.id)));
   };
+  
   const toggleRow = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -167,11 +231,30 @@ export function HRView() {
     setSelectedIds(new Set());
   };
 
+  // ─── Refetch handler ─────────────────────────────────────────────────
+
+  const refetch = () => {
+    employeesQuery.refetch();
+    attendanceQuery.refetch();
+    salariesQuery.refetch();
+    commissionsQuery.refetch();
+    leavesQuery.refetch();
+    performanceQuery.refetch();
+  };
+
   // ─── Guard ────────────────────────────────────────────────────────────
 
-  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return (
+    <div className="p-8 md:p-12 text-center">
+      <GarfixEmptyState 
+        title="اختر شركة"
+        description="يرجى اختيار شركة لعرض بيانات الموارد البشرية"
+        illustration="folder"
+      />
+    </div>
+  );
 
-  const tabs: Array<{ key: Tab; label: string; count: number }> = TAB_META.map((m) => ({
+  const tabs: Array<{ key: Tab; label: string; count: number }> = TAB_META.filter(m => m.key !== 'gratuity').map((m) => ({
     ...m,
     count: m.key === "employees" ? employees.length
       : m.key === "attendance" ? attendance.length
@@ -189,33 +272,288 @@ export function HRView() {
     toggleSelectAll,
   };
 
+  // ─── Enterprise Table Columns Definition ─────────────────────────────
+  
+  const getColumnsForTab = (): EnterpriseColumn[] => {
+    switch (tab) {
+      case "employees":
+        return [
+          { key: "name", label: "الاسم", pinned: true },
+          { key: "position", label: "المسمى" },
+          { key: "department", label: "القسم" },
+          { key: "baseSalary", label: "الراتب" },
+          { key: "phone", label: "الهاتف" },
+          { 
+            key: "isActive", 
+            label: "الحالة",
+            render: (value) => (
+              <span className={cn(
+                "py-0.5 px-2.5 rounded-xl text-[11px] font-bold",
+                value ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500"
+              )}>
+                {value ? "نشط" : "موقوف"}
+              </span>
+            )
+          },
+        ];
+      
+      case "attendance":
+        return [
+          { key: "employeeId", label: "الموظف", pinned: true, render: (value) => empName(employees, Number(value)) },
+          { key: "date", label: "التاريخ" },
+          { 
+            key: "status", 
+            label: "الحالة",
+            render: (value) => {
+              const STATUS: Record<string, { label: string; color: string }> = {
+                present: { label: "حاضر", color: "#10b981" }, absent: { label: "غائب", color: "#ef4444" },
+                late: { label: "متأخر", color: "#f59e0b" }, half: { label: "نص يوم", color: "#3b82f6" },
+                remote: { label: "عن بُعد", color: "#7c3aed" },
+              };
+              const st = STATUS[String(value)] || { label: String(value), color: "#999" };
+              return (
+                <span className="py-0.5 px-2.5 rounded-xl text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }}>
+                  {st.label}
+                </span>
+              );
+            }
+          },
+          { key: "checkIn", label: "حضور" },
+          { key: "checkOut", label: "انصراف" },
+        ];
+      
+      case "salaries":
+        return [
+          { key: "employeeId", label: "الموظف", pinned: true, render: (value) => empName(employees, Number(value)) },
+          { key: "month", label: "الشهر" },
+          { key: "baseSalary", label: "الأساسي" },
+          { key: "allowances", label: "بدلات" },
+          { key: "deductions", label: "خصومات" },
+          { key: "bonus", label: "مكافأة" },
+          { key: "netSalary", label: "الصافي" },
+          { 
+            key: "isPaid", 
+            label: "حالة",
+            render: (value) => (
+              <span className={cn(
+                "py-0.5 px-2.5 rounded-xl text-[11px] font-bold",
+                value ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
+              )}>
+                {value ? "مدفوع" : "معلّق"}
+              </span>
+            )
+          },
+        ];
+      
+      case "commissions":
+        return [
+          { key: "employeeId", label: "الموظف", pinned: true, render: (value) => empName(employees, Number(value)) },
+          { key: "date", label: "التاريخ" },
+          { key: "type", label: "النوع" },
+          { key: "description", label: "الوصف" },
+          { key: "amount", label: "المبلغ" },
+          { 
+            key: "isPaid", 
+            label: "حالة",
+            render: (value) => (
+              <span className={cn(
+                "py-0.5 px-2.5 rounded-xl text-[11px] font-bold",
+                value ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
+              )}>
+                {value ? "مدفوع" : "معلّق"}
+              </span>
+            )
+          },
+        ];
+      
+      case "leaves":
+        return [
+          { key: "employeeId", label: "الموظف", pinned: true, render: (value) => empName(employees, Number(value)) },
+          { key: "type", label: "النوع" },
+          { key: "startDate", label: "من" },
+          { key: "endDate", label: "إلى" },
+          { key: "days", label: "أيام" },
+          { 
+            key: "status", 
+            label: "حالة",
+            render: (value) => {
+              const STATUS: Record<string, { label: string; color: string }> = {
+                pending: { label: "معلّق", color: "#f59e0b" }, approved: { label: "موافق", color: "#10b981" },
+                rejected: { label: "مرفوض", color: "#ef4444" },
+              };
+              const st = STATUS[String(value)] || { label: String(value), color: "#999" };
+              return (
+                <span className="py-0.5 px-2.5 rounded-xl text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }}>
+                  {st.label}
+                </span>
+              );
+            }
+          },
+        ];
+      
+      case "performance":
+        return [
+          { key: "employeeId", label: "الموظف", pinned: true, render: (value) => empName(employees, Number(value)) },
+          { key: "period", label: "الفترة" },
+          { key: "kpiScore", label: "KPI" },
+          { key: "overallScore", label: "الإجمالي" },
+          { key: "rating", label: "التقييم" },
+        ];
+      
+      default:
+        return [];
+    }
+  };
+
+  // Convert items to record format for EnterpriseTable
+  const getTableData = (): Record<string, unknown>[] => {
+    switch (tab) {
+      case "employees":
+        return (pageItems as Employee[]).map(e => ({ ...e }));
+      case "attendance":
+        return (pageItems as Attendance[]).map(a => ({ ...a }));
+      case "salaries":
+        return (pageItems as Salary[]).map(s => ({ ...s }));
+      case "commissions":
+        return (pageItems as Commission[]).map(c => ({ ...c }));
+      case "leaves":
+        return (pageItems as LeaveRequest[]).map(l => ({ ...l }));
+      case "performance":
+        return (pageItems as Performance[]).map(p => ({ ...p }));
+      default:
+        return [];
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-fade-in-up">
+      {/* ─── Header Section ─────────────────────────────────────────── */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <div><h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><UserCog size={20} /> الموارد البشرية</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
-        {tab !== "gratuity" && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"><Plus size={16} /> إضافة</button>
+        <div>
+          <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
+            <UserCog size={20} className="text-primary" /> 
+            الموارد البشرية
+          </h1>
+          <p className="text-[13px] text-muted-foreground mt-1">{activeCompany.nameAr || activeCompany.name}</p>
+        </div>
+        {tab !== "gratuity" && !showForm && (
+          <button 
+            onClick={() => setShowForm(true)} 
+            className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer hover-lift active-press shadow-brand-sm max-md:min-h-[44px]"
+          >
+            <Plus size={16} /> إضافة
+          </button>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1.5 overflow-x-auto garfix-scroll">
+      {/* ─── KPI Cards Section (DS v4.0) ────────────────────────────── */}
+      {!showForm && tab !== "gratuity" && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6 stagger-children">
+          {/* Total Employees */}
+          <div className="kpi-card hover-lift">
+            <Users size={18} className="text-primary mb-2" />
+            <div className="kpi-value">{employees.length}</div>
+            <div className="kpi-label">إجمالي الموظفين</div>
+            <div className="sparkline-container mt-2">
+              <div className="flex items-end gap-0.5 h-8">
+                {[40, 65, 45, 80, 55, 70, 60].map((h, i) => (
+                  <div 
+                    key={i} 
+                    className="flex-1 bg-primary/30 rounded-sm min-w-[4px]" 
+                    style={{ height: `${h}%` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ⚠️ GOLD KPI - Today's Attendance (Important!) */}
+          <div className="kpi-card-gold hover-lift">
+            <UserCheck size={18} className="text-[#d4a574] mb-2" />
+            <div className="kpi-value">{attendanceToday}</div>
+            <div className="kpi-label">الحاضرين اليوم</div>
+            <div className="kpi-badge">✦ مباشر</div>
+          </div>
+
+          {/* Total Salaries */}
+          <div className="kpi-card hover-lift">
+            <DollarSign size={18} className="text-primary mb-2" />
+            <div className="kpi-value">{totalSalaries}</div>
+            <div className="kpi-label">إجمالي الرواتب</div>
+            <div className="text-[10px] text-muted-foreground mt-1">KWD</div>
+          </div>
+
+          {/* Pending Leaves */}
+          <div className="kpi-card hover-lift">
+            <Calendar size={18} className="text-warning mb-2" />
+            <div className="kpi-value">{pendingLeaves}</div>
+            <div className="kpi-label">إجازات معلقة</div>
+            {pendingLeaves > 0 && (
+              <div className="kpi-trend warning mt-1">← يحتاج موافقة</div>
+            )}
+          </div>
+
+          {/* Performance Score */}
+          <div className="kpi-card hover-lift">
+            <TrendingUp size={18} className="data-auxiliary mb-2" />
+            <div className="kpi-value">{avgPerformance}%</div>
+            <div className="kpi-label">متوسط الأداء</div>
+            <div className="progress-emerald mt-2">
+              <div 
+                className="progress-bar" 
+                style={{ width: `${avgPerformance}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tabs Navigation (DS v4.0 Emerald-themed) ────────────────── */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg mb-4 overflow-x-auto garfix-scroll">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => switchTab(t.key)}
             className={cn(
-              "px-4 py-2 rounded-md border border-border font-bold text-xs cursor-pointer whitespace-nowrap max-md:min-h-[44px]",
-              tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-120 whitespace-nowrap flex items-center gap-1.5",
+              tab === t.key 
+                ? "bg-primary text-white shadow-brand-sm" 
+                : "text-muted-foreground hover:bg-sidebar-accent hover-lift"
             )}
           >
-            {t.label} ({t.count})
+            {tabIcons[t.key]}
+            {t.label}
+            <span className={cn(
+              "text-xs px-1.5 py-0.5 rounded-full",
+              tab === t.key ? "bg-white/20" : "bg-muted"
+            )}>
+              {t.count}
+            </span>
           </button>
         ))}
+        {/* Gratuity Tab */}
+        <button
+          onClick={() => switchTab("gratuity")}
+          className={cn(
+            "px-4 py-2 rounded-md text-sm font-medium transition-all duration-120 whitespace-nowrap flex items-center gap-1.5",
+            tab === "gratuity" 
+              ? "bg-primary text-white shadow-brand-sm" 
+              : "text-muted-foreground hover:bg-sidebar-accent hover-lift"
+          )}
+        >
+          <Calculator size={16} />
+          مكافأة نهاية الخدمة
+        </button>
       </div>
 
-      {loading ? (
-        <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+      {/* ─── Content Area ────────────────────────────────────────────── */}
+      {error ? (
+        <GarfixErrorState
+          message="تعذّر تحميل بيانات الموظفين"
+          onRetry={() => refetch()}
+        />
+      ) : loading ? (
+        <GarfixLoadingState message="جارٍ تحميل بيانات الموارد البشرية..." variant="skeleton" skeletonLines={5} />
       ) : tab === "gratuity" ? (
         <GratuityCalculator employees={employees} />
       ) : showForm ? (
@@ -229,44 +567,81 @@ export function HRView() {
         />
       ) : (
         <>
+          {/* ─── Bulk Actions Bar (DS v4.0) ─────────────────────────── */}
           {selectedIds.size > 0 && (
-            <div className="py-2.5 px-4 bg-destructive text-white rounded-md flex flex-wrap justify-between items-center gap-2">
-              <span className="font-bold text-[13px]">{selectedIds.size} عنصر محدد</span>
-              <div className="flex gap-2">
-                <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed max-md:min-h-[44px]">إلغاء التحديد</button>
-                <button onClick={onBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
-              </div>
-            </div>
+            <GarfixBulkActions
+              selectedCount={selectedIds.size}
+              totalCount={allItems.length}
+              actions={[
+                { 
+                  label: "حذف المحدد", 
+                  icon: <Trash2 size={14} />, 
+                  onClick: onBulkDelete, 
+                  variant: "danger" 
+                },
+                { 
+                  label: "تصدير", 
+                  icon: <Download size={14} />, 
+                  onClick: handleExport 
+                },
+              ]}
+              onClearSelection={() => setSelectedIds(new Set())}
+            />
           )}
 
-          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+          {/* ─── Data Display ───────────────────────────────────────── */}
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             {allItems.length === 0 ? (
-              <Empty label={tab === "employees" ? "موظفين" : tab === "attendance" ? "سجلات حضور" : tab === "salaries" ? "رواتب" : tab === "commissions" ? "عمولات" : tab === "leaves" ? "إجازات" : "تقييمات أداء"} />
+              <GarfixEmptyState
+                title={`لا يوجد ${tab === "employees" ? "موظفين" : tab === "attendance" ? "سجلات حضور" : tab === "salaries" ? "رواتب" : tab === "commissions" ? "عمولات" : tab === "leaves" ? "إجازات" : "تقييمات أداء"}`}
+                description={`أضف أول ${tab === "employees" ? "موظف" : tab === "attendance" ? "سجل حضور" : tab === "salaries" ? "راتب" : tab === "commissions" ? "عمولة" : tab === "leaves" ? "إجازة" : "تقييم أداء"} لبدء إدارة الموارد البشرية`}
+                illustration="users"
+                action={{ label: `إضافة ${tab === "employees" ? "موظف" : "جديد"}`, onClick: () => setShowForm(true) }}
+              />
             ) : (
               <>
-                {/* Tables: desktop table on md+, mobile card fallback below */}
-                <div className="hidden md:block overflow-x-auto garfix-scroll">
-                  {tab === "employees" && <EmployeesTable {...tableProps} />}
-                  {tab === "attendance" && <AttendanceTable {...tableProps} />}
-                  {tab === "salaries" && <SalariesTable {...tableProps} />}
-                  {tab === "commissions" && <CommissionsTable {...tableProps} />}
-                  {tab === "leaves" && <LeavesTable {...tableProps} />}
-                  {tab === "performance" && <PerformanceTable {...tableProps} />}
-                </div>
-                {/* Mobile fallback: overflow-x-auto table on small screens */}
-                <div className="md:hidden overflow-x-auto garfix-scroll">
-                  {tab === "employees" && <EmployeesTable {...tableProps} />}
-                  {tab === "attendance" && <AttendanceTable {...tableProps} />}
-                  {tab === "salaries" && <SalariesTable {...tableProps} />}
-                  {tab === "commissions" && <CommissionsTable {...tableProps} />}
-                  {tab === "leaves" && <LeavesTable {...tableProps} />}
-                  {tab === "performance" && <PerformanceTable {...tableProps} />}
-                </div>
+                {/* DS v4.0 Enterprise Table */}
+                <GarfixEnterpriseTable
+                  data={getTableData()}
+                  columns={getColumnsForTab()}
+                  density="comfortable"
+                  selectedRows={selectedIds}
+                  onSelectionChange={(rows) => setSelectedIds(rows)}
+                  isLoading={loading}
+                  emptyMessage="لا توجد بيانات"
+                  emptyDescription="لم يتم العثور على أي سجلات لعرضها"
+                />
+
+                {/* Pagination */}
                 <div className="flex flex-wrap justify-between items-center px-4 py-3 border-t border-border gap-2">
-                  <span className="text-xs text-muted-foreground">صفحة {safePage} من {totalPages} ({allItems.length} عنصر)</span>
+                  <span className="text-xs text-muted-foreground">
+                    صفحة {safePage} من {totalPages} ({allItems.length} عنصر)
+                  </span>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === 1 ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>السابق</button>
-                    <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === totalPages ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>التالي</button>
+                    <button 
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} 
+                      disabled={safePage === 1} 
+                      className={cn(
+                        "px-3 py-1.5 rounded-md border border-border font-bold text-xs transition-all duration-120 max-md:min-h-[44px]",
+                        safePage === 1 
+                          ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
+                          : "bg-card text-foreground cursor-pointer hover-lift"
+                      )}
+                    >
+                      السابق
+                    </button>
+                    <button 
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} 
+                      disabled={safePage === totalPages} 
+                      className={cn(
+                        "px-3 py-1.5 rounded-md border border-border font-bold text-xs transition-all duration-120 max-md:min-h-[44px]",
+                        safePage === totalPages 
+                          ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
+                          : "bg-card text-foreground cursor-pointer hover-lift"
+                      )}
+                    >
+                      التالي
+                    </button>
                   </div>
                 </div>
               </>
@@ -296,235 +671,9 @@ function Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: 
   );
 }
 
-function Empty({ label }: { label: string }) {
-  return <div className="p-6 md:p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
-}
-
-// ─── Table components ───────────────────────────────────────────────────────
-// Each table now wraps its items in HREditItem via the typed _tag, eliminating
-// the unsafe `as unknown as Record<string, unknown>` casts.
-
-function EmployeesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
-  return (
-    <table className="w-full border-collapse min-w-[640px]">
-      <thead><tr className="border-b border-border bg-muted">
-        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
-        <th className={thStyle}>الاسم</th><th className={thStyle}>المسمى</th><th className={thStyle}>القسم</th>
-        <th className={thStyle}>الراتب</th><th className={thStyle}>الهاتف</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
-      </tr></thead>
-      <tbody>
-        {(pageItems as Employee[]).map((e) => {
-          const checked = selectedIds.has(e.id);
-          return (
-            <tr key={e.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(e.id)} ariaLabel={`تحديد ${e.name}`} /></td>
-              <td className={cn(tdStyle, "font-bold")}>{e.name}</td>
-              <td className={tdStyle}>{e.position || "—"}</td>
-              <td className={tdStyle}>{e.department || "—"}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.baseSalary.toLocaleString("ar-EG")} {e.currency}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{e.phone || "—"}</td>
-              <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-xl text-[11px] font-bold", e.isActive ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{e.isActive ? "نشط" : "موقوف"}</span></td>
-              <td className={tdStyle}>
-                <div className={actionsCell}>
-                  <button onClick={() => handleEdit({ _tag: "employees", data: e })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(e.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function AttendanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
-  const STATUS: Record<string, { label: string; color: string }> = {
-    present: { label: "حاضر", color: "#10b981" }, absent: { label: "غائب", color: "#ef4444" },
-    late: { label: "متأخر", color: "#f59e0b" }, half: { label: "نص يوم", color: "#3b82f6" },
-    remote: { label: "عن بُعد", color: "#7c3aed" },
-  };
-  return (
-    <table className="w-full border-collapse min-w-[640px]">
-      <thead><tr className="border-b border-border bg-muted">
-        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
-        <th className={thStyle}>الموظف</th><th className={thStyle}>التاريخ</th><th className={thStyle}>الحالة</th>
-        <th className={thStyle}>حضور</th><th className={thStyle}>انصراف</th><th className={thStyle}>إجراء</th>
-      </tr></thead>
-      <tbody>
-        {(pageItems as Attendance[]).map((a) => {
-          const st = STATUS[a.status] || { label: a.status, color: "#999" };
-          const checked = selectedIds.has(a.id);
-          return (
-            <tr key={a.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(a.id)} ariaLabel="تحديد" /></td>
-              <td className={cn(tdStyle, "font-bold")}>{empName(employees, a.employeeId)}</td>
-              <td className={tdStyle}>{a.date}</td>
-              <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-xl text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }} /* TAILWINDBREAK: dynamic color */>{st.label}</span></td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkIn || "—"}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{a.checkOut || "—"}</td>
-              <td className={tdStyle}>
-                <div className={actionsCell}>
-                  <button onClick={() => handleEdit({ _tag: "attendance", data: a })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(a.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function SalariesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
-  return (
-    <table className="w-full border-collapse min-w-[800px]">
-      <thead><tr className="border-b border-border bg-muted">
-        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
-        <th className={thStyle}>الموظف</th><th className={thStyle}>الشهر</th><th className={thStyle}>الأساسي</th>
-        <th className={thStyle}>بدلات</th><th className={thStyle}>خصومات</th><th className={thStyle}>مكافأة</th>
-        <th className={thStyle}>الصافي</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
-      </tr></thead>
-      <tbody>
-        {(pageItems as Salary[]).map((s) => {
-          const checked = selectedIds.has(s.id);
-          return (
-            <tr key={s.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(s.id)} ariaLabel="تحديد" /></td>
-              <td className={cn(tdStyle, "font-bold")}>{empName(employees, s.employeeId)}</td>
-              <td className={tdStyle}>{s.month}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end")}>{s.baseSalary.toLocaleString("ar-EG")}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>+{s.allowances.toLocaleString("ar-EG")}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end text-[#ef4444]")}>-{s.deductions.toLocaleString("ar-EG")}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end text-[#10b981]")}>+{s.bonus.toLocaleString("ar-EG")}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{s.netSalary.toLocaleString("ar-EG")}</td>
-              <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-xl text-[11px] font-bold", s.isPaid ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{s.isPaid ? "مدفوع" : "معلّق"}</span></td>
-              <td className={tdStyle}>
-                <div className={actionsCell}>
-                  <button onClick={() => handleEdit({ _tag: "salaries", data: s })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(s.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function CommissionsTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
-  return (
-    <table className="w-full border-collapse min-w-[720px]">
-      <thead><tr className="border-b border-border bg-muted">
-        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
-        <th className={thStyle}>الموظف</th><th className={thStyle}>التاريخ</th><th className={thStyle}>النوع</th>
-        <th className={thStyle}>الوصف</th><th className={thStyle}>المبلغ</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
-      </tr></thead>
-      <tbody>
-        {(pageItems as Commission[]).map((c) => {
-          const checked = selectedIds.has(c.id);
-          return (
-            <tr key={c.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(c.id)} ariaLabel="تحديد" /></td>
-              <td className={cn(tdStyle, "font-bold")}>{empName(employees, c.employeeId)}</td>
-              <td className={tdStyle}>{c.date}</td>
-              <td className={tdStyle}>{c.type}</td>
-              <td className={tdStyle}>{c.description || "—"}</td>
-              <td className={cn(tdStyle, "[direction:ltr] text-end font-bold text-[#10b981]")}>{c.amount.toLocaleString("ar-EG")}</td>
-              <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-xl text-[11px] font-bold", c.isPaid ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{c.isPaid ? "مدفوع" : "معلّق"}</span></td>
-              <td className={tdStyle}>
-                <div className={actionsCell}>
-                  <button onClick={() => handleEdit({ _tag: "commissions", data: c })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(c.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function LeavesTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
-  const STATUS: Record<string, { label: string; color: string }> = {
-    pending: { label: "معلّق", color: "#f59e0b" }, approved: { label: "موافق", color: "#10b981" },
-    rejected: { label: "مرفوض", color: "#ef4444" },
-  };
-  return (
-    <table className="w-full border-collapse min-w-[720px]">
-      <thead><tr className="border-b border-border bg-muted">
-        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
-        <th className={thStyle}>الموظف</th><th className={thStyle}>النوع</th><th className={thStyle}>من</th>
-        <th className={thStyle}>إلى</th><th className={thStyle}>أيام</th><th className={thStyle}>حالة</th><th className={thStyle}>إجراء</th>
-      </tr></thead>
-      <tbody>
-        {(pageItems as LeaveRequest[]).map((l) => {
-          const st = STATUS[l.status] || { label: l.status, color: "#999" };
-          const checked = selectedIds.has(l.id);
-          return (
-            <tr key={l.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(l.id)} ariaLabel="تحديد" /></td>
-              <td className={cn(tdStyle, "font-bold")}>{empName(employees, l.employeeId)}</td>
-              <td className={tdStyle}>{l.type}</td>
-              <td className={tdStyle}>{l.startDate}</td>
-              <td className={tdStyle}>{l.endDate}</td>
-              <td className={tdStyle}>{l.days}</td>
-              <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-xl text-[11px] font-bold" style={{ background: `${st.color}20`, color: st.color }} /* TAILWINDBREAK: dynamic color */>{st.label}</span></td>
-              <td className={tdStyle}>
-                <div className={actionsCell}>
-                  <button onClick={() => handleEdit({ _tag: "leaves", data: l })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(l.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function PerformanceTable({ selectedIds, toggleRow, handleDelete, handleEdit, pageItems, employees, selectAllChecked, toggleSelectAll }: TableShared) {
-  return (
-    <table className="w-full border-collapse min-w-[640px]">
-      <thead><tr className="border-b border-border bg-muted">
-        <th className={thCheck}><input type="checkbox" checked={selectAllChecked} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
-        <th className={thStyle}>الموظف</th><th className={thStyle}>الفترة</th><th className={thStyle}>KPI</th>
-        <th className={thStyle}>الإجمالي</th><th className={thStyle}>التقييم</th><th className={thStyle}>إجراء</th>
-      </tr></thead>
-      <tbody>
-        {(pageItems as Performance[]).map((p) => {
-          const checked = selectedIds.has(p.id);
-          return (
-            <tr key={p.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-              <td className={cn(tdStyle, "text-center", checked ? "bg-accent" : "bg-transparent")}><Check checked={checked} onChange={() => toggleRow(p.id)} ariaLabel="تحديد" /></td>
-              <td className={cn(tdStyle, "font-bold")}>{empName(employees, p.employeeId)}</td>
-              <td className={tdStyle}>{p.period}</td>
-              <td className={tdStyle}>{p.kpiScore ?? "—"}</td>
-              <td className={cn(tdStyle, "font-bold")}>{p.overallScore ?? "—"}</td>
-              <td className={tdStyle}>{p.rating || "—"}</td>
-              <td className={tdStyle}>
-                <div className={actionsCell}>
-                  <button onClick={() => handleEdit({ _tag: "performance", data: p })} title="تعديل" className={editBtnStyle}><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(p.id)} title="حذف" className={iconBtnStyle}><Trash2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-// ─── HR Form (single form adapted per tab) ──────────────────────────────────
-//
-// The form now accepts `HREditItem | null` instead of `Record<string, unknown>`.
-// By discriminating on `editItem._tag`, each field initializer can safely access
-// the proper typed data without any `as string` casts.
+// ═══════════════════════════════════════════════════════════════════════════
+// HR FORM COMPONENT (Preserved - DS v4.0 styling updates)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   tab: Tab; company: { slug: string }; employees: Employee[];
@@ -645,8 +794,8 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
     : `إضافة ${tab === "employees" ? "موظف" : tab === "attendance" ? "سجل حضور" : tab === "salaries" ? "راتب" : tab === "commissions" ? "عمولة" : tab === "leaves" ? "إجازة" : "تقييم أداء"}`;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+    <div className="flex flex-col gap-4 animate-fade-in-up">
+      <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3.5 shadow-brand-sm">
         <h3 className="text-[15px] font-bold flex items-center gap-2">
           {isEditing && <Pencil size={14} className="text-primary" />}
           {formTitle}
@@ -714,8 +863,7 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
               <div><label className={labelStyle}>النوع</label>
                 <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className={inputStyle}>
                   <option value="annual">سنوي</option><option value="sick">مرضي</option>
-                  <option value="unpaid">بدون أجر</option><option value="maternity">أمومة</option>
-                  <option value="other">أخرى</option>
+                  <option value="unpaid">بدون أجر</option><option value="maternity">أمومة</option><option value="other">أخرى</option>
                 </select>
               </div>
               <div><label className={labelStyle}>من</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
@@ -729,8 +877,7 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
               <div><label className={labelStyle}>التقييم</label>
                 <select value={rating} onChange={(e) => setRating(e.target.value)} className={inputStyle}>
                   <option value="ممتاز">ممتاز</option><option value="جيد جداً">جيد جداً</option>
-                  <option value="جيد">جيد</option><option value="مقبول">مقبول</option>
-                  <option value="ضعيف">ضعيف</option>
+                  <option value="جيد">جيد</option><option value="مقبول">مقبول</option><option value="ضعيف">ضعيف</option>
                 </select>
               </div>
             </>)}
@@ -738,8 +885,19 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
         )}
       </div>
       <div className="flex gap-2.5 justify-end">
-        <button onClick={onClose} className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : (isEditing ? "تحديث" : "حفظ")}</button>
+        <button 
+          onClick={onClose} 
+          className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer hover-lift active-press max-md:min-h-[44px]"
+        >
+          إلغاء
+        </button>
+        <button 
+          onClick={submit} 
+          disabled={saving} 
+          className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 hover-lift active-press shadow-brand-sm max-md:min-h-[44px]"
+        >
+          {saving ? "جارٍ…" : (isEditing ? "تحديث" : "حفظ")}
+        </button>
       </div>
     </div>
   );

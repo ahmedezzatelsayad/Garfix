@@ -11,6 +11,14 @@ import {
 } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// DS v4.0 Components
+import {
+  GarfixEnterpriseTable,
+  GarfixBulkActions,
+  GarfixEmptyState,
+  GarfixLoadingState,
+} from '@/components/ui/index-garfix-ds';
+import type { EnterpriseColumn } from '@/components/ui/index-garfix-ds';
 import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
 import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPicker";
 import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
@@ -284,35 +292,36 @@ export function InvoicesView() {
         </Alert>
       )}
 
-      {/* Header — modern gradient hero card */}
-      <div className="relative overflow-hidden rounded-[18px] border border-gray-200 bg-gradient-to-br from-brand-purple-50 via-white to-white p-5 md:p-6 shadow-card">
-        <div className="absolute -top-12 -end-12 w-40 h-40 rounded-full bg-brand-purple-50 blur-3xl pointer-events-none" />
+      {/* Header — DS v4.0 Hero Card with Emerald Primary */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-card p-5 md:p-6 shadow-sm hover-lift">
+        {/* Decorative blob */}
+        <div className="absolute -top-12 -end-12 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="relative flex flex-wrap justify-between items-start gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-[10px] bg-brand-purple text-white">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white shadow-sm">
                 <FileText size={18} />
               </span>
-              <h1 className="text-[22px] md:text-2xl font-extrabold tracking-tight text-gray-800">الفواتير</h1>
+              <h1 className="text-[22px] md:text-2xl font-extrabold tracking-tight text-foreground">الفواتير</h1>
             </div>
-            <p className="text-[13px] text-gray-500">
-              <span className="font-bold text-gray-800">{invoices.length}</span> فاتورة في
+            <p className="text-[13px] text-muted-foreground">
+              <span className="font-bold text-foreground">{invoices.length}</span> فاتورة في
               {" "}{activeCompany.nameAr || activeCompany.name}
               {activeCompany.currency && (
-                <span className="ms-1.5 text-[11px] text-gray-400">({activeCompany.currency})</span>
+                <span className="ms-1.5 text-[11px] text-muted-foreground/70">({activeCompany.currency})</span>
               )}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             <button
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded-[12px] bg-white text-gray-700 border border-gray-200 text-[12px] font-bold cursor-pointer hover:bg-brand-purple-50 hover:border-brand-purple-100 transition-colors shadow-card"
+              className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded-xl bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer hover-lift hover:bg-primary/5 hover:border-primary/30 active-press focus-ring transition-all duration-120 shadow-sm"
             >
               <Download size={14} /> تصدير CSV
             </button>
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-[12px] bg-brand-purple text-white border-none text-[13px] font-bold cursor-pointer hover:bg-brand-purple-light transition-colors shadow-[0_2px_8px_rgba(124,58,237,0.3)]"
+              className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-xl bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer hover-lift hover:bg-primary/90 active-press focus-ring transition-all duration-150 shadow-md"
             >
               <Plus size={16} />
               فاتورة جديدة
@@ -321,17 +330,78 @@ export function InvoicesView() {
         </div>
       </div>
 
-      {/* KPI summary cards */}
+      {/* KPI summary cards — DS v4.0 */}
       {!loading && invoices.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <KpiCard label="الإجمالي" value={totalRevenue.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} sub={`${paidInvoices.length} مدفوعة`} color="#10b981" icon={<FileText size={15} />} />
-          <KpiCard label="مستحقة" value={outstanding.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} sub={`${pendingInvoices.length} قيد الانتظار`} color="#3b82f6" icon={<Clock size={15} />} />
-          <KpiCard label="متأخرة" value={overdueInvoices.length.toLocaleString("ar-EG")} sub={overdueInvoices.length > 0 ? "تحتاج متابعة" : "لا يوجد"} color="#ef4444" icon={<AlertTriangle size={15} />} />
-          <KpiCard label="إجمالي الفواتير" value={invoices.length.toLocaleString("ar-EG")} sub={`من ${activeCompany.nameAr || activeCompany.name}`} color="#7c3aed" icon={<BarChart3 size={15} />} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+          {/* Total Invoices — Standard KPI */}
+          <div className="kpi-card hover-lift rounded-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <FileText size={18} />
+              </div>
+              <span className="kpi-label">إجمالي الفواتير</span>
+            </div>
+            <div className="kpi-value [direction:ltr]">{invoices.length.toLocaleString("ar-EG")}</div>
+            <div className="text-xs text-muted-foreground mt-1">من {activeCompany.nameAr || activeCompany.name}</div>
+          </div>
+
+          {/* Total Revenue — GOLD KPI (Important!) */}
+          <div className="kpi-card-gold hover-lift rounded-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[#d4a574]/20 flex items-center justify-center text-[#d4a574]">
+                <DollarSign size={18} />
+              </div>
+              <span className="kpi-label">الإيرادات الإجمالية</span>
+              <span className="kpi-badge">✦ مهم</span>
+            </div>
+            <div className="kpi-value [direction:ltr]">{totalRevenue.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</div>
+            <div className="text-xs text-muted-foreground mt-1">{paidInvoices.length} فاتورة مدفوعة</div>
+          </div>
+
+          {/* Paid Invoices — Standard KPI */}
+          <div className="kpi-card hover-lift rounded-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <CheckCircle2 size={18} />
+              </div>
+              <span className="kpi-label">الفواتير المدفوعة</span>
+            </div>
+            <div className="kpi-value [direction:ltr]">{paidInvoices.length.toLocaleString("ar-EG")}</div>
+            <div className="text-xs text-muted-foreground mt-1">تم تحصيلها بالكامل</div>
+          </div>
+
+          {/* Overdue Invoices — Standard KPI (Danger) */}
+          <div className="kpi-card hover-lift rounded-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
+                <AlertTriangle size={18} />
+              </div>
+              <span className="kpi-label">الفواتير المتأخرة</span>
+            </div>
+            <div className="kpi-value [direction:ltr] text-red-500">{overdueInvoices.length.toLocaleString("ar-EG")}</div>
+            <div className="text-xs text-muted-foreground mt-1">{overdueInvoices.length > 0 ? "تحتاج متابعة عاجلة" : "لا يوجد"}</div>
+          </div>
+
+          {/* Average Invoice Value — Standard KPI */}
+          <div className="kpi-card hover-lift rounded-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <BarChart3 size={18} />
+              </div>
+              <span className="kpi-label">متوسط قيمة الفاتورة</span>
+            </div>
+            <div className="kpi-value [direction:ltr]">
+              {invoices.length > 0 
+                ? (totalRevenue / invoices.length).toLocaleString("ar-EG", { maximumFractionDigits: 2 })
+                : "0"
+              }
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">متوسط لكل فاتورة</div>
+          </div>
         </div>
       )}
 
-      {/* Search + filter row */}
+      {/* Search + filter row — DS v4.0 */}
       <div className="flex flex-col md:flex-row gap-2.5">
         <div className="relative flex-1">
           <Search
@@ -343,8 +413,12 @@ export function InvoicesView() {
             aria-label="بحث الفواتير"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full py-2.5 px-10 rounded-[12px] bg-white border border-gray-200 text-foreground text-[13px] outline-none focus:border-[#7C3AED]/50 focus:ring-2 focus:ring-[#EDE9FE] transition-all"
+            className="w-full py-2.5 px-10 rounded-xl bg-card border border-border text-foreground text-[13px] outline-none focus-ring focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-120 hover-lift"
           />
+          {/* AI Badge — DS v4.0 */}
+          <span className="ai-badge absolute start-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full">
+            AI
+          </span>
         </div>
         <div className="flex gap-1.5 overflow-x-auto garfix-scroll">
           {(["all", "paid", "pending", "overdue"] as const).map((f) => (
@@ -352,10 +426,10 @@ export function InvoicesView() {
               key={f}
               onClick={() => setStatusFilter(f)}
               className={cn(
-                "inline-flex items-center gap-1 py-2 px-3.5 rounded-[10px] border text-[12px] font-bold cursor-pointer whitespace-nowrap transition-colors",
+                "inline-flex items-center gap-1 py-2 px-3.5 rounded-xl border text-[12px] font-bold cursor-pointer whitespace-nowrap transition-all duration-120 active-press focus-ring",
                 statusFilter === f
-                  ? "bg-[#7C3AED] text-white border-[#7C3AED] shadow-[0_2px_8px_rgba(124,58,237,0.25)]"
-                  : "bg-white text-gray-500 border-gray-200 hover:text-[#7C3AED] hover:border-[#EDE9FE]"
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : "bg-card text-muted-foreground border-border hover:text-primary hover:border-primary/30 hover-lift"
               )}
             >
               {f === "all" && <><ListChecks size={13} /> الكل</>}
@@ -367,146 +441,197 @@ export function InvoicesView() {
         </div>
       </div>
 
-      {/* Bulk delete bar */}
-      {selectedIds.size > 0 && (
-        <div className="py-2.5 px-4 bg-destructive text-white rounded-[12px] flex flex-wrap justify-between items-center gap-2 shadow-lg">
-          <span className="font-bold text-[13px]">{selectedIds.size} فاتورة محددة</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              disabled={bulkDeleting}
-              className="bg-white/15 text-white border-none rounded-[8px] py-1.5 px-3.5 text-[12px] font-bold cursor-pointer disabled:cursor-not-allowed hover:bg-white/25 transition-colors"
-            >إلغاء التحديد</button>
-            <button
-              onClick={handleBulkDelete}
-              disabled={bulkDeleting}
-              className="bg-white/25 text-white border-none rounded-[8px] py-1.5 px-3.5 text-[12px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 hover:bg-white/35 transition-colors"
-            >{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
-          </div>
-        </div>
-      )}
+      {/* Bulk Actions Bar — DS v4.0 */}
+      <GarfixBulkActions
+        selectedCount={selectedIds.size}
+        totalCount={filteredInvoices.length}
+        actions={[
+          {
+            label: bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد",
+            icon: <Trash2 size={14} />,
+            onClick: handleBulkDelete,
+            variant: "danger",
+          },
+        ]}
+        onClearSelection={() => setSelectedIds(new Set())}
+        className="hover-lift"
+      />
 
-      {/* Table */}
-      <div className="bg-white rounded-[14px] border border-gray-200 overflow-hidden shadow-card">
+      {/* Table — DS v4.0 Enterprise Table */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm hover-lift">
         {loading ? (
-          <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+          /* Loading State — DS v4.0 */
+          <div className="p-8 md:p-12">
+            <GarfixLoadingState message="جارٍ تحميل الفواتير..." size="lg" variant="skeleton" skeletonLines={5} />
+          </div>
         ) : invoices.length === 0 ? (
-          <EmptyInvoices
-            primaryAction={{
-              label: "إنشاء فاتورة جديدة",
-              onClick: () => setShowForm(true),
-              variant: "gradient",
-            }}
-            aiAction={{
-              label: "أنشئ بالـ AI",
-              onClick: () => {
-                window.dispatchEvent(new CustomEvent('open-ai-copilot'));
-                toast.info('اسأل GarfiX AI إنشاء فاتورة');
-              },
-              description: 'صف فاتورتك باللغة الطبيعية',
-            }}
-            suggestions={[
-              { id: 's1', label: 'استيراد من Excel', onClick: () => toast.info('قريباً') },
-              { id: 's2', label: 'نسخ فاتورة سابقة', onClick: () => toast.info('قريباً') },
-              { id: 's3', label: 'عرض تعليمي', onClick: () => toast.info('قريباً') },
-            ]}
-          />
+          /* Empty State — DS v4.0 */
+          <div className="p-8 md:p-12">
+            <GarfixEmptyState
+              title="لا توجد فواتير"
+              description="ابدأ بإنشاء فاتورتك الأولى أو استيرادها من ملف Excel"
+              illustration="documents"
+              action={{
+                label: "إنشاء فاتورة",
+                onClick: () => setShowForm(true),
+                variant: "primary",
+              }}
+              className="min-h-[350px]"
+            />
+            {/* AI Suggestion */}
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-ai-copilot'));
+                  toast.info('اسأل GarfiX AI إنشاء فاتورة');
+                }}
+                className="ai-badge inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium hover-lift active-press focus-ring transition-all duration-120 cursor-pointer"
+              >
+                <span>✨</span>
+                أنشئ بالـ AI
+              </button>
+            </div>
+          </div>
         ) : (
           <>
-          {/* Part 2.2 fix: responsive table→card. Desktop: table. Mobile: stacked cards. */}
-          <div className="hidden md:block overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th scope="col" className="w-10 text-center py-2.5 px-2 text-[11px] font-bold text-gray-500">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.size === currentPageInvoices.length && currentPageInvoices.length > 0}
-                      onChange={toggleSelectAll}
-                      className="cursor-pointer w-4 h-4 accent-[#7C3AED]"
-                      aria-label="تحديد الكل"
-                    />
-                  </th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">رقم الفاتورة</th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">العميل</th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">تاريخ الإصدار</th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">المبلغ</th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">مدفوع</th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">الحالة</th>
-                  <th scope="col" className="text-start py-2.5 px-3 text-[11px] font-bold text-gray-500">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentPageInvoices.map((inv) => {
-                  const st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999", bg: "#f3f4f6" };
-                  const checked = selectedIds.has(inv.id);
-                  return (
-                    <tr key={inv.id} className={cn("border-b border-gray-100 transition-colors hover:bg-[#F5F3FF]/50", checked ? "bg-[#F5F3FF]" : "bg-white")}>
-                      <td className="py-3 px-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleRow(inv.id)}
-                          className="cursor-pointer w-4 h-4 accent-[#7C3AED]"
-                          aria-label={`تحديد الفاتورة ${inv.invoiceNumber}`}
-                        />
-                      </td>
-                      <td className="py-3 px-3 font-bold font-mono text-[12px]">{inv.invoiceNumber}</td>
-                      <td className="py-3 px-3 font-medium">{inv.clientName}</td>
-                      <td className="py-3 px-3 text-muted-foreground text-[12px]">{inv.issueDate}</td>
-                      <td className="py-3 px-3 font-bold [direction:ltr] text-end">
-                        {inv.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
-                      </td>
-                      <td className={cn("py-3 px-3 [direction:ltr] text-end", inv.paid > 0 ? "text-[#7C3AED] font-bold" : "text-gray-400")}>
-                        {inv.paid.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold [background:${st.bg}] [color:${st.color}]`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full [background:${st.color}]`} />
-                          {st.label}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="flex gap-1">
-                          <IconBtn title="معاينة" onClick={() => setPreviewInvoice(inv)}>
-                            <ArrowRight size={14} />
-                          </IconBtn>
-                          <IconBtn title="تسجيل دفعة" onClick={() => setPaymentInvoice(inv)}>
-                            <DollarSign size={14} />
-                          </IconBtn>
-                          <IconBtn title="تعديل" onClick={() => setEditing(inv)}>
-                            <Edit2 size={14} />
-                          </IconBtn>
-                          <IconBtn title="طباعة" onClick={() => handlePrint(inv)}>
-                            <Printer size={14} />
-                          </IconBtn>
-                          <IconBtn title="حذف" onClick={() => handleDelete(inv.id)} danger>
-                            <Trash2 size={14} />
-                          </IconBtn>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Desktop Enterprise Table — DS v4.0 */}
+          <div className="hidden md:block">
+            <GarfixEnterpriseTable<Invoice>
+              data={currentPageInvoices}
+              columns={[
+                {
+                  key: 'invoiceNumber',
+                  label: 'رقم الفاتورة',
+                  pinned: true,
+                  sortable: true,
+                  render: (value) => (
+                    <span className="font-bold font-mono text-xs">{value as string}</span>
+                  ),
+                },
+                {
+                  key: 'clientName',
+                  label: 'العميل',
+                  sortable: true,
+                },
+                {
+                  key: 'issueDate',
+                  label: 'تاريخ الإصدار',
+                  sortable: true,
+                  render: (value) => (
+                    <span className="text-muted-foreground text-xs">{value as string}</span>
+                  ),
+                },
+                {
+                  key: 'total',
+                  label: 'المبلغ',
+                  sortable: true,
+                  render: (value) => (
+                    <span className="font-bold [direction:ltr] text-end block">
+                      {Number(value).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'paid',
+                  label: 'مدفوع',
+                  render: (_value, row) => {
+                    const paid = (row as Invoice).paid || 0;
+                    return (
+                      <span className={cn(
+                        "[direction:ltr] text-end block text-xs",
+                        paid > 0 ? "text-primary font-bold" : "text-muted-foreground/50"
+                      )}>
+                        {paid.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: 'status',
+                  label: 'الحالة',
+                  render: (_value, row) => {
+                    const inv = row as Invoice;
+                    const st = STATUS_LABELS[inv.status] || { label: inv.status };
+                    // Map status to DS v4.0 table-row-status variants
+                    const statusClass = inv.status === 'paid' ? 'active' 
+                      : inv.status === 'overdue' ? 'error'
+                      : 'pending';
+                    return (
+                      <span className={`table-row-status ${statusClass}`}>
+                        {st.label}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: 'actions',
+                  label: 'إجراءات',
+                  render: (_value, row) => {
+                    const inv = row as Invoice;
+                    return (
+                      <div className="flex gap-1">
+                        <IconBtn title="معاينة" onClick={() => setPreviewInvoice(inv)} className="hover-lift active-press focus-ring">
+                          <ArrowRight size={14} />
+                        </IconBtn>
+                        <IconBtn title="تسجيل دفعة" onClick={() => setPaymentInvoice(inv)} className="hover-lift active-press focus-ring">
+                          <DollarSign size={14} />
+                        </IconBtn>
+                        <IconBtn title="تعديل" onClick={() => setEditing(inv)} className="hover-lift active-press focus-ring">
+                          <Edit2 size={14} />
+                        </IconBtn>
+                        <IconBtn title="طباعة" onClick={() => handlePrint(inv)} className="hover-lift active-press focus-ring">
+                          <Printer size={14} />
+                        </IconBtn>
+                        <IconBtn title="حذف" onClick={() => handleDelete(inv.id)} danger className="hover-lift active-press focus-ring">
+                          <Trash2 size={14} />
+                        </IconBtn>
+                      </div>
+                    );
+                  },
+                },
+              ] as EnterpriseColumn<Invoice>[]}
+              density="comfortable"
+              selectedRows={new Set(currentPageInvoices.filter(inv => selectedIds.has(inv.id)).map((_, i) => i))}
+              onSelectionChange={(newSelection) => {
+                const newSelectedIds = new Set<number>();
+                newSelection.forEach(idx => {
+                  if (currentPageInvoices[idx]) {
+                    newSelectedIds.add(currentPageInvoices[idx].id);
+                  }
+                });
+                setSelectedIds(newSelectedIds);
+              }}
+              isLoading={loading}
+              emptyMessage="لا توجد فواتير"
+              emptyDescription="لم يتم العثور على فواتير مطابقة"
+              rowStatus={(row) => {
+                const inv = row as Invoice;
+                if (inv.status === 'paid') return 'active';
+                if (inv.status === 'overdue') return 'error';
+                if (inv.status === 'sent' || inv.status === 'partial' || inv.status === 'draft') return 'pending';
+                return undefined;
+              }}
+              onRowClick={(row) => setPreviewInvoice(row as Invoice)}
+              className="garfix-scroll"
+            />
           </div>
 
-          {/* Mobile compact list — 2-line items, tap to open preview.
-              Actions live in the preview panel. Currency shown alongside amount. */}
+          {/* Mobile compact list — DS v4.0 with table-row-status badges */}
           <div className="md:hidden flex flex-col divide-y divide-border pb-[var(--ai-bubble-safe-area)]">
             {currentPageInvoices.map((inv) => {
-              const st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999" };
+              const st = STATUS_LABELS[inv.status] || { label: inv.status };
               const checked = selectedIds.has(inv.id);
+              // Map status to DS v4.0 table-row-status variants
+              const statusClass = inv.status === 'paid' ? 'active' 
+                : inv.status === 'overdue' ? 'error'
+                : 'pending';
               return (
                 <div
                   key={inv.id}
                   onClick={() => setPreviewInvoice(inv)}
                   className={cn(
-                    "flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors duration-100 min-h-[56px]",
-                    checked ? "bg-[#F5F3FF]" : "bg-white hover:bg-[#F5F3FF]/50",
+                    "flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-all duration-120 min-h-[56px] hover-lift active-press",
+                    checked ? "bg-primary/5" : "bg-card hover:bg-muted/50",
                   )}
                 >
                   <input
@@ -514,15 +639,14 @@ export function InvoicesView() {
                     checked={checked}
                     onChange={() => toggleRow(inv.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="cursor-pointer w-4 h-4 shrink-0"
+                    className="cursor-pointer w-4 h-4 shrink-0 accent-primary"
                     aria-label={`تحديد الفاتورة ${inv.invoiceNumber}`}
                   />
                   <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-bold font-mono text-[13px] truncate leading-tight">{inv.invoiceNumber}</span>
-                      <span
-                        className={`inline-block py-0.5 px-2 rounded-[10px] text-[10px] font-bold flex-shrink-0 [background:${st.bg}] [color:${st.color}]`}
-                      >
+                      {/* DS v4.0 Status Badge */}
+                      <span className={`table-row-status ${statusClass} text-[10px]`}>
                         {st.label}
                       </span>
                     </div>
@@ -543,7 +667,7 @@ export function InvoicesView() {
             })}
           </div>
 
-          {/* Pagination footer */}
+          {/* Pagination footer — DS v4.0 */}
           <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
             <span className="text-[12px] text-muted-foreground">
               عرض {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredInvoices.length)} من {filteredInvoices.length} فاتورة
@@ -553,11 +677,10 @@ export function InvoicesView() {
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safePage === 1}
-                className={pageBtnStyle(safePage === 1)}
+                className={cn(pageBtnStyle(safePage === 1), "transition-all duration-150 active-press focus-ring")}
               >السابق</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((p) => {
-                  // Show first, last, current, and neighbors
                   if (p === 1 || p === totalPages) return true;
                   if (Math.abs(p - safePage) <= 1) return true;
                   return false;
@@ -570,7 +693,7 @@ export function InvoicesView() {
                       {showEllipsis && <span className="px-1 text-muted-foreground text-[12px]">…</span>}
                       <button
                         onClick={() => setCurrentPage(p)}
-                        className={pageNumStyle(p === safePage)}
+                        className={cn(pageNumStyle(p === safePage), "transition-all duration-150 active-press focus-ring")}
                       >{p}</button>
                     </span>
                   );
@@ -578,7 +701,7 @@ export function InvoicesView() {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
-                className={pageBtnStyle(safePage === totalPages)}
+                className={cn(pageBtnStyle(safePage === totalPages), "transition-all duration-150 active-press focus-ring")}
               >التالي</button>
             </div>
           </div>
@@ -614,49 +737,33 @@ export function InvoicesView() {
   );
 }
 
-const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-gray-200 cursor-pointer flex items-center justify-center transition-all duration-150 hover:border-[#7C3AED]/30 hover:bg-[#F5F3FF]";
+// DS v4.0 Icon Button Style — with motion timing
+const iconBtnStyle = "w-7 h-7 rounded-lg bg-transparent border border-border cursor-pointer flex items-center justify-center transition-all duration-120 hover-lift active-press focus-ring hover:border-primary/30 hover:bg-primary/5";
 
-function KpiCard({ label, value, sub, color, icon }: { label: string; value: string; sub: string; color: string; icon: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-[14px] border border-gray-200 p-3.5 flex items-center gap-3 hover:shadow-card-hover transition-all shadow-card">
-      <div
-        className={`flex-shrink-0 w-10 h-10 rounded-[10px] flex items-center justify-center [background:${color}1a] [color:${color}]`}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-gray-500 font-medium truncate">{label}</div>
-        <div className={`text-[16px] font-extrabold leading-tight [direction:ltr] truncate [color:${color}]`}>
-          {value}
-        </div>
-        <div className="text-[10px] text-gray-400 truncate">{sub}</div>
-      </div>
-    </div>
-  );
-}
-
+// Icon Button Component — DS v4.0
 function IconBtn({ children, title, onClick, danger, className, "aria-label": ariaLabel }: { children: React.ReactNode; title: string; onClick: () => void; danger?: boolean; className?: string; "aria-label"?: string }) {
   return (
     <button
       title={title}
       aria-label={ariaLabel || title}
       onClick={onClick}
-      className={cn(iconBtnStyle, danger ? "text-destructive" : "text-muted-foreground", className)}
+      className={cn(iconBtnStyle, danger ? "text-destructive hover:bg-destructive/10 hover:border-destructive/30" : "text-muted-foreground", className)}
     >
       {children}
     </button>
   );
 }
 
+// DS v4.0 Pagination Button Styles — with motion timing
 const pageBtnStyle = (disabled: boolean): string =>
   disabled
-    ? "py-1.5 px-3 rounded-[6px] bg-transparent text-gray-400 border border-gray-200 text-[12px] font-bold cursor-not-allowed opacity-50"
-    : "py-1.5 px-3 rounded-[6px] bg-white text-foreground border border-gray-200 text-[12px] font-bold cursor-pointer";
+    ? "py-1.5 px-3 rounded-lg bg-transparent text-muted-foreground/50 border border-border text-[12px] font-bold cursor-not-allowed opacity-50"
+    : "py-1.5 px-3 rounded-lg bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer hover-lift active-press focus-ring transition-all duration-120 hover:bg-primary/5 hover:border-primary/30";
 
 const pageNumStyle = (active: boolean): string =>
   active
-    ? "min-w-[32px] py-1.5 px-2 rounded-[6px] bg-[#7C3AED] text-white border border-[#7C3AED] text-[12px] font-bold cursor-pointer transition-all duration-150"
-    : "min-w-[32px] py-1.5 px-2 rounded-[6px] bg-transparent text-foreground border border-gray-200 text-[12px] font-bold cursor-pointer transition-all duration-150";
+    ? "min-w-[32px] py-1.5 px-2 rounded-lg bg-primary text-primary-foreground border border-primary text-[12px] font-bold cursor-pointer transition-all duration-150 hover-lift active-press shadow-sm"
+    : "min-w-[32px] py-1.5 px-2 rounded-lg bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer hover-lift active-press focus-ring transition-all duration-120 hover:bg-primary/5 hover:border-primary/30";
 
 // ─── Invoice Form ──────────────────────────────────────────────────────────
 
