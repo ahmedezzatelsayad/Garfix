@@ -1,0 +1,2219 @@
+{
+  "timestamp": "2026-08-02T05:25:44.539Z",
+  "batchDir": "./batch1-data",
+  "gates": {
+    "piiRemoval": {
+      "gate": "M1-002",
+      "name": "PII Removal",
+      "threshold": "100%",
+      "status": "PASS",
+      "details": {
+        "totalChecked": 0,
+        "piiIncidents": 0,
+        "cleanRate": 100
+      },
+      "verdict": "✅ 0 files checked, 0 PII incidents"
+    },
+    "gtCompleteness": {
+      "gate": "M1-003",
+      "name": "Ground Truth Completeness",
+      "threshold": "≥[object Object]%",
+      "status": "PASS",
+      "details": {
+        "totalFields": 3500,
+        "annotatedFields": 3500,
+        "completeness": "100.00",
+        "missingByField": {
+          "supplierName": 0,
+          "invoiceNumber": 0,
+          "totalAmount": 0,
+          "date": 0,
+          "lineItems": 0,
+          "taxAmount": 0,
+          "currency": 0
+        }
+      },
+      "verdict": "✅ Completeness: 100.00%"
+    },
+    "supplierDistribution": {
+      "gate": "M1-005",
+      "name": "Supplier Distribution",
+      "threshold": "No supplier >10%",
+      "status": "PASS",
+      "details": {
+        "uniqueSuppliers": 80,
+        "totalInvoices": 500,
+        "distribution": {
+          "Supplier_1": 7,
+          "Supplier_2": 7,
+          "Supplier_3": 7,
+          "Supplier_4": 7,
+          "Supplier_5": 7,
+          "Supplier_6": 7,
+          "Supplier_7": 7,
+          "Supplier_8": 7,
+          "Supplier_9": 7,
+          "Supplier_10": 7,
+          "Supplier_11": 7,
+          "Supplier_12": 7,
+          "Supplier_13": 7,
+          "Supplier_14": 7,
+          "Supplier_15": 7,
+          "Supplier_16": 7,
+          "Supplier_17": 7,
+          "Supplier_18": 7,
+          "Supplier_19": 7,
+          "Supplier_20": 7,
+          "Supplier_21": 6,
+          "Supplier_22": 6,
+          "Supplier_23": 6,
+          "Supplier_24": 6,
+          "Supplier_25": 6,
+          "Supplier_26": 6,
+          "Supplier_27": 6,
+          "Supplier_28": 6,
+          "Supplier_29": 6,
+          "Supplier_30": 6,
+          "Supplier_31": 6,
+          "Supplier_32": 6,
+          "Supplier_33": 6,
+          "Supplier_34": 6,
+          "Supplier_35": 6,
+          "Supplier_36": 6,
+          "Supplier_37": 6,
+          "Supplier_38": 6,
+          "Supplier_39": 6,
+          "Supplier_40": 6,
+          "Supplier_41": 6,
+          "Supplier_42": 6,
+          "Supplier_43": 6,
+          "Supplier_44": 6,
+          "Supplier_45": 6,
+          "Supplier_46": 6,
+          "Supplier_47": 6,
+          "Supplier_48": 6,
+          "Supplier_49": 6,
+          "Supplier_50": 6,
+          "Supplier_51": 6,
+          "Supplier_52": 6,
+          "Supplier_53": 6,
+          "Supplier_54": 6,
+          "Supplier_55": 6,
+          "Supplier_56": 6,
+          "Supplier_57": 6,
+          "Supplier_58": 6,
+          "Supplier_59": 6,
+          "Supplier_60": 6,
+          "Supplier_61": 6,
+          "Supplier_62": 6,
+          "Supplier_63": 6,
+          "Supplier_64": 6,
+          "Supplier_65": 6,
+          "Supplier_66": 6,
+          "Supplier_67": 6,
+          "Supplier_68": 6,
+          "Supplier_69": 6,
+          "Supplier_70": 6,
+          "Supplier_71": 6,
+          "Supplier_72": 6,
+          "Supplier_73": 6,
+          "Supplier_74": 6,
+          "Supplier_75": 6,
+          "Supplier_76": 6,
+          "Supplier_77": 6,
+          "Supplier_78": 6,
+          "Supplier_79": 6,
+          "Supplier_80": 6
+        },
+        "violations": []
+      },
+      "verdict": "✅ 80 suppliers, max concentration acceptable"
+    },
+    "templateCompliance": {
+      "gate": "M1-006",
+      "name": "Template Compliance (±%)",
+      "threshold": "±5% of spec",
+      "status": "FAIL",
+      "details": {
+        "actualDistribution": {
+          "Shared ERP": 100,
+          "Arabic Only": 100,
+          "Mixed Language": 100,
+          "Low Quality": 100,
+          "Similar Suppliers": 100
+        },
+        "deviations": {
+          "Shared ERP": {
+            "target": "30%",
+            "actual": "20.00%",
+            "deviation": "-10.00%",
+            "withinTolerance": false
+          },
+          "Arabic Only": {
+            "target": "20%",
+            "actual": "20.00%",
+            "deviation": "0.00%",
+            "withinTolerance": true
+          },
+          "Mixed Language": {
+            "target": "30%",
+            "actual": "20.00%",
+            "deviation": "-10.00%",
+            "withinTolerance": false
+          },
+          "Low Quality": {
+            "target": "20%",
+            "actual": "20.00%",
+            "deviation": "0.00%",
+            "withinTolerance": true
+          },
+          "Similar Suppliers": {
+            "target": "15%",
+            "actual": "20.00%",
+            "deviation": "5.00%",
+            "withinTolerance": true
+          }
+        },
+        "compliant": false
+      },
+      "verdict": "❌ Template distribution out of tolerance - ADJUST MIX"
+    },
+    "dataIntegrity": {
+      "gate": "M1-004",
+      "name": "Data Integrity (max corruption %)",
+      "threshold": "<5%",
+      "status": "FAIL",
+      "details": {
+        "totalFiles": 500,
+        "corruptedFiles": 500,
+        "corruptionRate": "100.00",
+        "issues": [
+          {
+            "file": "invoice_1.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_1.pdf'"
+          },
+          {
+            "file": "invoice_2.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_2.pdf'"
+          },
+          {
+            "file": "invoice_3.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_3.pdf'"
+          },
+          {
+            "file": "invoice_4.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_4.pdf'"
+          },
+          {
+            "file": "invoice_5.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_5.pdf'"
+          },
+          {
+            "file": "invoice_6.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_6.pdf'"
+          },
+          {
+            "file": "invoice_7.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_7.pdf'"
+          },
+          {
+            "file": "invoice_8.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_8.pdf'"
+          },
+          {
+            "file": "invoice_9.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_9.pdf'"
+          },
+          {
+            "file": "invoice_10.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_10.pdf'"
+          },
+          {
+            "file": "invoice_11.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_11.pdf'"
+          },
+          {
+            "file": "invoice_12.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_12.pdf'"
+          },
+          {
+            "file": "invoice_13.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_13.pdf'"
+          },
+          {
+            "file": "invoice_14.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_14.pdf'"
+          },
+          {
+            "file": "invoice_15.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_15.pdf'"
+          },
+          {
+            "file": "invoice_16.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_16.pdf'"
+          },
+          {
+            "file": "invoice_17.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_17.pdf'"
+          },
+          {
+            "file": "invoice_18.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_18.pdf'"
+          },
+          {
+            "file": "invoice_19.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_19.pdf'"
+          },
+          {
+            "file": "invoice_20.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_20.pdf'"
+          },
+          {
+            "file": "invoice_21.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_21.pdf'"
+          },
+          {
+            "file": "invoice_22.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_22.pdf'"
+          },
+          {
+            "file": "invoice_23.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_23.pdf'"
+          },
+          {
+            "file": "invoice_24.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_24.pdf'"
+          },
+          {
+            "file": "invoice_25.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_25.pdf'"
+          },
+          {
+            "file": "invoice_26.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_26.pdf'"
+          },
+          {
+            "file": "invoice_27.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_27.pdf'"
+          },
+          {
+            "file": "invoice_28.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_28.pdf'"
+          },
+          {
+            "file": "invoice_29.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_29.pdf'"
+          },
+          {
+            "file": "invoice_30.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_30.pdf'"
+          },
+          {
+            "file": "invoice_31.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_31.pdf'"
+          },
+          {
+            "file": "invoice_32.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_32.pdf'"
+          },
+          {
+            "file": "invoice_33.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_33.pdf'"
+          },
+          {
+            "file": "invoice_34.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_34.pdf'"
+          },
+          {
+            "file": "invoice_35.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_35.pdf'"
+          },
+          {
+            "file": "invoice_36.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_36.pdf'"
+          },
+          {
+            "file": "invoice_37.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_37.pdf'"
+          },
+          {
+            "file": "invoice_38.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_38.pdf'"
+          },
+          {
+            "file": "invoice_39.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_39.pdf'"
+          },
+          {
+            "file": "invoice_40.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_40.pdf'"
+          },
+          {
+            "file": "invoice_41.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_41.pdf'"
+          },
+          {
+            "file": "invoice_42.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_42.pdf'"
+          },
+          {
+            "file": "invoice_43.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_43.pdf'"
+          },
+          {
+            "file": "invoice_44.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_44.pdf'"
+          },
+          {
+            "file": "invoice_45.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_45.pdf'"
+          },
+          {
+            "file": "invoice_46.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_46.pdf'"
+          },
+          {
+            "file": "invoice_47.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_47.pdf'"
+          },
+          {
+            "file": "invoice_48.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_48.pdf'"
+          },
+          {
+            "file": "invoice_49.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_49.pdf'"
+          },
+          {
+            "file": "invoice_50.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_50.pdf'"
+          },
+          {
+            "file": "invoice_51.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_51.pdf'"
+          },
+          {
+            "file": "invoice_52.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_52.pdf'"
+          },
+          {
+            "file": "invoice_53.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_53.pdf'"
+          },
+          {
+            "file": "invoice_54.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_54.pdf'"
+          },
+          {
+            "file": "invoice_55.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_55.pdf'"
+          },
+          {
+            "file": "invoice_56.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_56.pdf'"
+          },
+          {
+            "file": "invoice_57.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_57.pdf'"
+          },
+          {
+            "file": "invoice_58.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_58.pdf'"
+          },
+          {
+            "file": "invoice_59.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_59.pdf'"
+          },
+          {
+            "file": "invoice_60.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_60.pdf'"
+          },
+          {
+            "file": "invoice_61.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_61.pdf'"
+          },
+          {
+            "file": "invoice_62.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_62.pdf'"
+          },
+          {
+            "file": "invoice_63.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_63.pdf'"
+          },
+          {
+            "file": "invoice_64.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_64.pdf'"
+          },
+          {
+            "file": "invoice_65.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_65.pdf'"
+          },
+          {
+            "file": "invoice_66.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_66.pdf'"
+          },
+          {
+            "file": "invoice_67.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_67.pdf'"
+          },
+          {
+            "file": "invoice_68.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_68.pdf'"
+          },
+          {
+            "file": "invoice_69.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_69.pdf'"
+          },
+          {
+            "file": "invoice_70.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_70.pdf'"
+          },
+          {
+            "file": "invoice_71.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_71.pdf'"
+          },
+          {
+            "file": "invoice_72.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_72.pdf'"
+          },
+          {
+            "file": "invoice_73.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_73.pdf'"
+          },
+          {
+            "file": "invoice_74.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_74.pdf'"
+          },
+          {
+            "file": "invoice_75.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_75.pdf'"
+          },
+          {
+            "file": "invoice_76.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_76.pdf'"
+          },
+          {
+            "file": "invoice_77.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_77.pdf'"
+          },
+          {
+            "file": "invoice_78.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_78.pdf'"
+          },
+          {
+            "file": "invoice_79.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_79.pdf'"
+          },
+          {
+            "file": "invoice_80.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_80.pdf'"
+          },
+          {
+            "file": "invoice_81.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_81.pdf'"
+          },
+          {
+            "file": "invoice_82.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_82.pdf'"
+          },
+          {
+            "file": "invoice_83.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_83.pdf'"
+          },
+          {
+            "file": "invoice_84.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_84.pdf'"
+          },
+          {
+            "file": "invoice_85.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_85.pdf'"
+          },
+          {
+            "file": "invoice_86.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_86.pdf'"
+          },
+          {
+            "file": "invoice_87.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_87.pdf'"
+          },
+          {
+            "file": "invoice_88.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_88.pdf'"
+          },
+          {
+            "file": "invoice_89.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_89.pdf'"
+          },
+          {
+            "file": "invoice_90.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_90.pdf'"
+          },
+          {
+            "file": "invoice_91.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_91.pdf'"
+          },
+          {
+            "file": "invoice_92.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_92.pdf'"
+          },
+          {
+            "file": "invoice_93.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_93.pdf'"
+          },
+          {
+            "file": "invoice_94.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_94.pdf'"
+          },
+          {
+            "file": "invoice_95.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_95.pdf'"
+          },
+          {
+            "file": "invoice_96.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_96.pdf'"
+          },
+          {
+            "file": "invoice_97.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_97.pdf'"
+          },
+          {
+            "file": "invoice_98.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_98.pdf'"
+          },
+          {
+            "file": "invoice_99.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_99.pdf'"
+          },
+          {
+            "file": "invoice_100.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_100.pdf'"
+          },
+          {
+            "file": "invoice_101.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_101.pdf'"
+          },
+          {
+            "file": "invoice_102.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_102.pdf'"
+          },
+          {
+            "file": "invoice_103.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_103.pdf'"
+          },
+          {
+            "file": "invoice_104.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_104.pdf'"
+          },
+          {
+            "file": "invoice_105.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_105.pdf'"
+          },
+          {
+            "file": "invoice_106.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_106.pdf'"
+          },
+          {
+            "file": "invoice_107.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_107.pdf'"
+          },
+          {
+            "file": "invoice_108.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_108.pdf'"
+          },
+          {
+            "file": "invoice_109.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_109.pdf'"
+          },
+          {
+            "file": "invoice_110.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_110.pdf'"
+          },
+          {
+            "file": "invoice_111.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_111.pdf'"
+          },
+          {
+            "file": "invoice_112.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_112.pdf'"
+          },
+          {
+            "file": "invoice_113.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_113.pdf'"
+          },
+          {
+            "file": "invoice_114.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_114.pdf'"
+          },
+          {
+            "file": "invoice_115.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_115.pdf'"
+          },
+          {
+            "file": "invoice_116.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_116.pdf'"
+          },
+          {
+            "file": "invoice_117.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_117.pdf'"
+          },
+          {
+            "file": "invoice_118.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_118.pdf'"
+          },
+          {
+            "file": "invoice_119.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_119.pdf'"
+          },
+          {
+            "file": "invoice_120.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_120.pdf'"
+          },
+          {
+            "file": "invoice_121.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_121.pdf'"
+          },
+          {
+            "file": "invoice_122.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_122.pdf'"
+          },
+          {
+            "file": "invoice_123.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_123.pdf'"
+          },
+          {
+            "file": "invoice_124.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_124.pdf'"
+          },
+          {
+            "file": "invoice_125.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_125.pdf'"
+          },
+          {
+            "file": "invoice_126.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_126.pdf'"
+          },
+          {
+            "file": "invoice_127.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_127.pdf'"
+          },
+          {
+            "file": "invoice_128.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_128.pdf'"
+          },
+          {
+            "file": "invoice_129.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_129.pdf'"
+          },
+          {
+            "file": "invoice_130.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_130.pdf'"
+          },
+          {
+            "file": "invoice_131.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_131.pdf'"
+          },
+          {
+            "file": "invoice_132.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_132.pdf'"
+          },
+          {
+            "file": "invoice_133.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_133.pdf'"
+          },
+          {
+            "file": "invoice_134.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_134.pdf'"
+          },
+          {
+            "file": "invoice_135.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_135.pdf'"
+          },
+          {
+            "file": "invoice_136.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_136.pdf'"
+          },
+          {
+            "file": "invoice_137.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_137.pdf'"
+          },
+          {
+            "file": "invoice_138.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_138.pdf'"
+          },
+          {
+            "file": "invoice_139.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_139.pdf'"
+          },
+          {
+            "file": "invoice_140.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_140.pdf'"
+          },
+          {
+            "file": "invoice_141.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_141.pdf'"
+          },
+          {
+            "file": "invoice_142.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_142.pdf'"
+          },
+          {
+            "file": "invoice_143.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_143.pdf'"
+          },
+          {
+            "file": "invoice_144.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_144.pdf'"
+          },
+          {
+            "file": "invoice_145.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_145.pdf'"
+          },
+          {
+            "file": "invoice_146.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_146.pdf'"
+          },
+          {
+            "file": "invoice_147.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_147.pdf'"
+          },
+          {
+            "file": "invoice_148.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_148.pdf'"
+          },
+          {
+            "file": "invoice_149.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_149.pdf'"
+          },
+          {
+            "file": "invoice_150.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_150.pdf'"
+          },
+          {
+            "file": "invoice_151.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_151.pdf'"
+          },
+          {
+            "file": "invoice_152.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_152.pdf'"
+          },
+          {
+            "file": "invoice_153.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_153.pdf'"
+          },
+          {
+            "file": "invoice_154.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_154.pdf'"
+          },
+          {
+            "file": "invoice_155.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_155.pdf'"
+          },
+          {
+            "file": "invoice_156.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_156.pdf'"
+          },
+          {
+            "file": "invoice_157.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_157.pdf'"
+          },
+          {
+            "file": "invoice_158.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_158.pdf'"
+          },
+          {
+            "file": "invoice_159.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_159.pdf'"
+          },
+          {
+            "file": "invoice_160.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_160.pdf'"
+          },
+          {
+            "file": "invoice_161.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_161.pdf'"
+          },
+          {
+            "file": "invoice_162.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_162.pdf'"
+          },
+          {
+            "file": "invoice_163.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_163.pdf'"
+          },
+          {
+            "file": "invoice_164.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_164.pdf'"
+          },
+          {
+            "file": "invoice_165.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_165.pdf'"
+          },
+          {
+            "file": "invoice_166.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_166.pdf'"
+          },
+          {
+            "file": "invoice_167.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_167.pdf'"
+          },
+          {
+            "file": "invoice_168.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_168.pdf'"
+          },
+          {
+            "file": "invoice_169.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_169.pdf'"
+          },
+          {
+            "file": "invoice_170.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_170.pdf'"
+          },
+          {
+            "file": "invoice_171.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_171.pdf'"
+          },
+          {
+            "file": "invoice_172.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_172.pdf'"
+          },
+          {
+            "file": "invoice_173.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_173.pdf'"
+          },
+          {
+            "file": "invoice_174.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_174.pdf'"
+          },
+          {
+            "file": "invoice_175.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_175.pdf'"
+          },
+          {
+            "file": "invoice_176.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_176.pdf'"
+          },
+          {
+            "file": "invoice_177.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_177.pdf'"
+          },
+          {
+            "file": "invoice_178.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_178.pdf'"
+          },
+          {
+            "file": "invoice_179.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_179.pdf'"
+          },
+          {
+            "file": "invoice_180.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_180.pdf'"
+          },
+          {
+            "file": "invoice_181.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_181.pdf'"
+          },
+          {
+            "file": "invoice_182.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_182.pdf'"
+          },
+          {
+            "file": "invoice_183.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_183.pdf'"
+          },
+          {
+            "file": "invoice_184.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_184.pdf'"
+          },
+          {
+            "file": "invoice_185.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_185.pdf'"
+          },
+          {
+            "file": "invoice_186.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_186.pdf'"
+          },
+          {
+            "file": "invoice_187.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_187.pdf'"
+          },
+          {
+            "file": "invoice_188.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_188.pdf'"
+          },
+          {
+            "file": "invoice_189.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_189.pdf'"
+          },
+          {
+            "file": "invoice_190.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_190.pdf'"
+          },
+          {
+            "file": "invoice_191.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_191.pdf'"
+          },
+          {
+            "file": "invoice_192.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_192.pdf'"
+          },
+          {
+            "file": "invoice_193.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_193.pdf'"
+          },
+          {
+            "file": "invoice_194.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_194.pdf'"
+          },
+          {
+            "file": "invoice_195.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_195.pdf'"
+          },
+          {
+            "file": "invoice_196.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_196.pdf'"
+          },
+          {
+            "file": "invoice_197.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_197.pdf'"
+          },
+          {
+            "file": "invoice_198.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_198.pdf'"
+          },
+          {
+            "file": "invoice_199.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_199.pdf'"
+          },
+          {
+            "file": "invoice_200.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_200.pdf'"
+          },
+          {
+            "file": "invoice_201.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_201.pdf'"
+          },
+          {
+            "file": "invoice_202.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_202.pdf'"
+          },
+          {
+            "file": "invoice_203.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_203.pdf'"
+          },
+          {
+            "file": "invoice_204.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_204.pdf'"
+          },
+          {
+            "file": "invoice_205.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_205.pdf'"
+          },
+          {
+            "file": "invoice_206.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_206.pdf'"
+          },
+          {
+            "file": "invoice_207.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_207.pdf'"
+          },
+          {
+            "file": "invoice_208.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_208.pdf'"
+          },
+          {
+            "file": "invoice_209.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_209.pdf'"
+          },
+          {
+            "file": "invoice_210.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_210.pdf'"
+          },
+          {
+            "file": "invoice_211.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_211.pdf'"
+          },
+          {
+            "file": "invoice_212.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_212.pdf'"
+          },
+          {
+            "file": "invoice_213.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_213.pdf'"
+          },
+          {
+            "file": "invoice_214.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_214.pdf'"
+          },
+          {
+            "file": "invoice_215.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_215.pdf'"
+          },
+          {
+            "file": "invoice_216.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_216.pdf'"
+          },
+          {
+            "file": "invoice_217.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_217.pdf'"
+          },
+          {
+            "file": "invoice_218.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_218.pdf'"
+          },
+          {
+            "file": "invoice_219.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_219.pdf'"
+          },
+          {
+            "file": "invoice_220.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_220.pdf'"
+          },
+          {
+            "file": "invoice_221.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_221.pdf'"
+          },
+          {
+            "file": "invoice_222.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_222.pdf'"
+          },
+          {
+            "file": "invoice_223.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_223.pdf'"
+          },
+          {
+            "file": "invoice_224.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_224.pdf'"
+          },
+          {
+            "file": "invoice_225.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_225.pdf'"
+          },
+          {
+            "file": "invoice_226.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_226.pdf'"
+          },
+          {
+            "file": "invoice_227.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_227.pdf'"
+          },
+          {
+            "file": "invoice_228.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_228.pdf'"
+          },
+          {
+            "file": "invoice_229.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_229.pdf'"
+          },
+          {
+            "file": "invoice_230.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_230.pdf'"
+          },
+          {
+            "file": "invoice_231.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_231.pdf'"
+          },
+          {
+            "file": "invoice_232.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_232.pdf'"
+          },
+          {
+            "file": "invoice_233.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_233.pdf'"
+          },
+          {
+            "file": "invoice_234.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_234.pdf'"
+          },
+          {
+            "file": "invoice_235.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_235.pdf'"
+          },
+          {
+            "file": "invoice_236.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_236.pdf'"
+          },
+          {
+            "file": "invoice_237.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_237.pdf'"
+          },
+          {
+            "file": "invoice_238.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_238.pdf'"
+          },
+          {
+            "file": "invoice_239.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_239.pdf'"
+          },
+          {
+            "file": "invoice_240.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_240.pdf'"
+          },
+          {
+            "file": "invoice_241.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_241.pdf'"
+          },
+          {
+            "file": "invoice_242.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_242.pdf'"
+          },
+          {
+            "file": "invoice_243.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_243.pdf'"
+          },
+          {
+            "file": "invoice_244.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_244.pdf'"
+          },
+          {
+            "file": "invoice_245.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_245.pdf'"
+          },
+          {
+            "file": "invoice_246.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_246.pdf'"
+          },
+          {
+            "file": "invoice_247.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_247.pdf'"
+          },
+          {
+            "file": "invoice_248.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_248.pdf'"
+          },
+          {
+            "file": "invoice_249.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_249.pdf'"
+          },
+          {
+            "file": "invoice_250.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_250.pdf'"
+          },
+          {
+            "file": "invoice_251.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_251.pdf'"
+          },
+          {
+            "file": "invoice_252.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_252.pdf'"
+          },
+          {
+            "file": "invoice_253.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_253.pdf'"
+          },
+          {
+            "file": "invoice_254.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_254.pdf'"
+          },
+          {
+            "file": "invoice_255.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_255.pdf'"
+          },
+          {
+            "file": "invoice_256.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_256.pdf'"
+          },
+          {
+            "file": "invoice_257.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_257.pdf'"
+          },
+          {
+            "file": "invoice_258.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_258.pdf'"
+          },
+          {
+            "file": "invoice_259.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_259.pdf'"
+          },
+          {
+            "file": "invoice_260.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_260.pdf'"
+          },
+          {
+            "file": "invoice_261.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_261.pdf'"
+          },
+          {
+            "file": "invoice_262.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_262.pdf'"
+          },
+          {
+            "file": "invoice_263.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_263.pdf'"
+          },
+          {
+            "file": "invoice_264.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_264.pdf'"
+          },
+          {
+            "file": "invoice_265.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_265.pdf'"
+          },
+          {
+            "file": "invoice_266.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_266.pdf'"
+          },
+          {
+            "file": "invoice_267.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_267.pdf'"
+          },
+          {
+            "file": "invoice_268.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_268.pdf'"
+          },
+          {
+            "file": "invoice_269.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_269.pdf'"
+          },
+          {
+            "file": "invoice_270.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_270.pdf'"
+          },
+          {
+            "file": "invoice_271.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_271.pdf'"
+          },
+          {
+            "file": "invoice_272.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_272.pdf'"
+          },
+          {
+            "file": "invoice_273.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_273.pdf'"
+          },
+          {
+            "file": "invoice_274.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_274.pdf'"
+          },
+          {
+            "file": "invoice_275.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_275.pdf'"
+          },
+          {
+            "file": "invoice_276.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_276.pdf'"
+          },
+          {
+            "file": "invoice_277.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_277.pdf'"
+          },
+          {
+            "file": "invoice_278.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_278.pdf'"
+          },
+          {
+            "file": "invoice_279.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_279.pdf'"
+          },
+          {
+            "file": "invoice_280.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_280.pdf'"
+          },
+          {
+            "file": "invoice_281.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_281.pdf'"
+          },
+          {
+            "file": "invoice_282.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_282.pdf'"
+          },
+          {
+            "file": "invoice_283.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_283.pdf'"
+          },
+          {
+            "file": "invoice_284.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_284.pdf'"
+          },
+          {
+            "file": "invoice_285.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_285.pdf'"
+          },
+          {
+            "file": "invoice_286.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_286.pdf'"
+          },
+          {
+            "file": "invoice_287.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_287.pdf'"
+          },
+          {
+            "file": "invoice_288.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_288.pdf'"
+          },
+          {
+            "file": "invoice_289.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_289.pdf'"
+          },
+          {
+            "file": "invoice_290.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_290.pdf'"
+          },
+          {
+            "file": "invoice_291.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_291.pdf'"
+          },
+          {
+            "file": "invoice_292.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_292.pdf'"
+          },
+          {
+            "file": "invoice_293.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_293.pdf'"
+          },
+          {
+            "file": "invoice_294.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_294.pdf'"
+          },
+          {
+            "file": "invoice_295.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_295.pdf'"
+          },
+          {
+            "file": "invoice_296.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_296.pdf'"
+          },
+          {
+            "file": "invoice_297.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_297.pdf'"
+          },
+          {
+            "file": "invoice_298.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_298.pdf'"
+          },
+          {
+            "file": "invoice_299.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_299.pdf'"
+          },
+          {
+            "file": "invoice_300.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_300.pdf'"
+          },
+          {
+            "file": "invoice_301.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_301.pdf'"
+          },
+          {
+            "file": "invoice_302.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_302.pdf'"
+          },
+          {
+            "file": "invoice_303.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_303.pdf'"
+          },
+          {
+            "file": "invoice_304.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_304.pdf'"
+          },
+          {
+            "file": "invoice_305.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_305.pdf'"
+          },
+          {
+            "file": "invoice_306.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_306.pdf'"
+          },
+          {
+            "file": "invoice_307.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_307.pdf'"
+          },
+          {
+            "file": "invoice_308.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_308.pdf'"
+          },
+          {
+            "file": "invoice_309.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_309.pdf'"
+          },
+          {
+            "file": "invoice_310.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_310.pdf'"
+          },
+          {
+            "file": "invoice_311.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_311.pdf'"
+          },
+          {
+            "file": "invoice_312.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_312.pdf'"
+          },
+          {
+            "file": "invoice_313.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_313.pdf'"
+          },
+          {
+            "file": "invoice_314.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_314.pdf'"
+          },
+          {
+            "file": "invoice_315.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_315.pdf'"
+          },
+          {
+            "file": "invoice_316.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_316.pdf'"
+          },
+          {
+            "file": "invoice_317.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_317.pdf'"
+          },
+          {
+            "file": "invoice_318.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_318.pdf'"
+          },
+          {
+            "file": "invoice_319.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_319.pdf'"
+          },
+          {
+            "file": "invoice_320.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_320.pdf'"
+          },
+          {
+            "file": "invoice_321.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_321.pdf'"
+          },
+          {
+            "file": "invoice_322.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_322.pdf'"
+          },
+          {
+            "file": "invoice_323.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_323.pdf'"
+          },
+          {
+            "file": "invoice_324.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_324.pdf'"
+          },
+          {
+            "file": "invoice_325.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_325.pdf'"
+          },
+          {
+            "file": "invoice_326.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_326.pdf'"
+          },
+          {
+            "file": "invoice_327.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_327.pdf'"
+          },
+          {
+            "file": "invoice_328.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_328.pdf'"
+          },
+          {
+            "file": "invoice_329.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_329.pdf'"
+          },
+          {
+            "file": "invoice_330.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_330.pdf'"
+          },
+          {
+            "file": "invoice_331.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_331.pdf'"
+          },
+          {
+            "file": "invoice_332.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_332.pdf'"
+          },
+          {
+            "file": "invoice_333.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_333.pdf'"
+          },
+          {
+            "file": "invoice_334.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_334.pdf'"
+          },
+          {
+            "file": "invoice_335.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_335.pdf'"
+          },
+          {
+            "file": "invoice_336.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_336.pdf'"
+          },
+          {
+            "file": "invoice_337.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_337.pdf'"
+          },
+          {
+            "file": "invoice_338.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_338.pdf'"
+          },
+          {
+            "file": "invoice_339.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_339.pdf'"
+          },
+          {
+            "file": "invoice_340.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_340.pdf'"
+          },
+          {
+            "file": "invoice_341.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_341.pdf'"
+          },
+          {
+            "file": "invoice_342.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_342.pdf'"
+          },
+          {
+            "file": "invoice_343.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_343.pdf'"
+          },
+          {
+            "file": "invoice_344.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_344.pdf'"
+          },
+          {
+            "file": "invoice_345.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_345.pdf'"
+          },
+          {
+            "file": "invoice_346.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_346.pdf'"
+          },
+          {
+            "file": "invoice_347.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_347.pdf'"
+          },
+          {
+            "file": "invoice_348.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_348.pdf'"
+          },
+          {
+            "file": "invoice_349.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_349.pdf'"
+          },
+          {
+            "file": "invoice_350.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_350.pdf'"
+          },
+          {
+            "file": "invoice_351.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_351.pdf'"
+          },
+          {
+            "file": "invoice_352.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_352.pdf'"
+          },
+          {
+            "file": "invoice_353.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_353.pdf'"
+          },
+          {
+            "file": "invoice_354.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_354.pdf'"
+          },
+          {
+            "file": "invoice_355.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_355.pdf'"
+          },
+          {
+            "file": "invoice_356.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_356.pdf'"
+          },
+          {
+            "file": "invoice_357.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_357.pdf'"
+          },
+          {
+            "file": "invoice_358.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_358.pdf'"
+          },
+          {
+            "file": "invoice_359.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_359.pdf'"
+          },
+          {
+            "file": "invoice_360.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_360.pdf'"
+          },
+          {
+            "file": "invoice_361.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_361.pdf'"
+          },
+          {
+            "file": "invoice_362.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_362.pdf'"
+          },
+          {
+            "file": "invoice_363.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_363.pdf'"
+          },
+          {
+            "file": "invoice_364.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_364.pdf'"
+          },
+          {
+            "file": "invoice_365.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_365.pdf'"
+          },
+          {
+            "file": "invoice_366.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_366.pdf'"
+          },
+          {
+            "file": "invoice_367.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_367.pdf'"
+          },
+          {
+            "file": "invoice_368.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_368.pdf'"
+          },
+          {
+            "file": "invoice_369.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_369.pdf'"
+          },
+          {
+            "file": "invoice_370.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_370.pdf'"
+          },
+          {
+            "file": "invoice_371.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_371.pdf'"
+          },
+          {
+            "file": "invoice_372.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_372.pdf'"
+          },
+          {
+            "file": "invoice_373.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_373.pdf'"
+          },
+          {
+            "file": "invoice_374.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_374.pdf'"
+          },
+          {
+            "file": "invoice_375.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_375.pdf'"
+          },
+          {
+            "file": "invoice_376.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_376.pdf'"
+          },
+          {
+            "file": "invoice_377.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_377.pdf'"
+          },
+          {
+            "file": "invoice_378.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_378.pdf'"
+          },
+          {
+            "file": "invoice_379.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_379.pdf'"
+          },
+          {
+            "file": "invoice_380.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_380.pdf'"
+          },
+          {
+            "file": "invoice_381.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_381.pdf'"
+          },
+          {
+            "file": "invoice_382.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_382.pdf'"
+          },
+          {
+            "file": "invoice_383.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_383.pdf'"
+          },
+          {
+            "file": "invoice_384.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_384.pdf'"
+          },
+          {
+            "file": "invoice_385.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_385.pdf'"
+          },
+          {
+            "file": "invoice_386.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_386.pdf'"
+          },
+          {
+            "file": "invoice_387.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_387.pdf'"
+          },
+          {
+            "file": "invoice_388.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_388.pdf'"
+          },
+          {
+            "file": "invoice_389.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_389.pdf'"
+          },
+          {
+            "file": "invoice_390.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_390.pdf'"
+          },
+          {
+            "file": "invoice_391.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_391.pdf'"
+          },
+          {
+            "file": "invoice_392.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_392.pdf'"
+          },
+          {
+            "file": "invoice_393.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_393.pdf'"
+          },
+          {
+            "file": "invoice_394.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_394.pdf'"
+          },
+          {
+            "file": "invoice_395.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_395.pdf'"
+          },
+          {
+            "file": "invoice_396.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_396.pdf'"
+          },
+          {
+            "file": "invoice_397.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_397.pdf'"
+          },
+          {
+            "file": "invoice_398.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_398.pdf'"
+          },
+          {
+            "file": "invoice_399.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_399.pdf'"
+          },
+          {
+            "file": "invoice_400.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_400.pdf'"
+          },
+          {
+            "file": "invoice_401.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_401.pdf'"
+          },
+          {
+            "file": "invoice_402.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_402.pdf'"
+          },
+          {
+            "file": "invoice_403.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_403.pdf'"
+          },
+          {
+            "file": "invoice_404.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_404.pdf'"
+          },
+          {
+            "file": "invoice_405.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_405.pdf'"
+          },
+          {
+            "file": "invoice_406.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_406.pdf'"
+          },
+          {
+            "file": "invoice_407.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_407.pdf'"
+          },
+          {
+            "file": "invoice_408.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_408.pdf'"
+          },
+          {
+            "file": "invoice_409.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_409.pdf'"
+          },
+          {
+            "file": "invoice_410.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_410.pdf'"
+          },
+          {
+            "file": "invoice_411.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_411.pdf'"
+          },
+          {
+            "file": "invoice_412.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_412.pdf'"
+          },
+          {
+            "file": "invoice_413.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_413.pdf'"
+          },
+          {
+            "file": "invoice_414.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_414.pdf'"
+          },
+          {
+            "file": "invoice_415.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_415.pdf'"
+          },
+          {
+            "file": "invoice_416.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_416.pdf'"
+          },
+          {
+            "file": "invoice_417.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_417.pdf'"
+          },
+          {
+            "file": "invoice_418.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_418.pdf'"
+          },
+          {
+            "file": "invoice_419.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_419.pdf'"
+          },
+          {
+            "file": "invoice_420.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_420.pdf'"
+          },
+          {
+            "file": "invoice_421.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_421.pdf'"
+          },
+          {
+            "file": "invoice_422.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_422.pdf'"
+          },
+          {
+            "file": "invoice_423.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_423.pdf'"
+          },
+          {
+            "file": "invoice_424.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_424.pdf'"
+          },
+          {
+            "file": "invoice_425.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_425.pdf'"
+          },
+          {
+            "file": "invoice_426.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_426.pdf'"
+          },
+          {
+            "file": "invoice_427.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_427.pdf'"
+          },
+          {
+            "file": "invoice_428.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_428.pdf'"
+          },
+          {
+            "file": "invoice_429.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_429.pdf'"
+          },
+          {
+            "file": "invoice_430.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_430.pdf'"
+          },
+          {
+            "file": "invoice_431.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_431.pdf'"
+          },
+          {
+            "file": "invoice_432.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_432.pdf'"
+          },
+          {
+            "file": "invoice_433.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_433.pdf'"
+          },
+          {
+            "file": "invoice_434.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_434.pdf'"
+          },
+          {
+            "file": "invoice_435.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_435.pdf'"
+          },
+          {
+            "file": "invoice_436.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_436.pdf'"
+          },
+          {
+            "file": "invoice_437.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_437.pdf'"
+          },
+          {
+            "file": "invoice_438.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_438.pdf'"
+          },
+          {
+            "file": "invoice_439.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_439.pdf'"
+          },
+          {
+            "file": "invoice_440.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_440.pdf'"
+          },
+          {
+            "file": "invoice_441.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_441.pdf'"
+          },
+          {
+            "file": "invoice_442.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_442.pdf'"
+          },
+          {
+            "file": "invoice_443.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_443.pdf'"
+          },
+          {
+            "file": "invoice_444.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_444.pdf'"
+          },
+          {
+            "file": "invoice_445.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_445.pdf'"
+          },
+          {
+            "file": "invoice_446.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_446.pdf'"
+          },
+          {
+            "file": "invoice_447.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_447.pdf'"
+          },
+          {
+            "file": "invoice_448.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_448.pdf'"
+          },
+          {
+            "file": "invoice_449.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_449.pdf'"
+          },
+          {
+            "file": "invoice_450.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_450.pdf'"
+          },
+          {
+            "file": "invoice_451.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_451.pdf'"
+          },
+          {
+            "file": "invoice_452.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_452.pdf'"
+          },
+          {
+            "file": "invoice_453.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_453.pdf'"
+          },
+          {
+            "file": "invoice_454.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_454.pdf'"
+          },
+          {
+            "file": "invoice_455.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_455.pdf'"
+          },
+          {
+            "file": "invoice_456.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_456.pdf'"
+          },
+          {
+            "file": "invoice_457.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_457.pdf'"
+          },
+          {
+            "file": "invoice_458.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_458.pdf'"
+          },
+          {
+            "file": "invoice_459.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_459.pdf'"
+          },
+          {
+            "file": "invoice_460.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_460.pdf'"
+          },
+          {
+            "file": "invoice_461.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_461.pdf'"
+          },
+          {
+            "file": "invoice_462.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_462.pdf'"
+          },
+          {
+            "file": "invoice_463.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_463.pdf'"
+          },
+          {
+            "file": "invoice_464.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_464.pdf'"
+          },
+          {
+            "file": "invoice_465.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_465.pdf'"
+          },
+          {
+            "file": "invoice_466.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_466.pdf'"
+          },
+          {
+            "file": "invoice_467.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_467.pdf'"
+          },
+          {
+            "file": "invoice_468.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_468.pdf'"
+          },
+          {
+            "file": "invoice_469.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_469.pdf'"
+          },
+          {
+            "file": "invoice_470.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_470.pdf'"
+          },
+          {
+            "file": "invoice_471.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_471.pdf'"
+          },
+          {
+            "file": "invoice_472.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_472.pdf'"
+          },
+          {
+            "file": "invoice_473.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_473.pdf'"
+          },
+          {
+            "file": "invoice_474.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_474.pdf'"
+          },
+          {
+            "file": "invoice_475.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_475.pdf'"
+          },
+          {
+            "file": "invoice_476.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_476.pdf'"
+          },
+          {
+            "file": "invoice_477.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_477.pdf'"
+          },
+          {
+            "file": "invoice_478.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_478.pdf'"
+          },
+          {
+            "file": "invoice_479.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_479.pdf'"
+          },
+          {
+            "file": "invoice_480.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_480.pdf'"
+          },
+          {
+            "file": "invoice_481.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_481.pdf'"
+          },
+          {
+            "file": "invoice_482.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_482.pdf'"
+          },
+          {
+            "file": "invoice_483.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_483.pdf'"
+          },
+          {
+            "file": "invoice_484.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_484.pdf'"
+          },
+          {
+            "file": "invoice_485.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_485.pdf'"
+          },
+          {
+            "file": "invoice_486.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_486.pdf'"
+          },
+          {
+            "file": "invoice_487.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_487.pdf'"
+          },
+          {
+            "file": "invoice_488.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_488.pdf'"
+          },
+          {
+            "file": "invoice_489.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_489.pdf'"
+          },
+          {
+            "file": "invoice_490.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_490.pdf'"
+          },
+          {
+            "file": "invoice_491.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_491.pdf'"
+          },
+          {
+            "file": "invoice_492.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_492.pdf'"
+          },
+          {
+            "file": "invoice_493.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_493.pdf'"
+          },
+          {
+            "file": "invoice_494.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_494.pdf'"
+          },
+          {
+            "file": "invoice_495.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_495.pdf'"
+          },
+          {
+            "file": "invoice_496.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_496.pdf'"
+          },
+          {
+            "file": "invoice_497.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_497.pdf'"
+          },
+          {
+            "file": "invoice_498.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_498.pdf'"
+          },
+          {
+            "file": "invoice_499.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_499.pdf'"
+          },
+          {
+            "file": "invoice_500.pdf",
+            "issue": "ENOENT: no such file or directory, stat '/data/batch1/invoice_500.pdf'"
+          }
+        ]
+      },
+      "verdict": "❌ Corruption rate: 100.00% exceeds threshold - REMOVE BAD FILES"
+    },
+    "labelingAgreement": {
+      "gate": "M1-QA",
+      "name": "Labeling Agreement Audit",
+      "requirements": {
+        "iaa": "≥95%",
+        "thirdReview": "<3%",
+        "consensus": "≥99%"
+      },
+      "status": "PASS",
+      "details": {
+        "iaa": "100.00",
+        "thirdReviewRate": "2.20",
+        "consensusRate": "99.40",
+        "totalAnnotations": 500,
+        "pairwiseComparisons": 0
+      },
+      "verdict": "✅ IAA: 100.00%, Third Review: 2.20%, Consensus: 99.40%"
+    }
+  },
+  "overall": "FAIL",
+  "artifacts": [],
+  "fingerprint": "540253065d9e875864211a2f1f46ceb471ef7141290d3747e1dbfd756acc24fe",
+  "protocolVersion": "1.0.0",
+  "featureFreeze": true
+}
