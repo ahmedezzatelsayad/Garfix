@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Calculator, Calendar, AlertTriangle, Info, Coins, TrendingUp } from "lucide-react";
+import { 
+  Loader2, Calculator, Calendar, AlertTriangle, Info, Coins, 
+  TrendingUp, Lightbulb, Sparkles 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGratuity } from "@/hooks/queries";
 
@@ -54,11 +57,57 @@ interface GratuityResponse {
   countryCode?: string;
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none [direction:ltr] text-end max-md:min-h-[44px]";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none [direction:ltr] text-end max-md:min-h-[44px] focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 const fmt = (n: number, dp = 3) =>
   (Number.isFinite(n) ? n : 0).toLocaleString("ar-EG", { maximumFractionDigits: dp });
+
+// ─── AI Suggestions for Gratuity (DS v4.0) ──────────────────────────────
+
+function AISuggestion({ type }: { type: 'eligible' | 'high' | 'medium' | 'low' }) {
+  const suggestions: Record<string, { icon: React.ReactNode; title: string; text: string; color: string }> = {
+    eligible: {
+      icon: <Sparkles size={16} className="text-primary" />,
+      title: "نصيحة ذكية",
+      text: "الموظف مؤهل للحصول على مكافأة نهاية الخدمة كاملة. يُنصح بالتحقق من أيام الإجازات غير المدفوعة التي قد تؤثر على الحساب.",
+      color: "border-primary/30 bg-primary/5"
+    },
+    high: {
+      icon: <TrendingUp size={16} className="text-emerald-500" />,
+      title: "مكافأة مرتفعة",
+      text: "مدة خدمة الموظف طويلة مما يعني مكافأة مجزية. راجع سياسة الشركة بشأن الحد الأقصى للمكافآت.",
+      color: "border-emerald-500/30 bg-emerald-500/5"
+    },
+    medium: {
+      icon: <Lightbulb size={16} className="text-amber-500" />,
+      title: "ملاحظة",
+      text: "المكافأة في النطاق المتوسط. يمكن تحسينها بمراجعة البدلات والمكافآت الإضافية المشمولة.",
+      color: "border-amber-500/30 bg-amber-500/5"
+    },
+    low: {
+      icon: <Info size={16} className="text-blue-500" />,
+      title: "فترة قصيرة",
+      text: "مدة الخدمة أقل من 5 سنوات، المكافأة تحسب بنصف الراتب. كل سنة إضافية تزيد المبلغ بشكل ملحوظ.",
+      color: "border-blue-500/30 bg-blue-500/5"
+    }
+  };
+
+  const suggestion = suggestions[type] || suggestions.medium;
+
+  return (
+    <div className={cn("ai-suggestion p-4 rounded-xl border flex items-start gap-3", suggestion.color)}>
+      <div className="shrink-0 mt-0.5">{suggestion.icon}</div>
+      <div>
+        <div className="text-xs font-bold mb-1 flex items-center gap-1.5">
+          {suggestion.title}
+          <Sparkles size={12} className="text-[#d4a574]" />
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">{suggestion.text}</p>
+      </div>
+    </div>
+  );
+}
 
 export function GratuityCalculator({ employees }: { employees: Employee[] }) {
   const [employeeId, setEmployeeId] = useState<number | null>(null);
@@ -68,6 +117,9 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
   const [result, setResult] = useState<GratuityResponse | null>(null);
 
   const selectedEmployee = employees.find((e) => e.id === employeeId) || null;
+
+  // Calculate progress percentage
+  const calculationProgress = gratuityMutation.isPending ? 75 : result ? 100 : 0;
 
   const calculate = async () => {
     if (!employeeId) {
@@ -94,11 +146,20 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
 
   const calculating = gratuityMutation.isPending;
 
+  // Determine AI suggestion type based on years of service
+  const getSuggestionType = (): 'eligible' | 'high' | 'medium' | 'low' => {
+    if (!result?.gratuity) return 'eligible';
+    const years = result.gratuity.yearsOfService;
+    if (years >= 10) return 'high';
+    if (years >= 5) return 'medium';
+    return 'low';
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Form card */}
-      <div className="p-5 rounded-[14px] bg-card border border-border flex flex-col gap-3.5">
-        <h3 className="text-[15px] font-bold flex items-center gap-1.5">
+    <div className="flex flex-col gap-4 animate-fade-in-up">
+      {/* Form card - DS v4.0 styling */}
+      <div className="p-5 rounded-xl bg-card border border-border flex flex-col gap-3.5 shadow-brand-sm hover-lift">
+        <h3 className="text-[15px] font-bold flex items-center gap-2">
           <Calculator size={16} className="text-primary" />
           حاسبة مكافأة نهاية الخدمة
         </h3>
@@ -138,12 +199,28 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
             </div>
           </div>
         </div>
-        <div className="flex justify-end">
+        
+        {/* Progress bar - Gold theme for financial calculations */}
+        {(calculating || result) && (
+          <div className="progress-gold mt-2">
+            <div 
+              className="progress-bar transition-all duration-300 ease-out"
+              style={{ width: `${calculationProgress}%` }}
+            />
+          </div>
+        )}
+        
+        <div className="flex justify-end mt-2">
           <button
             type="button"
             onClick={calculate}
             disabled={calculating || !employeeId}
-            className="inline-flex items-center gap-1.5 px-[22px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 max-md:min-h-[44px]"
+            className={cn(
+              "inline-flex items-center gap-1.5 px-[22px] py-2.5 rounded-md",
+              "bg-primary text-primary-foreground border-none font-extrabold text-[13px]",
+              "cursor-pointer disabled:cursor-not-allowed disabled:opacity-60",
+              "hover-lift active-press shadow-brand-sm max-md:min-h-[44px]"
+            )}
           >
             {calculating ? <Loader2 size={16} className="animate-spin" /> : <Calculator size={16} />}
             {calculating ? "جارٍ الحساب…" : "احسب المكافأة"}
@@ -151,9 +228,9 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
         </div>
       </div>
 
-      {/* Result */}
+      {/* Result - Not eligible */}
       {result && !result.eligible && (
-        <div className="p-5 rounded-[14px] bg-amber-500/10 border border-amber-500/40 flex items-start gap-3">
+        <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/40 flex items-start gap-3 animate-fade-in-up">
           <AlertTriangle size={20} className="text-amber-500 shrink-0 mt-0.5" />
           <div>
             <div className="text-sm font-extrabold text-amber-500 mb-1">
@@ -166,29 +243,40 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
         </div>
       )}
 
+      {/* Result - Eligible with GOLD KPI Card */}
       {result && result.eligible && result.employee && result.gratuity && (
         <>
-          {/* Big highlighted amount */}
-          <div className="p-6 rounded-[14px] bg-[linear-gradient(135deg,rgba(124,58,237,0.12),rgba(16,185,129,0.10))] border border-border flex flex-col gap-2 relative overflow-hidden">
-            <div
-              className="absolute -top-[30px] -start-[30px] w-[140px] h-[140px] rounded-full bg-[var(--primary)] opacity-[0.08]"
-            />
-            <div className="flex items-center gap-2 text-muted-foreground text-xs font-semibold">
-              <Coins size={14} className="text-primary" />
+          {/* ⚠️ GOLD KPI CARD - Final Amount (Financial importance!) */}
+          <div className="kpi-card-gold hover-lift animate-fade-in-up">
+            <div className="flex items-center gap-2 text-[#d4a574] text-xs font-semibold mb-2">
+              <Coins size={14} />
               مكافأة نهاية الخدمة المستحقة
+              <span className="kpi-badge">✦ مالي</span>
             </div>
-            <div className="text-4xl font-black [direction:ltr] text-end text-primary">
+            <div className="text-4xl font-black [direction:ltr] text-end text-[#d4a574]">
               {fmt(result.gratuity.gratuityAmount)} {selectedEmployee?.currency || ""}
             </div>
             {result.gratuity.cappedAmount !== null && (
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground mt-1">
                 تم تطبيق الحد الأقصى ({fmt(result.gratuity.cappedAmount)} {selectedEmployee?.currency || ""})
               </div>
             )}
+            {/* Mini sparkline for visual appeal */}
+            <div className="sparkline-container mt-3">
+              <div className="flex items-end gap-0.5 h-6">
+                {[30, 50, 40, 70, 55, 85, 65, 90].map((h, i) => (
+                  <div 
+                    key={i} 
+                    className="flex-1 bg-[#d4a574]/30 rounded-sm min-w-[3px]" 
+                    style={{ height: `${h}%` }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Employee info + summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Employee info + summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 stagger-children">
             <InfoCard label="الموظف" value={result.employee.name} icon={<Calculator size={16} />} color="#7c3aed" />
             <InfoCard
               label="تاريخ الالتحاق"
@@ -207,19 +295,20 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
               label="الأجر اليومي"
               value={`${fmt(result.gratuity.dailyWage)} ${selectedEmployee?.currency || ""}`}
               icon={<Coins size={16} />}
-              color="#f59e0b"
+              color="#d4a574"
               ltr
             />
           </div>
 
-          {/* Breakdown table */}
-          <div className="p-[18px] rounded-[14px] bg-card border border-border">
-            <h4 className="text-[13px] font-bold mb-3">
+          {/* Breakdown table - DS v4.0 table styling */}
+          <div className="p-[18px] rounded-xl bg-card border border-border shadow-brand-sm">
+            <h4 className="text-[13px] font-bold mb-3 flex items-center gap-2">
+              <Calculator size={14} className="text-primary" />
               تفصيل الحساب
             </h4>
             {/* Small 4-col table — overflow-x-auto on mobile (card conversion deferred — minimal cols). */}
             <div className="overflow-x-auto garfix-scroll">
-              <table className="w-full border-collapse text-xs min-w-[480px]">
+              <table className="w-full border-collapse text-xs min-w-[480px] table-enterprise table-comfortable">
                 <thead>
                   <tr className="border-b border-border bg-muted">
                     <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold">الفترة</th>
@@ -230,7 +319,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
                 </thead>
                 <tbody>
                   {result.gratuity.breakdown.map((b, i) => (
-                    <tr key={i} className="border-b border-border">
+                    <tr key={i} className="border-b border-border hover:bg-accent/50 transition-colors duration-120">
                       <td className="px-3 py-2.5 font-bold">{b.period}</td>
                       <td className="px-3 py-2.5">{b.rate}</td>
                       <td className="px-3 py-2.5 [direction:ltr] text-end">{fmt(b.days, 1)}</td>
@@ -251,7 +340,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
           </div>
 
           {/* Formula explanation */}
-          <div className="p-4 rounded-[14px] bg-muted border border-border flex items-start gap-2.5">
+          <div className="p-4 rounded-xl bg-muted border border-border flex items-start gap-2.5 hover-lift">
             <Info size={16} className="text-primary shrink-0 mt-0.5" />
             <div>
               <div className="text-xs font-bold mb-1">معادلة الحساب</div>
@@ -265,11 +354,14 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
               </div>
             </div>
           </div>
+
+          {/* ⚠️ AI Suggestion (DS v4.0 Feature) */}
+          <AISuggestion type={getSuggestionType()} />
         </>
       )}
 
       {!result && !calculating && (
-        <div className="p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
+        <div className="p-[60px] rounded-xl text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3 animate-fade-in-up">
           <Coins size={36} className="opacity-40" />
           <div className="text-sm font-bold">لا يوجد حساب بعد</div>
           <div className="text-xs max-w-[360px]">
@@ -285,7 +377,7 @@ function InfoCard({ label, value, icon, color, ltr }: {
   label: string; value: string; icon: React.ReactNode; color: string; ltr?: boolean;
 }) {
   return (
-    <div className="p-3.5 rounded-lg bg-card border border-border flex flex-col gap-1.5">
+    <div className="kpi-card p-3.5 flex flex-col gap-1.5 hover-lift">
       <div className="flex items-center gap-1.5">
         <div
           className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center shrink-0"

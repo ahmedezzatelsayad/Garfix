@@ -1,9 +1,17 @@
 "use client";
 
+/**
+ * ClientForm — Create/Edit client form (DS v4.0 Updated)
+ *
+ * Uses:
+ *   - focus-right: for input fields (RTL support)
+ *   - active-press: for buttons (150ms motion)
+ *   - touch-target: for mobile (44px min height)
+ */
 import { useState } from "react";
 import { useCreateClient, useUpdateClient } from "@/hooks/queries";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, User, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Client } from "./types";
 
@@ -13,12 +21,23 @@ interface ClientFormProps {
   onClose: () => void;
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-white border border-gray-200 text-foreground text-[13px] outline-none focus:border-[#7C3AED]/50 focus:ring-1 focus:ring-[#EDE9FE]";
+// DS v4.0 Input Style with focus-right
+const inputStyle = "focus-right w-full py-2.5 px-3 rounded-xl bg-card border border-border text-foreground text-[13px] outline-none touch-target min-h-[44px] md:min-h-[unset] focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// DS v4.0 Button Styles
+const buttonPrimaryStyle = "active-press touch-target inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-xl bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer shadow-glow-primary hover-scale disabled:cursor-not-allowed disabled:opacity-70 transition-all duration-150 min-h-[44px] md:min-h-[unset]";
+
+const buttonSecondaryStyle = "active-press touch-target inline-flex items-center justify-center gap-1.5 py-2.5 px-5 rounded-xl bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer hover:bg-muted hover:border-primary/20 hover:text-foreground hover-scale transition-all duration-120 min-h-[44px] md:min-h-[unset]";
+
+const buttonIconStyle = "active-press touch-target inline-flex items-center justify-center gap-1.5 p-2 rounded-lg bg-transparent text-muted-foreground border border-border cursor-pointer hover:bg-muted hover:border-destructive/40 hover:text-destructive hover-scale transition-all duration-120 min-h-[44px] md:min-h-[unset]";
+
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-gray-500 mb-1">{label}</label>
+      <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </label>
       {children}
     </div>
   );
@@ -71,26 +90,136 @@ export function ClientForm({ companySlug, client, onClose }: ClientFormProps) {
     }
   };
 
+  // Handle form submission on Enter key
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && e.target instanceof HTMLTextAreaElement === false) {
+      e.preventDefault();
+      submit();
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-[22px] font-extrabold">{editing ? "تعديل عميل" : "عميل جديد"}</h1>
-        <button onClick={onClose} className="bg-transparent border border-gray-200 text-gray-400 py-2 px-3 rounded-[8px] cursor-pointer text-[12px] inline-flex items-center gap-1 max-md:min-h-[44px]"><X size={14} /> إغلاق</button>
-      </div>
-      <div className="bg-white rounded-[14px] border border-gray-200 p-5 flex flex-col gap-3.5 shadow-card">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="الاسم"><input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} /></Field>
-          <Field label="البريد الإلكتروني"><input value={email} onChange={(e) => setEmail(e.target.value)} className={inputStyle} dir="ltr" /></Field>
-          <Field label="الهاتف"><input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputStyle} dir="ltr" /></Field>
-          <Field label="اسم الشركة"><input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={inputStyle} /></Field>
+        <div className="flex items-center gap-3">
+          <div className="kpi-icon-sm bg-primary/10 text-primary">
+            <User size={18} />
+          </div>
+          <div>
+            <h1 className="text-[22px] font-extrabold text-foreground">
+              {editing ? "تعديل عميل" : "عميل جديد"}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {editing ? "تعديل بيانات العميل الحالية" : "إضافة عميل جديد للشركة"}
+            </p>
+          </div>
         </div>
-        <Field label="العنوان"><input value={address} onChange={(e) => setAddress(e.target.value)} className={inputStyle} /></Field>
-        <Field label="ملاحظات"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={cn(inputStyle, "resize-y")} /></Field>
+        <button 
+          onClick={onClose} 
+          className={buttonIconStyle}
+          title="إغلاق"
+        >
+          <X size={14} /> 
+          <span className="hidden sm:inline">إغلاق</span>
+        </button>
       </div>
-      <div className="flex gap-2.5 justify-end">
-        <button onClick={onClose} className="py-2.5 px-5 rounded-[10px] bg-transparent text-gray-400 border border-gray-200 text-[13px] font-bold cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-[10px] bg-[#7C3AED] text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] shadow-[0_2px_8px_rgba(124,58,237,0.3)]">{saving ? "جارٍ…" : "حفظ"}</button>
+
+      {/* Form Card */}
+      <div className="bg-card rounded-xl border border-border p-5 md:p-6 flex flex-col gap-4 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+          <Field label="اسم العميل" required>
+            <input 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              className={inputStyle} 
+              placeholder="أدخل اسم العميل"
+              onKeyDown={handleKeyDown}
+              autoFocus={!editing}
+            />
+          </Field>
+          <Field label="البريد الإلكتروني">
+            <input 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className={cn(inputStyle, "[direction:ltr] text-end")} 
+              dir="ltr"
+              placeholder="email@example.com"
+              type="email"
+            />
+          </Field>
+          <Field label="الهاتف">
+            <input 
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)} 
+              className={cn(inputStyle, "[direction:ltr] text-end")} 
+              dir="ltr"
+              placeholder="+966 5XX XXX XXXX"
+              type="tel"
+            />
+          </Field>
+          <Field label="اسم الشركة">
+            <input 
+              value={companyName} 
+              onChange={(e) => setCompanyName(e.target.value)} 
+              className={inputStyle} 
+              placeholder="اسم الشركة (اختياري)"
+            />
+          </Field>
+        </div>
+        
+        <Field label="العنوان">
+          <input 
+            value={address} 
+            onChange={(e) => setAddress(e.target.value)} 
+            className={inputStyle} 
+            placeholder="العنوان الكامل (اختياري)"
+          />
+        </Field>
+        
+        <Field label="ملاحظات">
+          <textarea 
+            value={notes} 
+            onChange={(e) => setNotes(e.target.value)} 
+            rows={3} 
+            className={cn(inputStyle, "resize-y min-h-[100px]")}
+            placeholder="أي ملاحظات إضافية عن هذا العميل..."
+            maxLength={1000}
+          />
+          <div className="text-[10px] text-muted-foreground mt-1 text-start">
+            {notes.length}/1000 حرف
+          </div>
+        </Field>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-2.5 sm:justify-end">
+        <button 
+          onClick={onClose} 
+          className={buttonSecondaryStyle}
+        >
+          إلغاء
+        </button>
+        <button 
+          onClick={submit} 
+          disabled={saving} 
+          className={buttonPrimaryStyle}
+        >
+          {saving ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> 
+              جارٍ الحفظ…
+            </>
+          ) : (
+            <>
+              <Save size={14} /> 
+              حفظ
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
 }
+
+export default ClientForm;
