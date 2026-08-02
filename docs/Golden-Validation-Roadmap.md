@@ -34,11 +34,42 @@
 
 ---
 
-## 📋 3-Sprint Roadmap
+## 📋 Updated Roadmap (CTO-Refined)
 
-### **Sprint 1: Golden Dataset Collection** ⏳
+### **Phase 0: Data Qualification (Before Collection)** 🆕
 
-**Objective:** Acquire `golden-dataset-v1` meeting specification requirements
+**Objective:** Establish quality gates BEFORE collecting any data
+
+**Key Document:** `Data-Qualification-Framework.md`
+
+#### Per-Batch Quality Gates:
+| Gate | Check | Threshold | Fail Action |
+|------|-------|-----------|-------------|
+| 1 | PII Removal | 100% clean | Reject batch |
+| 2 | Ground Truth Completeness | ≥99% | Re-annotate |
+| 3 | Data Integrity (corrupted) | <5% | Remove bad files |
+| 4 | Supplier Distribution | No supplier >10% | Resample |
+| 5 | Template Compliance | ±5% of spec | Adjust mix |
+
+**Rule:** "أي دفعة لا تحقق هذه الشروط لا تدخل Golden Dataset"
+
+---
+
+### **Sprint 1: Golden Dataset Collection (Batched)** ⏳
+
+**Objective:** Acquire `golden-dataset-v1` using phased batch approach
+
+#### Batch Strategy (Risk-Mitigated):
+| Batch | Size | Purpose | Duration |
+|-------|------|---------|----------|
+| **Batch 1** | 500 | Process validation, test workflow | 3-5 days |
+| **Batch 2** | 1,500 | Scale-up with confidence | 7-10 days |
+| **Batch 3** | 3,000 | Complete dataset | 14-21 days |
+
+**Total: 5,000 invoices**
+
+**Why Batches?**
+> "إذا اكتشفت مشكلة في آلية الوسم (Labeling)، ستصححها مبكرًا قبل أن تتراكم على آلاف الفواتير"
 
 #### Deliverables:
 - [ ] **≥ 5,000 real invoices** from production/historical data
@@ -78,9 +109,44 @@ data/golden-dataset-v1/
 
 ---
 
-### **Sprint 2: Protocol Execution** ⏳
+### **Phase 1.5: Golden Dataset Freeze** 🆕
+
+**Objective:** Make dataset immutable with cryptographic fingerprint
+
+#### Steps:
+```bash
+# 1. Calculate SHA-256 fingerprint
+FINGERPRINT=$(find golden-dataset-v1 -type f -exec sha256sum {} \; | sha256sum)
+
+# 2. Create freeze manifest
+cat > golden-dataset-v1/FREEZE_MANIFEST.json << EOF
+{
+  "version": "v1",
+  "frozen_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "fingerprint_sha256": "$FINGERPRINT",
+  "total_invoices": 5000,
+  "status": "IMMUTABLE"
+}
+EOF
+```
+
+**Rule:** "بهذا تضمن أن نفس البيانات ستُستخدم في كل إعادة تشغيل لاحقة"
+
+---
+
+### **Sprint 2: Blind Protocol Execution** ⏳ (Updated)
 
 **Objective:** Run `Protocol v1.0 AS-IS` on golden dataset
+
+**NEW: Blind Validation Protocol**
+> "فريق جمع البيانات لا يغيّر المحرك. فريق المحرك لا يطّلع على Ground Truth"
+
+#### Team Separation:
+| Team | Can See | Cannot See |
+|------|---------|------------|
+| Data Team | Raw invoices, GT | Engine code |
+| Engine Team | Engine code, config | GT labels |
+| Validation Team | Both results | Neither source |
 
 #### Constraints (NON-NEGOTIABLE):
 - ❌ No threshold modifications
