@@ -456,15 +456,27 @@ export async function getCachedOrCompute(
  * Batch process fingerprints with caching optimization.
  * Detects duplicate texts and caches results.
  */
+// Type alias for fingerprint results (defined outside function to avoid Turbopack parsing issues)
+interface FingerprintResult {
+  fingerprint: string;
+  fromCache: boolean;
+  index: number;
+}
+
+interface ComputeItem {
+  text: string;
+  index: number;
+}
+
 export async function batchFingerprints(
   texts: string[],
   computeFn: (text: string) => string | Promise<string>
-): Promise<Array<{ fingerprint: string; fromCache: boolean; index: number }>> {
+): Promise<Array<FingerprintResult>> {
   const cache = getFingerprintCache();
-  const results: Array<{ fingerprint: string; fromCache: boolean; index: number } = [];
+  const results: Array<FingerprintResult> = [];
   
   // First pass: check cache for all
-  const toCompute: Array<{ text: string; index: number }> = [];
+  const toCompute: Array<ComputeItem> = [];
   
   for (let i = 0; i < texts.length; i++) {
     const cached = cache.get(texts[i]);

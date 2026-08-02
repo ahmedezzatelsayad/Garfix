@@ -87,7 +87,7 @@ export function OnboardingScreen() {
           currency,
           defaultTaxRate: taxRate,
           emoji: "🏢",
-          color: "#7c3aed",
+          color: "#047857",
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -128,7 +128,7 @@ export function OnboardingScreen() {
     <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto h-14 w-14 rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center shadow-[0_8px_24px_rgba(124,58,237,0.4)]">
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center shadow-[0_8px_24px_rgba(4,120,87,0.4)]">
             <Sparkles className="h-7 w-7 text-white" />
           </div>
           <CardTitle className="text-2xl">

@@ -127,7 +127,7 @@ export function PlatformAdminPanel() {
 
   const pieData = stats ? Object.entries(stats.byPlan).map(([k, v], i) => ({
     name: k, value: Number(v) || 0,
-    color: ["#7c3aed", "#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#ec4899", "#14b8a6"][i % 7],
+    color: ["#047857", "#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#ec4899", "#14b8a6"][i % 7],
   })).filter((d) => d.value > 0) : [];
   const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
 
@@ -165,7 +165,7 @@ export function PlatformAdminPanel() {
           {tab === "stats" && stats && (
             <>
               <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-                <KpiCard label="إجمالي المستأجرين" value={stats.tenantsCount} color="#7c3aed" />
+                <KpiCard label="إجمالي المستأجرين" value={stats.tenantsCount} color="#047857" className="kpi-card" />
                 <KpiCard label="المستخدمون" value={stats.usersCount} color="#10b981" />
                 <KpiCard label="الفواتير" value={stats.invoicesCount} color="#3b82f6" />
                 <KpiCard label="تذاكر مفتوحة" value={stats.ticketsOpen} color="#f59e0b" />
@@ -516,7 +516,7 @@ export function PlatformAdminPanel() {
                     ))}
                   </select>
                   {stockLedgerSlug && (
-                    <IconBtn color="#7c3aed" aria-label="تحديث" onClick={applyStockLedgerFilters}
+                    <IconBtn color="#047857" aria-label="تحديث" onClick={applyStockLedgerFilters}
                       title="تحديث"
                     >
                       <Activity size={14} /> تحديث
@@ -549,7 +549,7 @@ export function PlatformAdminPanel() {
                   {stockLedgerSlug && (
                     <button
                       onClick={applyStockLedgerFilters}
-                      className="px-3 py-1.5 rounded-lg bg-violet-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer active-press"
                     >
                       تطبيق الفلاتر
                     </button>

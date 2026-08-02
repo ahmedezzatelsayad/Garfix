@@ -45,7 +45,7 @@ type Tab = "consolidation" | "inter-company";
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -85,7 +85,7 @@ export function MultiCompanyView() {
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Building2 size={20} /> الشركات المتعددة</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
         {tab === "inter-company" && !showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> تسوية جديدة</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> تسوية جديدة</button>
         )}
       </div>
       <div className="flex gap-1.5 flex-wrap">
@@ -165,20 +165,20 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
               <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي الأصول</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalAssets)}</div></div>
             </div>
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
               <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><DollarSign size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي الخصوم</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalLiabilities)}</div></div>
             </div>
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
               <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><TrendingUp size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي الإيرادات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.totalRevenue)}</div></div>
             </div>
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">صافي الدخل</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", result.netIncome >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(result.netIncome)}</div></div>
             </div>
           </div>
@@ -186,7 +186,7 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
           {/* Consolidation Table */}
           <div className="bg-card rounded-[14px] border border-border overflow-hidden">
             <div className="overflow-x-auto garfix-scroll max-h-[500px]">
-              <table className="w-full border-collapse">
+              <table className="table-enterprise w-full border-collapse">
                 <thead><tr className="border-b border-border bg-muted">
                   <th className={thStyle}>الكود</th><th className={thStyle}>الحساب</th><th className={thStyle}>القسم</th>
                   <th className={cn(thStyle, "text-end")}>الشركة A</th><th className={cn(thStyle, "text-end")}>الشركة B</th>
@@ -196,11 +196,11 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
                   <tr key={l.id} className="border-b border-border">
                     <td className={cn(tdStyle, "font-mono")}>{l.accountCode}</td>
                     <td className={cn(tdStyle, "font-bold")}>{l.accountName}</td>
-                    <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", l.section === "assets" ? "bg-emerald-500/15 text-emerald-500" : l.section === "liabilities" ? "bg-red-500/15 text-red-500" : l.section === "revenue" ? "bg-amber-500/15 text-amber-500" : "bg-violet-500/15 text-violet-500")}>{l.section === "assets" ? "أصول" : l.section === "liabilities" ? "خصوم" : l.section === "revenue" ? "إيرادات" : "مصروفات"}</span></td>
+                    <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", l.section === "assets" ? "bg-emerald-500/15 text-emerald-500" : l.section === "liabilities" ? "bg-red-500/15 text-red-500" : l.section === "revenue" ? "bg-amber-500/15 text-amber-500" : "bg-emerald-700/15 text-emerald-700")}>{l.section === "assets" ? "أصول" : l.section === "liabilities" ? "خصوم" : l.section === "revenue" ? "إيرادات" : "مصروفات"}</span></td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyA)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyB)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end", l.adjustments !== 0 ? "text-amber-500" : "text-gray-400")}>{fmt(l.adjustments)}</td>
-                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-violet-500")}>{fmt(l.consolidated)}</td>
+                    <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-700")}>{fmt(l.consolidated)}</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -232,7 +232,7 @@ function InterCompanyView({ transactions, company, onRefresh }: { transactions: 
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       {transactions.length === 0 ? <Empty label="حركات بين الشركات" /> : (
         <div className="overflow-x-auto garfix-scroll">
-          <table className="w-full border-collapse">
+          <table className="table-enterprise w-full border-collapse">
             <thead><tr className="border-b border-border bg-muted">
               <th className={thStyle}>التاريخ</th><th className={thStyle}>من</th><th className={thStyle}>إلى</th>
               <th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>العملة</th>
@@ -247,7 +247,7 @@ function InterCompanyView({ transactions, company, onRefresh }: { transactions: 
                   <td className={tdStyle}>{t.companySlugTo}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(t.amount)}</td>
                   <td className={cn(tdStyle, "font-mono")}>{t.currency}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", t.type === "loan" ? "bg-blue-500/15 text-blue-500" : t.type === "sale" ? "bg-emerald-500/15 text-emerald-500" : "bg-violet-500/15 text-violet-500")}>{TX_TYPE_LABELS[t.type || ""] || t.type || "—"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", t.type === "loan" ? "bg-blue-500/15 text-blue-500" : t.type === "sale" ? "bg-emerald-500/15 text-emerald-500" : "bg-emerald-700/15 text-emerald-700")}>{TX_TYPE_LABELS[t.type || ""] || t.type || "—"}</span></td>
                   <td className={tdStyle}>{t.description || ""}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", scBadge)}>{STATUS_LABELS[t.status] || t.status}</span></td>
                   <td className={tdStyle}>

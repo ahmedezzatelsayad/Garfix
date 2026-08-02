@@ -197,7 +197,7 @@ export function WebhookManagementView() {
       case "success": return <CheckCircle2 size={14} className="text-green-500" />;
       case "failed": return <XCircle size={14} className="text-red-500" />;
       case "pending": return <Clock size={14} className="text-yellow-500" />;
-      case "retried": return <AlertTriangle size={14} className="text-purple-500" />;
+      case "retried": return <AlertTriangle size={14} className="text-emerald-500" />;
       default: return null;
     }
   };
@@ -264,19 +264,19 @@ export function WebhookManagementView() {
           {/* Stats bar */}
           {stats && (
             <div className="flex gap-2 sm:gap-3 flex-wrap">
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-[var(--muted-foreground)]">معدل النجاح</span>
                 <br />
                 <strong className={`text-lg ${stats.successRate >= 80 ? "text-green-500" : stats.successRate >= 50 ? "text-yellow-500" : "text-red-500"}`}>
                   {stats.successRate}%
                 </strong>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-[var(--muted-foreground)]">متوسط التوصيل</span>
                 <br />
                 <strong className="text-lg">{stats.avgLatencyMs}ms</strong>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-[var(--muted-foreground)]">إجمالي التوصيلات</span>
                 <br />
                 <strong className="text-lg">{stats.total}</strong>
@@ -287,14 +287,14 @@ export function WebhookManagementView() {
           {/* Add button */}
           <button
             onClick={() => { setShowForm(true); setEditingId(null); setFormUrl(""); setFormEvents([]); setFormActive(true); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold active-press"
           >
             <Plus size={14} /> إضافة نقطة ربط
           </button>
 
           {/* Add/Edit form */}
           {showForm && (
-            <div className="p-3 sm:p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+            <div className="p-3 sm:p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] hover-lift">
               <h3 className="text-base font-bold mb-3">
                 {editingId ? "تعديل نقطة ربط" : "إضافة نقطة ربط جديدة"}
               </h3>
@@ -303,7 +303,7 @@ export function WebhookManagementView() {
                   placeholder="URL (https://...)"
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-sm"
+                  className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-[inherit] text-sm focus-ring"
                   dir="ltr"
                 />
                 <div>
@@ -339,7 +339,7 @@ export function WebhookManagementView() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleSaveEndpoint}
-                    className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold"
+                    className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] cursor-pointer border-0 text-sm font-semibold active-press"
                   >
                     {editingId ? "تحديث" : "إضافة"}
                   </button>
@@ -355,7 +355,7 @@ export function WebhookManagementView() {
           )}
 
           {/* Endpoint list */}
-          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden">
+          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden hover-lift">
             {loading ? (
               <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : endpoints.length === 0 ? (
@@ -364,7 +364,7 @@ export function WebhookManagementView() {
               </div>
             ) : (
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse table-enterprise">
                   <thead>
                     <tr className="bg-[var(--muted)]">
                       <th className={thClasses}>URL</th>
@@ -428,22 +428,22 @@ export function WebhookManagementView() {
           {/* Stats */}
           {stats && (
             <div className="flex gap-2 sm:gap-3 flex-wrap">
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-green-500">✅ نجاح: {stats.succeeded}</span>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-red-500">❌ فشل: {stats.failed}</span>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-yellow-500">⏳ قيد الانتظار: {stats.pending}</span>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-[var(--muted-foreground)]">🔄 إعادة: {stats.retried}</span>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-[var(--muted-foreground)]">⏱️ متوسط: {stats.avgLatencyMs}ms</span>
               </div>
-              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs">
+              <div className="py-3 px-4 rounded-[10px] bg-[var(--card)] border border-[var(--border)] text-xs kpi-card hover-lift">
                 <span className="text-[var(--muted-foreground)]">📊 معدل النجاح: {stats.successRate}%</span>
               </div>
             </div>
@@ -473,14 +473,14 @@ export function WebhookManagementView() {
           </div>
 
           {/* Delivery table */}
-          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden">
+          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden hover-lift">
             {loading ? (
               <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : deliveries.length === 0 ? (
               <div className="p-12 text-center text-[var(--muted-foreground)]">لا توجد توصيلات</div>
             ) : (
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse table-enterprise">
                   <thead>
                     <tr className="bg-[var(--muted)]">
                       <th className={thClasses}>الحالة</th>
@@ -590,12 +590,12 @@ export function WebhookManagementView() {
           </div>
 
           {/* Event types list */}
-          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden">
+          <div className="bg-[var(--card)] rounded-[14px] border border-[var(--border)] overflow-hidden hover-lift">
             {loading ? (
               <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : (
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse table-enterprise">
                   <thead>
                     <tr className="bg-[var(--muted)]">
                       <th className={thClasses}>المعرّف</th>

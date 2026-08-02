@@ -104,7 +104,7 @@ export function AiOrchestrationTab() {
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <div>
           <h3 className="text-base font-extrabold flex items-center gap-2">
-            <Network className="text-violet-600" size={18} /> طبقة تنسيق الذكاء الاصطناعي
+            <Network className="text-emerald-600" size={18} /> طبقة تنسيق الذكاء الاصطناعي
           </h3>
           <p className="text-xs text-[var(--muted-foreground)] mt-1">
             سجل النماذج + درجة الصحة + التوجيه الذكي + مُحسّن التكلفة — اختيار النموذج آلي بناءً على بيانات الأداء الحية
@@ -116,7 +116,7 @@ export function AiOrchestrationTab() {
           className={`inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] border border-[var(--border)] font-inherit text-[13px] font-bold ${
             running
               ? "bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed opacity-70"
-              : "bg-violet-600 text-white cursor-pointer"
+              : "bg-emerald-600 text-white cursor-pointer active-press"
           }`}
         >
           {running ? <RefreshCw size={15} className="animate-spin" /> : <Zap size={15} />}
@@ -128,17 +128,17 @@ export function AiOrchestrationTab() {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <KpiCard label="نداءات وُفّرت (Pattern)" value={data.optimizerStats.counts["use-pattern"]} color="#10b981" />
         <KpiCard label="نداءات وُفّرت (Cache)" value={data.optimizerStats.counts["use-cache"]} color="#3b82f6" />
-        <KpiCard label="تُوجّه لمجاني" value={data.optimizerStats.counts["route-free"]} color="#7c3aed" />
+        <KpiCard label="تُوجّه لمجاني" value={data.optimizerStats.counts["route-free"]} color="#047857" className="kpi-card-gold" />
         <KpiCard label="تُوجّه للأفضل" value={data.optimizerStats.counts["route-best"]} color="#f59e0b" />
         <KpiCard label="إجمالي نداءات متجنّبة" value={data.optimizerStats.callsAvoided} color="#10b981" />
         <KpiCard label="توفير تقديري ($)" value={data.optimizerStats.estSavingsUsd.toFixed(4)} color="#10b981" />
       </div>
 
       {/* Routing matrix — primary model per capability */}
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift ai-card">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Gauge className="text-violet-600" size={16} /> مصفوفة التوجيه (النموذج الأساسي لكل قدرة)
+            <Gauge className="text-emerald-600" size={16} /> مصفوفة التوجيه (النموذج الأساسي لكل قدرة)
           </h3>
           <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
             لكل قدرة، يختار النظام تلقائيًا النموذج الأعلى صحةً والمتاح — لا ربط دائم باسم نموذج
@@ -181,10 +181,10 @@ export function AiOrchestrationTab() {
       </div>
 
       {/* Model Registry table */}
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift ai-card">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Network className="text-violet-600" size={16} /> سجل النماذج ({data.registry.length})
+            <Network className="text-emerald-600" size={16} /> سجل النماذج ({data.registry.length})
           </h3>
           <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
             كل نموذج + قدراته + طبقته + تكلفته + مقاييس الصحة الحية (تُحدّث تلقائيًا بعد كل اختبار)
@@ -252,10 +252,10 @@ export function AiOrchestrationTab() {
 
       {/* Recent benchmark results */}
       {data.recentBenchmarks.length > 0 && (
-        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift">
           <div className="px-4 py-3 border-b border-b-[var(--border)]">
             <h3 className="text-sm font-bold flex items-center gap-2">
-              <Activity className="text-violet-600" size={16} /> آخر نتائج الاختبارات ({data.recentBenchmarks.length})
+              <Activity className="text-emerald-600" size={16} /> آخر نتائج الاختبارات ({data.recentBenchmarks.length})
             </h3>
           </div>
           <div className="max-h-[260px] garfix_scroll overflow-x-auto overflow-y-auto">

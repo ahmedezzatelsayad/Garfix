@@ -23,7 +23,7 @@ type Tab = "payroll" | "wps";
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -132,23 +132,23 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
 
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الأساسي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBase)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><Users size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">البدلات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAllowances)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><AlertTriangle size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">التأمينات الاجتماعية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalSocialInsurance)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><Calculator size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">الاستقطاعات</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(totalDeductions)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalNet >= 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">صافي الرواتب</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalNet >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalNet)}</div></div>
         </div>
@@ -158,7 +158,7 @@ function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsuranc
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {salaries.length === 0 ? <Empty label="رواتب" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الموظف</th>
                 <th className={cn(thStyle, "text-end")}>الأساسي</th>
@@ -293,15 +293,15 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
 
       {/* Summary cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الملفات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{wpsFiles.length}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي المبالغ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAll)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><Users size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">عدد الموظفين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{totalEmployees}</div></div>
         </div>
@@ -314,9 +314,9 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
         if (files.length === 0 && country !== activeCountry) return null;
         return (
           <div key={country} className="bg-card rounded-[14px] border border-border overflow-hidden">
-            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center bg-violet-500/10 text-violet-500">
+            <div className="py-2.5 px-3.5 border-b border-border font-extrabold text-[14px] flex justify-between items-center bg-emerald-600/10 text-emerald-600">
               <span className="flex items-center gap-2">
-                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-violet-500/20 text-violet-500">{country}</span>
+                <span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-emerald-600/20 text-emerald-600">{country}</span>
                 {countryLabels[country]}
               </span>
               <span className={cn("[direction:ltr] text-end text-[13px]", countryTotal >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(countryTotal)}</span>
@@ -327,7 +327,7 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
               </div>
             ) : (
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="table-enterprise w-full border-collapse">
                   <thead><tr className="border-b border-border bg-muted">
                     <th className={thStyle}>الشهر</th>
                     <th className={thStyle}>عدد الموظفين</th>

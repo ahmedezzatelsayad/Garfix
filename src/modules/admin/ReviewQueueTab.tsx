@@ -37,9 +37,9 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
     <div className="flex flex-col gap-4">
       {/* Per-tenant breakdown chips */}
       {data.byTenant.length > 0 && (
-        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] px-4 py-3">
+        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] px-4 py-3 hover-lift">
           <h3 className="text-[13px] font-bold mb-2 flex items-center gap-1.5">
-            <ListChecks className="text-violet-600" size={14} />
+            <ListChecks className="text-emerald-600" size={14} />
             التوزيع حسب الشركة ({data.byTenant.length} شركة)
           </h3>
           <div className="flex flex-wrap gap-1.5">
@@ -56,7 +56,7 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
         </div>
       )}
 
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift">
         <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
           <h3 className="text-sm font-bold flex items-center gap-2">
             <AlertTriangle className="text-amber-500" size={16} />
@@ -66,7 +66,7 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
             <button
               type="button"
               onClick={() => onOpenReviewQueue(null)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer active-press"
               title="افتح نافذة المراجعة لكل الشركات (founder cross-tenant)"
             >
               <Eye size={12} /> افتح كل الشركات
@@ -94,7 +94,7 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
           </div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full [border-collapse:collapse]">
+            <table className="w-full [border-collapse:collapse] table-enterprise">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النص المُدخل</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المنتج المُطابق</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الثقة</th>

@@ -109,37 +109,50 @@ const AI_RETRY_BACKOFF = 2000; // 2 seconds base
 
 // ── Metrics Collector ────────────────────────────────────────
 
+// Type definitions for metrics (defined outside class to avoid Turbopack parsing issues)
+interface PerKeyMetrics {
+  requestsToday: number;
+  tokensToday: number;
+  failuresToday: number;
+  lastUsed: Date | null;
+  consecutiveFailures: number;
+  rpmHistory: number[];
+}
+
+interface PerWorkerMetrics {
+  processedToday: number;
+  activeJobs: number;
+  totalLatency: number;
+  completedCount: number;
+}
+
+interface PoolMetrics {
+  totalRequests: number;
+  totalTokens: number;
+  totalFailures: number;
+  queuedJobs: number;
+  rejectedJobs: number;
+}
+
 class AIMetricsCollector {
   private metrics = {
     // Per-key tracking
-    keys: new Map<string, {
-      requestsToday: number;
-      tokensToday: number;
-      failuresToday: number;
-      lastUsed: Date | null;
-      consecutiveFailures: number;
-      rpmHistory: number[]; // Last 60 data points (1 per second)
-    }>(),
+    keys: new Map<string, PerKeyMetrics>(),
     
     // Per-worker tracking
-    workers: new Map<AIWorkerType, {
-      processedToday: number;
-      activeJobs: number;
-      totalLatency: number;
-      completedCount: number;
-    }>(),
+    workers: new Map<AIWorkerType, PerWorkerMetrics>(),
     
     // Pool-level tracking
     pool: {
-      totalRequests: 0;
-      totalTokens: 0;
-      totalFailures: 0;
+      totalRequests: 0,
+      totalTokens: 0,
+      totalFailures: 0,
       queuedJobs: 0,
       rejectedJobs: 0,
-    },
+    } as PoolMetrics,
     
-    // RPM tracking (sliding window)
-    rpmWindow: number[] = [], // Timestamps of last minute's requests
+    // RPM tracking (sliding window) - initialized separately for Turbopack compatibility
+    rpmWindow: [] as number[],
   };
 
   /** Record a successful API call */

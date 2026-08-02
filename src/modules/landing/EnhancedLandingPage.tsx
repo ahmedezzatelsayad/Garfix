@@ -168,7 +168,7 @@ const FEATURE_SHOWCASE = [
     title: "AI Fabric",
     titleAr: "AI Fabric — محرك الذكاء الاصطناعي",
     desc: "16- مرحلة cascade لتحسين التكلفة مع تأكيد أمني على كل عملية. يحوّل النصوص والصور لفواتير وينفّذ أوامر حقيقية.",
-    color: "from-purple-500 to-violet-600",
+    color: "from-emerald-500 to-emerald-700",
   },
   {
     icon: <FileText size={28} />,
@@ -246,7 +246,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
             ctx.beginPath();
             ctx.moveTo(pts[i].x, pts[i].y);
             ctx.lineTo(pts[j].x, pts[j].y);
-            ctx.strokeStyle = `rgba(167,139,250,${0.04 * (1 - d / connectionDist)})`;
+            ctx.strokeStyle = `rgba(16,185,129,${0.04 * (1 - d / connectionDist)})`;
             ctx.lineWidth = isMobile ? 0.4 : 0.6;
             ctx.stroke();
           }
@@ -255,7 +255,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
       pts.forEach((p) => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(167,139,250,${p.o})`;
+        ctx.fillStyle = `rgba(16,185,129,${p.o})`;
         ctx.fill();
         p.x += p.vx; p.y += p.vy;
         if (p.x < 0 || p.x > w) p.vx *= -1;
@@ -277,7 +277,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
   return (
     <div
       dir="rtl"
-      className="min-h-dvh bg-[linear-gradient(180deg,#0f0a1e_0%,#1a1035_35%,#12082e_70%,#0f0a1e_100%)] text-white overflow-x-hidden"
+      className="min-h-dvh bg-[linear-gradient(180deg,#041a0f_0%,#0b1a14_35%,#061210_70%,#041a0f_100%)] text-white overflow-x-hidden"
     >
       <canvas
         ref={cvsRef}
@@ -287,11 +287,11 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         @keyframes garfix-fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes garfix-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         @keyframes garfix-glow { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
-        .landing-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(124,58,237,0.12); backdrop-filter: blur(8px); transition: all .2s; }
-        .landing-card:hover { background: rgba(124,58,237,0.08); border-color: rgba(124,58,237,0.25); transform: translateY(-2px); }
-        .landing-section-title { background: linear-gradient(120deg, #c4b5fd, #8b5cf6, #c4b5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .pricing-highlight { background: linear-gradient(180deg,rgba(124,58,237,0.25),rgba(167,139,250,0.1)); border: 2px solid #7c3aed; }
-        .comparison-garfix { background: rgba(124,58,237,0.08); }
+        .landing-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(4,120,87,0.12); backdrop-filter: blur(8px); transition: all 120ms ease; }
+        .landing-card:hover { background: rgba(4,120,87,0.08); border-color: rgba(4,120,87,0.25); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(4,120,87,0.15); }
+        .landing-section-title { background: linear-gradient(120deg, #6ee7b7, #059669, #6ee7b7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .pricing-highlight { background: linear-gradient(180deg,rgba(4,120,87,0.25),rgba(16,185,129,0.1)); border: 2px solid #047857; }
+        .comparison-garfix { background: rgba(4,120,87,0.08); }
       `}</style>
 
       {/* ── Nav ──────────────────────────────────────────────────────── */}
@@ -302,7 +302,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         className="relative z-10 py-5 px-[5%] flex flex-wrap items-center justify-between gap-3"
       >
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-[22px] font-black text-white shadow-[0_8px_24px_rgba(124,58,237,0.4)]">
+          <div className="w-11 h-11 rounded-lg bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center text-[22px] font-black text-white shadow-[0_8px_24px_rgba(4,120,87,0.4)]">
             G
           </div>
           <div>
@@ -317,7 +317,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
           >تسجيل الدخول</button>
           <button
             onClick={onRegister}
-            className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-md px-[22px] py-2.5 text-sm font-extrabold cursor-pointer transition-all shadow-[0_8px_24px_rgba(124,58,237,0.4)] max-md:min-h-[44px]"
+            className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-md px-[22px] py-2.5 text-sm font-extrabold cursor-pointer transition-all duration-150 shadow-[0_8px_24px_rgba(4,120,87,0.4)] hover:shadow-[0_12px_32px_rgba(4,120,87,0.5)] max-md:min-h-[44px]"
           >ابدأ مجاناً</button>
         </div>
       </motion.nav>
@@ -330,7 +330,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         variants={stagger}
         className="relative z-[5] py-20 md:py-28 px-[5%] text-center max-w-[1100px] mx-auto"
       >
-        <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-[rgba(124,58,237,0.15)] border border-[rgba(124,58,237,0.3)] text-[#c4b5fd] text-xs font-bold mb-6">
+        <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-[rgba(4,120,87,0.15)] border border-[rgba(4,120,87,0.3)] text-[#6ee7b7] text-xs font-bold mb-6">
           <Sparkles size={14} />
           منصة ERP متكاملة بمساعد ذكاء اصطناعي — مُحسّنة لـ MENA
         </motion.div>
@@ -348,7 +348,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         <motion.div variants={fadeUp} className="flex flex-wrap gap-3.5 justify-center">
           <button
             onClick={onRegister}
-            className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-lg px-9 py-4 text-base font-extrabold cursor-pointer transition-all shadow-[0_12px_36px_rgba(124,58,237,0.5)] inline-flex items-center gap-2 max-md:min-h-[44px]"
+            className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-9 py-4 text-base font-extrabold cursor-pointer transition-all duration-150 shadow-[0_12px_36px_rgba(4,120,87,0.5)] hover:shadow-[0_16px_40px_rgba(4,120,87,0.6)] inline-flex items-center gap-2 max-md:min-h-[44px]"
           >
             ابدأ تجربة مجانية ٣٠ يوماً
             <ChevronLeft size={18} />
@@ -467,7 +467,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
               onClick={() => setBillingPeriod(billingPeriod === "monthly" ? "yearly" : "monthly")}
               className={cn(
                 "w-12 h-6 rounded-full relative cursor-pointer transition-all border-none",
-                billingPeriod === "yearly" ? "bg-[#7c3aed]" : "bg-white/20"
+                billingPeriod === "yearly" ? "bg-[#047857]" : "bg-white/20"
               )}
             >
               <div className={cn(
@@ -477,7 +477,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
             </button>
             <span className={cn("text-sm font-bold", billingPeriod === "yearly" ? "text-white" : "text-white/50")}>
               سنوياً
-              <Badge variant="secondary" className="ms-2 bg-[#7c3aed]/20 text-[#c4b5fd] border-[#7c3aed]/30 text-[10px]">وفّر ٢ شهر</Badge>
+              <Badge variant="secondary" className="ms-2 bg-[#047857]/20 text-[#6ee7b7] border-[#047857]/30 text-[10px]">وفّر ٢ شهر</Badge>
             </span>
           </div>
         </motion.div>
@@ -490,7 +490,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
                 tier.highlight ? "pricing-highlight" : "bg-white/[0.04] border border-white/[0.08]"
               )}>
                 {tier.badge && (
-                  <div className="absolute -top-3 start-1/2 -translate-x-1/2 bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white px-3.5 py-1 rounded-[12px] text-[11px] font-extrabold whitespace-nowrap">
+                  <div className="absolute -top-3 start-1/2 -translate-x-1/2 bg-[linear-gradient(135deg,#047857,#10b981)] text-white px-3.5 py-1 rounded-[12px] text-[11px] font-extrabold whitespace-nowrap">
                     {tier.badge}
                   </div>
                 )}
@@ -506,7 +506,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
                   <ul className="list-none p-0 m-0 mb-6 text-[13px] text-white/75">
                     {tier.features.map((f, i) => (
                       <li key={i} className="py-1.5 flex items-start gap-2">
-                        <CheckCircle2 size={14} className="text-[#a78bfa] shrink-0 mt-0.5" />
+                        <CheckCircle2 size={14} className="text-[#10b981] shrink-0 mt-0.5" />
                         <span>{f}</span>
                       </li>
                     ))}
@@ -516,7 +516,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
                     className={cn(
                       "w-full text-sm font-bold",
                       tier.highlight
-                        ? "bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white"
+                        ? "bg-[linear-gradient(135deg,#047857,#10b981)] text-white hover:brightness-110"
                         : "bg-white/10 text-white hover:bg-white/15"
                     )}
                   >
@@ -567,10 +567,10 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-white/[0.05]">
-                <th className="p-3 text-start text-[#c4b5fd] font-bold">الميزة</th>
+                <th className="p-3 text-start text-[#6ee7b7] font-bold">الميزة</th>
                 <th className="p-3 text-center font-extrabold text-white comparison-garfix rounded-t-[8px]">
                   <div className="flex items-center justify-center gap-2">
-                    <div className="w-6 h-6 rounded bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-[12px] font-black">G</div>
+                    <div className="w-6 h-6 rounded bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center text-[12px] font-black">G</div>
                     GARFIX
                   </div>
                 </th>
@@ -583,7 +583,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
               {COMPARISON_FEATURES.map((row, i) => (
                 <tr key={i} className="border-b border-white/[0.06]">
                   <td className="p-3 font-bold text-white/80">{row.featureAr}</td>
-                  <td className="p-3 text-center text-[#c4b5fd] font-bold comparison-garfix">{row.garfix}</td>
+                  <td className="p-3 text-center text-[#6ee7b7] font-bold comparison-garfix">{row.garfix}</td>
                   <td className="p-3 text-center text-white/50">{row.odoo}</td>
                   <td className="p-3 text-center text-white/50">{row.zoho}</td>
                   <td className="p-3 text-center text-white/50">{row.freshbooks}</td>
@@ -649,7 +649,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
           <Accordion type="single" collapsible className="flex flex-col gap-3">
             {FAQ_ITEMS.map((faq, i) => (
               <AccordionItem key={i} value={`faq-${i}`} className="rounded-lg landing-card border-none px-5">
-                <AccordionTrigger className="text-[15px] font-bold text-white outline-none hover:no-underline [&[data-state=open]]:text-[#c4b5fd]">
+                <AccordionTrigger className="text-[15px] font-bold text-white outline-none hover:no-underline [&[data-state=open]]:text-[#6ee7b7]">
                   {faq.q}
                 </AccordionTrigger>
                 <AccordionContent className="text-[13px] text-white/70 leading-relaxed">
@@ -669,7 +669,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
         variants={fadeUp}
         className="py-20 px-[5%] relative z-[5]"
       >
-        <div className="max-w-[900px] mx-auto p-10 md:p-[60px] md:px-10 rounded-3xl bg-[linear-gradient(135deg,rgba(124,58,237,0.2),rgba(167,139,250,0.05))] border border-[rgba(124,58,237,0.3)] text-center">
+        <div className="max-w-[900px] mx-auto p-10 md:p-[60px] md:px-10 rounded-3xl bg-[linear-gradient(135deg,rgba(4,120,87,0.2),rgba(16,185,129,0.05))] border border-[rgba(4,120,87,0.3)] text-center">
           <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-4 landing-section-title">
             جاهز لتحويل أعمالك؟
           </h2>
@@ -679,7 +679,7 @@ export default function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLan
           <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={onRegister}
-              className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer transition-all shadow-[0_12px_36px_rgba(124,58,237,0.5)] inline-flex items-center gap-2.5 max-md:min-h-[44px]"
+              className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer transition-all duration-150 shadow-[0_12px_36px_rgba(4,120,87,0.5)] hover:shadow-[0_16px_40px_rgba(4,120,87,0.6)] inline-flex items-center gap-2.5 max-md:min-h-[44px]"
             >
               <Zap size={18} />
               ابدأ الآن مجاناً

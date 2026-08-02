@@ -237,7 +237,7 @@ export function ProductPicker({
           disabled={disabled}
           className={cn(
             "pr-9 pl-8",
-            isOpen && "ring-2 ring-[#7C3AED] border-[#7C3AED]"
+            isOpen && "ring-2 ring-[#047857] border-[#047857] focus-ring"
           )}
           dir="rtl"
         />
@@ -273,7 +273,7 @@ export function ProductPicker({
                   setIsOpen(false);
                   onCreateNew?.();
                 }}
-                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-purple-50 text-[#7C3AED] transition-colors text-sm"
+                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-emerald-50 text-[#047857] transition-colors duration-120 text-sm hover-lift"
               >
                 <Plus size={16} />
                 <span>إضافة "{query}" كمنتج جديد</span>
@@ -294,14 +294,14 @@ export function ProductPicker({
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2 text-right text-sm transition-colors",
                   isSelected
-                    ? "bg-[#F5F3FF] text-[#7C3AED]"
-                    : "hover:bg-gray-50 text-gray-700"
+                    ? "bg-[#ECFDF5] text-[#047857]"
+                    : "hover:bg-gray-50 text-gray-700 hover-lift transition-all duration-120"
                 )}
               >
                 {/* Icon */}
                 <Package size={18} className={cn(
                   "flex-shrink-0",
-                  isSelected ? "text-[#7C3AED]" : "text-gray-400"
+                  isSelected ? "text-[#047857]" : "text-gray-400"
                 )} />
 
                 {/* Product Info */}

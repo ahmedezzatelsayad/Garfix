@@ -175,11 +175,11 @@ export function QuickCreateProductDialog({
       />
 
       {/* Dialog */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-[220ms]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-l from-[#F5F3FF] to-white">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-l from-[#ECFDF5] to-white">
           <div className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-[#7C3AED]" />
+            <Package className="h-5 w-5 text-[#047857]" />
             <h3 className="font-bold text-[16px] text-gray-900">إضافة منتج جديد</h3>
           </div>
           <button
@@ -212,7 +212,9 @@ export function QuickCreateProductDialog({
               placeholder="مثال: ماتور 16 دينار"
               autoFocus
               dir="rtl"
-              className="text-[14px]"
+              className={cn(
+                "text-[14px] focus-ring transition-all duration-120"
+              )}
             />
           </div>
 
@@ -227,7 +229,7 @@ export function QuickCreateProductDialog({
               onChange={(e) => updateField("code", e.target.value)}
               placeholder="مثال: MTR-16 (اختياري)"
               dir="ltr"
-              className="text-[14px]"
+              className="text-[14px] focus-ring transition-all duration-120"
             />
           </div>
 
@@ -245,7 +247,7 @@ export function QuickCreateProductDialog({
                 onChange={(e) => updateField("purchasePrice", e.target.value ? Number(e.target.value) : undefined)}
                 placeholder="0.00"
                 dir="ltr"
-                className="text-[14px]"
+                className="text-[14px] focus-ring transition-all duration-120"
               />
             </div>
 
@@ -261,7 +263,7 @@ export function QuickCreateProductDialog({
                 onChange={(e) => updateField("sellingPrice", e.target.value ? Number(e.target.value) : undefined)}
                 placeholder="0.00"
                 dir="ltr"
-                className="text-[14px]"
+                className="text-[14px] focus-ring transition-all duration-120"
               />
             </div>
           </div>
@@ -278,13 +280,13 @@ export function QuickCreateProductDialog({
                 {formData.aliases.map((alias, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-md text-xs"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-xs transition-colors duration-120 hover:bg-emerald-200"
                   >
                     {alias}
                     <button
                       type="button"
                       onClick={() => removeAlias(idx)}
-                      className="hover:text-purple-900"
+                      className="hover:text-emerald-900 transition-colors duration-120"
                     >
                       ✕
                     </button>
@@ -301,7 +303,7 @@ export function QuickCreateProductDialog({
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAlias())}
                 placeholder="أضف اسم بديل ثم اضغط Enter..."
                 dir="rtl"
-                className="text-[13px] flex-1"
+                className="text-[13px] flex-1 focus-ring transition-all duration-120"
               />
               <Button
                 type="button"
@@ -329,7 +331,7 @@ export function QuickCreateProductDialog({
             <Button
               type="submit"
               disabled={loading || !formData.name.trim()}
-              className="flex-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+              className="flex-1 bg-[#047857] hover:bg-[#065f46] text-white transition-all duration-150 active-press shadow-brand-sm"
             >
               {loading ? (
                 <>

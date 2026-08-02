@@ -394,7 +394,7 @@ export default function AIDashboardPage() {
         setData(result);
         setLastUpdate(new Date());
       } else {
-        throw new Error(result.error || 'Failed to fetch metrics');
+        throw new Error((result as any).error || 'Failed to fetch metrics');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

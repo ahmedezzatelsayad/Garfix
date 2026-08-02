@@ -34,7 +34,7 @@ const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-b
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const accentBadge = "bg-muted";
 const accentText = "";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -84,7 +84,7 @@ export function ArApView() {
           <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
         </div>
         {(tab === "pdc" || tab === "installments") && !showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> إضافة</button>
         )}
       </div>
       <div className="flex gap-1.5 flex-wrap">
@@ -114,7 +114,7 @@ export function ArApView() {
 function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSummary | null; direction: Direction; onDirectionChange: (d: Direction) => void }) {
   const rows = data?.rows || [];
   const label = direction === "receivable" ? "العميل" : "المورد";
-  const accentColor = direction === "receivable" ? "#7c3aed" : "#f59e0b";
+  const accentColor = direction === "receivable" ? "#047857" : "#f59e0b";
 
   return (
     <div className="flex flex-col gap-4">
@@ -125,15 +125,15 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
 
       {data && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+          <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
             <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", accentBadge)}><ArrowUpDown size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي {direction === "receivable" ? "الذمم المدينة" : "الذمم الدائنة"}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandTotal)}</div></div>
           </div>
-          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+          <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
             <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">حالي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandCurrent)}</div></div>
           </div>
-          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+          <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
             <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">فوق 90 يوم</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(data.grandNinetyPlus)}</div></div>
           </div>
@@ -143,7 +143,7 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {!data || rows.length === 0 ? <Empty label="بيانات التقادم" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>{label}</th>
                 <th className={cn(thStyle, "text-end")}>حالي</th>
@@ -241,28 +241,28 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
       ) : (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">{data.clientName}</div><div className="text-[13px] font-bold">رصيد افتتاحي: {fmt(data.openingBalance)}</div></div>
             </div>
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
               <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي مدين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDebit)}</div></div>
             </div>
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
               <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
               <div><div className="text-[11px] text-muted-foreground">إجمالي دائن</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCredit)}</div></div>
             </div>
-            <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", data.closingBalance >= 0 ? "bg-violet-500/20 text-violet-500" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
-              <div><div className="text-[11px] text-muted-foreground">رصيد إقفالي</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", data.closingBalance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(data.closingBalance)}</div></div>
+            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", data.closingBalance >= 0 ? "bg-emerald-600/20 text-emerald-600" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
+              <div><div className="text-[11px] text-muted-foreground">رصيد إقفالي</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", data.closingBalance >= 0 ? "text-emerald-600" : "text-red-500")}>{fmt(data.closingBalance)}</div></div>
             </div>
           </div>
 
           <div className="bg-card rounded-[14px] border border-border overflow-hidden">
             {data.lines.length === 0 ? <Empty label="حركات" /> : (
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="table-enterprise w-full border-collapse">
                   <thead><tr className="border-b border-border bg-muted">
                     <th className={thStyle}>التاريخ</th><th className={thStyle}>النوع</th><th className={thStyle}>المرجع</th>
                     <th className={cn(thStyle, "text-end")}>مدين</th><th className={cn(thStyle, "text-end")}>دائن</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
@@ -273,18 +273,18 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
                         <td className={tdStyle} dir="ltr">{l.date}</td>
                         <td className={tdStyle}>{l.type}</td>
                         <td className={cn(tdStyle, "font-mono")}>{l.reference}</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.debit > 0 ? "text-violet-500" : "")}>{l.debit ? fmt(l.debit) : "—"}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.debit > 0 ? "text-emerald-600" : "")}>{l.debit ? fmt(l.debit) : "—"}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end", l.credit > 0 ? "text-red-500" : "")}>{l.credit ? fmt(l.credit) : "—"}</td>
-                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", l.balance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(l.balance)}</td>
+                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", l.balance >= 0 ? "text-emerald-600" : "text-red-500")}>{fmt(l.balance)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-border bg-muted font-extrabold">
                       <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>رصيد إقفالي</td>
-                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-violet-500")}>{fmt(totalDebit)}</td>
+                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-emerald-600")}>{fmt(totalDebit)}</td>
                       <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(totalCredit)}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", data.closingBalance >= 0 ? "text-violet-500" : "text-red-500")}>{fmt(data.closingBalance)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", data.closingBalance >= 0 ? "text-emerald-600" : "text-red-500")}>{fmt(data.closingBalance)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -334,11 +334,11 @@ function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: s
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إجمالي الشيكات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAmount)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><Clock size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">المعلّقة</div><div className="text-lg font-extrabold [direction:ltr] text-end text-amber-500">{fmt(pendingTotal)}</div></div>
         </div>
@@ -346,7 +346,7 @@ function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: s
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {pdcs.length === 0 ? <Empty label="شيكات مؤجلة" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>رقم الشيك</th><th className={thStyle}>البنك</th><th className={thStyle}>النوع</th>
                 <th className={thStyle}>الاسم</th><th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>تاريخ الاستحقاق</th>
@@ -439,11 +439,11 @@ function InstallmentList({ installments }: { installments: Installment[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><CalendarDays size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">أقساط نشطة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalActive)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><CheckCircle2 size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">عدد الاتفاقات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{installments.length}</div></div>
         </div>
@@ -451,7 +451,7 @@ function InstallmentList({ installments }: { installments: Installment[] }) {
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {installments.length === 0 ? <Empty label="اتفاقات تقسيط" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>المرجع</th><th className={thStyle}>العميل</th><th className={cn(thStyle, "text-end")}>المبلغ</th>
                 <th className={thStyle}>عدد الأقساط</th><th className={thStyle}>المسددة</th><th className={thStyle}>القسط التالي</th><th className={thStyle}>الحالة</th>

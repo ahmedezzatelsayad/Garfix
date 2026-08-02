@@ -59,9 +59,9 @@ const STATUS_CONFIG: Record<MatchStatus, {
   "ml-learned": {
     label: "متعلم 🧠",
     icon: Brain,
-    color: "text-purple-700",
-    bgColor: "bg-purple-50",
-    borderColor: "border-purple-200",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200",
   },
   new: {
     label: "منتج جديد",
@@ -182,7 +182,7 @@ export function MatchStatusBadge({
             onOverride();
           }}
           className={cn(
-            "h-auto p-1 text-xs hover:text-[#7C3AED]",
+            "h-auto p-1 text-xs hover:text-[#047857] transition-colors duration-120",
             size === "sm" && "text-[10px]"
           )}
           title="تغيير المنتج المرتبط"

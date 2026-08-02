@@ -55,7 +55,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: <Plus size={13} />,
     userMessage: "أنشئ فاتورة جديدة",
     intent: "create_invoice",
-    color: "#7c3aed",
+    color: "#d4a574",
     params: (companySlug) => ({
       companySlug,
       clientName: "عميل افتراضي",
@@ -337,8 +337,8 @@ export function AICopilotBubble() {
       {/* Inject keyframes (no-op if already present) */}
       <style>{`
         @keyframes garfix-agent-pulse {
-          0%, 100% { box-shadow: 0 12px 32px rgba(124,58,237,0.5), 0 0 0 0 rgba(124,58,237,0.4); }
-          50%      { box-shadow: 0 16px 40px rgba(124,58,237,0.6), 0 0 0 12px rgba(124,58,237,0); }
+          0%, 100% { box-shadow: 0 12px 32px rgba(212,165,116,0.5), 0 0 0 0 rgba(212,165,116,0.4); }
+          50%      { box-shadow: 0 16px 40px rgba(212,165,116,0.6), 0 0 0 12px rgba(212,165,116,0); }
         }
         @keyframes garfix-fade-up {
           from { opacity: 0; transform: translateY(8px); }
@@ -375,12 +375,12 @@ export function AICopilotBubble() {
         }
       `}</style>
 
-      {/* Floating bubble — Garfix AI logo mark, 60px, purple gradient */}
+      {/* Floating bubble — Garfix AI logo mark, 60px, gold gradient (AI Premium) */}
       <button
         onClick={() => setOpen(!open)}
         aria-label="فتح المساعد الذكي"
         title="مساعد Garfix AI"
-        className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(124,58,237,0.5)] animate-[garfix-agent-pulse_3s_infinite] bg-[linear-gradient(135deg,#7c3aed_0%,#a78bfa_60%,#c4b5fd_100%)]"
+        className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(212,165,116,0.5)] animate-[garfix-agent-pulse_3s_infinite] ai-badge-premium bg-[linear-gradient(135deg,#d4a574_0%,#e8c49a_60%,#f5ddb0_100%)]"
       >
         {open ? <X size={26} /> : <img src="/logo.svg" alt="" className="w-[30px] h-[30px] rounded-md" />}
         {/* Small "online" indicator dot */}
@@ -402,7 +402,7 @@ export function AICopilotBubble() {
         >
           {/* Header */}
           <div
-            className="px-3 sm:px-[18px] py-2 sm:py-[14px] text-white flex items-center gap-2.5 shrink-0 bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
+            className="px-3 sm:px-[18px] py-2 sm:py-[14px] text-white flex items-center gap-2.5 shrink-0 bg-gradient-to-br from-[#d4a574] to-[#e8c49a] gradient-gold"
           >
             {/* Fullscreen toggle — top-left (RTL → visually right) */}
             <button
@@ -465,7 +465,7 @@ export function AICopilotBubble() {
                 )}
               >
                 <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-[14px] text-white shadow-[0_8px_24px_rgba(124,58,237,0.4)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-[14px] text-white shadow-[0_8px_24px_rgba(212,165,116,0.4)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                 >
                   <img src="/logo.svg" alt="" className="w-8 h-8 rounded-md" />
                 </div>
@@ -512,7 +512,7 @@ export function AICopilotBubble() {
                   <div
                     className={cn(
                       "w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0",
-                      isUser ? "bg-accent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(124,58,237,0.3)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
+                      isUser ? "bg-accent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(212,165,116,0.3)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                     )}
                   >
                     {isUser ? <User size={14} /> : <Bot size={14} />}
@@ -520,20 +520,20 @@ export function AICopilotBubble() {
                   <div
                     className={cn(
                       "px-[14px] py-2.5 rounded-xl text-[13px] leading-[1.65] max-w-[calc(100%-40px)] sm:max-w-[320px] whitespace-pre-wrap",
-                      isAgent ? "border border-purple-500/25" : "border-none",
+                      isAgent ? "border border-[#d4a574]/25" : "border-none",
                       isUser && !fullscreen ? "bg-muted text-foreground" : "",
                       isUser && fullscreen ? "bg-white/8 text-white" : "",
-                      !isUser && !isAgent && fullscreen ? "bg-violet-500/25 text-white" : "",
+                      !isUser && !isAgent && fullscreen ? "bg-emerald-900/25 text-white" : "",
                       !isUser && !isAgent && !fullscreen ? "bg-primary text-primary-foreground" : "",
                       isAgent && !fullscreen ? "" : "",
                       isAgent && fullscreen ? "text-white" : "",
                     )}
                     style={isAgent ? {
-                      background: "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(167,139,250,0.08))",
+                      background: "linear-gradient(135deg, rgba(212,165,116,0.12), rgba(232,196,154,0.08))",
                     } : undefined} /* TAILWINDBREAK: conditional gradient with rgba values */
                   >
                     {isAgent && (
-                      <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-violet-600 mb-1.5 tracking-[0.3px]">
+                      <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-amber-600 mb-1.5 tracking-[0.3px]">
                         <Bot size={11} /> AGENT ACTION {statusIcon}
                       </div>
                     )}
@@ -580,14 +580,14 @@ export function AICopilotBubble() {
             {loading && (
               <div className="flex gap-2 self-end flex-row-reverse">
                 <div
-                  className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]"
+                  className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                 >
                   <Bot size={14} />
                 </div>
                 <div
                   className={cn(
                     "px-[14px] py-2.5 rounded-xl text-[13px] flex items-center gap-1",
-                    fullscreen ? "bg-violet-500/25 text-white" : "bg-primary text-primary-foreground"
+                    fullscreen ? "bg-emerald-900/25 text-white" : "bg-primary text-primary-foreground"
                   )}
                 >
                   <span className="inline-block animate-[garfix-glow_1s_infinite]">…</span>
@@ -602,7 +602,7 @@ export function AICopilotBubble() {
               dir="rtl"
               className={cn(
                 "p-3 border-t border-border shrink-0",
-                fullscreen ? "bg-violet-500/8" : "bg-muted"
+                fullscreen ? "bg-emerald-900/8" : "bg-muted"
               )}
             >
               <div
@@ -742,8 +742,8 @@ export function AICopilotBubble() {
               aria-label="إرسال"
               disabled={loading || executing || !input.trim() || !!confirmation}
               className={cn(
-                "w-10 h-10 rounded-[10px] text-white border-none flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] bg-gradient-to-br from-[#7c3aed] to-[#a78bfa]",
-                (loading || executing || !input.trim() || !!confirmation) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                "w-10 h-10 rounded-[10px] text-white border-none flex items-center justify-center shadow-[0_4px_12px_rgba(212,165,116,0.3)] gradient-gold active-press transition-all duration-150",
+                (loading || executing || !input.trim() || !!confirmation) ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:shadow-[0_6px_16px_rgba(212,165,116,0.45)]"
               )}
             >
               <Send size={16} />

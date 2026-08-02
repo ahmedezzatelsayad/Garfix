@@ -51,8 +51,8 @@ export function AiUsageTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        <KpiCard label="نداءات اليوم" value={data.totals.callsToday} color="#7c3aed" />
-        <KpiCard label="إجمالي النداءات" value={data.totals.totalCalls} color="#7c3aed" />
+        <KpiCard label="نداءات اليوم" value={data.totals.callsToday} color="#047857" className="kpi-card-gold" />
+        <KpiCard label="إجمالي النداءات" value={data.totals.totalCalls} color="#047857" className="kpi-card-gold" />
         <KpiCard label="معدل النجاح" value={data.totals.successRate !== null ? `${data.totals.successRate}%` : "—"} color="#10b981" />
         <KpiCard label="التكلفة ($)" value={data.totals.totalCost.toFixed(4)} color="#10b981" />
         <KpiCard label="إجمالي الرموز" value={data.totals.totalTokens} color="#3b82f6" />
@@ -60,10 +60,10 @@ export function AiUsageTab() {
       </div>
 
       {/* P0.3 (AI Effectiveness prompt): per-endpoint latency + effectiveness table. */}
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Activity className="text-violet-600" size={16} />
+            <Activity className="text-emerald-600" size={16} />
             فعالية وزمن كل Endpoint ({data.perEndpoint.length})
           </h3>
           <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
@@ -74,7 +74,7 @@ export function AiUsageTab() {
           <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات استهلاك AI بعد — استخدم المساعد الذكي أو رفع فاتورة لبدء التسجيل</div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full [border-collapse:collapse]">
+            <table className="w-full [border-collapse:collapse] table-enterprise">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">Endpoint</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">النداءات</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">معدل النجاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">p50</th>
@@ -104,9 +104,9 @@ export function AiUsageTab() {
         )}
       </div>
 
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4 hover-lift">
         <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-          <Activity className="text-violet-600" size={16} />
+          <Activity className="text-emerald-600" size={16} />
           استهلاك آخر ٣٠ يوماً ({data.last30Days.length} يوم)
         </h3>
         {data.last30Days.length === 0 ? (
@@ -129,10 +129,10 @@ export function AiUsageTab() {
         <UsageTable title="حسب الموديل" rows={data.perModel.map((m) => ({ col1: m.model, col2: String(m.calls), col3: `$${m.cost.toFixed(4)}`, col4: String(m.tokens) }))} headers={["الموديل", "النداءات", "التكلفة", "الرموز"]} />
       </div>
 
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift">
         <div className="px-4 py-3 border-b border-b-[var(--border)]">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Activity className="text-violet-600" size={16} />
+            <Activity className="text-emerald-600" size={16} />
             استهلاك AI لكل شركة × شهر ({data.perCompanyMonthly.length} صف)
           </h3>
         </div>
@@ -140,7 +140,7 @@ export function AiUsageTab() {
           <div className="p-6 text-center text-[var(--muted-foreground)] text-xs">لا توجد بيانات استهلاك AI بعد</div>
         ) : (
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full [border-collapse:collapse]">
+            <table className="w-full [border-collapse:collapse] table-enterprise">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشهر</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">نداءات AI</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الرموز</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التكلفة</th>
@@ -169,7 +169,7 @@ export function AiUsageTab() {
             </h3>
           </div>
           <div className="garfix-scroll overflow-x-auto">
-            <table className="w-full [border-collapse:collapse]">
+            <table className="w-full [border-collapse:collapse] table-enterprise">
               <thead><tr className="bg-[var(--muted)]">
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الوقت</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المزود</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الموديل</th>
                 <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الشركة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الخطأ</th>
