@@ -7,7 +7,7 @@
 | Phase | Golden Validation - Evidence Generation |
 | Protocol Version | v1.0.0 (Frozen) |
 | Feature Freeze Status | **ACTIVE** |
-| Last Updated | 2026-02-02 |
+| Last Updated | 2026-08-02 |
 
 ---
 
@@ -102,6 +102,104 @@
 
 ---
 
+### DL-004: M1 Results Interpretation & Strategic Decision Required
+| Attribute | Value |
+|-----------|-------|
+| **Date** | 2026-08-02 |
+| **Decision** | Accept M1 FAIL as valid detection; Classify failures; Require strategic decision before M2 |
+| **Decision Maker** | CTO |
+| **Category** | Strategic / Data Governance |
+| **Status** | **ACTIVE - BLOCKING M2** |
+
+**M1 Execution Summary:**
+```
+Source: backup-2026-08-02_02-00-00.json (2,690 invoices)
+Tested: 500 invoices (Batch 1 target)
+Result: FAIL (5/10 gates failed)
+```
+
+**CTO Assessment of Tool Performance:**
+| Capability | Verdict |
+|------------|---------|
+| PII Detection | ✅ Success - Tool correctly identified PII in production data |
+| Supplier Bias Detection | ✅ Success - Tool flagged concentration issue |
+| Temporal Bias Detection | ✅ Success - Tool identified 2-month vs 6-month gap |
+| Template Imbalance Detection | ✅ Success - Tool detected distribution skew |
+| Overall FAIL Determination | ✅ Correct - Based on current thresholds |
+
+**Critical CTO Insight (Fundamental Question):**
+
+> "هل الـ Golden Dataset هدفها تمثيل الواقع؟ أم بناء Dataset متوازن أكاديميًا؟"
+> 
+> "هذان هدفان مختلفان تمامًا."
+
+**Decision D1: PII Handling**
+| Aspect | Detail |
+|--------|--------|
+| Gate Output | FAIL (511 PII incidents) |
+| CTO Reclassification | PRE_PROCESSING_REQUIRED (not Dataset Failed) |
+| Rationale | PII in production backup is NORMAL, not a defect |
+| Real Question | Will masked data be used for Evaluation? |
+| Action | Implement Masking Pipeline → Re-run gate on masked output |
+
+**Decision D2: Golden Dataset Purpose (BLOCKING M2)**
+| Option | Name | Requirement | Implication |
+|--------|------|-------------|-------------|
+| A | Benchmark Research Mode | Balanced distribution (≤10%/supplier) | Fair but less realistic |
+| B | Production Validation Mode | Match real production distribution | Realistic but may overfit |
+
+**Current Reality:**
+- Mahhal: 30.4% (817 invoices)
+- Laqta: 27.9% (752 invoices)
+- Tawfeer: 19.4% (522 invoices)
+- Boss: 18.8% (506 invoices)
+
+> "إذا كانت هذه الشركات تمثل الإنتاج الحقيقي، فوجود Mahhal 30% ليس خطأً. بل تقليلها إلى 10% قد يجعل الاختبار أقل واقعية."
+
+**Decision D3: Data Integrity Classification**
+| Aspect | Detail |
+|--------|--------|
+| Gate Output | FAIL (100% corruption rate) |
+| Root Cause | JSON format vs expected binary files |
+| CTO Reclassification | FORMAT_ACCEPTANCE_DECISION (not corruption) |
+| Rationale | Format difference ≠ Data corruption |
+| Action | Clarify acceptable formats in Protocol spec |
+
+**What's Working Well (Do NOT change):**
+- Ground Truth Completeness: 100% ✅
+- Inter-Annotator Agreement: 100% ✅
+- Third Review Rate: 2.40% (<3%) ✅
+- Final Consensus: 99.80% (>99%) ✅
+
+> "هذه ممتازة لأنها تعني أن مشكلة النظام ليست Label Noise"
+
+**Project Maturity Shift (CTO Observation):**
+```
+BEFORE (1 week ago):   "Is the Engine good?"
+NOW:                  "Is the data production process itself trustworthy?"
+                     → This is HEALTHY project maturation
+```
+
+**Principle Established:**
+> "لو عدلت الأداة الآن فأنت تنقل المشكلة من البيانات إلى المعيار، وهذا يضعف قيمة الـ Benchmark"
+>
+> **FIX DATA, NOT GATES**
+
+**Required Before M2:**
+1. ✅ Document PII masking pipeline
+2. 🎯 **DECIDE**: Benchmark Mode vs Production Mode for Golden Dataset
+3. ✅ Clarify acceptable data formats in Protocol
+4. ✅ Fix classified issues (data only)
+5. ✅ Re-run SAME gate tool
+6. ✅ Compare reports to validate improvement
+
+**Evidence Referenced:**
+- EV-008 (Pending): M1 Quality Gate Report
+- EV-013: M1 Failure Classification Report (`/download/m1-failure-classification.json`)
+- Source Data: `backup-2026-08-02_02-00-00.json`
+
+---
+
 ## Evidence Registry Index
 
 | ID | Artifact | Status | Location |
@@ -118,6 +216,8 @@
 | EV-010 | M1 Decision Record | **Required for M1 exit** | Pending |
 | EV-011 | Risk Acceptance Doc | As needed | N/A |
 | EV-012 | External Audit Report | As needed | N/A |
+| EV-013 | M1 Failure Classification Report | ✅ **Complete** | `/download/m1-failure-classification.json` |
+| EV-014 | M1 Real Data Analysis Report | ✅ **Complete** | `/download/batch1-real-data-report.json` |
 
 ---
 
