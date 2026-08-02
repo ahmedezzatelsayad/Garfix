@@ -263,7 +263,7 @@ class WilsonIntervalCalculator {
       marginOfError: Math.round(spread * 10000) / 10000,
       sampleSize: n,
       confidenceLevel: confidence,
-      formatted: this._formatInterval(center - spread, center + spread, p)
+      formatted: this._formatInterval(center - spread, center + spread, p, n) // CTO: Include n=
     };
   }
 
@@ -289,9 +289,12 @@ class WilsonIntervalCalculator {
     return zScores[confidence] || 1.96;
   }
 
-  _formatInterval(lower, upper, point) {
+  _formatInterval(lower, upper, point, sampleSize = null) {
     const toPercent = (v) => (v * 100).toFixed(2) + '%';
-    return `${toPercent(point)} [${toPercent(lower)} – ${toPercent(upper)}]`;
+    const base = `${toPercent(point)} [${toPercent(lower)} – ${toPercent(upper)}]`;
+    // CTO REQUEST: Always show sample size to prevent misleading impressions
+    const nStr = sampleSize ? ` | n=${sampleSize}` : '';
+    return `${base}${nStr}`;
   }
 
   _interpretFMR(result) {
@@ -369,14 +372,28 @@ class ErrorBudgetManager {
 
     // Avoid division by zero for overall percentage
     const overallPct = totalBudget > 0 ? ((totalBudget - totalRemaining) / totalBudget) * 100 : 0;
+    
+    // CTO RULE: If ANY individual budget is exceeded → Overall = BUDGET_EXCEEDED
+    let anyExceeded = false;
+    for (const info of Object.values(remaining)) {
+      if (info.status === 'EXCEEDED') {
+        anyExceeded = true;
+        break;
+      }
+    }
 
     return {
       byType: remaining,
       totalRemaining: Math.round(totalRemaining * 10000) / 10000,
       totalBudget: totalBudget,
       overallPercentageUsed: Math.round(overallPct * 100) / 100,
-      isWithinBudget: totalRemaining >= 0,
-      verdict: totalRemaining >= 0 ? 'WITHIN_BUDGET' : 'BUDGET_EXCEEDED'
+      isWithinBudget: !anyExceeded, // True only if ALL budgets are within limits
+      verdict: !anyExceeded ? 'ALL_WITHIN_BUDGET' : 'BUDGET_EXCEEDED',
+      exceededTypes: anyExceeded 
+        ? Object.entries(remaining)
+            .filter(([, info]) => info.status === 'EXCEEDED')
+            .map(([type]) => type)
+        : []
     };
   }
 
@@ -388,11 +405,15 @@ class ErrorBudgetManager {
     
     return {
       protocolVersion: BENCHMARK_PROTOCOL.version,
-      status: budget.verdict,
+      status: budget.verdict, // ALL_WITHIN_BUDGET or BUDGET_EXCEEDED
       summary: {
         totalBudget: (budget.totalBudget * 100).toFixed(2) + '%',
         remaining: (budget.totalRemaining * 100).toFixed(2) + '%',
-        used: (budget.overallPercentageUsed).toFixed(2) + '%'
+        used: (budget.overallPercentageUsed).toFixed(2) + '%',
+        // NEW: Explicit reason for failure
+        reason: budget.verdict === 'BUDGET_EXCEEDED' 
+          ? `Exceeded budgets: ${budget.exceededTypes.join(', ')}`
+          : 'All individual budgets within limits'
       },
       breakdown: budget.byType,
       recommendations: this._generateRecommendations(budget)
@@ -859,31 +880,36 @@ class RobustnessTestSuite {
         threshold: criteria.minimumPassRate
       },
       budgetCheck: {
-        passed: budget?.status === 'WITHIN_BUDGET',
+        passed: this._checkOverallBudgetStatus(budget),
         actual: budget?.status || 'UNKNOWN',
-        threshold: 'WITHIN_BUDGET'
+        threshold: 'ALL_BUDGETS_WITHIN_LIMITS',
+        details: budget?.breakdown ? this._getExceededBudgets(budget.breakdown) : []
       }
     };
 
     const allPassed = Object.values(checks).every(c => c.passed);
     
+    // NEW EXPLICIT VERDICT SYSTEM (CTO-approved)
     let verdict, rationale;
     
     if (!checks.difficultyCheck.passed) {
-      verdict = 'CONDITIONAL_PASS';
-      rationale = 'Results promising but dataset too easy for conclusive evidence';
-    } else if (allPassed) {
-      verdict = 'PASS';
-      rationale = 'All robustness criteria met on meaningful difficulty dataset';
+      verdict = 'FAILED';
+      rationale = 'Dataset too easy for meaningful validation';
+    } else if (!allPassed) {
+      verdict = 'FAILED';
+      rationale = 'One or more gate criteria not met';
+    } else if (results.validationLevel === 'SYNTHETIC_WITH_STRESS_SCENARIOS') {
+      verdict = 'PASSED_SYNTHETIC';
+      rationale = 'All criteria met on synthetic data | Golden Dataset validation required for promotion';
+    } else if (results.validationLevel === 'GOLDEN_DATASET') {
+      verdict = 'PASSED_GOLDEN';
+      rationale = 'All criteria met on real production data | Ready for Pilot consideration';
+    } else if (results.validationLevel === 'PRODUCTION_PILOT') {
+      verdict = 'PASSED_PRODUCTION';
+      rationale = 'All criteria met in production pilot | System production-ready';
     } else {
-      verdict = 'FAIL';
-      rationale = 'One or more robustness criteria not met';
-    }
-
-    // Add disclaimer about synthetic data
-    if (results.validationLevel === 'SYNTHETIC_WITH_STRESS_SCENARIOS') {
-      verdict = verdict === 'PASS' ? 'PASS_SYNTHETIC_ONLY' : verdict;
-      rationale += ' | ⚠️ VALIDATION ON GOLDEN DATASET REQUIRED FOR PRODUCTION';
+      verdict = 'NOT_EXECUTED';
+      rationale = 'Gate has not been executed yet';
     }
 
     return {
@@ -897,10 +923,20 @@ class RobustnessTestSuite {
   }
 
   _generateOverallAssessment(verdict, checks, results) {
+    const readinessMap = {
+      'NOT_EXECUTED': { eng: 'GATE_NOT_RUN', prod: 'NOT_READY' },
+      'FAILED': { eng: 'NEEDS_IMPROVEMENT', prod: 'NOT_READY' },
+      'PASSED_SYNTHETIC': { eng: 'ENGINEERING_CANDIDATE_READY', prod: 'NOT_READY_REQUIRES_GOLDEN_VALIDATION' },
+      'PASSED_GOLDEN': { eng: 'READY_FOR_PILOT', prod: 'PILOT_CANDIDATE' },
+      'PASSED_PRODUCTION': { eng: 'PRODUCTION_VERIFIED', prod: 'PRODUCTION_READY' }
+    };
+    
+    const readiness = readinessMap[verdict] || readinessMap['NOT_EXECUTED'];
+    
     return {
       summary: `Gate 1.5: ${verdict}`,
-      engineeringReadiness: verdict.includes('PASS') ? 'ENGINEERING_CANDIDATE_READY' : 'NEEDS_IMPROVEMENT',
-      productionReadiness: 'NOT_READY_REQUIRES_GOLDEN_VALIDATION',
+      engineeringReadiness: readiness.eng,
+      productionReadiness: readiness.prod,
       
       strengths: this._identifyStrengths(results),
       weaknesses: this._identifyWeaknesses(checks, results),
@@ -920,8 +956,8 @@ class RobustnessTestSuite {
     if (results.datasetDifficulty.score >= 40) {
       strengths.push('Tested on meaningfully difficult dataset');
     }
-    if (results.errorBudgetReport.verdict === 'WITHIN_BUDGET') {
-      strengths.push('Error consumption within allocated budgets');
+    if (results.errorBudgetReport?.status === 'ALL_WITHIN_BUDGET') {
+      strengths.push('All error budgets within allocated limits');
     }
     
     return strengths.length > 0 ? strengths : ['No significant strengths identified'];
@@ -944,7 +980,7 @@ class RobustnessTestSuite {
   }
 
   _recommendNextSteps(verdict) {
-    if (verdict.includes('PASS')) {
+    if (verdict.startsWith('PASSED')) {
       return [
         '1. FREEZE current benchmark protocol (already done)',
         '2. Acquire Golden Dataset from real production data',
@@ -960,6 +996,41 @@ class RobustnessTestSuite {
       '3. Iterate until Gate 1.5 passes',
       '4. Then proceed to Golden Dataset validation'
     ];
+  }
+
+  /**
+   * CTO-APPROVED: Individual budget exceed = Overall FAILED
+   * In SRE practice, exceeding ANY budget means the system is not within budget
+   */
+  _checkOverallBudgetStatus(budgetReport) {
+    if (!budgetReport?.breakdown) return false;
+    
+    // Check if ANY individual budget is exceeded
+    for (const [type, info] of Object.entries(budgetReport.breakdown)) {
+      if (info.status === 'EXCEEDED') {
+        return false; // One exceeded = all failed
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Get list of exceeded budgets for detailed reporting
+   */
+  _getExceededBudgets(breakdown) {
+    const exceeded = [];
+    for (const [type, info] of Object.entries(breakdown)) {
+      if (info.status === 'EXCEEDED') {
+        exceeded.push({
+          type: type,
+          budget: info.budget,
+          consumed: info.consumed,
+          overage: +(info.consumed - info.budget).toFixed(4)
+        });
+      }
+    }
+    return exceeded;
   }
 }
 
