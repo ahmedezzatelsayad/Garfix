@@ -200,6 +200,181 @@ NOW:                  "Is the data production process itself trustworthy?"
 
 ---
 
+### DL-005: M2 Unblock Decision - Strategic Prioritization
+| Attribute | Value |
+|-----------|-------|
+| **Date** | 2026-08-02 |
+| **Decision** | **M2 STARTS NOW** - Only 2 blocking conditions, rest execute in parallel |
+| **Decision Maker** | CTO |
+| **Category** | Strategic / Execution |
+| **Status** | **APPROVED - M2 UNBLOCKED** |
+
+**CTO Core Principle:**
+> "أكبر خطأ يمكن أن تقعوا فيه الآن هو تأجيل M2 حتى تصبح البيانات 'مثالية'. البيانات المثالية لا تأتي في البداية؛ تأتي بعد عدة دورات من القياس والتحسين."
+
+---
+
+#### **القرار #1: Supplier Distribution ✅ مُحسم**
+
+| البند | القرار |
+|-------|--------|
+| **الخيار المختار** | **REALISTIC MODE** |
+| **السبب** | الهدف = تقييم Invoice Brain داخل GarfiX (Production) |
+| **التطبيق** | احتفظ بالتوزيع الحقيقي كما هو |
+
+**التوزيع الموثق (Realistic):**
+| المورد | النسبة | الملاحظة |
+|--------|--------|----------|
+| Mahhal | 30.4% (817 فاتورة) | أكبر مورد - هذا واقعي |
+| Laqta | 27.9% (752 فاتورة) | ثاني أكبر مورد |
+| Tawfeer | 19.4% (522 فاتورة) | ثالث أكبر مورد |
+| Boss | 18.8% (506 فاتورة) | رابع أكبر مورد |
+| Others | 3.5% (95 فاتورة) | باقي الموردين |
+
+> **"إذا كان الهدف تقييم Invoice Brain داخل GarfiX فاختياري سيكون: Realistic. لأن الإنتاج الحقيقي لن يكون متوازنًا."**
+
+**المطلوب:** تقرير يذكر التوزيع الفعلي دون محاولة إجبار التوازن.
+
+---
+
+#### **القرار #2: PII Handling ✅ مُحسم**
+
+| البند | القرار |
+|-------|--------|
+| **التصنيف** | ليست مشكلة Dataset |
+| **المكان الصحيح** | مرحلة قبل Dataset (Pre-processing Pipeline) |
+
+**Pipeline:**
+```
+Raw Data (Backup)
+      ↓
+[PII Masking Step] ← هنا يتم الحل مرة واحدة
+      ↓
+Golden Dataset (Clean)
+```
+
+> **"دي مرحلة قبل الـ Dataset. خلصها مرة واحدة وانتهت."**
+
+---
+
+#### **القرار #3: Historical Data ✅ مُحسم**
+
+| البند | القرار |
+|-------|--------|
+| **هل يوقف M2؟** | ❌ لا |
+| **الحل** | ابدأ بما عندك، أضف لاحقاً |
+
+**التوثيق المطلوب:**
+```
+Current Coverage: June 2026 - August 2026 (2 months)
+Target Coverage: 12 months
+Status: PARTIAL - Will expand in future iterations
+```
+
+> **"لا توقف المشروع بسببها. ابدأ بما عندك. واكتب بوضوح: Current Coverage = 2 months"**
+
+---
+
+#### **القرار #4: Template Diversity ✅ مُحسم**
+
+| البند | القرار |
+|-------|--------|
+| **هل يوقف M2؟** | ❌ لا |
+| **الحل** | سجّل المتاح، أضف تدريجيًا |
+
+**Template Inventory (Current + Future):**
+| القالب | الحالي | مستقبلاً |
+|--------|--------|----------|
+| ERP (Shared) | ~95% | ✅ متوفر |
+| Thermal Printer | قليل | 📥 اجمع |
+| WhatsApp Photo | قليل | 📥 اجمع |
+| Scan/Photo | قليل | 📥 اجمع |
+| Camera Capture | قليل | 📥 اجمع |
+
+> **"اعمل قائمة وأضفها تدريجيًا. لا تؤخر M2."**
+
+---
+
+#### **القرار #5: Input Format ✅ مُحسم (الأهم تقنيًا)**
+
+| البند | القرار |
+|-------|--------|
+| **Input to Engine** | **PDF / Image** فقط |
+| **Ground Truth** | **JSON** فقط |
+| **JSON كـ Input?** | ❌ مرفوض |
+
+**المنطق:**
+```
+Invoice Brain Pipeline:
+┌─────────────┐    ┌─────────┐    ┌─────┐    ┌─────┐
+│ PDF / Image │ → │   OCR   │ → │ LLM │ → │Output│
+└─────────────┘    └─────────┘    └─────┘    └─────┘
+       ↑                   ↑              ↑
+    Golden Dataset     Engine         Ground Truth
+    (PDF/Images)       Process        (JSON for comparison)
+```
+
+> **"لو Invoice Brain بيستقبل PDF/Image → OCR → LLM، يبقى الـ Golden Dataset لازم يكون PDF+Images وليس JSON. JSON هو Ground Truth فقط."**
+
+---
+
+### 🎯 **M2 Blocking Conditions (فقط 2 فقط)**
+
+```
+╔═══════════════════════════════════════════════════════════╗
+║           M2 READINESS CHECKLIST (FINAL)                  ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  ✅ BLOCKER #1: Dataset Purpose Documented                 ║
+║     ┌─────────────────────────────────────────────────┐   ║
+║     │ Mode: REALISTIC (Production Validation)          │   ║
+║     │ Rationale: GarfiX production is not balanced     │   ║
+║     │ Distribution: As-is (Mahhal 30%, etc.)           │   ║
+║     │ Status: ✅ DECIDED & DOCUMENTED                  │   ║
+║     └─────────────────────────────────────────────────┘   ║
+║                                                           ║
+║  ✅ BLOCKER #2: Input Format Defined                       ║
+║     ┌─────────────────────────────────────────────────┐   ║
+║     │ Engine Input:  PDF / Image files                │   ║
+║     │ Ground Truth:  JSON annotations                  │   ║
+║     │ Status: ✅ DECIDED & DOCUMENTED                  │   ║
+║     └─────────────────────────────────────────────────┘   ║
+║                                                           ║
+║  ⏳ NON-BLOCKING (Execute during M2):                     ║
+║     • PII Masking Pipeline (pre-processing step)          ║
+║     • Historical Data Collection (currently 2 months)      ║
+║     • Template Diversity expansion (gradual)              ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+```
+
+---
+
+### 📊 **M1 Final Status**
+
+| البند | الحالة |
+|------|--------|
+| **M1 Execution** | ✅ مكتمل |
+| **M1 Result** | FAIL (متوقع - بيانات أولية) |
+| **Failures Classified** | ✅ 5 مشاكل مصنفة |
+| **Strategic Decisions Made** | ✅ 5 قرارات |
+| **M2 Blocked?** | ❌ **UNBLOCKED** |
+| **Next Action** | **ابدأ M2 فوراً** |
+
+---
+
+### 🎯 **Execution Priority (CTO Order)**
+
+| الأولوية | البند | الحالة | الفعل |
+|----------|-------|--------|-------|
+| 🔴 1 | Supplier Distribution | ✅ **مُحسم** | Realistic Mode |
+| 🔴 2 | JSON vs PDF | ✅ **مُحسّم** | PDF=Input, JSON=GT |
+| 🟡 3 | PII Masking | ✅ مفهوم | Pipeline step |
+| 🟡 4 | Historical Data | ✅ لا يوقف | ابدأ بشهرين |
+| 🟡 5 | Template Diversity | ✅ لا يوقف | اجمع تدريجياً |
+
+---
+
 ## Evidence Registry Index
 
 | ID | Artifact | Status | Location |
