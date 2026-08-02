@@ -1,15 +1,29 @@
+// GarfiX DS v4.0 Enhanced — Template Settings Form
+// Features: .hover-lift cards, .focus-ring inputs, .active-press buttons, emerald accents
 "use client";
 
 import { useState } from "react";
 import { useInvoiceTemplates, useUpdateSettings } from "@/hooks/queries";
 import { toast } from "sonner";
-import { Save, FileText, Palette, Type, LayoutTemplate, Stamp, CreditCard, ImageIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  Save, 
+  FileText, 
+  Palette, 
+  Type, 
+  LayoutTemplate, 
+  Stamp, 
+  CreditCard, 
+  ImageIcon,
+  Loader2,
+  CheckCircle2
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import {
   type TemplateSettingsForm,
   defaultTemplateSettings,
@@ -41,7 +55,7 @@ export function TemplateSettingsForm({ companySlug }: TemplateSettingsFormProps)
       const s = data.templateSettings as Record<string, unknown>;
       setTemplateForm({
         templateId: (s.templateId as string) || "modern",
-        primaryColor: (s.primaryColor as string) || "#7C3AED",
+        primaryColor: (s.primaryColor as string) || "#047857",
         fontFamily: (s.fontFamily as string) || "Noto Sans SC",
         fontSize: (s.fontSize as number) || 12,
         showLogo: (s.showLogo as boolean) ?? true,
@@ -63,9 +77,9 @@ export function TemplateSettingsForm({ companySlug }: TemplateSettingsFormProps)
         slug: companySlug,
         ...templateForm,
       } as Parameters<typeof updateSettings.mutateAsync>[0]);
-      toast.success("تم حفظ إعدادات القالب");
+      toast.success("تم حفظ إعدادات القالب بنجاح");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "خطأ");
+      toast.error(err instanceof Error ? err.message : "خطأ في حفظ الإعدادات");
     }
   };
 
@@ -82,101 +96,141 @@ export function TemplateSettingsForm({ companySlug }: TemplateSettingsFormProps)
   const savingTemplate = updateSettings.isPending;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileText size={18} className="text-primary" />
-          إعدادات قوالب PDF
-        </CardTitle>
-        <CardDescription>
-          خصّص مظهر الفواتير وعروض الأسعار المطبوعة كـ PDF
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-            جارٍ التحميل...
-          </div>
-        ) : (
-          <>
-            {/* ── Template selector ─────────────────────────────────── */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <LayoutTemplate size={14} /> اختر القالب
-              </Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {TEMPLATES.map((t) => (
+    <div className="space-y-6">
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="state-loading min-h-[300px]">
+          <div className="state-loading-spinner" />
+          <p className="text-sm text-muted-foreground">جارٍ تحميل إعدادات القالب...</p>
+        </div>
+      ) : (
+        <>
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 1: Template Selector Grid (.hover-lift cards)
+             ══════════════════════════════════════════════════════════ */}
+          <section className="space-y-3">
+            <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+              <LayoutTemplate size={14} className="text-primary" />
+              اختر قالب PDF
+            </Label>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {TEMPLATES.map((t) => {
+                const isSelected = templateForm.templateId === t.id;
+                return (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setTemplateForm((p) => ({ ...p, templateId: t.id }))}
-                    className={`relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-4 transition-all cursor-pointer text-center ${
-                      templateForm.templateId === t.id
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border hover:border-primary/40 hover:bg-muted/50"
-                    }`}
+                    className={cn(
+                      "relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 sm:p-5",
+                      "transition-all duration-120 ease-out cursor-pointer text-center",
+                      "hover-lift focus-ring active-press",
+                      isSelected
+                        ? "border-primary bg-primary/8 shadow-brand-sm"
+                        : "border-border hover:border-primary/50 hover:bg-primary/[0.03]"
+                    )}
                   >
-                    <span className="text-2xl">{t.icon}</span>
-                    <span className="text-sm font-bold">{t.label}</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">{t.desc}</span>
-                    {templateForm.templateId === t.id && (
-                      <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-primary" />
+                    {/* Selected indicator dot */}
+                    {isSelected && (
+                      <span className="absolute top-2 start-2 w-3 h-3 rounded-full bg-primary shadow-brand-xs animate-pulse-slow" />
+                    )}
+                    
+                    {/* Template icon */}
+                    <span className={cn(
+                      "text-3xl transition-transform duration-120",
+                      isSelected && "scale-110"
+                    )}>
+                      {t.icon}
+                    </span>
+                    
+                    {/* Template name */}
+                    <span className={cn(
+                      "text-sm font-bold",
+                      isSelected ? "text-primary" : "text-foreground"
+                    )}>
+                      {t.label}
+                    </span>
+                    
+                    {/* Template description */}
+                    <span className="text-[10px] text-muted-foreground leading-tight">
+                      {t.desc}
+                    </span>
+
+                    {/* Selected checkmark */}
+                    {isSelected && (
+                      <CheckCircle2 size={16} className="text-primary absolute bottom-2 end-2" />
                     )}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </section>
 
-            {/* ── Color + Font row ──────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Primary color */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                  <Palette size={14} /> اللون الرئيسي
-                </Label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={templateForm.primaryColor}
-                    onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
-                    className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-background p-0.5"
-                  />
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 2: Color + Font Settings Row
+             ══════════════════════════════════════════════════════════ */}
+          <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            {/* Primary color picker */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Palette size={14} className="text-primary" />
+                اللون الرئيسي
+              </Label>
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/30 transition-colors duration-120">
+                <input
+                  type="color"
+                  value={templateForm.primaryColor}
+                  onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
+                  className="w-11 h-11 shrink-0 cursor-pointer rounded-lg border-2 border-border bg-background p-0.5 focus-ring transition-all duration-120 hover:border-primary/40"
+                />
+                <div className="flex-1 space-y-1">
                   <input
                     type="text"
                     value={templateForm.primaryColor}
                     onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
-                    className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm font-mono"
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm font-mono focus-ring transition-all duration-120"
                     dir="ltr"
                     maxLength={7}
                   />
+                  <div 
+                    className="h-2 rounded-full border border-border"
+                    style={{ background: templateForm.primaryColor }}
+                  />
                 </div>
               </div>
+            </div>
 
-              {/* Font family */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                  <Type size={14} /> نوع الخط
-                </Label>
-                <Select
-                  value={templateForm.fontFamily}
-                  onValueChange={(v) => setTemplateForm((p) => ({ ...p, fontFamily: v }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FONTS.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Font family selector */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Type size={14} className="text-primary" />
+                نوع الخط
+              </Label>
+              <Select
+                value={templateForm.fontFamily}
+                onValueChange={(v) => setTemplateForm((p) => ({ ...p, fontFamily: v }))}
+              >
+                <SelectTrigger className="w-full focus-ring transition-all duration-120 hover:border-primary/40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONTS.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Font size */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">
-                  حجم الخط ({templateForm.fontSize}px)
-                </Label>
+            {/* Font size slider */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                حجم الخط
+                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-bold ms-auto">
+                  {templateForm.fontSize}px
+                </span>
+              </Label>
+              <div className="p-3 rounded-lg border border-border bg-card">
                 <input
                   type="range"
                   min={8}
@@ -184,107 +238,189 @@ export function TemplateSettingsForm({ companySlug }: TemplateSettingsFormProps)
                   step={1}
                   value={templateForm.fontSize}
                   onChange={(e) => setTemplateForm((p) => ({ ...p, fontSize: Number(e.target.value) }))}
-                  className="w-full accent-primary"
+                  className="w-full accent-primary h-2 cursor-pointer"
                 />
+                <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
+                  <span>8px</span>
+                  <span>24px</span>
+                </div>
               </div>
             </div>
+          </section>
 
-            {/* ── Toggle switches ───────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Show Logo */}
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer">
-                  <ImageIcon size={14} /> إظهار الشعار
-                </Label>
-                <Switch
-                  checked={templateForm.showLogo}
-                  onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showLogo: v }))}
-                />
-              </div>
-
-              {/* Show Payment Info */}
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer">
-                  <CreditCard size={14} /> معلومات الدفع
-                </Label>
-                <Switch
-                  checked={templateForm.showPaymentInfo}
-                  onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showPaymentInfo: v }))}
-                />
-              </div>
-
-              {/* Show Stamp */}
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <Label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground cursor-pointer">
-                  <Stamp size={14} /> إظهار الختم
-                </Label>
-                <Switch
-                  checked={templateForm.showStamp}
-                  onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showStamp: v }))}
-                />
-              </div>
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 3: Toggle Switches Grid
+             ══════════════════════════════════════════════════════════ */}
+          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {/* Show Logo Toggle */}
+            <div className={cn(
+              "flex items-center justify-between rounded-xl border p-4",
+              "transition-all duration-120 ease-out hover-lift",
+              templateForm.showLogo 
+                ? "border-primary/30 bg-primary/[0.03]" 
+                : "border-border bg-card hover:border-primary/20"
+            )}>
+              <Label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                <ImageIcon size={16} className={cn(templateForm.showLogo ? "text-primary" : "text-muted-foreground")} />
+                <span>إظهار الشعار</span>
+              </Label>
+              <Switch
+                checked={templateForm.showLogo}
+                onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showLogo: v }))}
+                className="data-[state=checked]:bg-primary"
+              />
             </div>
 
-            {/* ── Logo position ─────────────────────────────────────── */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">موضع الشعار</Label>
-              <div className="flex gap-2">
-                {(["right", "center", "left"] as const).map((pos) => {
-                  const labels: Record<string, string> = { right: "يمين", center: "وسط", left: "يسار" };
-                  return (
-                    <button
-                      key={pos}
-                      type="button"
-                      onClick={() => setTemplateForm((p) => ({ ...p, logoPosition: pos }))}
-                      className={`flex-1 rounded-lg border-2 py-2 text-sm font-medium transition-all cursor-pointer ${
-                        templateForm.logoPosition === pos
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-border hover:border-primary/40"
-                      }`}
-                    >
-                      {labels[pos]}
-                    </button>
-                  );
-                })}
-              </div>
+            {/* Show Payment Info Toggle */}
+            <div className={cn(
+              "flex items-center justify-between rounded-xl border p-4",
+              "transition-all duration-120 ease-out hover-lift",
+              templateForm.showPaymentInfo 
+                ? "border-primary/30 bg-primary/[0.03]" 
+                : "border-border bg-card hover:border-primary/20"
+            )}>
+              <Label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                <CreditCard size={16} className={cn(templateForm.showPaymentInfo ? "text-primary" : "text-muted-foreground")} />
+                <span>معلومات الدفع</span>
+              </Label>
+              <Switch
+                checked={templateForm.showPaymentInfo}
+                onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showPaymentInfo: v }))}
+                className="data-[state=checked]:bg-primary"
+              />
             </div>
 
-            {/* ── Invoice types multi-select ─────────────────────────── */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground">أنواع الفواتير المطبّق عليها القالب</Label>
-              <div className="flex flex-wrap gap-3">
-                {INVOICE_TYPE_OPTIONS.map((opt) => (
+            {/* Show Stamp Toggle */}
+            <div className={cn(
+              "flex items-center justify-between rounded-xl border p-4",
+              "transition-all duration-120 ease-out hover-lift",
+              templateForm.showStamp 
+                ? "border-primary/30 bg-primary/[0.03]" 
+                : "border-border bg-card hover:border-primary/20"
+            )}>
+              <Label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                <Stamp size={16} className={cn(templateForm.showStamp ? "text-primary" : "text-muted-foreground")} />
+                <span>إظهار الختم</span>
+              </Label>
+              <Switch
+                checked={templateForm.showStamp}
+                onCheckedChange={(v) => setTemplateForm((p) => ({ ...p, showStamp: v }))}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+          </section>
+
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 4: Logo Position Selector
+             ══════════════════════════════════════════════════════════ */}
+          <section className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground">موضع الشعار</Label>
+            <div className="flex gap-3">
+              {(["right", "center", "left"] as const).map((pos) => {
+                const labels: Record<string, string> = { right: "يمين", center: "وسط", left: "يسار" };
+                const isSelected = templateForm.logoPosition === pos;
+                return (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => setTemplateForm((p) => ({ ...p, logoPosition: pos }))}
+                    className={cn(
+                      "flex-1 py-3 px-4 rounded-xl text-sm font-semibold",
+                      "transition-all duration-120 ease-out cursor-pointer",
+                      "focus-ring active-press hover-lift",
+                      isSelected
+                        ? "bg-primary text-primary-foreground shadow-brand-sm border border-primary"
+                        : "bg-card border border-border text-foreground hover:border-primary/40 hover:bg-primary/[0.03]"
+                    )}
+                  >
+                    {labels[pos]}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 5: Invoice Types Multi-select (emerald checkboxes)
+             ══════════════════════════════════════════════════════════ */}
+          <section className="space-y-3">
+            <Label className="text-xs font-semibold text-muted-foreground">
+              أنواع الفواتير المطبّق عليها القالب
+            </Label>
+            <div className="flex flex-wrap gap-3">
+              {INVOICE_TYPE_OPTIONS.map((opt) => {
+                const isSelected = templateForm.invoiceTypes.includes(opt.id);
+                return (
                   <label
                     key={opt.id}
-                    className="flex items-center gap-2 cursor-pointer rounded-lg border border-border px-3 py-2 transition-all hover:bg-muted/50 has-[button[data-state=checked]]:border-primary has-[button[data-state=checked]]:bg-primary/5"
+                    className={cn(
+                      "flex items-center gap-2.5 cursor-pointer rounded-xl px-4 py-2.5",
+                      "border-2 transition-all duration-120 ease-out hover-lift",
+                      "focus-within:ring-2 focus-within:ring-primary/30",
+                      isSelected
+                        ? "border-primary bg-primary/[0.05] shadow-brand-xs"
+                        : "border-border bg-card hover:border-primary/30 hover:bg-primary/[0.02]"
+                    )}
                   >
                     <Checkbox
-                      checked={templateForm.invoiceTypes.includes(opt.id)}
+                      checked={isSelected}
                       onCheckedChange={() => toggleInvoiceType(opt.id)}
+                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
                     />
-                    <span className="text-sm">{opt.label}</span>
+                    <span className={cn(
+                      "text-sm font-medium",
+                      isSelected ? "text-primary" : "text-foreground"
+                    )}>
+                      {opt.label}
+                    </span>
+                    {isSelected && (
+                      <CheckCircle2 size={14} className="text-primary" />
+                    )}
                   </label>
-                ))}
+                );
+              })}
+            </div>
+            
+            {/* Validation warning */}
+            {templateForm.invoiceTypes.length === 0 && (
+              <div className="flex items-center gap-2 mt-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <span className="text-destructive text-xs font-semibold">
+                  ⚠️ يجب اختيار نوع فاتورة واحد على الأقل
+                </span>
               </div>
-              {templateForm.invoiceTypes.length === 0 && (
-                <p className="text-xs text-destructive">يجب اختيار نوع فاتورة واحد على الأقل</p>
-              )}
-            </div>
+            )}
+          </section>
 
-            {/* ── Save button ───────────────────────────────────────── */}
-            <div className="flex justify-end pt-2">
-              <Button
-                onClick={saveTemplateSettings}
-                disabled={savingTemplate || templateForm.invoiceTypes.length === 0}
-                className="gap-2"
-              >
-                <Save size={14} />
-                {savingTemplate ? "جارٍ الحفظ…" : "حفظ إعدادات القالب"}
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          {/* ══════════════════════════════════════════════════════════
+              SECTION 6: Save Button (DS v4.0 - Primary Emerald)
+             ══════════════════════════════════════════════════════════ */}
+          <div className="flex justify-end pt-4 border-t border-border">
+            <Button
+              onClick={saveTemplateSettings}
+              disabled={savingTemplate || templateForm.invoiceTypes.length === 0}
+              className={cn(
+                "gap-2 py-2.5 px-6 rounded-xl font-bold",
+                "gradient-primary text-white shadow-brand-sm",
+                "hover:gradient-primary-hover hover:shadow-brand-md",
+                "transition-all duration-150 ease-out",
+                "focus-ring active-press"
+              )}
+            >
+              {savingTemplate ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  جارٍ الحفظ…
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  حفظ إعدادات القالب
+                </>
+              )}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
