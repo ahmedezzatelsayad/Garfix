@@ -105,37 +105,37 @@ export default function SignupPage() {
 
   if (user) return null;
 
-  // Success screen — shown after the API returns 200
+  // Success screen — shown after the API returns 200 — DS v4.0 Celebration
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
         <header className="px-6 py-5">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
+              <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-lg">GarfiX EOS</span>
+            <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
           </div>
         </header>
         <main className="flex-1 flex items-center justify-center px-4 py-8">
-          <Card className="w-full max-w-md shadow-lg">
+          <Card className="w-full max-w-md kpi-card-gold shadow-brand-xl border-emerald-500/20">
             <CardHeader className="space-y-2 text-center">
-              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-[#d4a574] to-[#c9956a] flex items-center justify-center shadow-gold-sm animate-pulse">
+                <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-2xl">Account request received</CardTitle>
-              <CardDescription>
-                If this email isn&apos;t already registered, your account has been
-                created. You&apos;ll be redirected to the sign-in page shortly.
+              <CardTitle className="text-2xl text-foreground">تم استلام طلبك بنجاح!</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                إذا لم يكن البريد مسجلاً مسبقاً، تم إنشاء حسابك.
+                <br />سيتم تحويلك لتسجيل الدخول خلال ثوانٍ...
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button
                 type="button"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-brand-md active-press duration-150 transition-all"
                 onClick={() => router.push("/login")}
               >
-                Continue to sign in
+                الانتقال لتسجيل الدخول →
               </Button>
             </CardContent>
           </Card>
@@ -145,25 +145,26 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+      {/* Header — DS v4.0 Emerald Branding */}
       <header className="px-6 py-5">
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <BarChart3 className="h-5 w-5 text-primary" />
+          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
+            <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-lg">GarfiX EOS</span>
+          <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
         </div>
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md shadow-lg">
+        <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
           <CardHeader className="space-y-2 text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <UserPlus className="h-6 w-6 text-primary" />
+            <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-md">
+              <UserPlus className="h-7 w-7 text-white" />
             </div>
-            <CardTitle className="text-2xl">Create your GarfiX account</CardTitle>
-            <CardDescription>
-              Start managing invoices, accounting, HR, and more — all in one place.
+            <CardTitle className="text-2xl text-foreground">إنشاء حساب GarfiX جديد</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              ابدأ إدارة فواتيرك ومحاسبتك والموارد البشرية — كل شيء في مكان واحد
             </CardDescription>
           </CardHeader>
 
@@ -172,7 +173,7 @@ export default function SignupPage() {
               {error && (
                 <div
                   role="alert"
-                  className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                  className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 glass"
                 >
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span className="break-words">{error}</span>
@@ -188,9 +189,10 @@ export default function SignupPage() {
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Ahmed Garfi"
+                  placeholder="أحمد جارفيكس"
                   disabled={submitting}
                   autoFocus
+                  className="focus-ring transition-all duration-150"
                 />
               </div>
 
@@ -205,6 +207,7 @@ export default function SignupPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   disabled={submitting}
+                  className="focus-ring transition-all duration-150"
                 />
               </div>
 
@@ -218,6 +221,7 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={submitting}
+                  className="focus-ring transition-all duration-150"
                 />
                 {/* Password strength meter */}
                 {password.length > 0 && (
@@ -226,33 +230,33 @@ export default function SignupPage() {
                       {[0, 1, 2, 3, 4].map((i) => (
                         <div
                           key={i}
-                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                          className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${
                             i < pwdScore
                               ? pwdScore <= 2
                                 ? "bg-red-500"
                                 : pwdScore === 3
-                                ? "bg-amber-500"
+                                ? "bg-[#d4a574]"
                                 : "bg-emerald-500"
-                              : "bg-muted"
+                              : "bg-muted-foreground/20"
                           }`}
                         />
                       ))}
                     </div>
                     <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                      <li className={pwdChecks.length ? "text-emerald-600 dark:text-emerald-400" : ""}>
-                        {pwdChecks.length ? "✓" : "•"} 10+ characters
+                      <li className={pwdChecks.length ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.length ? "✓" : "•"} 10+ حرف
                       </li>
-                      <li className={pwdChecks.upper ? "text-emerald-600 dark:text-emerald-400" : ""}>
-                        {pwdChecks.upper ? "✓" : "•"} Uppercase letter
+                      <li className={pwdChecks.upper ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.upper ? "✓" : "•"} حرف كبير
                       </li>
-                      <li className={pwdChecks.lower ? "text-emerald-600 dark:text-emerald-400" : ""}>
-                        {pwdChecks.lower ? "✓" : "•"} Lowercase letter
+                      <li className={pwdChecks.lower ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.lower ? "✓" : "•"} حرف صغير
                       </li>
-                      <li className={pwdChecks.digit ? "text-emerald-600 dark:text-emerald-400" : ""}>
-                        {pwdChecks.digit ? "✓" : "•"} Number
+                      <li className={pwdChecks.digit ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.digit ? "✓" : "•"} رقم
                       </li>
-                      <li className={pwdChecks.symbol ? "text-emerald-600 dark:text-emerald-400" : ""}>
-                        {pwdChecks.symbol ? "✓" : "•"} Special character
+                      <li className={pwdChecks.symbol ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.symbol ? "✓" : "•"} رمز خاص
                       </li>
                     </ul>
                   </div>
@@ -263,23 +267,23 @@ export default function SignupPage() {
             <CardFooter className="flex flex-col gap-3">
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-brand-md active-press duration-150 transition-all"
                 disabled={submitting || !email || !password || !displayName}
               >
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating account…
+                    جارٍ إنشاء الحساب…
                   </>
                 ) : (
-                  "Create account"
+                  "إنشاء الحساب"
                 )}
               </Button>
 
               <p className="text-sm text-muted-foreground text-center">
-                Already have an account?{" "}
-                <Link href="/login" className="font-medium text-primary underline hover:opacity-80">
-                  Sign in
+                لديك حساب بالفعل؟{" "}
+                <Link href="/login" className="font-medium text-emerald-400 hover:text-emerald-300 underline transition-colors duration-120 hover-lift">
+                  تسجيل الدخول
                 </Link>
               </p>
 
@@ -299,8 +303,8 @@ export default function SignupPage() {
         </Card>
       </main>
 
-      <footer className="px-6 py-4 text-center text-xs text-muted-foreground">
-        GarfiX EOS — AI-Native Business Platform
+      <footer className="px-6 py-4 text-center text-xs text-muted-foreground border-t border-emerald-500/20">
+        GarfiX EOS v4.0 — AI-Native Business Platform &middot; <span className="text-emerald-500">Powered by Emerald</span>
       </footer>
     </div>
   );

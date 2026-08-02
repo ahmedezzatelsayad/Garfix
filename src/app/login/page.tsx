@@ -88,27 +88,27 @@ export default function LoginPage() {
   if (user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      {/* Header — minimal, no nav, just the logo */}
+    <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+      {/* Header — minimal, no nav, just the logo — DS v4.0 Emerald Branding */}
       <header className="px-6 py-5">
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <BarChart3 className="h-5 w-5 text-primary" />
+          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
+            <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-lg">GarfiX EOS</span>
+          <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
         </div>
       </header>
 
       {/* Centered login card */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md shadow-lg">
+        <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
           <CardHeader className="space-y-2 text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <ShieldCheck className="h-6 w-6 text-primary" />
+            <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-md">
+              <ShieldCheck className="h-7 w-7 text-white" />
             </div>
-            <CardTitle className="text-2xl">Sign in to GarfiX</CardTitle>
-            <CardDescription>
-              Enter your credentials to access the accounting dashboard.
+            <CardTitle className="text-2xl text-foreground">تسجيل الدخول</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              أدخل بياناتك للوصول إلى لوحة التحكم
             </CardDescription>
           </CardHeader>
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
               {error && (
                 <div
                   role="alert"
-                  className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                  className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 glass"
                 >
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span className="break-words">{error}</span>
@@ -136,6 +136,7 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   disabled={submitting}
                   autoFocus
+                  className="focus-ring transition-all duration-150"
                 />
               </div>
 
@@ -149,6 +150,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={submitting}
+                  className="focus-ring transition-all duration-150"
                 />
               </div>
             </CardContent>
@@ -156,23 +158,23 @@ export default function LoginPage() {
             <CardFooter className="flex flex-col gap-3">
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-brand-md active-press duration-150 transition-all"
                 disabled={submitting || !email || !password}
               >
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Signing in…
+                    جارٍ تسجيل الدخول…
                   </>
                 ) : (
-                  "Sign in"
+                  "تسجيل الدخول"
                 )}
               </Button>
 
               <p className="text-sm text-muted-foreground text-center">
-                Don&apos;t have an account?{" "}
-                <Link href="/signup" className="font-medium text-primary underline hover:opacity-80">
-                  Create one
+                ليس لديك حساب؟{" "}
+                <Link href="/signup" className="font-medium text-emerald-400 hover:text-emerald-300 underline transition-colors duration-120 hover-lift">
+                  إنشاء حساب جديد
                 </Link>
               </p>
 
@@ -192,8 +194,8 @@ export default function LoginPage() {
         </Card>
       </main>
 
-      <footer className="px-6 py-4 text-center text-xs text-muted-foreground">
-        GarfiX EOS — AI-Native Business Platform
+      <footer className="px-6 py-4 text-center text-xs text-muted-foreground border-t border-emerald-500/20">
+        GarfiX EOS v4.0 — AI-Native Business Platform &middot; <span className="text-emerald-500">Powered by Emerald</span>
       </footer>
     </div>
   );
