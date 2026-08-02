@@ -1,1972 +1,3388 @@
 /**
- * Invoice Brain Benchmark Verification Suite v4.0
- * =====================================================
- * AUDITS THE BENCHMARK ITSELF before judging the Engine
+ * Invoice Brain Benchmark Verification Suite v1.0
+ * ==================================================
+ * PRODUCTION-GRADE VERIFICATION FRAMEWORK
  * 
- * Implements:
- * 1. Root Cause Attribution - Every False Match has ONE specific reason
- * 2. Benchmark Invariants - Mathematical assertions that MUST hold
- * 3. Per-Candidate Decision Trace - Full visibility at each filter stage
- * 4. Fixed Confusion Matrix - Proper TN/FN distinction
- * 5. Golden Dataset Framework - Structure for real invoice data
+ * Implements CTO-mandated verification components:
  * 
- * @version 4.0-Verification
- * @author Invoice Brain Team
- * @status AUDITING MEASUREMENT SYSTEM
+ * 1. THREE-LAYER INVARIANT SYSTEM:
+ *    - Layer 1: Mathematical (Confusion Matrix consistency)
+ *    - Layer 2: Pipeline (Flow integrity)
+ *    - Layer 3: Business (Domain rules)
+ * 
+ * 2. TREE-STRUCTURED ROOT CAUSE ATTRIBUTION:
+ *    - FALSE_MATCH → Candidate Selection / Ranking / Validation
+ *    - Each leaf node is actionable root cause
+ * 
+ * 3. DETAILED DECISION TRACE:
+ *    - Every stage logged
+ *    - Rejected candidates with scores & thresholds
+ *    - Full explainability for CTO-level debugging
+ * 
+ * 4. PROPERTY-BASED TESTING:
+ *    - 100k+ random scenarios
+ *    - Automatic invariant validation
+ *    - CI-ready failure detection
+ * 
+ * 5. BENCHMARK CONFIDENCE SCORE:
+ *    - Multi-factor confidence calculation
+ *    - Prevents "0.00% FMR ready for production" traps
+ * 
+ * @version 1.0.0-Verification
+ * @status: PRODUCTION-READY (after property-based testing passes)
  */
 
 // ============================================================
-// SECTION 1: ROOT CAUSE ATTRIBUTION SYSTEM
+// SECTION 1: THREE-LAYER INVARIANT SYSTEM
 // ============================================================
-// Every False Match must have EXACTLY ONE root cause.
-// No more grouping everything under "Semantic Scoring".
 
-class RootCauseAttributor {
+/**
+ * BenchmarkInvariantChecker - 3-Layer Self-Consistency Validation
+ * 
+ * LAYER 1 - MATHEMATICAL INVARIANTS:
+ *   - TP + FP + FN + TN === totalInvoices
+ *   - Precision_computed === TP/(TP+FP)
+ *   - Recall_computed === TP/(TP+FN)
+ *   - F1_computed === 2*(P*R)/(P+R)
+ * 
+ * LAYER 2 - PIPELINE INVARIANTS:
+ *   - Input count === Output count
+ *   - Candidate counts never negative
+ *   - Exactly one decision per invoice
+ *   - Every invoice has a trace
+ * 
+ * LAYER 3 - BUSINESS INVARIANTS:
+ *   - TRN mismatch → NO pattern match allowed
+ *   - Tenant isolation never violated
+ *   - Currency mismatch below threshold
+ *   - Layout hash consistency
+ */
+class BenchmarkInvariantChecker {
   constructor() {
-    // Root cause categories - MUTUALLY EXCLUSIVE
-    this.rootCauses = {
-      // Stage 1: Candidate Selection
-      SUPPLIER_GATE_BYPASS: {
-        code: 'SUPPLIER_GATE_BYPASS',
-        description: 'Supplier Ownership Gate was bypassed - cross-supplier candidate allowed',
-        stage: 'CANDIDATE_SELECTION',
-        severity: 'CRITICAL',
-        count: 0,
-        samples: []
-      },
-      CANDIDATE_POOL_BUG: {
-        code: 'CANDIDATE_POOL_BUG',
-        description: 'Wrong candidates in pool - tenant isolation failed',
-        stage: 'CANDIDATE_SELECTION',
-        severity: 'CRITICAL',
-        count: 0,
-        samples: []
-      },
+    this.results = {
+      layer1: { passed: [], failed: [], warnings: [] },
+      layer2: { passed: [], failed: [], warnings: [] },
+      layer3: { passed: [], failed: [], warnings: [] }
+    };
+    
+    this.invariants = {
+      mathematical: [
+        { id: 'M001', name: 'ConfusionMatrixCompleteness', severity: 'CRITICAL' },
+        { id: 'M002', name: 'PrecisionConsistency', severity: 'CRITICAL' },
+        { id: 'M003', name: 'RecallConsistency', severity: 'CRITICAL' },
+        { id: 'M004', name: 'F1Consistency', severity: 'HIGH' },
+        { id: 'M005', name: 'FMRConsistency', severity: 'CRITICAL' },
+        { id: 'M006', name: 'NoImpossibleStates', severity: 'CRITICAL' },
+        { id: 'M007', name: 'SpecificityConsistency', severity: 'MEDIUM' },
+        { id: 'M008', name: 'NPVConsistency', severity: 'MEDIUM' }
+      ],
+      pipeline: [
+        { id: 'P001', name: 'InputOutputCountMatch', severity: 'CRITICAL' },
+        { id: 'P002', name: 'NonNegativeCandidateCounts', severity: 'CRITICAL' },
+        { id: 'P003', name: 'SingleDecisionPerInvoice', severity: 'CRITICAL' },
+        { id: 'P004', name: 'EveryInvoiceHasTrace', severity: 'HIGH' },
+        { id: 'P005', name: 'NoOrphanDecisions', severity: 'HIGH' },
+        { id: 'P006', name: 'StageMonotonicity', severity: 'MEDIUM' },
+        { id: 'P007', name: 'TimestampOrdering', severity: 'LOW' }
+      ],
+      business: [
+        { id: 'B001', name: 'TRNMismatchBlocksMatch', severity: 'CRITICAL' },
+        { id: 'B002', name: 'TenantIsolationIntegrity', severity: 'CRITICAL' },
+        { id: 'B003', name: 'CurrencyMismatchThreshold', severity: 'HIGH' },
+        { id: 'B004', name: 'LayoutHashConsistency', severity: 'HIGH' },
+        { id: 'B005', name: 'SupplierIdentityGate', severity: 'CRITICAL' },
+        { id: 'B006', name: 'CrossFieldValidation', severity: 'HIGH' },
+        { id: 'B007', name: 'NoGhostPatterns', severity: 'MEDIUM' },
+        { id: 'B008', name: 'VersionCompatibility', severity: 'MEDIUM' }
+      ]
+    };
+  }
+
+  /**
+   * Run all invariants and return comprehensive result
+   */
+  runAllInvariants(benchmarkResult) {
+    console.log('═'.repeat(80));
+    console.log('  BENCHMARK INVARIANT CHECKER - FULL SUITE');
+    console.log('═'.repeat(80));
+    
+    // Reset results
+    this.results = {
+      layer1: { passed: [], failed: [], warnings: [] },
+      layer2: { passed: [], failed: [], warnings: [] },
+      layer3: { passed: [], failed: [], warnings: [] }
+    };
+
+    // Layer 1: Mathematical Invariants
+    console.log('\n📐 LAYER 1: MATHEMATICAL INVARIANTS');
+    console.log('─'.repeat(60));
+    this._runMathematicalInvariants(benchmarkResult);
+    
+    // Layer 2: Pipeline Invariants  
+    console.log('\n🔧 LAYER 2: PIPELINE INVARIANTS');
+    console.log('─'.repeat(60));
+    this._runPipelineInvariants(benchmarkResult);
+    
+    // Layer 3: Business Invariants
+    console.log('\n🏢 LAYER 3: BUSINESS INVARIANTS');
+    console.log('─'.repeat(60));
+    this._runBusinessInvariants(benchmarkResult);
+
+    return this.generateReport();
+  }
+
+  // ============================================================
+  // LAYER 1: MATHEMATICAL INVARIANTS
+  // ============================================================
+
+  _runMathematicalInvariants(result) {
+    const matrix = result.confusionMatrix || {};
+    const metrics = result.metrics || {};
+    const total = result.totalInvoices || 0;
+
+    // M001: Confusion Matrix Completeness
+    this._checkInvariant('layer1', 'M001', 'ConfusionMatrixCompleteness', () => {
+      const tp = matrix.tp || 0;
+      const fp = matrix.fp || 0;
+      const fn = matrix.fn || 0;
+      const tn = matrix.tn || 0;
+      const sum = tp + fp + fn + tn;
       
-      // Stage 2: Ranking/Scoring
-      SEMANTIC_SCORE_SELECTED_WRONG: {
-        code: 'SEMANTIC_SCORE_SELECTED_WRONG',
-        description: 'Semantic scoring ranked wrong candidate highest',
-        stage: 'SEMANTIC_RANKING',
-        severity: 'HIGH',
-        count: 0,
-        samples: []
-      },
-      TIE_BREAKING_FAILURE: {
-        code: 'TIE_BREAKING_FAILURE',
-        description: 'Tie-breaking logic selected wrong candidate',
-        stage: 'SEMANTIC_RANKING',
-        severity: 'MEDIUM',
-        count: 0,
-        samples: []
-      },
-      SIMILARITY_BUG: {
-        code: 'SIMILARITY_BUG',
-        description: 'String similarity calculation error',
-        stage: 'SEMANTIC_RANKING',
-        severity: 'HIGH',
-        count: 0,
-        samples: []
-      },
-      
-      // Stage 3: Threshold/Decision
-      THRESHOLD_TOO_LOW: {
-        code: 'THRESHOLD_TOO_LOW',
-        description: 'Confidence threshold too low - accepted bad match',
-        stage: 'DECISION_POLICY',
-        severity: 'HIGH',
-        count: 0,
-        samples: []
-      },
-      THRESHOLD_TOO_HIGH: {
-        code: 'THRESHOLD_TOO_HIGH',
-        description: 'Confidence threshold too high - rejected good match (becomes FN)',
-        stage: 'DECISION_POLICY',
-        severity: 'MEDIUM',
-        count: 0,
-        samples: []
-      },
-      DECISION_POLICY_ERROR: {
-        code: 'DECISION_POLICY_ERROR',
-        description: 'Decision policy routed incorrectly',
-        stage: 'DECISION_POLICY',
-        severity: 'HIGH',
-        count: 0,
-        samples: []
-      },
-      
-      // Stage 4: Data Issues
-      SHARED_LAYOUT_COLLISION: {
-        code: 'SHARED_LAYOUT_COLLISION',
-        description: 'Multiple suppliers share same layout (ERP collision)',
-        stage: 'DATA_QUALITY',
-        severity: 'HIGH',
-        count: 0,
-        samples: []
-      },
-      OCR_NOISE_IMPACT: {
-        code: 'OCR_NOISE_IMPACT',
-        description: 'OCR errors caused incorrect scoring',
-        stage: 'DATA_QUALITY',
-        severity: 'MEDIUM',
-        count: 0,
-        samples: []
-      },
-      DATASET_BIAS: {
-        code: 'DATASET_BIAS',
-        description: 'Synthetic dataset bias caused unrealistic scenario',
-        stage: 'DATA_QUALITY',
-        severity: 'INFO',
-        count: 0,
-        samples: []
+      if (sum !== total) {
+        throw new InvariantViolationError(
+          `TP(${tp}) + FP(${fp}) + FN(${fn}) + TN(${tn}) = ${sum}, expected ${total}`,
+          { actual: sum, expected: total, delta: sum - total }
+        );
       }
-    };
-    
-    this.attributions = []; // All attributions with full context
-  }
-  
-  /**
-   * Attribute a single False Match to its ROOT CAUSE
-   * @param {Object} context - Full decision context for this invoice
-   * @returns {Object} Attribution result
-   */
-  attributeFalseMatch(context) {
-    const { invoice, decisionTrace, candidates, selectedCandidate } = context;
-    
-    // Determine root cause through decision tree analysis
-    let rootCause = this.analyzeRootCause(context);
-    
-    // Record attribution
-    const attribution = {
-      invoiceId: invoice.id,
-      actualSupplierId: invoice.supplierId,
-      predictedSupplierId: decisionTrace.matchedSupplierId,
-      rootCause: rootCause.code,
-      rootCauseDescription: rootCause.description,
-      stage: rootCause.stage,
-      severity: rootCause.severity,
-      confidence: decisionTrace.confidence,
-      candidateCount: candidates.length,
-      hadSharedLayout: invoice.hasSharedLayout || false,
-      hadOcrError: invoice.hasOcrError || false,
-      timestamp: new Date().toISOString()
-    };
-    
-    this.attributions.push(attribution);
-    rootCause.count++;
-    rootCause.samples.push(attribution);
-    
-    return attribution;
-  }
-  
-  /**
-   * Analyze WHY this specific False Match occurred
-   * Uses decision trace to determine exact failure point
-   */
-  analyzeRootCause(context) {
-    const { invoice, decisionTrace, candidates, selectedCandidate } = context;
-    
-    // Check 1: Was Supplier Gate bypassed?
-    if (this.checkSupplierGateBypass(context)) {
-      return this.rootCauses.SUPPLIER_GATE_BYPASS;
-    }
-    
-    // Check 2: Candidate pool issue (wrong tenant)?
-    if (this.checkCandidatePoolBug(context)) {
-      return this.rootCauses.CANDIDATE_POOL_BUG;
-    }
-    
-    // Check 3: Shared layout collision?
-    if (invoice.hasSharedLayout && candidates.length > 1) {
-      // Further check: was it the scoring or just the collision?
-      const correctCandidate = candidates.find(c => c.supplierId === invoice.supplierId);
-      const wrongCandidate = selectedCandidate;
+      return { tp, fp, fn, tn, total, match: true };
+    });
+
+    // M002: Precision Consistency
+    this._checkInvariant('layer1', 'M002', 'PrecisionConsistency', () => {
+      const computedPrecision = metrics.precision || 0;
+      const tp = matrix.tp || 0;
+      const fp = matrix.fp || 0;
       
-      if (correctCandidate && wrongCandidate) {
-        const correctScore = decisionTrace.candidateScores?.[correctCandidate.supplierId];
-        const wrongScore = decisionTrace.candidateScores?.[wrongCandidate.supplierId];
+      if (tp + fp > 0) {
+        const expectedPrecision = tp / (tp + fp);
+        const diff = Math.abs(computedPrecision - expectedPrecision);
         
-        if (wrongScore && correctScore && wrongScore > correctScore) {
-          // Scores were different - semantic scoring chose wrong
-          return this.rootCauses.SEMANTIC_SCORE_SELECTED_WRONG;
-        } else if (wrongScore && correctScore && Math.abs(wrongScore - correctScore) < 0.05) {
-          // Very close scores - tie breaking issue
-          return this.rootCauses.TIE_BREAKING_FAILURE;
+        if (diff > 0.0001) { // Allow floating point tolerance
+          throw new InvariantViolationError(
+            `Reported Precision ${computedPrecision} ≠ Matrix-derived ${expectedPrecision}`,
+            { reported: computedPrecision, expected: expectedPrecision, diff }
+          );
+        }
+        return { reported: computedPrecision, expected: expectedPrecision, match: true };
+      }
+      return { note: 'Cannot compute precision (TP+FP=0)' };
+    });
+
+    // M003: Recall Consistency
+    this._checkInvariant('layer1', 'M003', 'RecallConsistency', () => {
+      const computedRecall = metrics.recall || 0;
+      const tp = matrix.tp || 0;
+      const fn = matrix.fn || 0;
+      
+      if (tp + fn > 0) {
+        const expectedRecall = tp / (tp + fn);
+        const diff = Math.abs(computedRecall - expectedRecall);
+        
+        if (diff > 0.0001) {
+          throw new InvariantViolationError(
+            `Reported Recall ${computedRecall} ≠ Matrix-derived ${expectedRecall}`,
+            { reported: computedRecall, expected: expectedRecall, diff }
+          );
+        }
+        return { reported: computedRecall, expected: expectedRecall, match: true };
+      }
+      return { note: 'Cannot compute recall (TP+FN=0)' };
+    });
+
+    // M004: F1 Consistency
+    this._checkInvariant('layer1', 'M004', 'F1Consistency', () => {
+      const computedF1 = metrics.f1Score || 0;
+      const precision = metrics.precision || 0;
+      const recall = metrics.recall || 0;
+      
+      if (precision + recall > 0) {
+        const expectedF1 = 2 * (precision * recall) / (precision + recall);
+        const diff = Math.abs(computedF1 - expectedF1);
+        
+        if (diff > 0.0001) {
+          throw new InvariantViolationError(
+            `Reported F1 ${computedF1} ≠ Derived from P(${precision})*R(${recall}) = ${expectedF1}`,
+            { reported: computedF1, expected: expectedF1, diff }
+          );
+        }
+        return { reported: computedF1, expected: expectedF1, match: true };
+      }
+      return { note: 'Cannot compute F1 (P+R=0)' };
+    });
+
+    // M005: FMR Consistency (CRITICAL for Invoice Brain)
+    this._checkInvariant('layer1', 'M005', 'FMRConsistency', () => {
+      const computedFMR = metrics.fmr || 0;
+      const tp = matrix.tp || 0;
+      const fp = matrix.fp || 0;
+      
+      if (tp + fp > 0) {
+        const expectedFMR = fp / (tp + fp);
+        const diff = Math.abs(computedFMR - expectedFMR);
+        
+        if (diff > 0.0001) {
+          throw new InvariantViolationError(
+            `Reported FMR ${(computedFMR*100).toFixed(2)}% ≠ Matrix-derived ${(expectedFMR*100).toFixed(2)}%`,
+            { reported: computedFMR, expected: expectedFMR, diff, impact: 'CRITICAL' }
+          );
+        }
+        return { reportedFMR: `${(computedFMR*100).toFixed(2)}%`, expectedFMR: `${(expectedFMR*100).toFixed(2)}%`, match: true };
+      }
+      return { note: 'Cannot compute FMR (TP+FP=0)' };
+    });
+
+    // M006: No Impossible States
+    this._checkInvariant('layer1', 'M006', 'NoImpossibleStates', () => {
+      const issues = [];
+      const tp = matrix.tp || 0;
+      const fp = matrix.fp || 0;
+      const fn = matrix.fn || 0;
+      const tn = matrix.tn || 0;
+      const fmr = metrics.fmr || 0;
+
+      // DANGER: FN=0 means system NEVER rejects anything
+      if (fn === 0 && total > 0) {
+        issues.push({
+          type: 'DANGER',
+          message: 'FN=0: System NEVER rejects any invoice (Recall=100%)',
+          implication: 'This explains high FP - Decision Policy always routes to pattern',
+          recommendation: 'Investigate threshold configuration'
+        });
+      }
+
+      // WARNING: TN=0 when AI fallback exists
+      if (tn === 0 && result.aiFallbackCount > 0) {
+        issues.push({
+          type: 'WARNING',
+          message: 'TN=0 but AI fallback cases exist',
+          implication: 'AI fallback not properly classified as TN',
+          recommendation: 'Review TN classification logic'
+        });
+      }
+
+      // CRITICAL: FP>0 but FMR=0
+      if (fp > 0 && fmr === 0) {
+        issues.push({
+          type: 'CRITICAL',
+          message: `FP=${fp} but FMR reported as 0%`,
+          implication: 'FMR calculation is broken or wrong metric used',
+          recommendation: 'Fix FMR computation immediately'
+        });
+      }
+
+      // IMPOSSIBLE: All zeros with non-zero total
+      if (tp === 0 && fp === 0 && fn === 0 && tn === 0 && total > 0) {
+        issues.push({
+          type: 'IMPOSSIBLE',
+          message: 'All confusion matrix values are zero but total > 0',
+          implication: 'Benchmark did not run or results corrupted',
+          recommendation: 'Re-run benchmark completely'
+        });
+      }
+
+      if (issues.length > 0) {
+        throw new InvariantViolationError(
+          `Found ${issues.length} impossible/dangerous states`,
+          { issues }
+        );
+      }
+
+      return { status: 'All states valid', checksPerformed: 4 };
+    });
+
+    // M007: Specificity Consistency
+    this._checkInvariant('layer1', 'M007', 'SpecificityConsistency', () => {
+      const computedSpecificity = metrics.specificity || 0;
+      const tn = matrix.tn || 0;
+      const fp = matrix.fp || 0;
+      
+      if (tn + fp > 0) {
+        const expectedSpecificity = tn / (tn + fp);
+        const diff = Math.abs(computedSpecificity - expectedSpecificity);
+        
+        if (diff > 0.0001) {
+          throw new InvariantViolationError(
+            `Specificity mismatch: ${computedSpecificity} vs ${expectedSpecificity}`,
+            { reported: computedSpecificity, expected: expectedSpecificity }
+          );
         }
       }
-      return this.rootCauses.SHARED_LAYOUT_COLLISION;
-    }
-    
-    // Check 4: Threshold issue?
-    if (decisionTrace.confidence > 0.7 && !decisionTrace.isCorrectMatch) {
-      // High confidence but wrong match - threshold should be higher
-      return this.rootCauses.THRESHOLD_TOO_LOW;
-    }
-    
-    // Check 5: OCR noise impact?
-    if (invoice.hasOcrError) {
-      return this.rootCauses.OCR_NOISE_IMPACT;
-    }
-    
-    // Default: Semantic scoring selected wrong candidate
-    return this.rootCauses.SEMANTIC_SCORE_SELECTED_WRONG;
+      return { specificity: computedSpecificity };
+    });
+
+    // M008: NPV (Negative Predictive Value) Consistency
+    this._checkInvariant('layer1', 'M008', 'NPVConsistency', () => {
+      const computedNPV = metrics.npv || 0;
+      const tn = matrix.tn || 0;
+      const fn = matrix.fn || 0;
+      
+      if (tn + fn > 0) {
+        const expectedNPV = tn / (tn + fn);
+        const diff = Math.abs(computedNPV - expectedNPV);
+        
+        if (diff > 0.0001) {
+          throw new InvariantViolationError(
+            `NPV mismatch: ${computedNPV} vs ${expectedNPV}`,
+            { reported: computedNPV, expected: expectedNPV }
+          );
+        }
+      }
+      return { npv: computedNPV };
+    });
   }
-  
-  checkSupplierGateBypass(context) {
-    const { decisionTrace, selectedCandidate, invoice } = context;
-    // If we matched a candidate from a different tenant, gate was bypassed
-    return selectedCandidate && selectedCandidate.tenantId !== invoice.tenantId;
+
+  // ============================================================
+  // LAYER 2: PIPELINE INVARIANTS
+  // ============================================================
+
+  _runPipelineInvariants(result) {
+    const pipelineData = result.pipelineData || {};
+    const decisions = result.decisions || [];
+    const traces = result.traces || [];
+
+    // P001: Input/Output Count Match
+    this._checkInvariant('layer2', 'P001', 'InputOutputCountMatch', () => {
+      const inputCount = pipelineData.inputCount || 0;
+      const outputCount = decisions.length;
+      
+      if (inputCount !== outputCount) {
+        throw new InvariantViolationError(
+          `Pipeline input (${inputCount}) ≠ output (${outputCount})`,
+          { inputCount, outputCount, lost: inputCount - outputCount },
+          'CRITICAL'
+        );
+      }
+      return { inputCount, outputCount, integrity: 'PASSED' };
+    });
+
+    // P002: Non-Negative Candidate Counts
+    this._checkInvariant('layer2', 'P002', 'NonNegativeCandidateCounts', () => {
+      const stages = pipelineData.stageCounts || {};
+      const violations = [];
+      
+      for (const [stage, count] of Object.entries(stages)) {
+        if (count < 0) {
+          violations.push({ stage, count });
+        }
+      }
+      
+      if (violations.length > 0) {
+        throw new InvariantViolationError(
+          `Negative candidate counts detected`,
+          { violations },
+          'CRITICAL'
+        );
+      }
+      
+      return { stages, status: 'All counts non-negative' };
+    });
+
+    // P003: Single Decision Per Invoice
+    this._checkInvariant('layer2', 'P003', 'SingleDecisionPerInvoice', () => {
+      const decisionMap = new Map();
+      const duplicates = [];
+      
+      for (const decision of decisions) {
+        const invoiceId = decision.invoiceId;
+        if (decisionMap.has(invoiceId)) {
+          duplicates.push({
+            invoiceId,
+            firstDecision: decisionMap.get(invoiceId).decision,
+            secondDecision: decision.decision
+          });
+        } else {
+          decisionMap.set(invoiceId, decision);
+        }
+      }
+      
+      if (duplicates.length > 0) {
+        throw new InvariantViolationError(
+          `${duplicates.length} invoices have multiple decisions`,
+          { samples: duplicates.slice(0, 5) },
+          'CRITICAL'
+        );
+      }
+      
+      return { uniqueInvoices: decisionMap.size, totalDecisions: decisions.length };
+    });
+
+    // P004: Every Invoice Has Trace
+    this._checkInvariant('layer2', 'P004', 'EveryInvoiceHasTrace', () => {
+      const tracedIds = new Set(traces.map(t => t.invoiceId));
+      const decisionIds = new Set(decisions.map(d => d.invoiceId));
+      const missingTraces = [];
+      
+      for (const invoiceId of decisionIds) {
+        if (!tracedIds.has(invoiceId)) {
+          missingTraces.push(invoiceId);
+        }
+      }
+      
+      if (missingTraces.length > 0) {
+        throw new InvariantViolationError(
+          `${missingTraces.length} invoices missing decision traces`,
+          { missingCount: missingTraces.length, samples: missingTraces.slice(0, 10) },
+          'HIGH'
+        );
+      }
+      
+      return { tracedInvoices: tracedIds.size, totalInvoices: decisionIds.size };
+    });
+
+    // P005: No Orphan Decisions (decisions without corresponding input)
+    this._checkInvariant('layer2', 'P005', 'NoOrphanDecisions', () => {
+      const inputIds = new Set(pipelineData.inputIds || []);
+      const orphanDecisions = [];
+      
+      for (const decision of decisions) {
+        if (!inputIds.has(decision.invoiceId)) {
+          orphanDecisions.push(decision.invoiceId);
+        }
+      }
+      
+      if (orphanDecisions.length > 0) {
+        throw new InvariantViolationError(
+          `${orphanDecisions.length} orphan decisions found`,
+          { orphans: orphanDecisions.slice(0, 10) },
+          'HIGH'
+        );
+      }
+      
+      return { status: 'No orphans found' };
+    });
+
+    // P006: Stage Monotonicity (candidates should decrease or stay same through pipeline)
+    this._checkInvariant('layer2', 'P006', 'StageMonotonicity', () => {
+      const stageCounts = pipelineData.stageCounts || {};
+      const stageOrder = ['initial', 'afterTenantFilter', 'afterSupplierGate', 'afterSemanticRank', 'final'];
+      const violations = [];
+      
+      let prevCount = Infinity;
+      for (const stage of stageOrder) {
+        const count = stageCounts[stage];
+        if (count !== undefined && count > prevCount) {
+          violations.push({
+            stage,
+            count,
+            previousStageCount: prevCount,
+            increase: count - prevCount
+          });
+        }
+        prevCount = count || prevCount;
+      }
+      
+      if (violations.length > 0) {
+        // Warning only - some stages might add candidates (e.g., fuzzy matching)
+        this._addWarning('layer2', 'P006', 'StageMonotonicity', 
+          `Candidate count increased at ${violations.length} stage(s)`, { violations });
+      } else {
+        return { status: 'Monotonicity preserved' };
+      }
+    });
+
+    // P007: Timestamp Ordering
+    this._checkInvariant('layer2', 'P007', 'TimestampOrdering', () => {
+      // Check that traces are in chronological order per invoice
+      let orderingIssues = 0;
+      
+      for (const trace of traces) {
+        const stages = trace.stages || [];
+        for (let i = 1; i < stages.length; i++) {
+          if (new Date(stages[i].timestamp) < new Date(stages[i-1].timestamp)) {
+            orderingIssues++;
+          }
+        }
+      }
+      
+      if (orderingIssues > 0) {
+        this._addWarning('layer2', 'P007', 'TimestampOrdering',
+          `${orderingIssues} timestamp ordering issues found`);
+      }
+      
+      return { orderingIssues };
+    });
   }
-  
-  checkCandidatePoolBug(context) {
-    const { candidates, invoice } = context;
-    // If pool contains candidates from wrong tenants
-    const wrongTenantCandidates = candidates.filter(c => c.tenantId !== invoice.tenantId);
-    return wrongTenantCandidates.length > 0;
+
+  // ============================================================
+  // LAYER 3: BUSINESS INVARIANTS
+  // ============================================================
+
+  _runBusinessInvariants(result) {
+    const decisions = result.decisions || [];
+    const traces = result.traces || [];
+
+    // B001: TRN Mismatch Blocks Pattern Match (MOST CRITICAL BUSINESS RULE)
+    this._checkInvariant('layer3', 'B001', 'TRNMismatchBlocksMatch', () => {
+      const violations = [];
+      
+      for (const decision of decisions) {
+        const trace = traces.find(t => t.invoiceId === decision.invoiceId);
+        if (!trace) continue;
+        
+        const invoiceTRN = trace.invoiceDetails?.trn;
+        const matchedPatternTRN = trace.matchedPattern?.trn;
+        
+        // If TRNs don't match but system still made a pattern match
+        if (invoiceTRN && matchedPatternTRN && 
+            invoiceTRN !== matchedPatternTRN && 
+            decision.decision === 'PATTERN_MATCH') {
+          violations.push({
+            invoiceId: decision.invoiceId,
+            invoiceTRN,
+            patternTRN: matchedPatternTRN,
+            decision: decision.decision,
+            matchedSupplier: decision.supplierId
+          });
+        }
+      }
+      
+      if (violations.length > 0) {
+        throw new InvariantViolationError(
+          `${violations.length} pattern matches with TRN mismatch!`,
+          { violations: violations.slice(0, 10), impact: 'FALSE MATCH RISK' },
+          'CRITICAL'
+        );
+      }
+      
+      return { status: 'All pattern matches have matching TRN', checks: decisions.length };
+    });
+
+    // B002: Tenant Isolation Integrity
+    this._checkInvariant('layer3', 'B002', 'TenantIsolationIntegrity', () => {
+      const violations = [];
+      
+      for (const decision of decisions) {
+        const trace = traces.find(t => t.invoiceId === decision.invoiceId);
+        if (!trace) continue;
+        
+        const invoiceTenantId = trace.invoiceDetails?.tenantId;
+        const matchedTenantId = trace.matchedPattern?.tenantId;
+        
+        if (invoiceTenantId && matchedTenantId && 
+            invoiceTenantId !== matchedTenantId &&
+            decision.decision === 'PATTERN_MATCH') {
+          violations.push({
+            invoiceId: decision.invoiceId,
+            invoiceTenant: invoiceTenantId,
+            patternTenant: matchedTenantId,
+            violationType: 'TENANT_LEAK'
+          });
+        }
+      }
+      
+      if (violations.length > 0) {
+        throw new InvariantViolationError(
+          `${violations.length} tenant isolation violations!`,
+          { violations: violations.slice(0, 10), impact: 'SECURITY BREACH' },
+          'CRITICAL'
+        );
+      }
+      
+      return { status: 'Tenant isolation preserved' };
+    });
+
+    // B003: Currency Mismatch Threshold
+    this._checkInvariant('layer3', 'B003', 'CurrencyMismatchThreshold', () => {
+      const currencyThreshold = 0.85; // Minimum similarity for currency match
+      const violations = [];
+      
+      for (const trace of traces) {
+        if (trace.decision !== 'PATTERN_MATCH') continue;
+        
+        const invoiceCurrency = trace.invoiceDetails?.currency;
+        const patternCurrency = trace.matchedPattern?.currency;
+        const currencyScore = trace.scores?.currency || 0;
+        
+        if (invoiceCurrency && patternCurrency && 
+            invoiceCurrency !== patternCurrency && 
+            currencyScore >= currencyThreshold) {
+          violations.push({
+            invoiceId: trace.invoiceId,
+            invoiceCurrency,
+            patternCurrency,
+            currencyScore,
+            threshold: currencyThreshold
+          });
+        }
+      }
+      
+      if (violations.length > 0) {
+        throw new InvariantViolationError(
+          `${violations.length} currency mismatches scored above threshold`,
+          { violations: violations.slice(0, 5) },
+          'HIGH'
+        );
+      }
+      
+      return { threshold: currencyThreshold, status: 'OK' };
+    });
+
+    // B004: Layout Hash Consistency
+    this._checkInvariant('layer3', 'B004', 'LayoutHashConsistency', () => {
+      const suspiciousMatches = [];
+      
+      for (const trace of traces) {
+        if (trace.decision !== 'PATTERN_MATCH') continue;
+        
+        const invoiceLayoutHash = trace.invoiceDetails?.layoutHash;
+        const patternLayoutHash = trace.matchedPattern?.layoutHash;
+        const layoutScore = trace.scores?.layout || 0;
+        
+        // If layout hashes differ completely but scored high
+        if (invoiceLayoutHash && patternLayoutHash && 
+            invoiceLayoutHash !== patternLayoutHash && 
+            layoutScore > 0.9) {
+          suspiciousMatches.push({
+            invoiceId: trace.invoiceId,
+            invoiceHash: invoiceLayoutHash.substring(0, 8),
+            patternHash: patternLayoutHash.substring(0, 8),
+            layoutScore
+          });
+        }
+      }
+      
+      if (suspiciousMatches.length > 0) {
+        this._addWarning('layer3', 'B004', 'LayoutHashConsistency',
+          `${suspiciousMatches.length} matches with different hashes but high scores`,
+          { samples: suspiciousMatches.slice(0, 5) }
+        );
+      } else {
+        return { status: 'Layout hashes consistent' };
+      }
+    });
+
+    // B005: Supplier Identity Gate
+    this._checkInvariant('layer3', 'B005', 'SupplierIdentityGate', () => {
+      const gateViolations = [];
+      const supplierThreshold = 0.80;
+      
+      for (const trace of traces) {
+        const rejectedCandidates = trace.rejectedCandidates || [];
+        
+        for (const rejected of rejectedCandidates) {
+          if (rejected.reason === 'SupplierIdentityFailed') {
+            // Verify rejection was justified
+            if (rejected.score >= supplierThreshold) {
+              gateViolations.push({
+                invoiceId: trace.invoiceId,
+                candidateId: rejected.candidateId,
+                score: rejected.score,
+                threshold: supplierThreshold,
+                issue: 'Valid candidate wrongly rejected by Supplier Gate'
+              });
+            }
+          }
+        }
+      }
+      
+      if (gateViolations.length > 0) {
+        throw new InvariantViolationError(
+          `${gateViolations.length} Supplier Gate violations`,
+          { violations: gateViolations.slice(0, 5) },
+          'HIGH'
+        );
+      }
+      
+      return { threshold: supplierThreshold, status: 'Gate operating correctly' };
+    });
+
+    // B006: Cross-Field Validation
+    this._checkInvariant('layer3', 'B006', 'CrossFieldValidation', () => {
+      const crossFieldIssues = [];
+      
+      for (const trace of traces) {
+        if (trace.decision !== 'PATTERN_MATCH') continue;
+        
+        // Check: Total should be consistent with line items
+        const invoiceTotal = trace.invoiceDetails?.total;
+        const lineItemsTotal = trace.invoiceDetails?.lineItemsTotal;
+        const matchedTotal = trace.matchedPattern?.total;
+        
+        if (invoiceTotal && lineItemsTotal) {
+          const variance = Math.abs(invoiceTotal - lineItemsTotal) / Math.max(invoiceTotal, 1);
+          if (variance > 0.05) { // 5% tolerance
+            crossFieldIssues.push({
+              invoiceId: trace.invoiceId,
+              type: 'TOTAL_MISMATCH',
+              invoiceTotal,
+              lineItemsTotal,
+              variance: `${(variance * 100).toFixed(1)}%`
+            });
+          }
+        }
+      }
+      
+      if (crossFieldIssues.length > 10) {
+        this._addWarning('layer3', 'B006', 'CrossFieldValidation',
+          `${crossFieldIssues.length} cross-field inconsistencies found`,
+          { samples: crossFieldIssues.slice(0, 5) }
+        );
+      }
+      
+      return { issuesFound: crossFieldIssues.length };
+    });
+
+    // B007: No Ghost Patterns
+    this._checkInvariant('layer3', 'B007', 'NoGhostPatterns', () => {
+      const patternStore = result.patternStore || new Map();
+      const usedPatternIds = new Set();
+      const ghostPatterns = [];
+      
+      // Collect all referenced pattern IDs
+      for (const trace of traces) {
+        if (trace.matchedPattern?.id) {
+          usedPatternIds.add(trace.matchedPattern.id);
+        }
+        for (const rejected of (trace.rejectedCandidates || [])) {
+          if (rejected.patternId) {
+            usedPatternIds.add(rejected.patternId);
+          }
+        }
+      }
+      
+      // Check for patterns that exist but were never referenced
+      // (This is informational, not necessarily an error)
+      const unreferencedCount = patternStore.size - usedPatternIds.size;
+      
+      if (unreferencedCount > patternStore.size * 0.5) {
+        this._addWarning('layer3', 'B007', 'NoGhostPatterns',
+          `${unreferencedCount} patterns never referenced (possible ghost patterns)`);
+      }
+      
+      return { totalPatterns: patternStore.size, referencedPatterns: usedPatternIds.size };
+    });
+
+    // B008: Version Compatibility
+    this._checkInvariant('layer3', 'B008', 'VersionCompatibility', () => {
+      const versionIssues = [];
+      
+      for (const trace of traces) {
+        const patternVersion = trace.matchedPattern?.version;
+        const minCompatibleVersion = trace.minCompatibleVersion || '1.0.0';
+        
+        if (patternVersion && this._compareVersions(patternVersion, minCompatibleVersion) < 0) {
+          versionIssues.push({
+            invoiceId: trace.invoiceId,
+            patternVersion,
+            minRequired: minCompatibleVersion
+          });
+        }
+      }
+      
+      if (versionIssues.length > 0) {
+        throw new InvariantViolationError(
+          `${versionIssues.length} version compatibility issues`,
+          { issues: versionIssues.slice(0, 5) },
+          'MEDIUM'
+        );
+      }
+      
+      return { status: 'All versions compatible' };
+    });
   }
-  
+
+  // ============================================================
+  // HELPER METHODS
+  // ============================================================
+
+  _checkInvariant(layer, id, name, testFn, defaultSeverity = 'CRITICAL') {
+    try {
+      const result = testFn();
+      this.results[layer].passed.push({ id, name, result, timestamp: new Date().toISOString() });
+      console.log(`  ✅ ${id}: ${name}`);
+    } catch (error) {
+      const failure = {
+        id, 
+        name, 
+        error: error.message,
+        details: error.details || {},
+        severity: error.severity || defaultSeverity,
+        timestamp: new Date().toISOString()
+      };
+      this.results[layer].failed.push(failure);
+      
+      const icon = error.severity === 'CRITICAL' ? '❌' : 
+                   error.severity === 'HIGH' ? '⚠️' : '⚡';
+      console.log(`  ${icon} ${id}: ${name} - ${error.message}`);
+    }
+  }
+
+  _addWarning(layer, id, name, message, details = {}) {
+    this.results[layer].warnings.push({
+      id, name, message, details, timestamp: new Date().toISOString()
+    });
+    console.log(`  ⚡ ${id}: ${name} - ${message}`);
+  }
+
+  _compareVersions(v1, v2) {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+    const maxLen = Math.max(parts1.length, parts2.length);
+    
+    for (let i = 0; i < maxLen; i++) {
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
+      if (p1 < p2) return -1;
+      if (p1 > p2) return 1;
+    }
+    return 0;
+  }
+
+  generateReport() {
+    const totalPassed = this.results.layer1.passed.length + 
+                       this.results.layer2.passed.length + 
+                       this.results.layer3.passed.length;
+    const totalFailed = this.results.layer1.failed.length + 
+                       this.results.layer2.failed.length + 
+                       this.results.layer3.failed.length;
+    const totalWarnings = this.results.layer1.warnings.length + 
+                         this.results.layer2.warnings.length + 
+                         this.results.layer3.warnings.length;
+    
+    const overallStatus = totalFailed === 0 ? 'PASSED' : 'FAILED';
+    const criticalFailures = [...this.results.layer1.failed, ...this.results.layer2.failed, ...this.results.layer3.failed]
+      .filter(f => f.severity === 'CRITICAL');
+
+    return {
+      summary: {
+        overallStatus,
+        totalInvariants: totalPassed + totalFailed,
+        passed: totalPassed,
+        failed: totalFailed,
+        warnings: totalWarnings,
+        criticalFailures: criticalFailures.length,
+        canProceedToProduction: totalFailed === 0 && criticalFailures.length === 0
+      },
+      layers: this.results,
+      recommendations: this._generateRecommendations(),
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  _generateRecommendations() {
+    const recommendations = [];
+    
+    // Check for specific patterns
+    const hasCriticalFailure = this.results.layer1.failed.some(f => f.severity === 'CRITICAL') ||
+                               this.results.layer2.failed.some(f => f.severity === 'CRITICAL') ||
+                               this.results.layer3.failed.some(f => f.severity === 'CRITICAL');
+    
+    if (hasCriticalFailure) {
+      recommendations.push({
+        priority: 'P0',
+        action: 'STOP - Do not proceed until critical failures resolved',
+        reason: 'Critical invariant violations indicate fundamental measurement errors'
+      });
+    }
+
+    const fnZeroIssue = this.results.layer1.failed.find(f => f.id === 'M006');
+    if (fnZeroIssue) {
+      recommendations.push({
+        priority: 'P0',
+        action: 'Investigate FN=0 condition - Decision Policy always accepting',
+        reason: 'System never rejects, which explains inflated FP count'
+      });
+    }
+
+    const trnViolations = this.results.layer3.failed.find(f => f.id === 'B001');
+    if (trnViolations) {
+      recommendations.push({
+        priority: 'P0',
+        action: 'Immediate investigation of TRN mismatch pattern matches',
+        reason: 'Business rule violation - potential false matches in production'
+      });
+    }
+
+    return recommendations;
+  }
+}
+
+// ============================================================
+// SECTION 2: TREE-STRUCTURED ROOT CAUSE ATTRIBUTION
+// ============================================================
+
+/**
+ * RootCauseAttributor - Tree-Structured Error Analysis
+ * 
+ * Structure:
+ * FALSE_MATCH (root)
+ * ├── Candidate Selection
+ * │   ├── Wrong Supplier Pool
+ * │   │   └── cause: supplier_gate_failed
+ * │   ├── Tenant Leak
+ * │   │   └── cause: tenant_isolation_failed
+ * │   └── Empty Candidate Pool
+ *       └── cause: candidate_pool_corrupted
+ * ├── Ranking
+ * │   ├── Semantic Score Issue
+ * │   │   ├── cause: semantic_score_selected_wrong_candidate
+ * │   │   └── cause: semantic_features_corrupted
+ * │   └── Threshold Issue
+ * │       ├── cause: threshold_too_low
+ * │       └── cause: threshold_bypassed
+ * └── Validation
+ *     ├── Supplier Gate Failed
+ *     │   └── cause: supplier_gate_bypassed
+ *     └── Cross-Field Failed
+ *         └── cause: cross_field_validation_failed
+ * 
+ * FALSE_NEGATIVE (missed match)
+ * ├── Pattern Not Found
+ * │   └── cause: pattern_not_in_store
+ * ├── Filtered Too Early
+ * │   └── cause: over_aggressive_filtering
+ * └── Score Below Threshold
+ *     └── cause: threshold_too_high
+ */
+class RootCauseAttributor {
+  constructor() {
+    // Root cause tree definition
+    this.causeTree = {
+      FALSE_MATCH: {
+        description: 'System matched to wrong supplier/pattern',
+        children: {
+          candidate_selection: {
+            description: 'Wrong candidates presented to ranking',
+            causes: ['supplier_gate_failed', 'tenant_isolation_failed', 'candidate_pool_corrupted']
+          },
+          ranking: {
+            description: 'Ranking selected wrong candidate',
+            causes: ['semantic_score_selected_wrong_candidate', 'semantic_features_corrupted', 'threshold_too_low', 'threshold_bypassed']
+          },
+          validation: {
+            description: 'Validation gates failed',
+            causes: ['supplier_gate_bypassed', 'cross_field_validation_failed', 'tie_breaking_error']
+          }
+        }
+      },
+      FALSE_NEGATIVE: {
+        description: 'System missed a valid match opportunity',
+        children: {
+          pattern_availability: {
+            description: 'Pattern not available for matching',
+            causes: ['pattern_not_in_store', 'pattern_version_mismatch']
+          },
+          filtering: {
+            description: 'Correct pattern filtered out',
+            causes: ['over_aggressive_filtering', 'layout_hash_mismatch']
+          },
+          scoring: {
+            description: 'Correct pattern scored too low',
+            causes: ['threshold_too_high', 'ocr_noise_impact', 'feature_extraction_error']
+          }
+        }
+      },
+      TRUE_POSITIVE: {
+        description: 'Correct match (for analysis)',
+        children: {
+          confident_match: {
+            description: 'High confidence correct match',
+            causes: ['strong_semantic_match', 'exact_layout_match', 'trn_confirmation']
+          },
+          borderline_match: {
+            description: 'Low confidence but correct',
+            causes: ['lucky_threshold_pass', 'tie_break_correct']
+          }
+        }
+      }
+    };
+
+    // Attribution rules engine
+    this.attributionRules = [
+      this._checkSupplierGateBypass.bind(this),
+      this._checkTenantIsolation.bind(this),
+      this._checkSemanticSelection.bind(this),
+      this._checkThresholdIssue.bind(this),
+      this._checkTieBreaking.bind(this),
+      this._checkCandidatePool.bind(this),
+      this._checkPatternAvailability.bind(this),
+      this._checkFilteringAggression.bind(this)
+    ];
+  }
+
   /**
-   * Get breakdown of all root causes
+   * Analyze single invoice and assign root cause
    */
-  getBreakdown() {
-    const total = this.attributions.length;
-    const breakdown = {};
+  analyzeInvoice(invoiceResult) {
+    const { invoiceId, decision, trace, groundTruth, expectedSupplierId } = invoiceResult;
     
-    for (const [code, cause] of Object.entries(this.rootCauses)) {
-      if (cause.count > 0) {
-        breakdown[code] = {
-          count: cause.count,
-          percentage: total > 0 ? ((cause.count / total) * 100).toFixed(1) + '%' : '0%',
-          description: cause.description,
-          stage: cause.stage,
-          severity: cause.severity,
-          sampleInvoiceIds: cause.samples.slice(0, 5).map(s => s.invoiceId)
+    // Determine error type
+    let errorType;
+    if (decision === 'PATTERN_MATCH' && expectedSupplierId && decision.supplierId !== expectedSupplierId) {
+      errorType = 'FALSE_MATCH';
+    } else if (decision === 'AI_FALLBACK' || decision === 'NO_PATTERN' && expectedSupplierId) {
+      errorType = 'FALSE_NEGATIVE';
+    } else if (decision === 'PATTERN_MATCH' && (!expectedSupplierId || decision.supplierId === expectedSupplierId)) {
+      errorType = 'TRUE_POSITIVE';
+    } else {
+      errorType = 'TRUE_NEGATIVE'; // Correctly rejected
+    }
+
+    // Apply attribution rules
+    const attribution = this._applyRules(invoiceResult, errorType);
+
+    return {
+      invoiceId,
+      errorType,
+      decision: decision.decision || decision,
+      assignedSupplier: decision.supplierId,
+      expectedSupplier: expectedSupplierId,
+      rootCause: attribution.cause,
+      category: attribution.category,
+      subcategory: attribution.subcategory,
+      confidence: attribution.confidence,
+      evidence: attribution.evidence,
+      treePath: attribution.treePath
+    };
+  }
+
+  /**
+   * Analyze batch of invoices
+   */
+  analyzeBatch(invoiceResults) {
+    const attributions = [];
+    const summary = {
+      total: invoiceResults.length,
+      byErrorType: {},
+      byRootCause: {},
+      byCategory: {}
+    };
+
+    for (const result of invoiceResults) {
+      const attribution = this.analyzeInvoice(result);
+      attributions.push(attribution);
+
+      // Update summaries
+      summary.byErrorType[attribution.errorType] = (summary.byErrorType[attribution.errorType] || 0) + 1;
+      summary.byRootCause[attribution.rootCause] = (summary.byRootCause[attribution.rootCause] || 0) + 1;
+      summary.byCategory[attribution.category] = (summary.byCategory[attribution.category] || 0) + 1;
+    }
+
+    // Calculate percentages
+    summary.byErrorTypePercent = {};
+    summary.byRootCausePercent = {};
+    
+    for (const [type, count] of Object.entries(summary.byErrorType)) {
+      summary.byErrorTypePercent[type] = ((count / summary.total) * 100).toFixed(1) + '%';
+    }
+    for (const [cause, count] of Object.entries(summary.byRootCause)) {
+      summary.byRootCausePercent[cause] = ((count / summary.total) * 100).toFixed(1) + '%';
+    }
+
+    return {
+      attributions,
+      summary,
+      causeTree: this.causeTree,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Generate tree visualization for report
+   */
+  generateTreeVisualization(attributions) {
+    const lines = ['ROOT CAUSE TREE ANALYSIS', '═'.repeat(50)];
+    
+    // Group by error type then by category
+    const grouped = {};
+    for (const attr of attributions) {
+      const key = `${attr.errorType}|${attr.category}|${attr.subcategory}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(attr);
+    }
+
+    for (const [key, items] of Object.entries(grouped).sort((a, b) => b[1].length - a[1].length)) {
+      const [errorType, category, subcategory] = key.split('|');
+      lines.push('');
+      lines.push(`📁 ${errorType}`);
+      lines.push(`  📂 ${category}`);
+      lines.push(`    📄 ${subcategory}: ${items.length} invoices (${((items.length/attributions.length)*100).toFixed(1)}%)`);
+      
+      // Show sample invoice IDs
+      if (items.length <= 5) {
+        for (const item of items) {
+          lines.push(`       • ${item.invoiceId}`);
+        }
+      } else {
+        lines.push(`       • Samples: ${items.slice(0,3).map(i => i.invoiceId).join(', ')}`);
+        lines.push(`       • ... and ${items.length - 3} more`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  // ============================================================
+  // ATTRIBUTION RULES
+  // ============================================================
+
+  _applyRules(invoiceResult, errorType) {
+    for (const rule of this.attributionRules) {
+      const result = rule(invoiceResult, errorType);
+      if (result) return result;
+    }
+
+    // Default if no rule matched
+    return {
+      cause: 'unknown_cause',
+      category: 'unclassified',
+      subcategory: 'unknown',
+      confidence: 0.1,
+      evidence: ['No attribution rule matched'],
+      treePath: ['UNKNOWN']
+    };
+  }
+
+  _checkSupplierGateBypass(invoiceResult, errorType) {
+    const { trace } = invoiceResult;
+    if (!trace) return null;
+
+    const rejectedByGate = (trace.rejectedCandidates || [])
+      .filter(r => r.reason === 'SupplierIdentityFailed' && r.score >= 0.80);
+
+    // If a valid candidate was rejected by gate, and we got wrong match
+    if (errorType === 'FALSE_MATCH' && rejectedByGate.length > 0) {
+      return {
+        cause: 'supplier_gate_bypassed',
+        category: 'validation',
+        subcategory: 'Supplier Gate Failed',
+        confidence: 0.95,
+        evidence: [
+          `${rejectedByGate.length} valid candidates rejected by Supplier Gate`,
+          `Highest rejected score: ${Math.max(...rejectedByGate.map(r => r.score)).toFixed(2)}`
+        ],
+        treePath: ['FALSE_MATCH', 'validation', 'supplier_gate_bypassed']
+      };
+    }
+
+    // If correct candidate was rejected by gate (false negative)
+    if (errorType === 'FALSE_NEGATIVE' && rejectedByGate.length > 0) {
+      return {
+        cause: 'supplier_gate_failed',
+        category: 'candidate_selection',
+        subcategory: 'Wrong Supplier Pool',
+        confidence: 0.90,
+        evidence: [
+          `Expected supplier rejected by gate`,
+          `Rejected candidates: ${rejectedByGate.map(r => r.candidateId).join(', ')}`
+        ],
+        treePath: ['FALSE_NEGATIVE', 'pattern_availability', 'supplier_gate_failed']
+      };
+    }
+
+    return null;
+  }
+
+  _checkTenantIsolation(invoiceResult, errorType) {
+    const { trace, groundTruth } = invoiceResult;
+    if (!trace || !groundTruth) return null;
+
+    const invoiceTenant = trace.invoiceDetails?.tenantId;
+    const expectedTenant = groundTruth.tenantId;
+    const matchedTenant = trace.matchedPattern?.tenantId;
+
+    // Check for tenant leak in false matches
+    if (errorType === 'FALSE_MATCH' && invoiceTenant && expectedTenant && matchedTenant) {
+      if (matchedTenant !== expectedTenant) {
+        return {
+          cause: 'tenant_isolation_failed',
+          category: 'candidate_selection',
+          subcategory: 'Tenant Leak',
+          confidence: 0.99,
+          evidence: [
+            `Invoice tenant: ${invoiceTenant}`,
+            `Expected tenant: ${expectedTenant}`,
+            `Matched to tenant: ${matchedTenant}`
+          ],
+          treePath: ['FALSE_MATCH', 'candidate_selection', 'tenant_isolation_failed']
         };
       }
     }
-    
-    return {
-      totalFalseMatches: total,
-      breakdown: breakdown,
-      byStage: this.groupByStage(),
-      bySeverity: this.groupBySeverity()
-    };
-  }
-  
-  groupByStage() {
-    const stages = {};
-    for (const [code, cause] of Object.entries(this.rootCauses)) {
-      if (cause.count > 0) {
-        if (!stages[cause.stage]) {
-          stages[cause.stage] = { count: 0, causes: [] };
-        }
-        stages[cause.stage].count += cause.count;
-        stages[cause.stage].causes.push(code);
-      }
-    }
-    return stages;
-  }
-  
-  groupBySeverity() {
-    const severities = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, INFO: 0 };
-    for (const [code, cause] of Object.entries(this.rootCauses)) {
-      severities[cause.severity] = (severities[cause.severity] || 0) + cause.count;
-    }
-    return severities;
-  }
-  
-  reset() {
-    for (const cause of Object.values(this.rootCauses)) {
-      cause.count = 0;
-      cause.samples = [];
-    }
-    this.attributions = [];
-  }
-}
 
-// ============================================================
-// SECTION 2: BENCHMARK INVARIANTS
-// ============================================================
-// These invariants MUST hold. If any fails, benchmark is INVALID.
+    return null;
+  }
 
-class BenchmarkInvariantChecker {
-  constructor() {
-    this.invariants = [
-      {
-        id: 'MATRIX_COMPLETENESS',
-        name: 'Matrix Completeness: TP + FP + FN + TN = Total',
-        check: (results) => this.checkMatrixCompleteness(results),
-        critical: true
-      },
-      {
-        id: 'PRECISION_CONSISTENCY',
-        name: 'Precision Consistency: Precision matches matrix calculation',
-        check: (results) => this.checkPrecisionConsistency(results),
-        critical: true
-      },
-      {
-        id: 'RECALL_CONSISTENCY',
-        name: 'Recall Consistency: Recall matches matrix calculation',
-        check: (results) => this.checkRecallConsistency(results),
-        critical: true
-      },
-      {
-        id: 'FMR_DUAL_CALCULATION',
-        name: 'FMR Dual Calculation: FMR from two methods must match',
-        check: (results) => this.checkFMRDualCalculation(results),
-        critical: true
-      },
-      {
-        id: 'OUTCOME_EXHAUSTIVENESS',
-        name: 'Outcome Exhaustiveness: Every invoice has exactly one outcome',
-        check: (results) => this.checkOutcomeExhaustiveness(results),
-        critical: true
-      },
-      {
-        id: 'AI_ROUTING_MATCH',
-        name: 'AI Routing Match: Reported AI % equals actual AI fallbacks',
-        check: (results) => this.checkAIRoutingMatch(results),
-        critical: true
-      },
-      {
-        id: 'NO_NEGATIVE_COUNTS',
-        name: 'No Negative Counts: All matrix values >= 0',
-        check: (results) => this.checkNegativeCounts(results),
-        critical: true
-      },
-      {
-        id: 'TN_NOT_ALWAYS_ZERO',
-        name: 'TN Not Always Zero: System must have some correct rejections',
-        check: (results) => this.checkTNNotAlwaysZero(results),
-        critical: false // Warning only
-      },
-      {
-        id: 'FN_NOT_ALWAYS_ZERO',
-        name: 'FN Not Always Zero: System must miss some matches (not 100% recall)',
-        check: (results) => this.checkFNNotAlwaysZero(results),
-        critical: false // Warning only
-      },
-      {
-        id: 'CONFIDENCE_RANGE',
-        name: 'Confidence Range: All confidences in [0, 1]',
-        check: (results) => this.checkConfidenceRange(results),
-        critical: true
-      },
-      {
-        id: 'SPLIT_TOTALS_MATCH',
-        name: 'Split Totals Match: Sum of splits = total invoices',
-        check: (results) => this.checkSplitTotalsMatch(results),
-        critical: true
-      },
-      {
-        id: 'GROUND_TRUTH_COVERAGE',
-        name: 'Ground Truth Coverage: Every invoice has ground truth',
-        check: (results) => this.checkGroundTruthCoverage(results),
-        critical: true
-      }
-    ];
-    
-    this.violations = [];
-    this.warnings = [];
-    this.passed = [];
-  }
-  
-  /**
-   * Run ALL invariants and report results
-   */
-  runAllInvariants(results) {
-    this.violations = [];
-    this.warnings = [];
-    this.passed = [];
-    
-    for (const invariant of this.invariants) {
-      try {
-        const result = invariant.check(results);
-        
-        if (result.passed) {
-          this.passed.push({
-            id: invariant.id,
-            name: invariant.name,
-            ...result
-          });
-        } else if (invariant.critical) {
-          this.violations.push({
-            id: invariant.id,
-            name: invariant.name,
-            ...result
-          });
-        } else {
-          this.warnings.push({
-            id: invariant.id,
-            name: invariant.name,
-            ...result
-          });
-        }
-      } catch (error) {
-        this.violations.push({
-          id: invariant.id,
-          name: invariant.name,
-          passed: false,
-          error: error.message,
-          details: 'Invariant check threw an exception'
-        });
-      }
-    }
-    
-    return this.getReport();
-  }
-  
-  // ==================== INDIVIDUAL CHECKS ====================
-  
-  checkMatrixCompleteness(results) {
-    let tp = 0, fp = 0, fn = 0, tn = 0, total = 0;
-    
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const m = splitResult.metrics?.matrix;
-      if (!m) return { passed: false, reason: `Missing matrix for split ${split}` };
+  _checkSemanticSelection(invoiceResult, errorType) {
+    const { trace } = invoiceResult;
+    if (!trace || errorType !== 'FALSE_MATCH') return null;
+
+    const scores = trace.scores || {};
+    const semanticScore = scores.semantic || scores.total || 0;
+    const candidates = trace.candidateScores || [];
+
+    // If semantic score was high but wrong candidate selected
+    if (semanticScore > 0.85 && candidates.length > 1) {
+      const sortedCandidates = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+      const topCandidate = sortedCandidates[0];
       
-      tp += m.tp || 0;
-      fp += m.fp || 0;
-      fn += m.fn || 0;
-      tn += m.tn || 0;
-      total += splitResult.invoiceCount || 0;
-    }
-    
-    const calculatedTotal = tp + fp + fn + tn;
-    
-    if (calculatedTotal !== total) {
-      return {
-        passed: false,
-        reason: `Matrix sum (${calculatedTotal}) != total invoices (${total})`,
-        details: { tp, fp, fn, tn, expected: total, got: calculatedTotal, diff: Math.abs(calculatedTotal - total) }
-      };
-    }
-    
-    return { passed: true, details: { tp, fp, fn, tn, total } };
-  }
-  
-  checkPrecisionConsistency(results) {
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const m = splitResult.metrics?.matrix;
-      const reportedPrecision = splitResult.metrics?.precision;
-      
-      if (m && reportedPrecision !== undefined) {
-        const predictedPositives = (m.tp || 0) + (m.fp || 0);
-        const calculatedPrecision = predictedPositives > 0 ? (m.tp || 0) / predictedPositives : 0;
-        
-        // Allow small floating point difference
-        if (Math.abs(calculatedPrecision - reportedPrecision) > 0.001) {
-          return {
-            passed: false,
-            reason: `Split ${split}: Reported precision ${reportedPrecision.toFixed(4)} != calculated ${calculatedPrecision.toFixed(4)}`,
-            details: { reported: reportedPrecision, calculated: calculatedPrecision, tp: m.tp, fp: m.fp }
-          };
-        }
-      }
-    }
-    return { passed: true };
-  }
-  
-  checkRecallConsistency(results) {
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const m = splitResult.metrics?.matrix;
-      const reportedRecall = splitResult.metrics?.recall;
-      
-      if (m && reportedRecall !== undefined) {
-        const actualPositives = (m.tp || 0) + (m.fn || 0);
-        const calculatedRecall = actualPositives > 0 ? (m.tp || 0) / actualPositives : 0;
-        
-        if (Math.abs(calculatedRecall - reportedRecall) > 0.001) {
-          return {
-            passed: false,
-            reason: `Split ${split}: Reported recall ${reportedRecall.toFixed(4)} != calculated ${calculatedRecall.toFixed(4)}`,
-            details: { reported: reportedRecall, calculated: calculatedRecall, tp: m.tp, fn: m.fn }
-          };
-        }
-      }
-    }
-    return { passed: true };
-  }
-  
-  checkFMRDualCalculation(results) {
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const m = splitResult.metrics?.matrix;
-      const reportedFMR = splitResult.metrics?.falseMatchRate;
-      
-      if (m && reportedFMR !== undefined) {
-        // Method 1: FP / (TP + FP)
-        const method1 = (m.fp || 0) / ((m.tp || 0) + (m.fp || 0) || 1);
-        
-        // Method 2: From outcomes
-        const outcomes = splitResult.outcomes;
-        const method2 = outcomes ? (outcomes.falseMatch || 0) / ((outcomes.patternMatch || 0) + (outcomes.falseMatch || 0) || 1) : method1;
-        
-        if (Math.abs(method1 - method2) > 0.001) {
-          return {
-            passed: false,
-            reason: `Split ${split}: FMR methods disagree (${(method1*100).toFixed(2)}% vs ${(method2*100).toFixed(2)}%)`,
-            details: { method1, method2, reported: reportedFMR }
-          };
-        }
-        
-        if (Math.abs(method1 - reportedFMR) > 0.001) {
-          return {
-            passed: false,
-            reason: `Split ${split}: Calculated FMR ${(method1*100).toFixed(2)}% != reported ${(reportedFMR*100).toFixed(2)}%`,
-            details: { calculated: method1, reported: reportedFMR }
-          };
-        }
-      }
-    }
-    return { passed: true };
-  }
-  
-  checkOutcomeExhaustiveness(results) {
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const outcomes = splitResult.outcomes;
-      const invoiceCount = splitResult.invoiceCount;
-      
-      if (outcomes && invoiceCount) {
-        const totalOutcomes = (outcomes.patternMatch || 0) + 
-                             (outcomes.aiFallback || 0) + 
-                             (outcomes.falseMatch || 0) +
-                             (outcomes.correctReject || 0);
-        
-        if (totalOutcomes !== invoiceCount) {
-          return {
-            passed: false,
-            reason: `Split ${split}: Outcome sum (${totalOutcomes}) != invoice count (${invoiceCount})`,
-            details: { outcomes, invoiceCount, diff: Math.abs(totalOutcomes - invoiceCount) }
-          };
-        }
-      }
-    }
-    return { passed: true };
-  }
-  
-  checkAIRoutingMatch(results) {
-    // Calculate actual AI fallback rate from outcomes
-    let totalInvoices = 0;
-    let totalAIFallbacks = 0;
-    
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const outcomes = splitResult.outcomes;
-      if (outcomes) {
-        totalInvoices += splitResult.invoiceCount || 0;
-        totalAIFallbacks += outcomes.aiFallback || 0;
-      }
-    }
-    
-    // This would need to compare against any reported AI rate
-    // For now, just ensure it's calculable
-    return {
-      passed: true,
-      details: {
-        actualAIRate: totalInvoices > 0 ? (totalAIFallbacks / totalInvoices * 100).toFixed(1) + '%' : 'N/A',
-        totalAIFallbacks,
-        totalInvoices
-      }
-    };
-  }
-  
-  checkNegativeCounts(results) {
-    for (const [split, splitResult] of Object.entries(results.splitResults || {})) {
-      const m = splitResult.metrics?.matrix;
-      if (m) {
-        if ((m.tp || 0) < 0 || (m.fp || 0) < 0 || (m.fn || 0) < 0 || (m.tn || 0) < 0) {
-          return {
-            passed: false,
-            reason: `Split ${split}: Negative value in confusion matrix`,
-            details: { tp: m.tp, fp: m.fp, fn: m.fn, tn: m.tn }
-          };
-        }
-      }
-    }
-    return { passed: true };
-  }
-  
-  checkTNNotAlwaysZero(results) {
-    let totalTN = 0;
-    for (const splitResult of Object.values(results.splitResults || {})) {
-      totalTN += splitResult.metrics?.matrix?.tn || 0;
-    }
-    
-    if (totalTN === 0) {
-      return {
-        passed: false,
-        reason: 'TN = 0 across all splits: System never correctly rejects to AI',
-        details: { totalTN, interpretation: 'Either all cases go to Pattern, or AI fallbacks are misclassified as FN' },
-        recommendation: 'Review AI_FALLBACK classification - some should be TN (correct rejections)'
-      };
-    }
-    return { passed: true, details: { totalTN } };
-  }
-  
-  checkFNNotAlwaysZero(results) {
-    let totalFN = 0;
-    for (const splitResult of Object.values(results.splitResults || {})) {
-      totalFN += splitResult.metrics?.matrix?.fn || 0;
-    }
-    
-    if (totalFN === 0) {
-      return {
-        passed: false,
-        reason: 'FN = 0 across all splits: Recall is 100%, system never misses',
-        details: { totalFN, interpretation: 'System may be too aggressive, accepting all matches' },
-        recommendation: 'Review decision thresholds - 100% recall often means low precision'
-      };
-    }
-    return { passed: true, details: { totalFN } };
-  }
-  
-  checkConfidenceRange(results) {
-    // Would need access to individual results
-    return { passed: true, note: 'Requires per-invoice confidence data' };
-  }
-  
-  checkSplitTotalsMatch(results) {
-    const datasetStats = results.datasetStats;
-    if (!datasetStats) return { passed: false, reason: 'Missing dataset stats' };
-    
-    let splitTotal = 0;
-    for (const splitResult of Object.values(results.splitResults || {})) {
-      splitTotal += splitResult.invoiceCount || 0;
-    }
-    
-    if (datasetStats.totalInvoices && splitTotal !== datasetStats.totalInvoices) {
-      return {
-        passed: false,
-        reason: `Split totals (${splitTotal}) != dataset total (${datasetStats.totalInvoices})`
-      };
-    }
-    return { passed: true };
-  }
-  
-  checkGroundTruthCoverage(results) {
-    // Would need ground truth data
-    return { passed: true, note: 'Requires ground truth data access' };
-  }
-  
-  getReport() {
-    const totalInvariants = this.invariants.length;
-    const criticalPassed = this.passed.filter(p => 
-      this.invariants.find(i => i.id === p.id)?.critical
-    ).length;
-    const criticalTotal = this.invariants.filter(i => i.critical).length;
-    
-    return {
-      summary: {
-        totalInvariants,
-        passed: this.passed.length,
-        violations: this.violations.length,
-        warnings: this.warnings.length,
-        allCriticalPassed: this.violations.length === 0,
-        benchmarkValid: this.violations.length === 0,
-        validityScore: ((criticalPassed / criticalTotal) * 100).toFixed(0) + '%'
-      },
-      violations: this.violations,
-      warnings: this.warnings,
-      passed: this.passed,
-      verdict: this.getVerdict()
-    };
-  }
-  
-  getVerdict() {
-    if (this.violations.length > 0) {
-      const criticalViolations = this.violations.filter(v => 
-        this.invariants.find(i => i.id === v.id)?.critical
+      // Check if there were close competitors
+      const closeCompetitors = sortedCandidates.filter(c => 
+        c.candidateId !== topCandidate.candidateId && 
+        (topCandidate.score - c.score) < 0.1
       );
+
+      if (closeCompetitors.length > 0) {
+        return {
+          cause: 'semantic_score_selected_wrong_candidate',
+          category: 'ranking',
+          subcategory: 'Semantic Score Issue',
+          confidence: 0.85,
+          evidence: [
+            `Semantic score: ${semanticScore.toFixed(2)}`,
+            `Selected: ${topCandidate.candidateId} (${(topCandidate.score || 0).toFixed(2)})`,
+            `Close competitors: ${closeCompetitors.map(c => `${c.candidateId}(${(c.score || 0).toFixed(2)})`).join(', ')}`
+          ],
+          treePath: ['FALSE_MATCH', 'ranking', 'semantic_score_selected_wrong_candidate']
+        };
+      }
+    }
+
+    return null;
+  }
+
+  _checkThresholdIssue(invoiceResult, errorType) {
+    const { trace } = invoiceResult;
+    if (!trace) return null;
+
+    const finalScore = trace.finalScore || trace.scores?.total || 0;
+    const threshold = trace.threshold || 0.70;
+
+    // False match with low score (barely passed threshold)
+    if (errorType === 'FALSE_MATCH' && finalScore < threshold + 0.05) {
       return {
-        status: 'INVALID',
-        message: `Benchmark INVALID: ${criticalViolations.length} critical invariant(s) violated`,
-        action: 'DO NOT TRUST these metrics. Fix violations before using results.'
-      };
-    } else if (this.warnings.length > 0) {
-      return {
-        status: 'VALID_WITH_WARNINGS',
-        message: `Benchmark valid with ${this.warnings.length} warning(s)`,
-        action: 'Metrics usable but investigate warnings for potential issues.'
-      };
-    } else {
-      return {
-        status: 'VALID',
-        message: 'All invariants passed. Benchmark metrics are trustworthy.',
-        action: 'Results can be used for decision-making.'
+        cause: 'threshold_too_low',
+        category: 'ranking',
+        subcategory: 'Threshold Issue',
+        confidence: 0.88,
+        evidence: [
+          `Final score: ${finalScore.toFixed(2)}`,
+          `Threshold: ${threshold.toFixed(2)}`,
+          `Margin: ${(finalScore - threshold).toFixed(2)}`
+        ],
+        treePath: ['FALSE_MATCH', 'ranking', 'threshold_too_low']
       };
     }
+
+    // False negative with score close to threshold
+    if (errorType === 'FALSE_NEGATIVE' && finalScore >= threshold - 0.05) {
+      return {
+        cause: 'threshold_too_high',
+        category: 'scoring',
+        subcategory: 'Score Below Threshold',
+        confidence: 0.82,
+        evidence: [
+          `Final score: ${finalScore.toFixed(2)}`,
+          `Threshold: ${threshold.toFixed(2)}`,
+          `Gap: ${(threshold - finalScore).toFixed(2)}`
+        ],
+        treePath: ['FALSE_NEGATIVE', 'scoring', 'threshold_too_high']
+      };
+    }
+
+    return null;
+  }
+
+  _checkTieBreaking(invoiceResult, errorType) {
+    const { trace } = invoiceResult;
+    if (!trace || errorType !== 'FALSE_MATCH') return null;
+
+    const candidates = trace.candidateScores || [];
+    const scores = candidates.map(c => c.score || 0);
+    
+    // Check for ties (scores within 0.01 of each other)
+    if (scores.length >= 2) {
+      const sorted = [...scores].sort((a, b) => b - a);
+      if (Math.abs(sorted[0] - sorted[1]) < 0.01) {
+        return {
+          cause: 'tie_breaking_error',
+          category: 'validation',
+          subcategory: 'Tie-Breaking Failed',
+          confidence: 0.75,
+          evidence: [
+            `Tie detected between top candidates`,
+            `Top scores: ${sorted.slice(0, 3).map(s => s.toFixed(3)).join(', ')}`,
+            `Selected: ${trace.selectedCandidate}`
+          ],
+          treePath: ['FALSE_MATCH', 'validation', 'tie_breaking_error']
+        };
+      }
+    }
+
+    return null;
+  }
+
+  _checkCandidatePool(invoiceResult, errorType) {
+    const { trace } = invoiceResult;
+    if (!trace) return null;
+
+    const initialCandidates = trace.pipelineStats?.initialCandidates || 0;
+    const finalCandidates = trace.pipelineStats?.finalCandidates || 0;
+
+    // Suspicious: started with many, ended with few/nothing
+    if (initialCandidates > 10 && finalCandidates <= 1) {
+      return {
+        cause: initialCandidates === 0 ? 'candidate_pool_corrupted' : 'over_aggressive_filtering',
+        category: errorType === 'FALSE_MATCH' ? 'candidate_selection' : 'filtering',
+        subcategory: 'Candidate Pool Issue',
+        confidence: 0.70,
+        evidence: [
+          `Initial candidates: ${initialCandidates}`,
+          `After filtering: ${finalCandidates}`,
+          `Filter rate: ${((1 - finalCandidates/initialCandidates) * 100).toFixed(1)}%`
+        ],
+        treePath: [errorType, errorType === 'FALSE_MATCH' ? 'candidate_selection' : 'filtering', 
+                   initialCandidates === 0 ? 'candidate_pool_corrupted' : 'over_aggressive_filtering']
+      };
+    }
+
+    return null;
+  }
+
+  _checkPatternAvailability(invoiceResult, errorType) {
+    const { trace, groundTruth } = invoiceResult;
+    if (!trace || errorType !== 'FALSE_NEGATIVE' || !groundTruth) return null;
+
+    const expectedSupplierId = groundTruth.supplierId;
+    const patternExists = trace.patternAvailability?.[expectedSupplierId];
+
+    if (patternExists === false) {
+      return {
+        cause: 'pattern_not_in_store',
+        category: 'pattern_availability',
+        subcategory: 'Pattern Not Found',
+        confidence: 0.95,
+        evidence: [
+          `Expected supplier: ${expectedSupplierId}`,
+          'Pattern not found in store'
+        ],
+        treePath: ['FALSE_NEGATIVE', 'pattern_availability', 'pattern_not_in_store']
+      };
+    }
+
+    return null;
+  }
+
+  _checkFilteringAggression(invoiceResult, errorType) {
+    const { trace } = invoiceResult;
+    if (!trace || errorType !== 'FALSE_NEGATIVE') return null;
+
+    const filterStages = trace.filterStages || [];
+    const aggressiveFilters = filterStages.filter(stage => 
+      stage.removalRate > 0.8 && stage.candidatesBefore > 5
+    );
+
+    if (aggressiveFilters.length > 0) {
+      return {
+        cause: 'over_aggressive_filtering',
+        category: 'filtering',
+        subcategory: 'Filtered Too Early',
+        confidence: 0.78,
+        evidence: [
+          `${aggressiveFilters.length} aggressive filter(s) detected`,
+          ...aggressiveFilters.map(f => `${f.stageName}: removed ${(f.removalRate*100).toFixed(0)}%`)
+        ],
+        treePath: ['FALSE_NEGATIVE', 'filtering', 'over_aggressive_filtering']
+      };
+    }
+
+    return null;
   }
 }
 
 // ============================================================
-// SECTION 3: PER-CANDIDATE DECISION TRACE
+// SECTION 3: DETAILED DECISION TRACE SYSTEM
 // ============================================================
-// Track EVERY candidate at EVERY filter stage
 
-class PerCandidateDecisionTracer {
+/**
+ * DecisionTraceLogger - Comprehensive Pipeline Tracing
+ * 
+ * For EVERY invoice, records:
+ * 1. All pipeline stages with timestamps
+ * 2. ALL candidates considered (not just winner)
+ * 3. Rejected candidates with EXACT reasons and scores
+ * 4. Final decision with confidence breakdown
+ * 
+ * This enables CTO-level debugging: find any invoice issue in <1 minute
+ */
+class DecisionTraceLogger {
   constructor() {
-    this.traces = new Map(); // invoiceId -> detailed trace
+    this.traces = new Map(); // invoiceId -> Trace object
+    this.currentTrace = null;
   }
-  
+
   /**
-   * Create comprehensive trace for one invoice processing
+   * Start tracing a new invoice
    */
-  createTrace(invoiceId, invoiceData) {
-    const trace = {
+  beginTrace(invoiceId, invoiceMetadata) {
+    this.currentTrace = {
       invoiceId,
-      timestamp: new Date().toISOString(),
-      invoiceMetadata: {
-        supplierId: invoiceData.supplierId,
-        tenantId: invoiceData.tenantId,
-        layoutHash: invoiceData.layoutHash,
-        formatType: invoiceData.formatType,
-        hasSharedLayout: invoiceData.hasSharedLayout || false,
-        hasOcrError: invoiceData.hasOcrError || false
+      startTime: new Date().toISOString(),
+      invoiceDetails: {
+        ...invoiceMetadata,
+        recordedAt: new Date().toISOString()
       },
-      
-      // STAGE 1: Initial Candidate Pool (before any filtering)
-      stage1_initialPool: {
-        timestamp: null,
-        totalCount: 0,
-        candidates: [], // All candidates with same layout hash
-        durationMs: 0
-      },
-      
-      // STAGE 2: After Tenant Filter
-      stage2_tenantFilter: {
-        timestamp: null,
-        inputCount: 0,
-        outputCount: 0,
-        filteredOut: [],
-        remainingCandidates: [],
-        durationMs: 0
-      },
-      
-      // STAGE 3: After Supplier Gate (Ownership Check)
-      stage3_supplierGate: {
-        timestamp: null,
-        inputCount: 0,
-        outputCount: 0,
-        gateDecision: null, // PASSED_BLOCKLIST | PASSED_OWNERSHIP | BYPASSED
-        remainingCandidates: [],
-        durationMs: 0
-      },
-      
-      // STAGE 4: After Semantic Ranking
-      stage4_semanticRanking: {
-        timestamp: null,
-        inputCount: 0,
-        rankedCandidates: [], // [{candidate, score, rank}]
-        topCandidate: null,
-        secondCandidate: null,
-        scoreGap: null, // Difference between #1 and #2
-        durationMs: 0
-      },
-      
-      // STAGE 5: Final Decision
-      stage5_finalDecision: {
-        timestamp: null,
-        outcome: null, // PATTERN_MATCH | AI_FALLBACK | FALSE_MATCH
-        selectedSupplierId: null,
-        actualSupplierId: invoiceData.supplierId,
-        isCorrectMatch: null,
-        confidence: null,
-        thresholdUsed: null,
-        decisionReason: null, // WHY this decision was made
-        durationMs: 0
-      },
-      
-      // Summary statistics
-      summary: {
-        totalProcessingTimeMs: 0,
-        candidateFunnel: {
-          initial: 0,
-          afterTenantFilter: 0,
-          afterSupplierGate: 0,
-          afterRanking: 1, // Always 1 (top selection)
-          final: 0 // 1 if match, 0 if AI
-        },
-        bottleneckStage: null
+      stages: [],
+      candidates: [],
+      rejectedCandidates: [],
+      scores: {},
+      filterStages: [],
+      finalDecision: null,
+      finalScore: null,
+      selectedPattern: null,
+      metadata: {
+        processingTimeMs: null,
+        memoryUsage: null,
+        version: '1.0.0'
       }
     };
-    
-    this.traces.set(invoiceId, trace);
-    return trace;
+    return this;
   }
-  
+
   /**
-   * Record Stage 1: Initial Pool
+   * Record a pipeline stage
    */
-  recordInitialPool(invoiceId, allCandidates, durationMs) {
-    const trace = this.traces.get(invoiceId);
-    if (!trace) return;
-    
-    trace.stage1_initialPool = {
+  recordStage(stageName, data) {
+    if (!this.currentTrace) throw new Error('No active trace - call beginTrace first');
+
+    this.currentTrace.stages.push({
+      stage: stageName,
       timestamp: new Date().toISOString(),
-      totalCount: allCandidates.length,
-      candidates: allCandidates.map(c => ({
-        supplierId: c.supplierId,
-        supplierName: c.supplierName,
-        tenantId: c.tenantId,
-        layoutHash: c.layoutHash
-      })),
-      durationMs
-    };
-    
-    trace.summary.candidateFunnel.initial = allCandidates.length;
+      ...data
+    });
+    return this;
   }
-  
+
   /**
-   * Record Stage 2: Tenant Filter
+   * Record candidate consideration
    */
-  recordTenantFilter(invoiceId, inputCandidates, outputCandidates, filteredOut, durationMs) {
-    const trace = this.traces.get(invoiceId);
-    if (!trace) return;
-    
-    trace.stage2_tenantFilter = {
-      timestamp: new Date().toISOString(),
-      inputCount: inputCandidates.length,
-      outputCount: outputCandidates.length,
-      filteredOut: filteredOut.map(c => ({
-        supplierId: c.supplierId,
-        reason: 'TENANT_MISMATCH'
-      })),
-      remainingCandidates: outputCandidates.map(c => ({
-        supplierId: c.supplierId,
-        tenantId: c.tenantId
-      })),
-      durationMs
-    };
-    
-    trace.summary.candidateFunnel.afterTenantFilter = outputCandidates.length;
+  recordCandidate(candidateId, score, details = {}) {
+    if (!this.currentTrace) throw new Error('No active trace');
+
+    this.currentTrace.candidates.push({
+      candidateId,
+      score,
+      consideredAt: new Date().toISOString(),
+      ...details
+    });
+    return this;
   }
-  
+
   /**
-   * Record Stage 3: Supplier Gate
+   * Record candidate REJECTION with detailed reason
+   * THIS IS THE KEY METHOD FOR DEBUGGING
    */
-  recordSupplierGate(invoiceId, inputCandidates, outputCandidates, gateDecision, durationMs) {
-    const trace = this.traces.get(invoiceId);
-    if (!trace) return;
-    
-    trace.stage3_supplierGate = {
-      timestamp: new Date().toISOString(),
-      inputCount: inputCandidates.length,
-      outputCount: outputCandidates.length,
-      gateDecision,
-      remainingCandidates: outputCandidates.map(c => ({
-        supplierId: c.supplierId,
-        tenantId: c.tenantId
-      })),
-      durationMs
-    };
-    
-    trace.summary.candidateFunnel.afterSupplierGate = outputCandidates.length;
+  recordRejection(candidateId, reason, score, threshold, additionalInfo = {}) {
+    if (!this.currentTrace) throw new Error('No active trace');
+
+    this.currentTrace.rejectedCandidates.push({
+      candidateId,
+      reason, // e.g., 'SupplierIdentityFailed', 'BelowThreshold', 'TenantMismatch'
+      score,
+      threshold,
+      gap: threshold - score,
+      gapPercentage: ((threshold - score) / threshold * 100).toFixed(1) + '%',
+      rejectedAt: new Date().toISOString(),
+      ...additionalInfo
+    });
+    return this;
   }
-  
+
   /**
-   * Record Stage 4: Semantic Ranking
+   * Record filter stage statistics
    */
-  recordSemanticRanking(invoiceId, rankedCandidates, durationMs) {
-    const trace = this.traces.get(invoiceId);
-    if (!trace) return;
-    
-    const topCandidate = rankedCandidates[0];
-    const secondCandidate = rankedCandidates[1];
-    
-    trace.stage4_semanticRanking = {
-      timestamp: new Date().toISOString(),
-      inputCount: rankedCandidates.length,
-      rankedCandidates: rankedCandidates.map((rc, idx) => ({
-        rank: idx + 1,
-        supplierId: rc.candidate.supplierId,
-        score: rc.score,
-        scoreBreakdown: rc.scoreBreakdown
-      })),
-      topCandidate: topCandidate ? {
-        supplierId: topCandidate.candidate.supplierId,
-        score: topCandidate.score
-      } : null,
-      secondCandidate: secondCandidate ? {
-        supplierId: secondCandidate.candidate.supplierId,
-        score: secondCandidate.score
-      } : null,
-      scoreGap: topCandidate && secondCandidate ? 
-        (topCandidate.score - secondCandidate.score) : null,
-      durationMs
-    };
+  recordFilterStage(stageName, beforeCount, afterCount, filterReason) {
+    if (!this.currentTrace) throw new Error('No active trace');
+
+    this.currentTrace.filterStages.push({
+      stageName,
+      candidatesBefore: beforeCount,
+      candidatesAfter: afterCount,
+      removed: beforeCount - afterCount,
+      removalRate: (beforeCount - afterCount) / beforeCount,
+      filterReason,
+      timestamp: new Date().toISOString()
+    });
+    return this;
   }
-  
+
   /**
-   * Record Stage 5: Final Decision
+   * Record final scores breakdown
    */
-  recordFinalDecision(invoiceId, outcome, selectedSupplierId, confidence, threshold, decisionReason, durationMs) {
-    const trace = this.traces.get(invoiceId);
-    if (!trace) return;
-    
-    trace.stage5_finalDecision = {
-      timestamp: new Date().toISOString(),
-      outcome,
-      selectedSupplierId,
-      actualSupplierId: trace.invoiceMetadata.supplierId,
-      isCorrectMatch: selectedSupplierId === trace.invoiceMetadata.supplierId,
-      confidence,
-      thresholdUsed: threshold,
-      decisionReason,
-      durationMs
+  recordScores(scores) {
+    if (!this.currentTrace) throw new Error('No active trace');
+
+    this.currentTrace.scores = {
+      ...scores,
+      recordedAt: new Date().toISOString()
     };
-    
-    trace.summary.candidateFunnel.final = outcome === 'AI_FALLBACK' ? 0 : 1;
-    trace.summary.totalProcessingTimeMs = 
-      trace.stage1_initialPool.durationMs +
-      trace.stage2_tenantFilter.durationMs +
-      trace.stage3_supplierGate.durationMs +
-      trace.stage4_semanticRanking.durationMs +
-      trace.stage5_finalDecision.durationMs;
-    
-    // Determine bottleneck
-    const funnel = trace.summary.candidateFunnel;
-    if (funnel.initial > funnel.afterTenantFilter * 2) {
-      trace.summary.bottleneckStage = 'TENANT_FILTER';
-    } else if (funnel.afterTenantFilter > funnel.afterSupplierGate * 2) {
-      trace.summary.bottleneckStage = 'SUPPLIER_GATE';
-    } else if (funnel.afterSupplierGate > 5) {
-      trace.summary.bottleneckStage = 'SEMANTIC_RANKING';
-    } else {
-      trace.summary.bottleneckStage = 'NONE';
-    }
+    return this;
   }
-  
+
   /**
-   * Get trace for an invoice
+   * Finalize trace with decision
+   */
+  finalize(decision, patternId, finalScore, additionalData = {}) {
+    if (!this.currentTrace) throw new Error('No active trace');
+
+    this.currentTrace.finalDecision = decision;
+    this.currentTrace.finalScore = finalScore;
+    this.currentTrace.selectedPattern = patternId;
+    this.currentTrace.endTime = new Date().toISOString();
+    this.currentTrace.metadata.processingTimeMs = 
+      new Date(this.currentTrace.endTime) - new Date(this.currentTrace.startTime);
+    
+    // Merge any additional data
+    Object.assign(this.currentTrace.metadata, additionalData);
+
+    // Store the completed trace
+    this.traces.set(this.currentTrace.invoiceId, this.currentTrace);
+    
+    const completedTrace = this.currentTrace;
+    this.currentTrace = null;
+    
+    return completedTrace;
+  }
+
+  /**
+   * Get trace for specific invoice
    */
   getTrace(invoiceId) {
     return this.traces.get(invoiceId);
   }
-  
+
   /**
    * Get all traces
    */
   getAllTraces() {
-    return Object.fromEntries(this.traces);
+    return Array.from(this.traces.values());
   }
-  
+
   /**
-   * Get aggregate funnel statistics
+   * Generate human-readable trace report for single invoice
+   * Format optimized for CTO-level debugging (<1 minute)
    */
-  getFunnelStats() {
-    const stats = {
-      totalInvoices: this.traces.size,
-      averageFunnel: {
-        initial: 0,
-        afterTenantFilter: 0,
-        afterSupplierGate: 0,
-        afterRanking: 1,
-        final: 0
-      },
-      bottleneckDistribution: {},
-      tracesWithMultipleCandidates: 0,
-      tracesWithSingleCandidate: 0,
-      tracesWithNoCandidates: 0
-    };
-    
-    for (const trace of this.traces.values()) {
-      const f = trace.summary.candidateFunnel;
-      stats.averageFunnel.initial += f.initial;
-      stats.averageFunnel.afterTenantFilter += f.afterTenantFilter;
-      stats.averageFunnel.afterSupplierGate += f.afterSupplierGate;
-      stats.averageFunnel.final += f.final;
+  generateDebugReport(invoiceId) {
+    const trace = this.traces.get(invoiceId);
+    if (!trace) return `No trace found for invoice ${invoiceId}`;
+
+    const lines = [];
+    lines.push('═'.repeat(70));
+    lines.push(`INVOICE TRACE: ${invoiceId}`);
+    lines.push('═'.repeat(70));
+    lines.push('');
+
+    // Basic info
+    lines.push('📋 BASIC INFO:');
+    lines.push(`  Invoice ID: ${trace.invoiceId}`);
+    lines.push(`  Processing Time: ${trace.metadata.processingTimeMs}ms`);
+    lines.push(`  Start: ${trace.startTime}`);
+    lines.push(`  End: ${trace.endTime || 'In progress'}`);
+    lines.push('');
+
+    // Final decision
+    lines.push('🎯 FINAL DECISION:');
+    lines.push(`  Decision: ${trace.finalDecision || 'PENDING'}`);
+    lines.push(`  Selected Pattern: ${trace.selectedPattern || 'NONE'}`);
+    lines.push(`  Final Score: ${trace.finalScore !== null ? trace.finalScore.toFixed(4) : 'N/A'}`);
+    lines.push('');
+
+    // Score breakdown
+    if (Object.keys(trace.scores).length > 0) {
+      lines.push('📊 SCORE BREAKDOWN:');
+      for (const [component, value] of Object.entries(trace.scores)) {
+        if (typeof value === 'number') {
+          const bar = '█'.repeat(Math.round(value * 20)) + '░'.repeat(20 - Math.round(value * 20));
+          lines.push(`  ${component.padEnd(20)}: ${(value * 100).toFixed(1).padStart(6)}% ${bar}`);
+        }
+      }
+      lines.push('');
+    }
+
+    // Pipeline stages
+    if (trace.stages.length > 0) {
+      lines.push('🔄 PIPELINE STAGES:');
+      for (const stage of trace.stages) {
+        const icon = stage.success !== false ? '✅' : '❌';
+        lines.push(`  ${icon} ${stage.stage}: ${stage.status || 'completed'} (${stage.durationMs || '?'}ms)`);
+        if (stage.note) lines.push(`     └─ ${stage.note}`);
+      }
+      lines.push('');
+    }
+
+    // REJECTED CANDIDATES - THE MOST IMPORTANT SECTION FOR DEBUGGING
+    if (trace.rejectedCandidates.length > 0) {
+      lines.push('🚫 REJECTED CANDIDATES:');
+      lines.push('─'.repeat(70));
       
-      // Bottleneck distribution
-      const b = trace.summary.bottleneckStage;
-      stats.bottleneckDistribution[b] = (stats.bottleneckDistribution[b] || 0) + 1;
-      
-      // Candidate count categories
-      if (f.initial === 0) {
-        stats.tracesWithNoCandidates++;
-      } else if (f.initial === 1) {
-        stats.tracesWithSingleCandidate++;
-      } else {
-        stats.tracesWithMultipleCandidates++;
+      for (let i = 0; i < trace.rejectedCandidates.length; i++) {
+        const rejected = trace.rejectedCandidates[i];
+        lines.push('');
+        lines.push(`  #${i + 1} Candidate: ${rejected.candidateId}`);
+        lines.push(`     Reason: ${rejected.reason}`);
+        const scoreVal = typeof rejected.score === 'number' ? rejected.score.toFixed(2) : (rejected.score || 'N/A');
+        const thresholdVal = typeof rejected.threshold === 'number' ? rejected.threshold.toFixed(2) : (rejected.threshold || 'N/A');
+        const gapVal = typeof rejected.gap === 'number' ? rejected.gap.toFixed(2) : (rejected.gap || 'N/A');
+        
+        lines.push(`     Score: ${scoreVal} (required: ${thresholdVal})`);
+        lines.push(`     Gap: ${gapVal} (${rejected.gapPercentage || 'N/A'} below threshold)`);
+        
+        if (rejected.additionalContext) {
+          lines.push(`     Context: ${JSON.stringify(rejected.additionalContext)}`);
+        }
+      }
+      lines.push('');
+    }
+
+    // Filter stages summary
+    if (trace.filterStages.length > 0) {
+      lines.push('🔽 FILTER FUNNEL:');
+      let prevCount = null;
+      for (const fs of trace.filterStages) {
+        const arrow = prevCount !== null ? ' ▼' : '';
+        const removalStr = fs.removed > 0 ? ` (-${fs.removed}, ${(fs.removalRate * 100).toFixed(0)}%)` : '';
+        lines.push(`  ${fs.stageName}:${arrow} ${fs.candidatesAfter}${removalStr}`);
+        prevCount = fs.candidatesAfter;
+      }
+      lines.push('');
+    }
+
+    // All candidates considered
+    if (trace.candidates.length > 0) {
+      lines.push('📑 ALL CANDIDATES CONSIDERED:');
+      const sorted = [...trace.candidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+      for (let i = 0; i < sorted.length; i++) {
+        const c = sorted[i];
+        const isSelected = c.candidateId === trace.selectedPattern;
+        const marker = isSelected ? ' 👑' : '';
+        lines.push(`  ${i + 1}. ${c.candidateId}: ${(c.score || 0).toFixed(3)}${marker}`);
       }
     }
-    
-    const n = stats.totalInvoices || 1;
-    stats.averageFunnel.initial = (stats.averageFunnel.initial / n).toFixed(2);
-    stats.averageFunnel.afterTenantFilter = (stats.averageFunnel.afterTenantFilter / n).toFixed(2);
-    stats.averageFunnel.afterSupplierGate = (stats.averageFunnel.afterSupplierGate / n).toFixed(2);
-    stats.averageFunnel.final = (stats.averageFunnel.final / n).toFixed(2);
-    
+
+    lines.push('');
+    lines.push('═'.repeat(70));
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Generate summary statistics across all traces
+   */
+  generateSummaryStats() {
+    const traces = this.getAllTraces();
+    if (traces.length === 0) return null;
+
+    const stats = {
+      totalTraces: traces.length,
+      decisions: {},
+      averageProcessingTime: 0,
+      averageRejectedPerInvoice: 0,
+      rejectionReasons: {},
+      filterEfficiency: {},
+      scoreDistributions: {}
+    };
+
+    let totalTime = 0;
+    let totalRejected = 0;
+
+    for (const trace of traces) {
+      // Decision distribution
+      stats.decisions[trace.finalDecision] = (stats.decisions[trace.finalDecision] || 0) + 1;
+      
+      // Timing
+      totalTime += trace.metadata.processingTimeMs || 0;
+      
+      // Rejections
+      totalRejected += trace.rejectedCandidates.length;
+      for (const rejected of trace.rejectedCandidates) {
+        stats.rejectionReasons[rejected.reason] = (stats.rejectionReasons[rejected.reason] || 0) + 1;
+      }
+
+      // Filter efficiency
+      for (const fs of trace.filterStages) {
+        if (!stats.filterEfficiency[fs.stageName]) {
+          stats.filterEfficiency[fs.stageName] = { totalRemoved: 0, totalCount: 0 };
+        }
+        stats.filterEfficiency[fs.stageName].totalRemoved += fs.removed;
+        stats.filterEfficiency[fs.stageName].totalCount += fs.candidatesBefore;
+      }
+
+      // Score distributions
+      for (const [component, value] of Object.entries(trace.scores)) {
+        if (typeof value === 'number') {
+          if (!stats.scoreDistributions[component]) {
+            stats.scoreDistributions[component] = { min: 1, max: 0, sum: 0, count: 0 };
+          }
+          const dist = stats.scoreDistributions[component];
+          dist.min = Math.min(dist.min, value);
+          dist.max = Math.max(dist.max, value);
+          dist.sum += value;
+          dist.count += 1;
+        }
+      }
+    }
+
+    stats.averageProcessingTime = totalTime / traces.length;
+    stats.averageRejectedPerInvoice = totalRejected / traces.length;
+
+    // Compute averages for score distributions
+    for (const [component, dist] of Object.entries(stats.scoreDistributions)) {
+      dist.avg = dist.sum / dist.count;
+    }
+
     return stats;
   }
 }
 
 // ============================================================
-// SECTION 4: FIXED CONFUSION MATRIX CALCULATOR
+// SECTION 4: PROPERTY-BASED TESTING FRAMEWORK
 // ============================================================
-// Resolves TN=0 and FN=0 anomalies
 
-class FixedConfusionMatrixCalculator {
-  constructor() {
-    this.reset();
-  }
-  
-  reset() {
-    this.tp = 0;  // True Positive: Correctly matched to pattern
-    this.fp = 0;  // False Positive: Incorrectly matched to pattern (FALSE MATCH!)
-    this.fn = 0;  // False Negative: Had pattern available but went to AI (missed opportunity)
-    this.tn = 0;  // True Negative: Correctly sent to AI (no pattern OR low confidence)
-    
-    this.predictions = [];
-    this.detailedLog = []; // For debugging
-  }
-  
-  /**
-   * Record prediction with PROPER classification
-   * Key fix: Distinguish between FN and TN for AI_FALLBACK cases
-   */
-  recordPrediction(prediction) {
-    const { 
-      invoiceId, 
-      predictedSupplierId, 
-      actualSupplierId, 
-      outcome, 
-      confidence,
-      hadPatternAvailable,  // NEW: Was there a matching pattern?
-      wasCorrectDecision     // NEW: Was going to AI the RIGHT choice?
-    } = prediction;
-    
-    this.predictions.push(prediction);
-    
-    // FIXED CLASSIFICATION LOGIC
-    if (outcome === 'PATTERN_MATCH') {
-      if (predictedSupplierId === actualSupplierId) {
-        this.tp++; // Correct pattern match
-        this.logDetail(invoiceId, 'TP', 'Correct pattern match');
-      } else {
-        this.fp++; // FALSE MATCH - matched wrong supplier!
-        this.logDetail(invoiceId, 'FP', `FALSE MATCH: matched ${predictedSupplierId} instead of ${actualSupplierId}`);
-      }
-    } else if (outcome === 'AI_FALLBACK') {
-      // THE KEY FIX: Distinguish FN from TN
-      if (hadPatternAvailable && !wasCorrectDecision) {
-        // There WAS a correct pattern available, but system went to AI
-        // This is a MISSED OPPORTUNITY
-        this.fn++;
-        this.logDetail(invoiceId, 'FN', `Missed opportunity: pattern available but went to AI`);
-      } else {
-        // Either no pattern available, OR AI was genuinely better choice
-        // This is a CORRECT REJECTION
-        this.tn++;
-        this.logDetail(invoiceId, 'TN', `Correct rejection: ${hadPatternAvailable ? 'low confidence' : 'no pattern available'}`);
-      }
-    } else if (outcome === 'FALSE_MATCH') {
-      this.fp++; // Explicitly recorded as false match
-      this.logDetail(invoiceId, 'FP', `Explicit FALSE MATCH`);
-    }
-  }
-  
-  logDetail(invoiceId, type, message) {
-    this.detailedLog.push({ invoiceId, type, message, timestamp: Date.now() });
-  }
-  
-  getMetrics() {
-    const total = this.tp + this.fp + this.fn + this.tn;
-    const actualPositives = this.tp + this.fn; // All that could have been matched
-    const predictedPositives = this.tp + this.fp; // All that were matched
-    const actualNegatives = this.fp + this.tn; // All that should NOT have been matched
-    const predictedNegatives = this.fn + this.tn; // All that were NOT matched
-    
-    // Core metrics
-    const precision = predictedPositives > 0 ? this.tp / predictedPositives : 0;
-    const recall = actualPositives > 0 ? this.tp / actualPositives : 0;
-    const specificity = actualNegatives > 0 ? this.tn / actualNegatives : 0;
-    const f1Score = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
-    
-    // False Match Rate (the CRITICAL metric)
-    const falseMatchRate = predictedPositives > 0 ? this.fp / predictedPositives : 0;
-    
-    // Accuracy
-    const accuracy = total > 0 ? (this.tp + this.tn) / total : 0;
-    
-    // NEW: AI Routing Rate (for verification)
-    const aiRoutingRate = total > 0 ? (this.fn + this.tn) / total : 0;
-    const correctAiRate = (this.fn + this.tn) > 0 ? this.tn / (this.fn + this.tn) : 0;
-    
-    return {
-      matrix: {
-        tp: this.tp,
-        fp: this.fp,
-        fn: this.fn,
-        tn: this.tn
-      },
-      totalPredictions: total,
-      
-      // Primary metrics
-      precision,
-      recall,
-      specificity,
-      f1Score,
-      accuracy,
-      
-      // Critical business metric
-      falseMatchRate,
-      
-      // NEW: AI-related metrics
-      aiRoutingRate,
-      correctAiRate, // Of all AI routings, how many were correct (TN)?
-      
-      // Balance checks
-      balanceChecks: {
-        allZeros: (this.tp === 0 && this.fp === 0 && this.fn === 0 && this.tn === 0),
-        tnIsZero: this.tn === 0,
-        fnIsZero: this.fn === 0,
-        fpIsZero: this.fp === 0,
-        tpIsZero: this.tp === 0,
-        recallIsOne: recall >= 0.999, // Effectively 100%
-        precisionIsZero: precision < 0.001
-      },
-      
-      summary: this.generateSummary(precision, recall, f1Score, falseMatchRate)
-    };
-  }
-  
-  generateSummary(precision, recall, f1Score, fmr) {
-    return {
-      headline: `FMR: ${(fmr * 100).toFixed(2)}% | F1: ${(f1Score * 100).toFixed(1)}% | P: ${(precision * 100).toFixed(1)}% | R: ${(recall * 100).toFixed(1)}% | TN: ${this.tn} | FN: ${this.fn}`,
-      assessment: this.getAssessment(fmr, f1Score, recall),
-      healthCheck: this.healthCheck(fmr, recall)
-    };
-  }
-  
-  getAssessment(fmr, f1Score, recall) {
-    if (fmr < 0.005 && f1Score > 0.7 && recall > 0.5) {
-      return 'EXCELLENT - Production Ready';
-    } else if (fmr < 0.01 && f1Score > 0.5) {
-      return 'GOOD - Near Production';
-    } else if (fmr < 0.05) {
-      return 'ACCEPTABLE - Needs Monitoring';
-    } else if (fmr < 0.10) {
-      return 'CONCERNING - High False Match Risk';
-    } else {
-      return 'CRITICAL - Not Production Safe';
-    }
-  }
-  
-  /**
-   * Health check for common measurement bugs
-   */
-  healthCheck(fmr, recall) {
-    const issues = [];
-    
-    if (this.tn === 0) {
-      issues.push('WARNING: TN=0 suggests AI fallbacks may be misclassified as FN');
-    }
-    
-    if (recall >= 0.999) {
-      issues.push('WARNING: Recall=100% suggests system never rejects - possible threshold issue');
-    }
-    
-    if (this.fp > 0 && this.fn === 0 && this.tn === 0) {
-      issues.push('CRITICAL: FP>0 but FN=0 AND TN=0 - all non-correct are false matches');
-    }
-    
-    if (fmr > 0.5 && recall > 0.9) {
-      issues.push('CRITICAL: High FMR (>50%) with high recall (>90%) - system accepts everything');
-    }
-    
-    return {
-      healthy: issues.length === 0,
-      issues,
-      recommendation: issues.length > 0 ? 
-        'Investigate these issues before trusting metrics' : 
-        'Matrix appears healthy'
-    };
-  }
-  
-  getTable() {
-    return [
-      ['', 'Predicted: Pattern', 'Predicted: AI', 'Total'],
-      [`Actual: Matchable (had pattern)`, String(this.tp), String(this.fn), String(this.tp + this.fn)],
-      [`Actual: Not Matchable (no/bad pattern)`, String(this.fp), String(this.tn), String(this.fp + this.tn)],
-      ['Total', String(this.tp + this.fp), String(this.fn + this.tn), String(this.tp + this.fp + this.fn + this.tn)]
-    ];
-  }
-}
-
-// ============================================================
-// SECTION 5: GOLDEN DATASET FRAMEWORK
-// ============================================================
-// Structure for human-verified real invoice data
-
-class GoldenDatasetFramework {
-  constructor() {
-    this.specification = {
-      version: '1.0-Golden',
-      status: 'FRAMEWORK_DEFINED', // -> COLLECTING -> VERIFIED -> LOCKED
-      
-      // Size requirements (as specified by user)
-      size: {
-        minSuppliers: 100,
-        invoicesPerSupplier: { min: 50, max: 100, target: 75 },
-        totalInvoices: { min: 5000, max: 10000, target: 7500 }
-      },
-      
-      // Diversity requirements
-      diversity: {
-        erpSystems: ['SAP', 'Oracle', 'Microsoft Dynamics', 'Odoo', 'Zoho', 'Custom ERP'],
-        languages: ['arabic', 'english', 'mixed_ar_en', 'french'],
-        currencies: ['SAR', 'AED', 'USD', 'KWD', 'BHD', 'EUR', 'QAR', 'OMR'],
-        formats: ['tax_invoice', 'commercial', 'proforma', 'credit_note', 'debit_note'],
-        qualityLevels: ['perfect', 'minor_ocr_errors', 'major_ocr_errors', 'handwritten']
-      },
-      
-      // Required scenarios
-      requiredScenarios: {
-        sharedErpTemplates: {
-          description: 'Multiple suppliers using same ERP/template',
-          minInstances: 20,
-          suppliersPerTemplate: { min: 2, max: 10 }
-        },
-        ocrNoiseVariants: {
-          description: 'Same invoice with different OCR quality levels',
-          minInstances: 50,
-          variantsPerInvoice: 3
-        },
-        versionEvolution: {
-          description: 'Same supplier over time with template changes',
-          minSuppliers: 30,
-          versionsPerSupplier: { min: 2, max: 5 }
-        },
-        edgeCases: {
-          description: 'Unusual but realistic scenarios',
-          types: [
-            'duplicate_invoices',
-            'amended_invoices',
-            'multi_page_invoices',
-            'line_item_overflow',
-            'missing_fields',
-            'extra_attachments'
-          ],
-          minInstancesPerType: 10
-        }
-      }
-    };
-    
-    this.schema = this.defineSchema();
-    this.collectionProgress = this.initializeCollection();
-  }
-  
-  defineSchema() {
-    return {
-      goldenInvoice: {
-        // Metadata
-        id: 'string (UUID, immutable)',
-        version: 'integer (starts at 1)',
-        status: 'enum [pending_verification, verified, disputed, locked]',
-        addedAt: 'ISO datetime',
-        verifiedAt: 'ISO datetime or null',
-        verifiedBy: 'string (reviewer ID) or null',
-        
-        // Ground truth (human-verified)
-        groundTruth: {
-          supplierId: 'string (from production DB)',
-          supplierName: 'string (as it appears on invoice)',
-          supplierTRN: 'string (Tax Registration Number)',
-          tenantId: 'string (from production DB)',
-          
-          // Financial fields
-          totalAmount: 'decimal',
-          currency: 'ISO 4217 code',
-          taxAmount: 'decimal or null',
-          subtotalAmount: 'decimal or null',
-          
-          // Dates
-          invoiceDate: 'YYYY-MM-DD',
-          dueDate: 'YYYY-MM-DD or null',
-          
-          // Line items (if extractable)
-          lineItems: 'array of {description, quantity, unitPrice, total}',
-          
-          // Classification
-          formatType: 'enum from diversity.formats',
-          language: 'enum from diversity.languages',
-          erpSystem: 'enum from diversity.erpSystems or "unknown"',
-          qualityLevel: 'enum from diversity.qualityLevels',
-          
-          // Scenario tags
-          scenarioTags: 'array of strings (e.g., ["shared_erp", "ocr_noise"])',
-          
-          // Difficulty assessment
-          difficultyScore: 'float 0-1 (how hard is this to match correctly)',
-          difficultyReason: 'string explaining why'
-        },
-        
-        // Source information
-        source: {
-          originalFile: 'path to original PDF/image',
-          ocrOutput: 'raw OCR text or null',
-          extractedFields: 'raw extraction output',
-          productionInvoiceId: 'ID from production system or null'
-        },
-        
-        // Verification history
-        verificationHistory: [
-          {
-            reviewer: 'string',
-            timestamp: 'ISO datetime',
-            verdict: 'enum [confirmed, corrected, rejected]',
-            corrections: 'object or null',
-            comments: 'string'
-          }
-        ],
-        
-        // Immutable once locked
-        lockInfo: {
-          lockedAt: 'ISO datetime or null',
-          lockedBy: 'string or null',
-          hash: 'SHA256 of ground truth for integrity'
-        }
-      },
-      
-      // Index structures for efficient lookup
-      indexes: {
-        bySupplier: 'Map<supplierId, goldenInvoice[]>',
-        byTenant: 'Map<tenantId, goldenInvoice[]>',
-        byFormatType: 'Map<formatType, goldenInvoice[]>',
-        byERPSystem: 'Map<erpSystem, goldenInvoice[]>',
-        byDifficulty: 'Map<difficultyRange, goldenInvoice[]>',
-        byScenario: 'Map<scenarioTag, goldenInvoice[]>'
-      }
-    };
-  }
-  
-  initializeCollection() {
-    return {
-      phase: 'NOT_STARTED',
-      startedAt: null,
-      completedAt: null,
-      
-      stats: {
-        collected: 0,
-        pendingVerification: 0,
-        verified: 0,
-        disputed: 0,
-        locked: 0,
-        target: this.specification.size.totalInvoices.target
-      },
-      
-      coverage: {
-        suppliers: { collected: 0, target: this.specification.size.minSuppliers },
-        erpSystems: {},
-        languages: {},
-        currencies: {},
-        formats: {},
-        scenarios: {}
-      },
-      
-      qualityMetrics: {
-        averageDifficulty: null,
-        difficultyDistribution: {},
-        agreementBetweenReviewers: null, // Cohen's Kappa
-        disputesRate: null
-      },
-      
-      blockers: [] // Things preventing completion
-    };
-  }
-  
-  /**
-   * Get collection checklist
-   */
-  getCollectionChecklist() {
-    return {
-      prerequisites: [
-        'Access to production invoice database (read-only)',
-        'PDF/Image storage for at least 6 months',
-        'Team of 2-3 domain experts for verification',
-        'Secure environment for handling sensitive data',
-        'Export tool for invoices with metadata'
-      ],
-      
-      steps: [
-        {
-          step: 1,
-          title: 'Data Export',
-          description: 'Export random sample from production covering all suppliers',
-          estimatedDays: 2,
-          deliverables: ['Raw export file', 'Export metadata log']
-        },
-        {
-          step: 2,
-          title: 'Initial Screening',
-          description: 'Remove duplicates, corrupted files, incomplete invoices',
-          estimatedDays: 3,
-          deliverables: ['Screened dataset', 'Exclusion log']
-        },
-        {
-          step: 3,
-          title: 'Ground Truth Annotation',
-          description: 'Domain experts verify each invoice\'s correct classification',
-          estimatedDays: 15,
-          deliverables: ['Annotated dataset', 'Annotation guidelines']
-        },
-        {
-          step: 4,
-          title: 'Quality Assurance',
-          description: 'Second reviewer validates 20% sample, calculate inter-rater reliability',
-          estimatedDays: 5,
-          deliverables: ['QA report', 'Cohen Kappa score', 'Dispute resolutions']
-        },
-        {
-          step: 5,
-          title: 'Dataset Locking',
-          description: 'Generate hashes, make immutable, store securely',
-          estimatedDays: 2,
-          deliverables: ['Locked dataset', 'Integrity hashes', 'Access controls']
-        }
-      ],
-      
-      risks: [
-        {
-          risk: 'Data privacy concerns',
-          mitigation: 'Work with anonymized data, sign NDAs, use secure environment'
-        },
-        {
-          risk: 'Domain expert availability',
-          mitigation: 'Schedule in advance, have backup reviewers'
-        },
-        {
-          risk: 'Insufficient scenario coverage',
-          mitigation: 'Targeted sampling for rare scenarios after initial collection'
-        }
-      ]
-    };
-  }
-  
-  /**
-   * Generate specification document
-   */
-  generateSpecificationDocument() {
-    return {
-      title: 'Golden Dataset Specification for Invoice Brain Benchmark',
-      version: this.specification.version,
-      status: this.specification.status,
-      
-      executiveSummary: `
-The Golden Dataset is the immutable test standard for Invoice Brain benchmarking.
-Unlike synthetic datasets, it contains REAL invoices with HUMAN-VERIFIED ground truth.
-
-Purpose:
-- Provide trustworthy benchmark results that reflect real-world performance
-- Enable consistent comparison between engine versions
-- Detect overfitting to synthetic data patterns
-- Support regulatory audits and investor due diligence
-
-Target: ${this.specification.size.totalInvoices.target} verified invoices from 
-${this.specification.size.minSuppliers}+ suppliers with diverse characteristics.
-      `.trim(),
-      
-      sizeSpecification: this.specification.size,
-      diversityRequirements: this.specification.diversity,
-      requiredScenarios: this.specification.requiredScenarios,
-      dataSchema: this.schema.goldenInvoice,
-      collectionPlan: this.getCollectionChecklist()
-    };
-  }
-}
-
-// ============================================================
-// SECTION 6: VERIFICATION SUITE RUNNER
-// ============================================================
-// Orchestrates all verification components
-
-class VerificationSuiteRunner {
+/**
+ * PropertyBasedTester - Automated Scenario Generation & Validation
+ * 
+ * Generates 100k+ random scenarios covering:
+ * - Shared layouts between suppliers
+ * - Missing/corrupt OCR fields
+ * - Duplicate TRNs
+ * - Currency mismatches
+ * - Various noise levels
+ * - Edge cases (empty fields, unicode, etc.)
+ * 
+ * Validates ALL invariants pass for every scenario
+ * CI-ready: fails build if ANY invariant violated
+ */
+class PropertyBasedTester {
   constructor(options = {}) {
-    this.options = options;
-    
-    // Core components
-    this.rootCauseAttributor = new RootCauseAttributor();
     this.invariantChecker = new BenchmarkInvariantChecker();
-    this.decisionTracer = new PerCandidateDecisionTracer();
-    this.confusionMatrix = new FixedConfusionMatrixCalculator();
-    this.goldenFramework = new GoldenDatasetFramework();
+    this.scenariosGenerated = 0;
+    this.scenariosPassed = 0;
+    this.scenariosFailed = 0;
+    this.failures = [];
+    this.options = {
+      maxScenarios: options.maxScenarios || 100000,
+      failFast: options.failFast || false, // Stop on first failure
+      parallelWorkers: options.parallelWorkers || 4,
+      seed: options.seed || Date.now(),
+      verbose: options.verbose || false
+    };
     
-    this.results = {
-      timestamp: null,
-      config: options,
-      
-      // Component results
-      rootCauseAnalysis: null,
-      invariantCheck: null,
-      decisionTraceAnalysis: null,
-      fixedConfusionMatrix: null,
-      goldenDatasetSpec: null,
-      
-      // Overall verdict
-      overallVerdict: null,
-      recommendations: []
+    // Scenario generators registry
+    this.scenarioGenerators = [
+      this._generateSharedLayoutScenario.bind(this),
+      this._generateMissingOCRScenario.bind(this),
+      this._generateDuplicateTRNScenario.bind(this),
+      this._generateCurrencyMismatchScenario.bind(this),
+      this._generateHighNoiseScenario.bind(this),
+      this._generateEdgeCaseScenario.bind(this),
+      this._generateMultiLanguageScenario.bind(this),
+      this._generateVersionConflictScenario.bind(this),
+      this._generateTenantBoundaryScenario.bind(this),
+      this._generateThresholdBoundaryScenario.bind(this)
+    ];
+  }
+
+  /**
+   * Run full property-based test suite
+   */
+  async runFullSuite() {
+    console.log('═'.repeat(80));
+    console.log('  PROPERTY-BASED TESTING FRAMEWORK');
+    console.log('═'.repeat(80));
+    console.log(`  Target Scenarios: ${this.options.maxScenarios.toLocaleString()}`);
+    console.log(`  Fail Fast: ${this.options.failFast}`);
+    console.log(`  Seed: ${this.options.seed}`);
+    console.log('');
+
+    const startTime = Date.now();
+
+    // Generate and test scenarios
+    for (let i = 0; i < this.options.maxScenarios; i++) {
+      if (i % 10000 === 0 && i > 0) {
+        console.log(`  Progress: ${i.toLocaleString()}/${this.options.maxScenarios.toLocaleString()} (${(i/this.options.maxScenarios*100).toFixed(0)}%)`);
+      }
+
+      try {
+        const scenario = this._generateRandomScenario(i);
+        const result = this._executeScenario(scenario);
+        const validationResult = this.invariantChecker.runAllInvariants(result);
+
+        if (validationResult.summary.overallStatus === 'FAILED') {
+          this.scenariosFailed++;
+          this.failures.push({
+            scenarioIndex: i,
+            scenarioType: scenario.type,
+            failures: validationResult.summary.layers
+              ? Object.values(validationResult.summary.layers)
+                .flatMap(l => l.failed || [])
+              : []
+          });
+
+          if (this.options.failFast) {
+            console.log(`\n  ❌ FAIL FAST at scenario #${i}`);
+            break;
+          }
+        } else {
+          this.scenariosPassed++;
+        }
+      } catch (error) {
+        this.scenariosFailed++;
+        this.failures.push({
+          scenarioIndex: i,
+          error: error.message,
+          stack: error.stack
+        });
+
+        if (this.options.failFast) break;
+      }
+
+      this.scenariosGenerated++;
+    }
+
+    const elapsed = Date.now() - startTime;
+
+    return this._generateTestReport(elapsed);
+  }
+
+  /**
+   * Run targeted test for specific invariant
+   */
+  testInvariant(invariantId, scenarioCount = 1000) {
+    console.log(`\n  Testing Invariant: ${invariantId} with ${scenarioCount} scenarios...`);
+    
+    let passed = 0;
+    let failed = 0;
+    const failures = [];
+
+    for (let i = 0; i < scenarioCount; i++) {
+      const scenario = this._generateTargetedScenario(invariantId, i);
+      const result = this._executeScenario(scenario);
+      const checkResult = this.invariantChecker.runAllInvariants(result);
+
+      if (checkResult.summary.overallStatus === 'FAILED') {
+        failed++;
+        failures.push({ scenarioIndex: i, type: scenario.type });
+      } else {
+        passed++;
+      }
+    }
+
+    return {
+      invariantId,
+      total: scenarioCount,
+      passed,
+      failed,
+      passRate: `${((passed/scenarioCount)*100).toFixed(2)}%`,
+      failures: failures.slice(0, 10)
     };
   }
-  
-  async runFullVerification(existingBenchmarkResults = null) {
-    console.log('\n' + '═'.repeat(80));
-    console.log('🔬 INVOICE BRAIN BENCHMARK VERIFICATION SUITE v4.0');
-    console.log('   AUDITING THE MEASUREMENT SYSTEM BEFORE JUDGING THE ENGINE');
-    console.log('═'.repeat(80) + '\n');
-    
-    this.results.timestamp = new Date().toISOString();
-    
-    // Phase 1: Run Invariant Checks on existing results
-    console.log('📐 PHASE 1: Running Benchmark Invariant Checks...');
-    if (existingBenchmarkResults) {
-      this.results.invariantCheck = this.invariantChecker.runAllInvariants(existingBenchmarkResults);
-      this.printInvariantReport(this.results.invariantCheck);
-    } else {
-      console.log('   ⚠️ No existing results provided - invariants will run after benchmark');
-    }
-    
-    // Phase 2: Generate Golden Dataset Specification
-    console.log('\n📋 PHASE 2: Generating Golden Dataset Specification...');
-    this.results.goldenDatasetSpec = this.goldenFramework.generateSpecificationDocument();
-    console.log(`   ✅ Specification generated: ${this.results.goldenDatasetSpec.title}`);
-    
-    // Phase 3: Demonstrate Per-Candidate Tracing capability
-    console.log('\n🔍 PHASE 3: Demonstrating Per-Candidate Decision Trace...');
-    this.demonstrateTracing();
-    
-    // Phase 4: Show Fixed Confusion Matrix behavior
-    console.log('\n📊 PHASE 4: Demonstrating Fixed Confusion Matrix...');
-    this.demonstrateFixedMatrix();
-    
-    // Phase 5: Show Root Cause Attribution framework
-    console.log('\n🎯 PHASE 5: Demonstrating Root Cause Attribution...');
-    this.demonstrateRootCauseAttribution();
-    
-    // Generate overall verdict
-    this.generateOverallVerdict();
-    
-    // Print summary
-    this.printVerificationSummary();
-    
-    return this.results;
+
+  // ============================================================
+  // SCENARIO GENERATORS
+  // ============================================================
+
+  _generateRandomScenario(seed) {
+    // Pick random generator based on seed
+    const generatorIndex = seed % this.scenarioGenerators.length;
+    return this.scenarioGenerators[generatorIndex](seed);
   }
-  
-  printInvariantReport(checkResult) {
-    console.log('\n┌─────────────────────────────────────────────────────────────┐');
-    console.log('│               INVARIANT CHECK RESULTS                       │');
-    console.log('└─────────────────────────────────────────────────────────────┘');
-    
-    console.log(`\n   Status: ${checkResult.verdict.status}`);
-    console.log(`   Validity Score: ${checkResult.summary.validityScore}`);
-    console.log(`   Passed: ${checkResult.summary.passed} | Violations: ${checkResult.summary.violations} | Warnings: ${checkResult.summary.warnings}`);
-    
-    if (checkResult.violations.length > 0) {
-      console.log('\n   ❌ CRITICAL VIOLATIONS:');
-      for (const v of checkResult.violations) {
-        console.log(`      [${v.id}] ${v.reason}`);
-        if (v.details) console.log(`         Details: ${JSON.stringify(v.details)}`);
-      }
-    }
-    
-    if (checkResult.warnings.length > 0) {
-      console.log('\n   ⚠️ WARNINGS:');
-      for (const w of checkResult.warnings) {
-        console.log(`      [${w.id}] ${w.reason}`);
-      }
-    }
-    
-    console.log(`\n   Action: ${checkResult.verdict.action}`);
+
+  _generateTargetedScenario(invariantId, seed) {
+    // Map invariants to scenario types that should trigger them
+    const invariantScenarioMap = {
+      'M001': () => this._generateEdgeCaseScenario(seed), // Confusion matrix completeness
+      'M005': () => this._generateSharedLayoutScenario(seed), // FMR consistency
+      'M006': () => this._generateThresholdBoundaryScenario(seed), // Impossible states
+      'B001': () => this._generateDuplicateTRNScenario(seed), // TRN mismatch
+      'B002': () => this._generateTenantBoundaryScenario(seed), // Tenant isolation
+      'P003': () => this._generateEdgeCaseScenario(seed), // Single decision
+    };
+
+    const generator = invariantScenarioMap[invariantId] || (() => this._generateEdgeCaseScenario(seed));
+    return generator();
   }
-  
-  demonstrateTracing() {
-    // Simulate a complex multi-candidate scenario
-    const demoInvoiceId = 'INV_DEMO_TRACE_001';
+
+  _generateSharedLayoutScenario(seed) {
+    // Multiple suppliers share same ERP layout (common real-world case)
+    const baseLayoutHash = `layout_shared_${seed % 50}`;
+    const supplierCount = 2 + (seed % 5); // 2-6 suppliers share layout
     
-    this.decisionTracer.createTrace(demoInvoiceId, {
-      supplierId: 'supplier_correct',
-      tenantId: 'tenant_1',
-      layoutHash: 'shared_layout_erp',
-      formatType: 'arabic_tax',
-      hasSharedLayout: true,
-      hasOcrError: false
-    });
-    
-    // Stage 1: Initial pool (simulating shared ERP with 4 suppliers)
-    const allCandidates = [
-      { supplierId: 'supplier_A', supplierName: 'Company A', tenantId: 'tenant_1' },
-      { supplierId: 'supplier_B', supplierName: 'Company B', tenantId: 'tenant_1' },
-      { supplierId: 'supplier_C', supplierName: 'Company C', tenantId: 'tenant_2' }, // Wrong tenant!
-      { supplierId: 'supplier_correct', supplierName: 'Correct Company', tenantId: 'tenant_1' }
-    ];
-    this.decisionTracer.recordInitialPool(demoInvoiceId, allCandidates, 0.5);
-    
-    // Stage 2: Tenant filter removes supplier_C
-    const afterTenant = allCandidates.filter(c => c.tenantId === 'tenant_1');
-    const filteredOut = allCandidates.filter(c => c.tenantId !== 'tenant_1');
-    this.decisionTracer.recordTenantFilter(demoInvoiceId, allCandidates, afterTenant, filteredOut, 0.3);
-    
-    // Stage 3: Supplier gate passes all (same tenant)
-    this.decisionTracer.recordSupplierGate(demoInvoiceId, afterTenant, afterTenant, 'PASSED_OWNERSHIP', 0.2);
-    
-    // Stage 4: Semantic ranking
-    const rankedCandidates = [
-      { candidate: afterTenant[1], score: 0.82, scoreBreakdown: { nameSim: 0.9, currency: 1.0, tenant: 1.0 } },
-      { candidate: afterTenant[0], score: 0.78, scoreBreakdown: { nameSim: 0.7, currency: 1.0, tenant: 1.0 } },
-      { candidate: afterTenant[2], score: 0.65, scoreBreakdown: { nameSim: 0.5, currency: 1.0, tenant: 1.0 } }
-    ];
-    this.decisionTracer.recordSemanticRanking(demoInvoiceId, rankedCandidates, 1.5);
-    
-    // Stage 5: Final decision (wrong match!)
-    this.decisionTracer.recordFinalDecision(
-      demoInvoiceId, 
-      'FALSE_MATCH', 
-      'supplier_A', // Wrong! Should be supplier_correct
-      0.82, 
-      0.75,
-      'SEMANTIC_SCORE_SELECTED_WRONG: Score 0.82 > 0.65 for correct candidate',
-      0.1
+    const suppliers = Array.from({ length: supplierCount }, (_, i) => ({
+      id: `supplier_${seed}_${i}`,
+      layoutHash: baseLayoutHash,
+      trn: `TRN_${seed}_${i}_${this._randomString(8)}`,
+      tenantId: `tenant_${seed % 10}`,
+      currency: ['SAR', 'AED', 'USD'][seed % 3]
+    }));
+
+    const invoices = suppliers.flatMap((supplier, idx) => 
+      Array.from({ length: 5 + (seed % 10) }, (_, j) => ({
+        id: `invoice_${seed}_${idx}_${j}`,
+        supplierId: supplier.id,
+        layoutHash: baseLayoutHash,
+        trn: supplier.trn,
+        tenantId: supplier.tenantId,
+        currency: supplier.currency,
+        ocrQuality: 0.7 + Math.random() * 0.3,
+        isCorrectMatch: idx === 0 ? (Math.random() > 0.3) : (Math.random() > 0.9) // First supplier usually correct
+      }))
     );
-    
-    // Print the trace
-    const trace = this.decisionTracer.getTrace(demoInvoiceId);
-    console.log('\n   📝 Sample Decision Trace for', demoInvoiceId);
-    console.log('   ─'.repeat(60));
-    console.log(`   Initial Candidates: ${trace.stage1_initialPool.totalCount}`);
-    console.log(`   After Tenant Filter: ${trace.stage2_tenantFilter.outputCount} (removed ${trace.stage2_tenantFilter.filteredOut.length})`);
-    console.log(`   After Supplier Gate: ${trace.stage3_supplierGate.outputCount}`);
-    console.log(`   Top Ranked: ${trace.stage4_semanticRanking.topCandidate?.supplierId} (score: ${trace.stage4_semanticRanking.topCandidate?.score})`);
-    console.log(`   Correct Candidate: ${trace.invoiceMetadata.supplierId} (ranked #${rankedCandidates.findIndex(rc => rc.candidate.supplierId === 'supplier_correct') + 1})`);
-    console.log(`   Final Outcome: ${trace.stage5_finalDecision.outcome}`);
-    console.log(`   Is Correct: ${trace.stage5_finalDecision.isCorrectMatch}`);
-    console.log(`   Reason: ${trace.stage5_finalDecision.decisionReason}`);
-    
-    this.results.decisionTraceAnalysis = {
-      sampleTrace: trace,
-      funnelStats: this.decisionTracer.getFunnelStats()
+
+    return {
+      type: 'SHARED_LAYOUT',
+      seed,
+      suppliers,
+      invoices,
+      expectedChallenge: 'System must distinguish suppliers with identical layouts'
     };
   }
-  
-  demonstrateFixedMatrix() {
-    // Demonstrate the FIX for TN=0 and FN=0
-    const testCases = [
-      // Case 1: Correct pattern match (TP)
-      { outcome: 'PATTERN_MATCH', predicted: 'SUP_A', actual: 'SUP_A', hadPattern: true, wasCorrectDecision: true },
-      // Case 2: False match (FP)
-      { outcome: 'PATTERN_MATCH', predicted: 'SUP_B', actual: 'SUP_A', hadPattern: true, wasCorrectDecision: false },
-      // Case 3: Correct AI fallback - no pattern (TN)
-      { outcome: 'AI_FALLBACK', predicted: null, actual: 'SUP_C', hadPattern: false, wasCorrectDecision: true },
-      // Case 4: Missed opportunity - pattern existed but went to AI (FN)
-      { outcome: 'AI_FALLBACK', predicted: null, actual: 'SUP_D', hadPattern: true, wasCorrectDecision: false },
-      // Case 5: Another correct AI - low confidence (TN)
-      { outcome: 'AI_FALLBACK', predicted: null, actual: 'SUP_E', hadPattern: true, wasCorrectDecision: true },
-      // Case 6: Another TP
-      { outcome: 'PATTERN_MATCH', predicted: 'SUP_F', actual: 'SUP_F', hadPattern: true, wasCorrectDecision: true },
-    ];
+
+  _generateMissingOCRScenario(seed) {
+    // Simulate OCR failures - missing critical fields
+    const fieldTypes = ['supplierName', 'trn', 'total', 'date', 'lineItems'];
+    const missingFields = fieldTypes.filter(() => Math.random() < 0.3); // 30% chance each field missing
     
-    for (const tc of testCases) {
-      this.confusionMatrix.recordPrediction({
-        invoiceId: `TEST_${tc.predicted || 'AI'}_${tc.actual}`,
-        predictedSupplierId: tc.predicted,
-        actualSupplierId: tc.actual,
-        outcome: tc.outcome,
-        confidence: 0.8,
-        hadPatternAvailable: tc.hadPattern,
-        wasCorrectDecision: tc.wasCorrectDecision
+    return {
+      type: 'MISSING_OCR',
+      seed,
+      invoice: {
+        id: `invoice_missing_ocr_${seed}`,
+        supplierId: `supplier_${seed}`,
+        trn: missingFields.includes('trn') ? null : `TRN_${seed}`,
+        total: missingFields.includes('total') ? null : 1000 + Math.random() * 10000,
+        supplierName: missingFields.includes('supplierName') ? null : `Supplier ${seed}`,
+        date: missingFields.includes('date') ? null : new Date().toISOString(),
+        lineItems: missingFields.includes('lineItems') ? [] : this._generateLineItems(1 + seed % 10),
+        ocrConfidence: 0.3 + Math.random() * 0.4
+      },
+      missingFields,
+      expectedChallenge: 'Handle incomplete OCR data gracefully'
+    };
+  }
+
+  _generateDuplicateTRNScenario(seed) {
+    // Different suppliers with same TRN (data quality issue)
+    const sharedTRN = `DUPLICATE_TRN_${seed}`;
+    
+    return {
+      type: 'DUPLICATE_TRN',
+      seed,
+      suppliers: [
+        { id: `supplier_a_${seed}`, trn: sharedTRN, name: 'Company A', isValid: true },
+        { id: `supplier_b_${seed}`, trn: sharedTRN, name: 'Company B', isValid: false } // Duplicate
+      ],
+      invoice: {
+        id: `invoice_dup_trn_${seed}`,
+        trn: sharedTRN,
+        expectedSupplier: `supplier_a_${seed}`
+      },
+      expectedChallenge: 'Detect and handle TRN duplicates correctly'
+    };
+  }
+
+  _generateCurrencyMismatchScenario(seed) {
+    // Invoice currency differs from pattern currency
+    const currencies = ['SAR', 'AED', 'USD', 'EUR', 'GBP', 'QAR', 'KWD', 'BHD'];
+    const invoiceCurrency = currencies[seed % currencies.length];
+    const patternCurrency = currencies[(seed + 3) % currencies.length]; // Usually different
+    
+    return {
+      type: 'CURRENCY_MISMATCH',
+      seed,
+      invoice: {
+        id: `invoice_currency_${seed}`,
+        currency: invoiceCurrency,
+        total: 1000 + seed * 100
+      },
+      pattern: {
+        currency: patternCurrency,
+        total: 1000 + seed * 100
+      },
+      isMismatch: invoiceCurrency !== patternCurrency,
+      expectedChallenge: 'Detect currency mismatches and adjust scoring'
+    };
+  }
+
+  _generateHighNoiseScenario(seed) {
+    // Heavy OCR noise, garbled text
+    const noiseLevel = 0.3 + (seed % 7) * 0.1; // 30%-90% noise
+    
+    return {
+      type: 'HIGH_NOISE',
+      seed,
+      noiseLevel,
+      invoice: {
+        id: `invoice_noise_${seed}`,
+        supplierName: this._applyNoise(`Supplier Company ${seed}`, noiseLevel),
+        trn: this._applyNoise(`TRN${seed.toString().padStart(10, '0')}`, noiseLevel * 0.5), // TRN less noisy
+        total: 1000 + Math.random() * 5000,
+        ocrConfidence: 1 - noiseLevel
+      },
+      expectedChallenge: 'Maintain accuracy despite heavy OCR noise'
+    };
+  }
+
+  _generateEdgeCaseScenario(seed) {
+    // Boundary values and edge cases
+    const edgeCases = [
+      { type: 'EMPTY_FIELDS', invoice: { id: `edge_empty_${seed}`, supplierName: '', trn: '', total: 0 } },
+      { type: 'UNICODE_SPECIAL', invoice: { id: `edge_unicode_${seed}`, supplierName: 'شركة ألف-باء ⚡️🔥', trn: '٣٠٠١٢٣٤٥٦' } },
+      { type: 'VERY_LONG_TEXT', invoice: { id: `edge_long_${seed}`, supplierName: 'A'.repeat(500) } },
+      { type: 'SPECIAL_CHARS', invoice: { id: `edge_special_${seed}`, supplierName: '<script>alert("xss")</script>' } },
+      { type: 'NULL_VALUES', invoice: { id: `edge_null_${seed}`, supplierName: null, trn: null, total: null } },
+      { type: 'NEGATIVE_TOTAL', invoice: { id: `edge_negative_${seed}`, total: -1000 } }, // Credit note
+      { type: 'ZERO_TOTAL', invoice: { id: `edge_zero_${seed}`, total: 0 } },
+      { type: 'EXTREME_TOTAL', invoice: { id: `edge_extreme_${seed}`, total: 999999999.99 } }
+    ];
+
+    return {
+      type: 'EDGE_CASE',
+      seed,
+      edgeCase: edgeCases[seed % edgeCases.length],
+      expectedChallenge: 'Handle edge cases without crashing'
+    };
+  }
+
+  _generateMultiLanguageScenario(seed) {
+    // Mixed language content
+    const languages = [
+      { lang: 'arabic', text: 'فاتورة ضريبية من شركة الرياض للمقاولات', direction: 'rtl' },
+      { lang: 'english', text: 'Tax Invoice from Riyadh Construction Co.', direction: 'ltr' },
+      { lang: 'mixed', text: 'فاتورة Invoice ضريبية Tax من from الشركة Company', direction: 'mixed' },
+      { lang: 'french', text: 'Facture fiscale de Construction Paris', direction: 'ltr' },
+      { lang: 'chinese', text: '北京建筑公司税务发票', direction: 'ltr' }
+    ];
+
+    const langConfig = languages[seed % languages.length];
+
+    return {
+      type: 'MULTI_LANGUAGE',
+      seed,
+      language: langConfig.lang,
+      invoice: {
+        id: `invoice_lang_${seed}`,
+        supplierName: langConfig.text,
+        textDirection: langConfig.direction
+      },
+      expectedChallenge: 'Process multi-language content correctly'
+    };
+  }
+
+  _generateVersionConflictScenario(seed) {
+    // Pattern version conflicts
+    const versions = ['1.0.0', '1.1.0', '2.0.0', '2.1.0-beta', '3.0.0-rc'];
+    
+    return {
+      type: 'VERSION_CONFLICT',
+      seed,
+      patternVersion: versions[seed % versions.length],
+      engineMinVersion: versions[Math.max(0, (seed % versions.length) - 1)],
+      isCompatible: seed % 5 !== 0, // Most are compatible
+      expectedChallenge: 'Handle version compatibility correctly'
+    };
+  }
+
+  _generateTenantBoundaryScenario(seed) {
+    // Test tenant isolation at boundaries
+    const tenants = [`tenant_alpha_${seed % 5}`, `tenant_beta_${seed % 5}`];
+    
+    return {
+      type: 'TENANT_BOUNDARY',
+      seed,
+      invoice: {
+        id: `invoice_tenant_${seed}`,
+        tenantId: tenants[0],
+        supplierId: `supplier_${seed}`
+      },
+      availablePatterns: [
+        { tenantId: tenants[0], supplierId: `supplier_${seed}` }, // Correct tenant
+        { tenantId: tenants[1], supplierId: `supplier_${seed}` }, // Wrong tenant!
+        { tenantId: tenants[0], supplierId: `supplier_other` } // Wrong supplier
+      ],
+      expectedChallenge: 'Never cross tenant boundaries'
+    };
+  }
+
+  _generateThresholdBoundaryScenario(seed) {
+    // Test exact boundary conditions around thresholds
+    const baseThreshold = 0.70;
+    const offset = (seed % 20 - 10) / 100; // -0.10 to +0.09
+    
+    return {
+      type: 'THRESHOLD_BOUNDARY',
+      seed,
+      score: baseThreshold + offset,
+      threshold: baseThreshold,
+      isAboveThreshold: offset >= 0,
+      margin: Math.abs(offset),
+      expectedChallenge: 'Correctly handle boundary conditions'
+    };
+  }
+
+  // ============================================================
+  // SCENARIO EXECUTION
+  // ============================================================
+
+  _executeScenario(scenario) {
+    // Create mock benchmark result from scenario
+    const mockResult = this._buildMockResult(scenario);
+    return mockResult;
+  }
+
+  _buildMockResult(scenario) {
+    // Build a realistic benchmark result structure based on scenario type
+    const baseResult = {
+      totalInvoices: 0,
+      confusionMatrix: { tp: 0, fp: 0, fn: 0, tn: 0 },
+      metrics: {},
+      decisions: [],
+      traces: [],
+      pipelineData: { inputCount: 0, stageCounts: {} },
+      generatedAt: new Date().toISOString()
+    };
+
+    switch (scenario.type) {
+      case 'SHARED_LAYOUT':
+        return this._buildSharedLayoutResult(scenario, baseResult);
+      case 'MISSING_OCR':
+        return this._buildMissingOCRResult(scenario, baseResult);
+      case 'DUPLICATE_TRN':
+        return this._buildDuplicateTRNResult(scenario, baseResult);
+      case 'CURRENCY_MISMATCH':
+        return this._buildCurrencyMismatchResult(scenario, baseResult);
+      case 'HIGH_NOISE':
+        return this._buildHighNoiseResult(scenario, baseResult);
+      case 'EDGE_CASE':
+        return this._buildEdgeCaseResult(scenario, baseResult);
+      case 'MULTI_LANGUAGE':
+        return this._buildMultiLanguageResult(scenario, baseResult);
+      case 'VERSION_CONFLICT':
+        return this._buildVersionConflictResult(scenario, baseResult);
+      case 'TENANT_BOUNDARY':
+        return this._buildTenantBoundaryResult(scenario, baseResult);
+      case 'THRESHOLD_BOUNDARY':
+        return this._buildThresholdBoundaryResult(scenario, baseResult);
+      default:
+        return baseResult;
+    }
+  }
+
+  _buildSharedLayoutResult(scenario, base) {
+    // Simulate matching with shared layouts
+    let tp = 0, fp = 0, fn = 0, tn = 0;
+    const decisions = [];
+    const traces = [];
+
+    for (const invoice of scenario.invoices) {
+      const isCorrect = invoice.isCorrectMatch;
+      
+      if (isCorrect) {
+        tp++;
+        decisions.push({ invoiceId: invoice.id, decision: 'PATTERN_MATCH', supplierId: invoice.supplierId });
+      } else if (Math.random() > 0.7) { // 30% chance of false match due to shared layout
+        fp++;
+        const wrongSupplier = scenario.suppliers.find(s => s.id !== invoice.supplierId);
+        decisions.push({ invoiceId: invoice.id, decision: 'PATTERN_MATCH', supplierId: wrongSupplier?.id });
+      } else {
+        fn++; // Missed opportunity
+        decisions.push({ invoiceId: invoice.id, decision: 'AI_FALLBACK' });
+      }
+
+      traces.push({
+        invoiceId: invoice.id,
+        decision: decisions[decisions.length - 1].decision,
+        invoiceDetails: { layoutHash: invoice.layoutHash, trn: invoice.trn },
+        matchedPattern: { layoutHash: invoice.layoutHash },
+        rejectedCandidates: scenario.suppliers
+          .filter(s => s.id !== (isCorrect ? invoice.supplierId : scenario.suppliers[1]?.id))
+          .slice(0, 3)
+          .map(s => ({
+            candidateId: s.id,
+            reason: 'LowerSemanticScore',
+            score: 0.3 + Math.random() * 0.4,
+            threshold: 0.70
+          }))
       });
     }
-    
-    const metrics = this.confusionMatrix.getMetrics();
-    
-    console.log('\n   📊 Fixed Confusion Matrix Demo:');
-    console.log('   ─'.repeat(60));
-    const table = this.confusionMatrix.getTable();
-    for (const row of table) {
-      console.log(`   ${row[0]?.padEnd(35)} ${row[1]?.padEnd(12)} ${row[2]?.padEnd(12)} ${row[3] || ''}`);
-    }
-    
-    console.log(`\n   ✅ TP=${metrics.matrix.tp} FP=${metrics.matrix.fp} FN=${metrics.matrix.fn} TN=${metrics.matrix.tn}`);
-    console.log(`   ✅ TN is now ${metrics.matrix.tn > 0 ? 'NON-ZERO' : 'ZERO'} (was always 0 before!)`);
-    console.log(`   ✅ FN is now ${metrics.matrix.fn > 0 ? 'NON-ZERO' : 'ZERO'} (was always 0 before!)`);
-    console.log(`   ✅ FMR: ${(metrics.falseMatchRate * 100).toFixed(1)}%`);
-    console.log(`   ✅ Recall: ${(metrics.recall * 100).toFixed(1)}% (no longer 100%!)`);
-    console.log(`   ✅ AI Routing Rate: ${(metrics.aiRoutingRate * 100).toFixed(1)}%`);
-    console.log(`   ✅ Correct AI Rate: ${(metrics.correctAiRate * 100).toFixed(1)}% (of AI routings, correct)`);
-    
-    console.log(`\n   Health Check: ${metrics.summary.healthCheck.healthy ? '✅ HEALTHY' : '⚠️ ISSUES'}`);
-    if (!metrics.summary.healthCheck.healthy) {
-      for (const issue of metrics.summary.healthCheck.issues) {
-        console.log(`      - ${issue}`);
-      }
-    }
-    
-    this.results.fixedConfusionMatrix = metrics;
-  }
-  
-  demonstrateRootCauseAttribution() {
-    // Demonstrate attribution with sample false matches
-    const sampleContexts = [
-      {
-        invoice: { id: 'INV_RC_001', supplierId: 'real_sup', tenantId: 't1', hasSharedLayout: true, hasOcrError: false },
-        decisionTrace: { matchedSupplierId: 'wrong_sup', confidence: 0.85, isCorrectMatch: false, candidateScores: { wrong_sup: 0.85, real_sup: 0.72 } },
-        candidates: [
-          { supplierId: 'wrong_sup', tenantId: 't1' },
-          { supplierId: 'real_sup', tenantId: 't1' }
-        ],
-        selectedCandidate: { supplierId: 'wrong_sup', tenantId: 't1' }
-      },
-      {
-        invoice: { id: 'INV_RC_002', supplierId: 'target_sup', tenantId: 't1', hasSharedLayout: false, hasOcrError: true },
-        decisionTrace: { matchedSupplierId: 'other_sup', confidence: 0.71, isCorrectMatch: false, candidateScores: { other_sup: 0.71 } },
-        candidates: [
-          { supplierId: 'other_sup', tenantId: 't1' }
-        ],
-        selectedCandidate: { supplierId: 'other_sup', tenantId: 't1' }
-      },
-      {
-        invoice: { id: 'INV_RC_003', supplierId: 'correct_sup', tenantId: 't2', hasSharedLayout: true, hasOcrError: false },
-        decisionTrace: { matchedSupplierId: 'intruder_sup', confidence: 0.88, isCorrectMatch: false, candidateScores: {} },
-        candidates: [
-          { supplierId: 'intruder_sup', tenantId: 't1' }, // Wrong tenant!
-          { supplierId: 'correct_sup', tenantId: 't2' }
-        ],
-        selectedCandidate: { supplierId: 'intruder_sup', tenantId: 't1' }
-      }
-    ];
-    
-    for (const ctx of sampleContexts) {
-      this.rootCauseAttributor.attributeFalseMatch(ctx);
-    }
-    
-    const breakdown = this.rootCauseAttributor.getBreakdown();
-    
-    console.log('\n   🎯 Root Cause Attribution Demo:');
-    console.log('   ─'.repeat(60));
-    console.log(`   Total False Matches Attributed: ${breakdown.totalFalseMatches}`);
-    console.log('\n   Breakdown by Root Cause:');
-    
-    for (const [code, info] of Object.entries(breakdown.breakdown)) {
-      console.log(`   • [${info.severity}] ${code}`);
-      console.log(`     Count: ${info.count} (${info.percentage})`);
-      console.log(`     Description: ${info.description}`);
-      console.log(`     Stage: ${info.stage}`);
-      console.log(`     Samples: ${info.sampleInvoiceIds.join(', ')}`);
-      console.log('');
-    }
-    
-    console.log('   By Stage:');
-    for (const [stage, info] of Object.entries(breakdown.byStage)) {
-      console.log(`   • ${stage}: ${info.count} false matches`);
-      console.log(`   Causes: ${info.causes.join(', ')}`);
-    }
-    
-    console.log('\n   By Severity:');
-    for (const [severity, count] of Object.entries(breakdown.bySeverity)) {
-      if (count > 0) {
-        console.log(`   • ${severity}: ${count}`);
-      }
-    }
-    
-    this.results.rootCauseAnalysis = breakdown;
-  }
-  
-  generateOverallVerdict() {
-    const invCheck = this.results.invariantCheck;
-    
-    this.results.overallVerdict = {
-      status: invCheck?.verdict?.status || 'UNKNOWN',
-      methodologyScore: 9.0, // Increased because we're auditing the measurement
-      confidenceScore: invCheck?.summary?.validityScore ? 
-        (parseFloat(invCheck.summary.validityScore) / 100 * 8 + 2).toFixed(1) : // Base 2 + validity
-        '6.0', // Default medium confidence until invariants pass
-      
-      keyFindings: [
-        'Root Cause Attribution provides per-invoice failure diagnosis',
-        'Fixed Confusion Matrix distinguishes TN from FN',
-        'Per-Candidate Trace shows full decision funnel',
-        'Golden Dataset Framework defined for real-world validation',
-        'Benchmark Invariants prevent contradictory reports'
-      ],
-      
-      whatWasProved: [
-        'Answer Leakage detection mechanism exists',
-        'Confusion Matrix definition was flawed (now fixed)',
-        'TN=0 and FN=0 are now detectable as anomalies',
-        'Root cause can be attributed to specific pipeline stage'
-      ],
-      
-      whatRemains: [
-        'Golden Dataset not yet collected (framework only)',
-        'Invariants need real benchmark results to validate',
-        'Production deployment still requires FMR < 0.5%',
-        'Real OCR latency not yet measured'
-      ],
-      
-      nextPriorityActions: [
-        'P0: Collect Golden Dataset (100 suppliers × 75 invoices)',
-        'P0: Re-run benchmark with Fixed Confusion Matrix',
-        'P0: Add Invariant CI gate to build pipeline',
-        'P1: Integrate Per-Candidate Trace into production logs',
-        'P2: Field-Level Validation (only after measurement trusted)'
-      ]
+
+    base.totalInvoices = scenario.invoices.length;
+    base.confusionMatrix = { tp, fp, fn, tn };
+    base.metrics = {
+      precision: tp + fp > 0 ? tp / (tp + fp) : 0,
+      recall: tp + fn > 0 ? tp / (tp + fn) : 0,
+      fmr: tp + fp > 0 ? fp / (tp + fp) : 0,
+      f1Score: 0
     };
-    
-    this.results.recommendations = this.generateRecommendations();
+    if (base.metrics.precision + base.metrics.recall > 0) {
+      base.metrics.f1Score = 2 * (base.metrics.precision * base.metrics.recall) / 
+                             (base.metrics.precision + base.metrics.recall);
+    }
+    base.decisions = decisions;
+    base.traces = traces;
+    base.pipelineData = {
+      inputCount: scenario.invoices.length,
+      inputIds: scenario.invoices.map(i => i.id),
+      stageCounts: {
+        initial: scenario.suppliers.length * 2,
+        afterTenantFilter: scenario.suppliers.length,
+        afterSupplierGate: Math.ceil(scenario.suppliers.length / 2),
+        afterSemanticRank: 2,
+        final: 1
+      }
+    };
+
+    return base;
   }
-  
-  generateRecommendations() {
-    return [
-      {
-        priority: 'P0-CRITICAL',
-        title: 'Collect Golden Dataset',
-        effort: '2-3 weeks',
-        impact: 'Enables trustworthy benchmarking',
-        status: 'NOT_STARTED',
-        specAvailable: true
+
+  _buildMissingOCRResult(scenario, base) {
+    const hasMissingFields = scenario.missingFields.length > 0;
+    base.totalInvoices = 1;
+    base.confusionMatrix = hasMissingFields ? { tp: 0, fp: 0, fn: 1, tn: 0 } : { tp: 1, fp: 0, fn: 0, tn: 0 };
+    base.metrics = {
+      precision: hasMissingFields ? 0 : 1,
+      recall: hasMissingFields ? 0 : 1,
+      fmr: 0,
+      f1Score: hasMissingFields ? 0 : 1
+    };
+    base.decisions = [{
+      invoiceId: scenario.invoice.id,
+      decision: hasMissingFields ? 'AI_FALLBACK' : 'PATTERN_MATCH'
+    }];
+    base.traces = [{
+      invoiceId: scenario.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: scenario.invoice,
+      rejectedCandidates: scenario.missingFields.map(f => ({
+        candidateId: `candidate_${f}`,
+        reason: `MissingField:${f}`,
+        score: 0,
+        threshold: 0.70
+      }))
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [scenario.invoice.id], stageCounts: { initial: 5, final: 0 } };
+    return base;
+  }
+
+  _buildDuplicateTRNResult(scenario, base) {
+    base.totalInvoices = 1;
+    // Should detect duplicate and either reject or flag
+    const detectedDuplicate = Math.random() > 0.3; // 70% detection rate
+    base.confusionMatrix = detectedDuplicate ? 
+      { tp: 0, fp: 0, fn: 1, tn: 0 } : // Correctly avoided match
+      { tp: 0, fp: 1, fn: 0, tn: 0 };  // False match with duplicate TRN
+    base.metrics = {
+      precision: detectedDuplicate ? 0 : 0,
+      recall: detectedDuplicate ? 0 : 1,
+      fmr: detectedDuplicate ? 0 : 1,
+      f1Score: 0
+    };
+    base.decisions = [{
+      invoiceId: scenario.invoice.id,
+      decision: detectedDuplicate ? 'AI_FALLBACK' : 'PATTERN_MATCH',
+      supplierId: detectedDuplicate ? null : scenario.suppliers[1].id
+    }];
+    base.traces = [{
+      invoiceId: scenario.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: { trn: scenario.invoice.trn },
+      matchedPattern: detectedDuplicate ? null : { trn: scenario.sharedTRN },
+      rejectedCandidates: scenario.suppliers.map(s => ({
+        candidateId: s.id,
+        reason: s.isValid ? 'TRNDuplicateDetected' : 'InvalidSupplier',
+        score: 0.5,
+        threshold: 0.80
+      }))
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [scenario.invoice.id], stageCounts: { initial: 2, final: detectedDuplicate ? 0 : 1 } };
+    return base;
+  }
+
+  _buildCurrencyMismatchResult(scenario, base) {
+    base.totalInvoices = 1;
+    const handledCorrectly = !scenario.isMismatch || Math.random() > 0.4;
+    base.confusionMatrix = handledCorrectly ?
+      { tp: 0, fp: 0, fn: scenario.isMismatch ? 1 : 0, tn: 0 } :
+      { tp: 0, fp: 1, fn: 0, tn: 0 };
+    base.metrics = {
+      precision: handledCorrectly ? 0 : 0,
+      recall: handledCorrectly ? (scenario.isMismatch ? 0 : 1) : 1,
+      fmr: handledCorrectly ? 0 : 1,
+      f1Score: 0
+    };
+    base.decisions = [{
+      invoiceId: scenario.invoice.id,
+      decision: handledCorrectly ? (scenario.isMismatch ? 'AI_FALLBACK' : 'PATTERN_MATCH') : 'PATTERN_MATCH'
+    }];
+    base.traces = [{
+      invoiceId: scenario.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: { currency: scenario.invoice.currency },
+      matchedPattern: { currency: scenario.pattern.currency },
+      scores: { currency: scenario.isMismatch ? 0.2 : 0.95 },
+      rejectedCandidates: scenario.isMismatch ? [{
+        candidateId: 'pattern_1',
+        reason: 'CurrencyMismatch',
+        score: 0.2,
+        threshold: 0.85
+      }] : []
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [scenario.invoice.id], stageCounts: { initial: 1, final: handledCorrectly && !scenario.isMismatch ? 1 : 0 } };
+    return base;
+  }
+
+  _buildHighNoiseResult(scenario, base) {
+    base.totalInvoices = 1;
+    const recoveredCorrectly = scenario.noiseLevel < 0.6 || Math.random() > 0.5;
+    base.confusionMatrix = recoveredCorrectly ?
+      { tp: 1, fp: 0, fn: 0, tn: 0 } :
+      { tp: 0, fp: 1, fn: 0, tn: 0 };
+    base.metrics = {
+      precision: recoveredCorrectly ? 1 : 0,
+      recall: 1,
+      fmr: recoveredCorrectly ? 0 : 1,
+      f1Score: recoveredCorrectly ? 1 : 0
+    };
+    base.decisions = [{
+      invoiceId: scenario.invoice.id,
+      decision: recoveredCorrectly ? 'PATTERN_MATCH' : 'AI_FALLBACK',
+      confidence: 1 - scenario.noiseLevel
+    }];
+    base.traces = [{
+      invoiceId: scenario.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: { ocrConfidence: scenario.invoice.ocrConfidence },
+      scores: { overall: 1 - scenario.noiseLevel },
+      rejectedCandidates: recoveredCorrectly ? [] : [{
+        candidateId: 'likely_supplier',
+        reason: 'BelowConfidenceThreshold',
+        score: 1 - scenario.noiseLevel,
+        threshold: 0.50
+      }]
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [scenario.invoice.id], stageCounts: { initial: 5, final: recoveredCorrectly ? 1 : 0 } };
+    return base;
+  }
+
+  _buildEdgeCaseResult(scenario, base) {
+    base.totalInvoices = 1;
+    // Most edge cases should not crash, may result in AI_FALLBACK
+    const handledGracefully = !['NULL_VALUES', 'NEGATIVE_TOTAL'].includes(scenario.edgeCase.type) || Math.random() > 0.1;
+    base.confusionMatrix = handledGracefully ?
+      { tp: 0, fp: 0, fn: 1, tn: 0 } :
+      { tp: 0, fp: 0, fn: 0, tn: 0 }; // Crashed/invalid
+    base.metrics = { precision: 0, recall: 0, fmr: 0, f1Score: 0 };
+    base.decisions = [{
+      invoiceId: scenario.edgeCase.invoice.id,
+      decision: handledGracefully ? 'AI_FALLBACK' : 'ERROR'
+    }];
+    base.traces = [{
+      invoiceId: scenario.edgeCase.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: scenario.edgeCase.invoice,
+      rejectedCandidates: handledGracefully ? [{
+        candidateId: 'default',
+        reason: `EdgeCase:${scenario.edgeCase.type}`,
+        score: 0,
+        threshold: 0.70
+      }] : []
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [scenario.edgeCase.invoice.id], stageCounts: { initial: 1, final: 0 } };
+    return base;
+  }
+
+  _buildMultiLanguageResult(scenario, base) {
+    base.totalInvoices = 1;
+    const processedCorrectly = ['arabic', 'english', 'mixed'].includes(scenario.language);
+    base.confusionMatrix = processedCorrectly ?
+      { tp: 1, fp: 0, fn: 0, tn: 0 } :
+      { tp: 0, fp: 0, fn: 1, tn: 0 };
+    base.metrics = {
+      precision: processedCorrectly ? 1 : 0,
+      recall: processedCorrectly ? 1 : 0,
+      fmr: 0,
+      f1Score: processedCorrectly ? 1 : 0
+    };
+    base.decisions = [{
+      invoiceId: scenario.invoice.id,
+      decision: processedCorrectly ? 'PATTERN_MATCH' : 'AI_FALLBACK'
+    }];
+    base.traces = [{
+      invoiceId: scenario.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: { language: scenario.language, textDirection: scenario.invoice.textDirection }
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [scenario.invoice.id], stageCounts: { initial: 3, final: processedCorrectly ? 1 : 0 } };
+    return base;
+  }
+
+  _buildVersionConflictResult(scenario, base) {
+    base.totalInvoices = 1;
+    base.confusionMatrix = scenario.isCompatible ?
+      { tp: 1, fp: 0, fn: 0, tn: 0 } :
+      { tp: 0, fp: 0, fn: 1, tn: 0 };
+    base.metrics = {
+      precision: scenario.isCompatible ? 1 : 0,
+      recall: scenario.isCompatible ? 1 : 0,
+      fmr: 0,
+      f1Score: scenario.isCompatible ? 1 : 0
+    };
+    base.decisions = [{
+      invoiceId: `invoice_version_${scenario.seed}`,
+      decision: scenario.isCompatible ? 'PATTERN_MATCH' : 'AI_FALLBACK'
+    }];
+    base.traces = [{
+      invoiceId: `invoice_version_${scenario.seed}`,
+      decision: base.decisions[0].decision,
+      matchedPattern: { version: scenario.patternVersion },
+      minCompatibleVersion: scenario.engineMinVersion
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [`invoice_version_${scenario.seed}`], stageCounts: { initial: 1, final: scenario.isCompatible ? 1 : 0 } };
+    return base;
+  }
+
+  _buildTenantBoundaryResult(scenario, base) {
+    base.totalInvoices = 1;
+    // CRITICAL: Must never match across tenant boundary
+    const tenantViolation = Math.random() < 0.1; // 10% chance of bug
+    base.confusionMatrix = tenantViolation ?
+      { tp: 0, fp: 1, fn: 0, tn: 0 } : // SECURITY VIOLATION
+      { tp: 0, fp: 0, fn: 1, tn: 0 };   // Correctly blocked
+    base.metrics = {
+      precision: 0,
+      recall: tenantViolation ? 1 : 0,
+      fmr: tenantViolation ? 1 : 0,
+      f1Score: 0
+    };
+    base.decisions = [{
+      invoiceId: scenario.invoice.id,
+      decision: tenantViolation ? 'PATTERN_MATCH' : 'AI_FALLBACK',
+      supplierId: tenantViolation ? scenario.availablePatterns[1].supplierId : null
+    }];
+    base.traces = [{
+      invoiceId: scenario.invoice.id,
+      decision: base.decisions[0].decision,
+      invoiceDetails: { tenantId: scenario.invoice.tenantId },
+      matchedPattern: tenantViolation ? scenario.availablePatterns[1] : null,
+      rejectedCandidates: tenantViolation ? [] : scenario.availablePatterns.map(p => ({
+        candidateId: p.supplierId,
+        reason: p.tenantId === scenario.invoice.tenantId ? 'OtherReason' : 'TenantMismatch',
+        score: p.tenantId === scenario.invoice.tenantId ? 0.6 : 0.9,
+        threshold: 0.95 // High threshold for tenant check
+      }))
+    }];
+    base.pipelineData = { 
+      inputCount: 1, 
+      inputIds: [scenario.invoice.id], 
+      stageCounts: { 
+        initial: scenario.availablePatterns.length, 
+        afterTenantFilter: scenario.availablePatterns.length,
+        final: tenantViolation ? 1 : 0 
+      } 
+    };
+    return base;
+  }
+
+  _buildThresholdBoundaryResult(scenario, base) {
+    base.totalInvoices = 1;
+    base.confusionMatrix = scenario.isAboveThreshold ?
+      { tp: 1, fp: 0, fn: 0, tn: 0 } :
+      { tp: 0, fp: 0, fn: 1, tn: 0 };
+    base.metrics = {
+      precision: scenario.isAboveThreshold ? 1 : 0,
+      recall: scenario.isAboveThreshold ? 1 : 0,
+      fmr: 0,
+      f1Score: scenario.isAboveThreshold ? 1 : 0
+    };
+    base.decisions = [{
+      invoiceId: `invoice_threshold_${scenario.seed}`,
+      decision: scenario.isAboveThreshold ? 'PATTERN_MATCH' : 'AI_FALLBACK'
+    }];
+    base.traces = [{
+      invoiceId: `invoice_threshold_${scenario.seed}`,
+      decision: base.decisions[0].decision,
+      finalScore: scenario.score,
+      threshold: scenario.threshold,
+      rejectedCandidates: scenario.isAboveThreshold ? [] : [{
+        candidateId: 'candidate_1',
+        reason: 'BelowThreshold',
+        score: scenario.score,
+        threshold: scenario.threshold
+      }]
+    }];
+    base.pipelineData = { inputCount: 1, inputIds: [`invoice_threshold_${scenario.seed}`], stageCounts: { initial: 1, final: scenario.isAboveThreshold ? 1 : 0 } };
+    return base;
+  }
+
+  // ============================================================
+  // UTILITY FUNCTIONS
+  // ============================================================
+
+  _randomString(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  _applyNoise(text, level) {
+    if (!text) return text;
+    
+    const operations = [
+      // Character substitution
+      () => {
+        const pos = Math.floor(Math.random() * text.length);
+        return text.substring(0, pos) + '?' + text.substring(pos + 1);
       },
-      {
-        priority: 'P0-CRITICAL',
-        title: 'Re-run Rigorous Benchmark with Fixed Matrix',
-        effort: '1-2 days',
-        impact: 'Resolves TN=0/FN=0 anomalies',
-        status: 'READY_TO_RUN',
-        dependsOn: []
+      // Character deletion
+      () => {
+        const pos = Math.floor(Math.random() * text.length);
+        return text.substring(0, pos) + text.substring(pos + 1);
       },
-      {
-        priority: 'P0-CRITICAL',
-        title: 'Add Invariant CI Gate',
-        effort: '2-3 days',
-        impact: 'Prevents contradictory reports',
-        status: 'REQUIRES_IMPLEMENTATION',
-        dependsOn: ['Fixed Matrix validation']
+      // Character duplication
+      () => {
+        const pos = Math.floor(Math.random() * text.length);
+        return text.substring(0, pos) + text[pos] + text.substring(pos);
       },
-      {
-        priority: 'P1-HIGH',
-        title: 'Integrate Decision Trace into Engine',
-        effort: '3-5 days',
-        impact: 'Production debugging capability',
-        status: 'PLANNED',
-        dependsOn: ['Core engine stability']
-      },
-      {
-        priority: 'P1-HIGH',
-        title: 'Field-Level Validation',
-        effort: '1-2 weeks',
-        impact: 'Reduces FMR further',
-        status: 'BLOCKED',
-        dependsOn: ['Golden Dataset', 'Measurement validation'],
-        blockedReason: 'Building on unvalidated measurement is premature'
-      },
-      {
-        priority: 'P2-MEDIUM',
-        title: 'End-to-End Latency Benchmark',
-        effort: '1 week',
-        impact: 'Production readiness assessment',
-        status: 'DEFERRED',
-        dependsOn: ['FMR < 0.5%', 'Field Validation']
+      // Swap adjacent characters
+      () => {
+        const pos = Math.floor(Math.random() * (text.length - 1));
+        return text.substring(0, pos) + text[pos + 1] + text[pos] + text.substring(pos + 2);
       }
     ];
+
+    let noisyText = text;
+    const numOperations = Math.floor(text.length * level);
+    
+    for (let i = 0; i < numOperations; i++) {
+      const operation = operations[Math.floor(Math.random() * operations.length)];
+      noisyText = operation();
+    }
+
+    return noisyText;
   }
-  
-  printVerificationSummary() {
-    const v = this.results.overallVerdict;
-    
-    console.log('\n' + '═'.repeat(80));
-    console.log('🔬 VERIFICATION SUITE SUMMARY');
-    console.log('═'.repeat(80));
-    
-    console.log('\n┌─────────────────────────────────────────────────────────────┐');
-    console.log('│                   OVERALL VERDICT                            │');
-    console.log('└─────────────────────────────────────────────────────────────┘');
-    console.log(`\n   Status: ${v.status}`);
-    console.log(`   Methodology Score: ${v.methodologyScore}/10`);
-    console.log(`   Confidence in Numbers: ${v.confidenceScore}/10`);
-    
-    console.log('\n   What We PROVED:');
-    for (const item of v.whatWasProved) {
-      console.log(`   ✅ ${item}`);
-    }
-    
-    console.log('\n   What Remains:');
-    for (const item of v.whatRemains) {
-      console.log(`   ⏳ ${item}`);
-    }
-    
-    console.log('\n   Next Priority Actions:');
-    for (const rec of this.results.recommendations.slice(0, 4)) {
-      const statusIcon = rec.status === 'READY_TO_RUN' ? '🟢' : 
-                        rec.status === 'BLOCKED' ? '🔴' : '⚪';
-      console.log(`   ${statusIcon} [${rec.priority}] ${rec.title} (${rec.effort})`);
-      if (rec.blockedReason) {
-        console.log(`      Blocked: ${rec.blockedReason}`);
-      }
-    }
-    
-    console.log('\n' + '═'.repeat(80));
+
+  _generateLineItems(count) {
+    return Array.from({ length: count }, (_, i) => ({
+      description: `Item ${i + 1}`,
+      quantity: 1 + Math.floor(Math.random() * 10),
+      unitPrice: 10 + Math.random() * 1000
+    }));
   }
-  
-  getResultsForExport() {
+
+  _generateTestReport(elapsedMs) {
+    const passRate = (this.scenariosPassed / this.scenariosGenerated * 100).toFixed(2);
+    
     return {
-      version: '4.0-Verification',
-      timestamp: this.results.timestamp,
-      config: this.results.config,
-      
-      invariantCheck: this.results.invariantCheck,
-      rootCauseAnalysis: this.results.rootCauseAnalysis,
-      decisionTraceAnalysis: this.results.decisionTraceAnalysis,
-      fixedConfusionMatrixDemo: this.results.fixedConfusionMatrix,
-      goldenDatasetSpecification: this.results.goldenDatasetSpec,
-      
-      overallVerdict: this.results.overallVerdict,
-      recommendations: this.results.recommendations
+      summary: {
+        totalScenarios: this.scenariosGenerated,
+        passed: this.scenariosPassed,
+        failed: this.scenariosFailed,
+        passRate: `${passRate}%`,
+        elapsedTime: `${(elapsedMs / 1000).toFixed(1)}s`,
+        scenariosPerSecond: Math.round(this.scenariosGenerated / (elapsedMs / 1000)),
+        status: this.scenariosFailed === 0 ? 'ALL_PASSED' : 'FAILURES_DETECTED'
+      },
+      failures: this.failures.slice(0, 20), // Limit output size
+      recommendations: this._generateRecommendations(),
+      generatedAt: new Date().toISOString()
     };
   }
-}
 
-// ============================================================
-// MAIN EXECUTION
-// ============================================================
+  _generateRecommendations() {
+    const recs = [];
 
-async function main() {
-  console.log('🚀 Starting Invoice Brain Verification Suite v4.0...\n');
-  
-  const runner = new VerificationSuiteRunner({
-    auditMode: true,
-    strictMode: true
-  });
-  
-  // Try to load existing rigorous benchmark results for invariant checking
-  let existingResults = null;
-  try {
-    const fs = await import('fs');
-    const existingPath = '/home/z/my-project/download/rigorous-benchmark-results.json';
-    if (fs.existsSync(existingPath)) {
-      existingResults = JSON.parse(fs.readFileSync(existingPath, 'utf-8'));
-      console.log(`📂 Loaded existing benchmark results from ${existingPath}`);
+    if (this.scenariosFailed === 0) {
+      recs.push({
+        priority: 'INFO',
+        message: 'All property-based tests passed! Verification Suite is robust.'
+      });
+    } else {
+      const failureRate = this.scenariosFailed / this.scenariosGenerated;
+      
+      if (failureRate > 0.01) {
+        recs.push({
+          priority: 'P0',
+          message: `High failure rate (${(failureRate*100).toFixed(2)}%). Do not proceed to production.`
+        });
+      }
+
+      // Categorize failures
+      const failureTypes = {};
+      for (const f of this.failures) {
+        const type = f.scenarioType || f.error ? 'UNKNOWN' : 'INVARIANT_VIOLATION';
+        failureTypes[type] = (failureTypes[type] || 0) + 1;
+      }
+
+      for (const [type, count] of Object.entries(failureTypes).sort((a, b) => b[1] - a[1])) {
+        recs.push({
+          priority: count > 10 ? 'P0' : 'P1',
+          message: `${count} failures from ${type} scenarios`
+        });
+      }
     }
-  } catch (e) {
-    console.log('ℹ️ No existing results found - running demonstration mode');
+
+    return recs;
   }
-  
-  const results = await runner.runFullVerification(existingResults);
-  
-  // Save verification results
-  const fs = await import('fs');
-  const outputPath = '/home/z/my-project/download/verification-suite-results.json';
-  fs.writeFileSync(outputPath, JSON.stringify(runner.getResultsForExport(), null, 2));
-  console.log(`\n💾 Verification results saved to: ${outputPath}`);
-  
-  return results;
 }
 
-// Export for module usage
+// ============================================================
+// SECTION 5: BENCHMARK CONFIDENCE SCORE
+// ============================================================
+
+/**
+ * BenchmarkConfidenceCalculator - Multi-Factor Confidence Assessment
+ * 
+ * Instead of reporting just "FMR = 0.74", reports:
+ * FMR = 0.74
+ * Confidence = 61%
+ * 
+ * Factors:
+ * - Dataset authenticity (real vs synthetic)
+ * - Scale (suppliers, invoices)
+ * - OCR realism
+ * - Template diversity
+ * - Shared layout coverage
+ * - Language diversity
+ * - Invariant compliance
+ * - Historical accuracy
+ */
+class BenchmarkConfidenceCalculator {
+  constructor() {
+    this.factors = [
+      { id: 'dataset_authenticity', name: 'Dataset Authenticity', weight: 0.25, maxScore: 100 },
+      { id: 'scale', name: 'Dataset Scale', weight: 0.15, maxScore: 100 },
+      { id: 'ocr_realism', name: 'OCR Realism', weight: 0.15, maxScore: 100 },
+      { id: 'template_diversity', name: 'Template Diversity', weight: 0.12, maxScore: 100 },
+      { id: 'shared_layout_coverage', name: 'Shared Layout Coverage', weight: 0.10, maxScore: 100 },
+      { id: 'language_diversity', name: 'Language Diversity', weight: 0.08, maxScore: 100 },
+      { id: 'invariant_compliance', name: 'Invariant Compliance', weight: 0.15, maxScore: 100 }
+    ];
+    
+    this.benchmarks = {
+      scale: {
+        idealSuppliers: 100,
+        idealInvoices: 10000,
+        minimumSuppliers: 20,
+        minimumInvoices: 1000
+      },
+      diversity: {
+        idealTemplates: 20,
+        idealLanguages: 5,
+        idealSharedLayoutGroups: 15
+      }
+    };
+  }
+
+  /**
+   * Calculate comprehensive confidence score
+   */
+  calculate(benchmarkData) {
+    const factorScores = {};
+
+    // Evaluate each factor
+    factorScores.dataset_authenticity = this._evaluateDatasetAuthenticity(benchmarkData);
+    factorScores.scale = this._evaluateScale(benchmarkData);
+    factorScores.ocr_realism = this._evaluateOCRRealism(benchmarkData);
+    factorScores.template_diversity = this._evaluateTemplateDiversity(benchmarkData);
+    factorScores.shared_layout_coverage = this._evaluateSharedLayoutCoverage(benchmarkData);
+    factorScores.language_diversity = this._evaluateLanguageDiversity(benchmarkData);
+    factorScores.invariant_compliance = this._evaluateInvariantCompliance(benchmarkData);
+
+    // Calculate weighted average
+    let totalWeightedScore = 0;
+    let totalWeight = 0;
+
+    for (const factor of this.factors) {
+      const score = factorScores[factor.id];
+      totalWeightedScore += score * factor.weight;
+      totalWeight += factor.weight;
+    }
+
+    const rawConfidence = totalWeightedScore / totalWeight;
+    const confidence = Math.max(0, Math.min(100, rawConfidence));
+
+    // Determine confidence level
+    let level, color, interpretation;
+    if (confidence >= 90) {
+      level = 'PRODUCTION_READY';
+      color = 'GREEN';
+      interpretation = 'Results are highly reliable for production decisions';
+    } else if (confidence >= 75) {
+      level = 'HIGH_CONFIDENCE';
+      color = 'BLUE';
+      interpretation = 'Results are reliable for most decisions, minor caveats may apply';
+    } else if (confidence >= 60) {
+      level = 'MODERATE_CONFIDENCE';
+      color = 'YELLOW';
+      interpretation = 'Results provide useful signal but should not be sole basis for production decisions';
+    } else if (confidence >= 40) {
+      level = 'LOW_CONFIDENCE';
+      color = 'ORANGE';
+      interpretation = 'Results are indicative only; significant gaps exist in methodology';
+    } else {
+      level = 'NOT_PRODUCTION_READY';
+      color = 'RED';
+      interpretation = 'Results should NOT be used for production decisions; major methodology gaps';
+    }
+
+    return {
+      confidence: Math.round(confidence),
+      level,
+      color,
+      interpretation,
+      factorBreakdown: factorScores,
+      factors: this.factors.map(f => ({
+        ...f,
+        score: factorScores[f.id],
+        contribution: (factorScores[f.id] * f.weight).toFixed(1)
+      })),
+      recommendation: this._generateRecommendation(confidence, factorScores),
+      warningFlags: this._identifyWarningFlags(factorScores),
+      calculatedAt: new Date().toISOString()
+    };
+  }
+
+  // ============================================================
+  // FACTOR EVALUATORS
+  // ============================================================
+
+  _evaluateDatasetAuthenticity(data) {
+    // Check if dataset is real (golden) or synthetic
+    const isGolden = data.datasetType === 'GOLDEN' || data.isGoldenDataset === true;
+    const source = data.dataSource || 'synthetic';
+    const hasHumanVerification = data.humanVerified === true;
+    const collectionMethod = data.collectionMethod || 'generated';
+
+    let score = 0;
+
+    if (isGolden && hasHumanVerification) {
+      score = 95; // Near-perfect golden dataset
+    } else if (isGolden) {
+      score = 85; // Golden but maybe not fully verified
+    } else if (source.includes('production')) {
+      score = 60; // Production data but maybe not curated
+    } else if (source.includes('synthetic') || source.includes('generated')) {
+      score = 25; // Synthetic data - significant limitation
+    } else {
+      score = 40; // Unknown source
+    }
+
+    // Adjustments
+    if (collectionMethod === 'manual_entry') score -= 10;
+    if (data.syntheticAugmentation) score -= 5;
+    if (data.dataLineage) score += 5; // Good data lineage helps
+
+    return Math.max(0, Math.min(100, score));
+  }
+
+  _evaluateScale(data) {
+    const supplierCount = data.supplierCount || 0;
+    const invoiceCount = data.totalInvoices || data.invoiceCount || 0;
+    
+    const { idealSuppliers, idealInvoices, minimumSuppliers, minimumInvoices } = this.benchmarks.scale;
+
+    // Calculate scale score based on logarithmic curve
+    const supplierScore = Math.min(100, (Math.log10(1 + supplierCount) / Math.log10(1 + idealSuppliers)) * 100);
+    const invoiceScore = Math.min(100, (Math.log10(1 + invoiceCount) / Math.log10(1 + idealInvoices)) * 100);
+
+    // Weight invoices more than suppliers
+    let combinedScore = supplierScore * 0.3 + invoiceScore * 0.7;
+
+    // Penalty for being below minimum
+    if (supplierCount < minimumSuppliers) combinedScore *= 0.5;
+    if (invoiceCount < minimumInvoices) combinedScore *= 0.5;
+
+    return Math.round(combinedScore);
+  }
+
+  _evaluateOCRRealism(data) {
+    const ocrSource = data.ocrSource || 'none';
+    const ocrErrorRate = data.ocrErrorRate || 0;
+    const hasRealOCRErrors = data.hasRealOCRErrors === true;
+    const ocrEngine = data.ocrEngine || 'none';
+
+    let score = 0;
+
+    if (hasRealOCRErrors && ocrEngine !== 'none') {
+      score = 90; // Real OCR from actual engine
+    } else if (ocrSource === 'simulated' && ocrErrorRate > 0.10) {
+      score = 55; // Simulated but realistic error rate
+    } else if (ocrSource === 'simulated' && ocrErrorRate > 0) {
+      score = 40; // Simulated but low error rate
+    } else if (ocrErrorRate === 0) {
+      score = 15; // Perfect OCR - unrealistic
+    } else {
+      score = 30; // Unknown
+    }
+
+    // Adjustments
+    if (data.ocrEngineIncludesArabic) score += 5;
+    if (data.ocrEngineIncludesHandwriting) score += 5;
+    if (data.ocrQualityDistribution) score += 5; // Has variety of quality levels
+
+    return Math.max(0, Math.min(100, score));
+  }
+
+  _evaluateTemplateDiversity(data) {
+    const templateCount = data.templateCount || data.formatTypes?.length || 1;
+    const { idealTemplates } = this.benchmarks.diversity;
+
+    // Logarithmic scaling
+    const score = Math.min(100, (Math.log10(1 + templateCount) / Math.log10(1 + idealTemplates)) * 100);
+
+    // Bonus for specific important template types
+    const hasImportantTypes = [
+      'tax_invoice', 'commercial', 'proforma', 'credit_note', 'debit_note'
+    ].some(type => 
+      data.formatTypes?.some(ft => ft.includes(type)) || 
+      data.templateTypes?.some(t => t.includes(type))
+    );
+
+    return Math.round(hasImportantTypes ? Math.min(100, score + 10) : score);
+  }
+
+  _evaluateSharedLayoutCoverage(data) {
+    const sharedLayoutGroups = data.sharedLayoutGroups || data.similarLayoutGroups || 0;
+    const { idealSharedLayoutGroups } = this.benchmarks.diversity;
+    const totalInvoices = data.totalInvoices || 0;
+
+    // What percentage of invoices are in shared-layout groups?
+    const sharedLayoutInvoiceRatio = data.sharedLayoutInvoiceRatio || (sharedLayoutGroups > 0 ? 0.3 : 0);
+
+    // Score based on number of groups AND coverage ratio
+    const groupScore = Math.min(100, (sharedLayoutGroups / idealSharedLayoutGroups) * 100);
+    const coverageScore = sharedLayoutInvoiceRatio * 100;
+
+    // Combine: groups matter, but coverage matters more
+    return Math.round(groupScore * 0.4 + coverageScore * 0.6);
+  }
+
+  _evaluateLanguageDiversity(data) {
+    const languages = data.languages || ['en'];
+    const { idealLanguages } = this.benchmarks.diversity;
+
+    // Base score on count
+    const countScore = Math.min(100, (languages.length / idealLanguages) * 100);
+
+    // Bonus for Arabic (critical for KSA/UAE market)
+    const hasArabic = languages.some(lang => 
+      lang.toLowerCase().includes('ar') || 
+      lang.toLowerCase().includes('arabic')
+    );
+    const arabicBonus = hasArabic ? 15 : 0;
+
+    // Bonus for mixed language support
+    const hasMixed = data.supportsMixedLanguage === true;
+    const mixedBonus = hasMixed ? 10 : 0;
+
+    return Math.min(100, Math.round(countScore + arabicBonus + mixedBonus));
+  }
+
+  _evaluateInvariantCompliance(data) {
+    const invariantResult = data.invariantResult || data.invariantCheckResult;
+    
+    if (!invariantResult) {
+      return 50; // Unknown - medium score
+    }
+
+    const totalInvariants = invariantResult.summary?.totalInvariants || 1;
+    const passed = invariantResult.summary?.passed || 0;
+    const failed = invariantResult.summary?.failed || 0;
+    const criticalFailures = invariantResult.summary?.criticalFailures || 0;
+
+    // Base score on pass rate
+    const passRate = passed / totalInvariants;
+
+    // Heavy penalty for critical failures
+    if (criticalFailures > 0) {
+      return Math.max(0, Math.round(passRate * 40)); // Cap at 40% with critical failures
+    }
+
+    // Slight penalty for any failures
+    if (failed > 0) {
+      return Math.round(passRate * 85); // 15% penalty for non-critical failures
+    }
+
+    return Math.round(passRate * 100); // Perfect score if all pass
+  }
+
+  // ============================================================
+  // REPORT GENERATION
+  // ============================================================
+
+  _generateRecommendation(confidence, factorScores) {
+    if (confidence >= 90) {
+      return {
+        action: 'APPROVE_FOR_PRODUCTION',
+        message: 'Benchmark results are reliable enough for production deployment decisions.',
+        caveats: []
+      };
+    } else if (confidence >= 75) {
+      return {
+        action: 'CONDITIONAL_APPROVAL',
+        message: 'Results are generally reliable but review low-scoring factors.',
+        caveats: this._getWeakFactors(factorScores, 60)
+      };
+    } else if (confidence >= 60) {
+      return {
+        action: 'NEEDS_IMPROVEMENT',
+        message: 'Results provide directional signal but require improvement before production use.',
+        caveats: this._getWeakFactors(factorScores, 50)
+      };
+    } else {
+      return {
+        action: 'DO_NOT_USE_FOR_PRODUCTION',
+        message: 'Benchmark results should NOT drive production decisions. Address critical gaps first.',
+        caveats: this._getWeakFactors(factorScores, 40)
+      };
+    }
+  }
+
+  _getWeakFactors(factorScores, threshold) {
+    return Object.entries(factorScores)
+      .filter(([_, score]) => score < threshold)
+      .map(([factor, score]) => {
+        const factorInfo = this.factors.find(f => f.id === factor);
+        return {
+          factor: factorInfo?.name || factor,
+          score,
+          gap: threshold - score
+        };
+      })
+      .sort((a, b) => a.gap - b.gap);
+  }
+
+  _identifyWarningFlags(factorScores) {
+    const flags = [];
+
+    // Critical warnings
+    if (factorScores.dataset_authenticity < 30) {
+      flags.push({
+        level: 'CRITICAL',
+        message: 'Synthetic dataset - results may not reflect real-world performance'
+      });
+    }
+
+    if (factorScores.invariant_compliance < 50) {
+      flags.push({
+        level: 'CRITICAL',
+        message: 'Invariant violations detected - measurement reliability compromised'
+      });
+    }
+
+    if (factorScores.scale < 30) {
+      flags.push({
+        level: 'WARNING',
+        message: 'Small dataset size - statistical significance limited'
+      });
+    }
+
+    if (factorScores.ocr_realism < 30) {
+      flags.push({
+        level: 'WARNING',
+        message: 'No realistic OCR simulation - performance may be overstated'
+      });
+    }
+
+    return flags;
+  }
+
+  /**
+   * Generate human-readable confidence report
+   */
+  generateReport(confidenceResult, fmr) {
+    const lines = [];
+    
+    lines.push('═'.repeat(70));
+    lines.push('  BENCHMARK CONFIDENCE ASSESSMENT');
+    lines.push('═'.repeat(70));
+    lines.push('');
+    lines.push(`  FMR: ${(fmr * 100).toFixed(2)}%`);
+    lines.push(`  Confidence: ${confidenceResult.confidence}% (${confidenceResult.level})`);
+    lines.push(`  Interpretation: ${confidenceResult.interpretation}`);
+    lines.push('');
+    lines.push('─'.repeat(70));
+    lines.push('  FACTOR BREAKDOWN');
+    lines.push('─'.repeat(70));
+
+    for (const factor of confidenceResult.factors) {
+      const bar = '█'.repeat(Math.round(factor.score / 5)) + '░'.repeat(20 - Math.round(factor.score / 5));
+      lines.push(`  ${factor.name.padEnd(25)} ${factor.score.toString().padStart(3)}% ${bar} (${factor.contribution} pts)`);
+    }
+
+    if (confidenceResult.warningFlags.length > 0) {
+      lines.push('');
+      lines.push('⚠️  WARNING FLAGS:');
+      for (const flag of confidenceResult.warningFlags) {
+        const icon = flag.level === 'CRITICAL' ? '🔴' : '🟡';
+        lines.push(`  ${icon} ${flag.message}`);
+      }
+    }
+
+    lines.push('');
+    lines.push('─'.repeat(70));
+    lines.push(`  RECOMMENDATION: ${confidenceResult.recommendation.action}`);
+    lines.push(`  ${confidenceResult.recommendation.message}`);
+    
+    if (confidenceResult.recommendation.caveats.length > 0) {
+      lines.push('');
+      lines.push('  Areas needing attention:');
+      for (const caveat of confidenceResult.recommendation.caveats) {
+        lines.push(`    • ${caveat.factor}: ${caveat.score}% (gap: ${caveat.gap.toFixed(0)})`);
+      }
+    }
+
+    lines.push('');
+    lines.push('═'.repeat(70));
+
+    return lines.join('\n');
+  }
+}
+
+// ============================================================
+// SECTION 6: CUSTOM ERROR CLASS
+// ============================================================
+
+class InvariantViolationError extends Error {
+  constructor(message, details = {}, severity = 'CRITICAL') {
+    super(message);
+    this.name = 'InvariantViolationError';
+    this.details = details;
+    this.severity = severity;
+    this.timestamp = new Date().toISOString();
+  }
+}
+
+// ============================================================
+// SECTION 7: UNIFIED VERIFICATION SUITE ORCHESTRATOR
+// ============================================================
+
+/**
+ * VerificationSuite - Main entry point for all verification
+ * 
+ * Orchestrates:
+ * 1. Invariant Checking (3 layers)
+ * 2. Root Cause Attribution (tree-structured)
+ * 3. Decision Trace Analysis
+ * 4. Property-Based Testing
+ * 5. Confidence Score Calculation
+ */
+class VerificationSuite {
+  constructor(options = {}) {
+    this.options = {
+      runPropertyBasedTests: options.runPropertyBasedTests !== false,
+      propertyTestCount: options.propertyTestCount || 10000,
+      generateReport: options.generateReport !== false,
+      verbose: options.verbose || false,
+      ...options
+    };
+
+    this.invariantChecker = new BenchmarkInvariantChecker();
+    this.rootCauseAttributor = new RootCauseAttributor();
+    this.traceLogger = new DecisionTraceLogger();
+    this.propertyTester = new PropertyBasedTester({
+      maxScenarios: this.options.propertyTestCount
+    });
+    this.confidenceCalculator = new BenchmarkConfidenceCalculator();
+
+    this.results = {
+      invariants: null,
+      rootCauses: null,
+      traces: null,
+      propertyTests: null,
+      confidence: null,
+      overallStatus: null
+    };
+  }
+
+  /**
+   * Run complete verification suite on benchmark results
+   */
+  async verify(benchmarkResult) {
+    console.log('╔════════════════════════════════════════════════════════════════╗');
+    console.log('║     INVOICE BRAIN BENCHMARK VERIFICATION SUITE v1.0           ║');
+    console.log('║     Complete Verification Pipeline                            ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+    console.log('');
+
+    const startTime = Date.now();
+
+    // Phase 1: Invariant Checking
+    console.log('📋 PHASE 1: INVARIANT CHECKING (3-Layer System)');
+    this.results.invariants = this.invariantChecker.runAllInvariants(benchmarkResult);
+    this._printPhaseSummary('Invariants', this.results.invariants);
+
+    // Phase 2: Root Cause Attribution
+    console.log('\n🔍 PHASE 2: ROOT CAUSE ATTRIBUTION (Tree-Structured)');
+    const invoiceResults = this._prepareInvoiceResults(benchmarkResult);
+    this.results.rootCauses = this.rootCauseAttributor.analyzeBatch(invoiceResults);
+    this._printRootCauseSummary(this.results.rootCauses);
+
+    // Phase 3: Decision Trace Analysis
+    console.log('\n📝 PHASE 3: DECISION TRACE ANALYSIS');
+    if (benchmarkResult.traces) {
+      for (const trace of benchmarkResult.traces) {
+        this.traceLogger.traces.set(trace.invoiceId, trace);
+      }
+    }
+    this.results.traces = this.traceLogger.generateSummaryStats();
+    this._printTraceSummary(this.results.traces);
+
+    // Phase 4: Property-Based Testing
+    if (this.options.runPropertyBasedTests) {
+      console.log('\n🧪 PHASE 4: PROPERTY-BASED TESTING');
+      this.results.propertyTests = await this.propertyTester.runFullSuite();
+      this._printPropertyTestSummary(this.results.propertyTests);
+    }
+
+    // Phase 5: Confidence Score Calculation
+    console.log('\n📊 PHASE 5: CONFIDENCE SCORE CALCULATION');
+    const benchmarkData = {
+      ...benchmarkResult,
+      invariantResult: this.results.invariants
+    };
+    this.results.confidence = this.confidenceCalculator.calculate(benchmarkData);
+    
+    const fmr = benchmarkResult.metrics?.fmr || 0;
+    console.log(this.confidenceCalculator.generateReport(this.results.confidence, fmr));
+
+    // Overall Status
+    this.results.overallStatus = this._determineOverallStatus();
+    this.results.elapsedTime = Date.now() - startTime;
+
+    // Final Summary
+    this._printFinalSummary();
+
+    return this.results;
+  }
+
+  /**
+   * Get detailed debug report for specific invoice
+   */
+  getInvoiceDebugReport(invoiceId) {
+    return this.traceLogger.generateDebugReport(invoiceId);
+  }
+
+  /**
+   * Export complete verification report as JSON
+   */
+  exportReport() {
+    return {
+      version: '1.0.0',
+      generatedAt: new Date().toISOString(),
+      overallStatus: this.results.overallStatus,
+      ...this.results,
+      recommendation: this._generateOverallRecommendation()
+    };
+  }
+
+  // ============================================================
+  // PRIVATE METHODS
+  // ============================================================
+
+  _prepareInvoiceResults(benchmarkResult) {
+    const decisions = benchmarkResult.decisions || [];
+    const traces = benchmarkResult.traces || [];
+    const groundTruth = benchmarkResult.groundTruth || new Map();
+
+    return decisions.map(decision => {
+      const trace = traces.find(t => t.invoiceId === decision.invoiceId);
+      const truth = groundTruth.get(decision.invoiceId);
+
+      return {
+        invoiceId: decision.invoiceId,
+        decision: decision,
+        trace: trace,
+        groundTruth: truth,
+        expectedSupplierId: truth?.supplierId
+      };
+    });
+  }
+
+  _printPhaseSummary(phaseName, result) {
+    if (!result?.summary) return;
+
+    const { passed, failed, warnings, overallStatus, criticalFailures } = result.summary;
+    const icon = overallStatus === 'PASSED' ? '✅' : '❌';
+
+    console.log(`  ${icon} ${phaseName}: ${overallStatus}`);
+    console.log(`     Passed: ${passed} | Failed: ${failed} | Warnings: ${warnings}`);
+    if (criticalFailures > 0) {
+      console.log(`     🔴 CRITICAL FAILURES: ${criticalFailures}`);
+    }
+  }
+
+  _printRootCauseSummary(rootCauseResult) {
+    if (!rootCauseResult?.summary) return;
+
+    console.log(`  📊 Analyzed ${rootCauseResult.summary.total} invoices`);
+
+    console.log('\n  By Error Type:');
+    for (const [type, pct] of Object.entries(rootCauseResult.summary.byErrorTypePercent || {})) {
+      console.log(`    ${type}: ${pct}`);
+    }
+
+    console.log('\n  By Root Cause:');
+    const sortedCauses = Object.entries(rootCauseResult.summary.byRootCausePercent || {})
+      .sort((a, b) => parseFloat(b[1]) - parseFloat(a[1]));
+    for (const [cause, pct] of sortedCauses.slice(0, 10)) {
+      console.log(`    ${cause}: ${pct}`);
+    }
+
+    // Print tree visualization
+    console.log('\n' + this.rootCauseAttributor.generateTreeVisualization(rootCauseResult.attributions));
+  }
+
+  _printTraceSummary(stats) {
+    if (!stats) {
+      console.log('  ⚠️ No trace data available');
+      return;
+    }
+
+    console.log(`  📈 Trace Statistics:`);
+    console.log(`     Total Traces: ${stats.totalTraces}`);
+    console.log(`     Avg Processing Time: ${stats.averageProcessingTime.toFixed(1)}ms`);
+    console.log(`     Avg Rejections/Invoice: ${stats.averageRejectedPerInvoice.toFixed(1)}`);
+
+    console.log('\n  Top Rejection Reasons:');
+    const sortedReasons = Object.entries(stats.rejectionReasons || {})
+      .sort((a, b) => b[1] - a[1]);
+    for (const [reason, count] of sortedReasons.slice(0, 5)) {
+      console.log(`    ${reason}: ${count}`);
+    }
+  }
+
+  _printPropertyTestSummary(testResult) {
+    if (!testResult?.summary) return;
+
+    const { totalScenarios, passed, failed, passRate, status } = testResult.summary;
+    const icon = status === 'ALL_PASSED' ? '✅' : '❌';
+
+    console.log(`  ${icon} Property Tests: ${status}`);
+    console.log(`     Scenarios: ${totalScenarios.toLocaleString()} | Passed: ${passed.toLocaleString()} | Failed: ${failed.toLocaleString()}`);
+    console.log(`     Pass Rate: ${passRate}`);
+
+    if (failed > 0 && testResult.failures.length > 0) {
+      console.log('\n  Sample Failures:');
+      for (const failure of testResult.failures.slice(0, 5)) {
+        console.log(`    • Scenario #${failure.scenarioIndex}: ${failure.scenarioType || 'Unknown'}`);
+      }
+    }
+  }
+
+  _determineOverallStatus() {
+    const { invariants, propertyTests, confidence } = this.results;
+
+    // Critical: Invariants must pass
+    if (invariants?.summary?.overallStatus === 'FAILED') {
+      return {
+        status: 'FAILED',
+        reason: 'Invariant violations detected',
+        canProceedToProduction: false
+      };
+    }
+
+    // Important: Property tests should pass
+    if (propertyTests?.summary?.status === 'FAILURES_DETECTED') {
+      return {
+        status: 'CONDITIONAL',
+        reason: 'Property-based test failures detected',
+        canProceedToProduction: false
+      };
+    }
+
+    // Confidence-based assessment
+    if (confidence?.confidence >= 90) {
+      return { status: 'PASSED', canProceedToProduction: true };
+    } else if (confidence?.confidence >= 75) {
+      return { status: 'CONDITIONAL', canProceedToProduction: false, needsReview: true };
+    } else {
+      return { 
+        status: 'LOW_CONFIDENCE', 
+        canProceedToProduction: false,
+        reason: `Confidence score ${confidence?.confidence || 0}% below production threshold`
+      };
+    }
+  }
+
+  _printFinalSummary() {
+    console.log('\n' + '═'.repeat(70));
+    console.log('  FINAL VERIFICATION SUMMARY');
+    console.log('═'.repeat(70));
+
+    const status = this.results.overallStatus;
+    const icon = status.canProceedToProduction ? '✅' : 
+                 status.status === 'CONDITIONAL' ? '⚠️' : '❌';
+
+    console.log(`  Overall Status: ${icon} ${status.status.toUpperCase()}`);
+    console.log(`  Can Proceed to Production: ${status.canProceedToProduction ? 'YES ✅' : 'NO ❌'}`);
+    
+    if (status.reason) {
+      console.log(`  Reason: ${status.reason}`);
+    }
+
+    if (this.results.confidence) {
+      console.log(`  Confidence Score: ${this.results.confidence.confidence}% (${this.results.confidence.level})`);
+    }
+
+    console.log(`  Elapsed Time: ${(this.results.elapsedTime / 1000).toFixed(1)}s`);
+    console.log('═'.repeat(70));
+  }
+
+  _generateOverallRecommendation() {
+    const status = this.results.overallStatus;
+    const confidence = this.results.confidence;
+
+    if (status.canProceedToProduction) {
+      return {
+        action: 'APPROVED',
+        message: 'Verification suite passed. Benchmark results are reliable.',
+        nextSteps: ['Proceed with production readiness review', 'Schedule go-live decision meeting']
+      };
+    } else if (status.status === 'CONDITIONAL') {
+      return {
+        action: 'CONDITIONAL',
+        message: 'Some concerns identified. Review recommended before proceeding.',
+        nextSteps: [
+          'Address invariant violations if any',
+          'Review property test failures',
+          'Consider expanding dataset'
+        ]
+      };
+    } else {
+      return {
+        action: 'REJECTED',
+        message: 'Verification suite failed. Do not use these benchmark results for production decisions.',
+        nextSteps: [
+          'Fix all critical invariant violations',
+          'Re-run property-based tests',
+          'Improve dataset quality',
+          'Re-run verification after fixes'
+        ]
+      };
+    }
+  }
+}
+
+// ============================================================
+// EXPORTS
+// ============================================================
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    RootCauseAttributor,
     BenchmarkInvariantChecker,
-    PerCandidateDecisionTracer,
-    FixedConfusionMatrixCalculator,
-    GoldenDatasetFramework,
-    VerificationSuiteRunner
+    RootCauseAttributor,
+    DecisionTraceLogger,
+    PropertyBasedTester,
+    BenchmarkConfidenceCalculator,
+    VerificationSuite,
+    InvariantViolationError
   };
 }
-
-main().catch(console.error);
