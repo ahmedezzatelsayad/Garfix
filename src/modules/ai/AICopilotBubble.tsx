@@ -9,7 +9,7 @@ import {
   Bot, User, Send, X, Maximize2, Minimize2, ShieldAlert,
   Loader2, CheckCircle2, XCircle, ListOrdered, Wallet, BarChart3, Plus,
 } from "lucide-react";
-import { ReviewQueueModal } from "@/modules/common/ReviewQueueModal";
+import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -753,7 +753,7 @@ export function AICopilotBubble() {
       )}
 
       {showReviewQueue && activeCompany && (
-        <ReviewQueueModal
+        <LazyReviewQueueModal
           companySlug={activeCompany.slug}
           onClose={() => setShowReviewQueue(false)}
         />

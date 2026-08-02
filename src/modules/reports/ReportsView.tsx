@@ -9,6 +9,12 @@ import {
   AlertCircle, Receipt, Wallet, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  GarfixLoadingState,
+  GarfixEmptyState,
+  GarfixEnterpriseTable,
+  type EnterpriseColumn,
+} from "@/components/ui/index-garfix-ds";
 
 type ReportType = "sales" | "profit" | "cashflow" | "tax";
 
@@ -51,7 +57,6 @@ const REPORT_TYPES: Array<{ key: ReportType; label: string; icon: React.ReactNod
   { key: "tax", label: "الضريبة", icon: <Receipt size={16} />, desc: "ضريبة القيمة المضافة لكل فاتورة" },
 ];
 
-const inputStyle = "w-full py-[9px] px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none [direction:ltr] text-end max-md:min-h-[44px]";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-[5px]";
 
 export function ReportsView() {
@@ -140,100 +145,196 @@ export function ReportsView() {
         </p>
       </div>
 
-      {/* Controls card */}
-      <div className="p-3 md:p-[18px] rounded-[14px] bg-card border border-border flex flex-col gap-3.5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Report Type Cards - New DS v4.0 Design */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {REPORT_TYPES.map((rt) => (
+          <button
+            key={rt.key}
+            onClick={() => setType(rt.key)}
+            className={cn(
+              "kpi-card text-right transition-all duration-120",
+              type === rt.key 
+                ? "state-selected ring-2 ring-primary" 
+                : "hover-lift cursor-pointer"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center",
+                type === rt.key ? "bg-primary text-white" : "bg-primary/10 text-primary"
+              )}>
+                {rt.icon}
+              </div>
+              <span className="font-bold text-sm">{rt.label}</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{rt.desc}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Date Range Picker - New DS v4.0 Design */}
+      <div className="chart-container">
+        <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+          <Calendar size={16} className="text-primary" />
+          نطاق التاريخ
+        </h3>
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelStyle}>من تاريخ</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputStyle} />
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="focus-ring w-full py-2.5 px-3 rounded-lg border border-border bg-background text-foreground [direction:ltr]"
+            />
           </div>
           <div>
             <label className={labelStyle}>إلى تاريخ</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputStyle} />
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="focus-ring w-full py-2.5 px-3 rounded-lg border border-border bg-background text-foreground [direction:ltr]"
+            />
           </div>
         </div>
-
-        {/* Report type selector */}
-        <div>
-          <label className={labelStyle}>نوع التقرير</label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {REPORT_TYPES.map((rt) => {
-              const active = type === rt.key;
-              return (
-                <button
-                  key={rt.key}
-                  type="button"
-                  onClick={() => setType(rt.key)}
-                  className={cn(
-                    "flex flex-col items-start py-3 px-3.5 rounded-[10px] cursor-pointer font-inherit text-right transition-all duration-150 border max-md:min-h-[44px]",
-                    active
-                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
-                      : "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
-                  )}
-                >
-                  <div className={cn("flex items-center gap-1.5 font-extrabold text-[13px]")}>
-                    {rt.icon}
-                    {rt.label}
-                  </div>
-                  <div className="text-[11px] mt-1 opacity-80">{rt.desc}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex gap-2.5 justify-end flex-wrap">
-          <button
-            type="button"
-            onClick={exportCsv}
-            disabled={exporting || loading || !data}
-            className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-card text-foreground border border-border font-bold text-[13px] cursor-pointer disabled:opacity-60 max-md:min-h-[44px]"
-          >
-            {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            تصدير CSV
-          </button>
-          <button
-            type="button"
-            onClick={generate}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-[22px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]"
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-            {loading ? "جارٍ التوليد…" : "توليد التقرير"}
-          </button>
-        </div>
+        
+        <button
+          onClick={generate}
+          disabled={loading}
+          className="mt-4 w-full py-3 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover-scale active-press disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+          إنشاء التقرير
+        </button>
       </div>
 
-      {/* Content */}
-      {loading ? (
-        <div className="p-6 md:p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
-          <Loader2 size={28} className="animate-spin text-primary" />
-          <div className="text-[13px]">جارٍ حساب التقرير…</div>
+      {/* Loading State - Using GarfixLoadingState */}
+      {loading && (
+        <div className="chart-container">
+          <GarfixLoadingState message="جارٍ إنشاء التقرير..." size="lg" variant="dots" />
         </div>
-      ) : !data ? (
-        <div className="p-6 md:p-[60px] rounded-[14px] text-center bg-card border border-border text-muted-foreground flex flex-col items-center gap-3">
-          <BarChart3 size={36} className="opacity-40" />
-          <div className="text-sm font-bold">لا يوجد تقرير بعد</div>
-          <div className="text-xs max-w-[360px]">
-            اختر النطاق الزمني ونوع التقرير ثم اضغط &laquo;توليد التقرير&raquo; لعرض البيانات.
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Summary cards */}
-          <SummaryCards data={data} currency={currency} />
+      )}
 
-          {/* Data table */}
-          <div className="p-3 md:p-[18px] rounded-[14px] bg-card border border-border">
-            <div className="flex flex-wrap justify-between items-center mb-3.5 gap-2">
-              <h3 className="text-[15px] font-bold">
-                {REPORT_TYPES.find((t) => t.key === data.type)?.label || data.type} — تفاصيل ({data.count} صف)
+      {/* Empty State - Before Generate Clicked */}
+      {!data && !loading && !generateClicked && (
+        <div className="state-empty min-h-[300px]">
+          <BarChart3 size={64} />
+          <h3>اختر نوع التقرير</h3>
+          <p>حدد نوع التقرير ونطاق التاريخ ثم اضغط "إنشاء التقرير"</p>
+        </div>
+      )}
+
+      {/* Report Data Display */}
+      {data && !loading && (
+        <>
+          {/* Summary KPIs based on report type */}
+          <div className="grid-kpi">
+            {type === 'sales' && (
+              <>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalRevenue, currency)}</div>
+                  <div className="kpi-label">إجمالي الإيرادات</div>
+                </div>
+                <div className="kpi-card-gold">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalPaid, currency)}</div>
+                  <div className="kpi-label">المدفوع</div>
+                  <div className="kpi-badge">✦ محصّل</div>
+                </div>
+                <div className="kpi-card state-error-component">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalOutstanding, currency)}</div>
+                  <div className="kpi-label">المستحقات</div>
+                </div>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatNumber(data.summary.totalInvoices)}</div>
+                  <div className="kpi-label">عدد الفواتير</div>
+                </div>
+              </>
+            )}
+            
+            {type === 'profit' && (
+              <>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.grossProfit, currency)}</div>
+                  <div className="kpi-label">إجمالي الربح</div>
+                </div>
+                <div className="kpi-card-gold">
+                  <div className="kpi-value">{data.summary.grossMargin || '0%'}</div>
+                  <div className="kpi-label">هامش الربح</div>
+                  <div className="kpi-badge">✦ مالي</div>
+                </div>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalCogs, currency)}</div>
+                  <div className="kpi-label">تكلفة البضاعة</div>
+                </div>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.netProfit, currency)}</div>
+                  <div className="kpi-label">صافي الربح</div>
+                </div>
+              </>
+            )}
+
+            {type === 'cashflow' && (
+              <>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.inflow, currency)}</div>
+                  <div className="kpi-label">التدفق الداخل</div>
+                </div>
+                <div className="kpi-card state-error-component">
+                  <div className="kpi-value">{formatCurrency(data.summary.outflow, currency)}</div>
+                  <div className="kpi-label">التدفق الخارج</div>
+                </div>
+                <div className="kpi-card-gold">
+                  <div className="kpi-value">{formatCurrency(data.summary.netCashFlow, currency)}</div>
+                  <div className="kpi-label">صافي التدفق النقدي</div>
+                  <div className="kpi-badge">✦ مالي</div>
+                </div>
+              </>
+            )}
+
+            {type === 'tax' && (
+              <>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatNumber(data.summary.invoiceCount)}</div>
+                  <div className="kpi-label">عدد الفواتير</div>
+                </div>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalSubtotal, currency)}</div>
+                  <div className="kpi-label">الإجمالي قبل الضريبة</div>
+                </div>
+                <div className="kpi-card-gold">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalTax, currency)}</div>
+                  <div className="kpi-label">إجمالي الضريبة</div>
+                  <div className="kpi-badge">✦ ضريبي</div>
+                </div>
+                <div className="kpi-card">
+                  <div className="kpi-value">{formatCurrency(data.summary.totalWithTax, currency)}</div>
+                  <div className="kpi-label">شامل الضريبة</div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Chart Container for Data Table */}
+          <div className="chart-container">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <BarChart3 size={16} className="text-primary" />
+                تفاصيل التقرير
+                <span className="text-xs text-muted-foreground font-normal">({data.count} صف)</span>
               </h3>
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <Calendar size={12} />
-                <span dir="ltr">{data.dateRange.from} ← {data.dateRange.to}</span>
-              </div>
+              <button
+                onClick={exportCsv}
+                disabled={exporting}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-xs font-bold hover-scale active-press disabled:opacity-50"
+              >
+                <Download size={14} />
+                تصدير CSV
+                <span className="ai-badge text-[9px]">AI</span>
+              </button>
             </div>
+
+            {/* Data Table using Enterprise Table */}
             <ReportTable rows={data.rows} />
           </div>
         </>
@@ -242,133 +343,60 @@ export function ReportsView() {
   );
 }
 
-function SummaryCards({ data, currency }: { data: ReportData; currency: string }) {
-  const cards: Array<{ label: string; value: string; color: string; icon: React.ReactNode }> = [];
+// ── Helper Functions ──────────────────────────────────────────────
 
-  const fmt = (n: unknown) => Number(n || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 });
-
-  if (data.type === "sales") {
-    const s = data.summary;
-    cards.push(
-      { label: "عدد الفواتير", value: fmt(s.totalInvoices), color: "#7c3aed", icon: <FileText size={18} /> },
-      { label: "إجمالي الإيرادات", value: `${fmt(s.totalRevenue)} ${currency}`, color: "#10b981", icon: <DollarSign size={18} /> },
-      { label: "المحصّل", value: `${fmt(s.totalPaid)} ${currency}`, color: "#3b82f6", icon: <TrendingUp size={18} /> },
-      { label: "المستحقات", value: `${fmt(s.totalOutstanding)} ${currency}`, color: "#ef4444", icon: <AlertCircle size={18} /> },
-      { label: "إجمالي الضريبة", value: `${fmt(s.totalTax)} ${currency}`, color: "#f59e0b", icon: <Receipt size={18} /> },
-    );
-  } else if (data.type === "profit") {
-    const s = data.summary;
-    cards.push(
-      { label: "الإيرادات", value: `${fmt(s.totalRevenue)} ${currency}`, color: "#10b981", icon: <DollarSign size={18} /> },
-      { label: "تكلفة البضاعة (COGS)", value: `${fmt(s.totalCogs)} ${currency}`, color: "#ef4444", icon: <AlertCircle size={18} /> },
-      { label: "إجمالي الربح", value: `${fmt(s.grossProfit)} ${currency}`, color: "#3b82f6", icon: <TrendingUp size={18} /> },
-      { label: "هامش الربح", value: String(s.grossMargin || "0%"), color: "#7c3aed", icon: <BarChart3 size={18} /> },
-      { label: "صافي الربح", value: `${fmt(s.netProfit)} ${currency}`, color: "#16a34a", icon: <Wallet size={18} /> },
-    );
-  } else if (data.type === "cashflow") {
-    const s = data.summary;
-    cards.push(
-      { label: "التدفق الداخل", value: `${fmt(s.inflow)} ${currency}`, color: "#10b981", icon: <TrendingUp size={18} /> },
-      { label: "التدفق الخارج", value: `${fmt(s.outflow)} ${currency}`, color: "#ef4444", icon: <DollarSign size={18} /> },
-      { label: "صافي التدفق النقدي", value: `${fmt(s.netCashFlow)} ${currency}`, color: "#3b82f6", icon: <Wallet size={18} /> },
-    );
-  } else if (data.type === "tax") {
-    const s = data.summary;
-    cards.push(
-      { label: "عدد الفواتير", value: fmt(s.invoiceCount), color: "#7c3aed", icon: <FileText size={18} /> },
-      { label: "الإجمالي قبل الضريبة", value: `${fmt(s.totalSubtotal)} ${currency}`, color: "#3b82f6", icon: <DollarSign size={18} /> },
-      { label: "إجمالي الضريبة", value: `${fmt(s.totalTax)} ${currency}`, color: "#f59e0b", icon: <Receipt size={18} /> },
-      { label: "الإجمالي شامل الضريبة", value: `${fmt(s.totalWithTax)} ${currency}`, color: "#10b981", icon: <Wallet size={18} /> },
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
-      {cards.map((c, i) => (
-        <div
-          key={i}
-          className="p-3 md:p-4 rounded-[14px] bg-card border border-border flex flex-col gap-2 relative overflow-hidden"
-        >
-          <div
-            className="absolute -top-4 -left-4 w-16 h-16 rounded-full opacity-[0.08]"
-            style={{ background: c.color }} /* TAILWINDBREAK: dynamic summary card color */
-          />
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{
-                background: `${c.color}20`, color: c.color,
-              }} /* TAILWINDBREAK: dynamic summary card color */
-            >
-              {c.icon}
-            </div>
-            <div className="text-[11px] text-muted-foreground font-semibold">{c.label}</div>
-          </div>
-          <div className="text-xl font-black [direction:ltr] text-end">{c.value}</div>
-        </div>
-      ))}
-    </div>
-  );
+function formatNumber(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  return Number(value || 0).toLocaleString("ar-EG", { maximumFractionDigits: 0 });
 }
+
+function formatCurrency(value: unknown, currency: string): string {
+  if (value === null || value === undefined) return "—";
+  const formatted = Number(value || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 });
+  return `${formatted} ${currency}`;
+}
+
+// ── Report Table Component ───────────────────────────────────────
 
 function ReportTable({ rows }: { rows: Array<Record<string, unknown>> }) {
   if (rows.length === 0) {
     return (
-      <div className="p-6 md:p-12 text-center text-muted-foreground">
-        <FileText size={32} className="opacity-30 mb-2" />
-        <div>لا توجد صفوف في هذا النطاق الزمني</div>
-      </div>
+      <GarfixEmptyState
+        icon={<FileText size={32} />}
+        title="لا توجد بيانات"
+        description="لا توجد سجلات في هذا النطاق الزمني"
+      />
     );
   }
 
+  // Build dynamic columns from row data
   const headers = Object.keys(rows[0]);
-  const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold whitespace-nowrap";
-  const tdStyle = "px-3 py-2.5 text-xs whitespace-nowrap";
-
-  const formatCell = (val: unknown): string => {
-    if (val === null || val === undefined) return "—";
-    if (typeof val === "number") {
-      return val.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
-    }
-    return String(val);
-  };
-
-  const isNumeric = (val: unknown) => typeof val === "number";
+  
+  const columns: EnterpriseColumn[] = headers.map((header) => ({
+    key: header,
+    label: header,
+    sortable: true,
+    render: (value: unknown) => {
+      if (value === null || value === undefined) return "—";
+      if (typeof value === "number") {
+        return (
+          <span className="[direction:ltr]" dir="ltr">
+            {value.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
+          </span>
+        );
+      }
+      return String(value);
+    },
+  }));
 
   return (
-    <div className="overflow-auto max-h-[480px] garfix-scroll">
-      <table className="w-full border-collapse text-xs min-w-[640px]">
-        <thead className="sticky top-0 z-[1]">
-          <tr className="border-b border-border bg-muted">
-            {headers.map((h) => (
-              <th key={h} className={thStyle}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className="border-b border-border">
-              {headers.map((h) => {
-                const v = row[h];
-                const numeric = isNumeric(v);
-                return (
-                  <td
-                    key={h}
-                    className={cn(
-                      tdStyle,
-                      h === "invoiceNumber" || h === "metric" ? "font-bold" : "font-normal",
-                      numeric ? "[direction:ltr] text-end" : ""
-                    )}
-                  >
-                    {formatCell(v)}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <GarfixEnterpriseTable
+      data={rows}
+      columns={columns}
+      density="comfortable"
+      emptyMessage="لا توجد بيانات"
+      emptyDescription="لم يتم العثور على أي سجلات"
+    />
   );
 }
 

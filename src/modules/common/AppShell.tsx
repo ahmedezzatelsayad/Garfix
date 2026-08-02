@@ -1,7 +1,7 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback, Suspense, lazy } from "react";
+import { useEffect, useState, useCallback, Suspense, lazy, startTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
@@ -12,6 +12,17 @@ import { AICopilotBubble } from "@/modules/ai/AICopilotBubble";
 import { CommandPaletteProvider } from "@/components/garfix/CommandPaletteProvider";
 import { ErrorBoundary } from "@/components/garfix/ErrorBoundary";
 import { AppFooter } from "@/components/garfix/AppFooter";
+// Lazy Loading: Specific loading states for each view type
+import {
+  DashboardLoading,
+  TableLoading,
+  FormLoading,
+  MinimalLoading,
+  SettingsLoading,
+  AdminLoading,
+  ReportsLoading,
+  AccountingLoading,
+} from "@/components/ui/PageLoading";
 // GarfiX AI - Enhanced components for "Everywhere" strategy
 import { 
   GarfixAIIcon,
@@ -29,25 +40,144 @@ import {
 // SetupWizard itself errors out (defensive ErrorBoundary inside the wizard).
 import { SetupWizard } from "@/modules/onboarding/SetupWizard";
 
-// Lazy-load heavy views
-const DashboardView = lazy(() => import("@/modules/dashboard/DashboardView").then((m) => ({ default: m.DashboardView })));
-const InvoicesView = lazy(() => import("@/modules/invoices/InvoicesView").then((m) => ({ default: m.InvoicesView })));
-const ClientsView = lazy(() => import("@/modules/clients/ClientsView").then((m) => ({ default: m.ClientsView })));
-const CatalogView = lazy(() => import("@/modules/catalog/CatalogView").then((m) => ({ default: m.CatalogView })));
-const PurchasesView = lazy(() => import("@/modules/purchases/PurchasesView").then((m) => ({ default: m.PurchasesView })));
-const HRView = lazy(() => import("@/modules/hr/HRView").then((m) => ({ default: m.HRView })));
-const AccountingView = lazy(() => import("@/modules/accounting/AccountingView").then((m) => ({ default: m.AccountingView })));
-const SettingsView = lazy(() => import("@/modules/settings/SettingsView").then((m) => ({ default: m.SettingsView })));
-const SaaSControlPanel = lazy(() => import("@/modules/saas/SaaSControlPanel").then((m) => ({ default: m.SaaSControlPanel })));
-const PlatformAdminPanel = lazy(() => import("@/modules/admin/PlatformAdminPanel").then((m) => ({ default: m.PlatformAdminPanel })));
-const AuditView = lazy(() => import("@/modules/admin/EnhancedAuditView").then((m) => ({ default: m.EnhancedAuditView })));
-const BulkInputView = lazy(() => import("@/modules/bulk-input/BulkInputView").then((m) => ({ default: m.BulkInputView })));
-const ReportsView = lazy(() => import("@/modules/reports/ReportsView").then((m) => ({ default: m.ReportsView })));
-const TeamView = lazy(() => import("@/modules/team/TeamView").then((m) => ({ default: m.TeamView })));
-const AccountView = lazy(() => import("@/modules/account/AccountView").then((m) => ({ default: m.AccountView })));
-const InventoryView = lazy(() => import("@/modules/inventory/InventoryView").then((m) => ({ default: m.InventoryView })));
-const AutomationView = lazy(() => import("@/modules/automation/AutomationView").then((m) => ({ default: m.AutomationView })));
-const AIAgentsView = lazy(() => import("@/modules/ai-agents/AIAgentsView").then((m) => ({ default: m.AIAgentsView })));
+// ════════════════════════════════════════════════════════════════════
+// LAZY-LOADED VIEWS — Code Splitting Optimization
+// Each view is loaded on demand with webpack chunk naming for better debugging
+// ════════════════════════════════════════════════════════════════════
+
+// Dashboard Views
+const DashboardView = lazy(() => import(
+  /* webpackChunkName: "dashboard" */
+  "@/modules/dashboard/DashboardView"
+).then((m) => ({ default: m.DashboardView })));
+
+// Core Business Views (Table-based)
+const InvoicesView = lazy(() => import(
+  /* webpackChunkName: "invoices" */
+  "@/modules/invoices/InvoicesView"
+).then((m) => ({ default: m.InvoicesView })));
+
+const ClientsView = lazy(() => import(
+  /* webpackChunkName: "clients" */
+  "@/modules/clients/ClientsView"
+).then((m) => ({ default: m.ClientsView })));
+
+const CatalogView = lazy(() => import(
+  /* webpackChunkName: "catalog" */
+  "@/modules/catalog/CatalogView"
+).then((m) => ({ default: m.CatalogView })));
+
+const PurchasesView = lazy(() => import(
+  /* webpackChunkName: "purchases" */
+  "@/modules/purchases/PurchasesView"
+).then((m) => ({ default: m.PurchasesView })));
+
+const InventoryView = lazy(() => import(
+  /* webpackChunkName: "inventory" */
+  "@/modules/inventory/InventoryView"
+).then((m) => ({ default: m.InventoryView })));
+
+// HR & Team Views
+const HRView = lazy(() => import(
+  /* webpackChunkName: "hr" */
+  "@/modules/hr/HRView"
+).then((m) => ({ default: m.HRView })));
+
+const TeamView = lazy(() => import(
+  /* webpackChunkName: "team" */
+  "@/modules/team/TeamView"
+).then((m) => ({ default: m.TeamView })));
+
+// Financial Views
+const AccountingView = lazy(() => import(
+  /* webpackChunkName: "accounting" */
+  "@/modules/accounting/AccountingView"
+).then((m) => ({ default: m.AccountingView })));
+
+const ReportsView = lazy(() => import(
+  /* webpackChunkName: "reports" */
+  "@/modules/reports/ReportsView"
+).then((m) => ({ default: m.ReportsView })));
+
+// Settings & Account Views (Form-based)
+const SettingsView = lazy(() => import(
+  /* webpackChunkName: "settings" */
+  "@/modules/settings/SettingsView"
+).then((m) => ({ default: m.SettingsView })));
+
+const AccountView = lazy(() => import(
+  /* webpackChunkName: "account" */
+  "@/modules/account/AccountView"
+).then((m) => ({ default: m.AccountView })));
+
+// AI & Automation Views (Minimal loading)
+const AutomationView = lazy(() => import(
+  /* webpackChunkName: "automation" */
+  "@/modules/automation/AutomationView"
+).then((m) => ({ default: m.AutomationView })));
+
+const AIAgentsView = lazy(() => import(
+  /* webpackChunkName: "ai-agents" */
+  "@/modules/ai-agents/AIAgentsView"
+).then((m) => ({ default: m.AIAgentsView })));
+
+const BulkInputView = lazy(() => import(
+  /* webpackChunkName: "bulk-input" */
+  "@/modules/bulk-input/BulkInputView"
+).then((m) => ({ default: m.BulkInputView })));
+
+// Admin Views (Heavy - Admin loading state)
+const SaaSControlPanel = lazy(() => import(
+  /* webpackChunkName: "saas-admin" */
+  "@/modules/saas/SaaSControlPanel"
+).then((m) => ({ default: m.SaaSControlPanel })));
+
+const PlatformAdminPanel = lazy(() => import(
+  /* webpackChunkName: "platform-admin" */
+  "@/modules/admin/PlatformAdminPanel"
+).then((m) => ({ default: m.PlatformAdminPanel })));
+
+const AuditView = lazy(() => import(
+  /* webpackChunkName: "audit" */
+  "@/modules/admin/EnhancedAuditView"
+).then((m) => ({ default: m.EnhancedAuditView })));
+
+// ════════════════════════════════════════════════════════════════════
+// PRELOADING MAP — For hover-based preloading in Sidebar
+// ════════════════════════════════════════════════════════════════════
+export const preloadViewMap: Record<ViewKey, () => Promise<void>> = {
+  dash: () => import(/* webpackChunkName: "dashboard" */ "@/modules/dashboard/DashboardView").then(() => {}),
+  invoices: () => import(/* webpackChunkName: "invoices" */ "@/modules/invoices/InvoicesView").then(() => {}),
+  clients: () => import(/* webpackChunkName: "clients" */ "@/modules/clients/ClientsView").then(() => {}),
+  catalog: () => import(/* webpackChunkName: "catalog" */ "@/modules/catalog/CatalogView").then(() => {}),
+  purchases: () => import(/* webpackChunkName: "purchases" */ "@/modules/purchases/PurchasesView").then(() => {}),
+  hr: () => import(/* webpackChunkName: "hr" */ "@/modules/hr/HRView").then(() => {}),
+  accounting: () => import(/* webpackChunkName: "accounting" */ "@/modules/accounting/AccountingView").then(() => {}),
+  settings: () => import(/* webpackChunkName: "settings" */ "@/modules/settings/SettingsView").then(() => {}),
+  saas: () => import(/* webpackChunkName: "saas-admin" */ "@/modules/saas/SaaSControlPanel").then(() => {}),
+  "platform-admin": () => import(/* webpackChunkName: "platform-admin" */ "@/modules/admin/PlatformAdminPanel").then(() => {}),
+  audit: () => import(/* webpackChunkName: "audit" */ "@/modules/admin/EnhancedAuditView").then(() => {}),
+  "bulk-input": () => import(/* webpackChunkName: "bulk-input" */ "@/modules/bulk-input/BulkInputView").then(() => {}),
+  reports: () => import(/* webpackChunkName: "reports" */ "@/modules/reports/ReportsView").then(() => {}),
+  team: () => import(/* webpackChunkName: "team" */ "@/modules/team/TeamView").then(() => {}),
+  account: () => import(/* webpackChunkName: "account" */ "@/modules/account/AccountView").then(() => {}),
+  inventory: () => import(/* webpackChunkName: "inventory" */ "@/modules/inventory/InventoryView").then(() => {}),
+  automation: () => import(/* webpackChunkName: "automation" */ "@/modules/automation/AutomationView").then(() => {}),
+  "ai-agents": () => import(/* webpackChunkName: "ai-agents" */ "@/modules/ai-agents/AIAgentsView").then(() => {}),
+};
+
+/** Preload a view's chunk (call on hover/focus for instant navigation) */
+export function preloadView(viewKey: ViewKey): void {
+  const preload = preloadViewMap[viewKey];
+  if (preload) {
+    // Use startTransition for low-priority preloading
+    startTransition(() => {
+      preload().catch(() => {
+        // Silently ignore preloading errors
+      });
+    });
+  }
+}
 
 export type ViewKey =
   | "dash"
@@ -185,51 +315,80 @@ export default function AppShell() {
           />
           <main className="flex-1 p-2 sm:p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)]">
             <ErrorBoundary>
-            <Suspense
-              fallback={
-                <div className="p-4 sm:p-8 md:p-12 text-center text-muted-foreground">
-                  جارٍ التحميل…
-                </div>
-              }
-            >
-              {showOnboarding ? (
-                // Real 7-step onboarding wizard — was orphan in the repo
-                // since 2025-09. The previous fix rendered a 250-line
-                // OnboardingScreen stub here instead, which is why users saw
-                // "no onboarding" — the stub barely explained anything and
-                // immediately threw users into a dashboard with no company.
-                // SetupWizard takes over the full screen (its own min-h-screen
-                // gradient background) and calls onComplete when the user
-                // finishes the final step, which triggers refreshCompanies()
-                // → companies list populates → showOnboarding flips false →
-                // the real dashboard mounts.
+            {/* ════════════════════════════════════════════════════════════
+                MULTI-SUSPENSE BOUNDARIES — Optimized Loading States
+                Each view group has a contextually appropriate skeleton UI
+                that matches the expected content structure.
+               ════════════════════════════════════════════════════════════ */}
+            {showOnboarding ? (
+              <Suspense fallback={<MinimalLoading />}>
+                {/* Real 7-step onboarding wizard — was orphan in the repo
+                    since 2025-09. The previous fix rendered a 250-line
+                    OnboardingScreen stub here instead, which is why users saw
+                    "no onboarding" — the stub barely explained anything and
+                    immediately threw users into a dashboard with no company.
+                    SetupWizard takes over the full screen (its own min-h-screen
+                    gradient background) and calls onComplete when the user
+                    finishes the final step, which triggers refreshCompanies()
+                    → companies list populates → showOnboarding flips false →
+                    the real dashboard mounts. */}
                 <SetupWizard
                   onComplete={async () => { await refreshCompanies(); }}
                   onSkip={async () => { await refreshCompanies(); }}
                 />
-              ) : (
-                <>
+              </Suspense>
+            ) : (
+              <>
+                {/* ── Dashboard ── KPI Cards + Charts Skeleton */}
+                <Suspense fallback={<DashboardLoading />}>
                   {view === "dash" && <DashboardView />}
+                </Suspense>
+
+                {/* ── Table-Based Views ── Header + Filters + Table Skeleton */}
+                <Suspense fallback={<TableLoading />}>
                   {view === "invoices" && <InvoicesView />}
                   {view === "clients" && <ClientsView />}
                   {view === "catalog" && <CatalogView />}
+                  {view === "inventory" && ((perms.settings_access || isAdmin || isFounder) ? <InventoryView /> : <NoAccessView label="المخزون" />)}
                   {view === "purchases" && <PurchasesView />}
                   {view === "hr" && <HRView />}
+                  {view === "bulk-input" && <BulkInputView />}
+                </Suspense>
+
+                {/* ── Reports ── Charts + Date Range Skeleton */}
+                <Suspense fallback={<ReportsLoading />}>
+                  {view === "reports" && <ReportsView />}
+                </Suspense>
+
+                {/* ── Accounting ── Tabs + Summary Cards + Ledger Skeleton */}
+                <Suspense fallback={<AccountingLoading />}>
                   {view === "accounting" && <AccountingView />}
+                </Suspense>
+
+                {/* ── Form-Based Views ── Fields + Actions Skeleton */}
+                <Suspense fallback={<SettingsLoading />}>
                   {view === "settings" && <SettingsView activeCompany={activeCompany} onUpdated={refreshCompanies} />}
+                </Suspense>
+
+                <Suspense fallback={<FormLoading />}>
+                  {view === "account" && <AccountView />}
+                </Suspense>
+
+                {/* ── Admin Panels ── Stats Grid + Tables Skeleton */}
+                <Suspense fallback={<AdminLoading />}>
                   {view === "saas" && (isAdmin || isFounder ? <SaaSControlPanel /> : <NoAccessView label="إدارة المنصة" />)}
-                  {view === "team" && ((perms.settings_access || isAdmin || isFounder) ? <TeamView /> : <NoAccessView label="الفريق" />)}
                   {view === "platform-admin" && (isFounder ? <PlatformAdminPanel /> : <NoAccessView label="إدارة المؤسس" />)}
                   {view === "audit" && ((isAdmin || isFounder) ? <AuditView /> : <NoAccessView label="سجل التدقيق" />)}
-                  {view === "bulk-input" && <BulkInputView />}
-                  {view === "reports" && <ReportsView />}
-                  {view === "account" && <AccountView />}
-                  {view === "inventory" && ((perms.settings_access || isAdmin || isFounder) ? <InventoryView /> : <NoAccessView label="المخزون" />)}
+                </Suspense>
+
+                {/* ── Minimal Loading Views ── Simple Spinner */}
+                <Suspense fallback={<MinimalLoading />}>
                   {view === "automation" && ((perms.settings_access || isAdmin || isFounder) ? <AutomationView /> : <NoAccessView label="الأتمتة" />)}
                   {view === "ai-agents" && <AIAgentsView />}
-                </>
-              )}
-            </Suspense>
+                  {view === "team" && ((perms.settings_access || isAdmin || isFounder) ? <TeamView /> : <NoAccessView label="الفريق" />)}
+                </Suspense>
+              </>
+            )}
             </ErrorBoundary>
           </main>
           <AppFooter

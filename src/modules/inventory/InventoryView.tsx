@@ -10,9 +10,16 @@ import type { CreateInventoryItemPayload } from "@/hooks/queries/inventory";
 import { toast } from "sonner";
 import {
   Package, Plus, Trash2, Boxes, AlertTriangle, CheckCircle2,
-  XCircle, Warehouse as WarehouseIcon, ArrowDownUp,
+  XCircle, Warehouse as WarehouseIcon, ArrowDownUp, Sparkles,
 } from "lucide-react";
-import { cn, paginate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+// DS v4.0 Components
+import {
+  GarfixEnterpriseTable,
+  GarfixEmptyState,
+  GarfixLoadingState,
+  GarfixErrorState,
+} from "@/components/ui/index-garfix-ds";
 
 type Tab = "warehouses" | "stock";
 
@@ -69,6 +76,14 @@ export function InventoryView() {
   const products = (catalogQuery.data?.products ?? []) as unknown as Product[];
   const loading = tab === "warehouses" ? warehousesQuery.isLoading : itemsQuery.isLoading;
 
+  // ── Low stock items for AI suggestion ─────────────────────────────────────
+  const lowStockItems = items.filter((item) => item.status === "Low");
+  
+  // ── KPI calculations ─────────────────────────────────────────────────────
+  const okPercent = summary && summary.total > 0 
+    ? Math.round((summary.ok / summary.total) * 100) 
+    : 0;
+
   const [showForm, setShowForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -88,11 +103,6 @@ export function InventoryView() {
 
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
-  const allItems: Array<{ id: number }> = tab === "warehouses" ? warehouses : items;
-  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
-  const pageItems = paginate(allItems, currentPage, PAGE_SIZE);
-  const safePage = Math.min(currentPage, totalPages);
-
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: "warehouses", label: `المستودعات (${warehouses.length})` },
     { key: "stock", label: `المخزون (${items.length})` },
@@ -100,6 +110,9 @@ export function InventoryView() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* HEADER SECTION                                                      */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
@@ -109,44 +122,91 @@ export function InventoryView() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="inline-flex items-center justify-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer max-md:min-h-[44px]"
+          className="inline-flex items-center justify-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer max-md:min-h-[44px] hover:bg-primary/90 transition-colors duration-120"
         >
           <Plus size={16} /> {tab === "warehouses" ? "مستودع جديد" : "تعديل مخزون"}
         </button>
       </div>
 
-      {/* Summary cards — stack on mobile, grid on desktop */}
-      {tab === "stock" && summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          <SummaryCard icon={<Boxes size={16} />} label="إجمالي الأصناف" value={summary.total} color="var(--primary)" />
-          <SummaryCard icon={<CheckCircle2 size={16} />} label="متوفر" value={summary.ok} color="#10b981" />
-          <SummaryCard icon={<AlertTriangle size={16} />} label="تحت الحد الأدنى" value={summary.low} color="#f59e0b" />
-          <SummaryCard icon={<XCircle size={16} />} label="نفد" value={summary.out} color="#ef4444" />
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* KPI CARDS - DS v4.0 Design System                                   */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6 stagger-children">
+          {/* إجمالي الأصناف */}
+          <div className="kpi-card hover-lift">
+            <Boxes size={18} className="text-primary mb-2" />
+            <div className="kpi-value">{summary?.total || 0}</div>
+            <div className="kpi-label">إجمالي الأصناف</div>
+          </div>
+
+          {/* مخزون OK */}
+          <div className="kpi-card hover-lift">
+            <CheckCircle2 size={18} className="data-primary mb-2" />
+            <div className="kpi-value">{summary?.ok || 0}</div>
+            <div className="kpi-label">متوفر</div>
+            <div className="progress-emerald mt-2">
+              <div className="progress-bar" style={{ width: `${okPercent}%` }}></div>
+            </div>
+          </div>
+
+          {/* ⚠️ GOLD KPI - مخزون منخفض (مهم!) */}
+          <div className="kpi-card-gold hover-lift border-warning">
+            <AlertTriangle size={18} className="text-[#d4a574] mb-2" />
+            <div className="kpi-value">{summary?.low || 0}</div>
+            <div className="kpi-label">منخفض</div>
+            <div className="kpi-trend warning">⚠ يحتاج إعادة طلب</div>
+          </div>
+
+          {/* نفذ المخزون */}
+          <div className="kpi-card hover-lift state-error-component">
+            <XCircle size={18} className="text-destructive mb-2" />
+            <div className="kpi-value">{summary?.out || 0}</div>
+            <div className="kpi-label">نفد</div>
+          </div>
+
+          {/* عدد المستودعات */}
+          <div className="kpi-card hover-lift">
+            <WarehouseIcon size={18} className="data-auxiliary mb-2" />
+            <div className="kpi-value">{warehouses.length}</div>
+            <div className="kpi-label">المستودعات</div>
+          </div>
         </div>
       )}
 
-      {/* Tab bar — wraps on mobile */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* TABS NAVIGATION - Emerald Design                                     */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <div className="flex gap-1 p-1 bg-muted rounded-xl mb-4">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => switchTab(t.key)}
             className={cn(
-              "py-2 px-4 rounded-[10px] border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5 max-md:min-h-[44px]",
+              "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-120",
               tab === t.key
-                ? "bg-primary text-primary-foreground border-border"
-                : "bg-card text-muted-foreground border-border",
+                ? "bg-primary text-white shadow-brand-sm"
+                : "text-muted-foreground hover:bg-sidebar-accent"
             )}
           >
-            {t.key === "warehouses" ? <WarehouseIcon size={14} /> : <Package size={14} />}
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* LOADING STATE - DS v4.0                                              */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
       {loading ? (
-        <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+        <GarfixLoadingState 
+          message="جارٍ تحميل بيانات المخزون..." 
+          variant="skeleton"
+          skeletonLines={5}
+        />
       ) : showForm ? (
+        /* ═════════════════════════════════════════════════════════════ */
+        /* FORMS SECTION                                                */
+        /* ═════════════════════════════════════════════════════════════ */
         tab === "warehouses" ? (
           <WarehouseForm
             company={activeCompany}
@@ -163,209 +223,137 @@ export function InventoryView() {
           />
         )
       ) : (
-        <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-          {allItems.length === 0 ? (
-            <Empty label={tab === "warehouses" ? "مستودعات" : "أصناف مخزون"} />
-          ) : (
-            <>
-              {/* Desktop / tablet table */}
-              <div className="hidden md:block overflow-x-auto garfix-scroll">
-                {tab === "warehouses" ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-border bg-muted">
-                        <th className={thStyle}>الكود</th>
-                        <th className={thStyle}>الاسم</th>
-                        <th className={thStyle}>العنوان</th>
-                        <th className={thStyle}>الحالة</th>
-                        <th className={thStyle}>عدد الأصناف</th>
-                        <th className={thStyle}>إجراء</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(pageItems as Warehouse[]).map((w) => (
-                        <tr key={w.id} className="border-b border-border">
-                          <td className={cn(tdStyle, "font-mono")}>{w.code}</td>
-                          <td className={cn(tdStyle, "font-bold")}>
-                            <span className="inline-flex items-center gap-1.5">
-                              <WarehouseIcon size={14} className="opacity-60" />
-                              {w.name}
-                            </span>
-                          </td>
-                          <td className={tdStyle}>{w.address || "—"}</td>
-                          <td className={tdStyle}>
-                            <span className={cn(
-                              "py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold",
-                              w.isActive ? "bg-[rgba(16,185,129,0.15)] text-[#10b981]" : "bg-[rgba(107,114,128,0.15)] text-[#6b7280]",
-                            )}>
-                              {w.isActive ? "نشط" : "موقوف"}
-                            </span>
-                          </td>
-                          <td className={tdStyle}>{w.itemCount}</td>
-                          <td className={tdStyle}>
-                            <button onClick={() => handleDeleteWarehouse(w.id)} title="حذف" className={iconBtnStyle}>
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-border bg-muted">
-                        <th className={thStyle}>المنتج</th>
-                        <th className={thStyle}>المستودع</th>
-                        <th className={thStyle}>الكمية</th>
-                        <th className={thStyle}>حد الطلب</th>
-                        <th className={thStyle}>الحالة</th>
-                        <th className={thStyle}>دفعات/انتهاء</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(pageItems as InventoryItem[]).map((it) => (
-                        <tr key={it.id} className="border-b border-border">
-                          <td className={cn(tdStyle, "font-bold")}>
-                            <div>{it.productName}</div>
-                            {it.productCode && (
-                              <div className="text-[10px] text-muted-foreground font-mono">{it.productCode}</div>
-                            )}
-                          </td>
-                          <td className={tdStyle}>
-                            <div>{it.warehouseName}</div>
-                            <div className="text-[10px] text-muted-foreground font-mono">{it.warehouseCode}</div>
-                          </td>
-                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>
-                            {it.quantity.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
-                          </td>
-                          <td className={cn(tdStyle, "[direction:ltr] text-end")}>
-                            {it.reorderLevel.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}
-                          </td>
-                          <td className={tdStyle}>
-                            <StatusBadge status={it.status} />
-                          </td>
-                          <td className={tdStyle}>
-                            {it.batchNumber && (
-                              <div className="text-[11px]">دفعة: {it.batchNumber}</div>
-                            )}
-                            {it.expiryDate && (
-                              <div className="text-[10px] text-muted-foreground">انتهاء: {it.expiryDate}</div>
-                            )}
-                            {!it.batchNumber && !it.expiryDate && <span className="text-muted-foreground">—</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+        /* ═════════════════════════════════════════════════════════════ */
+        /* TABLES & CONTENT SECTION                                    */
+        /* ═════════════════════════════════════════════════════════════ */
+        <div className="space-y-4">
+          {/* AI Suggestion for Low Stock */}
+          {tab === "stock" && lowStockItems.length > 0 && (
+            <div className="ai-suggestion">
+              <Sparkles className="ai-suggestion-icon" />
+              <div>
+                <p className="font-semibold text-sm">توصية ذكية: إعادة طلب</p>
+                <p className="text-xs text-muted-foreground">
+                  لديك {lowStockItems.length} منتجات وصلت لحد الطلب.
+                  <button 
+                    className="text-primary underline ms-1 hover:text-primary/80 transition-colors"
+                    onClick={() => setTab("stock")}
+                  >
+                    عرض القائمة
+                  </button>
+                </p>
               </div>
+            </div>
+          )}
 
-              {/* Mobile stacked cards */}
-              {tab === "warehouses" ? (
-                <div className="md:hidden flex flex-col gap-2 p-3">
-                  {(pageItems as Warehouse[]).map((w) => (
-                    <div
-                      key={w.id}
-                      className="rounded-[12px] border border-border bg-background p-3 flex flex-col gap-2 max-md:min-h-[44px]"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <WarehouseIcon size={14} className="opacity-60 shrink-0" />
-                          <span className="font-bold text-[14px] truncate">{w.name}</span>
-                        </div>
-                        <span className={cn(
-                          "py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold shrink-0",
-                          w.isActive ? "bg-[rgba(16,185,129,0.15)] text-[#10b981]" : "bg-[rgba(107,114,128,0.15)] text-[#6b7280]",
-                        )}>
-                          {w.isActive ? "نشط" : "موقوف"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-1 text-[12px]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">الكود</span>
-                          <span className="font-mono font-semibold [direction:ltr] text-end">{w.code}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">العنوان</span>
-                          <span className="font-semibold text-end truncate">{w.address || "—"}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">عدد الأصناف</span>
-                          <span className="font-bold [direction:ltr] text-end">{w.itemCount}</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <button onClick={() => handleDeleteWarehouse(w.id)} title="حذف" className={cn(iconBtnStyle, "min-w-[44px] min-h-[44px]")}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* Warehouses Table */}
+          {tab === "warehouses" && (
+            <>
+              {warehouses.length === 0 ? (
+                <GarfixEmptyState
+                  title="لا توجد مستودعات"
+                  description="ابدأ بإنشاء أول مستودع لإدارة مخزونك بكفاءة"
+                  illustration="folder"
+                  action={{
+                    label: "إنشاء مستودع",
+                    onClick: () => setShowForm(true),
+                    variant: "primary"
+                  }}
+                  className="py-12"
+                />
               ) : (
-                <div className="md:hidden flex flex-col gap-2 p-3">
-                  {(pageItems as InventoryItem[]).map((it) => (
-                    <div
-                      key={it.id}
-                      className={cn(
-                        "rounded-[12px] border bg-background p-3 flex flex-col gap-2 max-md:min-h-[44px]",
-                        it.status === "Out" ? "border-[#ef4444]/40" : it.status === "Low" ? "border-[#f59e0b]/40" : "border-border",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-bold text-[14px] truncate">{it.productName}</div>
-                          {it.productCode && (
-                            <div className="text-[10px] text-muted-foreground font-mono">{it.productCode}</div>
-                          )}
-                        </div>
-                        <StatusBadge status={it.status} />
-                      </div>
-                      <div className="grid grid-cols-1 gap-1 text-[12px]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">المستودع</span>
-                          <span className="font-semibold text-end truncate">{it.warehouseName} <span className="font-mono text-muted-foreground">({it.warehouseCode})</span></span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">الكمية</span>
-                          <span className="font-bold [direction:ltr] text-end">{it.quantity.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">حد الطلب</span>
-                          <span className="font-semibold [direction:ltr] text-end">{it.reorderLevel.toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</span>
-                        </div>
-                        {(it.batchNumber || it.expiryDate) && (
-                          <>
-                            {it.batchNumber && (
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">دفعة</span>
-                                <span className="font-semibold [direction:ltr] text-end">{it.batchNumber}</span>
-                              </div>
-                            )}
-                            {it.expiryDate && (
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">انتهاء</span>
-                                <span className="font-semibold [direction:ltr] text-end">{it.expiryDate}</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <GarfixEnterpriseTable
+                  data={warehouses as unknown as Record<string, unknown>[]}
+                  columns={[
+                    { key: 'code', label: 'الكود', pinned: true },
+                    { key: 'name', label: 'اسم المستودع' },
+                    { key: 'address', label: 'العنوان' },
+                    {
+                      key: 'isActive',
+                      label: 'الحالة',
+                      render: (val) => (
+                        <span className={`table-row-status ${val ? 'active' : 'archived'}`}>
+                          {val ? 'نشط' : 'معطل'}
+                        </span>
+                      )
+                    },
+                    { key: 'itemCount', label: 'عدد الأصناف' }
+                  ]}
+                  density="comfortable"
+                  emptyMessage="لا توجد مستودعات"
+                  emptyDescription="لم يتم العثور على أي مستودعات لعرضها"
+                />
+              )}
+              
+              {/* Pagination for Warehouses */}
+              {warehouses.length > PAGE_SIZE && (
+                <div className="flex justify-center py-4">
+                  <PaginationInfo
+                    currentPage={currentPage}
+                    totalItems={warehouses.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                  />
                 </div>
               )}
+            </>
+          )}
 
-              <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
-                <span className="text-[12px] text-muted-foreground">
-                  صفحة {safePage} من {totalPages} ({allItems.length} عنصر)
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={pageBtnStyle(safePage === 1)}>السابق</button>
-                  <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={pageBtnStyle(safePage === totalPages)}>التالي</button>
+          {/* Stock Table */}
+          {tab === "stock" && (
+            <>
+              {items.length === 0 ? (
+                <GarfixEmptyState
+                  title="لا توجد أصناف مخزنية"
+                  description="أضف أصناف للمستودعات لمتابعة المخزون"
+                  illustration="folder"
+                  action={{
+                    label: "إضافة صنف",
+                    onClick: () => setShowForm(true),
+                    variant: "primary"
+                  }}
+                  className="py-12"
+                />
+              ) : (
+                <GarfixEnterpriseTable
+                  data={items as unknown as Record<string, unknown>[]}
+                  columns={[
+                    { key: 'productName', label: 'المنتج', pinned: true },
+                    { key: 'warehouseName', label: 'المستودع' },
+                    { key: 'quantity', label: 'الكمية' },
+                    {
+                      key: 'status',
+                      label: 'الحالة',
+                      render: (val) => {
+                        const classes: Record<string, string> = { OK: 'active', Low: 'pending warning', Out: 'error' };
+                        const labels: Record<string, string> = { OK: 'متوفر', Low: 'منخفض', Out: 'نفد' };
+                        return (
+                          <span className={`table-row-status ${classes[val as string] || 'active'}`}>
+                            {labels[val as string] || val}
+                          </span>
+                        );
+                      }
+                    },
+                    { key: 'reorderLevel', label: 'حد الطلب' },
+                  ]}
+                  rowStatus={(row) => row.status === 'Low' ? 'pending' : row.status === 'Out' ? 'error' : 'active'}
+                  density="compact"
+                  emptyMessage="لا توجد أصناف"
+                  emptyDescription="لم يتم العثور على أي أصناف مخزنية"
+                />
+              )}
+
+              {/* Pagination for Stock */}
+              {items.length > PAGE_SIZE && (
+                <div className="flex justify-center py-4">
+                  <PaginationInfo
+                    currentPage={currentPage}
+                    totalItems={items.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                  />
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
@@ -374,36 +362,62 @@ export function InventoryView() {
   );
 }
 
-function StatusBadge({ status }: { status: "OK" | "Low" | "Out" }) {
-  const config = {
-    OK: { label: "متوفر", color: "#10b981", icon: <CheckCircle2 size={12} /> },
-    Low: { label: "تحت الحد", color: "#f59e0b", icon: <AlertTriangle size={12} /> },
-    Out: { label: "نفد", color: "#ef4444", icon: <XCircle size={12} /> },
-  }[status];
-  return (
-    <span
-      className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold inline-flex items-center gap-1"
-      style={{ background: `${config.color}20`, color: config.color }} /* TAILWINDBREAK: dynamic status color */
-    >
-      {config.icon} {config.label}
-    </span>
-  );
-}
+/* ════════════════════════════════════════════════════════════════════════════
+ * PAGINATION COMPONENT
+ * ════════════════════════════════════════════════════════════════════════════ */
 
-function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
+function PaginationInfo({
+  currentPage,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+
   return (
-    <div className="bg-card rounded-[12px] border border-border py-3.5 px-4 flex items-center gap-3 max-md:min-h-[44px]">
-      <div
-        className="w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0"
-        style={{ background: `${color}20`, color }} /* TAILWINDBREAK: dynamic summary card color */
-      >{icon}</div>
-      <div className="min-w-0">
-        <div className="text-[11px] text-muted-foreground truncate">{label}</div>
-        <div className="text-[18px] font-extrabold [direction:ltr] text-start">{value.toLocaleString("ar-EG")}</div>
+    <div className="flex flex-wrap justify-between items-center py-3 px-4 border border-border rounded-lg bg-card gap-2">
+      <span className="text-[12px] text-muted-foreground">
+        صفحة {safePage} من {totalPages} ({totalItems} عنصر)
+      </span>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage === 1}
+          className={cn(
+            "py-1.5 px-3 rounded-[6px] text-[12px] font-bold transition-all duration-120",
+            safePage === 1
+              ? "bg-transparent text-muted-foreground border border-border cursor-not-allowed opacity-50"
+              : "bg-card text-foreground border border-border cursor-pointer hover:bg-primary hover:text-white"
+          )}
+        >
+          السابق
+        </button>
+        <button
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage === totalPages}
+          className={cn(
+            "py-1.5 px-3 rounded-[6px] text-[12px] font-bold transition-all duration-120",
+            safePage === totalPages
+              ? "bg-transparent text-muted-foreground border border-border cursor-not-allowed opacity-50"
+              : "bg-card text-foreground border border-border cursor-pointer hover:bg-primary hover:text-white"
+          )}
+        >
+          التالي
+        </button>
       </div>
     </div>
   );
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * WAREHOUSE FORM - DS v4.0 Styled
+ * ════════════════════════════════════════════════════════════════════════════ */
 
 function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
   const createWarehouseMutation = useCreateWarehouse();
@@ -425,26 +439,45 @@ function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
-        <h3 className="text-[15px] font-bold flex items-center gap-2">
-          <WarehouseIcon size={16} /> مستودع جديد
+      <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3.5 shadow-sm">
+        <h3 className="text-[15px] font-bold flex items-center gap-2 text-foreground">
+          <WarehouseIcon size={16} className="text-primary" /> مستودع جديد
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelStyle}>الاسم *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={inputStyle} placeholder="مثال: المستودع الرئيسي" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">الاسم *</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              placeholder="مثال: المستودع الرئيسي"
+            />
           </div>
           <div>
-            <label className={labelStyle}>الكود *</label>
-            <input value={code} onChange={(e) => setCode(e.target.value)} className={inputStyle} dir="ltr" placeholder="مثال: WH-01" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">الكود *</label>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              dir="ltr"
+              placeholder="مثال: WH-01"
+            />
           </div>
           <div className="sm:col-span-2">
-            <label className={labelStyle}>العنوان</label>
-            <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputStyle} />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">العنوان</label>
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+            />
           </div>
           <div>
-            <label className={labelStyle}>الحالة</label>
-            <select value={isActive ? "1" : "0"} onChange={(e) => setIsActive(e.target.value === "1")} className={inputStyle}>
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">الحالة</label>
+            <select
+              value={isActive ? "1" : "0"}
+              onChange={(e) => setIsActive(e.target.value === "1")}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+            >
               <option value="1">نشط</option>
               <option value="0">موقوف</option>
             </select>
@@ -452,12 +485,27 @@ function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string 
         </div>
       </div>
       <div className="flex gap-2.5 justify-end">
-        <button onClick={onClose} className="py-2.5 px-5 rounded-[10px] bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : "حفظ"}</button>
+        <button
+          onClick={onClose}
+          className="py-2.5 px-5 rounded-lg bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer max-md:min-h-[44px] hover:bg-muted transition-all duration-120"
+        >
+          إلغاء
+        </button>
+        <button
+          onClick={submit}
+          disabled={saving}
+          className="py-2.5 px-6 rounded-lg bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] hover:bg-primary/90 transition-all duration-120"
+        >
+          {saving ? "جارٍ…" : "حفظ"}
+        </button>
       </div>
     </div>
   );
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * ADJUST STOCK FORM - DS v4.0 Styled
+ * ════════════════════════════════════════════════════════════════════════════ */
 
 function AdjustStockForm({
   company, warehouses, products, onClose, onSaved,
@@ -501,91 +549,135 @@ function AdjustStockForm({
 
   if (warehouses.length === 0) {
     return (
-      <div className="bg-card rounded-[14px] border border-border p-4 md:p-8 text-center text-muted-foreground">
-        أنشئ مستودعاً أولاً قبل إضافة أصناف.
-      </div>
+      <GarfixErrorState
+        title="لا يوجد مستودعات"
+        message="أنشئ مستودعاً أولاً قبل إضافة أصناف."
+        severity="warning"
+        className="py-8"
+      />
     );
   }
+
   if (products.length === 0) {
     return (
-      <div className="bg-card rounded-[14px] border border-border p-4 md:p-8 text-center text-muted-foreground">
-        أنشئ منتجاً في كتالوج المنتجات أولاً.
-      </div>
+      <GarfixErrorState
+        title="لا يوجد منتجات"
+        message="أنشئ منتجاً في كتالوج المنتجات أولاً."
+        severity="warning"
+        className="py-8"
+      />
     );
   }
 
   return (
-    // Full-width on mobile, constrained on desktop (max-w-3xl ≈ 768px)
     <div className="flex flex-col gap-4 w-full md:max-w-3xl">
-      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
-        <h3 className="text-[15px] font-bold flex items-center gap-2">
-          <ArrowDownUp size={16} /> تعديل المخزون
+      <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-3.5 shadow-sm">
+        <h3 className="text-[15px] font-bold flex items-center gap-2 text-foreground">
+          <ArrowDownUp size={16} className="text-primary" /> تعديل المخزون
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelStyle}>المستودع *</label>
-            <select value={warehouseId ?? ""} onChange={(e) => setWarehouseId(Number(e.target.value))} className={inputStyle}>
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">المستودع *</label>
+            <select
+              value={warehouseId ?? ""}
+              onChange={(e) => setWarehouseId(Number(e.target.value))}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+            >
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} — {w.name}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelStyle}>المنتج *</label>
-            <select value={productId ?? ""} onChange={(e) => setProductId(Number(e.target.value))} className={inputStyle}>
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">المنتج *</label>
+            <select
+              value={productId ?? ""}
+              onChange={(e) => setProductId(Number(e.target.value))}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+            >
               {products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ""}{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelStyle}>طريقة التعديل</label>
-            <select value={mode} onChange={(e) => setMode(e.target.value as "set" | "adjust")} className={inputStyle}>
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">طريقة التعديل</label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as "set" | "adjust")}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+            >
               <option value="set">تعيين القيمة (مطلق)</option>
               <option value="adjust">إضافة/خصم (نسبي)</option>
             </select>
           </div>
           <div>
-            <label className={labelStyle}>{mode === "set" ? "الكمية الجديدة *" : "مقدار التعديل (+/-) *"}</label>
-            <input type="number" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputStyle} dir="ltr" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+              {mode === "set" ? "الكمية الجديدة *" : "مقدار التعديل (+/-) *"}
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              dir="ltr"
+            />
           </div>
           <div>
-            <label className={labelStyle}>حد إعادة الطلب</label>
-            <input type="number" step="any" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} className={inputStyle} dir="ltr" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">حد إعادة الطلب</label>
+            <input
+              type="number"
+              step="any"
+              value={reorderLevel}
+              onChange={(e) => setReorderLevel(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              dir="ltr"
+            />
           </div>
           <div>
-            <label className={labelStyle}>كمية إعادة الطلب</label>
-            <input type="number" step="any" value={reorderQty} onChange={(e) => setReorderQty(e.target.value)} className={inputStyle} dir="ltr" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">كمية إعادة الطلب</label>
+            <input
+              type="number"
+              step="any"
+              value={reorderQty}
+              onChange={(e) => setReorderQty(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              dir="ltr"
+            />
           </div>
           <div>
-            <label className={labelStyle}>رقم الدفعة</label>
-            <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} className={inputStyle} dir="ltr" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">رقم الدفعة</label>
+            <input
+              value={batchNumber}
+              onChange={(e) => setBatchNumber(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              dir="ltr"
+            />
           </div>
           <div>
-            <label className={labelStyle}>تاريخ الانتهاء</label>
-            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className={inputStyle} dir="ltr" />
+            <label className="block text-[11px] font-semibold text-muted-foreground mb-1">تاريخ الانتهاء</label>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              dir="ltr"
+            />
           </div>
         </div>
       </div>
       <div className="flex gap-2.5 justify-end">
-        <button onClick={onClose} className="py-2.5 px-5 rounded-[10px] bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : "حفظ"}</button>
+        <button
+          onClick={onClose}
+          className="py-2.5 px-5 rounded-lg bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer max-md:min-h-[44px] hover:bg-muted transition-all duration-120"
+        >
+          إلغاء
+        </button>
+        <button
+          onClick={submit}
+          disabled={saving}
+          className="py-2.5 px-6 rounded-lg bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] hover:bg-primary/90 transition-all duration-120"
+        >
+          {saving ? "جارٍ…" : "حفظ"}
+        </button>
       </div>
-    </div>
-  );
-}
-
-const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "py-2.5 px-3 text-[13px]";
-const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
-const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
-const pageBtnStyle = (disabled: boolean): string =>
-  disabled
-    ? "py-1.5 px-3 rounded-[6px] bg-transparent text-muted-foreground border border-border text-[12px] font-bold cursor-not-allowed opacity-50"
-    : "py-1.5 px-3 rounded-[6px] bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer";
-
-function Empty({ label }: { label: string }) {
-  return (
-    <div className="p-6 md:p-12 text-center text-muted-foreground">
-      <Boxes size={36} className="opacity-30 mb-2 mx-auto" />
-      <div>لا توجد {label} بعد</div>
     </div>
   );
 }

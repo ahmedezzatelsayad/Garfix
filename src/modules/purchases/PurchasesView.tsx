@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { usePurchases, useDeletePurchase, useCreatePurchase } from "@/hooks/queries";
 import type { CreatePurchasePayload } from "@/hooks/queries/dashboard";
 import { toast } from "sonner";
-import { Plus, ShoppingCart, Trash2, X, Loader2 } from "lucide-react";
+import { Plus, ShoppingCart, Trash2, X, DollarSign, Package, Users } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
+
+// DS v4.0 Components
+import {
+  GarfixEnterpriseTable,
+  GarfixBulkActions,
+  GarfixConfirmDialog,
+  GarfixEmptyState,
+  GarfixLoadingState,
+} from "@/components/ui/index-garfix-ds";
 
 const PAGE_SIZE = 20;
 
@@ -29,6 +38,28 @@ export function PurchasesView() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  
+  // Confirm Dialog State
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+
+  // ── KPI Calculations ──────────────────────────────────────────────
+  const kpiData = useMemo(() => {
+    const totalPurchases = purchases.reduce((sum, p) => {
+      return sum + (p.items?.reduce((itemSum: number, item: PurchaseItem) => 
+        itemSum + (item.qty * item.price), 0) || 0);
+    }, 0);
+    
+    const totalQty = purchases.reduce((sum, p) => sum + (p.totalQty || 0), 0);
+    
+    const uniqueSuppliers = new Set(purchases.map(p => p.supplier).filter(Boolean)).size;
+    
+    return {
+      totalPurchases,
+      totalQty,
+      uniqueSuppliers,
+    };
+  }, [purchases]);
 
   const totalPages = Math.max(1, Math.ceil(purchases.length / PAGE_SIZE));
   const pagePurchases = paginate(purchases, currentPage, PAGE_SIZE);
@@ -47,9 +78,13 @@ export function PurchasesView() {
     });
   };
 
+  // ── Bulk Delete with Confirmation ─────────────────────────────────
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`حذف ${selectedIds.size} فاتورة شراء؟`)) return;
+    setShowBulkConfirm(true);
+  };
+
+  const confirmBulkDelete = async () => {
     setBulkDeleting(true);
     let okCount = 0, failCount = 0;
     for (const id of selectedIds) {
@@ -59,16 +94,28 @@ export function PurchasesView() {
       } catch { failCount++; }
     }
     setBulkDeleting(false);
+    setShowBulkConfirm(false);
     setSelectedIds(new Set());
     if (okCount > 0) toast.success(`تم حذف ${okCount} فاتورة شراء`);
     if (failCount > 0) toast.error(`تعذّر حذف ${failCount} فاتورة شراء`);
   };
 
+  // ── Single Delete with Confirmation ───────────────────────────────
   const handleDelete = (id: number) => {
-    if (!confirm("حذف فاتورة الشراء؟")) return;
-    deleteMutation.mutate(id, {
-      onSuccess: () => toast.success("تم الحذف"),
-      onError: (err) => toast.error(err.message || "تعذّر الحذف"),
+    setDeleteId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId === null) return;
+    deleteMutation.mutate(deleteId, {
+      onSuccess: () => {
+        toast.success("تم الحذف");
+        setDeleteId(null);
+      },
+      onError: (err) => {
+        toast.error(err.message || "تعذّر الحذف");
+        setDeleteId(null);
+      },
     });
   };
 
@@ -77,95 +124,180 @@ export function PurchasesView() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <div><h1 className="text-2xl font-extrabold">المشتريات</h1><p className="text-[13px] text-muted-foreground">{purchases.length} فاتورة شراء</p></div>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"><Plus size={16} /> فاتورة شراء جديدة</button>
+        <div>
+          <h1 className="text-2xl font-extrabold">المشتريات</h1>
+          <p className="text-[13px] text-muted-foreground">{purchases.length} فاتورة شراء</p>
+        </div>
+        <button 
+          onClick={() => setShowForm(true)} 
+          className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px] hover-scale active-press"
+        >
+          <Plus size={16} /> فاتورة شراء جديدة
+        </button>
       </div>
 
-      {selectedIds.size > 0 && (
-        <div className="py-2.5 px-4 bg-destructive text-white rounded-md flex flex-wrap justify-between items-center gap-2">
-          <span className="font-bold text-[13px]">{selectedIds.size} فاتورة شراء محددة</span>
-          <div className="flex gap-2">
-            <button onClick={() => setSelectedIds(new Set())} disabled={bulkDeleting} className="bg-white/15 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed max-md:min-h-[44px]">إلغاء التحديد</button>
-            <button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد"}</button>
-          </div>
+      {/* ── KPI Cards Section ───────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger-children">
+        {/* إجمالي فواتير الشراء */}
+        <div className="kpi-card hover-lift">
+          <ShoppingCart size={18} className="text-primary mb-2" />
+          <div className="kpi-value">{purchases.length}</div>
+          <div className="kpi-label">فواتير الشراء</div>
         </div>
+
+        {/* ⚠️ GOLD KPI - إجمالي المشتريات */}
+        <div className="kpi-card-gold hover-lift">
+          <DollarSign size={18} className="text-[#d4a574] mb-2" />
+          <div className="kpi-value" dir="ltr">{kpiData.totalPurchases.toLocaleString()}</div>
+          <div className="kpi-label">إجمالي المشتريات</div>
+          <div className="kpi-badge">✦ مالي</div>
+        </div>
+
+        {/* إجمالي الكميات */}
+        <div className="kpi-card hover-lift">
+          <Package size={18} className="data-secondary mb-2" />
+          <div className="kpi-value" dir="ltr">{kpiData.totalQty.toLocaleString()}</div>
+          <div className="kpi-label">إجمالي الكميات</div>
+        </div>
+
+        {/* عدد الموردين */}
+        <div className="kpi-card hover-lift">
+          <Users size={18} className="data-auxiliary mb-2" />
+          <div className="kpi-value">{kpiData.uniqueSuppliers}</div>
+          <div className="kpi-label">الموردون</div>
+        </div>
+      </div>
+
+      {/* ── Bulk Actions Bar ────────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <GarfixBulkActions
+          selectedCount={selectedIds.size}
+          actions={[
+            { 
+              label: "حذف المحدد", 
+              icon: <Trash2 size={14} />, 
+              onClick: handleBulkDelete, 
+              variant: "danger" 
+            },
+          ]}
+          onClearSelection={() => setSelectedIds(new Set())}
+        />
       )}
 
+      {/* ── Main Content Area ───────────────────────────────────── */}
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
-        {isLoading ? <div className="p-8 md:p-12 text-center text-muted-foreground"><Loader2 size={16} className="animate-spin inline-block mr-2" /> جارٍ التحميل…</div> : purchases.length === 0 ? (
-          <div className="p-8 md:p-12 text-center text-muted-foreground"><ShoppingCart size={36} className="opacity-30 mb-2" /><div>لا توجد فواتير شراء بعد</div></div>
+        {isLoading ? (
+          <GarfixLoadingState message="جارٍ تحميل الفواتير..." variant="skeleton" />
+        ) : purchases.length === 0 ? (
+          <GarfixEmptyState
+            illustration="inbox"
+            title="لا توجد فواتير شراء"
+            description="ابدأ بإنشاء فاتورة شراء جديدة لتتبع مشترياتك"
+            actionLabel="إنشاء فاتورة شراء"
+            onAction={() => setShowForm(true)}
+          />
         ) : (
-          <>
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse text-[13px]">
-              <thead><tr className="border-b border-border bg-muted">
-                <th className="w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground">
-                  <input type="checkbox" checked={selectedIds.size === pagePurchases.length && pagePurchases.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" />
-                </th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">الرقم</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">التاريخ</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">المورّد</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">عدد البنود</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">الكمية</th>
-                <th className="text-start px-3 py-2.5 text-[11px] text-muted-foreground">إجراء</th>
-              </tr></thead>
-              <tbody>
-                {pagePurchases.map((p) => {
-                  const checked = selectedIds.has(p.id);
-                  return (
-                    <tr key={p.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
-                      <td className="px-2 py-2.5 text-center">
-                        <input type="checkbox" checked={checked} onChange={() => toggleRow(p.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${p.num}`} />
-                      </td>
-                      <td className="px-3 py-2.5 font-bold font-mono" dir="ltr">{p.num}</td>
-                      <td className="px-3 py-2.5">{p.date}</td>
-                      <td className="px-3 py-2.5">{p.supplier || "—"}</td>
-                      <td className="px-3 py-2.5">{p.items?.length || 0}</td>
-                      <td className="px-3 py-2.5">{p.totalQty}</td>
-                      <td className="px-3 py-2.5">
-                        <button onClick={() => handleDelete(p.id)} title="حذف" disabled={deleteMutation.isPending && deleteMutation.variables === p.id} className="w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center disabled:opacity-50"><Trash2 size={14} /></button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {/* Mobile cards */}
-          <div className="md:hidden flex flex-col divide-y divide-border">
-            {pagePurchases.map((p) => {
-              const checked = selectedIds.has(p.id);
-              return (
-                <div key={p.id} className={cn("p-3 flex flex-col gap-2", checked ? "bg-accent" : "bg-transparent")}>
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-2 min-h-[44px]">
-                      <input type="checkbox" checked={checked} onChange={() => toggleRow(p.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${p.num}`} />
-                      <span className="font-bold font-mono text-[13px]" dir="ltr">{p.num}</span>
-                    </label>
-                    <button onClick={() => handleDelete(p.id)} title="حذف" className="min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center"><Trash2 size={14} /></button>
+          <GarfixEnterpriseTable
+            data={pagePurchases}
+            columns={[
+              { key: 'num', label: 'رقم الفاتورة', pinned: true },
+              { key: 'date', label: 'التاريخ' },
+              { key: 'supplier', label: 'المورد' },
+              { 
+                key: 'totalQty', 
+                label: 'الكمية',
+                render: (val) => <span dir="ltr">{Number(val).toLocaleString()}</span>
+              },
+              {
+                key: 'total',
+                label: 'الإجمالي',
+                render: (_, row) => (
+                  <span className="font-bold text-primary" dir="ltr">
+                    {row.items?.reduce((sum: number, item: PurchaseItem) => sum + (item.qty * item.price), 0).toLocaleString()}
+                  </span>
+                )
+              },
+              {
+                key: 'actions',
+                label: 'إجراءات',
+                render: (_, row) => (
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => handleDelete(row.id)}
+                      disabled={deleteMutation.isPending}
+                      className="hover-scale active-press p-1.5 rounded-md bg-destructive/10 text-destructive disabled:opacity-50"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[13px]">
-                    <div><span className="text-muted-foreground text-[11px]">التاريخ: </span><span dir="ltr">{p.date}</span></div>
-                    <div><span className="text-muted-foreground text-[11px]">المورّد: </span>{p.supplier || "—"}</div>
-                    <div><span className="text-muted-foreground text-[11px]">البنود: </span>{p.items?.length || 0}</div>
-                    <div><span className="text-muted-foreground text-[11px]">الكمية: </span>{p.totalQty}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                )
+              }
+            ]}
+            selectedRows={selectedIds}
+            onSelectionChange={setSelectedIds}
+            density="comfortable"
+          />
+        )}
+        
+        {/* Pagination - Only show when not loading and has data */}
+        {!isLoading && purchases.length > 0 && (
           <div className="flex flex-wrap justify-between items-center px-4 py-3 border-t border-border gap-2">
             <span className="text-xs text-muted-foreground">صفحة {safePage} من {totalPages} ({purchases.length} فاتورة شراء)</span>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === 1 ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>السابق</button>
-              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === totalPages ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>التالي</button>
+              <button 
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} 
+                disabled={safePage === 1} 
+                className={cn(
+                  "px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]",
+                  safePage === 1 
+                    ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
+                    : "bg-card text-foreground cursor-pointer hover:bg-accent"
+                )}
+              >
+                السابق
+              </button>
+              <button 
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} 
+                disabled={safePage === totalPages} 
+                className={cn(
+                  "px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]",
+                  safePage === totalPages 
+                    ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
+                    : "bg-card text-foreground cursor-pointer hover:bg-accent"
+                )}
+              >
+                التالي
+              </button>
             </div>
           </div>
-          </>
         )}
       </div>
+
+      {/* ── Single Delete Confirmation Dialog ───────────────────── */}
+      <GarfixConfirmDialog
+        isOpen={deleteId !== null}
+        title="حذف فاتورة الشراء"
+        message="هل أنت متأكد من حذف هذه الفاتورة؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف"
+        cancelLabel="إلغاء"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+
+      {/* ── Bulk Delete Confirmation Dialog ─────────────────────── */}
+      <GarfixConfirmDialog
+        isOpen={showBulkConfirm}
+        title="حذف الفواتير المحددة"
+        message={`هل أنت متأكد من حذف ${selectedIds.size} فاتورة شراء؟ لا يمكن التراجع عن هذا الإجراء.`}
+        confirmLabel={`حذف ${selectedIds.size} فاتورة`}
+        cancelLabel="إلغاء"
+        variant="danger"
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowBulkConfirm(false)}
+      />
     </div>
   );
 }
@@ -203,7 +335,12 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <h1 className="text-[22px] font-extrabold">فاتورة شراء جديدة</h1>
-        <button onClick={onClose} className="bg-transparent border border-border text-muted-foreground px-3 py-2 rounded-sm cursor-pointer text-xs inline-flex items-center gap-1 max-md:min-h-[44px]"><X size={14} /> إغلاق</button>
+        <button 
+          onClick={onClose} 
+          className="bg-transparent border border-border text-muted-foreground px-3 py-2 rounded-sm cursor-pointer text-xs inline-flex items-center gap-1 max-md:min-h-[44px] hover-scale"
+        >
+          <X size={14} /> إغلاق
+        </button>
       </div>
       <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -214,7 +351,12 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className={cn(labelStyle, "mb-0")}>البنود</label>
-            <button onClick={addItem} className="bg-accent text-accent-foreground border border-border rounded-sm px-2.5 py-1 font-bold text-[11px] cursor-pointer inline-flex items-center gap-1 max-md:min-h-[44px]"><Plus size={12} /> إضافة</button>
+            <button 
+              onClick={addItem} 
+              className="bg-accent text-accent-foreground border border-border rounded-sm px-2.5 py-1 font-bold text-[11px] cursor-pointer inline-flex items-center gap-1 max-md:min-h-[44px] hover-scale active-press"
+            >
+              <Plus size={12} /> إضافة
+            </button>
           </div>
           <div className="flex flex-col gap-2">
             {items.map((it, i) => (
@@ -222,7 +364,12 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
                 <input placeholder="وصف البند" value={it.description} onChange={(e) => updateItem(i, "description", e.target.value)} className={inputStyle} />
                 <input type="number" placeholder="كمية" value={it.qty} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <input type="number" placeholder="سعر" value={it.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} className={inputStyle} dir="ltr" />
-                <button onClick={() => removeItem(i)} className="bg-transparent border border-border text-destructive rounded-sm cursor-pointer flex items-center justify-center min-h-[44px] sm:min-h-0"><X size={12} /></button>
+                <button 
+                  onClick={() => removeItem(i)} 
+                  className="bg-transparent border border-border text-destructive rounded-sm cursor-pointer flex items-center justify-center min-h-[44px] sm:min-h-0 hover-scale"
+                >
+                  <X size={12} />
+                </button>
               </div>
             ))}
           </div>
@@ -230,8 +377,19 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
         <div><label className={labelStyle}>ملاحظات</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={cn(inputStyle, "resize-y")} /></div>
       </div>
       <div className="flex gap-2.5 justify-end">
-        <button onClick={onClose} className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-        <button onClick={submit} disabled={saving} className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]">{saving ? "جارٍ…" : "حفظ"}</button>
+        <button 
+          onClick={onClose} 
+          className="px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px] hover-scale"
+        >
+          إلغاء
+        </button>
+        <button 
+          onClick={submit} 
+          disabled={saving} 
+          className="px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] hover-scale active-press"
+        >
+          {saving ? "جارٍ…" : "حفظ"}
+        </button>
       </div>
     </div>
   );
