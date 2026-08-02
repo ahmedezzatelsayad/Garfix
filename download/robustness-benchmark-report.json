@@ -1,0 +1,1937 @@
+{
+  "version": "1.5-Robustness",
+  "generatedAt": "2026-08-02T01:20:25.965Z",
+  "metadata": {
+    "datasetType": "SYNTHETIC_WITH_STRESS_SCENARIOS",
+    "realDataUsed": false,
+    "goldenDatasetAvailable": false,
+    "characteristics": {
+      "totalScenarios": 20,
+      "invoicesPerScenario": 500,
+      "iterationsPerScenario": 3,
+      "supplierCount": 100,
+      "sharedLayoutRatio": "Variable (0-60%)",
+      "ocrNoiseRange": "0-30%",
+      "languagesTested": [
+        "en",
+        "ar",
+        "mixed"
+      ],
+      "formatVariations": [
+        "TRN",
+        "Date",
+        "Currency"
+      ],
+      "edgeCasesIncluded": true
+    },
+    "difficultyAssessment": {
+      "score": 77,
+      "factors": {
+        "ocr_quality": 85,
+        "layout_diversity": 75,
+        "supplier_similarity": 80,
+        "data_completeness": 78,
+        "language_complexity": 72,
+        "format_variations": 60,
+        "edge_cases": 58,
+        "volume": 100
+      },
+      "interpretation": "Hard - Challenging real-world conditions",
+      "comparison": {
+        "acceptableFMR": 0.05,
+        "acceptableFMRPercent": "5.0%",
+        "note": "At difficulty 76.61000000000001, systems achieving <5% FMR are considered excellent"
+      }
+    }
+  },
+  "robustnessTable": [
+    {
+      "scenario": "CLEAN",
+      "name": "Clean Data (Baseline)",
+      "category": "baseline",
+      "difficulty": 15,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 60.40190914422317,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "OCR_NOISE_5",
+      "name": "OCR Noise 5%",
+      "category": "ocr_noise",
+      "difficulty": 35,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 59.828261461010726,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "DUPLICATE_INVOICE",
+      "name": "Duplicate Invoice Detection",
+      "category": "structural",
+      "difficulty": 40,
+      "fmr": 0.0063025210084033615,
+      "precision": 0.9936974789915967,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 59.50258961867135,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "EXTREME_VALUES",
+      "name": "Extreme Values",
+      "category": "edge_case",
+      "difficulty": 42,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 58.96428465353424,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "TRN_FORMAT_VARIATION",
+      "name": "TRN Format Variation",
+      "category": "format_variation",
+      "difficulty": 45,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 58.768619741026455,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "OCR_NOISE_10",
+      "name": "OCR Noise 10%",
+      "category": "ocr_noise",
+      "difficulty": 50,
+      "fmr": 0.008421052631578947,
+      "precision": 0.991578947368421,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 60.187550160029794,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "DATE_FORMAT_VARIATION",
+      "name": "Date Format Variation",
+      "category": "format_variation",
+      "difficulty": 50,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 60.24600200593611,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "MULTI_PAGE",
+      "name": "Multi-Page Invoice",
+      "category": "structural",
+      "difficulty": 52,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 58.371668075763544,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "SUPPLIER_NAME_TYPO",
+      "name": "Supplier Name Typo",
+      "category": "field_corruption",
+      "difficulty": 55,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 59.04898170825303,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "NEW_SUPPLIER_COLD_START",
+      "name": "New Supplier Cold Start",
+      "category": "edge_case",
+      "difficulty": 58,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 60.7040871984102,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "CURRENCY_SWAP",
+      "name": "Currency Swap Error",
+      "category": "field_corruption",
+      "difficulty": 60,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 58.804594475963285,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "MISSING_HEADER",
+      "name": "Missing Header Fields",
+      "category": "missing_data",
+      "difficulty": 65,
+      "fmr": 0.0063025210084033615,
+      "precision": 0.9936974789915967,
+      "recall": 0.9772727272727273,
+      "f1": 0,
+      "latencyP99": 58.96428465353424,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "MIXED_LANGUAGE",
+      "name": "Mixed Language Content",
+      "category": "language_specific",
+      "difficulty": 68,
+      "fmr": 0.004210526315789474,
+      "precision": 0.9957894736842106,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 58.96428465353424,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "OCR_NOISE_20",
+      "name": "OCR Noise 20%",
+      "category": "ocr_noise",
+      "difficulty": 70,
+      "fmr": 0.012605042016806723,
+      "precision": 0.9873949579831933,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 61.4875501600298,
+      "status": "GOOD"
+    },
+    {
+      "scenario": "ARABIC_OCR",
+      "name": "Arabic OCR Challenge",
+      "category": "language_specific",
+      "difficulty": 72,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 66.37166807576354,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "SHARED_ERP_LAYOUT",
+      "name": "Shared ERP Layouts",
+      "category": "layout_confusion",
+      "difficulty": 75,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 65.50258961867135,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "PARTIAL_SCAN",
+      "name": "Partial/Cropped Scan",
+      "category": "structural",
+      "difficulty": 78,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 0.9812889812889813,
+      "f1": 0,
+      "latencyP99": 62.6375501600298,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "SIMILAR_SUPPLIER_NAMES",
+      "name": "Similar Supplier Names",
+      "category": "supplier_confusion",
+      "difficulty": 80,
+      "fmr": 0.00631578947368421,
+      "precision": 0.9936842105263158,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 59.006930258825165,
+      "status": "STRONG"
+    },
+    {
+      "scenario": "OCR_NOISE_30",
+      "name": "OCR Noise 30%",
+      "category": "ocr_noise",
+      "difficulty": 85,
+      "fmr": 0.014736842105263158,
+      "precision": 0.9852631578947368,
+      "recall": 1,
+      "f1": 0,
+      "latencyP99": 62.787550160029795,
+      "status": "GOOD"
+    },
+    {
+      "scenario": "PRODUCTION_CHAOS",
+      "name": "Production Chaos Mode",
+      "category": "combined",
+      "difficulty": 95,
+      "fmr": 0.021052631578947368,
+      "precision": 0.9789473684210527,
+      "recall": 0.9893617021276596,
+      "f1": 0,
+      "latencyP99": 73.00655358197552,
+      "status": "GOOD"
+    }
+  ],
+  "summary": {
+    "gate": "GATE_1.5",
+    "verdict": "ROBUST_PASSED",
+    "canProceedToPhaseD": true,
+    "robustnessScore": "100.0%",
+    "datasetDifficulty": "77/100",
+    "acceptableFMRAtThisDifficulty": "5.0%"
+  },
+  "scenarioDetails": {
+    "CLEAN": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 45.25756873545646,
+        "p95": 56.01679483335855,
+        "p99": 60.40190914422317,
+        "mean": 45.2726110644777
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.742141210239412,
+          "p95": 20.22551999228902,
+          "p99": 20.649496661941402,
+          "mean": 15.787738472492835
+        },
+        "io": {
+          "p50": 6.697621001616963,
+          "p95": 11.28461679619146,
+          "p99": 11.66819031767505,
+          "mean": 6.781579753043658
+        },
+        "ai": {
+          "p50": 4.792700833010651,
+          "p95": 9.088899433051445,
+          "p99": 9.432229609678554,
+          "mean": 4.774338766297091
+        },
+        "db": {
+          "p50": 11.242720122680236,
+          "p95": 15.738208161082166,
+          "p99": 16.153726954922014,
+          "mean": 11.326320151114595
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.8877690971994546,
+        "humanOverrideRate": 0.495162122788644
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 1.0068907418073458e-7
+      },
+      "scenarioMetadata": {
+        "name": "Clean Data (Baseline)",
+        "description": "Perfect OCR, no noise, standard formats",
+        "category": "baseline",
+        "difficulty": 15,
+        "stressors": {}
+      }
+    },
+    "OCR_NOISE_5": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 45.463291401326025,
+        "p95": 56.4129830822728,
+        "p99": 59.828261461010726,
+        "mean": 45.590611908558564
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 16.096531729061745,
+          "p95": 20.603246588691427,
+          "p99": 21.032758718422322,
+          "mean": 16.058174069750795
+        },
+        "io": {
+          "p50": 6.743160987504098,
+          "p95": 11.233332664119857,
+          "p99": 11.625054333795573,
+          "mean": 6.765274951424295
+        },
+        "ai": {
+          "p50": 4.813593984829168,
+          "p95": 9.198129997925863,
+          "p99": 9.612275612508476,
+          "mean": 4.8480715835520725
+        },
+        "db": {
+          "p50": 11.266656984811801,
+          "p95": 15.752473012428375,
+          "p99": 16.148231541714217,
+          "mean": 11.332229478819194
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.8944662095383894,
+        "humanOverrideRate": 0.46153217816295383
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 3.08838192449525e-7
+      },
+      "scenarioMetadata": {
+        "name": "OCR Noise 5%",
+        "description": "Light character-level noise simulation",
+        "category": "ocr_noise",
+        "difficulty": 35,
+        "stressors": {
+          "ocrNoiseLevel": 0.05
+        }
+      }
+    },
+    "OCR_NOISE_10": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1413,
+        "fp": 12,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.008421052631578947,
+        "precision": 0.991578947368421,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 46.66896475715771,
+        "p95": 56.823263105545955,
+        "p99": 60.187550160029794,
+        "mean": 46.55861204932567
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 16.755407048390573,
+          "p95": 21.044768169125252,
+          "p99": 21.399124427384024,
+          "mean": 16.608802224889423
+        },
+        "io": {
+          "p50": 6.493706254461712,
+          "p95": 11.188882598057129,
+          "p99": 11.658047947079886,
+          "mean": 6.640335262237037
+        },
+        "ai": {
+          "p50": 5.172775239956746,
+          "p95": 9.474992873024892,
+          "p99": 9.857908929665086,
+          "mean": 5.176560668535512
+        },
+        "db": {
+          "p50": 11.449673768412246,
+          "p95": 15.763089104907841,
+          "p99": 16.14688073282523,
+          "mean": 11.355436588997364
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.008421052631578947,
+        "patternReuseAccuracy": 0.9011379504850611,
+        "humanOverrideRate": 0.5309271874094678
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 5.559722897308563e-7
+      },
+      "scenarioMetadata": {
+        "name": "OCR Noise 10%",
+        "description": "Moderate OCR degradation",
+        "category": "ocr_noise",
+        "difficulty": 50,
+        "stressors": {
+          "ocrNoiseLevel": 0.1
+        }
+      }
+    },
+    "OCR_NOISE_20": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1410,
+        "fp": 18,
+        "fn": 0,
+        "tn": 72
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.012605042016806723,
+        "precision": 0.9873949579831933,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 47.968964757157714,
+        "p95": 58.12326310554595,
+        "p99": 61.4875501600298,
+        "mean": 47.85861204932562
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 17.555407048390574,
+          "p95": 21.844768169125253,
+          "p99": 22.199124427384024,
+          "mean": 17.408802224889435
+        },
+        "io": {
+          "p50": 6.493706254461712,
+          "p95": 11.188882598057129,
+          "p99": 11.658047947079886,
+          "mean": 6.640335262237037
+        },
+        "ai": {
+          "p50": 5.672775239956746,
+          "p95": 9.974992873024892,
+          "p99": 10.357908929665086,
+          "mean": 5.6403375333789
+        },
+        "db": {
+          "p50": 11.449673768412246,
+          "p95": 15.763089104907841,
+          "p99": 16.14688073282523,
+          "mean": 11.355436588997364
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.012605042016806725,
+        "patternReuseAccuracy": 0.9011379504850611,
+        "humanOverrideRate": 0.5309271874094678
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 0.0000011347439768767737
+      },
+      "scenarioMetadata": {
+        "name": "OCR Noise 20%",
+        "description": "Heavy OCR corruption",
+        "category": "ocr_noise",
+        "difficulty": 70,
+        "stressors": {
+          "ocrNoiseLevel": 0.2
+        }
+      }
+    },
+    "OCR_NOISE_30": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1404,
+        "fp": 21,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.014736842105263158,
+        "precision": 0.9852631578947368,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 49.26896475715771,
+        "p95": 59.423263105545956,
+        "p99": 62.787550160029795,
+        "mean": 49.15861204932563
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 18.355407048390575,
+          "p95": 22.644768169125253,
+          "p99": 22.999124427384025,
+          "mean": 18.208802224889432
+        },
+        "io": {
+          "p50": 6.493706254461712,
+          "p95": 11.188882598057129,
+          "p99": 11.658047947079886,
+          "mean": 6.640335262237037
+        },
+        "ai": {
+          "p50": 6.172775239956746,
+          "p95": 10.474992873024892,
+          "p99": 10.857908929665086,
+          "mean": 6.127826243234142
+        },
+        "db": {
+          "p50": 11.449673768412246,
+          "p95": 15.763089104907841,
+          "p99": 16.14688073282523,
+          "mean": 11.355436588997364
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.014736842105263158,
+        "patternReuseAccuracy": 0.9011379504850611,
+        "humanOverrideRate": 0.5309271874094678
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 0.0000018618471979524662
+      },
+      "scenarioMetadata": {
+        "name": "OCR Noise 30%",
+        "description": "Severe OCR failure mode",
+        "category": "ocr_noise",
+        "difficulty": 85,
+        "stressors": {
+          "ocrNoiseLevel": 0.3
+        }
+      }
+    },
+    "SHARED_ERP_LAYOUT": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 50.569403441755426,
+        "p95": 61.1260131679303,
+        "p99": 65.50258961867135,
+        "mean": 50.59527941930312
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.459929282476642,
+          "p95": 20.256547376398586,
+          "p99": 20.669110895115672,
+          "mean": 15.63527633370022
+        },
+        "io": {
+          "p50": 6.837991209022698,
+          "p95": 11.207029928326847,
+          "p99": 11.653196766950003,
+          "mean": 6.815636816487094
+        },
+        "ai": {
+          "p50": 4.3508146416514215,
+          "p95": 8.884195343447894,
+          "p99": 9.373630143672607,
+          "mean": 4.492911202971494
+        },
+        "db": {
+          "p50": 17.162083795040864,
+          "p95": 21.644793310061747,
+          "p99": 22.166141219417597,
+          "mean": 17.171472139818295
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.9011633218773244,
+        "humanOverrideRate": 0.42790223353726375
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 7.450991489377365e-7
+      },
+      "scenarioMetadata": {
+        "name": "Shared ERP Layouts",
+        "description": "Multiple suppliers using identical SAP/Oracle templates",
+        "category": "layout_confusion",
+        "difficulty": 75,
+        "stressors": {
+          "sharedLayoutRatio": 0.6,
+          "suppliersPerLayout": 4
+        }
+      }
+    },
+    "SIMILAR_SUPPLIER_NAMES": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.56213658781772,
+        "p95": 55.04739901634105,
+        "p99": 59.006930258825165,
+        "mean": 44.551946789424825
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.712679805458214,
+          "p95": 20.233668345372113,
+          "p99": 20.67108957141663,
+          "mean": 15.715083775903336
+        },
+        "io": {
+          "p50": 6.4697351662255205,
+          "p95": 11.244030473170342,
+          "p99": 11.659210067686907,
+          "mean": 6.517605037293605
+        },
+        "ai": {
+          "p50": 4.558737840749961,
+          "p95": 9.023797260952135,
+          "p99": 9.421911684778033,
+          "mean": 4.648563127645809
+        },
+        "db": {
+          "p50": 11.111466815895742,
+          "p95": 15.746522419968741,
+          "p99": 16.146127008808804,
+          "mean": 11.167507690681184
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.9011886932695878,
+        "humanOverrideRate": 0.4748772796999843
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 6.578352846476997e-7
+      },
+      "scenarioMetadata": {
+        "name": "Similar Supplier Names",
+        "description": "\"Riyadh Co\" vs \"Riyadh Group\" vs \"Riyadh Ltd\"",
+        "category": "supplier_confusion",
+        "difficulty": 80,
+        "stressors": {
+          "nameSimilarityThreshold": 0.85
+        }
+      }
+    },
+    "SUPPLIER_NAME_TYPO": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.601816887641746,
+        "p95": 55.11138123579123,
+        "p99": 59.04898170825303,
+        "mean": 44.60661289333213
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.846463466784092,
+          "p95": 20.233668345372113,
+          "p99": 20.64298102210578,
+          "mean": 15.819237822179959
+        },
+        "io": {
+          "p50": 6.592249321481737,
+          "p95": 11.294507365102067,
+          "p99": 11.667105918265205,
+          "mean": 6.604030460613007
+        },
+        "ai": {
+          "p50": 4.3132700228163205,
+          "p95": 9.025425520149392,
+          "p99": 9.381797567913727,
+          "mean": 4.506190324586241
+        },
+        "db": {
+          "p50": 10.980212687219076,
+          "p95": 15.685047232414373,
+          "p99": 16.116365571475207,
+          "mean": 11.061345916632106
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.8745017294829016,
+        "humanOverrideRate": 0.4972972427837777
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 4.799512535949518e-7
+      },
+      "scenarioMetadata": {
+        "name": "Supplier Name Typo",
+        "description": "\"Al-Rashid\" → \"Al-Rasheed\" or \"Al Rashid\"",
+        "category": "field_corruption",
+        "difficulty": 55,
+        "stressors": {
+          "typoRate": 0.15,
+          "targetField": "supplierName"
+        }
+      }
+    },
+    "CURRENCY_SWAP": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.70839310547066,
+        "p95": 55.54046286631853,
+        "p99": 58.804594475963285,
+        "mean": 44.83661218992047
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.527218579495608,
+          "p95": 20.205399564340567,
+          "p99": 20.65561273412444,
+          "mean": 15.619430379948898
+        },
+        "io": {
+          "p50": 6.837991209022698,
+          "p95": 11.233332664119857,
+          "p99": 11.652815113287144,
+          "mean": 6.7620622397739085
+        },
+        "ai": {
+          "p50": 4.399124234192801,
+          "p95": 8.975985069171522,
+          "p99": 9.370061469234075,
+          "mean": 4.560189770722112
+        },
+        "db": {
+          "p50": 11.33153062199278,
+          "p95": 15.644793310061747,
+          "p99": 16.147310466016016,
+          "mean": 11.345310365834417
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.8744763580906382,
+        "humanOverrideRate": 0.45032219662105716
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 4.510870523299514e-7
+      },
+      "scenarioMetadata": {
+        "name": "Currency Swap Error",
+        "description": "SAR invoice labeled as AED or vice versa",
+        "category": "field_corruption",
+        "difficulty": 60,
+        "stressors": {
+          "currencyErrorRate": 0.1
+        }
+      }
+    },
+    "MISSING_HEADER": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 9,
+        "fn": 33,
+        "tn": 39
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.0063025210084033615,
+        "precision": 0.9936974789915967,
+        "recall": 0.9772727272727273,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 45.21072188047941,
+        "p95": 55.53609206702935,
+        "p99": 58.96428465353424,
+        "mean": 45.19461233069682
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 16.020338902545703,
+          "p95": 20.254635662190765,
+          "p99": 20.58698450490762,
+          "mean": 15.836725201769749
+        },
+        "io": {
+          "p50": 6.680975950539805,
+          "p95": 11.17222494152892,
+          "p99": 11.651372576109452,
+          "mean": 6.697122550600634
+        },
+        "ai": {
+          "p50": 4.59057104007587,
+          "p95": 8.974992873024892,
+          "p99": 9.349238947464443,
+          "mean": 4.710400032230436
+        },
+        "db": {
+          "p50": 11.313452540213115,
+          "p95": 15.73281946812822,
+          "p99": 16.138633838828802,
+          "mean": 11.241850809316423
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.006302521008403362,
+        "patternReuseAccuracy": 0.9144814323784042,
+        "humanOverrideRate": 0.5197172058675711
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 4.799512535952022e-7
+      },
+      "scenarioMetadata": {
+        "name": "Missing Header Fields",
+        "description": "Invoice number, date, or TRN field missing/corrupted",
+        "category": "missing_data",
+        "difficulty": 65,
+        "stressors": {
+          "missingHeaderProbability": 0.25
+        }
+      }
+    },
+    "TRN_FORMAT_VARIATION": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.36858589629842,
+        "p95": 55.11138123579123,
+        "p99": 58.768619741026455,
+        "mean": 44.355946507993146
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.77413517446819,
+          "p95": 20.228670011618796,
+          "p99": 20.665057895685322,
+          "mean": 15.760494132373418
+        },
+        "io": {
+          "p50": 6.429447048036253,
+          "p95": 11.308486959328523,
+          "p99": 11.678199939878704,
+          "mean": 6.527484415612205
+        },
+        "ai": {
+          "p50": 4.258548251064156,
+          "p95": 9.025425520149392,
+          "p99": 9.420114804971991,
+          "mean": 4.468882655125474
+        },
+        "db": {
+          "p50": 10.988335759550877,
+          "p95": 15.756657498308146,
+          "p99": 16.141233418577173,
+          "mean": 11.101093470320208
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.8878452113762446,
+        "humanOverrideRate": 0.486087261241881
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 3.020672225424542e-7
+      },
+      "scenarioMetadata": {
+        "name": "TRN Format Variation",
+        "description": "Different TRN formats: with/without dashes, spaces, prefixes",
+        "category": "format_variation",
+        "difficulty": 45,
+        "stressors": {
+          "trnFormatVariation": true
+        }
+      }
+    },
+    "DATE_FORMAT_VARIATION": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.58615892906351,
+        "p95": 55.701123521593665,
+        "p99": 60.24600200593611,
+        "mean": 44.600613315409866
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.803995471693106,
+          "p95": 20.257464868833186,
+          "p99": 20.599981111439405,
+          "mean": 15.811122287488777
+        },
+        "io": {
+          "p50": 6.9165093109865,
+          "p95": 11.242970376623088,
+          "p99": 11.671740510017084,
+          "mean": 6.842544726527421
+        },
+        "ai": {
+          "p50": 4.328717865708451,
+          "p95": 8.982367541520476,
+          "p99": 9.401287215738856,
+          "mean": 4.493566705655203
+        },
+        "db": {
+          "p50": 10.825735948648243,
+          "p95": 15.705545197579905,
+          "p99": 16.140659619097285,
+          "mean": 10.984300580465773
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.8945169523229164,
+        "humanOverrideRate": 0.45548227046511186
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 3.3563024726944917e-7
+      },
+      "scenarioMetadata": {
+        "name": "Date Format Variation",
+        "description": "DD/MM/YYYY vs MM/DD/YYYY vs Hijri vs mixed",
+        "category": "format_variation",
+        "difficulty": 50,
+        "stressors": {
+          "dateFormatVariation": true
+        }
+      }
+    },
+    "ARABIC_OCR": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 53.257515633771554,
+        "p95": 63.458442642227375,
+        "p99": 66.37166807576354,
+        "mean": 53.089278434566914
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.630840581581191,
+          "p95": 20.197292394341734,
+          "p99": 20.604578119668776,
+          "mean": 15.727545914663375
+        },
+        "io": {
+          "p50": 6.539327610002209,
+          "p95": 11.290768035114922,
+          "p99": 11.667833139169456,
+          "mean": 6.6768813072285145
+        },
+        "ai": {
+          "p50": 12.712414263564257,
+          "p95": 17.005086261663838,
+          "p99": 17.382776646381892,
+          "mean": 12.660018187649529
+        },
+        "db": {
+          "p50": 11.227053703036404,
+          "p95": 15.743018705279804,
+          "p99": 16.14354798567797,
+          "mean": 11.255689035295276
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.887794468591718,
+        "humanOverrideRate": 0.492137168939723
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 5.835938739518902e-7
+      },
+      "scenarioMetadata": {
+        "name": "Arabic OCR Challenge",
+        "description": "RTL text, Arabic numerals, mixed Arabic-English",
+        "category": "language_specific",
+        "difficulty": 72,
+        "stressors": {
+          "primaryLanguage": "ar",
+          "rtlText": true,
+          "arabicNumerals": true
+        }
+      }
+    },
+    "MIXED_LANGUAGE": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 45.21072188047941,
+        "p95": 55.53609206702935,
+        "p99": 58.96428465353424,
+        "mean": 45.19461233069682
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 16.020338902545703,
+          "p95": 20.254635662190765,
+          "p99": 20.58698450490762,
+          "mean": 15.836725201769749
+        },
+        "io": {
+          "p50": 6.680975950539805,
+          "p95": 11.17222494152892,
+          "p99": 11.651372576109452,
+          "mean": 6.697122550600634
+        },
+        "ai": {
+          "p50": 4.59057104007587,
+          "p95": 8.974992873024892,
+          "p99": 9.349238947464443,
+          "mean": 4.710400032230436
+        },
+        "db": {
+          "p50": 11.313452540213115,
+          "p95": 15.73281946812822,
+          "p99": 16.138633838828802,
+          "mean": 11.241850809316423
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.9144814323784042,
+        "humanOverrideRate": 0.5197172058675711
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 4.564571362862305e-7
+      },
+      "scenarioMetadata": {
+        "name": "Mixed Language Content",
+        "description": "Invoice with both Arabic and English fields",
+        "category": "language_specific",
+        "difficulty": 68,
+        "stressors": {
+          "languages": [
+            "ar",
+            "en"
+          ],
+          "mixRatio": 0.5
+        }
+      }
+    },
+    "DUPLICATE_INVOICE": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 9,
+        "fn": 0,
+        "tn": 72
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.0063025210084033615,
+        "precision": 0.9936974789915967,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.569403441755426,
+        "p95": 55.1260131679303,
+        "p99": 59.50258961867135,
+        "mean": 44.59527941930308
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.459929282476642,
+          "p95": 20.256547376398586,
+          "p99": 20.669110895115672,
+          "mean": 15.63527633370022
+        },
+        "io": {
+          "p50": 6.837991209022698,
+          "p95": 11.207029928326847,
+          "p99": 11.653196766950003,
+          "mean": 6.815636816487094
+        },
+        "ai": {
+          "p50": 4.3508146416514215,
+          "p95": 8.884195343447894,
+          "p99": 9.373630143672607,
+          "mean": 4.492911202971494
+        },
+        "db": {
+          "p50": 11.162083795040866,
+          "p95": 15.644793310061747,
+          "p99": 16.166141219417597,
+          "mean": 11.171472139818306
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.006302521008403362,
+        "patternReuseAccuracy": 0.9011633218773244,
+        "humanOverrideRate": 0.42790223353726375
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 2.7924436572801747e-7
+      },
+      "scenarioMetadata": {
+        "name": "Duplicate Invoice Detection",
+        "description": "Same invoice submitted twice with minor differences",
+        "category": "structural",
+        "difficulty": 40,
+        "stressors": {
+          "duplicateRate": 0.08,
+          "variationLevel": "low"
+        }
+      }
+    },
+    "PARTIAL_SCAN": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1416,
+        "fp": 9,
+        "fn": 27,
+        "tn": 48
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.00631578947368421,
+        "precision": 0.9936842105263158,
+        "recall": 0.9812889812889813,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 49.11896475715771,
+        "p95": 59.27326310554595,
+        "p99": 62.6375501600298,
+        "mean": 49.00861204932572
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.955407048390573,
+          "p95": 20.24476816912525,
+          "p99": 20.599124427384027,
+          "mean": 15.808802224889444
+        },
+        "io": {
+          "p50": 8.743706254461712,
+          "p95": 13.438882598057129,
+          "p99": 13.908047947079886,
+          "mean": 8.890335262237036
+        },
+        "ai": {
+          "p50": 6.172775239956746,
+          "p95": 10.474992873024892,
+          "p99": 10.857908929665086,
+          "mean": 6.127826243234142
+        },
+        "db": {
+          "p50": 11.449673768412246,
+          "p95": 15.763089104907841,
+          "p99": 16.14688073282523,
+          "mean": 11.355436588997364
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.0063157894736842095,
+        "patternReuseAccuracy": 0.9011379504850611,
+        "humanOverrideRate": 0.5309271874094678
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 6.806581414621364e-7
+      },
+      "scenarioMetadata": {
+        "name": "Partial/Cropped Scan",
+        "description": "Edges cut off, bottom missing, rotated scan",
+        "category": "structural",
+        "difficulty": 78,
+        "stressors": {
+          "cropRatio": 0.15,
+          "rotationVariance": 2
+        }
+      }
+    },
+    "MULTI_PAGE": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 45.257515633771554,
+        "p95": 55.458442642227375,
+        "p99": 58.371668075763544,
+        "mean": 45.08927843456682
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 15.630840581581191,
+          "p95": 20.197292394341734,
+          "p99": 20.604578119668776,
+          "mean": 15.727545914663375
+        },
+        "io": {
+          "p50": 6.539327610002209,
+          "p95": 11.290768035114922,
+          "p99": 11.667833139169456,
+          "mean": 6.6768813072285145
+        },
+        "ai": {
+          "p50": 4.712414263564257,
+          "p95": 9.005086261663838,
+          "p99": 9.38277664638189,
+          "mean": 4.766001149467818
+        },
+        "db": {
+          "p50": 11.227053703036404,
+          "p95": 15.743018705279804,
+          "p99": 16.14354798567797,
+          "mean": 11.255689035295276
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.887794468591718,
+        "humanOverrideRate": 0.492137168939723
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 3.490554571598966e-7
+      },
+      "scenarioMetadata": {
+        "name": "Multi-Page Invoice",
+        "description": "Key info spread across multiple pages",
+        "category": "structural",
+        "difficulty": 52,
+        "stressors": {
+          "pageCount": {
+            "min": 2,
+            "max": 5
+          },
+          "keyInfoPage": "random"
+        }
+      }
+    },
+    "EXTREME_VALUES": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 45.21072188047941,
+        "p95": 55.53609206702935,
+        "p99": 58.96428465353424,
+        "mean": 45.19461233069682
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 16.020338902545703,
+          "p95": 20.254635662190765,
+          "p99": 20.58698450490762,
+          "mean": 15.836725201769749
+        },
+        "io": {
+          "p50": 6.680975950539805,
+          "p95": 11.17222494152892,
+          "p99": 11.651372576109452,
+          "mean": 6.697122550600634
+        },
+        "ai": {
+          "p50": 4.59057104007587,
+          "p95": 8.974992873024892,
+          "p99": 9.349238947464443,
+          "mean": 4.710400032230436
+        },
+        "db": {
+          "p50": 11.313452540213115,
+          "p95": 15.73281946812822,
+          "p99": 16.138633838828802,
+          "mean": 11.241850809316423
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.9144814323784042,
+        "humanOverrideRate": 0.5197172058675711
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 2.81929407706157e-7
+      },
+      "scenarioMetadata": {
+        "name": "Extreme Values",
+        "description": "Very large amounts ($1M+), many line items (100+), negative values",
+        "category": "edge_case",
+        "difficulty": 42,
+        "stressors": {
+          "extremeAmounts": true,
+          "maxLineItems": 150
+        }
+      }
+    },
+    "NEW_SUPPLIER_COLD_START": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1419,
+        "fp": 6,
+        "fn": 0,
+        "tn": 75
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.004210526315789474,
+        "precision": 0.9957894736842106,
+        "recall": 1,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 44.88348621523089,
+        "p95": 55.706021584501954,
+        "p99": 60.7040871984102,
+        "mean": 44.86994693019197
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 16.068343335603906,
+          "p95": 20.260132002064523,
+          "p99": 20.638983278043796,
+          "mean": 15.945711931060607
+        },
+        "io": {
+          "p50": 6.781220229582679,
+          "p95": 11.242800733887776,
+          "p99": 11.657561307751472,
+          "mean": 6.719332014849109
+        },
+        "ai": {
+          "p50": 4.429056958046056,
+          "p95": 9.022876667213364,
+          "p99": 9.406401855383628,
+          "mean": 4.590328394600345
+        },
+        "db": {
+          "p50": 10.897843124030121,
+          "p95": 15.804013411876284,
+          "p99": 16.13466407402527,
+          "mean": 11.064048134163187
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.004210526315789474,
+        "patternReuseAccuracy": 0.874527100875165,
+        "humanOverrideRate": 0.49427228893485675
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 3.893310868324909e-7
+      },
+      "scenarioMetadata": {
+        "name": "New Supplier Cold Start",
+        "description": "First invoice from supplier with no pattern history",
+        "category": "edge_case",
+        "difficulty": 58,
+        "stressors": {
+          "newSupplierRate": 0.15,
+          "noHistory": true
+        }
+      }
+    },
+    "PRODUCTION_CHAOS": {
+      "scenarioKey": null,
+      "confusionMatrix": {
+        "tp": 1395,
+        "fp": 30,
+        "fn": 15,
+        "tn": 60
+      },
+      "totalInvoices": 1500,
+      "metrics": {
+        "fmr": 0.021052631578947368,
+        "precision": 0.9789473684210527,
+        "recall": 0.9893617021276596,
+        "f1": 0
+      },
+      "latency": {
+        "p50": 58.83934377322191,
+        "p95": 69.50741243426627,
+        "p99": 73.00655358197552,
+        "mean": 58.880612612021544
+      },
+      "latencyBreakdown": {
+        "cpu": {
+          "p50": 17.187059482661322,
+          "p95": 21.472738365811,
+          "p99": 21.838074619203823,
+          "mean": 17.077981511986497
+        },
+        "io": {
+          "p50": 6.766667157182625,
+          "p95": 11.288125623841333,
+          "p99": 11.658047947079886,
+          "mean": 6.700576505618466
+        },
+        "ai": {
+          "p50": 13.104396221892534,
+          "p95": 17.724992873024892,
+          "p99": 18.111444116072136,
+          "mean": 13.173442354370708
+        },
+        "db": {
+          "p50": 15.088056775005082,
+          "p95": 19.756657498308144,
+          "p99": 20.136285192306687,
+          "mean": 15.161598362976589
+        }
+      },
+      "operationalMetrics": {
+        "supplierConfusionRate": 0.021052631578947368,
+        "patternReuseAccuracy": 0.894491580930653,
+        "humanOverrideRate": 0.5085072243256744
+      },
+      "statistics": {
+        "iterations": 3,
+        "fmrStdErr": 0.000002999841851798172
+      },
+      "scenarioMetadata": {
+        "name": "Production Chaos Mode",
+        "description": "Multiple stressors combined: OCR 15% + Shared Layout + Arabic + Typos",
+        "category": "combined",
+        "difficulty": 95,
+        "stressors": {
+          "ocrNoiseLevel": 0.15,
+          "sharedLayoutRatio": 0.4,
+          "primaryLanguage": "ar",
+          "typoRate": 0.08,
+          "missingHeaderProbability": 0.1
+        }
+      }
+    }
+  },
+  "latencyAnalysis": {
+    "breakdown": {
+      "typicalDistribution": {
+        "cpu": "35%",
+        "db": "25%",
+        "io": "15%",
+        "ai": "10%",
+        "overhead": "15%"
+      },
+      "bottlenecks": [
+        {
+          "stressor": "OCR Noise",
+          "primaryImpact": "CPU (+correction) + AI (+assistance)"
+        },
+        {
+          "stressor": "Shared Layouts",
+          "primaryImpact": "DB (+lookups)"
+        },
+        {
+          "stressor": "Partial Scans",
+          "primaryImpact": "I/O (+processing) + AI (+reconstruction)"
+        },
+        {
+          "stressor": "Arabic/RTL",
+          "primaryImpact": "AI (+RTL handling)"
+        }
+      ]
+    },
+    "bottlenecks": [
+      {
+        "stressor": "OCR Noise",
+        "primaryImpact": "CPU (+correction) + AI (+assistance)"
+      },
+      {
+        "stressor": "Shared Layouts",
+        "primaryImpact": "DB (+lookups)"
+      },
+      {
+        "stressor": "Partial Scans",
+        "primaryImpact": "I/O (+processing) + AI (+reconstruction)"
+      },
+      {
+        "stressor": "Arabic/RTL",
+        "primaryImpact": "AI (+RTL handling)"
+      }
+    ]
+  },
+  "analysis": {
+    "summary": {
+      "totalScenarios": 20,
+      "passed": 20,
+      "warnings": 0,
+      "failures": 0,
+      "avgFMR": 0.007155241043785935,
+      "worstCaseFMR": 0.021052631578947368,
+      "bestCaseFMR": 0.004210526315789474
+    },
+    "weakestScenarios": [
+      {
+        "scenario": "PRODUCTION_CHAOS",
+        "name": "Production Chaos Mode",
+        "fmr": 0.021052631578947368,
+        "difficulty": 95
+      },
+      {
+        "scenario": "OCR_NOISE_30",
+        "name": "OCR Noise 30%",
+        "fmr": 0.014736842105263158,
+        "difficulty": 85
+      },
+      {
+        "scenario": "OCR_NOISE_20",
+        "name": "OCR Noise 20%",
+        "fmr": 0.012605042016806723,
+        "difficulty": 70
+      },
+      {
+        "scenario": "OCR_NOISE_10",
+        "name": "OCR Noise 10%",
+        "fmr": 0.008421052631578947,
+        "difficulty": 50
+      },
+      {
+        "scenario": "OCR_NOISE_5",
+        "name": "OCR Noise 5%",
+        "fmr": 0.00631578947368421,
+        "difficulty": 35
+      }
+    ],
+    "difficultyCorrelation": {
+      "coefficient": 0.617,
+      "interpretation": "Moderate correlation"
+    },
+    "categories": {
+      "baseline": {
+        "count": 1,
+        "totalFMR": 0.004210526315789474,
+        "scenarios": [
+          {
+            "name": "Clean Data (Baseline)",
+            "fmr": 0.004210526315789474
+          }
+        ],
+        "avgFMR": 0.004210526315789474
+      },
+      "ocr_noise": {
+        "count": 4,
+        "totalFMR": 0.04207872622733304,
+        "scenarios": [
+          {
+            "name": "OCR Noise 5%",
+            "fmr": 0.00631578947368421
+          },
+          {
+            "name": "OCR Noise 10%",
+            "fmr": 0.008421052631578947
+          },
+          {
+            "name": "OCR Noise 20%",
+            "fmr": 0.012605042016806723
+          },
+          {
+            "name": "OCR Noise 30%",
+            "fmr": 0.014736842105263158
+          }
+        ],
+        "avgFMR": 0.01051968155683326
+      },
+      "layout_confusion": {
+        "count": 1,
+        "totalFMR": 0.00631578947368421,
+        "scenarios": [
+          {
+            "name": "Shared ERP Layouts",
+            "fmr": 0.00631578947368421
+          }
+        ],
+        "avgFMR": 0.00631578947368421
+      },
+      "supplier_confusion": {
+        "count": 1,
+        "totalFMR": 0.00631578947368421,
+        "scenarios": [
+          {
+            "name": "Similar Supplier Names",
+            "fmr": 0.00631578947368421
+          }
+        ],
+        "avgFMR": 0.00631578947368421
+      },
+      "field_corruption": {
+        "count": 2,
+        "totalFMR": 0.01263157894736842,
+        "scenarios": [
+          {
+            "name": "Supplier Name Typo",
+            "fmr": 0.00631578947368421
+          },
+          {
+            "name": "Currency Swap Error",
+            "fmr": 0.00631578947368421
+          }
+        ],
+        "avgFMR": 0.00631578947368421
+      },
+      "missing_data": {
+        "count": 1,
+        "totalFMR": 0.0063025210084033615,
+        "scenarios": [
+          {
+            "name": "Missing Header Fields",
+            "fmr": 0.0063025210084033615
+          }
+        ],
+        "avgFMR": 0.0063025210084033615
+      },
+      "format_variation": {
+        "count": 2,
+        "totalFMR": 0.008421052631578947,
+        "scenarios": [
+          {
+            "name": "TRN Format Variation",
+            "fmr": 0.004210526315789474
+          },
+          {
+            "name": "Date Format Variation",
+            "fmr": 0.004210526315789474
+          }
+        ],
+        "avgFMR": 0.004210526315789474
+      },
+      "language_specific": {
+        "count": 2,
+        "totalFMR": 0.010526315789473684,
+        "scenarios": [
+          {
+            "name": "Arabic OCR Challenge",
+            "fmr": 0.00631578947368421
+          },
+          {
+            "name": "Mixed Language Content",
+            "fmr": 0.004210526315789474
+          }
+        ],
+        "avgFMR": 0.005263157894736842
+      },
+      "structural": {
+        "count": 3,
+        "totalFMR": 0.016828836797877045,
+        "scenarios": [
+          {
+            "name": "Duplicate Invoice Detection",
+            "fmr": 0.0063025210084033615
+          },
+          {
+            "name": "Partial/Cropped Scan",
+            "fmr": 0.00631578947368421
+          },
+          {
+            "name": "Multi-Page Invoice",
+            "fmr": 0.004210526315789474
+          }
+        ],
+        "avgFMR": 0.005609612265959015
+      },
+      "edge_case": {
+        "count": 2,
+        "totalFMR": 0.008421052631578947,
+        "scenarios": [
+          {
+            "name": "Extreme Values",
+            "fmr": 0.004210526315789474
+          },
+          {
+            "name": "New Supplier Cold Start",
+            "fmr": 0.004210526315789474
+          }
+        ],
+        "avgFMR": 0.004210526315789474
+      },
+      "combined": {
+        "count": 1,
+        "totalFMR": 0.021052631578947368,
+        "scenarios": [
+          {
+            "name": "Production Chaos Mode",
+            "fmr": 0.021052631578947368
+          }
+        ],
+        "avgFMR": 0.021052631578947368
+      }
+    },
+    "recommendations": [
+      {
+        "priority": "INFO",
+        "message": "All scenarios within acceptable range"
+      }
+    ]
+  },
+  "recommendation": {
+    "action": "ROBUST_PASSED",
+    "message": "System demonstrates strong robustness across all stress scenarios",
+    "canProceedToPhaseD": true
+  },
+  "evidenceStrength": {
+    "score": 7,
+    "factors": [
+      {
+        "factor": "Framework Completeness",
+        "status": "✅",
+        "note": "18 stress scenarios"
+      },
+      {
+        "factor": "Real Production Data",
+        "status": "❌",
+        "note": "Synthetic with stressors"
+      },
+      {
+        "factor": "Golden Dataset",
+        "status": "❌",
+        "note": "Not yet available"
+      },
+      {
+        "factor": "OCR Realism",
+        "status": "🟡",
+        "note": "Simulated noise patterns"
+      },
+      {
+        "factor": "Statistical Significance",
+        "status": "🟡",
+        "note": "3 iterations per scenario"
+      },
+      {
+        "factor": "Difficulty Correlation",
+        "status": "🟡",
+        "note": "0.617"
+      }
+    ],
+    "interpretation": "Moderate evidence - Promising but needs real data validation"
+  }
+}
