@@ -318,7 +318,7 @@ function StatusIndicator({ status, size = 'sm' }: { status: 'healthy' | 'degrade
   return <span className={`${sizeClasses} ${colors[status]} rounded-full inline-block`} />;
 }
 
-// Metric Card Component
+// Metric Card Component — DS v4.0: Using kpi-card-gold for AI metrics
 function MetricCard({ 
   title, 
   value, 
@@ -337,7 +337,7 @@ function MetricCard({
   description?: string;
 }) {
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="kpi-card-gold relative overflow-hidden hover-lift duration-120 shadow-brand-md">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -364,7 +364,7 @@ function MetricCard({
   );
 }
 
-// Key Health Card Component
+// Key Health Card Component — DS v4.0: ai-card for AI components
 function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
   const healthStyle = HEALTH_COLORS[keyData.health];
   const circuitBadge = CIRCUIT_BADGE[keyData.circuitState];
@@ -372,7 +372,7 @@ function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
   const tokenPercentage = (keyData.tokensUsed / keyData.tokenLimit) * 100;
 
   return (
-    <Card className={`${healthStyle.border} border`}>
+    <Card className={`ai-card ${healthStyle.border} border hover-lift duration-120 shadow-brand-sm`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
             <span className="text-muted-foreground">RPM Usage</span>
             <span className={`font-medium ${healthStyle.text}`}>{keyData.rpmUsed}/{keyData.rpmLimit}</span>
           </div>
-          <Progress value={rpmPercentage} className="h-1.5" />
+          <Progress value={rpmPercentage} className="h-1.5 progress-emerald" />
         </div>
 
         {/* Token Quota */}
@@ -400,7 +400,7 @@ function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
             <span className="text-muted-foreground">Token Quota</span>
             <span className="font-medium">{((keyData.tokensUsed / keyData.tokenLimit) * 100).toFixed(1)}%</span>
           </div>
-          <Progress value={tokenPercentage} className="h-1.5" />
+          <Progress value={tokenPercentage} className="h-1.5 progress-emerald" />
         </div>
 
         {/* Stats Grid */}
@@ -426,17 +426,17 @@ function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
   );
 }
 
-// Worker Stats Row Component
+// Worker Stats Row Component — DS v4.0: hover-lift for interactivity
 function WorkerStatsRow({ worker }: { worker: WorkerStats }) {
   const successRate = worker.jobsProcessed > 0 
     ? ((worker.jobsProcessed - worker.jobsFailed) / worker.jobsProcessed * 100).toFixed(1)
     : '100';
   
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+    <div className="flex items-center justify-between p-3 rounded-lg border hover-lift duration-120 transition-colors ai-card">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Cpu className="h-5 w-5 text-primary" />
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c9956a] flex items-center justify-center text-white shadow-brand-sm">
+          <Cpu className="h-5 w-5 text-white" />
         </div>
         <div>
           <p className="font-medium text-sm">{worker.workerType.replace('ai-', '').replace('-', ' ')}</p>
@@ -459,7 +459,7 @@ function WorkerStatsRow({ worker }: { worker: WorkerStats }) {
         </div>
         <div className="flex items-center gap-2">
           {worker.activeJobs > 0 && (
-            <Badge variant="default" className="bg-blue-100 text-blue-800">
+            <Badge variant="default" className="ai-badge-premium bg-gradient-to-r from-[#d4a574] to-[#c9956a] text-white hover:from-[#c9956a] hover:to-[#d4a574]">
               {worker.activeJobs} active
             </Badge>
           )}
@@ -479,7 +479,7 @@ function AlertItem({ alert, onAcknowledge }: { alert: AlertItem; onAcknowledge: 
   const style = SEVERITY_STYLES[alert.severity];
   
   return (
-    <div className={`p-3 rounded-lg border ${style.bg} ${style.color} ${!alert.acknowledged ? 'border-l-4 border-l-current' : ''}`}>
+    <div className={`p-3 rounded-lg border ${style.bg} ${style.color} ${!alert.acknowledged ? 'border-l-4 border-l-current ai-suggestion' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2">
           <span>{style.icon}</span>
@@ -495,7 +495,7 @@ function AlertItem({ alert, onAcknowledge }: { alert: AlertItem; onAcknowledge: 
             size="sm" 
             variant="ghost" 
             onClick={() => onAcknowledge(alert.id)}
-            className="h-6 text-xs"
+            className="h-6 text-xs active-press duration-150"
           >
             Acknowledge
           </Button>
@@ -612,11 +612,11 @@ export function AIMetricsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — DS v4.0: emerald gradient accent */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="h-6 w-6 text-primary" />
+            <Activity className="h-6 w-6 text-[#047857]" />
             Enterprise AI System Dashboard
           </h2>
           <p className="text-muted-foreground mt-1">
@@ -635,13 +635,13 @@ export function AIMetricsDashboard() {
             variant="outline"
             size="sm"
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={autoRefresh ? 'bg-primary/10' : ''}
+            className={cn(autoRefresh ? 'bg-[#047857]/10 text-[#047857] border-[#047857]/30' : '', "hover-lift duration-120 active-press duration-150")}
           >
             <RefreshCw className={`h-4 w-4 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
             Auto-refresh
           </Button>
           
-          <Button size="sm" onClick={fetchMetrics}>
+          <Button size="sm" onClick={fetchMetrics} className="active-press duration-150 bg-gradient-to-r from-[#047857] to-emerald-600 text-white border-none hover:brightness-110 shadow-brand-sm">
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
@@ -700,8 +700,8 @@ export function AIMetricsDashboard() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          {/* Pool Status Banner */}
-          <Card className={`${HEALTH_COLORS[metrics.pool.status].border} border-2`}>
+          {/* Pool Status Banner — DS v4.0: kpi-card-gold for AI component */}
+          <Card className={`${HEALTH_COLORS[metrics.pool.status].border} border-2 kpi-card-gold shadow-brand-lg`}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -734,12 +734,12 @@ export function AIMetricsDashboard() {
               
               {/* Health Factor Progress */}
               <div className="mt-4">
-                <Progress value={metrics.pool.healthFactor * 100} className="h-2" />
+                <Progress value={metrics.pool.healthFactor * 100} className="h-2 progress-emerald" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Metrics Grid */}
+          {/* Metrics Grid — DS v4.0: kpi-card-gold for AI metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Total Requests Today"
@@ -781,9 +781,9 @@ export function AIMetricsDashboard() {
             />
           </div>
 
-          {/* Quick Stats Charts Placeholder */}
+          {/* Quick Stats Charts Placeholder — DS v4.0: chart-container */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="chart-container ai-card shadow-brand-md hover-lift duration-120">
               <CardHeader>
                 <CardTitle className="text-base">Worker Distribution</CardTitle>
                 <CardDescription>Jobs processed by worker type today</CardDescription>
@@ -795,7 +795,7 @@ export function AIMetricsDashboard() {
                       <span className="text-sm w-32 truncate">{worker.workerType.replace('ai-', '')}</span>
                       <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                         <div 
-                          className="h-full bg-primary rounded transition-all"
+                          className="h-full bg-gradient-to-r from-[#047857] to-emerald-500 rounded transition-all sparkline-gold"
                           style={{ 
                             width: `${(worker.jobsProcessed / Math.max(...metrics.workers.map(w => w.jobsProcessed))) * 100}%` 
                           }}
@@ -808,7 +808,7 @@ export function AIMetricsDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="chart-container ai-card shadow-brand-md hover-lift duration-120">
               <CardHeader>
                 <CardTitle className="text-base">Key Utilization</CardTitle>
                 <CardDescription>RPM usage per API key</CardDescription>
@@ -821,7 +821,7 @@ export function AIMetricsDashboard() {
                       <span className="text-sm w-24 truncate">{key.keyName.split(' ')[0]}</span>
                       <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                         <div 
-                          className={`h-full rounded transition-all ${
+                          className={`h-full rounded transition-all sparkline-gold ${
                             key.rpmUsed >= key.rpmLimit * 0.8 ? 'bg-red-500' :
                             key.rpmUsed >= key.rpmLimit * 0.5 ? 'bg-amber-500' :
                             'bg-emerald-500'
@@ -838,18 +838,20 @@ export function AIMetricsDashboard() {
           </div>
         </TabsContent>
 
-        {/* API Keys Tab */}
+        {/* API Keys Tab — DS v4.0: ai-card grid */}
         <TabsContent value="keys" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {metrics.keys.map(key => (
-              <KeyHealthCard key={key.keyId} keyData={key} />
+              <div key={key.keyId} className="hover-lift duration-120">
+                <KeyHealthCard keyData={key} />
+              </div>
             ))}
           </div>
         </TabsContent>
 
-        {/* Workers Tab */}
+        {/* Workers Tab — DS v4.0: table-enterprise styling */}
         <TabsContent value="workers" className="space-y-6">
-          <div className="rounded-lg border">
+          <div className="rounded-lg border table-enterprise shadow-brand-sm">
             <div className="p-4 border-b bg-muted/30">
               <h3 className="font-semibold">Worker Performance Overview</h3>
               <p className="text-sm text-muted-foreground">
@@ -892,9 +894,9 @@ export function AIMetricsDashboard() {
           </div>
         </TabsContent>
 
-        {/* Settings/Actions Tab */}
+        {/* Settings/Actions Tab — DS v4.0: ai-card with gold accents */}
         <TabsContent value="settings" className="space-y-6">
-          <Card>
+          <Card className="ai-card kpi-card-gold shadow-brand-lg">
             <CardHeader>
               <CardTitle>Administrative Actions</CardTitle>
               <CardDescription>
@@ -902,46 +904,46 @@ export function AIMetricsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg border">
+              <div className="flex items-center justify-between p-4 rounded-lg border hover-lift duration-120 transition-all">
                 <div>
                   <p className="font-medium">Reset Daily Quotas</p>
                   <p className="text-sm text-muted-foreground">
                     Reset all token counters to zero. Use carefully in production.
                   </p>
                 </div>
-                <Button variant="outline" onClick={handleResetQuotas}>
+                <Button variant="outline" onClick={handleResetQuotas} className="active-press duration-150 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/50 hover:text-[#d4a574]">
                   Reset Quotas
                 </Button>
               </div>
               
-              <div className="flex items-center justify-between p-4 rounded-lg border">
+              <div className="flex items-center justify-between p-4 rounded-lg border hover-lift duration-120 transition-all">
                 <div>
                   <p className="font-medium">Force Circuit Recovery</p>
                   <p className="text-sm text-muted-foreground">
                     Manually close all open circuit breakers and re-enable keys.
                   </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" className="active-press duration-150 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/50 hover:text-[#d4a574]">
                   Recover Circuits
                 </Button>
               </div>
               
-              <div className="flex items-center justify-between p-4 rounded-lg border">
+              <div className="flex items-center justify-between p-4 rounded-lg border hover-lift duration-120 transition-all">
                 <div>
                   <p className="font-medium">Export Metrics Report</p>
                   <p className="text-sm text-muted-foreground">
                     Download current metrics as JSON for analysis.
                   </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" className="active-press duration-150 hover:bg-[#d4a574]/10 hover:border-[#d4a574]/50 hover:text-[#d4a574]">
                   Export JSON
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* System Info */}
-          <Card>
+          {/* System Info — DS v4.0: ai-card */}
+          <Card className="ai-card shadow-brand-md hover-lift duration-120">
             <CardHeader>
               <CardTitle>System Information</CardTitle>
             </CardHeader>

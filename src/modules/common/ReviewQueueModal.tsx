@@ -97,6 +97,12 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
     );
   };
 
+  const confidenceColor = (confidence: number) => {
+    if (confidence > 0.8) return { bg: 'rgba(212,165,116,0.2)', color: '#d4a574' }; // Gold for high confidence
+    if (confidence > 0.5) return { bg: 'rgba(16,185,129,0.2)', color: '#10b981' }; // Emerald for medium
+    return { bg: 'rgba(245,158,11,0.2)', color: '#f59e0b' }; // Amber for low
+  };
+
   const tierColor = (tier: string) => {
     if (tier === "collision-recovery-failed") return "#ef4444";
     return "#f59e0b";
@@ -113,12 +119,12 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-card text-card-foreground rounded-[14px] border border-border w-full max-w-[95vw] md:max-w-[680px] max-h-[85vh] flex flex-col [direction:rtl]"
+        className="bg-card text-card-foreground rounded-[14px] border border-border w-full max-w-[95vw] md:max-w-[680px] max-h-[85vh] flex flex-col [direction:rtl] shadow-brand-xl glass-strong"
       >
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b border-border">
           <div className="flex items-center gap-2">
-            <ListChecks size={18} className="text-[#f59e0b]" />
+            <ListChecks size={18} className="text-emerald-400" />
             <h2 className="text-[16px] font-extrabold">{title}</h2>
             <span className="text-[11px] text-muted-foreground bg-accent px-2 py-0.5 rounded-full">
               {items.length} عنصر
@@ -126,7 +132,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="bg-transparent border border-border text-muted-foreground py-1.5 px-2.5 rounded-sm text-[12px] cursor-pointer inline-flex items-center gap-1"
+            className="bg-transparent border border-border text-muted-foreground py-1.5 px-2.5 rounded-sm text-[12px] cursor-pointer inline-flex items-center gap-1 hover-lift duration-120"
             aria-label="إغلاق"
           >
             <X size={14} /> إغلاق
@@ -136,8 +142,8 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-              <Loader2 size={24} className="animate-spin" />
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground state-loading">
+              <Loader2 size={24} className="animate-spin text-emerald-400" />
               <span className="text-[13px]">جارٍ التحميل…</span>
             </div>
           ) : error ? (
@@ -151,7 +157,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
               {items.map((it) => (
                 <li
                   key={it.id}
-                  className="rounded-[10px] border border-border bg-background p-3 flex flex-col gap-2"
+                  className="rounded-[10px] border border-border bg-background p-3 flex flex-col gap-2 hover-lift duration-120 transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -179,8 +185,8 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
                       <span
                         className="inline-block py-0.5 px-2 rounded-[8px] text-[10px] font-bold"
                         style={{
-                          background: `${tierColor(it.tier)}20`,
-                          color: tierColor(it.tier),
+                          background: confidenceColor(it.confidence).bg,
+                          color: confidenceColor(it.confidence).color,
                         }}
                       >
                         {(it.confidence * 100).toFixed(0)}%
@@ -196,7 +202,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
                       <button
                         onClick={() => handleConfirm(it)}
                         disabled={confirmingId === it.id || !it.matchedProductId || confirmMutation.isPending}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#10b981] bg-transparent border border-[#10b981]/40 rounded-sm py-1 px-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-500/40 rounded-sm py-1 px-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active-press duration-150 transition-colors"
                         title={it.matchedProductId ? "تأكيد التطابق وحفظ الاسم البديل (يتعلم النظام)" : "لا يوجد منتج للتأكيد"}
                       >
                         <Check size={12} />
@@ -205,7 +211,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
                       <button
                         onClick={() => handleUndo(it)}
                         disabled={undoingId === it.id || undoMutation.isPending}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-destructive bg-transparent border border-destructive/40 rounded-sm py-1 px-2.5 cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-destructive bg-transparent border border-destructive/40 rounded-sm py-1 px-2.5 cursor-pointer disabled:opacity-50 active-press duration-150 transition-colors"
                       >
                         <RotateCcw size={12} />
                         {undoingId === it.id ? "جارٍ التراجع…" : "تراجع"}

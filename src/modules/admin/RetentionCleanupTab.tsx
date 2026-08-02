@@ -85,7 +85,7 @@ export function RetentionCleanupTab() {
   };
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-brand-lg">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
         <h3 className="text-sm font-bold flex items-center gap-2">
           <Database className="text-emerald-500" size={16} />
@@ -96,7 +96,7 @@ export function RetentionCleanupTab() {
           <select
             value={retentionYears}
             onChange={(e) => setRetentionYears(Number(e.target.value))}
-            className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[100px]"
+            className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none max-w-[100px] hover-lift duration-120 focus-ring transition-all"
             disabled={running}
           >
             {[3, 5, 7, 10].map((y) => <option key={y} value={y}>{y} سنوات</option>)}
@@ -115,7 +115,7 @@ export function RetentionCleanupTab() {
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2.5">
           {Object.entries(preview.eligible).map(([k, v]) => (
-            <div className="p-3 rounded-[10px] bg-[var(--card)] border border-[var(--border)]" key={k}>
+            <div className="kpi-card p-3 rounded-[10px] bg-[var(--card)] border border-[var(--border)]" key={k}>
               <div className="text-[10px] text-[var(--muted-foreground)] font-bold">{labelMap[k] || k}</div>
               <div className="text-xl font-black" /* TAILWINDBREAK: dynamic color */ style={{ color: v > 0 ? "#f59e0b" : "var(--foreground)" }}>{v}</div>
               {preview.deleted && (
@@ -133,7 +133,7 @@ export function RetentionCleanupTab() {
           <button
             onClick={runCleanup}
             disabled={running || eligibleTotal === 0}
-            className="inline-flex items-center gap-1.5 px-5.5 py-2.5 rounded-[10px] border-none text-white font-inherit text-[13px] font-extrabold" /* TAILWINDBREAK: dynamic bg/cursor/opacity */ style={{ background: eligibleTotal > 0 ? "#ef4444" : "var(--muted)", cursor: running || eligibleTotal === 0 ? "not-allowed" : "pointer", opacity: running ? 0.7 : 1 }}
+            className="inline-flex items-center gap-1.5 px-5.5 py-2.5 rounded-[10px] border-none text-white font-inherit text-[13px] font-extrabold active-press duration-150" /* TAILWINDBREAK: dynamic bg/cursor/opacity */ style={{ background: eligibleTotal > 0 ? "#ef4444" : "var(--muted)", cursor: running || eligibleTotal === 0 ? "not-allowed" : "pointer", opacity: running ? 0.7 : 1 }}
           >
             <Trash2 size={14} /> {running ? "جارٍ الحذف…" : "تشغيل التنظيف الآن"}
           </button>

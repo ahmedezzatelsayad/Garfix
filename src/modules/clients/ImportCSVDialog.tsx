@@ -113,7 +113,7 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
 
   return (
     <div onClick={onClose} className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[1000] flex items-center justify-center p-4">
-      <div onClick={(e) => e.stopPropagation()} className="w-full md:max-w-[720px] max-h-[90vh] overflow-y-auto bg-white border border-gray-200 rounded-[16px] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] garfix-scroll">
+      <div onClick={(e) => e.stopPropagation()} className="w-full md:max-w-[720px] max-h-[90vh] overflow-y-auto bg-card border border-border rounded-[16px] p-5 shadow-brand-xl glass-strong garfix-scroll">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-[16px] font-extrabold flex items-center gap-2">
             <Upload size={18} /> استيراد عملاء من CSV
@@ -122,7 +122,7 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
             <X size={18} />
           </button>
         </div>
-        <div className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-[10px] text-[11px] text-gray-500 mb-3">
+        <div className="py-2.5 px-3 bg-emerald-500/10 border border-emerald-500/30 rounded-[10px] text-[11px] text-emerald-400 mb-3">
           تنسيق الملف: عمود رأس باسم name,email,phone,company,address — ثم صف لكل عميل.
         </div>
         <input type="file" accept=".csv" onChange={onFile} className="mb-3 font-sans text-[12px]" />
@@ -134,14 +134,14 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
             <div className="text-[12px] font-bold mb-1.5">
               معاينة ({parsed.length} صف)
             </div>
-            <div className="max-h-[280px] overflow-y-auto border border-gray-200 rounded-[8px] mb-3 garfix-scroll">
-              <table className="w-full border-collapse text-[12px]">
+            <div className="max-h-[280px] overflow-y-auto border border-emerald-500/20 rounded-[8px] mb-3 garfix-scroll">
+              <table className="table-enterprise w-full border-collapse text-[12px]">
                 <thead><tr className="bg-gray-50 sticky top-0">
                   <th className={thSm}>الاسم</th><th className={thSm}>البريد</th><th className={thSm}>الهاتف</th><th className={thSm}>الشركة</th>
                 </tr></thead>
                 <tbody>
                   {parsed.slice(0, 100).map((r, i) => (
-                    <tr key={i} className="border-b border-gray-100">
+                    <tr key={i} className={cn("border-b border-emerald-500/10", i % 2 === 0 ? "bg-emerald-500/5" : "bg-transparent")}>
                       <td className={tdSm}>{r.name}</td>
                       <td className={cn(tdSm, "[direction:ltr] text-end")}>{r.email || "—"}</td>
                       <td className={cn(tdSm, "[direction:ltr] text-end")}>{r.phone || "—"}</td>
@@ -154,8 +154,8 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
           </>
         )}
         <div className="flex gap-2.5 justify-end">
-          <button onClick={onClose} className="py-2.5 px-5 rounded-[10px] bg-transparent text-gray-400 border border-gray-200 text-[13px] font-bold cursor-pointer max-md:min-h-[44px]">إلغاء</button>
-          <button onClick={runImport} disabled={importing || parsed.length === 0} className="py-2.5 px-6 rounded-[10px] bg-[#7C3AED] text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] shadow-[0_2px_8px_rgba(124,58,237,0.3)]">
+          <button onClick={onClose} className="hover-lift duration-120 active-press duration-150 py-2.5 px-5 rounded-[10px] bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer max-md:min-h-[44px]">إلغاء</button>
+          <button onClick={runImport} disabled={importing || parsed.length === 0} className="active-press duration-150 py-2.5 px-6 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] shadow-brand-sm">
             {importing ? "جارٍ الاستيراد…" : `استيراد ${parsed.length} عميل`}
           </button>
         </div>

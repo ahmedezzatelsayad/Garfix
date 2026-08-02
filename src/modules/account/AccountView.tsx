@@ -73,9 +73,9 @@ export function AccountView() {
 
   if (!user) return null;
 
-  const inputTW = "w-full py-2.5 px-3.5 rounded-[10px] bg-background border border-border text-foreground font-inherit text-sm outline-none"; // TAILWINDBREAK: var(--background)/var(--border)/var(--foreground) CSS variables
+  const inputTW = "w-full py-2.5 px-3.5 rounded-[10px] bg-background border border-border text-foreground font-inherit text-sm outline-none focus-ring"; // TAILWINDBREAK: var(--background)/var(--border)/var(--foreground) CSS variables + DS v4.0 focus-ring
   const labelTW = "block text-xs font-semibold text-muted-foreground mb-1.5";
-  const btnTW = "inline-flex items-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-primary text-primary-foreground border-none font-inherit text-[13px] font-bold cursor-pointer";
+  const btnTW = "active-press duration-150 inline-flex items-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-inherit text-[13px] font-bold cursor-pointer shadow-brand-sm"; // DS v4.0: active-press + emerald gradient
 
   return (
     <div className="flex flex-col gap-4">
@@ -84,10 +84,10 @@ export function AccountView() {
       </h1>
 
       {/* Profile */}
-      <div className="bg-card rounded-[14px] border border-border p-5">
+      <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-lg glass-strong hover-lift duration-120">
         <h3 className="text-[15px] font-bold mb-3.5">البيانات الشخصية</h3>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center text-2xl font-black">
+          <div className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-emerald-600 to-emerald-800 text-white flex items-center justify-center text-2xl font-black ring-2 ring-offset-2 ring-offset-background ring-emerald-500">
             {user.displayName.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -106,7 +106,7 @@ export function AccountView() {
       </div>
 
       {/* Password */}
-      <div className="bg-card rounded-[14px] border border-border p-5">
+      <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-lg hover-lift duration-120">
         <h3 className="text-[15px] font-bold mb-3.5 flex items-center gap-1.5">
           <Lock size={16} /> تغيير كلمة المرور
         </h3>
@@ -121,18 +121,18 @@ export function AccountView() {
       </div>
 
       {/* Preferences */}
-      <div className="bg-card rounded-[14px] border border-border p-5">
+      <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-lg hover-lift duration-120">
         <h3 className="text-[15px] font-bold mb-3.5">التفضيلات</h3>
         <div className="flex justify-between items-center py-2.5">
           <span className="text-sm">المظهر</span>
-          <button onClick={toggleTheme} className="inline-flex items-center gap-1.5 py-2 px-4 rounded-lg bg-muted border border-border text-foreground cursor-pointer font-inherit text-[13px]">
+          <button onClick={toggleTheme} className="hover-lift duration-120 inline-flex items-center gap-1.5 py-2 px-4 rounded-lg bg-muted border border-border text-foreground cursor-pointer font-inherit text-[13px] active-press duration-150">
             {theme === "dark" ? <><Sun size={14} /> فاتح</> : <><Moon size={14} /> داكن</>}
           </button>
         </div>
       </div>
 
       {/* Activity Log */}
-      <div className="bg-card rounded-[14px] border border-border p-5">
+      <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-lg hover-lift duration-120">
         <h3 className="text-[15px] font-bold mb-3.5 flex items-center gap-1.5">
           <Activity size={16} /> آخر النشاطات
         </h3>

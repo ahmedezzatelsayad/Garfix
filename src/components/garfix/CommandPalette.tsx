@@ -266,17 +266,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     <div
       dir="rtl"
       onClick={onClose}
-      className="fixed inset-0 z-[9999] bg-[rgba(8,8,16,0.55)] backdrop-blur-[6px] flex items-start justify-center pt-[8vh] px-4 pb-4"
+      className="fixed inset-0 z-[9999] bg-[#0b1220]/70 backdrop-blur-md flex items-start justify-center pt-[8vh] px-4 pb-4 animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[min(640px,100%)] max-h-[70vh] flex flex-col rounded-2xl overflow-hidden border border-white/[0.08] bg-[linear-gradient(180deg,#1a1a2e_0%,#16162a_60%,#12121f_100%)] shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(124,58,237,0.18)] text-[#f5f5fa] font-[inherit]"
+        className="w-[min(640px,100%)] max-h-[70vh] flex flex-col rounded-2xl overflow-hidden border border-emerald-500/20 bg-[#111827] shadow-brand-xl glass-strong text-[#f5f5fa] font-[inherit] animate-in zoom-in-95 duration-200"
       >
         {/* Search input */}
         <div
-          className="flex items-center gap-[10px] py-[14px] px-4 border-b border-white/[0.06] bg-[rgba(124,58,237,0.06)]"
+          className="flex items-center gap-[10px] py-[14px] px-4 border-b border-white/[0.06] bg-emerald-500/5"
         >
-          <Search size={18} className="text-[#a78bfa] shrink-0" />
+          <Search size={18} className="text-emerald-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -284,12 +284,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={onKeyDown}
             placeholder="ابحث عن صفحة، إجراء، فاتورة أو عميل… (مثال: فوا)"
-            className="flex-1 bg-transparent border-none outline-none text-[#f5f5fa] text-[15px] font-[inherit] [direction:rtl]"
+            className="flex-1 bg-transparent border-none outline-none focus-ring text-[#f5f5fa] text-[15px] font-[inherit] [direction:rtl] placeholder:text-[#6b7280]"
           />
           <button
             onClick={onClose}
             title="إغلاق (Esc)"
-            className="bg-white/[0.06] border-none text-[#9ca3af] cursor-pointer rounded-md p-1 flex items-center"
+            className="bg-white/[0.06] border-none text-[#9ca3af] cursor-pointer rounded-md p-1 flex items-center hover:bg-white/[0.12] hover-lift duration-120 transition-all"
           >
             <X size={14} />
           </button>
@@ -307,13 +307,16 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           )}
 
           {!loading && isEmpty && (
-            <div className="py-8 px-5 text-center text-[#9ca3af]">
-              <Search size={28} className="opacity-40 mb-2" />
-              <div className="text-[13px]">
+            <div className="py-8 px-5 text-center">
+              <Search size={32} className="text-emerald-500/40 mb-3 mx-auto" />
+              <div className="text-[13px] text-[#9ca3af] leading-relaxed">
                 {query.trim().length === 0
-                  ? "ابدأ بالكتابة للبحث أو اختر من القائمة"
-                  : "لا توجد نتائج مطابقة"}
+                  ? "👋 ابدأ بالكتابة للبحث أو اختر من القائمة أدناه"
+                  : "😕 عذراً، لا توجد نتائج مطابقة لبحثك"}
               </div>
+              {query.trim().length > 0 && (
+                <p className="text-[11px] text-[#6b7280] mt-2">جرب كلمات مفتاحية مختلفة</p>
+              )}
             </div>
           )}
 
@@ -323,7 +326,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             return (
               <div key={section} className="mb-1">
                 <div
-                  className="pt-2 px-3 pb-1 text-[10px] font-extrabold text-[#7c3aed] uppercase tracking-[0.6px]"
+                  className="pt-2 px-3 pb-1 text-[10px] font-extrabold text-emerald-500 uppercase tracking-[0.6px]"
                 >
                   {sectionLabels[section]}
                 </div>
@@ -338,9 +341,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       data-idx={idx}
                       onClick={() => r.onSelect()}
                       onMouseEnter={() => setSelectedIndex(idx)}
-                      className={`w-full flex items-center gap-[10px] py-[9px] px-3 rounded-[10px] ${isSelected ? "bg-[rgba(124,58,237,0.18)]" : "bg-transparent"} border-none font-[inherit] text-[13px] cursor-pointer text-right transition-[background_120ms_ease] ${isSelected ? "text-[#f5f5fa]" : "text-[#cbd5e1]"}`}
+                      className={`w-full flex items-center gap-[10px] py-[9px] px-3 rounded-[10px] ${isSelected ? "bg-emerald-500/20" : "bg-transparent hover:bg-white/[0.04]"} border-none font-[inherit] text-[13px] cursor-pointer text-right hover-lift duration-120 transition-all ${isSelected ? "text-[#f5f5fa]" : "text-[#cbd5e1]"}`}
                     >
-                      <Icon size={15} className={`shrink-0 ${isSelected ? "text-[#a78bfa]" : "text-[#6b7280]"}`} />
+                      <Icon size={15} className={`shrink-0 ${isSelected ? "text-emerald-400" : "text-[#6b7280]"}`} />
                       <div className="flex-1 min-w-0">
                         <div className={`font-semibold truncate ${r.section === "invoices" ? "[direction:ltr] text-left font-mono" : "text-right font-[inherit]"}`}>
                           {r.label}
@@ -352,7 +355,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                         )}
                       </div>
                       {isSelected && (
-                        <CornerDownLeft size={13} className="text-[#a78bfa] shrink-0" />
+                        <CornerDownLeft size={13} className="text-emerald-400 shrink-0" />
                       )}
                     </button>
                   );
@@ -364,7 +367,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
         {/* Footer hint */}
         <div
-          className="py-2 px-[14px] border-t border-white/[0.06] bg-[rgba(0,0,0,0.2)] flex items-center justify-between text-[10px] text-[#6b7280] gap-2 flex-wrap"
+          className="py-2 px-[14px] border-t border-white/[0.06] bg-[#0b1220]/50 flex items-center justify-between text-[10px] text-[#6b7280] gap-2 flex-wrap"
         >
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1">
@@ -380,7 +383,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               إغلاق
             </span>
           </div>
-          <span className="text-[#7c3aed] font-bold">GarfiX ⌘K</span>
+          <span className="text-emerald-500 font-bold">GarfiX ⌘K</span>
         </div>
       </div>
     </div>

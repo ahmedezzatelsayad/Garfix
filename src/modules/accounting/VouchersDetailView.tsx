@@ -40,12 +40,14 @@ interface ProfitDistribution { id: number; partnerName: string; ownershipPercent
 
 type Tab = "vouchers" | "quotations" | "purchase-orders" | "opening-balances" | "commissions" | "profit-distribution";
 
-/* ─── Shared Styles ─────────────────────────────────────────────────────────── */
+/* ─── Shared Styles (DS v4.0) ──────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+// DS v4.0: Added focus-ring for form inputs
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer";
+// DS v4.0: Added focus-ring for selects
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
@@ -266,30 +268,31 @@ export function VouchersDetailView() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
+      {/* Header - DS v4.0: Emerald accent color */}
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold flex items-center gap-2"><Receipt size={20} /> السندات والتفاصيل</h1>
+          <h1 className="text-2xl font-extrabold flex items-center gap-2 text-[#047857]"><Receipt size={20} /> السندات والتفاصيل</h1>
           <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+          // DS v4.0: Action button with active-press
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press duration-150"><Plus size={16} /> إضافة</button>
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - DS v4.0: Filter buttons with active-press */}
       <div className="flex gap-1.5 flex-wrap">
         {tabs.map((t) => { const Icon = t.icon; return (
           <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
-            "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5",
+            "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5 active-press duration-150",
             tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
           )}>{Icon && <Icon size={14} />} {t.label}</button>
         ); })}
       </div>
 
-      {/* Commissions date filter */}
+      {/* Commissions date filter - DS v4.0: Panel with hover-lift */}
       {tab === "commissions" && !showForm && (
-        <div className="flex gap-3 items-end bg-card rounded-[10px] border border-border p-3">
+        <div className="flex gap-3 items-end bg-card rounded-[10px] border border-border p-3 hover-lift duration-120">
           <div><label className={labelStyle}>من</label><input value={commFrom} onChange={(e) => setCommFrom(e.target.value)} className={cn(inputStyle, "w-36")} type="date" /></div>
           <div><label className={labelStyle}>إلى</label><input value={commTo} onChange={(e) => setCommTo(e.target.value)} className={cn(inputStyle, "w-36")} type="date" /></div>
         </div>
@@ -299,7 +302,8 @@ export function VouchersDetailView() {
         /* ── Vouchers Tab ─────────────────────────────────────────────────────── */
         if (tab === "vouchers") {
           if (showForm) return (
-            <div className="bg-card rounded-[14px] border border-border p-5">
+            // DS v4.0: Form card with hover-lift
+            <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-bold">سند جديد</h2>
                 <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -320,17 +324,65 @@ export function VouchersDetailView() {
                 <div><label className={labelStyle}>المستفيد</label><input value={vPayee} onChange={(e) => setVPayee(e.target.value)} className={inputStyle} placeholder="اسم المستفيد" /></div>
                 <div><label className={labelStyle}>الدافع</label><input value={vPayer} onChange={(e) => setVPayer(e.target.value)} className={inputStyle} placeholder="اسم الدافع" /></div>
               </div>
+              {/* DS v4.0: Action buttons with active-press */}
               <div className="flex gap-2 justify-end mt-5">
-                <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
-                <button onClick={handleCreateVoucher} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"><Receipt size={14} /> إنشاء</button>
+                <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer active-press duration-150">إلغاء</button>
+                <button onClick={handleCreateVoucher} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5 active-press duration-150"><Receipt size={14} /> إنشاء</button>
               </div>
             </div>
           );
           if (vouchers.length === 0) return <Empty label="سندات" />;
+          // DS v4.0: Vouchers table with enterprise styling and kpi-card-gold totals
           return (
-            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+            <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+              {/* DS v4.0: KPI Summary Cards for Vouchers */}
+              {vouchers.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border-b border-border">
+                  {/* Total Vouchers - kpi-card */}
+                  <div className="kpi-card">
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} className="text-[#047857]" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">إجمالي السندات</p>
+                        <p className="text-sm font-bold text-[#047857]">{vouchers.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Total Debit (Receipts) - kpi-card-gold (Premium financial data!) */}
+                  <div className="kpi-card-gold">
+                    <div className="flex items-center gap-2">
+                      <ArrowRight size={16} className="text-[#d4a574]" />
+                      <div>
+                        <p className="text-[10px] opacity-80">إجمالي القبض</p>
+                        <p className="text-sm font-bold">{fmt(vouchers.filter(v => v.voucherType === 'receipt').reduce((sum, v) => sum + v.amount, 0))}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Total Credit (Payments) - kpi-card */}
+                  <div className="kpi-card">
+                    <div className="flex items-center gap-2">
+                      <CreditCard size={16} className="text-red-500" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">إجمالي الدفع</p>
+                        <p className="text-sm font-bold text-red-500">{fmt(vouchers.filter(v => v.voucherType === 'payment').reduce((sum, v) => sum + v.amount, 0))}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Net Balance - kpi-card-gold */}
+                  <div className="kpi-card-gold">
+                    <div className="flex items-center gap-2">
+                      <DollarSign size={16} className={vouchers.filter(v => v.voucherType === 'receipt').reduce((s, v) => s + v.amount, 0) - vouchers.filter(v => v.voucherType === 'payment').reduce((s, v) => s + v.amount, 0) >= 0 ? "text-[#d4a574]" : "text-red-500"} />
+                      <div>
+                        <p className="text-[10px] opacity-80">الرصيد الصافي</p>
+                        <p className={cn("text-sm font-bold", vouchers.filter(v => v.voucherType === 'receipt').reduce((s, v) => s + v.amount, 0) - vouchers.filter(v => v.voucherType === 'payment').reduce((s, v) => s + v.amount, 0) >= 0 ? "" : "text-red-500")}>{fmt(vouchers.filter(v => v.voucherType === 'receipt').reduce((s, v) => s + v.amount, 0) - vouchers.filter(v => v.voucherType === 'payment').reduce((s, v) => s + v.amount, 0))}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                {/* DS v4.0: Enterprise table */}
+                <table className="w-full border-collapse table-enterprise">
                   <thead><tr className="border-b border-border bg-muted">
                     <th className={thStyle}>النوع</th><th className={thStyle}>التاريخ</th>
                     <th className={thStyle}>المبلغ</th><th className={thStyle}>العملة</th>
@@ -345,7 +397,8 @@ export function VouchersDetailView() {
                       const st = statusMap[v.status] || { label: v.status, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
                       return (
                         <tr key={v.id} className="border-b border-border">
-                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", v.voucherType === "receipt" ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{v.voucherType === "receipt" ? "قبض" : "دفع"}</span></td>
+                          {/* DS v4.0: Emerald for debit (receipt), muted for credit (payment) */}
+                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", v.voucherType === "receipt" ? "bg-[#047857]/15 text-[#047857]" : "bg-red-500/15 text-red-500")}>{v.voucherType === "receipt" ? "قبض" : "دفع"}</span></td>
                           <td className={tdStyle}>{v.date}</td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(v.amount)}</td>
                           <td className={tdStyle}>{v.currency}</td>
@@ -353,12 +406,13 @@ export function VouchersDetailView() {
                           <td className={tdStyle}>{v.payer || "—"}</td>
                           <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", st.badge)}>{st.label}</span></td>
                           <td className={tdStyle}>
+                            {/* DS v4.0: Action buttons with active-press */}
                             <div className="flex items-center gap-1">
                               {v.status === "draft" && (<>
-                                <button onClick={() => handleApproveVoucher(v.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>
-                                <button onClick={() => handleCancelVoucher(v.id)} title="إلغاء" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-red-500/10"><XCircle size={13} className="text-red-500" /></button>
+                                <button onClick={() => handleApproveVoucher(v.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10 active-press duration-150"><CheckCircle2 size={13} className="text-emerald-600" /></button>
+                                <button onClick={() => handleCancelVoucher(v.id)} title="إلغاء" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-red-500/10 active-press duration-150"><XCircle size={13} className="text-red-500" /></button>
                               </>)}
-                              <button title="طباعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-muted"><Printer size={13} /></button>
+                              <button title="طباعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-muted active-press duration-150"><Printer size={13} /></button>
                             </div>
                           </td>
                         </tr>

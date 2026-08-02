@@ -326,7 +326,7 @@ export function BulkInputView() {
     );
   }
 
-  const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+  const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring"; // DS v4.0: focus-ring added
   const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
   return (
@@ -430,12 +430,12 @@ export function BulkInputView() {
 
       {/* Input area */}
       {tab === "text" ? (
-        <div className="bg-card rounded-[14px] border border-border p-5">
+        <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-sm">
           <div className="flex justify-between items-center mb-2.5">
             <label className={labelStyle}>الصق نص الطلبات (واتساب، إيصال، ملاحظات...)</label>
             <button
               onClick={() => setRawText(SAMPLE_TEXT)}
-              className="bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer"
+              className="hover-lift duration-120 bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer active-press duration-150"
             >
               جرّب مثالاً
             </button>
@@ -465,7 +465,7 @@ export function BulkInputView() {
             <button
               onClick={handleParseText}
               disabled={loading || !rawText.trim()}
-              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+              className="active-press duration-150 inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto shadow-brand-sm"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : brainMode ? <Brain size={14} /> : <Sparkles size={14} />}
               {loading ? "جارٍ التحليل…" : brainMode ? "تحليل ذكي (يتعلّم)" : "تحليل بالذكاء الاصطناعي"}
@@ -509,7 +509,7 @@ export function BulkInputView() {
           </div>
         </div>
       ) : (
-        <div className="bg-card rounded-[14px] border border-border p-5">
+        <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-sm">
           <label className={labelStyle}>ارفع صورة الفاتورة أو الإيصال</label>
           <input
             ref={fileInputRef}
@@ -524,7 +524,7 @@ export function BulkInputView() {
           {!imagePreview ? (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full p-12 rounded-lg bg-muted border-2 border-dashed border-border text-muted-foreground text-[14px] font-bold cursor-pointer flex flex-col items-center gap-2.5"
+              className="hover-lift duration-120 w-full p-12 rounded-lg bg-muted border-2 border-dashed border-emerald-500/50 text-emerald-400 text-[14px] font-bold cursor-pointer flex flex-col items-center gap-2.5 transition-all"
             >
               <Upload size={32} />
               <div>اضغط لرفع صورة</div>
@@ -557,7 +557,7 @@ export function BulkInputView() {
             <button
               onClick={handleParseImage}
               disabled={loading || !imageBase64}
-              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+              className="active-press duration-150 inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto shadow-brand-sm"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               {loading ? "جارٍ تحليل الصورة…" : "تحليل الصورة"}
@@ -568,7 +568,7 @@ export function BulkInputView() {
 
       {/* File upload tab */}
       {tab === "file" && (
-        <div className="bg-card rounded-[14px] border border-border p-5">
+        <div className="bg-card rounded-[14px] border border-border p-5 shadow-brand-sm">
           <label className={labelStyle}>ارفع ملف Excel أو CSV</label>
           <input
             type="file"
@@ -593,7 +593,7 @@ export function BulkInputView() {
           {!fileName ? (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full p-12 rounded-lg bg-muted border-2 border-dashed border-border text-muted-foreground text-[14px] font-bold cursor-pointer flex flex-col items-center gap-2.5"
+              className="hover-lift duration-120 w-full p-12 rounded-lg bg-muted border-2 border-dashed border-emerald-500/50 text-emerald-400 text-[14px] font-bold cursor-pointer flex flex-col items-center gap-2.5 transition-all"
             >
               <FileSpreadsheet size={32} />
               <div>اضغط لرفع ملف Excel أو CSV</div>
@@ -618,7 +618,7 @@ export function BulkInputView() {
             <button
               onClick={handleParseFile}
               disabled={loading || !fileBase64}
-              className="inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+              className="active-press duration-150 inline-flex items-center justify-center gap-1.5 py-2.5 px-6 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto shadow-brand-sm"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               {loading ? "جارٍ تحليل الملف…" : "تحليل الملف"}
@@ -629,7 +629,7 @@ export function BulkInputView() {
 
       {/* Meta info */}
       {meta && (
-        <div className="py-3 px-4 rounded-[10px] bg-accent border border-border text-[12px] text-accent-foreground flex gap-4 flex-wrap">
+        <div className="kpi-card py-3 px-4 rounded-[10px] bg-emerald-500/5 border border-emerald-500/30 text-[12px] text-foreground flex gap-4 flex-wrap shadow-brand-sm">
           <span>⏱️ {meta.processingMs}ms</span>
           <span>📋 {meta.ordersCount} طلب</span>
           <span>📦 {meta.itemsCount} عنصر</span>
@@ -658,7 +658,7 @@ export function BulkInputView() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center justify-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto"
+                className="active-press duration-150 inline-flex items-center justify-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto shadow-brand-sm"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 {saving ? "جارٍ الحفظ…" : `حفظ ${orders.length} فاتورة`}
@@ -675,7 +675,7 @@ export function BulkInputView() {
             return (
               <div
                 key={idx}
-                className="bg-card rounded-lg border border-border overflow-hidden"
+                className="bg-card rounded-lg border border-border overflow-hidden shadow-brand-sm hover-lift duration-120"
               >
                 {/* Order header */}
                 <div
@@ -698,7 +698,7 @@ export function BulkInputView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="text-[16px] font-extrabold text-primary">
+                    <div className="text-[16px] font-extrabold text-emerald-500">
                       {total.toFixed(3)} {activeCompany.currency}
                     </div>
                     <button
@@ -844,7 +844,7 @@ export function BulkInputView() {
                     ) : (
                       <div>
                         <div className="overflow-x-auto garfix-scroll">
-                        <table className="w-full border-collapse text-[12px]">
+                        <table className="table-enterprise w-full border-collapse text-[12px]">
                           <thead>
                             <tr className="border-b border-border">
                               <th className="text-start py-1.5 px-2 font-semibold text-muted-foreground">المنتج</th>
@@ -859,7 +859,7 @@ export function BulkInputView() {
                               const matchStatus = getMatchStatusFromResult(item.matchResult);
                               
                               return (
-                                <tr key={itemIdx} className="border-b border-border">
+                                <tr key={itemIdx} className={cn("border-b border-border", item.matchResult?.error ? "bg-red-500/5" : item.matchResult?.productId ? "bg-emerald-500/5" : "")}>
                                   <td className="py-1.5 px-2">
                                     <div className="flex items-center gap-2">
                                       <span>{item.name}</span>
@@ -887,7 +887,7 @@ export function BulkInputView() {
                           {order.taxRate > 0 && <span>ضريبة ({order.taxRate}%): <strong>{taxAmount.toFixed(3)}</strong></span>}
                           {order.shipping > 0 && <span>شحن: <strong>{order.shipping.toFixed(3)}</strong></span>}
                           {order.discount > 0 && <span>خصم: <strong>-{order.discount.toFixed(3)}</strong></span>}
-                          <span className="font-extrabold text-primary">الإجمالي: {total.toFixed(3)}</span>
+                          <span className="font-extrabold text-emerald-500">الإجمالي: {total.toFixed(3)}</span>
                         </div>
                         {(order.clientAddress || order.notes) && (
                           <div className="mt-2.5 pt-2.5 border-t border-border text-[11px] text-muted-foreground">
@@ -907,7 +907,7 @@ export function BulkInputView() {
 
       {/* Empty state when no orders yet */}
       {!loading && orders.length === 0 && !meta && (
-        <div className="p-10 text-center text-muted-foreground bg-card rounded-[14px] border border-border">
+        <div className="p-10 text-center text-muted-foreground kpi-card bg-card rounded-[14px] border border-border shadow-brand-sm">
           <Sparkles size={36} className="opacity-30 mb-2.5" />
           <div className="text-[14px] font-bold mb-1">
             ابدأ بإدخال نص أو رفع صورة

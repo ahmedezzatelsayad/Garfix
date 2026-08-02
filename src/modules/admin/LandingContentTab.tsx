@@ -91,28 +91,28 @@ export function LandingContentTab() {
   if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-brand-lg">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center flex-wrap gap-2">
         <h3 className="text-sm font-bold flex items-center gap-2">
           <FileText className="text-emerald-500" size={16} />
           محتوى الصفحة الرئيسية ({items.length})
         </h3>
-        <button onClick={() => setShowCreate((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer">
+        <button onClick={() => setShowCreate((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer active-press duration-150 hover-lift duration-120 transition-all">
           <Plus size={12} /> مفتاح جديد
         </button>
       </div>
 
       {showCreate && (
-        <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5">
+        <div className="p-4 border-b border-b-[var(--border)] bg-[var(--muted)] flex flex-col gap-2.5 glass">
           <div>
             <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المفتاح (مثال: hero.title)</label>
-            <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="hero.title" dir="ltr" />
+            <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="hero.title" dir="ltr" className="focus-ring transition-all" />
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">القيمة (نص أو JSON)</label>
-            <Textarea value={newValue} onChange={(e) => setNewValue(e.target.value)} rows={3} placeholder="مرحباً بكم في GarfiX" className="resize-y" />
+            <Textarea value={newValue} onChange={(e) => setNewValue(e.target.value)} rows={3} placeholder="مرحباً بكم في GarfiX" className="resize-y focus-ring transition-all" />
           </div>
-          <button onClick={create} disabled={savingKey === "__new__"} className="self-end inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer disabled:opacity-70">
+          <button onClick={create} disabled={savingKey === "__new__"} className="self-end inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer disabled:opacity-70 active-press duration-150">
             <Save size={14} /> {savingKey === "__new__" ? "جارٍ…" : "إنشاء"}
           </button>
         </div>
@@ -127,7 +127,7 @@ export function LandingContentTab() {
           {items.map((it) => {
             const isJson = typeof it.value === "object" && it.value !== null;
             return (
-              <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex flex-col gap-2" key={it.key}>
+              <div className="px-4 py-3.5 border-b border-b-[var(--border)] flex flex-col gap-2 hover-lift duration-120 transition-all" key={it.key}>
                 <div className="flex justify-between items-center gap-2.5 flex-wrap">
                   <code className="font-mono text-xs font-bold [direction:ltr] text-[var(--foreground)]">{it.key}</code>
                   <span className="text-[10px] text-[var(--muted-foreground)]">
@@ -138,13 +138,13 @@ export function LandingContentTab() {
                   value={drafts[it.key] ?? ""}
                   onChange={(e) => setDrafts({ ...drafts, [it.key]: e.target.value })}
                   rows={isJson ? 5 : 2}
-                  className={`resize-y text-xs ${isJson ? "font-mono" : "font-inherit"}`}
+                  className={`resize-y text-xs ${isJson ? "font-mono" : "font-inherit"} focus-ring transition-all`}
                 />
                 <div className="flex justify-end">
                   <button
                     onClick={() => save(it.key)}
                     disabled={savingKey === it.key}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer disabled:opacity-70"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer disabled:opacity-70 active-press duration-150"
                   >
                     <Save size={12} /> {savingKey === it.key ? "جارٍ…" : "حفظ"}
                   </button>

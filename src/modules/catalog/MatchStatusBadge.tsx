@@ -42,6 +42,8 @@ interface MatchStatusBadgeProps {
 
 // ─── Status Config ─────────────────────────────────────────────────────
 
+// ─── DS v4.0 Color System ──────────────────────────────────────────────
+// Primary: Emerald Deep #047857 | Accent Gold: #d4a574 (AI/Premium only)
 const STATUS_CONFIG: Record<MatchStatus, {
   label: string;
   icon: React.ElementType;
@@ -50,46 +52,50 @@ const STATUS_CONFIG: Record<MatchStatus, {
   borderColor: string;
 }> = {
   matched: {
+    // DS v4.0: Emerald for matched status
     label: "مطابق",
     icon: CheckCircle2,
-    color: "text-green-700",
-    bgColor: "bg-green-50",
-    borderColor: "border-green-200",
+    color: "text-[#047857]",
+    bgColor: "bg-[#047857]/10",
+    borderColor: "border-[#047857]/30",
   },
   "ml-learned": {
+    // DS v4.0: Emerald for ML learned (AI success)
     label: "متعلم 🧠",
     icon: Brain,
-    color: "text-emerald-700",
-    bgColor: "bg-emerald-50",
-    borderColor: "border-emerald-200",
+    color: "text-[#047857]",
+    bgColor: "bg-[#047857]/10",
+    borderColor: "border-[#047857]/30",
   },
   new: {
     label: "منتج جديد",
     icon: PlusCircle,
-    color: "text-blue-700",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
+    color: "text-blue-600",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/30",
   },
   review: {
+    // DS v4.0: GOLD for review/pending (AI resolver feature!)
     label: "يحتاج مراجعة",
     icon: AlertTriangle,
-    color: "text-yellow-700",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-200",
+    color: "text-[#d4a574]",
+    bgColor: "bg-[#d4a574]/10",
+    borderColor: "border-[#d4a574]/30",
   },
   error: {
     label: "خطأ",
     icon: XCircle,
-    color: "text-red-700",
-    bgColor: "bg-red-50",
-    borderColor: "border-red-200",
+    color: "text-red-500",
+    bgColor: "bg-red-500/10",
+    borderColor: "border-red-500/30",
   },
   pending: {
+    // DS v4.0: GOLD for pending (AI processing state)
     label: "قيد المعالجة",
     icon: Search,
-    color: "text-gray-600",
-    bgColor: "bg-gray-50",
-    borderColor: "border-gray-200",
+    color: "text-[#d4a574]",
+    bgColor: "bg-[#d4a574]/10",
+    borderColor: "border-[#d4a574]/30",
   },
 };
 
@@ -143,7 +149,10 @@ export function MatchStatusBadge({
           config.color,
           config.bgColor,
           config.borderColor,
-          "font-medium border cursor-default select-none",
+          // DS v4.0: Consistent sizing with rounded-lg
+          "font-medium border cursor-default select-none rounded-lg",
+          // DS v4.0: Hover lift for interactive badges (when override available)
+          showOverride && onOverride && "hover-lift duration-120",
           status === "ml-learned" && "animate-pulse"
         )}
         title={status === "ml-learned" ? `نمط متعلم #${patternId?.slice(0, 8)} - مؤكد ${patternConfirmCount || 0} مرة` : undefined}
@@ -172,6 +181,7 @@ export function MatchStatusBadge({
       )}
 
       {/* Override Button */}
+      {/* DS v4.0: Override button with active-press */}
       {showOverride && onOverride && status !== "pending" && (
         <Button
           type="button"
@@ -182,7 +192,7 @@ export function MatchStatusBadge({
             onOverride();
           }}
           className={cn(
-            "h-auto p-1 text-xs hover:text-[#047857] transition-colors duration-120",
+            "h-auto p-1 text-xs hover:text-[#047857] transition-colors duration-120 active-press duration-150",
             size === "sm" && "text-[10px]"
           )}
           title="تغيير المنتج المرتبط"

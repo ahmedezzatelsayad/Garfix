@@ -58,13 +58,15 @@ function permSummary(perms: Record<string, number>, role: string, isFounder?: bo
   return `${enabled.length} صلاحية`;
 }
 
-const inputStyle = "w-full py-[9px] px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
+/* DS v4.0 Design System Classes */
+const inputStyle = "w-full py-[9px] px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px]"; // focus-ring added per DS v4.0
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-semibold";
 const tdStyle = "px-3 py-2.5 align-middle";
-const iconBtn = "w-7 h-7 rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center";
-const primaryBtn = "px-6 py-2.5 rounded-md bg-primary text-primary-foreground border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]";
-const ghostBtn = "px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]";
+const iconBtn = "w-7 h-7 rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center hover-lift duration-120"; // hover-lift per DS v4.0
+const primaryBtn = "active-press duration-150 px-6 py-2.5 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] shadow-brand-sm"; // active-press + emerald gradient per DS v4.0
+const ghostBtn = "hover-lift duration-120 px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"; // hover-lift per DS v4.0
+const kpiCardClass = "kpi-card p-4 rounded-[14px] border border-border"; // kpi-card per DS v4.0
 
 export function TeamView() {
   const { activeCompany } = useBrand();
@@ -142,7 +144,7 @@ export function TeamView() {
         </div>
         <button
           onClick={() => setShowInvite(true)}
-          className="inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-primary text-primary-foreground border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"
+          className="active-press duration-150 inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px] shadow-brand-sm"
         >
           <UserPlus size={16} /> دعوة عضو
         </button>
@@ -166,7 +168,7 @@ export function TeamView() {
         </div>
       )}
 
-      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+      <div className="bg-card rounded-[14px] border border-border overflow-hidden shadow-brand-md">
         {loading ? (
           <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
         ) : members.length === 0 ? (
@@ -202,22 +204,11 @@ export function TeamView() {
                       <td className={tdStyle}>
                         <div className="flex items-center gap-2">
                           <div
-                            className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0"
-                            style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }}
+                            className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0 ring-2 ring-offset-2 ring-offset-background", m.role === "admin" ? "ring-emerald-500" : "ring-transparent")}
+                            style={{ background: `linear-gradient(135deg, ${m.role === 'admin' ? '#047857' : roleColor(m.role)}, var(--accent))` }}
                           >
                             {m.displayName.charAt(0).toUpperCase()}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold">{m.displayName}</span>
-                            {m.isFounder && (
-                              <span className="text-[10px] text-[#f59e0b] inline-flex items-center gap-0.5">
-                                <Crown size={10} /> مؤسس
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end")}>
                         <span className="inline-flex items-center gap-1">
                           <Mail size={12} className="opacity-50" />
                           {m.email}
@@ -225,8 +216,7 @@ export function TeamView() {
                       </td>
                       <td className={tdStyle}>
                         <span
-                          className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
-                          style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }}
+                          className={cn("inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold", m.role === "admin" ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}
                         >
                           {ROLE_LABEL[m.role] || m.role}
                         </span>
@@ -260,13 +250,13 @@ export function TeamView() {
             {pageMembers.map((m) => {
               const checked = selectedIds.has(m.uid);
               return (
-                <div key={m.uid} className={cn("p-3 flex flex-col gap-3", checked ? "bg-accent" : "bg-transparent")}>
+                <div key={m.uid} className={cn("p-3 flex flex-col gap-3 hover-lift duration-120", checked ? "bg-accent" : "bg-transparent")}>
                   <div className="flex items-center justify-between gap-2">
                     <label className="flex items-center gap-2 min-h-[44px]">
                       <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
                       <div
-                        className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0"
-                        style={{ background: `linear-gradient(135deg, ${roleColor(m.role)}, var(--accent))` }}
+                        className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0 ring-2 ring-offset-2 ring-offset-background", m.role === "admin" ? "ring-emerald-500" : "ring-transparent")}
+                        style={{ background: `linear-gradient(135deg, ${m.role === 'admin' ? '#047857' : roleColor(m.role)}, var(--accent))` }}
                       >
                         {m.displayName.charAt(0).toUpperCase()}
                       </div>

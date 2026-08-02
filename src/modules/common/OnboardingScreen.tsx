@@ -109,12 +109,12 @@ export function OnboardingScreen() {
   if (success) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md shadow-lg">
+        <Card className="w-full max-w-md shadow-brand-xl kpi-card-gold">
           <CardHeader className="text-center space-y-2">
-            <div className="mx-auto h-14 w-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+            <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-[#d4a574] to-[#c9956a] flex items-center justify-center shadow-gold-sm">
+              <CheckCircle2 className="h-7 w-7 text-white" />
             </div>
-            <CardTitle className="text-xl">تم إنشاء شركتك!</CardTitle>
+            <CardTitle className="text-xl text-emerald-400">تم إنشاء شركتك!</CardTitle>
             <CardDescription>
               جارٍ تحميل لوحة التحكم…
             </CardDescription>
@@ -126,12 +126,12 @@ export function OnboardingScreen() {
 
   return (
     <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-lg shadow-lg">
+      <Card className="w-full max-w-lg shadow-brand-xl glass-strong">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto h-14 w-14 rounded-2xl bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center shadow-[0_8px_24px_rgba(4,120,87,0.4)]">
             <Sparkles className="h-7 w-7 text-white" />
           </div>
-          <CardTitle className="text-2xl">
+          <CardTitle className="text-2xl text-emerald-400">
             أهلاً {user?.displayName || user?.email}!
           </CardTitle>
           <CardDescription className="text-[13px]">
@@ -145,7 +145,7 @@ export function OnboardingScreen() {
             {error && (
               <div
                 role="alert"
-                className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400"
               >
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span className="break-words">{error}</span>
@@ -165,7 +165,7 @@ export function OnboardingScreen() {
                   placeholder="مثال: شركة الأفق للتجارة"
                   disabled={submitting}
                   autoFocus
-                  className="pr-9"
+                  className="pr-9 focus-ring"
                 />
               </div>
             </div>
@@ -181,7 +181,7 @@ export function OnboardingScreen() {
                 placeholder="my-company"
                 disabled={submitting}
                 dir="ltr"
-                className="text-left font-mono text-[13px]"
+                className="text-left font-mono text-[13px] focus-ring"
               />
               <p className="text-[11px] text-muted-foreground">
                 أحرف إنجليزية صغيرة وأرقام و- فقط. يُستخدم في الروابط.
@@ -226,7 +226,7 @@ export function OnboardingScreen() {
           <CardFooter className="flex flex-col gap-3">
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 active-press duration-150 transition-all"
               disabled={submitting || !name || !slug}
             >
               {submitting ? (

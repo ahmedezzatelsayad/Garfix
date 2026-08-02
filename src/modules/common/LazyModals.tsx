@@ -39,8 +39,8 @@ function ModalLoading() {
       role="status"
       aria-label="جارٍ تحميل النافذة"
     >
-      <div className="bg-card text-card-foreground rounded-[14px] border border-border w-full max-w-[95vw] md:max-w-[680px] min-h-[200px] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="bg-card text-card-foreground rounded-[14px] border border-border w-full max-w-[95vw] md:max-w-[680px] min-h-[200px] flex flex-col items-center justify-center gap-3 shadow-brand-lg glass-strong">
+        <Loader2 className="size-8 animate-spin text-emerald-400 animate-pulse" />
         <span className="text-sm text-muted-foreground">جارٍ التحميل...</span>
       </div>
     </div>

@@ -11,6 +11,7 @@
  */
 import { Menu, Search } from "lucide-react";
 import type { CompanyInfo } from "@/context/BrandContext";
+import { cn } from "@/lib/utils";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { AIStatusBar } from "@/components/garfix";
 
@@ -32,7 +33,7 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
       className="sticky top-0 z-[100] bg-background/95 backdrop-blur
                  border-b border-border
                  flex items-center gap-3 px-4 py-3 md:px-6 md:gap-3
-                 shadow-card"
+                 shadow-brand-sm"
     >
       {/* Mobile hamburger — 44×44px touch target (iOS HIG). Desktop sidebar is
           always visible so the hamburger is hidden on md+. */}
@@ -41,7 +42,8 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
         className="md:hidden flex items-center justify-center
                    min-w-[44px] min-h-[44px] rounded-lg
                    bg-transparent border-none text-foreground cursor-pointer
-                   hover:bg-muted touch-manipulation"
+                   hover:bg-muted touch-manipulation
+                   active-press duration-150"
         aria-label="فتح القائمة"
       >
         <Menu size={22} />
@@ -53,16 +55,20 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
             dark mode. */}
         <div
           className="px-2.5 py-1 rounded-full
-                     bg-primary/10 text-primary border border-primary/20
+                     bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                      text-xs font-bold truncate max-w-[50vw] md:max-w-none"
         >
           {activeCompany?.nameAr || activeCompany?.name || "—"}
         </div>
         {activeCompany?.plan && (
           <div
-            className="hidden sm:inline-block px-2 py-0.5 rounded-xl
-                       bg-primary text-primary-foreground
-                       text-[10px] font-bold uppercase tracking-wider"
+            className={cn(
+              "hidden sm:inline-block px-2 py-0.5 rounded-xl",
+              "text-[10px] font-bold uppercase tracking-wider",
+              activeCompany.plan.toLowerCase().includes('premium') || activeCompany.plan.toLowerCase().includes('pro')
+                ? "bg-gradient-to-r from-[#d4a574] to-[#c9956a] text-white shadow-gold-sm"
+                : "bg-emerald-600 text-white"
+            )}
           >
             {activeCompany.plan}
           </div>
@@ -79,7 +85,8 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
                    px-2 md:px-3 rounded-lg bg-muted/60 border border-border
                    text-muted-foreground cursor-pointer font-inherit text-xs
                    hover:bg-primary/10 hover:border-primary/20 hover:text-primary
-                   transition-colors touch-manipulation"
+                   transition-colors touch-manipulation
+                   hover-lift duration-120"
       >
         <Search size={16} />
         <span className="hidden sm:inline whitespace-nowrap">بحث…</span>
