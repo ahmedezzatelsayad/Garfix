@@ -1,0 +1,219 @@
+{
+  "version": "2.0.0",
+  "generatedAt": "2026-08-02T01:14:29.260Z",
+  "executiveSummary": {
+    "overallVerdict": "PROCEED_TO_GATE_2",
+    "keyFindings": {
+      "fmrBaseline": "18.66%",
+      "fmrFinal": "0.00%",
+      "fmrTotalReduction": "18.66pp",
+      "fmrReductionPercent": "100.0%",
+      "targetAchieved": true,
+      "precisionGain": "18.66pp",
+      "latencyOverhead": "27ms (p50)"
+    },
+    "mostImpactfulPhase": "FULL",
+    "gatesPassed": {
+      "gate1": true,
+      "gate2": false,
+      "gate3": false
+    }
+  },
+  "gate1Result": {
+    "verdict": "PASSED",
+    "canProceed": true,
+    "criteriaSummary": [
+      {
+        "name": "FMR Improvement ≥ 50%",
+        "passed": true
+      },
+      {
+        "name": "Recall Degradation ≤ 5%",
+        "passed": true
+      },
+      {
+        "name": "Precision Gain ≥ 10%",
+        "passed": true
+      },
+      {
+        "name": "Latency Overhead ≤ 30ms (p50)",
+        "passed": true
+      },
+      {
+        "name": "No Critical Regressions",
+        "passed": true
+      }
+    ]
+  },
+  "comparisonTable": [
+    {
+      "metric": "False Match Rate",
+      "baseline": "18.66%",
+      "current": "0.00%",
+      "delta": "-18.66pp (-100.0%)",
+      "improved": true
+    },
+    {
+      "metric": "Precision",
+      "baseline": "81.34%",
+      "current": "100.00%",
+      "delta": "+18.66pp (+22.9%)",
+      "improved": true
+    },
+    {
+      "metric": "Recall",
+      "baseline": "100.00%",
+      "current": "100.00%",
+      "delta": "+0.00pp (+0.0%)",
+      "improved": false
+    },
+    {
+      "metric": "F1 Score",
+      "baseline": "89.71%",
+      "current": "100.00%",
+      "delta": "+10.29pp (+11.5%)",
+      "improved": true
+    },
+    {
+      "metric": "AI Fallback Rate",
+      "baseline": "0.00%",
+      "current": "0.00%",
+      "delta": "+0.00pp (+0.0%)",
+      "improved": false
+    },
+    {
+      "metric": "Pattern Hit Rate",
+      "baseline": "100.00%",
+      "current": "93.88%",
+      "delta": "-6.12pp (-6.1%)",
+      "improved": false
+    },
+    {
+      "metric": "Avg Candidate Count",
+      "baseline": "4.4",
+      "current": "4.6",
+      "delta": "+0.14 (+3.1%)",
+      "improved": false
+    },
+    {
+      "metric": "Avg Decision Latency (p50)",
+      "baseline": "45ms",
+      "current": "73ms",
+      "delta": "+27ms (+60.1%)",
+      "improved": false
+    },
+    {
+      "metric": "Decision Latency (p95)",
+      "baseline": "54ms",
+      "current": "86ms",
+      "delta": "+32ms (+59.9%)",
+      "improved": false
+    },
+    {
+      "metric": "Decision Latency (p99)",
+      "baseline": "126ms",
+      "current": "152ms",
+      "delta": "+26ms (+20.3%)",
+      "improved": false
+    },
+    {
+      "metric": "Supplier Confusion Rate",
+      "baseline": "18.66%",
+      "current": "0.00%",
+      "delta": "-18.66pp (-100.0%)",
+      "improved": true
+    },
+    {
+      "metric": "Pattern Reuse Accuracy",
+      "baseline": "89.31%",
+      "current": "89.31%",
+      "delta": "+0.00pp (+0.0%)",
+      "improved": false
+    },
+    {
+      "metric": "Human Override Rate",
+      "baseline": "49.60%",
+      "current": "49.90%",
+      "delta": "+0.30pp (+0.6%)",
+      "improved": false
+    }
+  ],
+  "phaseDetails": {
+    "BASELINE": {
+      "name": "Baseline (Original)",
+      "fmr": "18.66%",
+      "precision": "81.34%",
+      "recall": "100.00%",
+      "f1": "89.71%",
+      "supplierConfusion": "18.66%",
+      "patternReuse": "89.31%",
+      "humanOverride": "49.60%",
+      "latencyP50": "45ms",
+      "latencyP99": "126ms"
+    },
+    "PHASE_A": {
+      "name": "Phase A: Supplier Ownership Gate",
+      "fmr": "13.74%",
+      "precision": "86.26%",
+      "recall": "100.00%",
+      "f1": "92.62%",
+      "supplierConfusion": "13.74%",
+      "patternReuse": "90.34%",
+      "humanOverride": "50.78%",
+      "latencyP50": "48ms",
+      "latencyP99": "125ms",
+      "incrementalImpact": {
+        "comparedTo": "BASELINE",
+        "fmrChange": "-26.4%",
+        "interpretation": "Phase A reduced FMR by 4.92pp"
+      }
+    },
+    "PHASE_B": {
+      "name": "Phase B: Semantic Fingerprinting",
+      "fmr": "6.56%",
+      "precision": "93.44%",
+      "recall": "100.00%",
+      "f1": "96.61%",
+      "supplierConfusion": "6.56%",
+      "patternReuse": "89.97%",
+      "humanOverride": "49.74%",
+      "latencyP50": "55ms",
+      "latencyP99": "128ms",
+      "incrementalImpact": {
+        "comparedTo": "PHASE_A",
+        "fmrChange": "-52.3%",
+        "interpretation": "Phase B reduced FMR by 7.18pp"
+      }
+    },
+    "PHASE_C": {
+      "name": "Phase C: Multi-Stage Validation",
+      "fmr": "0.50%",
+      "precision": "99.50%",
+      "recall": "100.00%",
+      "f1": "99.75%",
+      "supplierConfusion": "0.51%",
+      "patternReuse": "91.43%",
+      "humanOverride": "49.08%",
+      "latencyP50": "63ms",
+      "latencyP99": "135ms",
+      "incrementalImpact": {
+        "comparedTo": "PHASE_B",
+        "fmrChange": "-92.3%",
+        "interpretation": "Phase C reduced FMR by 6.06pp"
+      }
+    },
+    "FULL": {
+      "name": "Full System (A+B+C+D)",
+      "fmr": "0.00%",
+      "precision": "100.00%",
+      "recall": "100.00%",
+      "f1": "100.00%",
+      "supplierConfusion": "0.00%",
+      "patternReuse": "89.31%",
+      "humanOverride": "49.90%",
+      "latencyP50": "73ms",
+      "latencyP99": "152ms"
+    }
+  },
+  "operationalMetrics": {}
+}
