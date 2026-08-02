@@ -240,11 +240,11 @@ export const GET = async (req: NextRequest) => {
           lastError: key.lastError,
           lastUsed: key.lastSuccessTime?.toISOString(),
         })),
-        workers: Array.from((aiMetrics as any).metrics?.workers?.entries() || []).map(([type, m]: [string, any]) => ({
-          type,
-          activeJobs: m.activeJobs,
-          processedToday: m.processedToday,
-          avgLatencyMs: m.completedCount > 0 ? Math.round(m.totalLatency / m.completedCount) : 0,
+        workers: (Array.from((aiMetrics as any).metrics?.workers?.entries() || []) as [string, any][]).map(([type, m]) => ({
+          type: type as string,
+          activeJobs: m?.activeJobs,
+          processedToday: m?.processedToday,
+          avgLatencyMs: (m?.completedCount || 0) > 0 ? Math.round(m?.totalLatency / m?.completedCount) : 0,
         })),
         queue: {
           ...queueStats,

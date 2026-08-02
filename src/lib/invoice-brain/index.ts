@@ -117,8 +117,6 @@ export type { ParsedOrder, CompanyContext } from "./garfixAdapter";
 
 // ─── Benchmark Suite (NEW) ──────────────────────────────────
 export {
-  generateBenchmarkDataset,
-  generateQuickTestSet,
   runBenchmark,
   quickBenchmark,
 } from "./benchmark/runner";

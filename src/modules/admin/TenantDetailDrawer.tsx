@@ -84,9 +84,9 @@ export function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug:
         ) : detail && tenant && overview ? (
           <>
             {/* Plan management card */}
-            <div className="p-3.5 bg-[var(--card)] rounded-xl border border-[var(--border)]">
+            <div className="p-3.5 bg-[var(--card)] rounded-xl border border-[var(--border)] hover-lift">
               <div className="flex items-center gap-1.5 mb-2.5">
-                <Shield className="text-violet-600" size={14} />
+                <Shield className="text-emerald-600" size={14} />
                 <span className="text-[13px] font-extrabold">إدارة الباقة</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-2.5">
@@ -121,7 +121,7 @@ export function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug:
               <button
                 onClick={savePlan}
                 disabled={planSaving}
-                className="px-4 py-1.5 rounded-lg border-none text-white text-xs font-bold font-inherit" /* TAILWINDBREAK: dynamic bg/opacity/cursor */ style={{ background: planSaving ? "var(--muted)" : "#7c3aed", cursor: planSaving ? "not-allowed" : "pointer", opacity: planSaving ? 0.7 : 1 }}
+                className="px-4 py-1.5 rounded-lg border-none text-white text-xs font-bold font-inherit active-press" /* TAILWINDBREAK: dynamic bg/opacity/cursor */ style={{ background: planSaving ? "var(--muted)" : "#047857", cursor: planSaving ? "not-allowed" : "pointer", opacity: planSaving ? 0.7 : 1 }}
               >
                 {planSaving ? "جارٍ الحفظ…" : "حفظ الباقة"}
               </button>

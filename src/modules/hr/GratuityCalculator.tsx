@@ -277,7 +277,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
 
           {/* Employee info + summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 stagger-children">
-            <InfoCard label="الموظف" value={result.employee.name} icon={<Calculator size={16} />} color="#7c3aed" />
+            <InfoCard label="الموظف" value={result.employee.name} icon={<Calculator size={16} />} color="#047857" />
             <InfoCard
               label="تاريخ الالتحاق"
               value={result.employee.joinDate}

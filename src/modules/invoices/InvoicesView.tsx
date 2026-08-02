@@ -1132,15 +1132,15 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
         onClick={(e) => e.stopPropagation()}
         className="invoice-print-area bg-white text-[#111] rounded-lg p-6 md:p-10 max-w-[95vw] md:max-w-[800px] w-full max-h-[90vh] overflow-y-auto [direction:rtl] [font-family:var(--font-cairo),sans-serif]"
       >
-        <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-[#7c3aed]">
+        <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-[#047857]">
           <div>
-            <h1 className="text-[28px] font-black text-[#7c3aed]">{company.nameAr || company.name}</h1>
+            <h1 className="text-[28px] font-black text-[#047857]">{company.nameAr || company.name}</h1>
             <div className="text-[13px] text-[#666] mt-1">{company.address || ""}</div>
             <div className="text-[13px] text-[#666]">{company.phone || ""} • {company.email || ""}</div>
             {company.vatNumber && <div className="text-[13px] text-[#666]">الرقم الضريبي: {company.vatNumber}</div>}
           </div>
           <div className="text-end">
-            <div className="text-[32px] font-black text-[#7c3aed]">فاتورة</div>
+            <div className="text-[32px] font-black text-[#047857]">فاتورة</div>
             <div className="text-[14px] font-mono mt-1">#{invoice.invoiceNumber}</div>
             <div className="text-[12px] text-[#666] mt-2">
               تاريخ الإصدار: {invoice.issueDate}
@@ -1206,7 +1206,7 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
                 <span className="[direction:ltr]">{invoice.shipping.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
               </div>
             )}
-            <div className="flex justify-between py-2.5 border-t-2 border-[#7c3aed] mt-1.5 text-[16px] font-black text-[#7c3aed]">
+            <div className="flex justify-between py-2.5 border-t-2 border-[#047857] mt-1.5 text-[16px] font-black text-[#047857]">
               <span>الإجمالي</span>
               <span className="[direction:ltr]">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} {(invoice as any).currency || company.currency}</span>
             </div>
@@ -1238,7 +1238,7 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
               <DollarSign size={14} /> تسجيل دفعة
             </button>
           )}
-          <button onClick={() => window.print()} className="py-2.5 px-5 rounded-sm bg-[#7c3aed] text-white border-none text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5">
+          <button onClick={() => window.print()} className="py-2.5 px-5 rounded-sm bg-[#047857] text-white border-none text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5">
             <Printer size={14} /> طباعة
           </button>
           <button onClick={onClose} className="py-2.5 px-5 rounded-sm bg-transparent text-[#666] border border-[#e5e7eb] text-[13px] font-bold cursor-pointer">

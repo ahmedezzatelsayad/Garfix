@@ -177,7 +177,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
 
     // Handle different extraction sources (NEW types)
-    if (result.source === "ai" || result.source === "ai-error") {
+    if (result.source === "ai" || (result.source as string) === "ai-error") {
       usedAI = true;
       
       // Log AI usage with token counts
@@ -202,7 +202,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       usedPatternExcellent = true;
     } else if (result.source === "pattern-verified") {
       usedPatternVerified = true;
-    } else if (result.source === "pattern") {
+    } else if ((result.source as string) === "pattern") {
       // Legacy compatibility
       usedPatternVerified = true;
     }
@@ -394,7 +394,7 @@ function determineSource(
 ): string {
   if (aiError && ordersCount === 0) return "ai-error";
   
-  const sources = [];
+  const sources: string[] = [];
   if (usedPatternExcellent) sources.push("pattern-excellent");
   if (usedPatternVerified) sources.push("pattern-verified");
   if (usedAI) sources.push("ai");

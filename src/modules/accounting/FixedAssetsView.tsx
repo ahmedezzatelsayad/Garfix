@@ -51,7 +51,7 @@ const DEP_METHODS = [
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -98,7 +98,7 @@ export function FixedAssetsView() {
           <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
         </div>
         {tab === "assets" && !showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer">
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press">
             <Plus size={16} /> إضافة أصل
           </button>
         )}
@@ -141,23 +141,23 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card-gold bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">تكلفة الاستحواذ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCost)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">إهلاك متراكم</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDep)}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><Calculator size={18} /></div>
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><Calculator size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">صافي القيمة الدفترية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBV)}</div></div>
         </div>
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {assets.length === 0 ? <Empty label="أصول ثابتة" /> : (
           <div className="overflow-x-auto garfix-scroll max-h-[500px]">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الاسم</th><th className={thStyle}>التصنيف</th>
                 <th className={thStyle}>تاريخ الاستحواذ</th>
@@ -284,7 +284,7 @@ function DepreciationView({ entries, company, onRefresh }: { entries: DepEntry[]
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {entries.length === 0 ? <Empty label="قيود إهلاك" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الأصل</th><th className={thStyle}>الفترة</th>
                 <th className={cn(thStyle, "text-end")}>مبلغ الإهلاك</th>
@@ -316,13 +316,13 @@ function DisposalView({ disposals, assets, company, onRefresh }: { disposals: Di
   return (
     <div className="flex flex-col gap-4">
       {!showForm && (
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> تسجيل تخلص</button>
+        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> تسجيل تخلص</button>
       )}
       {showForm && <DisposalForm assets={assets.filter(a => a.status === "active")} company={company} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); onRefresh(); }} />}
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {disposals.length === 0 ? <Empty label="تخلصات" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الأصل</th><th className={thStyle}>النوع</th><th className={thStyle}>تاريخ التخلص</th>
                 <th className={cn(thStyle, "text-end")}>مبلغ التخلص</th><th className={thStyle}>الحالة</th>
@@ -330,7 +330,7 @@ function DisposalView({ disposals, assets, company, onRefresh }: { disposals: Di
               <tbody>{disposals.map(d => (
                 <tr key={d.id} className="border-b border-border">
                   <td className={cn(tdStyle, "font-bold")}>{d.assetName}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.disposalType === "sold" ? "bg-emerald-500/15 text-emerald-500" : d.disposalType === "scrapped" ? "bg-red-500/15 text-red-500" : "bg-violet-500/15 text-violet-500")}>{disposalTypeLabels[d.disposalType] || d.disposalType}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.disposalType === "sold" ? "bg-emerald-500/15 text-emerald-500" : d.disposalType === "scrapped" ? "bg-red-500/15 text-red-500" : "bg-emerald-700/15 text-emerald-700")}>{disposalTypeLabels[d.disposalType] || d.disposalType}</span></td>
                   <td className={tdStyle} dir="ltr">{d.disposalDate}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(d.disposalAmount)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>

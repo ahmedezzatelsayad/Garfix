@@ -185,18 +185,18 @@
 
 @layer utilities {
   /* ═══ Brand Shadow System (emerald-tinted depth) ═══ */
-  --shadow-brand-xs: 0 1px 2px #0478570d;
-  --shadow-brand-sm: 0 2px 8px #0478571a;
-  --shadow-brand-md: 0 4px 16px #04785724;
-  --shadow-brand-lg: 0 8px 32px #0478572e;
-  --shadow-brand-xl: 0 16px 48px #04785738;
-  --shadow-brand-glow: 0 0 24px #0478574d;
+  --shadow-brand-xs: 0 1px 2px rgba(4, 120, 87, 0.05);
+  --shadow-brand-sm: 0 2px 8px rgba(4, 120, 87, 0.1);
+  --shadow-brand-md: 0 4px 16px rgba(4, 120, 87, 0.14);
+  --shadow-brand-lg: 0 8px 32px rgba(4, 120, 87, 0.18);
+  --shadow-brand-xl: 0 16px 48px rgba(4, 120, 87, 0.22);
+  --shadow-brand-glow: 0 0 24px rgba(4, 120, 87, 0.3);
 
   /* ⚠️ Gold shadows — RESTRICTED USE (AI/Premium only) ⚠️ */
-  --shadow-gold-xs: 0 1px 2px #d4a57410;
-  --shadow-gold-sm: 0 2px 8px #d4a57420;
-  --shadow-gold-md: 0 4px 16px #d4a57430;
-  --shadow-gold-glow: 0 0 24px #d4a57440;
+  --shadow-gold-xs: 0 1px 2px rgba(212, 165, 116, 0.06);
+  --shadow-gold-sm: 0 2px 8px rgba(212, 165, 116, 0.12);
+  --shadow-gold-md: 0 4px 16px rgba(212, 165, 116, 0.19);
+  --shadow-gold-glow: 0 0 24px rgba(212, 165, 116, 0.25);
 
   .shadow-brand-xs { box-shadow: var(--shadow-brand-xs); }
   .shadow-brand-sm { box-shadow: var(--shadow-brand-sm); }

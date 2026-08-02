@@ -27,7 +27,7 @@ type Tab = "methods" | "initiate" | "verify";
 /* ─── Shared Styles ─────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer";
 
@@ -38,7 +38,7 @@ function Empty({ label }: { label: string }) {
 const METHOD_TYPE_MAP: Record<string, { label: string; badge: string }> = {
   bank_transfer:  { label: "تحويل بنكي",  badge: "bg-blue-500/15 text-blue-500" },
   card:           { label: "بطاقة",        badge: "bg-emerald-500/15 text-emerald-500" },
-  digital_wallet: { label: "محفظة رقمية", badge: "bg-violet-500/15 text-violet-500" },
+  digital_wallet: { label: "محفظة رقمية", badge: "bg-emerald-600/15 text-emerald-600" },
   cheque:         { label: "شيك",          badge: "bg-amber-500/15 text-amber-500" },
   knet:           { label: "K-NET",        badge: "bg-red-500/15 text-red-500" },
 };
@@ -169,7 +169,7 @@ export function PaymentRailsView() {
           {methods.length === 0 ? <Empty label="طرق دفع" /> : (
             <div className="bg-card rounded-[14px] border border-border overflow-hidden">
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="table-enterprise w-full border-collapse">
                   <thead><tr className="border-b border-border bg-muted">
                     <th className={thStyle}>الاسم</th><th className={thStyle}>الاسم بالعربي</th>
                     <th className={thStyle}>النوع</th><th className={thStyle}>الرسوم</th>

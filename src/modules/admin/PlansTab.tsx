@@ -73,7 +73,7 @@ export function PlansTab() {
     }
   };
 
-  const plansInputClass = "w-full px-1.5 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md text-[var(--foreground)] text-xs font-inherit";
+  const plansInputClass = "w-full px-1.5 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md text-[var(--foreground)] text-xs font-inherit focus-ring";
 
   if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
@@ -81,13 +81,13 @@ export function PlansTab() {
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-bold flex items-center gap-2">
-          <Gauge className="text-violet-600" size={16} />
+          <Gauge className="text-emerald-600" size={16} />
           كتالوج الباقات ({Object.keys(plans).length} باقة)
         </h3>
         <button
           onClick={save}
           disabled={saving || !dirty}
-          className="px-4 py-1.5 rounded-lg border-none text-white text-xs font-bold font-inherit flex items-center gap-1.5" /* TAILWINDBREAK: dynamic bg/cursor/opacity */ style={{ background: saving || !dirty ? "var(--muted)" : "#7c3aed", cursor: saving || !dirty ? "not-allowed" : "pointer", opacity: saving || !dirty ? 0.7 : 1 }}
+          className="px-4 py-1.5 rounded-lg border-none text-white text-xs font-bold font-inherit flex items-center gap-1.5 active-press" /* TAILWINDBREAK: dynamic bg/cursor/opacity */ style={{ background: saving || !dirty ? "var(--muted)" : "#047857", cursor: saving || !dirty ? "not-allowed" : "pointer", opacity: saving || !dirty ? 0.7 : 1 }}
         >
           <Save size={12} />
           {saving ? "جارٍ الحفظ…" : "حفظ التغييرات"}
@@ -102,9 +102,9 @@ export function PlansTab() {
       )}
 
       {Object.entries(plans).map(([key, plan]) => (
-        <div className="p-4 bg-[var(--card)] rounded-xl border border-[var(--border)]" key={key}>
+        <div className="p-4 bg-[var(--card)] rounded-xl border border-[var(--border)] hover-lift" key={key}>
           <div className="flex items-center gap-2 mb-3">
-            <span className="px-2.5 py-0.5 rounded-lg bg-violet-600 text-white text-[10px] font-extrabold font-mono">
+            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-[10px] font-extrabold font-mono">
               {key}
             </span>
             <span className="text-[13px] font-bold">{plan.name}</span>

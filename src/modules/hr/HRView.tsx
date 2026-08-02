@@ -308,7 +308,7 @@ export function HRView() {
               const STATUS: Record<string, { label: string; color: string }> = {
                 present: { label: "حاضر", color: "#10b981" }, absent: { label: "غائب", color: "#ef4444" },
                 late: { label: "متأخر", color: "#f59e0b" }, half: { label: "نص يوم", color: "#3b82f6" },
-                remote: { label: "عن بُعد", color: "#7c3aed" },
+                remote: { label: "عن بُعد", color: "#047857" },
               };
               const st = STATUS[String(value)] || { label: String(value), color: "#999" };
               return (

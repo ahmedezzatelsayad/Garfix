@@ -71,13 +71,13 @@ export function FeatureFlagsTab() {
   if (loading) return <div className="p-6 md:p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>;
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift">
       <div className="px-4 py-3 border-b border-b-[var(--border)] flex justify-between items-center">
         <h3 className="text-sm font-bold flex items-center gap-2">
-          <Sparkles className="text-violet-600" size={16} />
+          <Sparkles className="text-emerald-600" size={16} />
           ميزات المنصة ({flags.length})
         </h3>
-        <button onClick={() => setShowForm((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer">
+        <button onClick={() => setShowForm((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[11px] font-bold cursor-pointer active-press">
           <Plus size={12} /> ميزة جديدة
         </button>
       </div>
@@ -86,19 +86,19 @@ export function FeatureFlagsTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div>
               <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">المفتاح (key)</label>
-              <input value={newFlag.key} onChange={(e) => setNewFlag({ ...newFlag, key: e.target.value })} placeholder="ai.invoice-brain" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" dir="ltr" />
+              <input value={newFlag.key} onChange={(e) => setNewFlag({ ...newFlag, key: e.target.value })} placeholder="ai.invoice-brain" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none focus-ring" dir="ltr" />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">التسمية (label)</label>
-              <input value={newFlag.label} onChange={(e) => setNewFlag({ ...newFlag, label: e.target.value })} placeholder="محرك تعلم الفواتير" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" />
+              <input value={newFlag.label} onChange={(e) => setNewFlag({ ...newFlag, label: e.target.value })} placeholder="محرك تعلم الفواتير" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none focus-ring" />
             </div>
             <div className="col-span-full">
               <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">الوصف</label>
-              <input value={newFlag.description} onChange={(e) => setNewFlag({ ...newFlag, description: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" />
+              <input value={newFlag.description} onChange={(e) => setNewFlag({ ...newFlag, description: e.target.value })} className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none focus-ring" />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">الباقات (افصل بفواصل)</label>
-              <input value={newFlag.plans} onChange={(e) => setNewFlag({ ...newFlag, plans: e.target.value })} placeholder="trial, starter, professional" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none" dir="ltr" />
+              <input value={newFlag.plans} onChange={(e) => setNewFlag({ ...newFlag, plans: e.target.value })} placeholder="trial, starter, professional" className="w-full px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-inherit text-[13px] outline-none focus-ring" dir="ltr" />
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">الحالة</label>
@@ -108,14 +108,14 @@ export function FeatureFlagsTab() {
               </select>
             </div>
           </div>
-          <button onClick={create} className="self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer">إنشاء</button>
+          <button onClick={create} className="self-end px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-xs font-bold cursor-pointer active-press">إنشاء</button>
         </div>
       )}
       {flags.length === 0 ? (
         <div className="p-4 md:p-8 text-center text-[var(--muted-foreground)]">لا توجد ميزات بعد</div>
       ) : (
         <div className="garfix-scroll overflow-x-auto">
-          <table className="w-full [border-collapse:collapse]">
+          <table className="w-full [border-collapse:collapse] table-enterprise">
             <thead><tr className="bg-[var(--muted)]">
               <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">المفتاح</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">التسمية</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الباقات</th>
               <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">الحالة</th><th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">إجراءات</th>

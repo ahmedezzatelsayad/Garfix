@@ -42,7 +42,7 @@ const COUNTRIES = [
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -167,7 +167,7 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {returns.length === 0 ? <Empty label="إقرارات VAT" /> : (
           <div className="overflow-x-auto garfix-scroll max-h-[400px]">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الدولة</th><th className={thStyle}>من</th><th className={thStyle}>إلى</th>
                 <th className={cn(thStyle, "text-end")}>VAT مبيعات</th><th className={cn(thStyle, "text-end")}>VAT مشتريات</th>
@@ -175,7 +175,7 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
               </tr></thead>
               <tbody>{returns.map(r => (
                 <tr key={r.id} className="border-b border-border">
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-violet-500/15 text-violet-500">{countryLabel(r.country)}</span></td>
+                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-emerald-600/15 text-emerald-600">{countryLabel(r.country)}</span></td>
                   <td className={tdStyle} dir="ltr">{r.periodFrom}</td><td className={tdStyle} dir="ltr">{r.periodTo}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(r.vatOnSales)}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-emerald-500")}>{fmt(r.vatOnPurchases)}</td>
@@ -233,7 +233,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">أصول غير زكوية</div><div className="text-lg font-extrabold [direction:ltr] text-end text-amber-500">{fmt(result.nonZakatAssets)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">أساس الزكاة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(result.zakatBase)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">نسبة الزكاة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{result.zakatRate}%</div></div>
-            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">مبلغ الزكاة</div><div className="text-xl font-extrabold [direction:ltr] text-end text-violet-500">{fmt(result.zakatAmount)}</div></div>
+            <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">مبلغ الزكاة</div><div className="text-xl font-extrabold [direction:ltr] text-end text-emerald-700">{fmt(result.zakatAmount)}</div></div>
           </div>
           {result.breakdown && Object.keys(result.breakdown).length > 0 && (
             <div className="bg-muted rounded-md p-3 text-[12px]">
@@ -249,7 +249,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {records.length === 0 ? <Empty label="حسابات الزكاة" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>السنة</th><th className={cn(thStyle, "text-end")}>أساس الزكاة</th>
                 <th className={cn(thStyle, "text-end")}>النسبة</th><th className={cn(thStyle, "text-end")}>مبلغ الزكاة</th><th className={thStyle}>الحالة</th>
@@ -259,7 +259,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
                   <td className={tdStyle} dir="ltr">{r.year}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(r.zakatBase)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.zakatRate}%</td>
-                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-violet-500")}>{fmt(r.zakatAmount)}</td>
+                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-700")}>{fmt(r.zakatAmount)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "paid" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{r.status === "paid" ? "مُسدد" : "مُحسب"}</span></td>
                 </tr>
               ))}</tbody>
@@ -286,7 +286,7 @@ function RemindersView({ reminders }: { reminders: FilingReminder[] }) {
         Object.entries(grouped).map(([country, items]) => (
           <div key={country} className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <MapPin size={16} className="text-violet-500" />
+              <MapPin size={16} className="text-emerald-600" />
               <h3 className="text-[14px] font-bold">{COUNTRIES.find(c => c.value === country)?.label || country}</h3>
             </div>
             <div className="flex flex-col gap-2.5">
@@ -333,11 +333,11 @@ function RetentionView({ checks }: { checks: RetentionCheck[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><CheckCircle2 size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">متوافق</div><div className="text-lg font-extrabold">{compliantCount}/{checks.length}</div></div>
         </div>
-        <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><AlertTriangle size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">سجلات في خطر</div><div className="text-lg font-extrabold">{totalRisk}</div></div>
         </div>
@@ -347,11 +347,11 @@ function RetentionView({ checks }: { checks: RetentionCheck[] }) {
         Object.entries(grouped).map(([country, items]) => (
           <div key={country} className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <MapPin size={16} className="text-violet-500" />
+              <MapPin size={16} className="text-emerald-600" />
               <h3 className="text-[14px] font-bold">{COUNTRIES.find(c => c.value === country)?.label || country}</h3>
             </div>
             <div className="overflow-x-auto garfix-scroll">
-              <table className="w-full border-collapse">
+              <table className="table-enterprise w-full border-collapse">
                 <thead><tr className="border-b border-border bg-muted">
                   <th className={thStyle}>التصنيف</th><th className={thStyle}>سنوات مطلوبة</th>
                   <th className={thStyle}>سنوات فعلية</th><th className={cn(thStyle, "text-end")}>سجلات في خطر</th><th className={thStyle}>الامتثال</th>

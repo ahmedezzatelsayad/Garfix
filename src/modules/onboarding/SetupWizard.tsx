@@ -257,12 +257,12 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[linear-gradient(135deg,#0f0a1e_0%,#1e1147_50%,#2d1b69_100%)] text-white flex flex-col"
+      className="min-h-screen bg-[linear-gradient(135deg,#041a0f_0%,#0b1a14_50%,#061210_100%)] text-white flex flex-col"
     >
       {/* Progress bar */}
       <div className="py-5 px-[5%] flex flex-wrap items-center gap-2 border-b border-white/[0.08]">
         <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-9 h-9 rounded-md bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-lg font-black">
+          <div className="w-9 h-9 rounded-md bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center text-lg font-black">
             G
           </div>
           <span className="text-base font-extrabold">إعداد GarfiX</span>
@@ -275,7 +275,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
               className={cn(
                 "h-2 rounded-sm transition-all duration-300",
                 i === step ? "w-8" : "w-2",
-                i <= step ? "bg-[#a78bfa]" : "bg-white/20"
+                i <= step ? "bg-[#10b981]" : "bg-white/20"
               )}
             />
           ))}
@@ -292,7 +292,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
           {/* Step 0: Welcome */}
           {step === 0 && (
             <div className="text-center">
-              <div className="w-20 h-20 rounded-xl bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] inline-flex items-center justify-center text-[40px] mb-6 shadow-[0_16px_48px_rgba(124,58,237,0.4)]">
+              <div className="w-20 h-20 rounded-xl bg-[linear-gradient(135deg,#047857,#10b981)] inline-flex items-center justify-center text-[40px] mb-6 shadow-[0_16px_48px_rgba(4,120,87,0.4)]">
                 <Rocket size={36} />
               </div>
               <h1 className="text-[32px] font-black mb-3">
@@ -305,7 +305,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
               </p>
               <button
                 onClick={next}
-                className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer inline-flex items-center gap-2 shadow-[0_12px_36px_rgba(124,58,237,0.4)] max-md:min-h-[44px]"
+                className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-10 py-4 text-base font-extrabold cursor-pointer inline-flex items-center gap-2 shadow-[0_12px_36px_rgba(4,120,87,0.4)] transition-all duration-150 active-press max-md:min-h-[44px] hover:shadow-[0_16px_44px_rgba(4,120,87,0.5)]"
               >
                 يلا نبدأ <ChevronLeft size={18} />
               </button>
@@ -388,7 +388,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                 <button
                   onClick={createCompany}
                   disabled={saving}
-                  className="bg-[rgba(167,139,250,0.2)] text-[#a78bfa] border border-[rgba(167,139,250,0.3)] rounded-sm px-4 py-2 text-xs font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 max-md:min-h-[44px]"
+                  className="bg-[rgba(16,185,129,0.2)] text-[#10b981] border border-[rgba(16,185,129,0.3)] rounded-sm px-4 py-2 text-xs font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all duration-150 max-md:min-h-[44px] hover:bg-[rgba(16,185,129,0.3)]"
                 >
                   {saving ? "جارٍ..." : "إنشاء الشركة"}
                 </button>
@@ -423,7 +423,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                       await saveProgress(step + 1, {});
                       next();
                     }}
-                    className="p-5 rounded-[14px] bg-white/[0.05] border-2 border-white/[0.08] text-white cursor-pointer text-start transition-all hover:border-[#a78bfa] hover:bg-[rgba(124,58,237,0.15)] max-md:min-h-[44px]"
+                    className="p-5 rounded-[14px] bg-white/[0.05] border-2 border-white/[0.08] text-white cursor-pointer text-start transition-all duration-120 hover:border-[#10b981] hover:bg-[rgba(4,120,87,0.15)] hover-lift max-md:min-h-[44px]"
                   >
                     <div className="text-[28px] mb-2">🌍</div>
                     <div className="text-[15px] font-bold">{c.nameAr}</div>
@@ -451,7 +451,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                     className={cn(
                       "p-5 rounded-[14px] text-white cursor-pointer text-start transition-all border-2 max-md:min-h-[44px]",
                       data.businessType === bt.value
-                        ? "bg-[rgba(124,58,237,0.25)] border-[#a78bfa]"
+                        ? "bg-[rgba(4,120,87,0.25)] border-[#10b981]"
                         : "bg-white/[0.05] border-white/[0.08]"
                     )}
                   >
@@ -513,7 +513,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
               <button
                 onClick={testAI}
                 disabled={aiLoading || !aiTestText.trim()}
-                className="bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-md px-6 py-2.5 text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 inline-flex items-center gap-1.5 max-md:min-h-[44px]"
+                className="bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-md px-6 py-2.5 text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 inline-flex items-center gap-1.5 transition-all duration-150 active-press max-md:min-h-[44px] hover:shadow-[0_8px_24px_rgba(4,120,87,0.4)]"
               >
                 {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 {aiLoading ? "جارٍ التحليل..." : "حلّل بالذكاء"}
@@ -571,7 +571,7 @@ function StepCard({ icon, title, subtitle, children }: {
   return (
     <div>
       <div className="flex items-center gap-3.5 mb-6">
-        <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-[14px] bg-[rgba(124,58,237,0.2)] text-[#a78bfa] flex items-center justify-center">
+        <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-[14px] bg-[rgba(4,120,87,0.2)] text-[#10b981] flex items-center justify-center">
           {icon}
         </div>
         <div>
@@ -592,14 +592,14 @@ function ToggleRow({ icon, label, desc, value, onChange }: {
       className="flex items-center gap-3.5 p-4 rounded-lg mb-2.5 bg-white/[0.05] border border-white/[0.08] cursor-pointer max-md:min-h-[44px]"
       onClick={() => onChange(!value)}
     >
-      <div className={cn(value ? "text-[#a78bfa]" : "text-white/40")}>{icon}</div>
+      <div className={cn(value ? "text-[#10b981]" : "text-white/40")}>{icon}</div>
       <div className="flex-1">
         <div className="text-sm font-bold">{label}</div>
         <div className="text-[11px] text-white/50">{desc}</div>
       </div>
       <div
         className={cn("relative w-10 h-[22px] rounded-[11px] transition-colors duration-200",
-          value ? "bg-violet-600" : "bg-white/15"
+          value ? "bg-emerald-600" : "bg-white/15"
         )}
       >
         <div
@@ -616,7 +616,7 @@ function NavButtons({ onNext, onPrev, nextLabel = "التالي", disabled }: {
   onNext: () => void; onPrev?: () => void; nextLabel?: string; disabled?: boolean;
 }) {
   return (
-    <div className="flex gap-2.5 mt-6 sticky bottom-0 -mx-[5%] px-[5%] py-3 md:py-0 md:static md:mx-0 md:px-0 bg-[#1e1147] md:bg-transparent">
+    <div className="flex gap-2.5 mt-6 sticky bottom-0 -mx-[5%] px-[5%] py-3 md:py-0 md:static md:mx-0 md:px-0 bg-[#0b1a14] md:bg-transparent">
       {onPrev && (
         <button
           onClick={onPrev}
@@ -628,7 +628,7 @@ function NavButtons({ onNext, onPrev, nextLabel = "التالي", disabled }: {
       <button
         onClick={onNext}
         disabled={disabled}
-        className="flex-1 bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white border-none rounded-md px-5 py-3 text-sm font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center justify-center gap-1.5 max-md:min-h-[44px]"
+        className="flex-1 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-md px-5 py-3 text-sm font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 inline-flex items-center justify-center gap-1.5 transition-all duration-150 active-press max-md:min-h-[44px] hover:shadow-[0_8px_24px_rgba(4,120,87,0.4)]"
       >
         {nextLabel} <ChevronLeft size={16} />
       </button>

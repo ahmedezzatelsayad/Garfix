@@ -70,7 +70,7 @@ function getActionColor(action: string): string {
   if (action.includes("login_success")) return "bg-green-500/20 text-green-400 border-green-500/30";
   if (action.includes("login_failure")) return "bg-red-500/20 text-red-400 border-red-500/30";
   if (action.includes("payment")) return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-  if (action.includes("ai")) return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+  if (action.includes("ai")) return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
   return "bg-white/10 text-white/60 border-white/20";
 }
 
@@ -225,7 +225,7 @@ export function EnhancedAuditView() {
       </div>
 
       {/* ── Filters ────────────────────────────────────────────────── */}
-      <Card>
+      <Card className="hover-lift">
         <CardContent className="pt-4 pb-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -270,7 +270,7 @@ export function EnhancedAuditView() {
                 placeholder="بحث بالبريد الإلكتروني..."
                 value={filters.userEmail}
                 onChange={(e) => setFilters((f) => ({ ...f, userEmail: e.target.value }))}
-                className="ps-9"
+                className="ps-9 focus-ring"
                 dir="ltr"
               />
             </div>
@@ -279,14 +279,14 @@ export function EnhancedAuditView() {
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
-              className="w-full sm:w-[140px]"
+              className="w-full sm:w-[140px] focus-ring"
               placeholder="من تاريخ"
             />
             <Input
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
-              className="w-full sm:w-[140px]"
+              className="w-full sm:w-[140px] focus-ring"
               placeholder="إلى تاريخ"
             />
 
@@ -301,7 +301,7 @@ export function EnhancedAuditView() {
       </Card>
 
       {/* ── Table ──────────────────────────────────────────────────── */}
-      <Card>
+      <Card className="hover-lift">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="py-12 text-center text-[var(--muted-foreground)]">
@@ -320,7 +320,7 @@ export function EnhancedAuditView() {
             </div>
           ) : (
             <div className="overflow-x-auto garfix-scroll">
-              <Table>
+              <Table className="table-enterprise">
                 <TableHeader>
                   <TableRow className="bg-[var(--muted)]">
                     <TableHead className="text-right text-[11px] font-bold">

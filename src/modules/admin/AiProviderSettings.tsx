@@ -57,7 +57,7 @@ function makeInitialCardState(p: ProviderInfo): CardState {
 }
 
 const labelCls = "block text-[11px] font-bold text-muted-foreground mb-1";
-const inputCls = "w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground font-[inherit] text-xs outline-none";
+const inputCls = "w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground font-[inherit] text-xs outline-none focus-ring";
 
 export function AiProviderSettings() {
   const providersQuery = useAIProviders();
@@ -191,8 +191,8 @@ export function AiProviderSettings() {
             <div
               key={p.type}
               className={cn(
-                "bg-card rounded-[14px] p-3 sm:p-[18px] flex flex-col gap-3 transition-all duration-200",
-                p.isEnabled ? "border border-purple-500/35 opacity-100 shadow-[0_4px_16px_rgba(124,58,237,0.08)]" : "border border-border opacity-[0.85] shadow-none"
+                "bg-card rounded-[14px] p-3 sm:p-[18px] flex flex-col gap-3 transition-all duration-200 ai-card hover-lift",
+                p.isEnabled ? "border border-emerald-500/35 opacity-100 shadow-[0_4px_16px_rgba(16,185,129,0.08)]" : "border border-border opacity-[0.85] shadow-none"
               )}
             >
               {/* Header row */}
@@ -200,7 +200,7 @@ export function AiProviderSettings() {
                 <div
                   className={cn(
                     "w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0",
-                    p.isEnabled ? "bg-gradient-to-br from-violet-600 to-violet-400 text-white" : "bg-muted text-muted-foreground"
+                    p.isEnabled ? "bg-gradient-to-br from-emerald-600 to-emerald-400 text-white" : "bg-muted text-muted-foreground"
                   )}
                 >
                   <img src="/logo.svg" alt="" className="w-5 h-5 rounded" />
@@ -339,7 +339,7 @@ export function AiProviderSettings() {
                   onClick={() => test(p)}
                   disabled={c.testState === "testing"}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[9px] bg-muted text-foreground border border-border font-[inherit] text-xs font-bold",
+                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[9px] bg-muted text-foreground border border-border font-[inherit] text-xs font-bold active-press",
                     c.testState === "testing" ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                   )}
                 >
@@ -350,8 +350,8 @@ export function AiProviderSettings() {
                   onClick={() => save(p)}
                   disabled={c.saving || !c.dirty}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[9px] flex-1 font-[inherit] text-xs font-bold transition-all duration-200",
-                    c.dirty ? "bg-gradient-to-br from-violet-600 to-violet-400 text-white border-none shadow-[0_4px_12px_rgba(124,58,237,0.25)]" : "bg-muted text-muted-foreground border border-border shadow-none",
+                    "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[9px] flex-1 font-[inherit] text-xs font-bold transition-all duration-200 active-press",
+                    c.dirty ? "bg-gradient-to-br from-emerald-600 to-emerald-400 text-white border-none shadow-[0_4px_12px_rgba(16,185,129,0.25)]" : "bg-muted text-muted-foreground border border-border shadow-none",
                     c.saving ? "opacity-70 cursor-not-allowed" : (c.dirty ? "cursor-pointer" : "cursor-not-allowed")
                   )}
                 >

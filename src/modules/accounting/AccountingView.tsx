@@ -243,7 +243,7 @@ export function AccountingView() {
   const ACCOUNT_TYPES: Record<string, { label: string; color: string; badge: string }> = {
     asset: { label: "أصول", color: "#10b981", badge: "bg-emerald-500/15 text-emerald-500" },
     liability: { label: "خصوم", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
-    equity: { label: "حقوق ملكية", color: "#7c3aed", badge: "bg-violet-500/15 text-violet-500" },
+    equity: { label: "حقوق ملكية", color: "#047857", badge: "bg-emerald-600/15 text-emerald-600" },
     revenue: { label: "إيرادات", color: "#3b82f6", badge: "bg-blue-500/15 text-blue-500" },
     expense: { label: "مصروفات", color: "#f59e0b", badge: "bg-amber-500/15 text-amber-500" },
     contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
@@ -383,7 +383,7 @@ export function AccountingView() {
                   <>
                     <div className="overflow-x-auto garfix-scroll">
                       {tab === "accounts" ? (
-                        <table className="w-full border-collapse">
+                        <table className="table-enterprise w-full border-collapse">
                           <thead><tr className="border-b border-border bg-muted">
                             <th className={thCheck}><input type="checkbox" checked={selectedIds.size === pageItems.length && pageItems.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
                             <th className={thStyle}>الكود</th><th className={thStyle}>الاسم</th><th className={thStyle}>النوع</th>
@@ -408,7 +408,7 @@ export function AccountingView() {
                           </tbody>
                         </table>
                       ) : (
-                        <table className="w-full border-collapse">
+                        <table className="table-enterprise w-full border-collapse">
                           <thead><tr className="border-b border-border bg-muted">
                             <th className={thCheck}><input type="checkbox" checked={selectedIds.size === pageItems.length && pageItems.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" /></th>
                             <th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th>
@@ -549,7 +549,7 @@ function FinancialDashboardApiView() {
     { label: "المصروفات", value: metrics.expenses, color: "#f59e0b", icon: <TrendingDown size={18} />, trend: metrics.trends.expenseChange },
     { label: "صافي الربح", value: metrics.netProfit, color: metrics.netProfit >= 0 ? "#10b981" : "#ef4444", icon: <DollarSign size={18} />, trend: metrics.trends.profitChange },
     { label: "النقدية", value: metrics.cashPosition, color: "#10b981", icon: <Wallet size={18} />, trend: metrics.trends.cashChange },
-    { label: "الذمم المدينة", value: metrics.accountsReceivable, color: "#7c3aed", icon: <ArrowUpDown size={18} />, trend: null },
+    { label: "الذمم المدينة", value: metrics.accountsReceivable, color: "#047857", icon: <ArrowUpDown size={18} />, trend: null },
     { label: "الذمم الدائنة", value: metrics.accountsPayable, color: "#f59e0b", icon: <ArrowUpDown size={18} />, trend: null },
     { label: "قيمة المخزون", value: metrics.inventoryValue, color: "#3b82f6", icon: <Package size={18} />, trend: null },
   ];
@@ -622,7 +622,7 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
     { label: "إجمالي الأصول", value: totalAssets, color: "#3b82f6", icon: <Scale size={18} /> },
     { label: "الخصوم", value: totalLiabilities, color: "#ef4444", icon: <TrendingDown size={18} /> },
     { label: "النقدية", value: totalCash, color: "#10b981", icon: <Wallet size={18} /> },
-    { label: "الذمم المدينة", value: totalAR, color: "#7c3aed", icon: <ArrowUpDown size={18} /> },
+    { label: "الذمم المدينة", value: totalAR, color: "#047857", icon: <ArrowUpDown size={18} /> },
     { label: "الذمم الدائنة", value: totalAP, color: "#f59e0b", icon: <ArrowUpDown size={18} /> },
   ];
   return (
@@ -660,7 +660,7 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
 
 function DashboardCard({ label, value, color, icon, trend }: { label: string; value: string; color: string; icon: React.ReactNode; trend?: string }) {
   return (
-    <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+    <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
       <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center shrink-0", iconBadge)}>{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="text-[11px] text-muted-foreground">{label}</div>
@@ -708,7 +708,7 @@ function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPe
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       {periods.length === 0 ? <Empty label="فترات مالية" /> : (
         <div className="overflow-x-auto garfix-scroll">
-          <table className="w-full border-collapse">
+          <table className="table-enterprise w-full border-collapse">
             <thead><tr className="border-b border-border bg-muted">
               <th className={thStyle}>الاسم</th><th className={thStyle}>البداية</th><th className={thStyle}>النهاية</th>
               <th className={thStyle}>الحالة</th><th className={thStyle}>تاريخ القفل</th><th className={thStyle}>إجراء</th>
@@ -777,7 +777,7 @@ function CostCentersTable({ costCenters }: { costCenters: CostCenter[] }) {
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       {costCenters.length === 0 ? <Empty label="مراكز التكلفة" /> : (
         <div className="overflow-x-auto garfix-scroll">
-          <table className="w-full border-collapse">
+          <table className="table-enterprise w-full border-collapse">
             <thead><tr className="border-b border-border bg-muted">
               <th className={thStyle}>الكود</th><th className={thStyle}>الاسم</th><th className={thStyle}>النوع</th>
               <th className={cn(thStyle, "text-end")}>الموازنة</th><th className={cn(thStyle, "text-end")}>الفعلي</th><th className={cn(thStyle, "text-end")}>الفرق</th>
@@ -863,12 +863,12 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
         <button onClick={() => setMode("payable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", mode === "payable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم دائنة (التزامات)</button>
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <DashboardCard label={mode === "receivable" ? "إجمالي الذمم المدينة" : "إجمالي الذمم الدائنة"} value={fmt(mode === "receivable" ? totalAR : totalAP)} color={mode === "receivable" ? "#7c3aed" : "#f59e0b"} icon={<ArrowUpDown size={18} />} />
+        <DashboardCard label={mode === "receivable" ? "إجمالي الذمم المدينة" : "إجمالي الذمم الدائنة"} value={fmt(mode === "receivable" ? totalAR : totalAP)} color={mode === "receivable" ? "#047857" : "#f59e0b"} icon={<ArrowUpDown size={18} />} />
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {data.length === 0 ? <Empty label="بيانات التقادم" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الفترة</th><th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>عدد الحركات</th><th className={cn(thStyle, "text-end")}>النسبة</th>
               </tr></thead>
@@ -880,7 +880,7 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
                   return (
                     <tr key={i} className="border-b border-border">
                       <td className={cn(tdStyle, "font-bold")}>{b.range}</td>
-                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", val > 0 ? (mode === "receivable" ? "text-violet-500" : "text-amber-500") : "text-emerald-500")}>{fmt(val)}</td>
+                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", val > 0 ? (mode === "receivable" ? "text-emerald-700" : "text-amber-500") : "text-emerald-500")}>{fmt(val)}</td>
                       <td className={tdStyle}>{b.count}</td>
                       <td className={cn(tdStyle, "text-end")}>{pct}%</td>
                     </tr>
@@ -890,7 +890,7 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted font-extrabold">
                   <td className={cn(tdStyle, "font-extrabold")}>الإجمالي</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", mode === "receivable" ? "text-violet-500" : "text-amber-500")}>{fmt(mode === "receivable" ? totalAR : totalAP)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", mode === "receivable" ? "text-emerald-700" : "text-amber-500")}>{fmt(mode === "receivable" ? totalAR : totalAP)}</td>
                   <td className={cn(tdStyle, "font-extrabold")}>{data.reduce((s, b) => s + b.count, 0)}</td>
                   <td className={cn(tdStyle, "font-extrabold text-end")}>100%</td>
                 </tr>
@@ -911,7 +911,7 @@ function BankAccountsList({ accounts, company, onRefresh }: { accounts: BankAcco
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       {accounts.length === 0 ? <Empty label="حسابات بنكية" /> : (
         <div className="overflow-x-auto garfix-scroll">
-          <table className="w-full border-collapse">
+          <table className="table-enterprise w-full border-collapse">
             <thead><tr className="border-b border-border bg-muted">
               <th className={thStyle}>البنك</th><th className={thStyle}>اسم الحساب</th><th className={thStyle}>رقم الحساب</th>
               <th className={thStyle}>IBAN</th><th className={thStyle}>العملة</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
@@ -996,7 +996,7 @@ function TrialBalanceTable({ data, loading }: { data: { accounts?: TrialRow[]; g
   return (
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       <div className="overflow-x-auto garfix-scroll">
-        <table className="w-full border-collapse">
+        <table className="table-enterprise w-full border-collapse">
           <thead><tr className="border-b border-border bg-muted">
             <th className={thStyle}>الكود</th><th className={thStyle}>الحساب</th><th className={thStyle}>النوع</th>
             <th className={cn(thStyle, "text-end")}>مدين</th><th className={cn(thStyle, "text-end")}>دائن</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
@@ -1037,7 +1037,7 @@ const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const thCheck = "w-10 text-center py-2.5 px-2 text-[11px] text-muted-foreground font-bold";
 const tdCheck = (checked: boolean): string => `py-2.5 px-2 text-center ${checked ? "bg-accent" : "bg-transparent"}`;
 const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const iconBadge = "bg-muted";
 const sectionBadge = "bg-muted";
@@ -1199,7 +1199,7 @@ function ProfitLossView({ data }: { data: ProfitLossData }) {
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         <div className="overflow-x-auto garfix-scroll">
-          <table className="w-full border-collapse">
+          <table className="table-enterprise w-full border-collapse">
             <thead><tr className="border-b border-border bg-muted"><th className={thStyle}>الكود</th><th className={thStyle}>الحساب</th><th className={thStyle}>النوع</th><th className={cn(thStyle, "text-end")}>المبلغ</th></tr></thead>
             <tbody>
               {data.accounts.length === 0 ? <tr><td colSpan={4} className={cn(tdStyle, "text-center p-8 text-muted-foreground")}>لا توجد قيود مُرحّلة في هذه الفترة</td></tr> : data.accounts.map((a) => (
@@ -1223,7 +1223,7 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <StatementCard label="إجمالي الأصول" value={data.assets.total} color="#10b981" icon={<TrendingUp size={16} />} />
         <StatementCard label="إجمالي الخصوم" value={data.liabilities.total} color="#f59e0b" icon={<TrendingDown size={16} />} />
-        <StatementCard label="حقوق الملكية" value={data.equity.total} color="#7c3aed" icon={<Scale size={16} />} />
+        <StatementCard label="حقوق الملكية" value={data.equity.total} color="#047857" icon={<Scale size={16} />} />
         <StatementCard label="الخصوم + الملكية" value={data.totalLiabilitiesAndEquity} color={data.isBalanced ? "#10b981" : "#ef4444"} icon={<Scale size={16} />} />
       </div>
       <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
@@ -1233,7 +1233,7 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
         <BalanceSheetSection title="الأصول" accounts={data.assets.accounts} total={data.assets.total} color="#10b981" />
         <BalanceSheetSection title="الخصوم" accounts={data.liabilities.accounts} total={data.liabilities.total} color="#f59e0b" />
-        <BalanceSheetSection title="حقوق الملكية" accounts={data.equity.accounts} total={data.equity.total} color="#7c3aed" />
+        <BalanceSheetSection title="حقوق الملكية" accounts={data.equity.accounts} total={data.equity.total} color="#047857" />
       </div>
     </>
   );
@@ -1244,7 +1244,7 @@ function BalanceSheetSection({ title, accounts, total, color }: { title: string;
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px]", sectionBadge)}>{title}</div>
       <div className="overflow-x-auto garfix-scroll">
-        <table className="w-full border-collapse">
+        <table className="table-enterprise w-full border-collapse">
           <tbody>
             {accounts.length === 0 ? <tr><td className={cn(tdStyle, "text-center p-5 text-muted-foreground")}>لا توجد حسابات</td></tr> : accounts.map((a) => (
               <tr key={a.code} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{a.code}</td><td className={cn(tdStyle, "font-semibold")}>{a.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold", sectionText)}>{fmt(a.balance)}</td></tr>
@@ -1272,7 +1272,7 @@ function CashFlowView({ data }: { data: CashFlowData }) {
       </div>
       <CashFlowSection title="الأنشطة التشغيلية" details={data.operating.details} net={data.operating.net} color="#10b981" />
       <CashFlowSection title="الأنشطة الاستثمارية" details={data.investing.details} net={data.investing.net} color="#3b82f6" />
-      <CashFlowSection title="الأنشطة التمويلية" details={data.financing.details} net={data.financing.net} color="#7c3aed" />
+      <CashFlowSection title="الأنشطة التمويلية" details={data.financing.details} net={data.financing.net} color="#047857" />
     </>
   );
 }
@@ -1284,7 +1284,7 @@ function CashFlowSection({ title, details, net, color }: { title: string; detail
         <span>{title}</span><span className={cn("[direction:ltr]", net >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(net)}</span>
       </div>
       <div className="overflow-x-auto garfix-scroll">
-        <table className="w-full border-collapse">
+        <table className="table-enterprise w-full border-collapse">
           <tbody>
             {details.length === 0 ? <tr><td className={cn(tdStyle, "text-center p-5 text-muted-foreground")}>لا توجد حركات</td></tr> : details.map((d, i) => (
               <tr key={`${d.code}-${i}`} className="border-b border-border"><td className={cn(tdStyle, "font-mono text-[11px]")}>{d.code}</td><td className={cn(tdStyle, "font-semibold")}>{d.nameAr}</td><td className={cn(tdStyle, "[direction:ltr] text-start font-bold", d.amount >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(d.amount)}</td></tr>

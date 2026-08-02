@@ -58,7 +58,7 @@ export function BackupsTab() {
   const backupTdClass = "px-3 py-2.5 text-[13px] border-b border-b-[var(--border)] align-middle";
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden hover-lift">
       <div className="px-5 py-4 border-b border-b-[var(--border)] flex justify-between items-center gap-3 flex-wrap">
         <div>
           <h3 className="text-[15px] font-bold flex items-center gap-2">
@@ -71,7 +71,7 @@ export function BackupsTab() {
         <button
           onClick={() => setConfirmingTrigger(true)}
           disabled={triggering}
-          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[13px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] bg-[var(--primary)] text-[var(--primary-foreground)] border-none font-inherit text-[13px] font-bold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 active-press"
         >
           {triggering ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           {triggering ? "جارٍ الإنشاء…" : "نسخة احتياطية جديدة"}
@@ -89,7 +89,7 @@ export function BackupsTab() {
         </div>
       ) : (
         <div className="garfix-scroll overflow-x-auto">
-          <table className="w-full [border-collapse:collapse]">
+          <table className="w-full [border-collapse:collapse] table-enterprise">
             <thead>
               <tr>
                 <th scope="col" className={backupThClass}>اسم الملف</th>
@@ -119,7 +119,7 @@ export function BackupsTab() {
  onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-3.5">
-              <div className="w-10 h-10 rounded-full bg-violet-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-emerald-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
                 <HardDriveDownload size={18} />
               </div>
               <div>
@@ -133,14 +133,14 @@ export function BackupsTab() {
               <button
                 onClick={() => setConfirmingTrigger(false)}
                 disabled={triggering}
-                className="px-4 py-2 rounded-lg border border-[var(--border)] bg-transparent text-[var(--foreground)] font-inherit text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg border border-[var(--border)] bg-transparent text-[var(--foreground)] font-inherit text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed active-press"
               >
                 إلغاء
               </button>
               <button
                 onClick={triggerBackup}
                 disabled={triggering}
-                className="px-4 py-2 rounded-lg border-none bg-[var(--primary)] text-[var(--primary-foreground)] font-inherit text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+                className="px-4 py-2 rounded-lg border-none bg-[var(--primary)] text-[var(--primary-foreground)] font-inherit text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 active-press"
               >
                 {triggering ? <Loader2 size={14} className="animate-spin" /> : <HardDriveDownload size={14} />}
                 {triggering ? "جارٍ…" : "تأكيد الإنشاء"}

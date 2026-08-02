@@ -26,7 +26,7 @@ type Tab = "accounts" | "reconciliation" | "import" | "transfer";
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -63,7 +63,7 @@ export function BankingView() {
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Landmark size={20} /> البنوك</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
         {(tab === "accounts" || tab === "transfer") && !showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> إضافة</button>
         )}
       </div>
       <div className="flex gap-1.5 flex-wrap">
@@ -78,19 +78,19 @@ export function BankingView() {
         showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankAccountsQuery.refetch(); }} /> : (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-              <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+              <div className="kpi-card-gold bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
                 <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</div></div>
               </div>
-              <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><FileText size={18} /></div>
+              <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
               </div>
             </div>
             <div className="bg-card rounded-[14px] border border-border overflow-hidden">
               {bankAccounts.length === 0 ? <Empty label="حسابات بنكية" /> : (
                 <div className="overflow-x-auto garfix-scroll">
-                  <table className="w-full border-collapse">
+                  <table className="table-enterprise w-full border-collapse">
                     <thead><tr className="border-b border-border bg-muted">
                       <th className={thStyle}>البنك</th><th className={thStyle}>اسم الحساب</th><th className={thStyle}>رقم الحساب</th>
                       <th className={thStyle}>IBAN</th><th className={thStyle}>العملة</th><th className={thStyle}>النوع</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
@@ -129,7 +129,7 @@ export function BankingView() {
           <div className="bg-card rounded-[14px] border border-border overflow-hidden">
             {transfers.length === 0 ? <Empty label="تحويلات" /> : (
               <div className="overflow-x-auto garfix-scroll">
-                <table className="w-full border-collapse">
+                <table className="table-enterprise w-full border-collapse">
                   <thead><tr className="border-b border-border bg-muted">
                     <th className={thStyle}>المرجع</th><th className={thStyle}>من حساب</th><th className={thStyle}>إلى حساب</th>
                     <th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>العملة</th><th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th><th className={thStyle}>الحالة</th>
@@ -305,7 +305,7 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
             <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalDiff)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-violet-500/20 text-violet-500"><CheckCircle2 size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-700/20 text-emerald-700"><CheckCircle2 size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span className="text-emerald-500">{matchedCount}</span> / <span className="text-amber-500">{unmatchedCount}</span></div></div>
           </div>
         </div>
@@ -314,7 +314,7 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {!selectedAccountId ? <div className="p-12 text-center text-muted-foreground">اختر حساب بنكي لعرض عناصر المطابقة</div> : items.length === 0 ? <Empty label="عناصر المطابقة" /> : (
           <div className="overflow-x-auto garfix-scroll">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th>
                 <th className={cn(thStyle, "text-end")}>البنك</th><th className={cn(thStyle, "text-end")}>الكتب</th><th className={cn(thStyle, "text-end")}>الفرق</th>

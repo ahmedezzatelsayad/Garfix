@@ -73,7 +73,7 @@ const TRIGGER_LABELS: Record<string, { label: string; color: string; bg: string;
   invoice_created: { label: "عند إنشاء فاتورة", color: "#3b82f6", bg: "#3b82f622", icon: "📄" },
   stock_low: { label: "عند انخفاض المخزون", color: "#f59e0b", bg: "#f59e0b22", icon: "📦" },
   payment_overdue: { label: "عند تأخر السداد", color: "#ef4444", bg: "#ef444422", icon: "⏰" },
-  new_customer: { label: "عميل جديد", color: "#8b5cf6", bg: "#8b5cf622", icon: "👤" },
+  new_customer: { label: "عميل جديد", color: "#047857", bg: "#04785722", icon: "👤" },
   task_overdue: { label: "مهمة متأخرة", color: "#ec4899", bg: "#ec489922", icon: "📋" },
 };
 

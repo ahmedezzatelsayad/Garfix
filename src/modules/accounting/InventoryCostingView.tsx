@@ -48,7 +48,7 @@ const COSTING_METHODS: Record<string, string> = {
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -85,7 +85,7 @@ export function InventoryCostingView() {
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Package size={20} /> تكلفة المخزون</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
         {tab === "landed-cost" && !showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer"><Plus size={16} /> إضافة</button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> إضافة</button>
         )}
       </div>
       <div className="flex gap-1.5 flex-wrap">
@@ -124,14 +124,14 @@ function ValuationView({ items, totalValue, company, onRefresh }: {
         </div>
         <button onClick={handleFilter} className="py-2 px-4 rounded-sm bg-primary text-primary-foreground border-none text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5"><Calendar size={14} /> تطبيق</button>
       </div>
-      <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+      <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
         <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
         <div><div className="text-[11px] text-muted-foreground">إجمالي قيمة المخزون</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalValue)}</div></div>
       </div>
       <div className="bg-card rounded-[14px] border border-border overflow-hidden">
         {items.length === 0 ? <Empty label="تقييم المخزون" /> : (
           <div className="overflow-x-auto garfix-scroll max-h-[500px]">
-            <table className="w-full border-collapse">
+            <table className="table-enterprise w-full border-collapse">
               <thead><tr className="border-b border-border bg-muted">
                 <th className={thStyle}>الكود</th><th className={thStyle}>المنتج</th><th className={thStyle}>الكمية</th>
                 <th className={cn(thStyle, "text-end")}>تكلفة الوحدة</th><th className={cn(thStyle, "text-end")}>القيمة</th><th className={thStyle}>الطريقة</th>
@@ -143,7 +143,7 @@ function ValuationView({ items, totalValue, company, onRefresh }: {
                   <td className={tdStyle}>{v.quantity}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(v.unitCost)}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-500")}>{fmt(v.totalValue)}</td>
-                  <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-violet-500/15 text-violet-500">{COSTING_METHODS[v.costingMethod] || v.costingMethod}</span></td>
+                  <td className={tdStyle}><span className="py-0.5 px-2 rounded-[8px] text-[10px] font-bold bg-emerald-600/15 text-emerald-600">{COSTING_METHODS[v.costingMethod] || v.costingMethod}</span></td>
                 </tr>
               ))}</tbody>
               <tfoot>
@@ -212,7 +212,7 @@ function COGSView({ result, setResult, company, valuation }: {
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">تكلفة الوحدة</div><div className="text-lg font-extrabold [direction:ltr] text-end text-amber-500">{fmt(result.cogsPerUnit)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">إجمالي COGS</div><div className="text-xl font-extrabold [direction:ltr] text-end text-red-500">{fmt(result.totalCOGS)}</div></div>
           </div>
-          <div className="text-[12px] text-muted-foreground">طريقة التكلفة: <span className="font-bold text-violet-500">{COSTING_METHODS[result.method] || result.method}</span></div>
+          <div className="text-[12px] text-muted-foreground">طريقة التكلفة: <span className="font-bold text-emerald-600">{COSTING_METHODS[result.method] || result.method}</span></div>
         </div>
       )}
     </div>
@@ -230,7 +230,7 @@ function LandedCostView({ items }: { items: LandedCostItem[] }) {
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       {items.length === 0 ? <Empty label="تكاليف واقعية" /> : (
         <div className="overflow-x-auto garfix-scroll">
-          <table className="w-full border-collapse">
+          <table className="table-enterprise w-full border-collapse">
             <thead><tr className="border-b border-border bg-muted">
               <th className={thStyle}>فاتورة الشراء</th><th className={thStyle}>نوع التكلفة</th>
               <th className={cn(thStyle, "text-end")}>إجمالي التكلفة</th><th className={thStyle}>طريقة التخصيم</th><th className={thStyle}>الحالة</th><th className={thStyle}>تاريخ</th>

@@ -18,7 +18,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   residence_expiring: { label: "إقامة تنتهي", color: "#f59e0b" },
   low_stock: { label: "نقص مخزون", color: "#3b82f6" },
   payment_received: { label: "دفعة مستلمة", color: "#10b981" },
-  general: { label: "عام", color: "#7c3aed" },
+  general: { label: "عام", color: "#047857" },
 };
 
 function timeAgo(iso: string): string {
@@ -152,7 +152,7 @@ export function NotificationsDropdown() {
               </div>
             ) : (
               notifications.map((n) => {
-                const meta = TYPE_LABELS[n.type] || { label: n.type, color: "#7c3aed" };
+                const meta = TYPE_LABELS[n.type] || { label: n.type, color: "#047857" };
                 return (
                   <button
                     key={n.id}
