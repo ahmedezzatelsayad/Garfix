@@ -296,3 +296,30 @@ export type {
   ToggleVariant,
   ToggleSize,
 } from './theme'
+
+// ── 9. AI Personalization Components ───────────────────────────────
+
+export {
+  AIPersonalizationProvider,
+  useAIPersonalization,
+  GarfixAIInsights,
+  GarfixInsightCard,
+  GarfixSmartRecommendations,
+  GarfixPersonalizedActions,
+  GarfixAILearningProgress,
+} from './ai'
+
+export type {
+  AIPersonalizationProviderProps,
+  AIPersonalizationContextValue,
+  UserProfile,
+  UserPreferences,
+  AIInsight,
+  Recommendation,
+  AdaptiveUIState,
+  GarfixAIInsightsProps,
+  GarfixInsightCardProps,
+  GarfixSmartRecommendationsProps,
+  GarfixPersonalizedActionsProps,
+  GarfixAILearningProgressProps,
+} from './ai'
