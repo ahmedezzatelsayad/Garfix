@@ -1,0 +1,909 @@
+     1→/**
+     2→ * dashboard.ts — React Query hooks for dashboard, companies, notifications,
+     3→ * audit, backups, purchases, reports, feature flags, and modules.
+     4→ *
+     5→ * Provides typed query and mutation hooks for the main dashboard view and
+     6→ * supporting data. All hooks use the centralized `queryKeys` factory for
+     7→ * granular cache invalidation and the typed `apiGet`/`apiPost`/`apiPatch`/
+     8→ * `apiDelete` helpers for consistent requests.
+     9→ */
+    10→"use client";
+    11→
+    12→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+    13→import { apiGet, apiPost, apiPatch, apiDelete, apiDownloadBlob, ApiError } from "@/hooks/api-client";
+    14→import { queryKeys } from "@/hooks/query-keys";
+    15→
+    16→// ─── Types ──────────────────────────────────────────────────────────────────
+    17→
+    18→/** Shape of the accounting dashboard data returned by the API. */
+    19→export interface AccountingDashboardData {
+    20→  financial: {
+    21→    totalRevenue: number;
+    22→    totalExpenses: number;
+    23→    netProfit: number;
+    24→    totalAROutstanding: number;
+    25→    totalAPOutstanding: number;
+    26→    inventoryValue: number;
+    27→    topProducts: {
+    28→      productId: string;
+    29→      productName: string;
+    30→      sku: string;
+    31→      totalQuantity: number;
+    32→      unitPrice: number;
+    33→      totalValue: number;
+    34→      purchasePrice: number;
+    35→    }[];
+    36→    recentTransactions: {
+    37→      id: string;
+    38→      number: string;
+    39→      date: string;
+    40→      amount: number;
+    41→      type: string;
+    42→      status: string;
+    43→      description: string | null;
+    44→    }[];
+    45→    arBreakdown: {
+    46→      current: number;
+    47→      overdue30: number;
+    48→      overdue60: number;
+    49→      overdue90: number;
+    50→      total: number;
+    51→    };
+    52→    apBreakdown: {
+    53→      current: number;
+    54→      overdue30: number;
+    55→      overdue60: number;
+    56→      overdue90: number;
+    57→      total: number;
+    58→    };
+    59→  };
+    60→  ar: {
+    61→    clientId: string;
+    62→    clientName: string;
+    63→    clientCode: string;
+    64→    totalOutstanding: number;
+    65→    totalOverdue: number;
+    66→    totalReceived: number;
+    67→  }[];
+    68→  ap: {
+    69→    supplierId: string;
+    70→    supplierName: string;
+    71→    supplierCode: string;
+    72→    totalOutstanding: number;
+    73→    totalOverdue: number;
+    74→    totalPaid: number;
+    75→  }[];
+    76→  tradeFinance: {
+    77→    totalLCAmount: number;
+    78→    activeLCs: number;
+    79→    expiredLCs: number;
+    80→    lcByType: { import: number; export: number };
+    81→    lcByStatus: Record<string, number>;
+    82→    productCosts: {
+    83→      productId: string;
+    84→      productName: string;
+    85→      sku: string;
+    86→      purchasePrice: number;
+    87→      sellingPrice: number;
+    88→      margin: number;
+    89→      quantityOnHand: number;
+    90→      totalInventoryCost: number;
+    91→    }[];
+    92→    totalProductCost: number;
+    93→  };
+    94→}
+    95→
+    96→/** Shape of the dashboard statistics returned by the API. */
+    97→export interface DashboardStats {
+    98→  totalRevenue: number;
+    99→  outstanding: number;
+   100→  totalClients: number;
+   101→  totalInvoices: number;
+   102→  paidCount: number;
+   103→  overdueCount: number;
+   104→  totalPaid: number;
+   105→  totalOutstanding: number;
+   106→  clientsCount: number;
+   107→  byStatus: Record<string, number>;
+   108→  monthly: Array<{ month: string; revenue: number; count: number }>;
+   109→  recent: Array<{
+   110→    id: number; invoiceNumber: string; clientName: string; status: string;
+   111→    total: number; paid: number; issueDate: string; companySlug: string;
+   112→  }>;
+   113→}
+   114→
+   115→/** Shape of a notification record returned by the API. */
+   116→export interface Notification {
+   117→  id: number;
+   118→  title: string;
+   119→  message: string;
+   120→  read: boolean;
+   121→  isRead: boolean;
+   122→  companySlug: string;
+   123→  type: string;
+   124→  body: string;
+   125→  link: string | null;
+   126→  createdAt: string;
+   127→  readAt: string | null;
+   128→  userUid: string;
+   129→}
+   130→
+   131→/** Shape of an audit log entry returned by the API. */
+   132→export interface AuditLogEntry {
+   133→  id: number;
+   134→  action: string;
+   135→  actor: string;
+   136→  target: string;
+   137→  timestamp: string;
+   138→  companySlug: string;
+   139→  [key: string]: unknown;
+   140→}
+   141→
+   142→/** Shape of a backup record returned by the API. */
+   143→export interface Backup {
+   144→  id: number;
+   145→  filename: string;
+   146→  size: number;
+   147→  createdAt: string;
+   148→  companySlug: string;
+   149→  [key: string]: unknown;
+   150→}
+   151→
+   152→/** Shape of a company record returned by the API. */
+   153→export interface Company {
+   154→  slug: string;
+   155→  name: string;
+   156→  [key: string]: unknown;
+   157→}
+   158→
+   159→/** Shape of a company member record returned by the API. */
+   160→export interface CompanyMember {
+   161→  uid: string;
+   162→  name: string;
+   163→  email: string;
+   164→  role: string;
+   165→  [key: string]: unknown;
+   166→}
+   167→
+   168→/** Shape of a purchase record returned by the API. */
+   169→export interface Purchase {
+   170→  id: number;
+   171→  description: string;
+   172→  amount: number;
+   173→  date: string;
+   174→  companySlug: string;
+   175→  [key: string]: unknown;
+   176→}
+   177→
+   178→/** Shape of a report record returned by the API. */
+   179→export interface Report {
+   180→  id: number;
+   181→  title: string;
+   182→  type: string;
+   183→  createdAt: string;
+   184→  companySlug: string;
+   185→  [key: string]: unknown;
+   186→}
+   187→
+   188→/** Shape of a feature flag returned by the API. */
+   189→export interface FeatureFlag {
+   190→  key: string;
+   191→  enabled: boolean;
+   192→  description?: string;
+   193→  [key: string]: unknown;
+   194→}
+   195→
+   196→/** Shape of a module record returned by the API. */
+   197→export interface Module {
+   198→  id: string;
+   199→  name: string;
+   200→  enabled: boolean;
+   201→  [key: string]: unknown;
+   202→}
+   203→
+   204→/** Payload for creating a new company. */
+   205→export interface CreateCompanyPayload {
+   206→  name: string;
+   207→  slug: string;
+   208→  [key: string]: unknown;
+   209→}
+   210→
+   211→/** Payload for updating an existing company. */
+   212→export interface UpdateCompanyPayload {
+   213→  slug: string;
+   214→  name?: string;
+   215→  [key: string]: unknown;
+   216→}
+   217→
+   218→/** Payload for adding a member to a company. */
+   219→export interface AddCompanyMemberPayload {
+   220→  slug: string;
+   221→  uid: string;
+   222→  role: string;
+   223→  [key: string]: unknown;
+   224→}
+   225→
+   226→/** Payload for updating a company member's role. */
+   227→export interface UpdateCompanyMemberPayload {
+   228→  slug: string;
+   229→  uid: string;
+   230→  role: string;
+   231→  [key: string]: unknown;
+   232→}
+   233→
+   234→/** Payload for removing a company member. */
+   235→export interface RemoveCompanyMemberPayload {
+   236→  slug: string;
+   237→  uid: string;
+   238→}
+   239→
+   240→/** Payload for creating a new purchase. */
+   241→export interface CreatePurchasePayload {
+   242→  description: string;
+   243→  amount: number;
+   244→  date: string;
+   245→  companySlug: string;
+   246→  [key: string]: unknown;
+   247→}
+   248→
+   249→/** Payload for updating an existing purchase. */
+   250→export interface UpdatePurchasePayload {
+   251→  id: number;
+   252→  description?: string;
+   253→  amount?: number;
+   254→  date?: string;
+   255→  [key: string]: unknown;
+   256→}
+   257→
+   258→/** Response shape for the dashboard stats endpoint. */
+   259→interface DashboardStatsResponse {
+   260→  stats: DashboardStats;
+   261→}
+   262→
+   263→/** Response shape for the notifications list endpoint. */
+   264→interface NotificationListResponse {
+   265→  notifications: Notification[];
+   266→}
+   267→
+   268→/** Response shape for the audit log list endpoint. */
+   269→interface AuditLogListResponse {
+   270→  logs: AuditLogEntry[];
+   271→}
+   272→
+   273→/** Response shape for the backups list endpoint. */
+   274→interface BackupListResponse {
+   275→  backups: Backup[];
+   276→}
+   277→
+   278→/** Response shape for the companies list endpoint. */
+   279→interface CompanyListResponse {
+   280→  companies: Company[];
+   281→}
+   282→
+   283→/** Response shape for a single company endpoint. */
+   284→interface CompanyDetailResponse {
+   285→  company: Company;
+   286→}
+   287→
+   288→/** Response shape for the company members endpoint. */
+   289→interface CompanyMemberListResponse {
+   290→  members: CompanyMember[];
+   291→}
+   292→
+   293→/** Response shape for the purchases list endpoint. */
+   294→interface PurchaseListResponse {
+   295→  purchases: Purchase[];
+   296→}
+   297→
+   298→/** Response shape for the reports list endpoint. */
+   299→interface ReportListResponse {
+   300→  reports: Report[];
+   301→}
+   302→
+   303→/** Response shape for the feature flags endpoint. */
+   304→interface FeatureFlagListResponse {
+   305→  flags: FeatureFlag[];
+   306→}
+   307→
+   308→/** Response shape for the modules endpoint. */
+   309→interface ModuleListResponse {
+   310→  modules: Module[];
+   311→}
+   312→
+   313→// ─── Dashboard Query Hooks ──────────────────────────────────────────────────
+   314→
+   315→/**
+   316→ * Fetch accounting dashboard data for a given company.
+   317→ *
+   318→ * Replaces raw fetch + useEffect in the accounting dashboard page (src/app/page.tsx).
+   319→ * The API returns data directly (not wrapped in { data: ... }).
+   320→ *
+   321→ * @param companySlug - Slug of the company whose accounting dashboard to fetch.
+   322→ *                      Defaults to "demo-company-1" if not provided.
+   323→ */
+   324→export function useAccountingDashboard(companySlug?: string) {
+   325→  const slug = companySlug ?? "demo-company-1";
+   326→  return useQuery<AccountingDashboardData, ApiError>({
+   327→    queryKey: queryKeys.accounting.dashboard(slug),
+   328→    queryFn: () =>
+   329→      apiGet<AccountingDashboardData>(
+   330→        `/api/accounting/dashboard?companySlug=${encodeURIComponent(slug)}`,
+   331→      ),
+   332→  });
+   333→}
+   334→
+   335→/**
+   336→ * Fetch dashboard statistics for a given company.
+   337→ *
+   338→ * Uses a 1-minute stale time since dashboard stats are relatively
+   339→ * stable but should still refresh periodically. The query is disabled
+   340→ * when `companySlug` is empty.
+   341→ *
+   342→ * @param companySlug - Slug of the company whose dashboard stats to fetch.
+   343→ */
+   344→export function useDashboardStats(companySlug: string) {
+   345→  return useQuery<DashboardStatsResponse, ApiError>({
+   346→    queryKey: queryKeys.dashboard.stats(companySlug),
+   347→    queryFn: () =>
+   348→      apiGet<DashboardStatsResponse>(
+   349→        `/api/dashboard/stats?companySlug=${encodeURIComponent(companySlug)}`,
+   350→      ),
+   351→    enabled: !!companySlug,
+   352→    staleTime: 60_000,
+   353→  });
+   354→}
+   355→
+   356→// ─── Notification Hooks ─────────────────────────────────────────────────────
+   357→
+   358→/**
+   359→ * Fetch notifications for a given company.
+   360→ *
+   361→ * The query is disabled when `companySlug` is empty, preventing
+   362→ * unnecessary requests before the active company is known.
+   363→ *
+   364→ * @param companySlug - Slug of the company whose notifications to fetch.
+   365→ */
+   366→export function useNotifications(companySlug: string) {
+   367→  return useQuery<NotificationListResponse, ApiError>({
+   368→    queryKey: queryKeys.notifications.list(companySlug),
+   369→    queryFn: () =>
+   370→      apiGet<NotificationListResponse>(
+   371→        `/api/notifications?companySlug=${encodeURIComponent(companySlug)}`,
+   372→      ),
+   373→    enabled: !!companySlug,
+   374→  });
+   375→}
+   376→
+   377→/**
+   378→ * Create a new notification.
+   379→ *
+   380→ * On success all notification queries are invalidated so every mounted
+   381→ * list view refetches with the new entry.
+   382→ */
+   383→export function useCreateNotification() {
+   384→  const queryClient = useQueryClient();
+   385→
+   386→  return useMutation<Notification, ApiError, Partial<Notification>>({
+   387→    mutationFn: (payload) =>
+   388→      apiPost<Partial<Notification>, Notification>("/api/notifications", payload),
+   389→    onSuccess: () => {
+   390→      void queryClient.invalidateQueries({
+   391→        queryKey: queryKeys.notifications.all,
+   392→      });
+   393→    },
+   394→  });
+   395→}
+   396→
+   397→// ─── Audit Log Hooks ────────────────────────────────────────────────────────
+   398→
+   399→/**
+   400→ * Fetch audit log entries for a given company.
+   401→ *
+   402→ * @param companySlug - Slug of the company whose audit log to fetch.
+   403→ */
+   404→export function useAuditLog(companySlug: string) {
+   405→  return useQuery<AuditLogListResponse, ApiError>({
+   406→    queryKey: queryKeys.audit.list(companySlug),
+   407→    queryFn: () =>
+   408→      apiGet<AuditLogListResponse>(
+   409→        `/api/audit?companySlug=${encodeURIComponent(companySlug)}`,
+   410→      ),
+   411→    enabled: !!companySlug,
+   412→  });
+   413→}
+   414→
+   415→/**
+   416→ * Fetch audit log entries with advanced filtering.
+   417→ *
+   418→ * Supports filtering by action, company slug, user email, date range, and limit.
+   419→ * Used by AuditView and EnhancedAuditView.
+   420→ *
+   421→ * @param params - Filter parameters for the audit log query.
+   422→ */
+   423→export interface AuditLogFilterParams {
+   424→  action?: string;
+   425→  companySlug?: string;
+   426→  userEmail?: string;
+   427→  startDate?: string;
+   428→  endDate?: string;
+   429→  limit?: number;
+   430→}
+   431→
+   432→export function useAuditLogFiltered(params: AuditLogFilterParams) {
+   433→  return useQuery<AuditLogListResponse, ApiError>({
+   434→    queryKey: [...queryKeys.audit.all, "filtered", params] as const,
+   435→    queryFn: () => {
+   436→      const searchParams = new URLSearchParams();
+   437→      if (params.action) searchParams.set("action", params.action);
+   438→      if (params.companySlug) searchParams.set("companySlug", params.companySlug);
+   439→      if (params.userEmail) searchParams.set("userEmail", params.userEmail);
+   440→      if (params.startDate) searchParams.set("startDate", params.startDate);
+   441→      if (params.endDate) searchParams.set("endDate", params.endDate);
+   442→      if (params.limit) searchParams.set("limit", String(params.limit));
+   443→      return apiGet<AuditLogListResponse>(`/api/audit?${searchParams.toString()}`);
+   444→    },
+   445→  });
+   446→}
+   447→
+   448→// ─── Backup Hooks ───────────────────────────────────────────────────────────
+   449→
+   450→/**
+   451→ * Fetch backups for a given company.
+   452→ *
+   453→ * @param companySlug - Slug of the company whose backups to fetch.
+   454→ */
+   455→export function useBackups(companySlug: string) {
+   456→  return useQuery<BackupListResponse, ApiError>({
+   457→    queryKey: queryKeys.backups.list(companySlug),
+   458→    queryFn: () =>
+   459→      apiGet<BackupListResponse>(
+   460→        `/api/backups?companySlug=${encodeURIComponent(companySlug)}`,
+   461→      ),
+   462→    enabled: !!companySlug,
+   463→  });
+   464→}
+   465→
+   466→/**
+   467→ * Create a new backup.
+   468→ *
+   469→ * On success all backup queries are invalidated so every mounted
+   470→ * list view refetches with the new entry.
+   471→ */
+   472→export function useCreateBackup() {
+   473→  const queryClient = useQueryClient();
+   474→
+   475→  return useMutation<Backup, ApiError, { companySlug: string }>({
+   476→    mutationFn: (payload) =>
+   477→      apiPost<{ companySlug: string }, Backup>("/api/backups", payload),
+   478→    onSuccess: () => {
+   479→      void queryClient.invalidateQueries({
+   480→        queryKey: queryKeys.backups.all,
+   481→      });
+   482→    },
+   483→  });
+   484→}
+   485→
+   486→// ─── Company Hooks ──────────────────────────────────────────────────────────
+   487→
+   488→/**
+   489→ * Fetch the list of all companies the user has access to.
+   490→ *
+   491→ * `enabled: !!user` would be ideal but this hook is called from
+   492→ * BrandProvider which lives above AuthProvider's user state. Instead
+   493→ * we rely on the consumer (BrandProvider) to ignore 401s when user is
+   494→ * null. The hook itself is unconditional so TanStack can cache the
+   495→ * result for the next mount.
+   496→ */
+   497→export function useCompanies() {
+   498→  return useQuery<CompanyListResponse, ApiError>({
+   499→    queryKey: queryKeys.companies.lists(),
+   500→    queryFn: () => apiGet<CompanyListResponse>("/api/companies"),
+   501→    retry: (failureCount, error) => {
+   502→      // Don't retry 401s — they mean the user isn't signed in yet.
+   503→      // AuthContext will trigger a refetch indirectly via its own
+   504→      // refresh() flow when the user logs in.
+   505→      if (error?.status === 401) return false;
+   506→      return failureCount < 1;
+   507→    },
+   508→  });
+   509→}
+   510→
+   511→/**
+   512→ * Fetch a single company by slug.
+   513→ *
+   514→ * The query is disabled when `slug` is empty, preventing
+   515→ * unnecessary requests.
+   516→ *
+   517→ * @param slug - Slug of the company to fetch.
+   518→ */
+   519→export function useCompany(slug: string) {
+   520→  return useQuery<CompanyDetailResponse, ApiError>({
+   521→    queryKey: queryKeys.companies.detail(slug),
+   522→    queryFn: () => apiGet<CompanyDetailResponse>(`/api/companies/${slug}`),
+   523→    enabled: !!slug,
+   524→  });
+   525→}
+   526→
+   527→/**
+   528→ * Fetch members of a specific company.
+   529→ *
+   530→ * The query is disabled when `slug` is empty, preventing
+   531→ * unnecessary requests.
+   532→ *
+   533→ * @param slug - Slug of the company whose members to fetch.
+   534→ */
+   535→export function useCompanyMembers(slug: string) {
+   536→  return useQuery<CompanyMemberListResponse, ApiError>({
+   537→    queryKey: queryKeys.companies.members(slug),
+   538→    queryFn: () =>
+   539→      apiGet<CompanyMemberListResponse>(`/api/companies/${slug}/members`),
+   540→    enabled: !!slug,
+   541→  });
+   542→}
+   543→
+   544→/**
+   545→ * Create a new company.
+   546→ *
+   547→ * On success all company list queries are invalidated so every mounted
+   548→ * list view refetches with the new entry.
+   549→ */
+   550→export function useCreateCompany() {
+   551→  const queryClient = useQueryClient();
+   552→
+   553→  return useMutation<Company, ApiError, CreateCompanyPayload>({
+   554→    mutationFn: (payload) =>
+   555→      apiPost<CreateCompanyPayload, Company>("/api/companies", payload),
+   556→    onSuccess: () => {
+   557→      void queryClient.invalidateQueries({
+   558→        queryKey: queryKeys.companies.lists(),
+   559→      });
+   560→    },
+   561→  });
+   562→}
+   563→
+   564→/**
+   565→ * Update an existing company.
+   566→ *
+   567→ * On success both the specific detail query and all list queries
+   568→ * are invalidated, ensuring all views reflect the updated data.
+   569→ */
+   570→export function useUpdateCompany() {
+   571→  const queryClient = useQueryClient();
+   572→
+   573→  return useMutation<Company, ApiError, UpdateCompanyPayload>({
+   574→    mutationFn: (payload) => {
+   575→      const { slug, ...body } = payload;
+   576→      return apiPatch<typeof body, Company>(`/api/companies/${slug}`, body);
+   577→    },
+   578→    onSuccess: (_data, variables) => {
+   579→      // Invalidate the specific detail cache for this company
+   580→      void queryClient.invalidateQueries({
+   581→        queryKey: queryKeys.companies.detail(variables.slug),
+   582→      });
+   583→      // Invalidate all company list queries
+   584→      void queryClient.invalidateQueries({
+   585→        queryKey: queryKeys.companies.lists(),
+   586→      });
+   587→    },
+   588→  });
+   589→}
+   590→
+   591→/**
+   592→ * Add a member to a company.
+   593→ *
+   594→ * On success the members query for the target company is invalidated,
+   595→ * ensuring the updated member list is reflected.
+   596→ */
+   597→export function useAddCompanyMember() {
+   598→  const queryClient = useQueryClient();
+   599→
+   600→  return useMutation<CompanyMember, ApiError, AddCompanyMemberPayload>({
+   601→    mutationFn: (payload) => {
+   602→      const { slug, ...body } = payload;
+   603→      return apiPost<typeof body, CompanyMember>(
+   604→        `/api/companies/${slug}/members`,
+   605→        body,
+   606→      );
+   607→    },
+   608→    onSuccess: (_data, variables) => {
+   609→      void queryClient.invalidateQueries({
+   610→        queryKey: queryKeys.companies.members(variables.slug),
+   611→      });
+   612→    },
+   613→  });
+   614→}
+   615→
+   616→/**
+   617→ * Update a company member's role.
+   618→ *
+   619→ * On success the members query for the target company is invalidated,
+   620→ * ensuring the updated role is reflected.
+   621→ */
+   622→export function useUpdateCompanyMember() {
+   623→  const queryClient = useQueryClient();
+   624→
+   625→  return useMutation<CompanyMember, ApiError, UpdateCompanyMemberPayload>({
+   626→    mutationFn: (payload) => {
+   627→      const { slug, uid, ...body } = payload;
+   628→      return apiPatch<typeof body, CompanyMember>(
+   629→        `/api/companies/${slug}/members/${uid}`,
+   630→        body,
+   631→      );
+   632→    },
+   633→    onSuccess: (_data, variables) => {
+   634→      void queryClient.invalidateQueries({
+   635→        queryKey: queryKeys.companies.members(variables.slug),
+   636→      });
+   637→    },
+   638→  });
+   639→}
+   640→
+   641→/**
+   642→ * Remove a member from a company.
+   643→ *
+   644→ * On success the members query for the target company is invalidated,
+   645→ * ensuring the removed member no longer appears in the list.
+   646→ */
+   647→export function useRemoveCompanyMember() {
+   648→  const queryClient = useQueryClient();
+   649→
+   650→  return useMutation<void, ApiError, RemoveCompanyMemberPayload>({
+   651→    mutationFn: ({ slug, uid }) =>
+   652→      apiDelete<void>(`/api/companies/${slug}/members/${uid}`),
+   653→    onSuccess: (_data, variables) => {
+   654→      void queryClient.invalidateQueries({
+   655→        queryKey: queryKeys.companies.members(variables.slug),
+   656→      });
+   657→    },
+   658→  });
+   659→}
+   660→
+   661→// ─── Purchase Hooks ─────────────────────────────────────────────────────────
+   662→
+   663→/**
+   664→ * Fetch purchases for a given company.
+   665→ *
+   666→ * @param companySlug - Slug of the company whose purchases to fetch.
+   667→ */
+   668→export function usePurchases(companySlug: string) {
+   669→  return useQuery<PurchaseListResponse, ApiError>({
+   670→    queryKey: queryKeys.purchases.list(companySlug),
+   671→    queryFn: () =>
+   672→      apiGet<PurchaseListResponse>(
+   673→        `/api/purchases?companySlug=${encodeURIComponent(companySlug)}`,
+   674→      ),
+   675→    enabled: !!companySlug,
+   676→  });
+   677→}
+   678→
+   679→/**
+   680→ * Create a new purchase.
+   681→ *
+   682→ * On success all purchase queries are invalidated so every mounted
+   683→ * list view refetches with the new entry.
+   684→ */
+   685→export function useCreatePurchase() {
+   686→  const queryClient = useQueryClient();
+   687→
+   688→  return useMutation<Purchase, ApiError, CreatePurchasePayload>({
+   689→    mutationFn: (payload) =>
+   690→      apiPost<CreatePurchasePayload, Purchase>("/api/purchases", payload),
+   691→    onSuccess: () => {
+   692→      void queryClient.invalidateQueries({
+   693→        queryKey: queryKeys.purchases.all,
+   694→      });
+   695→    },
+   696→  });
+   697→}
+   698→
+   699→/**
+   700→ * Update an existing purchase.
+   701→ *
+   702→ * On success all purchase queries are invalidated, ensuring all views
+   703→ * reflect the updated data.
+   704→ */
+   705→export function useUpdatePurchase() {
+   706→  const queryClient = useQueryClient();
+   707→
+   708→  return useMutation<Purchase, ApiError, UpdatePurchasePayload>({
+   709→    mutationFn: (payload) => {
+   710→      const { id, ...body } = payload;
+   711→      return apiPatch<typeof body, Purchase>(`/api/purchases/${id}`, body);
+   712→    },
+   713→    onSuccess: () => {
+   714→      void queryClient.invalidateQueries({
+   715→        queryKey: queryKeys.purchases.all,
+   716→      });
+   717→    },
+   718→  });
+   719→}
+   720→
+   721→/**
+   722→ * Delete a purchase by ID.
+   723→ *
+   724→ * On success all purchase queries are invalidated so every mounted
+   725→ * list view refetches without the deleted entry.
+   726→ */
+   727→export function useDeletePurchase() {
+   728→  const queryClient = useQueryClient();
+   729→
+   730→  return useMutation<void, ApiError, number>({
+   731→    mutationFn: (id) => apiDelete<void>(`/api/purchases/${id}`),
+   732→    onSuccess: () => {
+   733→      void queryClient.invalidateQueries({
+   734→        queryKey: queryKeys.purchases.all,
+   735→      });
+   736→    },
+   737→  });
+   738→}
+   739→
+   740→// ─── Report Hooks ───────────────────────────────────────────────────────────
+   741→
+   742→/**
+   743→ * Fetch reports for a given company.
+   744→ *
+   745→ * @param companySlug - Slug of the company whose reports to fetch.
+   746→ */
+   747→export function useReports(companySlug: string) {
+   748→  return useQuery<ReportListResponse, ApiError>({
+   749→    queryKey: queryKeys.reports.list(companySlug),
+   750→    queryFn: () =>
+   751→      apiGet<ReportListResponse>(
+   752→        `/api/reports?companySlug=${encodeURIComponent(companySlug)}`,
+   753→      ),
+   754→    enabled: !!companySlug,
+   755→  });
+   756→}
+   757→
+   758→/**
+   759→ * Fetch a filtered/generated report with type, date range, and optional format.
+   760→ *
+   761→ * Used by ReportsView for generating specific report types (sales, profit, etc.)
+   762→ * within a date range. The `format` parameter defaults to JSON; when "csv" is
+   763→ * specified the API returns a Blob instead — callers should use `authedFetch`
+   764→ * directly for CSV downloads since TanStack Query expects JSON responses.
+   765→ *
+   766→ * @param params - Report filter parameters.
+   767→ */
+   768→export interface ReportFilterParams {
+   769→  companySlug: string;
+   770→  type: string;
+   771→  from: string;
+   772→  to: string;
+   773→}
+   774→
+   775→export interface ReportResponse {
+   776→  type: string;
+   777→  companySlug: string;
+   778→  dateRange: { from: string; to: string };
+   779→  summary: Record<string, unknown>;
+   780→  rows: Array<Record<string, unknown>>;
+   781→  count: number;
+   782→}
+   783→
+   784→export function useReportsFiltered(params: ReportFilterParams) {
+   785→  return useQuery<ReportResponse, ApiError>({
+   786→    queryKey: [...queryKeys.reports.all, "filtered", params] as const,
+   787→    queryFn: () => {
+   788→      const searchParams = new URLSearchParams({
+   789→        companySlug: params.companySlug,
+   790→        type: params.type,
+   791→        from: params.from,
+   792→        to: params.to,
+   793→      });
+   794→      return apiGet<ReportResponse>(`/api/reports?${searchParams.toString()}`);
+   795→    },
+   796→    enabled: !!params.companySlug && !!params.type,
+   797→  });
+   798→}
+   799→
+   800→// ─── Feature Flag Hooks ─────────────────────────────────────────────────────
+   801→
+   802→/**
+   803→ * Fetch the list of feature flags.
+   804→ */
+   805→export function useFeatureFlags() {
+   806→  return useQuery<FeatureFlagListResponse, ApiError>({
+   807→    queryKey: queryKeys.featureFlags.list(),
+   808→    queryFn: () => apiGet<FeatureFlagListResponse>("/api/feature-flags"),
+   809→  });
+   810→}
+   811→
+   812→// ─── Module Hooks ───────────────────────────────────────────────────────────
+   813→
+   814→/**
+   815→ * Fetch the list of available modules.
+   816→ */
+   817→export function useModules() {
+   818→  return useQuery<ModuleListResponse, ApiError>({
+   819→    queryKey: queryKeys.modules.list(),
+   820→    queryFn: () => apiGet<ModuleListResponse>("/api/modules"),
+   821→  });
+   822→}
+   823→
+   824→// ─── Notification Mutation Hooks ──────────────────────────────────────────────
+   825→
+   826→/**
+   827→ * Mark specific notifications as read.
+   828→ *
+   829→ * On success notification queries are invalidated.
+   830→ */
+   831→export function useMarkNotificationsRead() {
+   832→  const queryClient = useQueryClient();
+   833→
+   834→  return useMutation<{ ok: boolean }, ApiError, { ids: number[]; action?: string }>({
+   835→    mutationFn: (payload) =>
+   836→      apiPost<{ ids: number[] }, { ok: boolean }>("/api/notifications", { action: "mark_read", ...payload }),
+   837→    onSuccess: () => {
+   838→      void queryClient.invalidateQueries({
+   839→        queryKey: queryKeys.notifications.all,
+   840→      });
+   841→    },
+   842→  });
+   843→}
+   844→
+   845→/**
+   846→ * Mark all notifications as read.
+   847→ *
+   848→ * On success notification queries are invalidated.
+   849→ */
+   850→export function useMarkAllNotificationsRead() {
+   851→  const queryClient = useQueryClient();
+   852→
+   853→  return useMutation<{ ok: boolean }, ApiError, void>({
+   854→    mutationFn: () =>
+   855→      apiPost<{ action: string }, { ok: boolean }>("/api/notifications", { action: "mark_all_read" }),
+   856→    onSuccess: () => {
+   857→      void queryClient.invalidateQueries({
+   858→        queryKey: queryKeys.notifications.all,
+   859→      });
+   860→    },
+   861→  });
+   862→}
+   863→
+   864→// ─── Limited Audit Log Hook ──────────────────────────────────────────────────
+   865→
+   866→/**
+   867→ * Fetch a limited set of audit log entries (for the Account page).
+   868→ *
+   869→ * @param limit - Maximum number of entries to return.
+   870→ */
+   871→export function useAuditLogLimited(limit: number = 10) {
+   872→  return useQuery<{ logs: AuditLogEntry[] }, ApiError>({
+   873→    queryKey: [...queryKeys.audit.all, "limited", limit] as const,
+   874→    queryFn: () =>
+   875→      apiGet<{ logs: AuditLogEntry[] }>(`/api/audit?limit=${limit}`),
+   876→  });
+   877→}
+   878→
+   879→// ─── Report CSV Download Hook ──────────────────────────────────────────────
+   880→
+   881→/**
+   882→ * Download a report as a CSV file.
+   883→ *
+   884→ * Returns a Blob that the caller can convert to a download link.
+   885→ * Since TanStack Query expects JSON responses by default, this
+   886→ * mutation uses `apiDownloadBlob` to handle the binary response.
+   887→ *
+   888→ * This is a fire-and-forget style mutation — it does not invalidate
+   889→ * any query caches automatically since it produces a file download,
+   890→ * not a data change.
+   891→ *
+   892→ * @param variables - Object containing companySlug, report type, and date range.
+   893→ */
+   894→export function useDownloadReportCsv() {
+   895→  return useMutation<
+   896→    Blob,
+   897→    ApiError,
+   898→    { companySlug: string; type: string; from: string; to: string }
+   899→  >({
+   900→    mutationFn: ({ companySlug, type, from, to }) =>
+   901→      apiDownloadBlob(
+   902→        `/api/reports?companySlug=${encodeURIComponent(companySlug)}` +
+   903→        `&type=${encodeURIComponent(type)}` +
+   904→        `&from=${encodeURIComponent(from)}` +
+   905→        `&to=${encodeURIComponent(to)}` +
+   906→        `&format=csv`,
+   907→      ),
+   908→  });
+   909→}
