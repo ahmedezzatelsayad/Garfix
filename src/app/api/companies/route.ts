@@ -158,42 +158,64 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     },
   });
 
-  // 🤖 Auto-create AI Config slot for new company (Multi-Tenant Architecture)
-  // Each company gets its own isolated API key configuration
-  // The founder can then assign a dedicated API key from Founder Panel
+  // 🤖 Auto-create AI Config slot for new company (Per-Feature Architecture)
+  // Each company gets 4 isolated API keys: Chat, Invoice, Parse, Memory
   try {
     await db.companyAIConfig.create({
       data: {
         companyId: company.id,
+        
+        // 💬 Chat Feature - Empty, waiting for founder
+        chatApiKey: '',
+        chatModel: 'gemini-2.0-flash',
+        chatEnabled: false,
+        chatRateLimitRpm: 60,
+        chatTokensUsed: BigInt(0),
+        chatRequestsCount: BigInt(0),
+        
+        // 📄 Invoice Feature - Empty, waiting for founder
+        invoiceApiKey: '',
+        invoiceModel: 'gemini-2.0-flash',
+        invoiceEnabled: false,
+        invoiceRateLimitRpm: 100,
+        invoiceTokensUsed: BigInt(0),
+        invoiceRequestsCount: BigInt(0),
+        
+        // 🔍 Parse Feature - Empty, waiting for founder
+        parseApiKey: '',
+        parseModel: 'gemini-2.0-flash',
+        parseEnabled: false,
+        parseRateLimitRpm: 80,
+        parseTokensUsed: BigInt(0),
+        parseRequestsCount: BigInt(0),
+        
+        // 🧠 Memory Feature - Empty, waiting for founder
+        memoryApiKey: '',
+        memoryModel: 'gemini-2.0-flash',
+        memoryEnabled: false,
+        memoryRateLimitRpm: 30,
+        memoryTokensUsed: BigInt(0),
+        memoryRequestsCount: BigInt(0),
+        
+        // Shared config
         primaryProvider: JSON.stringify({
           provider: 'google-gemini',
-          apiKey: '', // Empty - founder will add from Founder Panel
           model: 'gemini-2.0-flash',
-          maxTokens: 4096,
-          temperature: 0.7,
-          enabled: false, // Disabled until founder adds key
-          rateLimitRpm: 60,
-          monthlyTokenQuota: 1000000,
         }),
         systemPrompt: '',
-        enableChat: true,
-        enableSmartParse: true,
-        enableInvoiceExtraction: true,
-        enableMemory: true,
         memoryRetentionDays: 30,
         costOptimization: 'balanced',
         notifyHighUsage: true,
         usageNotificationThreshold: 80,
-        tokensUsedThisMonth: 0,
-        requestsThisMonth: 0,
+        tokensUsedThisMonth: BigInt(0),
+        requestsThisMonth: BigInt(0),
         lastResetAt: new Date(),
       },
     });
     
-    console.log(`[companies] Auto-created AI config slot for company ${company.id} (${company.name})`);
+    console.log(`[companies] Auto-created per-feature AI config for company ${company.id} (${company.name})`);
+    console.log(`[companies] → Ready for: Chat, Invoice, Parse, Memory keys`);
   } catch (aiConfigError) {
-    // Non-critical error - company was created successfully
-    // AI config can be created later when needed
     console.error('[companies] Failed to auto-create AI config slot:', aiConfigError);
   }
 
