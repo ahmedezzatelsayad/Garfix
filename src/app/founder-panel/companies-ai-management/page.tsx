@@ -134,31 +134,70 @@ const FEATURES = [
 ] as const;
 
 const AI_MODELS = [
-  // ── Gemini Models (Google) ──
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (سريع + مجاني)', provider: 'gemini' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', provider: 'gemini' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (متقدم)', provider: 'gemini' },
+  // ── 🟢 DeepSeek Models (Recommended - Cheap & Fast!) ──
+  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 Chat (⭐ أنصح)', provider: 'openrouter', badge: '⭐ الأفضل', color: 'emerald' },
+  { value: 'deepseek/deepseek-r1-0528', label: 'DeepSeek R1 (Reasoning)', provider: 'openrouter', badge: 'ذكاء', color: 'emerald' },
+  { value: 'deepseek/deepseek-v3-0324:free', label: 'DeepSeek V3 Free (مجاني!)', provider: 'openrouter', badge: 'مجاني', color: 'green' },
   
-  // ── OpenAI Models ──
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (اقتصادي)', provider: 'openai' },
-  { value: 'gpt-4o', label: 'GPT-4o (متقدم)', provider: 'openai' },
+  // ── 🔵 Gemini Models (Google) ──
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (سريع + مجاني)', provider: 'gemini', badge: 'مجاني', color: 'blue' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', provider: 'gemini', color: 'blue' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (متقدم)', provider: 'gemini', badge: 'Pro', color: 'indigo' },
   
-  // ── OpenRouter Models (Multi-provider) ──
-  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 (مجاني/رخيص)', provider: 'openrouter' },
-  { value: 'google/gemini-pro-1.5', label: 'Gemini Pro 1.5 via Router', provider: 'openrouter' },
-  { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B', provider: 'openrouter' },
+  // ── 🟢 OpenAI Models ──
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (اقتصادي)', provider: 'openai', color: 'green' },
+  { value: 'gpt-4o', label: 'GPT-4o (متقدم)', provider: 'openai', badge: 'قوي', color: 'green' },
+  
+  // ── 🟠 OpenRouter Models (Multi-provider) ──
+  { value: 'google/gemini-pro-1.5', label: 'Gemini Pro 1.5 via Router', provider: 'openrouter', color: 'orange' },
+  { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B', provider: 'openrouter', color: 'purple' },
+  { value: 'anthropic/claude-3.5-haiku', label: 'Claude 3.5 Haiku', provider: 'openrouter', badge: 'سريع', color: 'orange' },
 ];
+
+// Provider categories with icons and descriptions
+const PROVIDER_CATEGORIES = {
+  deepseek: {
+    icon: '🟢',
+    name: 'DeepSeek',
+    description: 'أسرع وأرخص - أنصح به!',
+    color: 'emerald',
+    models: AI_MODELS.filter(m => m.value.includes('deepseek')),
+  },
+  gemini: {
+    icon: '🔵',
+    name: 'Google Gemini',
+    description: 'مجاني من Google',
+    color: 'blue',
+    models: AI_MODELS.filter(m => m.provider === 'gemini'),
+  },
+  openai: {
+    icon: '🟢',
+    name: 'OpenAI',
+    description: 'GPT-4o قوي وموثوق',
+    color: 'green',
+    models: AI_MODELS.filter(m => m.provider === 'openai'),
+  },
+  openrouter: {
+    icon: '🟠',
+    name: 'OpenRouter',
+    description: 'وصول لكل الموديلات',
+    color: 'orange',
+    models: AI_MODELS.filter(m => m.provider === 'openrouter' && !m.value.includes('deepseek')),
+  },
+};
 
 const PROVIDER_LABELS: Record<string, string> = {
   gemini: '🔵 Google Gemini',
   openai: '🟢 OpenAI',
   openrouter: '🟠 OpenRouter',
+  deepseek: '🟢 DeepSeek',
 };
 
 const PROVIDER_KEY_HINTS: Record<string, string> = {
   gemini: 'يبدأ بـ AIza... أو AQ...',
   openai: 'يبدأ بـ sk-...',
-  openrouter: 'يبدأ بـ sk-or-...',
+  openrouter: 'يبدأ بـ sk-or-... (يدعم DeepSeek)',
+  deepseek: 'استخدم مفتاح OpenRouter: sk-or-...',
 };
 
 const FEATURE_COLORS: Record<string, string> = {
@@ -492,6 +531,82 @@ export default function CompaniesPerFeatureAIPage() {
           </div>
         </GarfixCard>
 
+        {/* ══ AI Providers Comparison ══ */}
+        <GarfixCard className="mb-8 p-6">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 text-center">
+            🤖 موديلات AI المدعومة
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* ── DeepSeek (Recommended) ── */}
+            <div className="relative border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 overflow-hidden">
+              <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">
+                ⭐ أنصح
+              </div>
+              <div className="text-2xl mb-2">🟢</div>
+              <h4 className="font-bold text-emerald-800 dark:text-emerald-300">DeepSeek</h4>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">أسرع + أرخص</p>
+              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+                <li>✅ V3 Chat (رخيص جداً)</li>
+                <li>✅ R1 Reasoning (ذكاء)</li>
+                <li>✅ Free Tier متاح</li>
+              </ul>
+              <p className="text-xs mt-2 text-emerald-700 dark:text-emerald-300 font-semibold">
+                المفتاح: sk-or-...
+              </p>
+            </div>
+
+            {/* ── Gemini ── */}
+            <div className="border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              <div className="text-2xl mb-2">🔵</div>
+              <h4 className="font-bold text-gray-800 dark:text-gray-300">Gemini Flash</h4>
+              <p className="text-xs text-gray-500 mt-1">مجاني من Google</p>
+              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+                <li>✅ 2.0 Flash (سريع)</li>
+                <li>✅ 2.5 Pro (متقدم)</li>
+                <li>❌ مشكلات Region</li>
+              </ul>
+              <p className="text-xs mt-2 text-gray-500 font-semibold">
+                المفتاح: AIza...
+              </p>
+            </div>
+
+            {/* ── OpenAI ── */}
+            <div className="border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              <div className="text-2xl mb-2">🟢</div>
+              <h4 className="font-bold text-gray-800 dark:text-gray-300">OpenAI GPT</h4>
+              <p className="text-xs text-gray-500 mt-1">قوي وموثوق</p>
+              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+                <li>✅ GPT-4o Mini (اقتصادي)</li>
+                <li>✅ GPT-4o (قوي)</li>
+                <li>⚠️ غالي شوية</li>
+              </ul>
+              <p className="text-xs mt-2 text-gray-500 font-semibold">
+                المفتاح: sk-...
+              </p>
+            </div>
+
+            {/* ── OpenRouter ── */}
+            <div className="border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              <div className="text-2xl mb-2">🟠</div>
+              <h4 className="font-bold text-gray-800 dark:text-gray-300">OpenRouter</h4>
+              <p className="text-xs text-gray-500 mt-1">وصول لكل الموديلات</p>
+              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+                <li>✅ Llama 3.1</li>
+                <li>✅ Claude Haiku</li>
+                <li>✅ Gemini via Router</li>
+              </ul>
+              <p className="text-xs mt-2 text-gray-500 font-semibold">
+                المفتاح: sk-or-...
+              </p>
+            </div>
+          </div>
+          
+          <p className="text-xs text-center text-gray-500 mt-4">
+            💡 كل Feature في الشركة ممكن يستخدم موديل مختلف حسب الاحتياج
+          </p>
+        </GarfixCard>
+
         {/* ══ Stats Cards ══ */}
         <GarfixGrid cols={3} className="mb-8">
           <MotionCard>
@@ -676,12 +791,55 @@ export default function CompaniesPerFeatureAIPage() {
                             });
                           }
                         }}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 font-medium"
                       >
-                        {GEMINI_MODELS.map(m => (
-                          <option key={m.value} value={m.value}>{m.label}</option>
-                        ))}
+                        {/* ── 🟢 DeepSeek (Recommended) ── */}
+                        <optgroup label="🟢 DeepSeek - ⭐ أنصح به (رخيص + سريع)">
+                          {AI_MODELS.filter(m => m.value.includes('deepseek')).map(m => (
+                            <option key={m.value} value={m.value}>
+                              {m.label} {m.badge ? `(${m.badge})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                        
+                        {/* ── 🔵 Gemini (Google) ── */}
+                        <optgroup label="🔵 Google Gemini - مجاني">
+                          {AI_MODELS.filter(m => m.provider === 'gemini').map(m => (
+                            <option key={m.value} value={m.value}>
+                              {m.label} {m.badge ? `(${m.badge})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                        
+                        {/* ── 🟢 OpenAI ── */}
+                        <optgroup label="🟢 OpenAI - GPT-4o">
+                          {AI_MODELS.filter(m => m.provider === 'openai').map(m => (
+                            <option key={m.value} value={m.value}>
+                              {m.label} {m.badge ? `(${m.badge})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                        
+                        {/* ── 🟠 OpenRouter (Others) ── */}
+                        <optgroup label="🟠 OpenRouter - موديلات تانية">
+                          {AI_MODELS.filter(m => m.provider === 'openrouter' && !m.value.includes('deepseek')).map(m => (
+                            <option key={m.value} value={m.value}>
+                              {m.label} {m.badge ? `(${m.badge})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
+                      
+                      {/* Provider Hint */}
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 {(() => {
+                          const selectedModel = aiConfig[feature.key as keyof CompanyAIConfigData]?.model || '';
+                          if (selectedModel.includes('deepseek')) return 'DeepSeek: أسرع وأرخص - يستخدم مفتاح OpenRouter';
+                          if (selectedModel.includes('gemini')) return 'Gemini: مجاني من Google';
+                          if (selectedModel.startsWith('gpt')) return 'OpenAI: قوي وموثوق';
+                          return 'اختر الموديل المناسب';
+                        })()}
+                      </p>
                     </div>
 
                     {/* API Key Input */}
@@ -694,7 +852,7 @@ export default function CompaniesPerFeatureAIPage() {
                           type={showKeys[feature.key] ? "text" : "password"}
                           value={featureKeys[feature.key]}
                           onChange={(e) => updateFeatureKey(feature.key, e.target.value)}
-                          placeholder="أدخل Google Gemini API Key..."
+                          placeholder="أدخل مفتاح API..."
                           className="w-full px-3 py-2 pr-10 rounded-lg border border-gray-200 bg-white font-mono text-sm"
                           dir="ltr"
                         />
