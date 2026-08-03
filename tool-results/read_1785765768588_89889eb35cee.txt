@@ -1,0 +1,652 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { toast } from "sonner";
+     6→import {
+     7→  useVouchers, useCreateVoucher, useApproveVoucher, useCancelVoucher,
+     8→  useQuotations, useCreateQuotation, useConvertQuotationToInvoice,
+     9→  usePurchaseOrders, useCreatePurchaseOrder,
+    10→  useOpeningBalances, useCreateOpeningBalance, usePostOpeningBalances,
+    11→  useAccountingCommissions as useCommissions, usePostCommission,
+    12→  useProfitDistribution, usePostProfitDistribution,
+    13→} from "@/hooks/queries";
+    14→import {
+    15→  Plus, X, FileText, Receipt, ShoppingCart, Scale,
+    16→  Users, DollarSign, Calendar, CheckCircle2, XCircle,
+    17→  Printer, ArrowRight, CreditCard, BookOpen, Percent,
+    18→  HandCoins,
+    19→} from "lucide-react";
+    20→import { cn } from "@/lib/utils";
+    21→
+    22→/* ─── Interfaces ──────────────────────────────────────────────────────────── */
+    23→interface Voucher {
+    24→  id: number; voucherType: string; date: string; amount: number;
+    25→  currency: string; payee: string; payer: string; status: string;
+    26→  amountTextAr?: string;
+    27→}
+    28→interface Quotation {
+    29→  id: number; clientName: string; date: string; validUntil: string;
+    30→  lineItems: LineItem[]; totalAmount: number; status: string;
+    31→}
+    32→interface PurchaseOrder {
+    33→  id: number; supplierName: string; date: string; expectedDelivery: string;
+    34→  lineItems: LineItem[]; totalAmount: number; status: string;
+    35→}
+    36→interface LineItem { id?: number; description: string; quantity: number; unitPrice: number; total: number; }
+    37→interface OpeningBalance { id: number; accountId: number; accountCode: string; accountNameAr: string; amount: number; posted: boolean; }
+    38→interface Commission { id: number; salesperson: string; totalSales: number; commissionAmount: number; posted: boolean; }
+    39→interface ProfitDistribution { id: number; partnerName: string; ownershipPercent: number; profitShare: number; posted: boolean; }
+    40→
+    41→type Tab = "vouchers" | "quotations" | "purchase-orders" | "opening-balances" | "commissions" | "profit-distribution";
+    42→
+    43→/* ─── Shared Styles (DS v4.0) ──────────────────────────────────────────────── */
+    44→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+    45→const tdStyle = "py-2.5 px-3 text-[13px]";
+    46→// DS v4.0: Added focus-ring for form inputs
+    47→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
+    48→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    49→// DS v4.0: Added focus-ring for selects
+    50→const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
+    51→
+    52→function Empty({ label }: { label: string }) {
+    53→  return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
+    54→}
+    55→
+    56→/* ─── Main Component ────────────────────────────────────────────────────────── */
+    57→export function VouchersDetailView() {
+    58→  const { activeCompany } = useBrand();
+    59→  const [tab, setTab] = useState<Tab>("vouchers");
+    60→  const [showForm, setShowForm] = useState(false);
+    61→
+    62→  /* Voucher form */
+    63→  const [vType, setVType] = useState("receipt");
+    64→  const [vDate, setVDate] = useState("");
+    65→  const [vAmount, setVAmount] = useState("");
+    66→  const [vCurrency, setVCurrency] = useState("KWD");
+    67→  const [vPayee, setVPayee] = useState("");
+    68→  const [vPayer, setVPayer] = useState("");
+    69→
+    70→  /* Quotation form */
+    71→  const [qClient, setQClient] = useState("");
+    72→  const [qDate, setQDate] = useState("");
+    73→  const [qValidUntil, setQValidUntil] = useState("");
+    74→  const [qLineItems, setQLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    75→
+    76→  /* PO form */
+    77→  const [poSupplier, setPoSupplier] = useState("");
+    78→  const [poDate, setPoDate] = useState("");
+    79→  const [poDelivery, setPoDelivery] = useState("");
+    80→  const [poLineItems, setPoLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    81→
+    82→  /* Opening Balance form */
+    83→  const [obAccountId, setObAccountId] = useState("");
+    84→  const [obAmount, setObAmount] = useState("");
+    85→
+    86→  /* Commission dates */
+    87→  const [commFrom, setCommFrom] = useState("");
+    88→  const [commTo, setCommTo] = useState("");
+    89→
+    90→  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
+    91→
+    92→  // TanStack Query hooks
+    93→  const vouchersQuery = useVouchers(slug);
+    94→  const quotationsQuery = useQuotations(slug);
+    95→  const purchaseOrdersQuery = usePurchaseOrders(slug);
+    96→  const openingBalancesQuery = useOpeningBalances(slug);
+    97→  const commissionsQuery = useCommissions(slug, commFrom, commTo);
+    98→  const profitDistributionQuery = useProfitDistribution(slug);
+    99→
+   100→  const vouchers = vouchersQuery.data?.vouchers ?? [];
+   101→  const quotations = quotationsQuery.data?.quotations ?? [];
+   102→  const purchaseOrders = purchaseOrdersQuery.data?.purchaseOrders ?? [];
+   103→  const openingBalances = openingBalancesQuery.data?.openingBalances ?? [];
+   104→  const commissions = commissionsQuery.data?.commissions ?? [];
+   105→  const profitDistributions = profitDistributionQuery.data?.distributions ?? [];
+   106→
+   107→  const loading = (tab === "vouchers" && vouchersQuery.isLoading) || (tab === "quotations" && quotationsQuery.isLoading) || (tab === "purchase-orders" && purchaseOrdersQuery.isLoading) || (tab === "opening-balances" && openingBalancesQuery.isLoading) || (tab === "commissions" && commissionsQuery.isLoading) || (tab === "profit-distribution" && profitDistributionQuery.isLoading);
+   108→
+   109→  const switchTab = (t: Tab) => { setTab(t); setShowForm(false); };
+   110→
+   111→  /* ── Line Items helper ───────────────────────────────────────────────────── */
+   112→  const updateLineItem = (items: LineItem[], idx: number, field: keyof LineItem, value: string | number): LineItem[] => {
+   113→    const updated = [...items];
+   114→    const item = { ...updated[idx] };
+   115→    if (field === "description") item.description = String(value);
+   116→    else if (field === "quantity") item.quantity = Number(value);
+   117→    else if (field === "unitPrice") item.unitPrice = Number(value);
+   118→    else if (field === "total") item.total = Number(value);
+   119→    item.total = item.quantity * item.unitPrice;
+   120→    updated[idx] = item;
+   121→    return updated;
+   122→  };
+   123→
+   124→  /* ── Mutation hooks ──────────────────────────────────────────────────────── */
+   125→  const createVoucherMutation = useCreateVoucher();
+   126→  const approveVoucherMutation = useApproveVoucher();
+   127→  const cancelVoucherMutation = useCancelVoucher();
+   128→  const createQuotationMutation = useCreateQuotation();
+   129→  const convertQuotationMutation = useConvertQuotationToInvoice();
+   130→  const createPurchaseOrderMutation = useCreatePurchaseOrder();
+   131→  const createOpeningBalanceMutation = useCreateOpeningBalance();
+   132→  const postOpeningBalancesMutation = usePostOpeningBalances();
+   133→  const postCommissionMutation = usePostCommission();
+   134→  const postProfitDistributionMutation = usePostProfitDistribution();
+   135→
+   136→  /* ── Create Voucher ─────────────────────────────────────────────────────── */
+   137→  const handleCreateVoucher = () => {
+   138→    if (!activeCompany || !vAmount || !vDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   139→    createVoucherMutation.mutate(
+   140→      { companySlug: activeCompany.slug, voucherType: vType, date: vDate, amount: parseFloat(vAmount), currency: vCurrency, payee: vPayee, payer: vPayer },
+   141→      {
+   142→        onSuccess: () => { toast.success("تم إنشاء السند"); setShowForm(false); resetVoucherForm(); vouchersQuery.refetch(); },
+   143→        onError: (err) => { toast.error(err.message || "تعذّر إنشاء السند"); },
+   144→      },
+   145→    );
+   146→  };
+   147→  const resetVoucherForm = () => { setVType("receipt"); setVDate(""); setVAmount(""); setVCurrency("KWD"); setVPayee(""); setVPayer(""); };
+   148→
+   149→  /* ── Approve / Cancel Voucher ────────────────────────────────────────────── */
+   150→  const handleApproveVoucher = (id: number) => {
+   151→    if (!activeCompany) return;
+   152→    approveVoucherMutation.mutate(
+   153→      { id, companySlug: activeCompany.slug },
+   154→      {
+   155→        onSuccess: () => { toast.success("تم اعتماد السند"); vouchersQuery.refetch(); },
+   156→        onError: (err) => { toast.error(err.message || "تعذّر اعتماد السند"); },
+   157→      },
+   158→    );
+   159→  };
+   160→  const handleCancelVoucher = (id: number) => {
+   161→    if (!activeCompany) return;
+   162→    cancelVoucherMutation.mutate(
+   163→      { id, companySlug: activeCompany.slug },
+   164→      {
+   165→        onSuccess: () => { toast.success("تم إلغاء السند"); vouchersQuery.refetch(); },
+   166→        onError: (err) => { toast.error(err.message || "تعذّر إلغاء السند"); },
+   167→      },
+   168→    );
+   169→  };
+   170→
+   171→  /* ── Create Quotation ────────────────────────────────────────────────────── */
+   172→  const handleCreateQuotation = () => {
+   173→    if (!activeCompany || !qClient || !qDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   174→    createQuotationMutation.mutate(
+   175→      { companySlug: activeCompany.slug, clientName: qClient, date: qDate, validUntil: qValidUntil, lineItems: qLineItems, totalAmount: qLineItems.reduce((s, li) => s + li.total, 0) },
+   176→      {
+   177→        onSuccess: () => { toast.success("تم إنشاء عرض السعر"); setShowForm(false); quotationsQuery.refetch(); },
+   178→        onError: (err) => { toast.error(err.message || "تعذّر إنشاء عرض السعر"); },
+   179→      },
+   180→    );
+   181→  };
+   182→
+   183→  /* ── Convert Quotation to Invoice ─────────────────────────────────────────── */
+   184→  const handleConvertToInvoice = (id: number) => {
+   185→    if (!activeCompany) return;
+   186→    convertQuotationMutation.mutate(
+   187→      { id, companySlug: activeCompany.slug },
+   188→      {
+   189→        onSuccess: () => { toast.success("تم التحويل إلى فاتورة"); quotationsQuery.refetch(); },
+   190→        onError: (err) => { toast.error(err.message || "تعذّر التحويل إلى فاتورة"); },
+   191→      },
+   192→    );
+   193→  };
+   194→
+   195→  /* ── Create PO ────────────────────────────────────────────────────────────── */
+   196→  const handleCreatePO = () => {
+   197→    if (!activeCompany || !poSupplier || !poDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   198→    createPurchaseOrderMutation.mutate(
+   199→      { companySlug: activeCompany.slug, supplierName: poSupplier, date: poDate, expectedDelivery: poDelivery, lineItems: poLineItems, totalAmount: poLineItems.reduce((s, li) => s + li.total, 0) },
+   200→      {
+   201→        onSuccess: () => { toast.success("تم إنشاء أمر الشراء"); setShowForm(false); purchaseOrdersQuery.refetch(); },
+   202→        onError: (err) => { toast.error(err.message || "تعذّر إنشاء أمر الشراء"); },
+   203→      },
+   204→    );
+   205→  };
+   206→
+   207→  /* ── Create Opening Balance ──────────────────────────────────────────────── */
+   208→  const handleCreateOB = () => {
+   209→    if (!activeCompany || !obAccountId || !obAmount) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+   210→    createOpeningBalanceMutation.mutate(
+   211→      { companySlug: activeCompany.slug, accountId: parseInt(obAccountId), amount: parseFloat(obAmount) },
+   212→      {
+   213→        onSuccess: () => { toast.success("تم إنشاء الرصيد الافتتاحي"); setShowForm(false); setObAccountId(""); setObAmount(""); openingBalancesQuery.refetch(); },
+   214→        onError: (err) => { toast.error(err.message || "تعذّر إنشاء الرصيد الافتتاحي"); },
+   215→      },
+   216→    );
+   217→  };
+   218→
+   219→  /* ── Post all opening balances ────────────────────────────────────────────── */
+   220→  const handlePostAllOB = () => {
+   221→    if (!activeCompany) return;
+   222→    if (!confirm("ترحيل جميع الأرصدة الافتتاحية؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+   223→    postOpeningBalancesMutation.mutate(
+   224→      { companySlug: activeCompany.slug },
+   225→      {
+   226→        onSuccess: () => { toast.success("تم ترحيل جميع الأرصدة الافتتاحية"); openingBalancesQuery.refetch(); },
+   227→        onError: (err) => { toast.error(err.message || "تعذّر ترحيل الأرصدة الافتتاحية"); },
+   228→      },
+   229→    );
+   230→  };
+   231→
+   232→  /* ── Post Commission as JE ────────────────────────────────────────────────── */
+   233→  const handlePostCommission = (id: number) => {
+   234→    if (!activeCompany) return;
+   235→    postCommissionMutation.mutate(
+   236→      { id, companySlug: activeCompany.slug },
+   237→      {
+   238→        onSuccess: () => { toast.success("تم ترحيل العمولة كقيد يومية"); commissionsQuery.refetch(); },
+   239→        onError: (err) => { toast.error(err.message || "تعذّر ترحيل العمولة"); },
+   240→      },
+   241→    );
+   242→  };
+   243→
+   244→  /* ── Post Profit Distribution as JE ───────────────────────────────────────── */
+   245→  const handlePostProfitDist = (id: number) => {
+   246→    if (!activeCompany) return;
+   247→    postProfitDistributionMutation.mutate(
+   248→      { id, companySlug: activeCompany.slug },
+   249→      {
+   250→        onSuccess: () => { toast.success("تم ترحيل التوزيع كقيد يومية"); profitDistributionQuery.refetch(); },
+   251→        onError: (err) => { toast.error(err.message || "تعذّر ترحيل توزيع الأرباح"); },
+   252→      },
+   253→    );
+   254→  };
+   255→
+   256→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+   257→
+   258→  const tabs: Array<{ key: Tab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+   259→    { key: "vouchers", label: "سندات", icon: Receipt },
+   260→    { key: "quotations", label: "عروض أسعار", icon: FileText },
+   261→    { key: "purchase-orders", label: "أوامر الشراء", icon: ShoppingCart },
+   262→    { key: "opening-balances", label: "أرصدة افتتاحية", icon: BookOpen },
+   263→    { key: "commissions", label: "عمولات", icon: Percent },
+   264→    { key: "profit-distribution", label: "توزيع أرباح", icon: HandCoins },
+   265→  ];
+   266→
+   267→  const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+   268→
+   269→  return (
+   270→    <div className="flex flex-col gap-4">
+   271→      {/* Header - DS v4.0: Emerald accent color */}
+   272→      <div className="flex flex-wrap justify-between items-center gap-3">
+   273→        <div>
+   274→          <h1 className="text-2xl font-extrabold flex items-center gap-2 text-[#047857]"><Receipt size={20} /> السندات والتفاصيل</h1>
+   275→          <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
+   276→        </div>
+   277→        {!showForm && (
+   278→          // DS v4.0: Action button with active-press
+   279→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press duration-150"><Plus size={16} /> إضافة</button>
+   280→        )}
+   281→      </div>
+   282→
+   283→      {/* Tabs - DS v4.0: Filter buttons with active-press */}
+   284→      <div className="flex gap-1.5 flex-wrap">
+   285→        {tabs.map((t) => { const Icon = t.icon; return (
+   286→          <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
+   287→            "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5 active-press duration-150",
+   288→            tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+   289→          )}>{Icon && <Icon size={14} />} {t.label}</button>
+   290→        ); })}
+   291→      </div>
+   292→
+   293→      {/* Commissions date filter - DS v4.0: Panel with hover-lift */}
+   294→      {tab === "commissions" && !showForm && (
+   295→        <div className="flex gap-3 items-end bg-card rounded-[10px] border border-border p-3 hover-lift duration-120">
+   296→          <div><label className={labelStyle}>من</label><input value={commFrom} onChange={(e) => setCommFrom(e.target.value)} className={cn(inputStyle, "w-36")} type="date" /></div>
+   297→          <div><label className={labelStyle}>إلى</label><input value={commTo} onChange={(e) => setCommTo(e.target.value)} className={cn(inputStyle, "w-36")} type="date" /></div>
+   298→        </div>
+   299→      )}
+   300→
+   301→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : (() => {
+   302→        /* ── Vouchers Tab ─────────────────────────────────────────────────────── */
+   303→        if (tab === "vouchers") {
+   304→          if (showForm) return (
+   305→            // DS v4.0: Form card with hover-lift
+   306→            <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
+   307→              <div className="flex items-center justify-between mb-4">
+   308→                <h2 className="text-base font-bold">سند جديد</h2>
+   309→                <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   310→              </div>
+   311→              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   312→                <div><label className={labelStyle}>نوع السند *</label>
+   313→                  <select value={vType} onChange={(e) => setVType(e.target.value)} className={selectStyle}>
+   314→                    <option value="receipt">سند قبض</option><option value="payment">سند دفع</option>
+   315→                  </select>
+   316→                </div>
+   317→                <div><label className={labelStyle}>التاريخ *</label><input value={vDate} onChange={(e) => setVDate(e.target.value)} className={inputStyle} type="date" /></div>
+   318→                <div><label className={labelStyle}>المبلغ *</label><input value={vAmount} onChange={(e) => setVAmount(e.target.value)} className={inputStyle} type="number" placeholder="0.000" /></div>
+   319→                <div><label className={labelStyle}>العملة</label>
+   320→                  <select value={vCurrency} onChange={(e) => setVCurrency(e.target.value)} className={selectStyle}>
+   321→                    <option value="KWD">KWD</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="SAR">SAR</option>
+   322→                  </select>
+   323→                </div>
+   324→                <div><label className={labelStyle}>المستفيد</label><input value={vPayee} onChange={(e) => setVPayee(e.target.value)} className={inputStyle} placeholder="اسم المستفيد" /></div>
+   325→                <div><label className={labelStyle}>الدافع</label><input value={vPayer} onChange={(e) => setVPayer(e.target.value)} className={inputStyle} placeholder="اسم الدافع" /></div>
+   326→              </div>
+   327→              {/* DS v4.0: Action buttons with active-press */}
+   328→              <div className="flex gap-2 justify-end mt-5">
+   329→                <button onClick={() => { setShowForm(false); resetVoucherForm(); }} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer active-press duration-150">إلغاء</button>
+   330→                <button onClick={handleCreateVoucher} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer inline-flex items-center gap-1.5 active-press duration-150"><Receipt size={14} /> إنشاء</button>
+   331→              </div>
+   332→            </div>
+   333→          );
+   334→          if (vouchers.length === 0) return <Empty label="سندات" />;
+   335→          // DS v4.0: Vouchers table with enterprise styling and kpi-card-gold totals
+   336→          return (
+   337→            <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+   338→              {/* DS v4.0: KPI Summary Cards for Vouchers */}
+   339→              {vouchers.length > 0 && (
+   340→                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border-b border-border">
+   341→                  {/* Total Vouchers - kpi-card */}
+   342→                  <div className="kpi-card">
+   343→                    <div className="flex items-center gap-2">
+   344→                      <FileText size={16} className="text-[#047857]" />
+   345→                      <div>
+   346→                        <p className="text-[10px] text-muted-foreground">إجمالي السندات</p>
+   347→                        <p className="text-sm font-bold text-[#047857]">{vouchers.length}</p>
+   348→                      </div>
+   349→                    </div>
+   350→                  </div>
+   351→                  {/* Total Debit (Receipts) - kpi-card-gold (Premium financial data!) */}
+   352→                  <div className="kpi-card-gold">
+   353→                    <div className="flex items-center gap-2">
+   354→                      <ArrowRight size={16} className="text-[#d4a574]" />
+   355→                      <div>
+   356→                        <p className="text-[10px] opacity-80">إجمالي القبض</p>
+   357→                        <p className="text-sm font-bold">{fmt(vouchers.filter(v => v.voucherType === 'receipt').reduce((sum, v) => sum + v.amount, 0))}</p>
+   358→                      </div>
+   359→                    </div>
+   360→                  </div>
+   361→                  {/* Total Credit (Payments) - kpi-card */}
+   362→                  <div className="kpi-card">
+   363→                    <div className="flex items-center gap-2">
+   364→                      <CreditCard size={16} className="text-red-500" />
+   365→                      <div>
+   366→                        <p className="text-[10px] text-muted-foreground">إجمالي الدفع</p>
+   367→                        <p className="text-sm font-bold text-red-500">{fmt(vouchers.filter(v => v.voucherType === 'payment').reduce((sum, v) => sum + v.amount, 0))}</p>
+   368→                      </div>
+   369→                    </div>
+   370→                  </div>
+   371→                  {/* Net Balance - kpi-card-gold */}
+   372→                  <div className="kpi-card-gold">
+   373→                    <div className="flex items-center gap-2">
+   374→                      <DollarSign size={16} className={vouchers.filter(v => v.voucherType === 'receipt').reduce((s, v) => s + v.amount, 0) - vouchers.filter(v => v.voucherType === 'payment').reduce((s, v) => s + v.amount, 0) >= 0 ? "text-[#d4a574]" : "text-red-500"} />
+   375→                      <div>
+   376→                        <p className="text-[10px] opacity-80">الرصيد الصافي</p>
+   377→                        <p className={cn("text-sm font-bold", vouchers.filter(v => v.voucherType === 'receipt').reduce((s, v) => s + v.amount, 0) - vouchers.filter(v => v.voucherType === 'payment').reduce((s, v) => s + v.amount, 0) >= 0 ? "" : "text-red-500")}>{fmt(vouchers.filter(v => v.voucherType === 'receipt').reduce((s, v) => s + v.amount, 0) - vouchers.filter(v => v.voucherType === 'payment').reduce((s, v) => s + v.amount, 0))}</p>
+   378→                      </div>
+   379→                    </div>
+   380→                  </div>
+   381→                </div>
+   382→              )}
+   383→              <div className="overflow-x-auto garfix-scroll">
+   384→                {/* DS v4.0: Enterprise table */}
+   385→                <table className="w-full border-collapse table-enterprise">
+   386→                  <thead><tr className="border-b border-border bg-muted">
+   387→                    <th className={thStyle}>النوع</th><th className={thStyle}>التاريخ</th>
+   388→                    <th className={thStyle}>المبلغ</th><th className={thStyle}>العملة</th>
+   389→                    <th className={thStyle}>المستفيد</th><th className={thStyle}>الدافع</th>
+   390→                    <th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   391→                  </tr></thead>
+   392→                  <tbody>
+   393→                    {vouchers.map((v) => {
+   394→                      const statusMap: Record<string, { label: string; color: string; badge: string }> = {
+   395→                        draft: { label: "مسودة", color: "#f59e0b", badge: "bg-amber-500/15 text-amber-500" }, approved: { label: "معتمد", color: "#10b981", badge: "bg-emerald-500/15 text-emerald-500" }, cancelled: { label: "ملغى", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
+   396→                      };
+   397→                      const st = statusMap[v.status] || { label: v.status, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
+   398→                      return (
+   399→                        <tr key={v.id} className="border-b border-border">
+   400→                          {/* DS v4.0: Emerald for debit (receipt), muted for credit (payment) */}
+   401→                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", v.voucherType === "receipt" ? "bg-[#047857]/15 text-[#047857]" : "bg-red-500/15 text-red-500")}>{v.voucherType === "receipt" ? "قبض" : "دفع"}</span></td>
+   402→                          <td className={tdStyle}>{v.date}</td>
+   403→                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(v.amount)}</td>
+   404→                          <td className={tdStyle}>{v.currency}</td>
+   405→                          <td className={tdStyle}>{v.payee || "—"}</td>
+   406→                          <td className={tdStyle}>{v.payer || "—"}</td>
+   407→                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", st.badge)}>{st.label}</span></td>
+   408→                          <td className={tdStyle}>
+   409→                            {/* DS v4.0: Action buttons with active-press */}
+   410→                            <div className="flex items-center gap-1">
+   411→                              {v.status === "draft" && (<>
+   412→                                <button onClick={() => handleApproveVoucher(v.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10 active-press duration-150"><CheckCircle2 size={13} className="text-emerald-600" /></button>
+   413→                                <button onClick={() => handleCancelVoucher(v.id)} title="إلغاء" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-red-500/10 active-press duration-150"><XCircle size={13} className="text-red-500" /></button>
+   414→                              </>)}
+   415→                              <button title="طباعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-muted active-press duration-150"><Printer size={13} /></button>
+   416→                            </div>
+   417→                          </td>
+   418→                        </tr>
+   419→                      );
+   420→                    })}
+   421→                  </tbody>
+   422→                </table>
+   423→              </div>
+   424→              <div className="py-3 px-4 border-t border-border text-[12px] text-muted-foreground">{vouchers.length} سند</div>
+   425→            </div>
+   426→          );
+   427→        }
+   428→
+   429→        /* ── Quotations Tab ───────────────────────────────────────────────────── */
+   430→        if (tab === "quotations") {
+   431→          if (showForm) return (
+   432→            <div className="bg-card rounded-[14px] border border-border p-5">
+   433→              <div className="flex items-center justify-between mb-4">
+   434→                <h2 className="text-base font-bold">عرض سعر جديد</h2>
+   435→                <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   436→              </div>
+   437→              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+   438→                <div><label className={labelStyle}>العميل *</label><input value={qClient} onChange={(e) => setQClient(e.target.value)} className={inputStyle} /></div>
+   439→                <div><label className={labelStyle}>التاريخ *</label><input value={qDate} onChange={(e) => setQDate(e.target.value)} className={inputStyle} type="date" /></div>
+   440→                <div><label className={labelStyle}>صالح حتى</label><input value={qValidUntil} onChange={(e) => setQValidUntil(e.target.value)} className={inputStyle} type="date" /></div>
+   441→              </div>
+   442→              {/* Line items */}
+   443→              <div className="mb-3"><label className={labelStyle}>بنود عرض السعر</label></div>
+   444→              {qLineItems.map((li, idx) => (
+   445→                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-end">
+   446→                  <input value={li.description} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
+   447→                  <input value={li.quantity} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
+   448→                  <input value={li.unitPrice} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
+   449→                  <div className="text-[13px] font-bold text-end py-2">{fmt(li.total)}</div>
+   450→                </div>
+   451→              ))}
+   452→              <button onClick={() => setQLineItems([...qLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
+   453→              <div className="flex gap-2 justify-end mt-5">
+   454→                <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   455→                <button onClick={handleCreateQuotation} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><FileText size={14} /> إنشاء</button>
+   456→              </div>
+   457→            </div>
+   458→          );
+   459→          if (quotations.length === 0) return <Empty label="عروض أسعار" />;
+   460→          return (
+   461→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   462→              <div className="overflow-x-auto garfix-scroll">
+   463→                <table className="w-full border-collapse">
+   464→                  <thead><tr className="border-b border-border bg-muted">
+   465→                    <th className={thStyle}>العميل</th><th className={thStyle}>التاريخ</th><th className={thStyle}>صالح حتى</th>
+   466→                    <th className={thStyle}>المبلغ</th><th className={thStyle}>البنود</th><th className={thStyle}>إجراء</th>
+   467→                  </tr></thead>
+   468→                  <tbody>
+   469→                    {quotations.map((q) => (
+   470→                      <tr key={q.id} className="border-b border-border">
+   471→                        <td className={cn(tdStyle, "font-bold")}>{q.clientName}</td>
+   472→                        <td className={tdStyle}>{q.date}</td><td className={tdStyle}>{q.validUntil}</td>
+   473→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(q.totalAmount)}</td>
+   474→                        <td className={tdStyle}>{q.lineItems?.length || 0}</td>
+   475→                        <td className={tdStyle}>
+   476→                          <button onClick={() => handleConvertToInvoice(q.id)} title="تحويل إلى فاتورة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><ArrowRight size={13} className="text-emerald-600" /></button>
+   477→                        </td>
+   478→                      </tr>
+   479→                    ))}
+   480→                  </tbody>
+   481→                </table>
+   482→              </div>
+   483→            </div>
+   484→          );
+   485→        }
+   486→
+   487→        /* ── Purchase Orders Tab ──────────────────────────────────────────────── */
+   488→        if (tab === "purchase-orders") {
+   489→          if (showForm) return (
+   490→            <div className="bg-card rounded-[14px] border border-border p-5">
+   491→              <div className="flex items-center justify-between mb-4">
+   492→                <h2 className="text-base font-bold">أمر شراء جديد</h2>
+   493→                <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   494→              </div>
+   495→              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+   496→                <div><label className={labelStyle}>المورد *</label><input value={poSupplier} onChange={(e) => setPoSupplier(e.target.value)} className={inputStyle} /></div>
+   497→                <div><label className={labelStyle}>التاريخ *</label><input value={poDate} onChange={(e) => setPoDate(e.target.value)} className={inputStyle} type="date" /></div>
+   498→                <div><label className={labelStyle}>التسليم المتوقع</label><input value={poDelivery} onChange={(e) => setPoDelivery(e.target.value)} className={inputStyle} type="date" /></div>
+   499→              </div>
+   500→              {poLineItems.map((li, idx) => (
+   501→                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-end">
+   502→                  <input value={li.description} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
+   503→                  <input value={li.quantity} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
+   504→                  <input value={li.unitPrice} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
+   505→                  <div className="text-[13px] font-bold text-end py-2">{fmt(li.total)}</div>
+   506→                </div>
+   507→              ))}
+   508→              <button onClick={() => setPoLineItems([...poLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
+   509→              <div className="flex gap-2 justify-end mt-5">
+   510→                <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   511→                <button onClick={handleCreatePO} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><ShoppingCart size={14} /> إنشاء</button>
+   512→              </div>
+   513→            </div>
+   514→          );
+   515→          if (purchaseOrders.length === 0) return <Empty label="أوامر شراء" />;
+   516→          return (
+   517→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   518→              <div className="overflow-x-auto garfix-scroll">
+   519→                <table className="w-full border-collapse">
+   520→                  <thead><tr className="border-b border-border bg-muted">
+   521→                    <th className={thStyle}>المورد</th><th className={thStyle}>التاريخ</th><th className={thStyle}>التسليم</th>
+   522→                    <th className={thStyle}>المبلغ</th><th className={thStyle}>البنود</th>
+   523→                  </tr></thead>
+   524→                  <tbody>
+   525→                    {purchaseOrders.map((po) => (
+   526→                      <tr key={po.id} className="border-b border-border">
+   527→                        <td className={cn(tdStyle, "font-bold")}>{po.supplierName}</td>
+   528→                        <td className={tdStyle}>{po.date}</td><td className={tdStyle}>{po.expectedDelivery}</td>
+   529→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(po.totalAmount)}</td>
+   530→                        <td className={tdStyle}>{po.lineItems?.length || 0}</td>
+   531→                      </tr>
+   532→                    ))}
+   533→                  </tbody>
+   534→                </table>
+   535→              </div>
+   536→            </div>
+   537→          );
+   538→        }
+   539→
+   540→        /* ── Opening Balances Tab ─────────────────────────────────────────────── */
+   541→        if (tab === "opening-balances") {
+   542→          if (showForm) return (
+   543→            <div className="bg-card rounded-[14px] border border-border p-5">
+   544→              <div className="flex items-center justify-between mb-4">
+   545→                <h2 className="text-base font-bold">رصيد افتتاحي جديد</h2>
+   546→                <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
+   547→              </div>
+   548→              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   549→                <div><label className={labelStyle}>رقم الحساب *</label><input value={obAccountId} onChange={(e) => setObAccountId(e.target.value)} className={inputStyle} type="number" placeholder="1" /></div>
+   550→                <div><label className={labelStyle}>المبلغ *</label><input value={obAmount} onChange={(e) => setObAmount(e.target.value)} className={inputStyle} type="number" placeholder="0.000" /></div>
+   551→              </div>
+   552→              <div className="flex gap-2 justify-end mt-5">
+   553→                <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
+   554→                <button onClick={handleCreateOB} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><BookOpen size={14} /> إنشاء</button>
+   555→              </div>
+   556→            </div>
+   557→          );
+   558→          if (openingBalances.length === 0) return <Empty label="أرصدة افتتاحية" />;
+   559→          return (
+   560→            <div className="flex flex-col gap-3">
+   561→              <div className="flex justify-end">
+   562→                <button onClick={handlePostAllOB} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5"><CheckCircle2 size={14} /> ترحيل جميع الأرصدة</button>
+   563→              </div>
+   564→              <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   565→                <div className="overflow-x-auto garfix-scroll">
+   566→                  <table className="w-full border-collapse">
+   567→                    <thead><tr className="border-b border-border bg-muted">
+   568→                      <th className={thStyle}>كود الحساب</th><th className={thStyle}>اسم الحساب</th>
+   569→                      <th className={thStyle}>المبلغ</th><th className={thStyle}>الحالة</th>
+   570→                    </tr></thead>
+   571→                    <tbody>
+   572→                      {openingBalances.map((ob) => (
+   573→                        <tr key={ob.id} className="border-b border-border">
+   574→                          <td className={cn(tdStyle, "font-mono font-bold")}>{ob.accountCode}</td>
+   575→                          <td className={tdStyle}>{ob.accountNameAr}</td>
+   576→                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(ob.amount)}</td>
+   577→                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", ob.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{ob.posted ? "مُرحّل" : "مسودة"}</span></td>
+   578→                        </tr>
+   579→                      ))}
+   580→                    </tbody>
+   581→                  </table>
+   582→                </div>
+   583→              </div>
+   584→            </div>
+   585→          );
+   586→        }
+   587→
+   588→        /* ── Commissions Tab ───────────────────────────────────────────────────── */
+   589→        if (tab === "commissions") {
+   590→          if (commissions.length === 0) return <Empty label="عمولات" />;
+   591→          return (
+   592→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   593→              <div className="overflow-x-auto garfix-scroll">
+   594→                <table className="w-full border-collapse">
+   595→                  <thead><tr className="border-b border-border bg-muted">
+   596→                    <th className={thStyle}>المندوب</th><th className={thStyle}>إجمالي المبيعات</th>
+   597→                    <th className={thStyle}>العمولة</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   598→                  </tr></thead>
+   599→                  <tbody>
+   600→                    {commissions.map((c) => (
+   601→                      <tr key={c.id} className="border-b border-border">
+   602→                        <td className={cn(tdStyle, "font-bold")}>{c.salesperson}</td>
+   603→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(c.totalSales)}</td>
+   604→                        <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-500")}>{fmt(c.commissionAmount)}</td>
+   605→                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{c.posted ? "مُرحّل" : "مسودة"}</span></td>
+   606→                        <td className={tdStyle}>
+   607→                          {!c.posted && <button onClick={() => handlePostCommission(c.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
+   608→                        </td>
+   609→                      </tr>
+   610→                    ))}
+   611→                  </tbody>
+   612→                </table>
+   613→              </div>
+   614→            </div>
+   615→          );
+   616→        }
+   617→
+   618→        /* ── Profit Distribution Tab ──────────────────────────────────────────── */
+   619→        if (tab === "profit-distribution") {
+   620→          if (profitDistributions.length === 0) return <Empty label="توزيعات أرباح" />;
+   621→          return (
+   622→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   623→              <div className="overflow-x-auto garfix-scroll">
+   624→                <table className="w-full border-collapse">
+   625→                  <thead><tr className="border-b border-border bg-muted">
+   626→                    <th className={thStyle}>الشريك</th><th className={thStyle}>نسبة الملكية %</th>
+   627→                    <th className={thStyle}>حصة الأرباح</th><th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   628→                  </tr></thead>
+   629→                  <tbody>
+   630→                    {profitDistributions.map((pd) => (
+   631→                      <tr key={pd.id} className="border-b border-border">
+   632→                        <td className={cn(tdStyle, "font-bold")}>{pd.partnerName}</td>
+   633→                        <td className={cn(tdStyle, "[direction:ltr] text-end")}>{pd.ownershipPercent}%</td>
+   634→                        <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-500")}>{fmt(pd.profitShare)}</td>
+   635→                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", pd.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{pd.posted ? "مُرحّل" : "مسودة"}</span></td>
+   636→                        <td className={tdStyle}>
+   637→                          {!pd.posted && <button onClick={() => handlePostProfitDist(pd.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
+   638→                        </td>
+   639→                      </tr>
+   640→                    ))}
+   641→                  </tbody>
+   642→                </table>
+   643→              </div>
+   644→            </div>
+   645→          );
+   646→        }
+   647→        return null;
+   648→      })()}
+   649→    </div>
+   650→  );
+   651→}
+   652→

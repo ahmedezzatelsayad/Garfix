@@ -1,0 +1,900 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * ═════════════════════════════════════════════════════════════
+     5→ * GarfiX AI - Enterprise Dashboard (لوحة تحكم الذكاء الاصطناعي)
+     6→ * 
+     7→ * Real-time monitoring for:
+     8→ * - Pool status & utilization
+     9→ * - Per-key health & quota tracking  
+    10→ * - Worker performance metrics
+    11→ * - Queue depth & wait times
+    12→ * - Alerts & notifications
+    13→ * 
+    14→ * Auto-refreshes every 10 seconds
+    15→ * RTL support for Arabic interface
+    16→ * ═════════════════════════════════════════════════════════════
+    17→ */
+    18→
+    19→import React, { useState, useEffect, useCallback } from 'react';
+    20→
+    21→// ── Types ───────────────────────────────────────────────────
+    22→
+    23→interface KeyMetrics {
+    24→  id: string;
+    25→  name: string;
+    26→  healthy: boolean;
+    27→  circuitState: string;
+    28→  rpmUsed: number;
+    29→  rpmLimit: number;
+    30→  rpmUtilizationPct: number;
+    31→  tokensUsed: number;
+    32→  tokensLimit: number;
+    33→  tokensUtilizationPct: number;
+    34→  avgLatencyMs: number;
+    35→  successRate: number;
+    36→  consecutiveFailures: number;
+    37→  lastError?: string;
+    38→  lastUsed?: string;
+    39→}
+    40→
+    41→interface WorkerMetrics {
+    42→  type: string;
+    43→  activeJobs: number;
+    44→  processedToday: number;
+    45→  avgLatencyMs: number;
+    46→}
+    47→
+    48→interface QueueMetrics {
+    49→  pending: number;
+    50→  running: number;
+    51→  completedToday: number;
+    52→  failedToday: number;
+    53→  estimatedWaitTimeMs: number;
+    54→}
+    55→
+    56→interface TodayMetrics {
+    57→  totalRequests: number;
+    58→  totalTokens: number;
+    59→  totalFailures: number;
+    60→  rejectionRate: number;
+    61→}
+    62→
+    63→interface Alert {
+    64→  level: 'info' | 'warning' | 'error' | 'critical';
+    65→  message: string;
+    66→  keyId?: string;
+    67→  timestamp: string;
+    68→}
+    69→
+    70→interface PoolStatus {
+    71→  totalRPM: number;
+    72→  usedRPM: number;
+    73→  availableRPM: number;
+    74→  utilizationPct: number;
+    75→  status: 'healthy' | 'degraded' | 'critical';
+    76→}
+    77→
+    78→interface AIMetricsData {
+    79→  success: boolean;
+    80→  timestamp: string;
+    81→  data: {
+    82→    pool: PoolStatus;
+    83→    keys: KeyMetrics[];
+    84→    workers: WorkerMetrics[];
+    85→    queue: QueueMetrics;
+    86→    today: TodayMetrics;
+    87→    alerts: Alert[];
+    88→  };
+    89→}
+    90→
+    91→// ── Helpers ─────────────────────────────────────────────────
+    92→
+    93→function formatNumber(num: number): string {
+    94→  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+    95→  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+    96→  return num.toString();
+    97→}
+    98→
+    99→function formatTime(ms: number): string {
+   100→  if (ms < 1000) return `${ms}ms`;
+   101→  return `${(ms / 1000).toFixed(1)}s`;
+   102→}
+   103→
+   104→function getStatusColor(status: string): string {
+   105→  switch (status) {
+   106→    case 'healthy': return 'text-green-600 bg-green-50 border-green-200';
+   107→    case 'degraded': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+   108→    case 'critical': return 'text-red-600 bg-red-50 border-red-200';
+   109→    default: return 'text-gray-600 bg-gray-50 border-gray-200';
+   110→  }
+   111→}
+   112→
+   113→function getAlertIcon(level: string): string {
+   114→  switch (level) {
+   115→    case 'info': return 'ℹ️';
+   116→    case 'warning': return '⚠️';
+   117→    case 'error': return '❌';
+   118→    case 'critical': return '🚨';
+   119→    default: return '📋';
+   120→  }
+   121→}
+   122→
+   123→function getAlertBg(level: string): string {
+   124→  switch (level) {
+   125→    case 'info': return 'bg-blue-50 border-blue-200';
+   126→    case 'warning': return 'bg-yellow-50 border-yellow-200';
+   127→    case 'error': return 'bg-red-50 border-red-200';
+   128→    case 'critical': return 'bg-red-100 border-red-300';
+   129→    default: return 'bg-gray-50 border-gray-200';
+   130→  }
+   131→}
+   132→
+   133→const WORKER_NAMES: Record<string, { ar: string; en: string; icon: string }> = {
+   134→  'ai-chat': { ar: 'المحادثة الذكية', en: 'Chat Agent', icon: '💬' },
+   135→  'ai-invoice-extract': { ar: 'استخراج الفواتير', en: 'Invoice Brain', icon: '🧾' },
+   136→  'ai-smart-parse': { ar: 'التحليل الذكي', en: 'Smart Parse', icon: '🔍' },
+   137→  'ai-agent-accounting': { ar: 'وكيل المحاسبة', en: 'Accounting Agent', icon: '📊' },
+   138→  'ai-agent-sales': { ar: 'وكيل المبيعات', en: 'Sales Agent', icon: '💰' },
+   139→  'ai-agent-inventory': { ar: 'وكيل المخزون', en: 'Inventory Agent', icon: '📦' },
+   140→};
+   141→
+   142→// ── Sub-Components ─────────────────────────────────────────
+   143→
+   144→function MetricCard({ 
+   145→  title, 
+   146→  value, 
+   147→  subtitle, 
+   148→  trend,
+   149→  color = "blue" 
+   150→}: { 
+   151→  title: string; 
+   152→  value: string | number; 
+   153→  subtitle?: string;
+   154→  trend?: 'up' | 'down' | 'stable';
+   155→  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
+   156→}) {
+   157→  const colors = {
+   158→    blue: 'from-blue-500 to-blue-600',
+   159→    green: 'from-green-500 to-green-600',
+   160→    yellow: 'from-yellow-500 to-yellow-600',
+   161→    red: 'from-red-500 to-red-600',
+   162→    purple: 'from-purple-500 to-purple-600',
+   163→  };
+   164→
+   165→  return (
+   166→    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+   167→      <div className={`bg-gradient-to-r ${colors[color]} p-4`}>
+   168→        <p className="text-white/80 text-sm font-medium">{title}</p>
+   169→        <p className="text-white text-3xl font-bold mt-1">{value}</p>
+   170→        {subtitle && (
+   171→          <p className="text-white/70 text-xs mt-1">{subtitle}</p>
+   172→        )}
+   173→      </div>
+   174→      {trend && (
+   175→        <div className="px-4 py-2 bg-gray-50 flex items-center justify-between">
+   176→          <span className="text-xs text-gray-500">الاتجاه</span>
+   177→          <span className={`text-xs font-medium ${
+   178→            trend === 'up' ? 'text-green-600' : 
+   179→            trend === 'down' ? 'text-red-600' : 'text-gray-600'
+   180→          }`}>
+   181→            {trend === 'up' ? '⬆️ مرتفع' : trend === 'down' ? '⬇️ منخفض' : '➡️ مستقر'}
+   182→          </span>
+   183→        </div>
+   184→      )}
+   185→    </div>
+   186→  );
+   187→}
+   188→
+   189→function KeyHealthCard({ key: k }: { key: KeyMetrics }) {
+   190→  const isHealthy = k.healthy && k.circuitState === 'closed';
+   191→  
+   192→  return (
+   193→    <div className={`rounded-lg border p-4 transition-all ${
+   194→      isHealthy ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'
+   195→    }`}>
+   196→      {/* Header */}
+   197→      <div className="flex items-center justify-between mb-3">
+   198→        <div className="flex items-center gap-2">
+   199→          <div className={`w-3 h-3 rounded-full ${
+   200→            isHealthy ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+   201→          }`} />
+   202→          <h4 className="font-semibold text-gray-900">{k.name}</h4>
+   203→        </div>
+   204→        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+   205→          getStatusColor(k.circuitState === 'closed' ? 'healthy' : 'critical')
+   206→        }`}>
+   207→          {k.circuitState === 'closed' ? 'نشط' : 'معطّل'}
+   208→        </span>
+   209→      </div>
+   210→
+   211→      {/* RPM Usage */}
+   212→      <div className="mb-3">
+   213→        <div className="flex justify-between text-sm mb-1">
+   214→          <span className="text-gray-600">استخدام RPM</span>
+   215→          <span className="font-mono font-medium">{k.rpmUsed} / {k.rpmLimit}</span>
+   216→        </div>
+   217→        <div className="w-full bg-gray-200 rounded-full h-2">
+   218→          <div 
+   219→            className={`h-2 rounded-full transition-all ${
+   220→              k.rpmUtilizationPct > 80 ? 'bg-red-500' :
+   221→              k.rpmUtilizationPct > 50 ? 'bg-yellow-500' : 'bg-green-500'
+   222→            }`}
+   223→            style={{ width: `${Math.min(k.rpmUtilizationPct, 100)}%` }}
+   224→          />
+   225→        </div>
+   226→      </div>
+   227→
+   228→      {/* Token Quota */}
+   229→      <div className="mb-3">
+   230→        <div className="flex justify-between text-sm mb-1">
+   231→          <span className="text-gray-600">الحصة اليومية (Tokens)</span>
+   232→          <span className="font-mono text-xs">{formatNumber(k.tokensUsed)} / {formatNumber(k.tokensLimit)}</span>
+   233→        </div>
+   234→        <div className="w-full bg-gray-200 rounded-full h-1.5">
+   235→          <div 
+   236→            className={`h-1.5 rounded-full transition-all ${
+   237→              k.tokensUtilizationPct > 90 ? 'bg-red-500' :
+   238→              k.tokensUtilizationPct > 70 ? 'bg-yellow-500' : 'bg-green-500'
+   239→            }`}
+   240→            style={{ width: `${Math.min(k.tokensUtilizationPct, 100)}%` }}
+   241→          />
+   242→        </div>
+   243→      </div>
+   244→
+   245→      {/* Stats Grid */}
+   246→      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+   247→        <div className="bg-white rounded p-2">
+   248→          <p className="text-gray-500">التأخير</p>
+   249→          <p className="font-mono font-semibold">{formatTime(k.avgLatencyMs)}</p>
+   250→        </div>
+   251→        <div className="bg-white rounded p-2">
+   252→          <p className="text-gray-500">نجاح</p>
+   253→          <p className="font-mono font-semibold">{k.successRate}%</p>
+   254→        </div>
+   255→        <div className="bg-white rounded p-2">
+   256→          <p className="text-gray-500">فشل متتالي</p>
+   257→          <p className={`font-mono font-semibold ${
+   258→            k.consecutiveFailures > 0 ? 'text-red-600' : 'text-green-600'
+   259→          }`}>
+   260→            {k.consecutiveFailures}
+   261→          </p>
+   262→        </div>
+   263→      </div>
+   264→
+   265→      {/* Last Error */}
+   266→      {k.lastError && (
+   267→        <div className="mt-3 p-2 bg-red-100 rounded text-xs text-red-700 font-mono truncate">
+   268→          ⚠️ {k.lastError}
+   269→        </div>
+   270→      )}
+   271→    </div>
+   272→  );
+   273→}
+   274→
+   275→function WorkerCard({ worker }: { worker: WorkerMetrics }) {
+   276→  const info = WORKER_NAMES[worker.type] || { 
+   277→    ar: worker.type, 
+   278→    en: worker.type, 
+   279→    icon: '🤖' 
+   280→  };
+   281→
+   282→  return (
+   283→    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+   284→      <div className="flex items-center gap-3 mb-3">
+   285→        <span className="text-2xl">{info.icon}</span>
+   286→        <div>
+   287→          <h4 className="font-semibold text-gray-900">{info.ar}</h4>
+   288→          <p className="text-xs text-gray-500">{info.en}</p>
+   289→        </div>
+   290→      </div>
+   291→
+   292→      <div className="grid grid-cols-3 gap-2 text-center">
+   293→        <div className="bg-blue-50 rounded p-2">
+   294→          <p className="text-xs text-blue-600">نشط</p>
+   295→          <p className="font-bold text-blue-900">{worker.activeJobs}</p>
+   296→        </div>
+   297→        <div className="bg-green-50 rounded p-2">
+   298→          <p className="text-xs text-green-600">اليوم</p>
+   299→          <p className="font-bold text-green-900">{formatNumber(worker.processedToday)}</p>
+   300→        </div>
+   301→        <div className="bg-purple-50 rounded p-2">
+   302→          <p className="text-xs text-purple-600">متوسط</p>
+   303→          <p className="font-bold text-purple-900">{formatTime(worker.avgLatencyMs)}</p>
+   304→        </div>
+   305→      </div>
+   306→    </div>
+   307→  );
+   308→}
+   309→
+   310→function AlertCard({ alert }: { alert: Alert }) {
+   311→  return (
+   312→    <div className={`rounded-lg border p-3 ${getAlertBg(alert.level)}`}>
+   313→      <div className="flex items-start gap-2">
+   314→        <span className="text-lg">{getAlertIcon(alert.level)}</span>
+   315→        <div className="flex-1 min-w-0">
+   316→          <p className={`text-sm font-medium ${
+   317→            alert.level === 'critical' ? 'text-red-800' :
+   318→            alert.level === 'error' ? 'text-red-700' :
+   319→            alert.level === 'warning' ? 'text-yellow-800' : 'text-blue-700'
+   320→          }`}>
+   321→            {alert.message}
+   322→          </p>
+   323→          <p className="text-xs opacity-70 mt-1">
+   324→            {new Date(alert.timestamp).toLocaleTimeString('ar-EG')}
+   325→          </p>
+   326→        </div>
+   327→      </div>
+   328→    </div>
+   329→  );
+   330→}
+   331→
+   332→function UtilizationGauge({ value, max = 100 }: { value: number; max?: number }) {
+   333→  const percentage = Math.min((value / max) * 100, 100);
+   334→  const rotation = (percentage / 100) * 180 - 90; // -90 to 90 degrees
+   335→  
+   336→  let color = '#22c55e'; // green
+   337→  if (percentage > 75) color = '#ef4444'; // red
+   338→  else if (percentage > 50) color = '#eab308'; // yellow
+   339→
+   340→  return (
+   341→    <div className="relative w-32 h-16 mx-auto overflow-hidden">
+   342→      <svg viewBox="0 0 100 50" className="w-full h-full">
+   343→        {/* Background arc */}
+   344→        <path
+   345→          d="M 10 45 A 40 40 0 0 1 90 45"
+   346→          fill="none"
+   347→          stroke="#e5e7eb"
+   348→          strokeWidth="8"
+   349→          strokeLinecap="round"
+   350→        />
+   351→        {/* Value arc */}
+   352→        <path
+   353→          d="M 10 45 A 40 40 0 0 1 90 45"
+   354→          fill="none"
+   355→          stroke={color}
+   356→          strokeWidth="8"
+   357→          strokeLinecap="round"
+   358→          strokeDasharray={`${percentage * 1.256} 126`}
+   359→          transform="rotate(-90 50 45)"
+   360→        />
+   361→      </svg>
+   362→      <div className="absolute inset-0 flex items-end justify-center pb-1">
+   363→        <span className="text-lg font-bold" style={{ color }}>
+   364→          {Math.round(percentage)}%
+   365→        </span>
+   366→      </div>
+   367→    </div>
+   368→  );
+   369→}
+   370→
+   371→// ── Main Dashboard Component ────────────────────────────────
+   372→
+   373→export default function AIDashboardPage() {
+   374→  const [data, setData] = useState<AIMetricsData | null>(null);
+   375→  const [loading, setLoading] = useState(true);
+   376→  const [error, setError] = useState<string | null>(null);
+   377→  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+   378→  const [autoRefresh, setAutoRefresh] = useState(true);
+   379→  const [activeTab, setActiveTab] = useState<'overview' | 'keys' | 'workers' | 'queue'>('overview');
+   380→
+   381→  // Fetch metrics
+   382→  const fetchMetrics = useCallback(async () => {
+   383→    try {
+   384→      setError(null);
+   385→      const response = await fetch('/api/ai/metrics');
+   386→      
+   387→      if (!response.ok) {
+   388→        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+   389→      }
+   390→      
+   391→      const result: AIMetricsData = await response.json();
+   392→      
+   393→      if (result.success) {
+   394→        setData(result);
+   395→        setLastUpdate(new Date());
+   396→      } else {
+   397→        throw new Error((result as any).error || 'Failed to fetch metrics');
+   398→      }
+   399→    } catch (err) {
+   400→      setError(err instanceof Error ? err.message : 'Unknown error');
+   401→    } finally {
+   402→      setLoading(false);
+   403→    }
+   404→  }, []);
+   405→
+   406→  // Initial fetch + auto-refresh
+   407→  useEffect(() => {
+   408→    fetchMetrics();
+   409→    
+   410→    if (autoRefresh) {
+   411→      const interval = setInterval(fetchMetrics, 10_000); // 10 seconds
+   412→      return () => clearInterval(interval);
+   413→    }
+   414→  }, [fetchMetrics, autoRefresh]);
+   415→
+   416→  // Manual refresh handler
+   417→  const handleRefresh = () => {
+   418→    setLoading(true);
+   419→    fetchMetrics();
+   420→  };
+   421→
+   422→  // Reset quotas handler
+   423→  const handleResetQuotas = async () => {
+   424→    if (!confirm('هل أنت متأكد من إعادة تعيين الحصص اليومية؟')) return;
+   425→    
+   426→    try {
+   427→      const response = await fetch('/api/ai/metrics?action=reset-quotas', { method: 'POST' });
+   428→      const result = await response.json();
+   429→      
+   430→      if (result.success) {
+   431→        alert('✅ تم إعادة تعيين الحصص بنجاح');
+   432→        fetchMetrics();
+   433→      } else {
+   434→        alert(`❌ خطأ: ${result.error}`);
+   435→      }
+   436→    } catch (err) {
+   437→      alert(`❌ خطأ: ${err instanceof Error ? err.message : 'Unknown error'}`);
+   438→    }
+   439→  };
+   440→
+   441→  // Loading state
+   442→  if (loading && !data) {
+   443→    return (
+   444→      <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
+   445→        <div className="max-w-7xl mx-auto">
+   446→          <div className="flex items-center justify-center min-h-[60vh]">
+   447→            <div className="text-center">
+   448→              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
+   449→              <p className="text-gray-500 font-medium">جاري تحميل بيانات الذكاء الاصطناعي...</p>
+   450→              <p className="text-sm text-gray-400 mt-2">AI Metrics Loading...</p>
+   451→            </div>
+   452→          </div>
+   453→        </div>
+   454→      </main>
+   455→    );
+   456→  }
+   457→
+   458→  // Error state
+   459→  if (error && !data) {
+   460→    return (
+   461→      <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
+   462→        <div className="max-w-7xl mx-auto">
+   463→          <div className="flex items-center justify-center min-h-[60vh]">
+   464→            <div className="text-center bg-red-50 rounded-xl p-8 max-w-md">
+   465→              <div className="text-5xl mb-4">😵</div>
+   466→              <h2 className="text-xl font-bold text-red-800 mb-2">خطأ في تحميل البيانات</h2>
+   467→              <p className="text-red-600 mb-4">{error}</p>
+   468→              <button
+   469→                onClick={handleRefresh}
+   470→                className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+   471→              >
+   472→                🔄 إعادة المحاولة
+   473→              </button>
+   474→            </div>
+   475→          </div>
+   476→        </div>
+   477→      </main>
+   478→    );
+   479→  }
+   480→
+   481→  return (
+   482→    <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
+   483→      <div className="max-w-7xl mx-auto space-y-6">
+   484→        
+   485→        {/* ── Header ──────────────────────────────────────── */}
+   486→        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   487→          <div>
+   488→            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+   489→              <span className="text-4xl">🤖</span>
+   490→              لوحة تحكم الذكاء الاصطناعي
+   491→            </h1>
+   492→            <p className="text-gray-500 mt-1">GarfiX AI Enterprise Dashboard</p>
+   493→          </div>
+   494→          
+   495→          <div className="flex items-center gap-3">
+   496→            {/* Auto-refresh toggle */}
+   497→            <label className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border cursor-pointer">
+   498→              <input
+   499→                type="checkbox"
+   500→                checked={autoRefresh}
+   501→                onChange={(e) => setAutoRefresh(e.target.checked)}
+   502→                className="rounded text-violet-600"
+   503→              />
+   504→              <span className="text-sm text-gray-600">تحديث تلقائي</span>
+   505→            </label>
+   506→            
+   507→            {/* Refresh button */}
+   508→            <button
+   509→              onClick={handleRefresh}
+   510→              disabled={loading}
+   511→              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+   512→            >
+   513→              <span className={loading ? 'animate-spin' : ''}>🔄</span>
+   514→              تحديث
+   515→            </button>
+   516→
+   517→            {/* Reset button (admin only) */}
+   518→            <button
+   519→              onClick={handleResetQuotas}
+   520→              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+   521→            >
+   522→              ↺ إعادة الحصص
+   523→            </button>
+   524→          </div>
+   525→        </div>
+   526→
+   527→        {/* Last update time */}
+   528→        {lastUpdate && (
+   529→          <p className="text-xs text-gray-400">
+   530→            آخر تحديث: {lastUpdate.toLocaleTimeString('ar-EG')} • 
+   531→            {autoRefresh && ' تحديث كل 10 ثوانٍ'}
+   532→          </p>
+   533→        )}
+   534→
+   535→        {/* ── Pool Status Banner ───────────────────────── */}
+   536→        {data?.data.pool && (
+   537→          <div className={`rounded-xl border-2 p-6 ${
+   538→            data.data.pool.status === 'healthy' ? 'border-green-200 bg-green-50' :
+   539→            data.data.pool.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
+   540→            'border-red-200 bg-red-50'
+   541→          }`}>
+   542→            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+   543→              
+   544→              {/* Gauge */}
+   545→              <div className="flex-shrink-0">
+   546→                <UtilizationGauge value={data.data.pool.utilizationPct} />
+   547→                <p className="text-center text-sm font-medium mt-2 text-gray-700">
+   548→                  استهلاك المجمع
+   549→                </p>
+   550→              </div>
+   551→
+   552→              {/* Stats */}
+   553→              <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+   554→                <div className="text-center">
+   555→                  <p className="text-sm text-gray-600">إجمالي السعة</p>
+   556→                  <p className="text-2xl font-bold text-gray-900">{data.data.pool.totalRPM}</p>
+   557→                  <p className="text-xs text-gray-500">RPM</p>
+   558→                </div>
+   559→                <div className="text-center">
+   560→                  <p className="text-sm text-gray-600">المستخدم</p>
+   561→                  <p className="text-2xl font-bold text-violet-600">{data.data.pool.usedRPM}</p>
+   562→                  <p className="text-xs text-gray-500">RPM</p>
+   563→                </div>
+   564→                <div className="text-center">
+   565→                  <p className="text-sm text-gray-600">المتبقي</p>
+   566→                  <p className="text-2xl font-bold text-green-600">{data.data.pool.availableRPM}</p>
+   567→                  <p className="text-xs text-gray-500">RPM</p>
+   568→                </div>
+   569→                <div className="text-center">
+   570→                  <p className="text-sm text-gray-600">الحالة</p>
+   571→                  <p className={`text-lg font-bold ${
+   572→                    data.data.pool.status === 'healthy' ? 'text-green-600' :
+   573→                    data.data.pool.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
+   574→                  }`}>
+   575→                    {data.data.pool.status === 'healthy' ? '✅ سليم' :
+   576→                     data.data.pool.status === 'degraded' ? '⚠️ منخفض' : '🚨 حرج'}
+   577→                  </p>
+   578→                </div>
+   579→              </div>
+   580→            </div>
+   581→          </div>
+   582→        )}
+   583→
+   584→        {/* ── Tabs Navigation ────────────────────────────── */}
+   585→        <div className="flex gap-2 overflow-x-auto pb-2">
+   586→          {[
+   587→            { id: 'overview', label: 'نظرة عامة', icon: '📊' },
+   588→            { id: 'keys', label: 'المفاتيح', icon: '🔑' },
+   589→            { id: 'workers', label: 'العاملين', icon: '🤖' },
+   590→            { id: 'queue', label: 'الطوابير', icon: '📋' },
+   591→          ].map((tab) => (
+   592→            <button
+   593→              key={tab.id}
+   594→              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+   595→              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+   596→                activeTab === tab.id
+   597→                  ? 'bg-violet-600 text-white shadow-lg'
+   598→                  : 'bg-white text-gray-600 hover:bg-gray-100'
+   599→              }`}
+   600→            >
+   601→              <span className="ml-1">{tab.icon}</span>
+   602→              {tab.label}
+   603→            </button>
+   604→          ))}
+   605→        </div>
+   606→
+   607→        {/* ── Tab Content: Overview ──────────────────────── */}
+   608→        {activeTab === 'overview' && (
+   609→          <div className="space-y-6">
+   610→            
+   611→            {/* Today's Summary Cards */}
+   612→            {data?.data.today && (
+   613→              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   614→                <MetricCard
+   615→                  title="إجمالي الطلبات اليوم"
+   616→                  value={formatNumber(data.data.today.totalRequests)}
+   617→                  subtitle={`${formatNumber(data.data.today.totalTokens)} tokens مستخدمة`}
+   618→                  color="blue"
+   619→                />
+   620→                <MetricCard
+   621→                  title="معدل النجاح"
+   622→                  value={`${Math.max(0, 100 - data.data.today.rejectionRate)}%`}
+   623→                  subtitle={`${data.data.today.totalFailures} فشل`}
+   624→                  color={data.data.today.rejectionRate < 1 ? 'green' : data.data.today.rejectionRate < 5 ? 'yellow' : 'red'}
+   625→                />
+   626→                <MetricCard
+   627→                  title="العاملين النشطين"
+   628→                  value={data.data.workers.filter(w => w.activeJobs > 0).length}
+   629→                  subtitle={`من ${data.data.workers.length} إجمالي`}
+   630→                  color="purple"
+   631→                />
+   632→                <MetricCard
+   633→                  title="وقت الانتظار"
+   634→                  value={formatTime(data.data.queue.estimatedWaitTimeMs)}
+   635→                  subtitle={`${data.data.queue.pending} في الطابور`}
+   636→                  color={data.data.queue.estimatedWaitTimeMs > 5000 ? 'red' : 'green'}
+   637→                />
+   638→              </div>
+   639→            )}
+   640→
+   641→            {/* Alerts Section */}
+   642→            {data?.data.alerts && data.data.alerts.length > 0 && (
+   643→              <div className="space-y-3">
+   644→                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+   645→                  🔔 التنبيهات ({data.data.alerts.length})
+   646→                </h3>
+   647→                <div className="grid gap-3 md:grid-cols-2">
+   648→                  {data.data.alerts.map((alert, i) => (
+   649→                    <AlertCard key={i} alert={alert} />
+   650→                  ))}
+   651→                </div>
+   652→              </div>
+   653→            )}
+   654→
+   655→            {/* Quick Stats */}
+   656→            <div className="grid md:grid-cols-2 gap-6">
+   657→              {/* Workers Overview */}
+   658→              {data?.data.workers && (
+   659→                <div className="bg-white rounded-xl border border-gray-200 p-6">
+   660→                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+   661→                    🤖 أداء العاملين
+   662→                  </h3>
+   663→                  <div className="space-y-3">
+   664→                    {data.data.workers.map((worker, i) => (
+   665→                      <WorkerCard key={i} worker={worker} />
+   666→                    ))}
+   667→                  </div>
+   668→                </div>
+   669→              )}
+   670→
+   671→              {/* Keys Quick View */}
+   672→              {data?.data.keys && (
+   673→                <div className="bg-white rounded-xl border border-gray-200 p-6">
+   674→                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+   675→                    🔑 حالة المفاتيح
+   676→                  </h3>
+   677→                  <div className="space-y-3">
+   678→                    {data.data.keys.map((key, i) => (
+   679→                      <KeyHealthCard key={i} k={key} />
+   680→                    ))}
+   681→                  </div>
+   682→                </div>
+   683→              )}
+   684→            </div>
+   685→          </div>
+   686→        )}
+   687→
+   688→        {/* ── Tab Content: Keys ──────────────────────────── */}
+   689→        {activeTab === 'keys' && data?.data.keys && (
+   690→          <div className="space-y-4">
+   691→            <div className="flex items-center justify-between">
+   692→              <h3 className="font-semibold text-gray-900 text-lg">
+   693→                🔑 تفاصيل مفاتيح Gemini ({data.data.keys.length} مفتاح)
+   694→              </h3>
+   695→              <span className="text-sm text-gray-500">
+   696→                الصحيحة: {data.data.keys.filter(k => k.healthy).length} / {data.data.keys.length}
+   697→              </span>
+   698→            </div>
+   699→            
+   700→            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+   701→              {data.data.keys.map((key, i) => (
+   702→                <KeyHealthCard key={i} k={key} />
+   703→              ))}
+   704→            </div>
+   705→          </div>
+   706→        )}
+   707→
+   708→        {/* ── Tab Content: Workers ───────────────────────── */}
+   709→        {activeTab === 'workers' && data?.data.workers && (
+   710→          <div className="space-y-4">
+   711→            <h3 className="font-semibold text-gray-900 text-lg">
+   712→              🤖 تفاصيل العاملين الذكياء ({data.data.workers.length})
+   713→            </h3>
+   714→            
+   715→            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+   716→              {data.data.workers.map((worker, i) => (
+   717→                <WorkerCard key={i} worker={worker} />
+   718→              ))}
+   719→            </div>
+   720→
+   721→            {/* Workers Summary Table */}
+   722→            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-6">
+   723→              <table className="w-full text-sm">
+   724→                <thead className="bg-gray-50">
+   725→                  <tr>
+   726→                    <th className="px-4 py-3 text-right font-medium text-gray-700">العامل</th>
+   727→                    <th className="px-4 py-3 text-center font-medium text-gray-700">نشط</th>
+   728→                    <th className="px-4 py-3 text-center font-medium text-gray-700">معالج اليوم</th>
+   729→                    <th className="px-4 py-3 text-center font-medium text-gray-700">متوسط التأخير</th>
+   730→                  </tr>
+   731→                </thead>
+   732→                <tbody className="divide-y divide-gray-200">
+   733→                  {data.data.workers.map((worker, i) => {
+   734→                    const info = WORKER_NAMES[worker.type] || { ar: worker.type, icon: '🤖' };
+   735→                    return (
+   736→                      <tr key={i} className="hover:bg-gray-50">
+   737→                        <td className="px-4 py-3 font-medium">
+   738→                          <span className="ml-2">{info.icon}</span>
+   739→                          {info.ar}
+   740→                        </td>
+   741→                        <td className="px-4 py-3 text-center">
+   742→                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+   743→                            worker.activeJobs > 0 
+   744→                              ? 'bg-blue-100 text-blue-800' 
+   745→                              : 'bg-gray-100 text-gray-800'
+   746→                          }`}>
+   747→                            {worker.activeJobs}
+   748→                          </span>
+   749→                        </td>
+   750→                        <td className="px-4 py-3 text-center font-mono">
+   751→                          {formatNumber(worker.processedToday)}
+   752→                        </td>
+   753→                        <td className="px-4 py-3 text-center font-mono">
+   754→                          {formatTime(worker.avgLatencyMs)}
+   755→                        </td>
+   756→                      </tr>
+   757→                    );
+   758→                  })}
+   759→                </tbody>
+   760→              </table>
+   761→            </div>
+   762→          </div>
+   763→        )}
+   764→
+   765→        {/* ── Tab Content: Queue ─────────────────────────── */}
+   766→        {activeTab === 'queue' && data?.data.queue && (
+   767→          <div className="space-y-6">
+   768→            
+   769→            {/* Queue Status Cards */}
+   770→            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+   771→              <MetricCard
+   772→                title="في الانتظار"
+   773→                value={data.data.queue.pending}
+   774→                color="yellow"
+   775→              />
+   776→              <MetricCard
+   777→                title="قيد التشغيل"
+   778→                value={data.data.queue.running}
+   779→                color="blue"
+   780→              />
+   781→              <MetricCard
+   782→                title="مكتمل اليوم"
+   783→                value={formatNumber(data.data.queue.completedToday)}
+   784→                color="green"
+   785→              />
+   786→              <MetricCard
+   787→                title="فشل اليوم"
+   788→                value={data.data.queue.failedToday}
+   789→                color={data.data.queue.failedToday > 10 ? 'red' : 'yellow'}
+   790→              />
+   791→              <MetricCard
+   792→                title="وقت الانتظار"
+   793→                value={formatTime(data.data.queue.estimatedWaitTimeMs)}
+   794→                color={data.data.queue.estimatedWaitTimeMs > 5000 ? 'red' : 'green'}
+   795→              />
+   796→            </div>
+   797→
+   798→            {/* Queue Visualization */}
+   799→            <div className="bg-white rounded-xl border border-gray-200 p-6">
+   800→              <h3 className="font-semibold text-gray-900 mb-4">📊 تصور الطابور</h3>
+   801→              
+   802→              <div className="space-y-4">
+   803→                {/* Pending Jobs Bar */}
+   804→                <div>
+   805→                  <div className="flex justify-between text-sm mb-1">
+   806→                    <span className="text-gray-600">وظائف في الانتظار</span>
+   807→                    <span className="font-mono font-medium">{data.data.queue.pending}</span>
+   808→                  </div>
+   809→                  <div className="w-full bg-gray-200 rounded-full h-4">
+   810→                    <div 
+   811→                      className="bg-yellow-500 h-4 rounded-full transition-all flex items-center justify-center text-xs text-white font-medium"
+   812→                      style={{ width: `${Math.min((data.data.queue.pending / 100) * 100, 100)}%` }}
+   813→                    >
+   814→                      {data.data.queue.pending > 20 ? data.data.queue.pending : ''}
+   815→                    </div>
+   816→                  </div>
+   817→                </div>
+   818→
+   819→                {/* Running Jobs Bar */}
+   820→                <div>
+   821→                  <div className="flex justify-between text-sm mb-1">
+   822→                    <span className="text-gray-600">وظائف قيد التشغيل</span>
+   823→                    <span className="font-mono font-medium">{data.data.queue.running}</span>
+   824→                  </div>
+   825→                  <div className="w-full bg-gray-200 rounded-full h-4">
+   826→                    <div 
+   827→                      className="bg-blue-500 h-4 rounded-full transition-all flex items-center justify-center text-xs text-white font-medium"
+   828→                      style={{ width: `${Math.min((data.data.queue.running / 20) * 100, 100)}%` }}
+   829→                    >
+   830→                      {data.data.queue.running > 10 ? data.data.queue.running : ''}
+   831→                    </div>
+   832→                  </div>
+   833→                </div>
+   834→
+   835→                {/* Success Rate */}
+   836→                <div>
+   837→                  <div className="flex justify-between text-sm mb-1">
+   838→                    <span className="text-gray-600">معدل النجاح</span>
+   839→                    <span className="font-mono font-medium">
+   840→                      {data.data.queue.completedToday > 0 
+   841→                        ? `${Math.round((data.data.queue.completedToday / (data.data.queue.completedToday + data.data.queue.failedToday)) * 100)}%`
+   842→                        : 'N/A'
+   843→                      }
+   844→                    </span>
+   845→                  </div>
+   846→                  <div className="w-full bg-gray-200 rounded-full h-4">
+   847→                    <div 
+   848→                      className="bg-green-500 h-4 rounded-full transition-all"
+   849→                      style={{ 
+   850→                        width: `${
+   851→                          data.data.queue.completedToday > 0 
+   852→                            ? Math.min((data.data.queue.completedToday / (data.data.queue.completedToday + data.data.queue.failedToday)) * 100, 100)
+   853→                            : 0
+   854→                        }%` 
+   855→                      }}
+   856→                    />
+   857→                  </div>
+   858→                </div>
+   859→              </div>
+   860→            </div>
+   861→
+   862→            {/* Today's Stats */}
+   863→            {data?.data.today && (
+   864→              <div className="bg-white rounded-xl border border-gray-200 p-6">
+   865→                <h3 className="font-semibold text-gray-900 mb-4">📈 إحصائيات اليوم</h3>
+   866→                
+   867→                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   868→                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+   869→                    <p className="text-3xl font-bold text-blue-600">{formatNumber(data.data.today.totalRequests)}</p>
+   870→                    <p className="text-sm text-blue-800 mt-1">إجمالي الطلبات</p>
+   871→                  </div>
+   872→                  <div className="text-center p-4 bg-green-50 rounded-lg">
+   873→                    <p className="text-3xl font-bold text-green-600">{formatNumber(data.data.today.totalTokens)}</p>
+   874→                    <p className="text-sm text-green-800 mt-1">Tokens مستخدمة</p>
+   875→                  </div>
+   876→                  <div className="text-center p-4 bg-red-50 rounded-lg">
+   877→                    <p className="text-3xl font-bold text-red-600">{data.data.today.totalFailures}</p>
+   878→                    <p className="text-sm text-red-800 mt-1">فشل</p>
+   879→                  </div>
+   880→                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+   881→                    <p className="text-3xl font-bold text-purple-600">{data.data.today.rejectionRate}%</p>
+   882→                    <p className="text-sm text-purple-800 mt-1">معدل الرفض</p>
+   883→                  </div>
+   884→                </div>
+   885→              </div>
+   886→            )}
+   887→          </div>
+   888→        )}
+   889→
+   890→        {/* ── Footer ─────────────────────────────────────── */}
+   891→        <footer className="text-center text-xs text-gray-400 pt-6 border-t">
+   892→          <p>GarfiX AI Enterprise Dashboard v2.0 • Built with ❤️ for MENA Region</p>
+   893→          <p className="mt-1">5 Keys × 15 RPM = 75 RPM Total Capacity • Auto-scaling Enabled</p>
+   894→        </footer>
+   895→
+   896→      </div>
+   897→    </main>
+   898→  );
+   899→}
+   900→

@@ -1,0 +1,1360 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useMemo } from "react";
+     4→import { useBrand } from "@/context/BrandContext";
+     5→import { useInvoices as useInvoicesQuery, useDeleteInvoice, useRecordPayment, useUpdateInvoiceStatus, useCreateInvoice, useUpdateInvoice } from "@/hooks/queries";
+     6→import type { CreateInvoicePayload } from "@/hooks/queries";
+     7→import { toast } from "sonner";
+     8→import {
+     9→  Plus, Search, FileText, Trash2, Edit2, Printer, X, ArrowRight, Download, DollarSign,
+    10→  CheckCircle2, Clock, AlertTriangle, BarChart3, ListChecks, ChevronLeft,
+    11→} from "lucide-react";
+    12→import { cn, paginate } from "@/lib/utils";
+    13→import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+    14→// DS v4.0 Components
+    15→import {
+    16→  GarfixEnterpriseTable,
+    17→  GarfixBulkActions,
+    18→  GarfixEmptyState,
+    19→  GarfixLoadingState,
+    20→} from '@/components/ui/index-garfix-ds';
+    21→import type { EnterpriseColumn } from '@/components/ui/index-garfix-ds';
+    22→import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
+    23→import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPicker";
+    24→import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
+    25→import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
+    26→import { EmptyInvoices, AISearchBar } from "@/components/garfix";
+    27→function todayStr() {
+    28→  return new Date().toISOString().slice(0, 10);
+    29→}
+    30→function addDaysStr(days: number) {
+    31→  const d = new Date();
+    32→  d.setDate(d.getDate() + days);
+    33→  return d.toISOString().slice(0, 10);
+    34→}
+    35→
+    36→export function InvoicesView() {
+    37→  const { activeCompany } = useBrand();
+    38→  const companySlug = activeCompany?.slug || "";
+    39→
+    40→  // TanStack Query replaces the stub useInvoices
+    41→  const invoicesQuery = useInvoicesQuery(companySlug);
+    42→  const deleteInvoiceMutation = useDeleteInvoice();
+    43→  const recordPaymentMutation = useRecordPayment();
+    44→  const updateStatusMutation = useUpdateInvoiceStatus();
+    45→
+    46→  const allInvoices = ((invoicesQuery.data as any)?.invoices ?? []) as Invoice[];
+    47→  const loading = invoicesQuery.isLoading;
+    48→
+    49→  // Local UI state (was provided by stub)
+    50→  const [search, setSearch] = useState("");
+    51→  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    52→  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    53→  const [currentPage, setCurrentPage] = useState(1);
+    54→  const [bulkDeleting, setBulkDeleting] = useState(false);
+    55→  const [reviewQueueWarnings, setReviewQueueWarnings] = useState<any[]>([]);
+    56→  const [showWarningsBanner, setShowWarningsBanner] = useState(false);
+    57→  const [inventoryWarnings, setInventoryWarnings] = useState<any[]>([]);
+    58→  const [showInventoryBanner, setShowInventoryBanner] = useState(false);
+    59→  const [showReviewQueue, setShowReviewQueue] = useState(false);
+    60→  const pageSize = 20;
+    61→
+    62→  // Derived data (was computed by stub)
+    63→  const filteredInvoices = useMemo(() => {
+    64→    let list = allInvoices;
+    65→    if (search) {
+    66→      const s = search.toLowerCase();
+    67→      list = list.filter((inv: Invoice) => inv.invoiceNumber.toLowerCase().includes(s) || inv.clientName.toLowerCase().includes(s));
+    68→    }
+    69→    if (statusFilter !== "all") {
+    70→      list = list.filter((inv: Invoice) => inv.status === statusFilter);
+    71→    }
+    72→    return list;
+    73→  }, [allInvoices, search, statusFilter]);
+    74→
+    75→  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
+    76→  const safePage = Math.min(currentPage, totalPages);
+    77→  const currentPageInvoices = paginate(filteredInvoices, safePage, pageSize);
+    78→
+    79→  const paidInvoices = allInvoices.filter((inv: Invoice) => inv.status === "paid");
+    80→  const pendingInvoices = allInvoices.filter((inv: Invoice) => inv.status === "sent" || inv.status === "partial");
+    81→  const overdueInvoices = allInvoices.filter((inv: Invoice) => inv.status === "overdue");
+    82→  const totalRevenue = paidInvoices.reduce((s: number, inv: Invoice) => s + inv.total, 0);
+    83→  // Compute outstanding on the client — the API doesn't return an `outstanding`
+    84→  // field (only `total` and `paid`). Reading `inv.outstanding` directly was
+    85→  // producing NaN in the KPI card ("مستحقة: NaN").
+    86→  const outstanding = allInvoices.reduce(
+    87→    (s: number, inv: Invoice) => s + Math.max(0, (inv.total ?? 0) - (inv.paid ?? 0)),
+    88→    0,
+    89→  );
+    90→
+    91→  const invoices = allInvoices;
+    92→
+    93→  // UI-only state (not part of the invoice list business logic)
+    94→  const [showForm, setShowForm] = useState(false);
+    95→  const [editing, setEditing] = useState<Invoice | null>(null);
+    96→  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+    97→  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+    98→
+    99→  // Toggle selection
+   100→  const toggleSelectAll = () => {
+   101→    if (selectedIds.size === currentPageInvoices.length && currentPageInvoices.length > 0) setSelectedIds(new Set());
+   102→    else setSelectedIds(new Set(currentPageInvoices.map((i: Invoice) => i.id))); 
+   103→  };
+   104→  const toggleRow = (id: number) => {
+   105→    setSelectedIds((prev) => {
+   106→      const next = new Set(prev);
+   107→      if (next.has(id)) next.delete(id); else next.add(id);
+   108→      return next;
+   109→    });
+   110→  };
+   111→
+   112→  // Delete / bulk delete
+   113→  const handleDelete = (id: number) => {
+   114→    deleteInvoiceMutation.mutate(id, {
+   115→      onSuccess: () => toast.success("تم حذف الفاتورة"),
+   116→      onError: (err: any) => toast.error(err.message || "خطأ في الحذف"),
+   117→    });
+   118→  };
+   119→
+   120→  const handleBulkDelete = async () => {
+   121→    setBulkDeleting(true);
+   122→    for (const id of selectedIds) {
+   123→      await deleteInvoiceMutation.mutateAsync(id).catch(() => {});
+   124→    }
+   125→    setBulkDeleting(false);
+   126→    setSelectedIds(new Set());
+   127→  };
+   128→
+   129→  // Export invoices as CSV — client-side generation from already-loaded data.
+   130→  // No server round-trip needed; the user has at most 100 invoices in memory
+   131→  // (cursor pagination). For larger exports, a server-side streaming endpoint
+   132→  // would be needed (TODO: /api/invoices/export when cursor pagination limit
+   133→  // becomes a real constraint).
+   134→  const handleExportCSV = () => {
+   135→    if (!allInvoices.length) {
+   136→      toast.info("لا توجد فواتير لتصديرها");
+   137→      return;
+   138→    }
+   139→    const headers = ["رقم الفاتورة", "العميل", "التاريخ", "الاستحقاق", "الحالة", "الإجمالي", "المدفوع", "المتبقي"];
+   140→    const rows = allInvoices.map((inv) => [
+   141→      inv.invoiceNumber ?? "",
+   142→      inv.clientName ?? "",
+   143→      inv.issueDate ? new Date(inv.issueDate).toISOString().slice(0, 10) : "",
+   144→      inv.dueDate ? new Date(inv.dueDate).toISOString().slice(0, 10) : "",
+   145→      inv.status ?? "",
+   146→      String(inv.total ?? 0),
+   147→      String(inv.paid ?? 0),
+   148→      String(Math.max(0, (inv.total ?? 0) - (inv.paid ?? 0))),
+   149→    ]);
+   150→    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+   151→    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+   152→    // Prepend BOM so Excel reads Arabic correctly
+   153→    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+   154→    const url = URL.createObjectURL(blob);
+   155→    const a = document.createElement("a");
+   156→    a.href = url;
+   157→    a.download = `garfix-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+   158→    document.body.appendChild(a);
+   159→    a.click();
+   160→    document.body.removeChild(a);
+   161→    URL.revokeObjectURL(url);
+   162→    toast.success(`تم تصدير ${allInvoices.length} فاتورة`);
+   163→  };
+   164→
+   165→  // Quick-action event listener
+   166→  useEffect(() => {
+   167→    const onQuickAction = (e: Event) => {
+   168→      const detail = (e as CustomEvent).detail as { type?: string } | undefined;
+   169→      if (detail?.type === "new-invoice") {
+   170→        setEditing(null);
+   171→        setShowForm(true);
+   172→      }
+   173→    };
+   174→    window.addEventListener("garfix:quick-action", onQuickAction as EventListener);
+   175→    return () => window.removeEventListener("garfix:quick-action", onQuickAction as EventListener);
+   176→  }, []);
+   177→
+   178→  const handlePrint = (inv: Invoice) => {
+   179→    setPreviewInvoice(inv);
+   180→    setTimeout(() => window.print(), 200);
+   181→  };
+   182→
+   183→  if (!activeCompany) {
+   184→    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
+   185→  }
+   186→
+   187→  if (showForm || editing) {
+   188→    return (
+   189→      <InvoiceForm
+   190→        company={activeCompany}
+   191→        editing={editing}
+   192→        onClose={() => { setShowForm(false); setEditing(null); }}
+   193→        onSaved={(warnings, invWarnings) => {
+   194→          setShowForm(false);
+   195→          setEditing(null);
+   196→          if (warnings.length > 0) {
+   197→            setReviewQueueWarnings(warnings);
+   198→            setShowWarningsBanner(true);
+   199→          }
+   200→          if (invWarnings && invWarnings.length > 0) {
+   201→            setInventoryWarnings(invWarnings);
+   202→            setShowInventoryBanner(true);
+   203→          }
+   204→          invoicesQuery.refetch();
+   205→        }}
+   206→      />
+   207→    );
+   208→  }
+   209→
+   210→  return (
+   211→    <div className="flex flex-col gap-5">
+   212→      {/* P1 FIX (QA audit): general inventory warnings banner (amber) —
+   213→          e.g. "No active warehouse for X". Distinct from the red review-queue
+   214→          banner below. Without this, the UI showed success while inventory
+   215→          wasn't actually updated. */}
+   216→      {inventoryWarnings.length > 0 && showInventoryBanner && (
+   217→        <Alert className="flex flex-col gap-2 border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+   218→          <div className="flex items-start gap-2">
+   219→            <AlertTriangle className="shrink-0 mt-0.5" />
+   220→            <AlertTitle className="font-bold">⚠️ {inventoryWarnings.length} تحذير من المختزن</AlertTitle>
+   221→            <button
+   222→              className="ml-auto text-xs text-amber-700 hover:text-amber-900 dark:text-amber-300"
+   223→              onClick={() => { setInventoryWarnings([]); setShowInventoryBanner(false); }}
+   224→              aria-label="إغلاق"
+   225→            >×</button>
+   226→          </div>
+   227→          <AlertDescription>
+   228→            <ul className="list-disc pr-5 text-sm space-y-1 mt-1">
+   229→              {inventoryWarnings.slice(0, 5).map((w, i) => (
+   230→                <li key={i}>{w}</li>
+   231→              ))}
+   232→              {inventoryWarnings.length > 5 && (
+   233→                <li className="text-xs opacity-70">+ {inventoryWarnings.length - 5} تحذيرات أخرى…</li>
+   234→              )}
+   235→            </ul>
+   236→          </AlertDescription>
+   237→        </Alert>
+   238→      )}
+   239→      {/* Task 14: persistent review-queue / oversell warnings banner.
+   240→          Uses shadcn Alert with variant="destructive" (red banner) so the
+   241→          warnings from POST /api/invoices are never swallowed. Survives
+   242→          navigation between list and form views because the state lives in
+   243→          the parent InvoicesView, not in the (unmounted) InvoiceForm. */}
+   244→      {reviewQueueWarnings.length > 0 && showWarningsBanner && (
+   245→        <Alert variant="destructive" className="flex flex-col gap-2">
+   246→          <div className="flex items-start gap-2">
+   247→            <AlertTriangle className="shrink-0 mt-0.5" />
+   248→            <AlertTitle className="flex-1">
+   249→              ⚠️ {reviewQueueWarnings.length} صنف يحتاج مراجعة
+   250→            </AlertTitle>
+   251→            <button
+   252→              type="button"
+   253→              onClick={() => setShowWarningsBanner(false)}
+   254→              className="bg-transparent border-none cursor-pointer text-destructive p-1 -mt-1 -me-1 flex items-center hover:bg-destructive/10 rounded"
+   255→              aria-label="إخفاء البانر"
+   256→            >
+   257→              <X size={16} />
+   258→            </button>
+   259→          </div>
+   260→          <AlertDescription>
+   261→            <div className="flex flex-col gap-2">
+   262→              <ul className="m-0 ps-5 flex flex-col gap-1 list-disc">
+   263→                {reviewQueueWarnings.slice(0, 5).map((w, i) => (
+   264→                  <li key={i} className="text-[12px] leading-[1.5] text-foreground">
+   265→                    {w}
+   266→                  </li>
+   267→                ))}
+   268→                {reviewQueueWarnings.length > 5 && (
+   269→                  <li className="text-[11px] text-muted-foreground">
+   270→                    + {reviewQueueWarnings.length - 5} تحذيرات أخرى…
+   271→                  </li>
+   272→                )}
+   273→              </ul>
+   274→              <div className="flex flex-wrap gap-2 mt-1">
+   275→                <button
+   276→                  type="button"
+   277→                  onClick={() => setShowReviewQueue(true)}
+   278→                  className="inline-flex items-center gap-1.5 text-[12px] font-bold text-destructive underline bg-transparent border-none cursor-pointer p-0 hover:opacity-80"
+   279→                >
+   280→                  <ListChecks size={14} /> فتح صفحة مراجعة التطابقات
+   281→                </button>
+   282→                <button
+   283→                  type="button"
+   284→                  onClick={() => { setReviewQueueWarnings([]); setShowWarningsBanner(false); }}
+   285→                  className="bg-transparent border border-border rounded-[6px] py-1 px-2 cursor-pointer text-[11px] text-muted-foreground hover:bg-muted"
+   286→                >
+   287→                  مسح التحذيرات
+   288→                </button>
+   289→              </div>
+   290→            </div>
+   291→          </AlertDescription>
+   292→        </Alert>
+   293→      )}
+   294→
+   295→      {/* Header — DS v4.0 Hero Card with Emerald Primary */}
+   296→      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-card p-5 md:p-6 shadow-sm hover-lift">
+   297→        {/* Decorative blob */}
+   298→        <div className="absolute -top-12 -end-12 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+   299→        <div className="relative flex flex-wrap justify-between items-start gap-4">
+   300→          <div className="min-w-0">
+   301→            <div className="flex items-center gap-2.5 mb-1.5">
+   302→              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white shadow-sm">
+   303→                <FileText size={18} />
+   304→              </span>
+   305→              <h1 className="text-[22px] md:text-2xl font-extrabold tracking-tight text-foreground">الفواتير</h1>
+   306→            </div>
+   307→            <p className="text-[13px] text-muted-foreground">
+   308→              <span className="font-bold text-foreground">{invoices.length}</span> فاتورة في
+   309→              {" "}{activeCompany.nameAr || activeCompany.name}
+   310→              {activeCompany.currency && (
+   311→                <span className="ms-1.5 text-[11px] text-muted-foreground/70">({activeCompany.currency})</span>
+   312→              )}
+   313→            </p>
+   314→          </div>
+   315→          <div className="flex flex-wrap gap-2.5">
+   316→            <button
+   317→              onClick={handleExportCSV}
+   318→              className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded-xl bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer hover-lift hover:bg-primary/5 hover:border-primary/30 active-press focus-ring transition-all duration-120 shadow-sm"
+   319→            >
+   320→              <Download size={14} /> تصدير CSV
+   321→            </button>
+   322→            <button
+   323→              onClick={() => setShowForm(true)}
+   324→              className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-xl bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer hover-lift hover:bg-primary/90 active-press focus-ring transition-all duration-150 shadow-md"
+   325→            >
+   326→              <Plus size={16} />
+   327→              فاتورة جديدة
+   328→            </button>
+   329→          </div>
+   330→        </div>
+   331→      </div>
+   332→
+   333→      {/* KPI summary cards — DS v4.0 */}
+   334→      {!loading && invoices.length > 0 && (
+   335→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+   336→          {/* Total Invoices — Standard KPI */}
+   337→          <div className="kpi-card hover-lift rounded-xl">
+   338→            <div className="flex items-center gap-3 mb-3">
+   339→              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+   340→                <FileText size={18} />
+   341→              </div>
+   342→              <span className="kpi-label">إجمالي الفواتير</span>
+   343→            </div>
+   344→            <div className="kpi-value [direction:ltr]">{invoices.length.toLocaleString("ar-EG")}</div>
+   345→            <div className="text-xs text-muted-foreground mt-1">من {activeCompany.nameAr || activeCompany.name}</div>
+   346→          </div>
+   347→
+   348→          {/* Total Revenue — GOLD KPI (Important!) */}
+   349→          <div className="kpi-card-gold hover-lift rounded-xl">
+   350→            <div className="flex items-center gap-3 mb-3">
+   351→              <div className="w-10 h-10 rounded-lg bg-[#d4a574]/20 flex items-center justify-center text-[#d4a574]">
+   352→                <DollarSign size={18} />
+   353→              </div>
+   354→              <span className="kpi-label">الإيرادات الإجمالية</span>
+   355→              <span className="kpi-badge">✦ مهم</span>
+   356→            </div>
+   357→            <div className="kpi-value [direction:ltr]">{totalRevenue.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</div>
+   358→            <div className="text-xs text-muted-foreground mt-1">{paidInvoices.length} فاتورة مدفوعة</div>
+   359→          </div>
+   360→
+   361→          {/* Paid Invoices — Standard KPI */}
+   362→          <div className="kpi-card hover-lift rounded-xl">
+   363→            <div className="flex items-center gap-3 mb-3">
+   364→              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+   365→                <CheckCircle2 size={18} />
+   366→              </div>
+   367→              <span className="kpi-label">الفواتير المدفوعة</span>
+   368→            </div>
+   369→            <div className="kpi-value [direction:ltr]">{paidInvoices.length.toLocaleString("ar-EG")}</div>
+   370→            <div className="text-xs text-muted-foreground mt-1">تم تحصيلها بالكامل</div>
+   371→          </div>
+   372→
+   373→          {/* Overdue Invoices — Standard KPI (Danger) */}
+   374→          <div className="kpi-card hover-lift rounded-xl">
+   375→            <div className="flex items-center gap-3 mb-3">
+   376→              <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
+   377→                <AlertTriangle size={18} />
+   378→              </div>
+   379→              <span className="kpi-label">الفواتير المتأخرة</span>
+   380→            </div>
+   381→            <div className="kpi-value [direction:ltr] text-red-500">{overdueInvoices.length.toLocaleString("ar-EG")}</div>
+   382→            <div className="text-xs text-muted-foreground mt-1">{overdueInvoices.length > 0 ? "تحتاج متابعة عاجلة" : "لا يوجد"}</div>
+   383→          </div>
+   384→
+   385→          {/* Average Invoice Value — Standard KPI */}
+   386→          <div className="kpi-card hover-lift rounded-xl">
+   387→            <div className="flex items-center gap-3 mb-3">
+   388→              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+   389→                <BarChart3 size={18} />
+   390→              </div>
+   391→              <span className="kpi-label">متوسط قيمة الفاتورة</span>
+   392→            </div>
+   393→            <div className="kpi-value [direction:ltr]">
+   394→              {invoices.length > 0 
+   395→                ? (totalRevenue / invoices.length).toLocaleString("ar-EG", { maximumFractionDigits: 2 })
+   396→                : "0"
+   397→              }
+   398→            </div>
+   399→            <div className="text-xs text-muted-foreground mt-1">متوسط لكل فاتورة</div>
+   400→          </div>
+   401→        </div>
+   402→      )}
+   403→
+   404→      {/* Search + filter row — DS v4.0 */}
+   405→      <div className="flex flex-col md:flex-row gap-2.5">
+   406→        <div className="relative flex-1">
+   407→          <Search
+   408→            size={16}
+   409→            className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+   410→          />
+   411→          <input
+   412→            placeholder="بحث برقم الفاتورة أو اسم العميل…"
+   413→            aria-label="بحث الفواتير"
+   414→            value={search}
+   415→            onChange={(e) => setSearch(e.target.value)}
+   416→            className="w-full py-2.5 px-10 rounded-xl bg-card border border-border text-foreground text-[13px] outline-none focus-ring focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-120 hover-lift"
+   417→          />
+   418→          {/* AI Badge — DS v4.0 */}
+   419→          <span className="ai-badge absolute start-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-0.5 rounded-full">
+   420→            AI
+   421→          </span>
+   422→        </div>
+   423→        <div className="flex gap-1.5 overflow-x-auto garfix-scroll">
+   424→          {(["all", "paid", "pending", "overdue"] as const).map((f) => (
+   425→            <button
+   426→              key={f}
+   427→              onClick={() => setStatusFilter(f)}
+   428→              className={cn(
+   429→                "inline-flex items-center gap-1 py-2 px-3.5 rounded-xl border text-[12px] font-bold cursor-pointer whitespace-nowrap transition-all duration-120 active-press focus-ring",
+   430→                statusFilter === f
+   431→                  ? "bg-primary text-white border-primary shadow-sm"
+   432→                  : "bg-card text-muted-foreground border-border hover:text-primary hover:border-primary/30 hover-lift"
+   433→              )}
+   434→            >
+   435→              {f === "all" && <><ListChecks size={13} /> الكل</>}
+   436→              {f === "paid" && <><CheckCircle2 size={13} /> مدفوعة</>}
+   437→              {f === "pending" && <><Clock size={13} /> قيد الانتظار</>}
+   438→              {f === "overdue" && <><AlertTriangle size={13} /> متأخرة</>}
+   439→            </button>
+   440→          ))}
+   441→        </div>
+   442→      </div>
+   443→
+   444→      {/* Bulk Actions Bar — DS v4.0 */}
+   445→      <GarfixBulkActions
+   446→        selectedCount={selectedIds.size}
+   447→        totalCount={filteredInvoices.length}
+   448→        actions={[
+   449→          {
+   450→            label: bulkDeleting ? "جارٍ الحذف…" : "حذف المحدد",
+   451→            icon: <Trash2 size={14} />,
+   452→            onClick: handleBulkDelete,
+   453→            variant: "danger",
+   454→          },
+   455→        ]}
+   456→        onClearSelection={() => setSelectedIds(new Set())}
+   457→        className="hover-lift"
+   458→      />
+   459→
+   460→      {/* Table — DS v4.0 Enterprise Table */}
+   461→      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm hover-lift">
+   462→        {loading ? (
+   463→          /* Loading State — DS v4.0 */
+   464→          <div className="p-8 md:p-12">
+   465→            <GarfixLoadingState message="جارٍ تحميل الفواتير..." size="lg" variant="skeleton" skeletonLines={5} />
+   466→          </div>
+   467→        ) : invoices.length === 0 ? (
+   468→          /* Empty State — DS v4.0 */
+   469→          <div className="p-8 md:p-12">
+   470→            <GarfixEmptyState
+   471→              title="لا توجد فواتير"
+   472→              description="ابدأ بإنشاء فاتورتك الأولى أو استيرادها من ملف Excel"
+   473→              illustration="documents"
+   474→              action={{
+   475→                label: "إنشاء فاتورة",
+   476→                onClick: () => setShowForm(true),
+   477→                variant: "primary",
+   478→              }}
+   479→              className="min-h-[350px]"
+   480→            />
+   481→            {/* AI Suggestion */}
+   482→            <div className="mt-6 flex justify-center">
+   483→              <button
+   484→                onClick={() => {
+   485→                  window.dispatchEvent(new CustomEvent('open-ai-copilot'));
+   486→                  toast.info('اسأل GarfiX AI إنشاء فاتورة');
+   487→                }}
+   488→                className="ai-badge inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium hover-lift active-press focus-ring transition-all duration-120 cursor-pointer"
+   489→              >
+   490→                <span>✨</span>
+   491→                أنشئ بالـ AI
+   492→              </button>
+   493→            </div>
+   494→          </div>
+   495→        ) : (
+   496→          <>
+   497→          {/* Desktop Enterprise Table — DS v4.0 */}
+   498→          <div className="hidden md:block">
+   499→            <GarfixEnterpriseTable<Invoice>
+   500→              data={currentPageInvoices}
+   501→              columns={[
+   502→                {
+   503→                  key: 'invoiceNumber',
+   504→                  label: 'رقم الفاتورة',
+   505→                  pinned: true,
+   506→                  sortable: true,
+   507→                  render: (value) => (
+   508→                    <span className="font-bold font-mono text-xs">{value as string}</span>
+   509→                  ),
+   510→                },
+   511→                {
+   512→                  key: 'clientName',
+   513→                  label: 'العميل',
+   514→                  sortable: true,
+   515→                },
+   516→                {
+   517→                  key: 'issueDate',
+   518→                  label: 'تاريخ الإصدار',
+   519→                  sortable: true,
+   520→                  render: (value) => (
+   521→                    <span className="text-muted-foreground text-xs">{value as string}</span>
+   522→                  ),
+   523→                },
+   524→                {
+   525→                  key: 'total',
+   526→                  label: 'المبلغ',
+   527→                  sortable: true,
+   528→                  render: (value) => (
+   529→                    <span className="font-bold [direction:ltr] text-end block">
+   530→                      {Number(value).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+   531→                    </span>
+   532→                  ),
+   533→                },
+   534→                {
+   535→                  key: 'paid',
+   536→                  label: 'مدفوع',
+   537→                  render: (_value, row) => {
+   538→                    const paid = (row as Invoice).paid || 0;
+   539→                    return (
+   540→                      <span className={cn(
+   541→                        "[direction:ltr] text-end block text-xs",
+   542→                        paid > 0 ? "text-primary font-bold" : "text-muted-foreground/50"
+   543→                      )}>
+   544→                        {paid.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+   545→                      </span>
+   546→                    );
+   547→                  },
+   548→                },
+   549→                {
+   550→                  key: 'status',
+   551→                  label: 'الحالة',
+   552→                  render: (_value, row) => {
+   553→                    const inv = row as Invoice;
+   554→                    const st = STATUS_LABELS[inv.status] || { label: inv.status };
+   555→                    // Map status to DS v4.0 table-row-status variants
+   556→                    const statusClass = inv.status === 'paid' ? 'active' 
+   557→                      : inv.status === 'overdue' ? 'error'
+   558→                      : 'pending';
+   559→                    return (
+   560→                      <span className={`table-row-status ${statusClass}`}>
+   561→                        {st.label}
+   562→                      </span>
+   563→                    );
+   564→                  },
+   565→                },
+   566→                {
+   567→                  key: 'actions',
+   568→                  label: 'إجراءات',
+   569→                  render: (_value, row) => {
+   570→                    const inv = row as Invoice;
+   571→                    return (
+   572→                      <div className="flex gap-1">
+   573→                        <IconBtn title="معاينة" onClick={() => setPreviewInvoice(inv)} className="hover-lift active-press focus-ring">
+   574→                          <ArrowRight size={14} />
+   575→                        </IconBtn>
+   576→                        <IconBtn title="تسجيل دفعة" onClick={() => setPaymentInvoice(inv)} className="hover-lift active-press focus-ring">
+   577→                          <DollarSign size={14} />
+   578→                        </IconBtn>
+   579→                        <IconBtn title="تعديل" onClick={() => setEditing(inv)} className="hover-lift active-press focus-ring">
+   580→                          <Edit2 size={14} />
+   581→                        </IconBtn>
+   582→                        <IconBtn title="طباعة" onClick={() => handlePrint(inv)} className="hover-lift active-press focus-ring">
+   583→                          <Printer size={14} />
+   584→                        </IconBtn>
+   585→                        <IconBtn title="حذف" onClick={() => handleDelete(inv.id)} danger className="hover-lift active-press focus-ring">
+   586→                          <Trash2 size={14} />
+   587→                        </IconBtn>
+   588→                      </div>
+   589→                    );
+   590→                  },
+   591→                },
+   592→              ] as EnterpriseColumn<Invoice>[]}
+   593→              density="comfortable"
+   594→              selectedRows={new Set(currentPageInvoices.filter(inv => selectedIds.has(inv.id)).map((_, i) => i))}
+   595→              onSelectionChange={(newSelection) => {
+   596→                const newSelectedIds = new Set<number>();
+   597→                newSelection.forEach(idx => {
+   598→                  if (currentPageInvoices[idx]) {
+   599→                    newSelectedIds.add(currentPageInvoices[idx].id);
+   600→                  }
+   601→                });
+   602→                setSelectedIds(newSelectedIds);
+   603→              }}
+   604→              isLoading={loading}
+   605→              emptyMessage="لا توجد فواتير"
+   606→              emptyDescription="لم يتم العثور على فواتير مطابقة"
+   607→              rowStatus={(row) => {
+   608→                const inv = row as Invoice;
+   609→                if (inv.status === 'paid') return 'active';
+   610→                if (inv.status === 'overdue') return 'error';
+   611→                if (inv.status === 'sent' || inv.status === 'partial' || inv.status === 'draft') return 'pending';
+   612→                return undefined;
+   613→              }}
+   614→              onRowClick={(row) => setPreviewInvoice(row as Invoice)}
+   615→              className="garfix-scroll"
+   616→            />
+   617→          </div>
+   618→
+   619→          {/* Mobile compact list — DS v4.0 with table-row-status badges */}
+   620→          <div className="md:hidden flex flex-col divide-y divide-border pb-[var(--ai-bubble-safe-area)]">
+   621→            {currentPageInvoices.map((inv) => {
+   622→              const st = STATUS_LABELS[inv.status] || { label: inv.status };
+   623→              const checked = selectedIds.has(inv.id);
+   624→              // Map status to DS v4.0 table-row-status variants
+   625→              const statusClass = inv.status === 'paid' ? 'active' 
+   626→                : inv.status === 'overdue' ? 'error'
+   627→                : 'pending';
+   628→              return (
+   629→                <div
+   630→                  key={inv.id}
+   631→                  onClick={() => setPreviewInvoice(inv)}
+   632→                  className={cn(
+   633→                    "flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-all duration-120 min-h-[56px] hover-lift active-press",
+   634→                    checked ? "bg-primary/5" : "bg-card hover:bg-muted/50",
+   635→                  )}
+   636→                >
+   637→                  <input
+   638→                    type="checkbox"
+   639→                    checked={checked}
+   640→                    onChange={() => toggleRow(inv.id)}
+   641→                    onClick={(e) => e.stopPropagation()}
+   642→                    className="cursor-pointer w-4 h-4 shrink-0 accent-primary"
+   643→                    aria-label={`تحديد الفاتورة ${inv.invoiceNumber}`}
+   644→                  />
+   645→                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+   646→                    <div className="flex items-center gap-1.5 min-w-0">
+   647→                      <span className="font-bold font-mono text-[13px] truncate leading-tight">{inv.invoiceNumber}</span>
+   648→                      {/* DS v4.0 Status Badge */}
+   649→                      <span className={`table-row-status ${statusClass} text-[10px]`}>
+   650→                        {st.label}
+   651→                      </span>
+   652→                    </div>
+   653→                    <div className="flex items-center justify-between gap-2 text-[12px] leading-tight">
+   654→                      <span className="text-muted-foreground truncate">{inv.clientName}</span>
+   655→                      <span className="text-muted-foreground/70 flex-shrink-0">{inv.issueDate}</span>
+   656→                    </div>
+   657→                  </div>
+   658→                  <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+   659→                    <span className="font-bold text-[13px] [direction:ltr] leading-tight">
+   660→                      {inv.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+   661→                    </span>
+   662→                    <span className="text-[10px] text-muted-foreground leading-tight">{activeCompany.currency}</span>
+   663→                  </div>
+   664→                  <ChevronLeft size={18} className="text-muted-foreground shrink-0" />
+   665→                </div>
+   666→              );
+   667→            })}
+   668→          </div>
+   669→
+   670→          {/* Pagination footer — DS v4.0 */}
+   671→          <div className="flex flex-wrap justify-between items-center py-3 px-4 border-t border-border gap-2">
+   672→            <span className="text-[12px] text-muted-foreground">
+   673→              عرض {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredInvoices.length)} من {filteredInvoices.length} فاتورة
+   674→              {statusFilter !== "all" && <span className="text-muted-foreground/70"> (مُصفّاة من {invoices.length})</span>}
+   675→            </span>
+   676→            <div className="flex items-center gap-1.5">
+   677→              <button
+   678→                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+   679→                disabled={safePage === 1}
+   680→                className={cn(pageBtnStyle(safePage === 1), "transition-all duration-150 active-press focus-ring")}
+   681→              >السابق</button>
+   682→              {Array.from({ length: totalPages }, (_, i) => i + 1)
+   683→                .filter((p) => {
+   684→                  if (p === 1 || p === totalPages) return true;
+   685→                  if (Math.abs(p - safePage) <= 1) return true;
+   686→                  return false;
+   687→                })
+   688→                .map((p, idx, arr) => {
+   689→                  const prev = arr[idx - 1];
+   690→                  const showEllipsis = prev && p - prev > 1;
+   691→                  return (
+   692→                    <span key={p} className="inline-flex items-center">
+   693→                      {showEllipsis && <span className="px-1 text-muted-foreground text-[12px]">…</span>}
+   694→                      <button
+   695→                        onClick={() => setCurrentPage(p)}
+   696→                        className={cn(pageNumStyle(p === safePage), "transition-all duration-150 active-press focus-ring")}
+   697→                      >{p}</button>
+   698→                    </span>
+   699→                  );
+   700→                })}
+   701→              <button
+   702→                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+   703→                disabled={safePage === totalPages}
+   704→                className={cn(pageBtnStyle(safePage === totalPages), "transition-all duration-150 active-press focus-ring")}
+   705→              >التالي</button>
+   706→            </div>
+   707→          </div>
+   708→          </>
+   709→        )}
+   710→      </div>
+   711→
+   712→      {previewInvoice && (
+   713→        <InvoicePreview
+   714→          invoice={previewInvoice}
+   715→          company={activeCompany}
+   716→          onClose={() => setPreviewInvoice(null)}
+   717→          onRecordPayment={() => { setPaymentInvoice(previewInvoice); setPreviewInvoice(null); }}
+   718→        />
+   719→      )}
+   720→
+   721→      {paymentInvoice && (
+   722→        <PaymentDialog
+   723→          invoice={paymentInvoice}
+   724→          onClose={() => setPaymentInvoice(null)}
+   725→          onPaid={() => { setPaymentInvoice(null); invoicesQuery.refetch(); }}
+   726→        />
+   727→      )}
+   728→
+   729→      {/* Task 14: ReviewQueueModal — opened from the persistent warnings banner. */}
+   730→      {showReviewQueue && activeCompany && (
+   731→        <LazyReviewQueueModal
+   732→          companySlug={activeCompany.slug}
+   733→          onClose={() => setShowReviewQueue(false)}
+   734→        />
+   735→      )}
+   736→    </div>
+   737→  );
+   738→}
+   739→
+   740→// DS v4.0 Icon Button Style — with motion timing
+   741→const iconBtnStyle = "w-7 h-7 rounded-lg bg-transparent border border-border cursor-pointer flex items-center justify-center transition-all duration-120 hover-lift active-press focus-ring hover:border-primary/30 hover:bg-primary/5";
+   742→
+   743→// Icon Button Component — DS v4.0
+   744→function IconBtn({ children, title, onClick, danger, className, "aria-label": ariaLabel }: { children: React.ReactNode; title: string; onClick: () => void; danger?: boolean; className?: string; "aria-label"?: string }) {
+   745→  return (
+   746→    <button
+   747→      title={title}
+   748→      aria-label={ariaLabel || title}
+   749→      onClick={onClick}
+   750→      className={cn(iconBtnStyle, danger ? "text-destructive hover:bg-destructive/10 hover:border-destructive/30" : "text-muted-foreground", className)}
+   751→    >
+   752→      {children}
+   753→    </button>
+   754→  );
+   755→}
+   756→
+   757→// DS v4.0 Pagination Button Styles — with motion timing
+   758→const pageBtnStyle = (disabled: boolean): string =>
+   759→  disabled
+   760→    ? "py-1.5 px-3 rounded-lg bg-transparent text-muted-foreground/50 border border-border text-[12px] font-bold cursor-not-allowed opacity-50"
+   761→    : "py-1.5 px-3 rounded-lg bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer hover-lift active-press focus-ring transition-all duration-120 hover:bg-primary/5 hover:border-primary/30";
+   762→
+   763→const pageNumStyle = (active: boolean): string =>
+   764→  active
+   765→    ? "min-w-[32px] py-1.5 px-2 rounded-lg bg-primary text-primary-foreground border border-primary text-[12px] font-bold cursor-pointer transition-all duration-150 hover-lift active-press shadow-sm"
+   766→    : "min-w-[32px] py-1.5 px-2 rounded-lg bg-card text-foreground border border-border text-[12px] font-bold cursor-pointer hover-lift active-press focus-ring transition-all duration-120 hover:bg-primary/5 hover:border-primary/30";
+   767→
+   768→// ─── Invoice Form ──────────────────────────────────────────────────────────
+   769→
+   770→function InvoiceForm({
+   771→  company, editing, onClose, onSaved,
+   772→}: {
+   773→  company: { slug: string; name: string; nameAr?: string | null; defaultTaxRate: string; currency: string; vatNumber?: string | null; email?: string | null; phone?: string | null; address?: string | null };
+   774→  editing: Invoice | null;
+   775→  onClose: () => void;
+   776→  onSaved: (reviewQueueWarnings: string[], inventoryWarnings?: string[]) => void;
+   777→}) {
+   778→  const createInvoiceMutation = useCreateInvoice();
+   779→  const updateInvoiceMutation = useUpdateInvoice();
+   780→  const updateInvoiceStatusMutation = useUpdateInvoiceStatus();
+   781→
+   782→  const [invoiceNumber, setInvoiceNumber] = useState(editing?.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`);
+   783→  const [clientName, setClientName] = useState(editing?.clientName || "");
+   784→  const [clientEmail, setClientEmail] = useState(editing?.clientEmail || "");
+   785→  const [clientPhone, setClientPhone] = useState(editing?.clientPhone || "");
+   786→  const [clientAddress, setClientAddress] = useState(editing?.clientAddress || "");
+   787→  const [issueDate, setIssueDate] = useState(editing?.issueDate || todayStr());
+   788→  const [dueDate, setDueDate] = useState(editing?.dueDate || addDaysStr(30));
+   789→  const [status, setStatus] = useState(editing?.status || "draft");
+   790→  const [lineItems, setLineItems] = useState<LineItem[]>(
+   791→    editing?.lineItems?.length ? editing.lineItems : [{ description: "", qty: 1, price: 0 }]
+   792→  );
+   793→  const [taxRate, setTaxRate] = useState(editing?.taxRate ?? parseFloat(company.defaultTaxRate || "0"));
+   794→  const [shipping, setShipping] = useState(editing?.shipping ?? 0);
+   795→  const [discount, setDiscount] = useState(editing?.discount ?? 0);
+   796→  const [notes, setNotes] = useState(editing?.notes || "");
+   797→  const [saving, setSaving] = useState(false);
+   798→  
+   799→  // 🆕 Product Picker State
+   800→  const [showCreateDialog, setShowCreateDialog] = useState(false);
+   801→  const [createDialogIndex, setCreateDialogIndex] = useState<number | null>(null);
+   802→  const [selectedProducts, setSelectedProducts] = useState<Record<number, ProductOption>>({});
+   803→
+   804→  const updateItem = (i: number, field: keyof LineItem, value: string | number) => {
+   805→    setLineItems((items) => items.map((it, idx) => {
+   806→      if (idx !== i) return it;
+   807→      const next = { ...it, [field]: value };
+   808→      if (field === "qty" || field === "price") {
+   809→        next.total = Number(next.qty) * Number(next.price);
+   810→      }
+   811→      return next;
+   812→    }));
+   813→  };
+   814→  const addItem = () => setLineItems((items) => [...items, { description: "", qty: 1, price: 0 }]);
+   815→  const removeItem = (i: number) => setLineItems((items) => items.filter((_, idx) => idx !== i));
+   816→  
+   817→  // 🆕 Handle product selection
+   818→  const handleProductSelect = (index: number, product: ProductOption | null) => {
+   819→    if (product) {
+   820→      setSelectedProducts(prev => ({ ...prev, [index]: product }));
+   821→      updateItem(index, "description", product.name);
+   822→      if (product.sellingPrice != null) {
+   823→        updateItem(index, "price", product.sellingPrice);
+   824→      }
+   825→    } else {
+   826→      setSelectedProducts(prev => {
+   827→        const next = { ...prev };
+   828→        delete next[index];
+   829→        return next;
+   830→      });
+   831→    }
+   832→  };
+   833→  
+   834→  // 🆕 Handle quick create
+   835→  const handleOpenCreateDialog = (index: number) => {
+   836→    setCreateDialogIndex(index);
+   837→    setShowCreateDialog(true);
+   838→  };
+   839→  
+   840→  const handleProductCreated = (product: any) => {
+   841→    if (createDialogIndex !== null) {
+   842→      handleProductSelect(createDialogIndex, product as ProductOption);
+   843→    }
+   844→  };
+   845→
+   846→  const subtotal = lineItems.reduce((s, it) => s + (Number(it.qty) * Number(it.price)), 0);
+   847→  const discounted = Math.max(0, subtotal - Number(discount));
+   848→  const taxAmount = (discounted * Number(taxRate)) / 100;
+   849→  const total = discounted + taxAmount + Number(shipping);
+   850→
+   851→  const handleSubmit = async () => {
+   852→    if (!invoiceNumber || !clientName) {
+   853→      toast.error("رقم الفاتورة واسم العميل مطلوبان");
+   854→      return;
+   855→    }
+   856→    setSaving(true);
+   857→    try {
+   858→      // SECURITY: `status` is NOT sent to the general edit endpoint. For edits,
+   859→      // status changes are routed through PATCH /api/invoices/[id]/status
+   860→      // (operational statuses only) after the general update succeeds. The
+   861→      // `paid`/`partial` statuses are never set here — they result from a real
+   862→      // payment via the "تسجيل دفعة" action (PATCH /api/invoices/[id]/payment,
+   863→      // which requires finance_access + updates `paid` + audits). For new
+   864→      // invoices (POST) the initial status is allowed.
+   865→      const isEdit = !!editing;
+   866→      const payload: Record<string, unknown> = {
+   867→        companySlug: company.slug,
+   868→        invoiceNumber, clientName, clientEmail, clientPhone, clientAddress,
+   869→        issueDate, dueDate,
+   870→        lineItems: lineItems.filter((it) => it.description || it.qty || it.price),
+   871→        taxRate, shipping, discount, notes,
+   872→        expectedVersion: editing?.version,
+   873→      };
+   874→      if (!isEdit) {
+   875→        payload.status = status;
+   876→      }
+   877→
+   878→      let createdWarnings: string[] = [];
+   879→      let createdInventoryWarnings: string[] = [];
+   880→
+   881→      if (isEdit) {
+   882→        await updateInvoiceMutation.mutateAsync({ id: editing!.id, ...payload });
+   883→      } else {
+   884→        const result = await createInvoiceMutation.mutateAsync(payload as CreateInvoicePayload);
+   885→        // Task 14: capture review-queue / oversell warnings from POST /api/invoices.
+   886→        if (Array.isArray(result.reviewQueueWarnings)) {
+   887→          createdWarnings = result.reviewQueueWarnings;
+   888→        }
+   889→        if (Array.isArray(result.warnings)) {
+   890→          createdInventoryWarnings = result.warnings;
+   891→        }
+   892→      }
+   893→
+   894→      // For edits: if the user changed the status to an operational status,
+   895→      // route it through the dedicated /status endpoint (writes an audit
+   896→      // trail). paid/partial are blocked there and must go via /payment.
+   897→      if (isEdit && editing!.status !== status) {
+   898→        try {
+   899→          await updateInvoiceStatusMutation.mutateAsync({ id: editing!.id, status });
+   900→        } catch (statusErr) {
+   901→          if (status === "paid" || status === "partial") {
+   902→            toast.error("لتسجيل دفعة استخدم زر «تسجيل دفعة» (يتطلب صلاحية مالية)");
+   903→          } else {
+   904→            throw statusErr;
+   905→          }
+   906→        }
+   907→      }
+   908→
+   909→      toast.success(isEdit ? "تم تحديث الفاتورة" : "تم إنشاء الفاتورة");
+   910→      if (createdWarnings.length > 0) {
+   911→        toast.warning(`⚠️ ${createdWarnings.length} صنف يحتاج مراجعة — انظر البانر أدناه`);
+   912→      }
+   913→      if (createdInventoryWarnings.length > 0) {
+   914→        toast.warning(`⚠️ ${createdInventoryWarnings.length} تحذير من المختزن — انظر البانر أدناه`);
+   915→      }
+   916→      onSaved(createdWarnings, createdInventoryWarnings);
+   917→    } catch (err) {
+   918→      toast.error(err instanceof Error ? err.message : "خطأ");
+   919→    } finally {
+   920→      setSaving(false);
+   921→    }
+   922→  };
+   923→
+   924→  return (
+   925→    <div className="flex flex-col gap-4">
+   926→      <div className="flex justify-between items-center">
+   927→        <h1 className="text-[22px] font-extrabold">
+   928→          {editing ? "تعديل فاتورة" : "فاتورة جديدة"}
+   929→        </h1>
+   930→        <button
+   931→          onClick={onClose}
+   932→          className="bg-transparent border border-gray-200 text-gray-400 py-2 px-3 rounded-sm text-[12px] cursor-pointer inline-flex items-center gap-1"
+   933→        >
+   934→          <X size={14} /> إغلاق
+   935→        </button>
+   936→      </div>
+   937→
+   938→      {/* Form fields */}
+   939→      <div className="bg-white rounded-[14px] border border-gray-200 p-5 flex flex-col gap-4 shadow-card">
+   940→        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   941→          <FormField label="رقم الفاتورة">
+   942→            <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputStyle} />
+   943→          </FormField>
+   944→          <FormField label="اسم العميل">
+   945→            <input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputStyle} />
+   946→          </FormField>
+   947→          <FormField label="بريد العميل">
+   948→            <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className={inputStyle} dir="ltr" />
+   949→          </FormField>
+   950→          <FormField label="هاتف العميل">
+   951→            <input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className={inputStyle} dir="ltr" />
+   952→          </FormField>
+   953→          <FormField label="عنوان العميل">
+   954→            <input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} className={inputStyle} />
+   955→          </FormField>
+   956→          <FormField label="تاريخ الإصدار">
+   957→            <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inputStyle} dir="ltr" />
+   958→          </FormField>
+   959→          <FormField label="تاريخ الاستحقاق">
+   960→            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputStyle} dir="ltr" />
+   961→          </FormField>
+   962→          <FormField label="الحالة">
+   963→            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputStyle}>
+   964→              <option value="draft">مسودة</option>
+   965→              <option value="sent">مرسلة</option>
+   966→              {editing ? null : <option value="paid">مدفوعة</option>}
+   967→              {editing ? null : <option value="partial">جزئية</option>}
+   968→              <option value="overdue">متأخرة</option>
+   969→              <option value="cancelled">ملغاة</option>
+   970→            </select>
+   971→            {editing && (
+   972→              <span className="text-[10px] text-gray-400 mt-1 block">
+   973→                لتسجيل دفعة (مدفوعة/جزئية) استخدم زر «تسجيل دفعة» في قائمة الإجراءات.
+   974→              </span>
+   975→            )}
+   976→          </FormField>
+   977→        </div>
+   978→      </div>
+   979→
+   980→      {/* Line items */}
+   981→      <div className="bg-white rounded-[14px] border border-gray-200 p-5 shadow-card">
+   982→        <div className="flex justify-between items-center mb-3">
+   983→          <h3 className="text-[15px] font-bold">البنود</h3>
+   984→          <button
+   985→            onClick={addItem}
+   986→            className="bg-[#EDE9FE] text-[#7C3AED] border border-[#EDE9FE] rounded-sm py-1.5 px-3 text-[12px] font-bold cursor-pointer inline-flex items-center gap-1 hover:bg-[#F5F3FF] transition-colors"
+   987→          >
+   988→            <Plus size={12} /> إضافة بند
+   989→          </button>
+   990→        </div>
+   991→        <div className="flex flex-col gap-2">
+   992→          {lineItems.map((it, i) => (
+   993→            <div key={i} className="grid grid-cols-1 sm:grid-cols-[1.5fr_80px_100px_110px_32px] gap-2 items-center">
+   994→              {/* 🆕 Product Picker instead of plain input */}
+   995→              <ProductPicker
+   996→                companySlug={company.slug}
+   997→                value={selectedProducts[i] || null}
+   998→                onChange={(product) => handleProductSelect(i, product)}
+   999→                onDescriptionChange={(desc) => updateItem(i, "description", desc)}
+  1000→                onCreateNew={() => handleOpenCreateDialog(i)}
+  1001→                placeholder="🔍 ابحث عن منتج أو اكتب اسم جديد..."
+  1002→                showStock
+  1003→                showPrice
+  1004→              />
+  1005→              <div className="flex gap-2 items-center sm:contents">
+  1006→                <input
+  1007→                  type="number" placeholder="الكمية" value={it.qty}
+  1008→                  onChange={(e) => updateItem(i, "qty", Number(e.target.value))}
+  1009→                  className={cn(inputStyle, "flex-1 sm:flex-initial")} dir="ltr"
+  1010→                />
+  1011→                <input
+  1012→                  type="number" placeholder="السعر" value={it.price}
+  1013→                  onChange={(e) => updateItem(i, "price", Number(e.target.value))}
+  1014→                  className={cn(inputStyle, "flex-1 sm:flex-initial")} dir="ltr"
+  1015→                />
+  1016→                <div className="p-2 font-bold [direction:ltr] text-start flex-1 sm:flex-initial">
+  1017→                  {(Number(it.qty) * Number(it.price)).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+  1018→                </div>
+  1019→                <button
+  1020→                  onClick={() => removeItem(i)}
+  1021→                  className="bg-transparent border border-gray-200 text-destructive rounded-[6px] p-1.5 cursor-pointer flex items-center justify-center"
+  1022→                >
+  1023→                  <X size={12} />
+  1024→                </button>
+  1025→              </div>
+  1026→            </div>
+  1027→          ))}
+  1028→        </div>
+  1029→      </div>
+  1030→
+  1031→      {/* Totals + notes */}
+  1032→      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+  1033→        <div className="bg-white rounded-[14px] border border-gray-200 p-5 shadow-card">
+  1034→          <h3 className="text-[15px] font-bold mb-3">ملاحظات</h3>
+  1035→          <textarea
+  1036→            value={notes}
+  1037→            onChange={(e) => setNotes(e.target.value)}
+  1038→            placeholder="ملاحظات إضافية تظهر على الفاتورة…"
+  1039→            rows={4}
+  1040→            className={cn(inputStyle, "resize-y")}
+  1041→          />
+  1042→        </div>
+  1043→        <div className="bg-white rounded-[14px] border border-gray-200 p-5 shadow-card">
+  1044→          <h3 className="text-[15px] font-bold mb-3">الملخّص</h3>
+  1045→          <div className="flex flex-col gap-2 text-[13px]">
+  1046→            <Row label="المجموع الفرعي" value={subtotal} />
+  1047→            <div className="flex justify-between items-center">
+  1048→              <span>الخصم</span>
+  1049→              <input type="number" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} className={cn(inputStyle, "w-[100px] py-1 px-2")} dir="ltr" />
+  1050→            </div>
+  1051→            <div className="flex justify-between items-center">
+  1052→              <span>نسبة الضريبة (%)</span>
+  1053→              <input type="number" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} className={cn(inputStyle, "w-[100px] py-1 px-2")} dir="ltr" />
+  1054→            </div>
+  1055→            <Row label="ضريبة" value={taxAmount} />
+  1056→            <div className="flex justify-between items-center">
+  1057→              <span>الشحن</span>
+  1058→              <input type="number" value={shipping} onChange={(e) => setShipping(Number(e.target.value))} className={cn(inputStyle, "w-[100px] py-1 px-2")} dir="ltr" />
+  1059→            </div>
+  1060→            <div className="border-t border-gray-200 mt-1 pt-2">
+  1061→              <Row label="الإجمالي" value={total} strong />
+  1062→            </div>
+  1063→          </div>
+  1064→        </div>
+  1065→      </div>
+  1066→
+  1067→      {/* Actions */}
+  1068→      <div className="flex flex-col sm:flex-row gap-2.5 sm:justify-end">
+  1069→        <button
+  1070→          onClick={onClose}
+  1071→          className="py-2.5 px-5 rounded-[10px] bg-transparent text-gray-400 border border-gray-200 text-[13px] font-bold cursor-pointer w-full sm:w-auto"
+  1072→        >إلغاء</button>
+  1073→        <button
+  1074→          onClick={handleSubmit}
+  1075→          disabled={saving}
+  1076→          className="py-2.5 px-6 rounded-[10px] bg-[#7C3AED] text-white border-none text-[13px] font-extrabold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 w-full sm:w-auto shadow-[0_2px_8px_rgba(124,58,237,0.3)]"
+  1077→        >
+  1078→          {saving ? "جارٍ الحفظ…" : (editing ? "حفظ التعديلات" : "إنشاء الفاتورة")}
+  1079→        </button>
+  1080→      </div>
+  1081→
+  1082→      {/* 🆕 Quick Create Product Dialog */}
+  1083→      <QuickCreateProductDialog
+  1084→        open={showCreateDialog}
+  1085→        onClose={() => setShowCreateDialog(false)}
+  1086→        companySlug={company.slug}
+  1087→        initialData={
+  1088→          createDialogIndex !== null
+  1089→            ? {
+  1090→                name: lineItems[createDialogIndex]?.description,
+  1091→                sellingPrice: lineItems[createDialogIndex]?.price,
+  1092→              }
+  1093→            : undefined
+  1094→        }
+  1095→        onCreated={handleProductCreated}
+  1096→      />
+  1097→    </div>
+  1098→  );
+  1099→}
+  1100→
+  1101→function Row({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
+  1102→  return (
+  1103→    <div className={cn("flex justify-between", strong ? "font-extrabold" : "font-medium")}>
+  1104→      <span>{label}</span>
+  1105→      <span className={cn("[direction:ltr]", strong ? "text-[16px]" : "text-[13px]")}>
+  1106→        {value.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+  1107→      </span>
+  1108→    </div>
+  1109→  );
+  1110→}
+  1111→
+  1112→function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  1113→  return (
+  1114→    <div>
+  1115→      <label className="block text-[11px] font-semibold text-gray-500 mb-1">{label}</label>
+  1116→      {children}
+  1117→    </div>
+  1118→  );
+  1119→}
+  1120→
+  1121→const inputStyle = "w-full py-2 px-3 rounded-sm bg-white border border-gray-200 text-foreground text-[13px] outline-none focus:border-[#7C3AED]/50 focus:ring-1 focus:ring-[#EDE9FE]";
+  1122→
+  1123→// ─── Invoice Preview / Print ───────────────────────────────────────────────
+  1124→
+  1125→function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoice: Invoice; company: { name: string; nameAr?: string | null; email?: string | null; phone?: string | null; address?: string | null; vatNumber?: string | null; currency: string }; onClose: () => void; onRecordPayment?: () => void }) {
+  1126→  return (
+  1127→    <div
+  1128→      className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-5"
+  1129→      onClick={onClose}
+  1130→    >
+  1131→      <div
+  1132→        onClick={(e) => e.stopPropagation()}
+  1133→        className="invoice-print-area bg-white text-[#111] rounded-lg p-6 md:p-10 max-w-[95vw] md:max-w-[800px] w-full max-h-[90vh] overflow-y-auto [direction:rtl] [font-family:var(--font-cairo),sans-serif]"
+  1134→      >
+  1135→        <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-[#047857]">
+  1136→          <div>
+  1137→            <h1 className="text-[28px] font-black text-[#047857]">{company.nameAr || company.name}</h1>
+  1138→            <div className="text-[13px] text-[#666] mt-1">{company.address || ""}</div>
+  1139→            <div className="text-[13px] text-[#666]">{company.phone || ""} • {company.email || ""}</div>
+  1140→            {company.vatNumber && <div className="text-[13px] text-[#666]">الرقم الضريبي: {company.vatNumber}</div>}
+  1141→          </div>
+  1142→          <div className="text-end">
+  1143→            <div className="text-[32px] font-black text-[#047857]">فاتورة</div>
+  1144→            <div className="text-[14px] font-mono mt-1">#{invoice.invoiceNumber}</div>
+  1145→            <div className="text-[12px] text-[#666] mt-2">
+  1146→              تاريخ الإصدار: {invoice.issueDate}
+  1147→            </div>
+  1148→            <div className="text-[12px] text-[#666]">
+  1149→              تاريخ الاستحقاق: {invoice.dueDate}
+  1150→            </div>
+  1151→          </div>
+  1152→        </div>
+  1153→
+  1154→        <div className="flex justify-between mb-6">
+  1155→          <div>
+  1156→            <div className="text-[11px] text-[#999] mb-1">فاتورة إلى</div>
+  1157→            <div className="text-[16px] font-bold">{invoice.clientName}</div>
+  1158→            {invoice.clientEmail && <div className="text-[12px] text-[#666]">{invoice.clientEmail}</div>}
+  1159→            {invoice.clientPhone && <div className="text-[12px] text-[#666]">{invoice.clientPhone}</div>}
+  1160→            {invoice.clientAddress && <div className="text-[12px] text-[#666]">{invoice.clientAddress}</div>}
+  1161→          </div>
+  1162→        </div>
+  1163→
+  1164→        <table className="w-full border-collapse mb-6">
+  1165→          <thead>
+  1166→            <tr className="bg-[#f3f4f6]">
+  1167→              <th scope="col" className="text-start p-2.5 text-[12px] font-bold">الوصف</th>
+  1168→              <th scope="col" className="text-center p-2.5 text-[12px] font-bold w-20">الكمية</th>
+  1169→              <th scope="col" className="text-center p-2.5 text-[12px] font-bold w-[100px]">السعر</th>
+  1170→              <th scope="col" className="text-end p-2.5 text-[12px] font-bold w-[120px]">الإجمالي</th>
+  1171→            </tr>
+  1172→          </thead>
+  1173→          <tbody>
+  1174→            {invoice.lineItems.map((it, i) => (
+  1175→              <tr key={i} className="border-b border-[#e5e7eb]">
+  1176→                <td className="p-2.5 text-[13px]">{it.description}</td>
+  1177→                <td className="p-2.5 text-[13px] text-center">{it.qty}</td>
+  1178→                <td className="p-2.5 text-[13px] text-center [direction:ltr]">{Number(it.price).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</td>
+  1179→                <td className="p-2.5 text-[13px] [direction:ltr] text-start font-bold">
+  1180→                  {(Number(it.qty) * Number(it.price)).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+  1181→                </td>
+  1182→              </tr>
+  1183→            ))}
+  1184→          </tbody>
+  1185→        </table>
+  1186→
+  1187→        <div className="flex justify-end">
+  1188→          <div className="min-w-[240px] text-[13px]">
+  1189→            <div className="flex justify-between py-1.5">
+  1190→              <span>المجموع الفرعي</span>
+  1191→              <span className="[direction:ltr]">{invoice.subtotal.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1192→            </div>
+  1193→            {invoice.discount > 0 && (
+  1194→              <div className="flex justify-between py-1.5">
+  1195→                <span>الخصم</span>
+  1196→                <span className="[direction:ltr]">-{invoice.discount.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1197→              </div>
+  1198→            )}
+  1199→            <div className="flex justify-between py-1.5">
+  1200→              <span>ضريبة ({invoice.taxRate}%)</span>
+  1201→              <span className="[direction:ltr]">{invoice.taxAmount.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1202→            </div>
+  1203→            {invoice.shipping > 0 && (
+  1204→              <div className="flex justify-between py-1.5">
+  1205→                <span>الشحن</span>
+  1206→                <span className="[direction:ltr]">{invoice.shipping.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1207→              </div>
+  1208→            )}
+  1209→            <div className="flex justify-between py-2.5 border-t-2 border-[#047857] mt-1.5 text-[16px] font-black text-[#047857]">
+  1210→              <span>الإجمالي</span>
+  1211→              <span className="[direction:ltr]">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} {(invoice as any).currency || company.currency}</span>
+  1212→            </div>
+  1213→            {invoice.paid > 0 && (
+  1214→              <>
+  1215→                <div className="flex justify-between py-1.5 text-[#10b981]">
+  1216→                  <span>مدفوع</span>
+  1217→                  <span className="[direction:ltr]">{invoice.paid.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1218→                </div>
+  1219→                <div className="flex justify-between py-1.5 font-bold text-[#ef4444]">
+  1220→                  <span>المتبقي</span>
+  1221→                  <span className="[direction:ltr]">{(invoice.total - invoice.paid).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1222→                </div>
+  1223→              </>
+  1224→            )}
+  1225→          </div>
+  1226→        </div>
+  1227→
+  1228→        {invoice.notes && (
+  1229→          <div className="mt-8 pt-4 border-t border-[#e5e7eb]">
+  1230→            <div className="text-[11px] text-[#999] mb-1">ملاحظات</div>
+  1231→            <div className="text-[13px] text-[#444]">{invoice.notes}</div>
+  1232→          </div>
+  1233→        )}
+  1234→
+  1235→        <div className="no-print flex gap-2.5 justify-end mt-8 pt-5 border-t border-[#e5e7eb]">
+  1236→          {onRecordPayment && (
+  1237→            <button onClick={onRecordPayment} className="py-2.5 px-5 rounded-sm bg-[#10b981] text-white border-none text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5">
+  1238→              <DollarSign size={14} /> تسجيل دفعة
+  1239→            </button>
+  1240→          )}
+  1241→          <button onClick={() => window.print()} className="py-2.5 px-5 rounded-sm bg-[#047857] text-white border-none text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5">
+  1242→            <Printer size={14} /> طباعة
+  1243→          </button>
+  1244→          <button onClick={onClose} className="py-2.5 px-5 rounded-sm bg-transparent text-[#666] border border-[#e5e7eb] text-[13px] font-bold cursor-pointer">
+  1245→            إغلاق
+  1246→          </button>
+  1247→        </div>
+  1248→      </div>
+  1249→    </div>
+  1250→  );
+  1251→}
+  1252→
+  1253→export default InvoicesView;
+  1254→
+  1255→function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose: () => void; onPaid: () => void }) {
+  1256→  const remaining = Math.max(0, Number(invoice.total) - Number(invoice.paid));
+  1257→  const [amount, setAmount] = useState<string>(String(remaining > 0 ? remaining : invoice.total));
+  1258→  const [method, setMethod] = useState<string>("cash");
+  1259→  const recordPaymentMutation = useRecordPayment();
+  1260→
+  1261→  const handleSave = () => {
+  1262→    const amt = Number(amount);
+  1263→    if (!amt || amt <= 0) {
+  1264→      toast.error("أدخل مبلغًا صحيحًا أكبر من صفر");
+  1265→      return;
+  1266→    }
+  1267→    recordPaymentMutation.mutate(
+  1268→      { id: invoice.id, amount: amt, date: new Date().toISOString().slice(0, 10), method },
+  1269→      {
+  1270→        onSuccess: () => { toast.success("تم تسجيل الدفعة بنجاح"); onPaid(); },
+  1271→        onError: (err: any) => {
+  1272→          if (err.status === 403) {
+  1273→            toast.error("ليس لديك صلاحية مالية (finance_access) لتسجيل الدفعات");
+  1274→          } else {
+  1275→            toast.error(err.message || "تعذّر تسجيل الدفعة");
+  1276→          }
+  1277→        },
+  1278→      },
+  1279→    );
+  1280→  };
+  1281→
+  1282→  return (
+  1283→    <div
+  1284→      className="fixed inset-0 bg-black/60 z-[320] flex items-center justify-center p-5"
+  1285→      onClick={onClose}
+  1286→    >
+  1287→      <div
+  1288→        onClick={(e) => e.stopPropagation()}
+  1289→        className="bg-card text-card-foreground rounded-[14px] border border-border p-5 md:p-6 max-w-[95vw] md:max-w-[440px] w-full flex flex-col gap-4 [direction:rtl]"
+  1290→      >
+  1291→        <div className="flex justify-between items-center">
+  1292→          <h2 className="text-[18px] font-extrabold">تسجيل دفعة</h2>
+  1293→          <button
+  1294→            onClick={onClose}
+  1295→            className="bg-transparent border border-border text-muted-foreground py-1.5 px-2.5 rounded-sm text-[12px] cursor-pointer inline-flex items-center gap-1"
+  1296→          >
+  1297→            <X size={14} /> إغلاق
+  1298→          </button>
+  1299→        </div>
+  1300→
+  1301→        <div className="bg-accent/40 rounded-[10px] p-3 text-[12px] flex flex-col gap-1">
+  1302→          <div className="flex justify-between">
+  1303→            <span className="text-muted-foreground">الفاتورة</span>
+  1304→            <span className="font-mono font-bold">#{invoice.invoiceNumber}</span>
+  1305→          </div>
+  1306→          <div className="flex justify-between">
+  1307→            <span className="text-muted-foreground">الإجمالي</span>
+  1308→            <span className="[direction:ltr] font-bold">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1309→          </div>
+  1310→          <div className="flex justify-between">
+  1311→            <span className="text-muted-foreground">مدفوع سابقًا</span>
+  1312→            <span className="[direction:ltr] text-[#10b981] font-bold">{invoice.paid.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1313→          </div>
+  1314→          <div className="flex justify-between border-t border-border pt-1 mt-1">
+  1315→            <span className="text-muted-foreground">المتبقي</span>
+  1316→            <span className="[direction:ltr] text-[#ef4444] font-bold">{remaining.toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</span>
+  1317→          </div>
+  1318→        </div>
+  1319→
+  1320→        <FormField label="المبلغ">
+  1321→          <input
+  1322→            type="number"
+  1323→            min="0"
+  1324→            step="0.01"
+  1325→            value={amount}
+  1326→            onChange={(e) => setAmount(e.target.value)}
+  1327→            className={inputStyle}
+  1328→            dir="ltr"
+  1329→          />
+  1330→        </FormField>
+  1331→        <FormField label="طريقة الدفع">
+  1332→          <select value={method} onChange={(e) => setMethod(e.target.value)} className={inputStyle}>
+  1333→            <option value="cash">نقدي</option>
+  1334→            <option value="card">بطاقة</option>
+  1335→            <option value="transfer">تحويل بنكي</option>
+  1336→            <option value="cheque">شيك</option>
+  1337→            <option value="other">أخرى</option>
+  1338→          </select>
+  1339→        </FormField>
+  1340→
+  1341→        <div className="flex gap-2 justify-end mt-2">
+  1342→          <button
+  1343→            onClick={onClose}
+  1344→            className="py-2 px-4 rounded-sm bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer"
+  1345→          >
+  1346→            إلغاء
+  1347→          </button>
+  1348→          <button
+  1349→            onClick={handleSave}
+  1350→            disabled={recordPaymentMutation.isPending}
+  1351→            className="py-2 px-5 rounded-sm bg-[#10b981] text-white border-none text-[13px] font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+  1352→          >
+  1353→            <DollarSign size={14} /> {recordPaymentMutation.isPending ? "جارٍ الحفظ…" : "تأكيد الدفعة"}
+  1354→          </button>
+  1355→        </div>
+  1356→      </div>
+  1357→    </div>
+  1358→  );
+  1359→}
+  1360→
