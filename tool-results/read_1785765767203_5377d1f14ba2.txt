@@ -1,0 +1,526 @@
+     1→// Responsive: sm/md/lg breakpoints added
+     2→"use client";
+     3→
+     4→import { useState, useEffect } from "react";
+     5→import { useBrand } from "@/context/BrandContext";
+     6→import { toast } from "sonner";
+     7→import {
+     8→  useArApAging, useClientStatement, useSupplierStatement,
+     9→  usePostDatedChecks, useCreatePDC, usePDCAction,
+    10→  useInstallments, useCreateInstallment,
+    11→  useAccounts, useClients, useSuppliers,
+    12→} from "@/hooks/queries";
+    13→import {
+    14→  ArrowUpDown, Plus, X, Trash2, FileText, CheckCircle2,
+    15→  Clock, Banknote, CalendarDays, Send, Download,
+    16→  TrendingUp, TrendingDown, RefreshCw,
+    17→} from "lucide-react";
+    18→import { cn } from "@/lib/utils";
+    19→
+    20→/* ─── Interfaces ───────────────────────────────────────────────────────────── */
+    21→interface AgingRow { name: string; current: number; thirty: number; sixty: number; ninetyPlus: number; total: number; }
+    22→interface AgingSummary { direction: string; rows: AgingRow[]; grandCurrent: number; grandThirty: number; grandSixty: number; grandNinetyPlus: number; grandTotal: number; }
+    23→interface ClientStatementLine { date: string; type: string; reference: string; debit: number; credit: number; balance: number; }
+    24→interface ClientStatement { clientName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number; }
+    25→interface PDC { id: number; checkNumber: string; bankName: string; amount: number; dueDate: string; status: string; direction: string; clientName?: string; supplierName?: string; }
+    26→interface Installment { id: number; reference: string; clientName: string; totalAmount: number; installmentCount: number; paidCount: number; nextDueDate: string; status: string; }
+    27→interface Contact { id: number; name: string; }
+    28→
+    29→type Tab = "aging" | "client-statement" | "supplier-statement" | "pdc" | "installments";
+    30→type Direction = "receivable" | "payable";
+    31→
+    32→/* ─── Shared Styles ────────────────────────────────────────────────────────── */
+    33→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+    34→const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+    35→const accentBadge = "bg-muted";
+    36→const accentText = "";
+    37→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
+    38→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    39→function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
+    40→function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
+    41→
+    42→/* ─── Main Component ───────────────────────────────────────────────────────── */
+    43→export function ArApView() {
+    44→  const { activeCompany } = useBrand();
+    45→  const [tab, setTab] = useState<Tab>("aging");
+    46→  const [agingDirection, setAgingDirection] = useState<Direction>("receivable");
+    47→  const [showForm, setShowForm] = useState(false);
+    48→
+    49→  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
+    50→
+    51→  // TanStack Query hooks for data fetching
+    52→  const agingQuery = useArApAging(slug, agingDirection);
+    53→  const pdcQuery = usePostDatedChecks(slug);
+    54→  const installmentQuery = useInstallments(slug);
+    55→
+    56→  const agingData: AgingSummary | null = agingQuery.data ? {
+    57→    direction: agingDirection, rows: agingQuery.data.rows,
+    58→    grandCurrent: agingQuery.data.grandCurrent, grandThirty: agingQuery.data.grandThirty,
+    59→    grandSixty: agingQuery.data.grandSixty, grandNinetyPlus: agingQuery.data.grandNinetyPlus,
+    60→    grandTotal: agingQuery.data.grandTotal,
+    61→  } : null;
+    62→  const pdcs = pdcQuery.data?.postDatedChecks ?? [];
+    63→  const installments = installmentQuery.data?.installments ?? [];
+    64→  const [clientStatement, setClientStatement] = useState<ClientStatement | null>(null);
+    65→  const [supplierStatement, setSupplierStatement] = useState<ClientStatement | null>(null);
+    66→
+    67→  const loading = (tab === "aging" && agingQuery.isLoading) || (tab === "pdc" && pdcQuery.isLoading) || (tab === "installments" && installmentQuery.isLoading);
+    68→
+    69→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+    70→
+    71→  const tabs: Array<{ key: Tab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    72→    { key: "aging", label: "تقادم الذمم", icon: ArrowUpDown },
+    73→    { key: "client-statement", label: "كشف حساب عميل", icon: FileText },
+    74→    { key: "supplier-statement", label: "كشف حساب مورد", icon: FileText },
+    75→    { key: "pdc", label: "شيكات مؤجلة", icon: Banknote },
+    76→    { key: "installments", label: "التقسيط", icon: CalendarDays },
+    77→  ];
+    78→
+    79→  return (
+    80→    <div className="flex flex-col gap-4">
+    81→      <div className="flex flex-wrap justify-between items-center gap-3">
+    82→        <div>
+    83→          <h1 className="text-2xl font-extrabold flex items-center gap-2"><ArrowUpDown size={20} /> الذمم</h1>
+    84→          <p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p>
+    85→        </div>
+    86→        {(tab === "pdc" || tab === "installments") && !showForm && (
+    87→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> إضافة</button>
+    88→        )}
+    89→      </div>
+    90→      <div className="flex gap-1.5 flex-wrap">
+    91→        {tabs.map((t) => { const Icon = t.icon; return (
+    92→          <button key={t.key} onClick={() => { setTab(t.key); setShowForm(false); }} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5", tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
+    93→            <Icon size={14} /> {t.label}
+    94→          </button>
+    95→        ); })}
+    96→      </div>
+    97→
+    98→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "aging" ? (
+    99→        <AgingReportView data={agingData} direction={agingDirection} onDirectionChange={setAgingDirection} />
+   100→      ) : tab === "client-statement" ? (
+   101→        <StatementView type="client" company={activeCompany} data={clientStatement} setData={setClientStatement} />
+   102→      ) : tab === "supplier-statement" ? (
+   103→        <StatementView type="supplier" company={activeCompany} data={supplierStatement} setData={setSupplierStatement} />
+   104→      ) : tab === "pdc" ? (
+   105→        showForm ? <PDCForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); pdcQuery.refetch(); }} /> : <PDCList pdcs={pdcs} company={activeCompany} onRefresh={() => pdcQuery.refetch()} />
+   106→      ) : tab === "installments" ? (
+   107→        showForm ? <InstallmentForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); installmentQuery.refetch(); }} /> : <InstallmentList installments={installments} />
+   108→      ) : null}
+   109→    </div>
+   110→  );
+   111→}
+   112→
+   113→/* ─── Aging Report ─────────────────────────────────────────────────────────── */
+   114→function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSummary | null; direction: Direction; onDirectionChange: (d: Direction) => void }) {
+   115→  const rows = data?.rows || [];
+   116→  const label = direction === "receivable" ? "العميل" : "المورد";
+   117→  const accentColor = direction === "receivable" ? "#047857" : "#f59e0b";
+   118→
+   119→  return (
+   120→    <div className="flex flex-col gap-4">
+   121→      <div className="flex gap-1.5">
+   122→        <button onClick={() => onDirectionChange("receivable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", direction === "receivable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم مدينة (مستحقات)</button>
+   123→        <button onClick={() => onDirectionChange("payable")} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer", direction === "payable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>ذمم دائنة (التزامات)</button>
+   124→      </div>
+   125→
+   126→      {data && (
+   127→        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   128→          <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   129→            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", accentBadge)}><ArrowUpDown size={18} /></div>
+   130→            <div><div className="text-[11px] text-muted-foreground">إجمالي {direction === "receivable" ? "الذمم المدينة" : "الذمم الدائنة"}</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandTotal)}</div></div>
+   131→          </div>
+   132→          <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   133→            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
+   134→            <div><div className="text-[11px] text-muted-foreground">حالي</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(data.grandCurrent)}</div></div>
+   135→          </div>
+   136→          <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   137→            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
+   138→            <div><div className="text-[11px] text-muted-foreground">فوق 90 يوم</div><div className="text-lg font-extrabold [direction:ltr] text-end text-red-500">{fmt(data.grandNinetyPlus)}</div></div>
+   139→          </div>
+   140→        </div>
+   141→      )}
+   142→
+   143→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   144→        {!data || rows.length === 0 ? <Empty label="بيانات التقادم" /> : (
+   145→          <div className="overflow-x-auto garfix-scroll">
+   146→            <table className="table-enterprise w-full border-collapse">
+   147→              <thead><tr className="border-b border-border bg-muted">
+   148→                <th className={thStyle}>{label}</th>
+   149→                <th className={cn(thStyle, "text-end")}>حالي</th>
+   150→                <th className={cn(thStyle, "text-end")}>30 يوم</th>
+   151→                <th className={cn(thStyle, "text-end")}>60 يوم</th>
+   152→                <th className={cn(thStyle, "text-end")}>90+ يوم</th>
+   153→                <th className={cn(thStyle, "text-end")}>الإجمالي</th>
+   154→              </tr></thead>
+   155→              <tbody>
+   156→                {rows.map((r, i) => (
+   157→                  <tr key={i} className="border-b border-border">
+   158→                    <td className={cn(tdStyle, "font-bold")}>{r.name}</td>
+   159→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.current > 0 ? fmt(r.current) : "—"}</td>
+   160→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.thirty > 0 ? fmt(r.thirty) : "—"}</td>
+   161→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.sixty > 0 ? fmt(r.sixty) : "—"}</td>
+   162→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.ninetyPlus > 0 ? "text-red-500" : "text-emerald-500")}>{r.ninetyPlus > 0 ? fmt(r.ninetyPlus) : "—"}</td>
+   163→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", accentText)}>{fmt(r.total)}</td>
+   164→                  </tr>
+   165→                ))}
+   166→              </tbody>
+   167→              <tfoot>
+   168→                <tr className="border-t-2 border-border bg-muted font-extrabold">
+   169→                  <td className={cn(tdStyle, "font-extrabold")}>الإجمالي</td>
+   170→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandCurrent)}</td>
+   171→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandThirty)}</td>
+   172→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold")}>{fmt(data.grandSixty)}</td>
+   173→                  <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(data.grandNinetyPlus)}</td>
+   174→                  <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", accentText)}>{fmt(data.grandTotal)}</td>
+   175→                </tr>
+   176→              </tfoot>
+   177→            </table>
+   178→          </div>
+   179→        )}
+   180→      </div>
+   181→    </div>
+   182→  );
+   183→}
+   184→
+   185→/* ─── Client/Supplier Statement ────────────────────────────────────────────── */
+   186→function StatementView({ type, company, data, setData }: { type: "client" | "supplier"; company: { slug: string }; data: ClientStatement | null; setData: (d: ClientStatement | null) => void }) {
+   187→  const [selectedId, setSelectedId] = useState<number | null>(null);
+   188→  const [loadingStatement, setLoadingStatement] = useState(false);
+   189→
+   190→  const clientsQuery = useClients(company.slug);
+   191→  const suppliersQuery = useSuppliers(company.slug);
+   192→  const clientStatementQuery = useClientStatement(company.slug, type === "client" ? selectedId : null);
+   193→  const supplierStatementQuery = useSupplierStatement(company.slug, type === "supplier" ? selectedId : null);
+   194→
+   195→  const contacts = type === "client"
+   196→    ? (clientsQuery.data?.clients || [])
+   197→    : (suppliersQuery.data?.suppliers || []);
+   198→
+   199→  const loadStatement = () => {
+   200→    if (!selectedId) { toast.error("اختر " + (type === "client" ? "عميل" : "مورد")); return; }
+   201→    setLoadingStatement(true);
+   202→    const query = type === "client" ? clientStatementQuery : supplierStatementQuery;
+   203→    if (query.data) {
+   204→      if (type === "client") {
+   205→        const cs = (query.data as { clientStatement: { clientName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number } }).clientStatement;
+   206→        setData(cs);
+   207→      } else {
+   208→        const ss = (query.data as { supplierStatement: { supplierName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number } }).supplierStatement;
+   209→        setData({ clientName: ss.supplierName, openingBalance: ss.openingBalance, lines: ss.lines, closingBalance: ss.closingBalance });
+   210→      }
+   211→      setLoadingStatement(false);
+   212→    } else if (query.isError) {
+   213→      toast.error("تعذّر تحميل كشف الحساب");
+   214→      setData(null);
+   215→      setLoadingStatement(false);
+   216→    }
+   217→  };
+   218→
+   219→  const totalDebit = data?.lines.reduce((s, l) => s + l.debit, 0) || 0;
+   220→  const totalCredit = data?.lines.reduce((s, l) => s + l.credit, 0) || 0;
+   221→
+   222→  return (
+   223→    <div className="flex flex-col gap-4">
+   224→      <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
+   225→        <div className="flex items-center gap-1.5">
+   226→          <label className="text-[11px] font-bold text-muted-foreground">{type === "client" ? "العميل" : "المورد"}</label>
+   227→          <select value={selectedId ?? ""} onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : null)} className={cn(inputStyle, "w-auto min-w-[200px]")} disabled={loadingStatement}>
+   228→            <option value="">— اختر —</option>
+   229→            {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+   230→          </select>
+   231→        </div>
+   232→        <button onClick={loadStatement} disabled={!selectedId || loadingStatement} className="py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   233→          <RefreshCw size={12} className={loadingStatement ? "animate-spin" : ""} /> {loadingStatement ? "جارٍ…" : "عرض"}
+   234→        </button>
+   235→      </div>
+   236→
+   237→      {loadingStatement ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : !data ? (
+   238→        <div className="bg-card rounded-[14px] border border-border p-12 text-center text-muted-foreground">
+   239→          <FileText size={36} className="opacity-30 mb-2" />اختر {type === "client" ? "عميل" : "مورد"} ثم اضغط عرض
+   240→        </div>
+   241→      ) : (
+   242→        <div className="flex flex-col gap-4">
+   243→          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   244→            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   245→              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
+   246→              <div><div className="text-[11px] text-muted-foreground">{data.clientName}</div><div className="text-[13px] font-bold">رصيد افتتاحي: {fmt(data.openingBalance)}</div></div>
+   247→            </div>
+   248→            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   249→              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><TrendingUp size={18} /></div>
+   250→              <div><div className="text-[11px] text-muted-foreground">إجمالي مدين</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDebit)}</div></div>
+   251→            </div>
+   252→            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   253→              <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-red-500/20 text-red-500"><TrendingDown size={18} /></div>
+   254→              <div><div className="text-[11px] text-muted-foreground">إجمالي دائن</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCredit)}</div></div>
+   255→            </div>
+   256→            <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   257→              <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", data.closingBalance >= 0 ? "bg-emerald-600/20 text-emerald-600" : "bg-red-500/20 text-red-500")}><CheckCircle2 size={18} /></div>
+   258→              <div><div className="text-[11px] text-muted-foreground">رصيد إقفالي</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", data.closingBalance >= 0 ? "text-emerald-600" : "text-red-500")}>{fmt(data.closingBalance)}</div></div>
+   259→            </div>
+   260→          </div>
+   261→
+   262→          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   263→            {data.lines.length === 0 ? <Empty label="حركات" /> : (
+   264→              <div className="overflow-x-auto garfix-scroll">
+   265→                <table className="table-enterprise w-full border-collapse">
+   266→                  <thead><tr className="border-b border-border bg-muted">
+   267→                    <th className={thStyle}>التاريخ</th><th className={thStyle}>النوع</th><th className={thStyle}>المرجع</th>
+   268→                    <th className={cn(thStyle, "text-end")}>مدين</th><th className={cn(thStyle, "text-end")}>دائن</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
+   269→                  </tr></thead>
+   270→                  <tbody>
+   271→                    {data.lines.map((l, i) => (
+   272→                      <tr key={i} className="border-b border-border">
+   273→                        <td className={tdStyle} dir="ltr">{l.date}</td>
+   274→                        <td className={tdStyle}>{l.type}</td>
+   275→                        <td className={cn(tdStyle, "font-mono")}>{l.reference}</td>
+   276→                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.debit > 0 ? "text-emerald-600" : "")}>{l.debit ? fmt(l.debit) : "—"}</td>
+   277→                        <td className={cn(tdStyle, "[direction:ltr] text-end", l.credit > 0 ? "text-red-500" : "")}>{l.credit ? fmt(l.credit) : "—"}</td>
+   278→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", l.balance >= 0 ? "text-emerald-600" : "text-red-500")}>{fmt(l.balance)}</td>
+   279→                      </tr>
+   280→                    ))}
+   281→                  </tbody>
+   282→                  <tfoot>
+   283→                    <tr className="border-t-2 border-border bg-muted font-extrabold">
+   284→                      <td className={cn(tdStyle, "font-extrabold")} colSpan={3}>رصيد إقفالي</td>
+   285→                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-emerald-600")}>{fmt(totalDebit)}</td>
+   286→                      <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-extrabold"), "text-red-500")}>{fmt(totalCredit)}</td>
+   287→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", data.closingBalance >= 0 ? "text-emerald-600" : "text-red-500")}>{fmt(data.closingBalance)}</td>
+   288→                    </tr>
+   289→                  </tfoot>
+   290→                </table>
+   291→              </div>
+   292→            )}
+   293→          </div>
+   294→        </div>
+   295→      )}
+   296→    </div>
+   297→  );
+   298→}
+   299→
+   300→/* ─── PDC List ──────────────────────────────────────────────────────────────── */
+   301→function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: string }; onRefresh: () => void }) {
+   302→  const [actionId, setActionId] = useState<number | null>(null);
+   303→  const pdcActionMutation = usePDCAction();
+   304→
+   305→  const handleAction = (pdcId: number, action: string) => {
+   306→    setActionId(pdcId);
+   307→    pdcActionMutation.mutate(
+   308→      { id: pdcId, action, companySlug: company.slug },
+   309→      {
+   310→        onSuccess: () => {
+   311→          const actionLabel = action === "deposit" ? "تسليم الشيك" : action === "clear" ? "تحصيل الشيك" : "إرجاع الشيك";
+   312→          toast.success(`تم ${actionLabel}`);
+   313→          onRefresh();
+   314→          setActionId(null);
+   315→        },
+   316→        onError: (err) => { toast.error(err.message || "تعذّر تنفيذ الإجراء"); setActionId(null); },
+   317→      },
+   318→    );
+   319→  };
+   320→
+   321→  const statusBadge = (status: string) => {
+   322→    const map: Record<string, { badge: string; label: string }> = {
+   323→      pending: { badge: "bg-amber-500/15 text-amber-500", label: "معلّق" },
+   324→      deposited: { badge: "bg-blue-500/15 text-blue-500", label: "مسلّم" },
+   325→      cleared: { badge: "bg-emerald-500/15 text-emerald-500", label: "محصل" },
+   326→      returned: { badge: "bg-red-500/15 text-red-500", label: "مرجع" },
+   327→    };
+   328→    return map[status] || { badge: "bg-gray-400/15 text-gray-400", label: status };
+   329→  };
+   330→
+   331→  const totalAmount = pdcs.reduce((s, p) => s + p.amount, 0);
+   332→  const pendingTotal = pdcs.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0);
+   333→
+   334→  return (
+   335→    <div className="flex flex-col gap-4">
+   336→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   337→        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   338→          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Banknote size={18} /></div>
+   339→          <div><div className="text-[11px] text-muted-foreground">إجمالي الشيكات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalAmount)}</div></div>
+   340→        </div>
+   341→        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   342→          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-amber-500/20 text-amber-500"><Clock size={18} /></div>
+   343→          <div><div className="text-[11px] text-muted-foreground">المعلّقة</div><div className="text-lg font-extrabold [direction:ltr] text-end text-amber-500">{fmt(pendingTotal)}</div></div>
+   344→        </div>
+   345→      </div>
+   346→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   347→        {pdcs.length === 0 ? <Empty label="شيكات مؤجلة" /> : (
+   348→          <div className="overflow-x-auto garfix-scroll">
+   349→            <table className="table-enterprise w-full border-collapse">
+   350→              <thead><tr className="border-b border-border bg-muted">
+   351→                <th className={thStyle}>رقم الشيك</th><th className={thStyle}>البنك</th><th className={thStyle}>النوع</th>
+   352→                <th className={thStyle}>الاسم</th><th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>تاريخ الاستحقاق</th>
+   353→                <th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   354→              </tr></thead>
+   355→              <tbody>
+   356→                {pdcs.map((p) => {
+   357→                  const sc = statusBadge(p.status);
+   358→                  const name = p.direction === "receivable" ? p.clientName : p.supplierName;
+   359→                  return (
+   360→                    <tr key={p.id} className="border-b border-border">
+   361→                      <td className={cn(tdStyle, "font-mono")} dir="ltr">{p.checkNumber}</td>
+   362→                      <td className={tdStyle}>{p.bankName}</td>
+   363→                      <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", p.direction === "receivable" ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{p.direction === "receivable" ? "مقبوض" : "مدفوع"}</span></td>
+   364→                      <td className={tdStyle}>{name || "—"}</td>
+   365→                      <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(p.amount)}</td>
+   366→                      <td className={tdStyle} dir="ltr">{p.dueDate}</td>
+   367→                      <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", sc.badge)}>{sc.label}</span></td>
+   368→                      <td className={tdStyle}>
+   369→                        <div className="flex items-center gap-1">
+   370→                          {p.status === "pending" && <button onClick={() => handleAction(p.id, "deposit")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">تسليم</button>}
+   371→                          {p.status === "deposited" && <button onClick={() => handleAction(p.id, "clear")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">تحصيل</button>}
+   372→                          {(p.status === "pending" || p.status === "deposited") && <button onClick={() => handleAction(p.id, "return")} disabled={actionId === p.id} className="py-1 px-2 rounded-md bg-red-500/10 border border-red-500/30 text-red-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">إرجاع</button>}
+   373→                        </div>
+   374→                      </td>
+   375→                    </tr>
+   376→                  );
+   377→                })}
+   378→              </tbody>
+   379→            </table>
+   380→          </div>
+   381→        )}
+   382→      </div>
+   383→    </div>
+   384→  );
+   385→}
+   386→
+   387→/* ─── PDC Form ──────────────────────────────────────────────────────────────── */
+   388→function PDCForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   389→  const [checkNumber, setCheckNumber] = useState("");
+   390→  const [bankName, setBankName] = useState("");
+   391→  const [amount, setAmount] = useState(0);
+   392→  const [dueDate, setDueDate] = useState("");
+   393→  const [direction, setDirection] = useState<"receivable" | "payable">("receivable");
+   394→  const [clientName, setClientName] = useState("");
+   395→  const [supplierName, setSupplierName] = useState("");
+   396→  const [saving, setSaving] = useState(false);
+   397→  const createPDCMutation = useCreatePDC();
+   398→
+   399→  const submit = () => {
+   400→    if (!checkNumber || !bankName || !dueDate || amount <= 0) { toast.error("جميع الحقول مطلوبة"); return; }
+   401→    setSaving(true);
+   402→    createPDCMutation.mutate(
+   403→      { checkNumber, bankName, amount, dueDate, direction, clientName: direction === "receivable" ? clientName : undefined, supplierName: direction === "payable" ? supplierName : undefined, companySlug: company.slug },
+   404→      {
+   405→        onSuccess: () => { toast.success("تم إنشاء الشيك المؤجل"); onSaved(); setSaving(false); },
+   406→        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+   407→      },
+   408→    );
+   409→  };
+   410→
+   411→  return (
+   412→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   413→      <h3 className="text-[15px] font-bold flex items-center gap-2"><Banknote size={16} /> شيك مؤجل جديد</h3>
+   414→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   415→        <div><label className={labelStyle}>رقم الشيك *</label><input value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   416→        <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
+   417→        <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   418→        <div><label className={labelStyle}>تاريخ الاستحقاق *</label><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   419→        <div><label className={labelStyle}>النوع *</label>
+   420→          <select value={direction} onChange={(e) => setDirection(e.target.value as "receivable" | "payable")} className={inputStyle}>
+   421→            <option value="receivable">شيك مقبوض (مدين)</option><option value="payable">شيك مدفوع (دائن)</option>
+   422→          </select>
+   423→        </div>
+   424→        {direction === "receivable" && <div><label className={labelStyle}>اسم العميل</label><input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputStyle} /></div>}
+   425→        {direction === "payable" && <div><label className={labelStyle}>اسم المورد</label><input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className={inputStyle} /></div>}
+   426→      </div>
+   427→      <div className="flex gap-2.5 justify-end">
+   428→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   429→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   430→      </div>
+   431→    </div>
+   432→  );
+   433→}
+   434→
+   435→/* ─── Installment List ──────────────────────────────────────────────────────── */
+   436→function InstallmentList({ installments }: { installments: Installment[] }) {
+   437→  const totalActive = installments.filter(i => i.status === "active").reduce((s, i) => s + i.totalAmount, 0);
+   438→
+   439→  return (
+   440→    <div className="flex flex-col gap-4">
+   441→      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   442→        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   443→          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><CalendarDays size={18} /></div>
+   444→          <div><div className="text-[11px] text-muted-foreground">أقساط نشطة</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalActive)}</div></div>
+   445→        </div>
+   446→        <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+   447→          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><CheckCircle2 size={18} /></div>
+   448→          <div><div className="text-[11px] text-muted-foreground">عدد الاتفاقات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{installments.length}</div></div>
+   449→        </div>
+   450→      </div>
+   451→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   452→        {installments.length === 0 ? <Empty label="اتفاقات تقسيط" /> : (
+   453→          <div className="overflow-x-auto garfix-scroll">
+   454→            <table className="table-enterprise w-full border-collapse">
+   455→              <thead><tr className="border-b border-border bg-muted">
+   456→                <th className={thStyle}>المرجع</th><th className={thStyle}>العميل</th><th className={cn(thStyle, "text-end")}>المبلغ</th>
+   457→                <th className={thStyle}>عدد الأقساط</th><th className={thStyle}>المسددة</th><th className={thStyle}>القسط التالي</th><th className={thStyle}>الحالة</th>
+   458→              </tr></thead>
+   459→              <tbody>
+   460→                {installments.map((ins) => (
+   461→                  <tr key={ins.id} className="border-b border-border">
+   462→                    <td className={cn(tdStyle, "font-mono")}>{ins.reference}</td>
+   463→                    <td className={cn(tdStyle, "font-bold")}>{ins.clientName}</td>
+   464→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(ins.totalAmount)}</td>
+   465→                    <td className={tdStyle}>{ins.installmentCount}</td>
+   466→                    <td className={tdStyle}>{ins.paidCount}/{ins.installmentCount}</td>
+   467→                    <td className={tdStyle} dir="ltr">{ins.nextDueDate}</td>
+   468→                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", ins.status === "active" ? "bg-emerald-500/15 text-emerald-500" : ins.status === "completed" ? "bg-blue-500/15 text-blue-500" : "bg-red-500/15 text-red-500")}>{ins.status === "active" ? "نشط" : ins.status === "completed" ? "مكتمل" : "متوقف"}</span></td>
+   469→                  </tr>
+   470→                ))}
+   471→              </tbody>
+   472→            </table>
+   473→          </div>
+   474→        )}
+   475→      </div>
+   476→    </div>
+   477→  );
+   478→}
+   479→
+   480→/* ─── Installment Form ──────────────────────────────────────────────────────── */
+   481→function InstallmentForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   482→  const [reference, setReference] = useState("");
+   483→  const [clientName, setClientName] = useState("");
+   484→  const [totalAmount, setTotalAmount] = useState(0);
+   485→  const [installmentCount, setInstallmentCount] = useState(1);
+   486→  const [firstDueDate, setFirstDueDate] = useState("");
+   487→  const [saving, setSaving] = useState(false);
+   488→  const createInstallmentMutation = useCreateInstallment();
+   489→
+   490→  const submit = () => {
+   491→    if (!reference || !clientName || totalAmount <= 0 || installmentCount <= 0 || !firstDueDate) { toast.error("جميع الحقول مطلوبة"); return; }
+   492→    setSaving(true);
+   493→    createInstallmentMutation.mutate(
+   494→      { reference, clientId: 0, clientName, totalAmount, installmentCount, firstDueDate, companySlug: company.slug },
+   495→      {
+   496→        onSuccess: () => { toast.success("تم إنشاء اتفاق التقسيط"); onSaved(); setSaving(false); },
+   497→        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+   498→      },
+   499→    );
+   500→  };
+   501→
+   502→  return (
+   503→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   504→      <h3 className="text-[15px] font-bold flex items-center gap-2"><CalendarDays size={16} /> اتفاق تقسيط جديد</h3>
+   505→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   506→        <div><label className={labelStyle}>المرجع *</label><input value={reference} onChange={(e) => setReference(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   507→        <div><label className={labelStyle}>العميل *</label><input value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputStyle} /></div>
+   508→        <div><label className={labelStyle}>المبلغ الإجمالي *</label><input type="number" value={totalAmount} onChange={(e) => setTotalAmount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   509→        <div><label className={labelStyle}>عدد الأقساط *</label><input type="number" min={1} value={installmentCount} onChange={(e) => setInstallmentCount(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   510→        <div><label className={labelStyle}>تاريخ القسط الأول *</label><input type="date" value={firstDueDate} onChange={(e) => setFirstDueDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   511→      </div>
+   512→      {totalAmount > 0 && installmentCount > 0 && (
+   513→        <div className="bg-muted rounded-md p-3 text-[12px] text-muted-foreground">
+   514→          القسط الشهري: <span className="font-bold text-foreground">{fmt(totalAmount / installmentCount)}</span> × {installmentCount} قسط
+   515→        </div>
+   516→      )}
+   517→      <div className="flex gap-2.5 justify-end">
+   518→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   519→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   520→      </div>
+   521→    </div>
+   522→  );
+   523→}
+   524→
+   525→export default ArApView;
+   526→

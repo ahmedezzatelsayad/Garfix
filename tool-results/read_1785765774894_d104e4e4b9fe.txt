@@ -1,0 +1,498 @@
+     1→// Responsive: sm/md/lg breakpoints added
+     2→"use client";
+     3→
+     4→import { useState, useEffect } from "react";
+     5→import { useBrand } from "@/context/BrandContext";
+     6→import { toast } from "sonner";
+     7→import {
+     8→  useBankAccountsList, useCreateBankAccount,
+     9→  useBankReconciliation, useMatchBankReconciliation, useCompleteBankReconciliation,
+    10→  useBankImport, useBankTransfers, useCreateBankTransfer,
+    11→  useAccounts,
+    12→} from "@/hooks/queries";
+    13→import {
+    14→  Landmark, Plus, X, Upload, ArrowRightLeft, CheckCircle2,
+    15→  FileText, Download, Trash2, RefreshCw, AlertTriangle,
+    16→} from "lucide-react";
+    17→import { cn } from "@/lib/utils";
+    18→
+    19→/* ─── Interfaces ───────────────────────────────────────────────────────────── */
+    20→interface BankAccount { id: number; name: string; bankName: string; accountName: string; accountNumber: string; iban?: string; currency: string; accountType?: string; balance: number; glAccountId?: number; }
+    21→interface ReconciliationItem { id: number; date: string; description: string; bankAmount: number; bookAmount: number; difference: number; status: string; }
+    22→interface Transfer { id: number; fromAccount: string; toAccount: string; amount: number; currency: string; date: string; description?: string; status: string; reference: string; }
+    23→
+    24→type Tab = "accounts" | "reconciliation" | "import" | "transfer";
+    25→
+    26→/* ─── Shared Styles ────────────────────────────────────────────────────────── */
+    27→const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
+    28→const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
+    29→const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
+    30→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    31→function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
+    32→function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
+    33→
+    34→/* ─── Main Component ───────────────────────────────────────────────────────── */
+    35→export function BankingView() {
+    36→  const { activeCompany } = useBrand();
+    37→  const [tab, setTab] = useState<Tab>("accounts");
+    38→  const [showForm, setShowForm] = useState(false);
+    39→
+    40→  const slug = activeCompany ? encodeURIComponent(activeCompany.slug) : "";
+    41→
+    42→  // TanStack Query hooks for data fetching
+    43→  const bankAccountsQuery = useBankAccountsList(slug);
+    44→  const bankTransfersQuery = useBankTransfers(slug);
+    45→
+    46→  const bankAccounts = bankAccountsQuery.data?.bankAccounts ?? [];
+    47→  const transfers = bankTransfersQuery.data?.transfers ?? [];
+    48→  const loading = (tab === "accounts" && bankAccountsQuery.isLoading) || (tab === "transfer" && bankTransfersQuery.isLoading);
+    49→
+    50→  if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
+    51→
+    52→  const tabs: Array<{ key: Tab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    53→    { key: "accounts", label: "الحسابات البنكية", icon: Landmark },
+    54→    { key: "reconciliation", label: "المطابقة البنكية", icon: CheckCircle2 },
+    55→    { key: "import", label: "استيراد CSV", icon: Upload },
+    56→    { key: "transfer", label: "التحويلات", icon: ArrowRightLeft },
+    57→  ];
+    58→
+    59→  const totalCash = bankAccounts.reduce((s, ba) => s + ba.balance, 0);
+    60→
+    61→  return (
+    62→    <div className="flex flex-col gap-4">
+    63→      <div className="flex flex-wrap justify-between items-center gap-3">
+    64→        <div><h1 className="text-2xl font-extrabold flex items-center gap-2"><Landmark size={20} /> البنوك</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
+    65→        {(tab === "accounts" || tab === "transfer") && !showForm && (
+    66→          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-1.5 py-2.5 px-[18px] rounded-[10px] bg-primary text-primary-foreground border-none text-[13px] font-bold cursor-pointer active-press"><Plus size={16} /> إضافة</button>
+    67→        )}
+    68→      </div>
+    69→      <div className="flex gap-1.5 flex-wrap">
+    70→        {tabs.map((t) => { const Icon = t.icon; return (
+    71→          <button key={t.key} onClick={() => { setTab(t.key); setShowForm(false); }} className={cn("py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5", tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>
+    72→            <Icon size={14} /> {t.label}
+    73→          </button>
+    74→        ); })}
+    75→      </div>
+    76→
+    77→      {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "accounts" ? (
+    78→        showForm ? <BankAccountFormView company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankAccountsQuery.refetch(); }} /> : (
+    79→          <div className="flex flex-col gap-4">
+    80→            <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+    81→              <div className="kpi-card-gold bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+    82→                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+    83→                <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</div></div>
+    84→              </div>
+    85→              <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
+    86→                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
+    87→                <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
+    88→              </div>
+    89→            </div>
+    90→            <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+    91→              {bankAccounts.length === 0 ? <Empty label="حسابات بنكية" /> : (
+    92→                <div className="overflow-x-auto garfix-scroll">
+    93→                  <table className="table-enterprise w-full border-collapse">
+    94→                    <thead><tr className="border-b border-border bg-muted">
+    95→                      <th className={thStyle}>البنك</th><th className={thStyle}>اسم الحساب</th><th className={thStyle}>رقم الحساب</th>
+    96→                      <th className={thStyle}>IBAN</th><th className={thStyle}>العملة</th><th className={thStyle}>النوع</th><th className={cn(thStyle, "text-end")}>الرصيد</th>
+    97→                    </tr></thead>
+    98→                    <tbody>
+    99→                      {bankAccounts.map((ba) => (
+   100→                        <tr key={ba.id} className="border-b border-border">
+   101→                          <td className={cn(tdStyle, "font-bold")}><Landmark size={14} className="inline me-1 opacity-50" />{ba.bankName}</td>
+   102→                          <td className={tdStyle}>{ba.accountName || ba.name}</td>
+   103→                          <td className={cn(tdStyle, "font-mono")} dir="ltr">{ba.accountNumber}</td>
+   104→                          <td className={cn(tdStyle, "font-mono text-[11px]")} dir="ltr">{ba.iban || "—"}</td>
+   105→                          <td className={tdStyle}>{ba.currency}</td>
+   106→                          <td className={tdStyle}>{ba.accountType || "—"}</td>
+   107→                          <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", ba.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(ba.balance)}</td>
+   108→                        </tr>
+   109→                      ))}
+   110→                    </tbody>
+   111→                    <tfoot>
+   112→                      <tr className="border-t-2 border-border bg-muted font-extrabold">
+   113→                        <td className={cn(tdStyle, "font-extrabold")} colSpan={6}>إجمالي النقدية</td>
+   114→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-extrabold", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</td>
+   115→                      </tr>
+   116→                    </tfoot>
+   117→                  </table>
+   118→                </div>
+   119→              )}
+   120→            </div>
+   121→          </div>
+   122→        )
+   123→      ) : tab === "reconciliation" ? (
+   124→        <ReconciliationView company={activeCompany} />
+   125→      ) : tab === "import" ? (
+   126→        <CSVImportView company={activeCompany} />
+   127→      ) : tab === "transfer" ? (
+   128→        showForm ? <TransferFormView accounts={bankAccounts} company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); bankTransfersQuery.refetch(); }} /> : (
+   129→          <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   130→            {transfers.length === 0 ? <Empty label="تحويلات" /> : (
+   131→              <div className="overflow-x-auto garfix-scroll">
+   132→                <table className="table-enterprise w-full border-collapse">
+   133→                  <thead><tr className="border-b border-border bg-muted">
+   134→                    <th className={thStyle}>المرجع</th><th className={thStyle}>من حساب</th><th className={thStyle}>إلى حساب</th>
+   135→                    <th className={cn(thStyle, "text-end")}>المبلغ</th><th className={thStyle}>العملة</th><th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th><th className={thStyle}>الحالة</th>
+   136→                  </tr></thead>
+   137→                  <tbody>
+   138→                    {transfers.map((t) => (
+   139→                      <tr key={t.id} className="border-b border-border">
+   140→                        <td className={cn(tdStyle, "font-mono")}>{t.reference}</td>
+   141→                        <td className={tdStyle}>{t.fromAccount}</td>
+   142→                        <td className={tdStyle}>{t.toAccount}</td>
+   143→                        <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(t.amount)}</td>
+   144→                        <td className={tdStyle}>{t.currency}</td>
+   145→                        <td className={tdStyle} dir="ltr">{t.date}</td>
+   146→                        <td className={tdStyle}>{t.description || "—"}</td>
+   147→                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+   148→                      </tr>
+   149→                    ))}
+   150→                  </tbody>
+   151→                </table>
+   152→              </div>
+   153→            )}
+   154→          </div>
+   155→        )
+   156→      ) : null}
+   157→    </div>
+   158→  );
+   159→}
+   160→
+   161→/* ─── Bank Account Form ────────────────────────────────────────────────────── */
+   162→function BankAccountFormView({ company, onClose, onSaved }: { company: { slug: string; currency?: string }; onClose: () => void; onSaved: () => void }) {
+   163→  const [bankName, setBankName] = useState("");
+   164→  const [accountName, setAccountName] = useState("");
+   165→  const [accountNumber, setAccountNumber] = useState("");
+   166→  const [iban, setIban] = useState("");
+   167→  const [currency, setCurrency] = useState(company.currency || "KWD");
+   168→  const [accountType, setAccountType] = useState("checking");
+   169→  const [glAccountId, setGlAccountId] = useState<number | null>(null);
+   170→  const [balance, setBalance] = useState(0);
+   171→  const [saving, setSaving] = useState(false);
+   172→
+   173→  const glAccountsQuery = useAccounts(company.slug);
+   174→  const glAccounts = (glAccountsQuery.data?.accounts || []) as Array<{ id: number; code: string; name: string; nameAr?: string }>;
+   175→  const createBankAccountMutation = useCreateBankAccount();
+   176→
+   177→  const submit = () => {
+   178→    if (!bankName || !accountName || !accountNumber) { toast.error("البنك واسم الحساب ورقم الحساب مطلوبة"); return; }
+   179→    setSaving(true);
+   180→    createBankAccountMutation.mutate(
+   181→      { name: accountName, bankName, accountName, accountNumber, iban, currency, accountType, glAccountId, balance, companySlug: company.slug },
+   182→      {
+   183→        onSuccess: () => { toast.success("تم إنشاء الحساب البنكي"); onSaved(); setSaving(false); },
+   184→        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+   185→      },
+   186→    );
+   187→  };
+   188→
+   189→  return (
+   190→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   191→      <h3 className="text-[15px] font-bold flex items-center gap-2"><Landmark size={16} /> حساب بنكي جديد</h3>
+   192→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   193→        <div><label className={labelStyle}>البنك *</label><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputStyle} /></div>
+   194→        <div><label className={labelStyle}>اسم الحساب *</label><input value={accountName} onChange={(e) => setAccountName(e.target.value)} className={inputStyle} /></div>
+   195→        <div><label className={labelStyle}>رقم الحساب *</label><input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   196→        <div><label className={labelStyle}>IBAN</label><input value={iban} onChange={(e) => setIban(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   197→        <div><label className={labelStyle}>العملة</label>
+   198→          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputStyle}>
+   199→            <option value="KWD">KWD</option><option value="SAR">SAR</option><option value="AED">AED</option><option value="USD">USD</option><option value="EUR">EUR</option>
+   200→          </select>
+   201→        </div>
+   202→        <div><label className={labelStyle}>نوع الحساب</label>
+   203→          <select value={accountType} onChange={(e) => setAccountType(e.target.value)} className={inputStyle}>
+   204→            <option value="checking">جاري</option><option value="savings">توفير</option><option value="overdraft">سحب على المكشوف</option><option value="loan">قرض</option>
+   205→          </select>
+   206→        </div>
+   207→        <div><label className={labelStyle}>الحساب المالي (GL)</label>
+   208→          <select value={glAccountId ?? ""} onChange={(e) => setGlAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   209→            <option value="">— اختر —</option>
+   210→            {glAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}
+   211→          </select>
+   212→        </div>
+   213→        <div><label className={labelStyle}>الرصيد الافتتاحي</label><input type="number" value={balance} onChange={(e) => setBalance(Number(e.target.value))} className={inputStyle} dir="ltr" /></div>
+   214→      </div>
+   215→      <div className="flex gap-2.5 justify-end">
+   216→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   217→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   218→      </div>
+   219→    </div>
+   220→  );
+   221→}
+   222→
+   223→/* ─── Reconciliation ─────────────────────────────────────────────────────────── */
+   224→function ReconciliationView({ company }: { company: { slug: string } }) {
+   225→  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+   226→  const [actionId, setActionId] = useState<number | null>(null);
+   227→  const [completing, setCompleting] = useState(false);
+   228→
+   229→  const slug = encodeURIComponent(company.slug);
+   230→
+   231→  const bankAccountsQuery = useBankAccountsList(slug);
+   232→  const bankAccounts = bankAccountsQuery.data?.bankAccounts ?? [];
+   233→  const reconciliationQuery = useBankReconciliation(slug, selectedAccountId);
+   234→  const items = reconciliationQuery.data?.items ?? [];
+   235→  const loading = reconciliationQuery.isLoading && !!selectedAccountId;
+   236→  const matchMutation = useMatchBankReconciliation();
+   237→  const completeMutation = useCompleteBankReconciliation();
+   238→
+   239→  const loadItems = () => { reconciliationQuery.refetch(); };
+   240→
+   241→  const totalBank = items.reduce((s, i) => s + i.bankAmount, 0);
+   242→  const totalBook = items.reduce((s, i) => s + i.bookAmount, 0);
+   243→  const totalDiff = totalBank - totalBook;
+   244→  const matchedCount = items.filter(i => i.status === "matched").length;
+   245→  const unmatchedCount = items.filter(i => i.status !== "matched").length;
+   246→
+   247→  const handleMatch = (id: number) => {
+   248→    setActionId(id);
+   249→    matchMutation.mutate(
+   250→      { id, companySlug: company.slug, bankAccountId: selectedAccountId! },
+   251→      {
+   252→        onSuccess: () => { toast.success("تم المطابقة"); reconciliationQuery.refetch(); setActionId(null); },
+   253→        onError: (err) => { toast.error(err.message || "تعذّر المطابقة"); setActionId(null); },
+   254→      },
+   255→    );
+   256→  };
+   257→
+   258→  const handleComplete = () => {
+   259→    if (!selectedAccountId) return;
+   260→    if (unmatchedCount > 0 && !confirm(`هناك ${unmatchedCount} عنصر غير مطابق. إتمام المطابقة؟`)) return;
+   261→    setCompleting(true);
+   262→    completeMutation.mutate(
+   263→      { companySlug: company.slug, bankAccountId: selectedAccountId },
+   264→      {
+   265→        onSuccess: () => { toast.success("تم إتمام المطابقة البنكية"); reconciliationQuery.refetch(); setCompleting(false); },
+   266→        onError: (err) => { toast.error(err.message || "تعذّر إتمام المطابقة"); setCompleting(false); },
+   267→      },
+   268→    );
+   269→  };
+   270→
+   271→  return (
+   272→    <div className="flex flex-col gap-4">
+   273→      <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex gap-3 items-center flex-wrap">
+   274→        <div className="flex items-center gap-1.5">
+   275→          <label className="text-[11px] font-bold text-muted-foreground">الحساب البنكي</label>
+   276→          <select value={selectedAccountId ?? ""} onChange={(e) => setSelectedAccountId(e.target.value ? Number(e.target.value) : null)} className={cn(inputStyle, "w-auto min-w-[200px]")}>
+   277→            <option value="">— اختر حساب —</option>
+   278→            {bankAccounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber}</option>)}
+   279→          </select>
+   280→        </div>
+   281→        <button onClick={loadItems} disabled={!selectedAccountId || loading} className="py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   282→          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? "جارٍ…" : "عرض"}
+   283→        </button>
+   284→        {selectedAccountId && unmatchedCount === 0 && items.length > 0 && (
+   285→          <button onClick={handleComplete} disabled={completing} className="py-2 px-4 rounded-sm bg-emerald-600 text-white border-none text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   286→            <CheckCircle2 size={12} /> {completing ? "جارٍ…" : "إتمام المطابقة"}
+   287→          </button>
+   288→        )}
+   289→      </div>
+   290→
+   291→      {selectedAccountId && items.length > 0 && (
+   292→        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+   293→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   294→            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+   295→            <div><div className="text-[11px] text-muted-foreground">إجمالي البنك</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBank)}</div></div>
+   296→          </div>
+   297→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   298→            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><FileText size={18} /></div>
+   299→            <div><div className="text-[11px] text-muted-foreground">إجمالي الكتب</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBook)}</div></div>
+   300→          </div>
+   301→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   302→            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalDiff === 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}>
+   303→              {totalDiff === 0 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+   304→            </div>
+   305→            <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalDiff)}</div></div>
+   306→          </div>
+   307→          <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
+   308→            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-700/20 text-emerald-700"><CheckCircle2 size={18} /></div>
+   309→            <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span className="text-emerald-500">{matchedCount}</span> / <span className="text-amber-500">{unmatchedCount}</span></div></div>
+   310→          </div>
+   311→        </div>
+   312→      )}
+   313→
+   314→      <div className="bg-card rounded-[14px] border border-border overflow-hidden">
+   315→        {!selectedAccountId ? <div className="p-12 text-center text-muted-foreground">اختر حساب بنكي لعرض عناصر المطابقة</div> : items.length === 0 ? <Empty label="عناصر المطابقة" /> : (
+   316→          <div className="overflow-x-auto garfix-scroll">
+   317→            <table className="table-enterprise w-full border-collapse">
+   318→              <thead><tr className="border-b border-border bg-muted">
+   319→                <th className={thStyle}>التاريخ</th><th className={thStyle}>الوصف</th>
+   320→                <th className={cn(thStyle, "text-end")}>البنك</th><th className={cn(thStyle, "text-end")}>الكتب</th><th className={cn(thStyle, "text-end")}>الفرق</th>
+   321→                <th className={thStyle}>الحالة</th><th className={thStyle}>إجراء</th>
+   322→              </tr></thead>
+   323→              <tbody>
+   324→                {items.map((item) => (
+   325→                  <tr key={item.id} className={cn("border-b border-border", item.status === "matched" ? "bg-emerald-500/5" : "bg-transparent")}>
+   326→                    <td className={tdStyle} dir="ltr">{item.date}</td>
+   327→                    <td className={cn(tdStyle, "font-bold")}>{item.description}</td>
+   328→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bankAmount)}</td>
+   329→                    <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bookAmount)}</td>
+   330→                    <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", item.difference === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(item.difference)}</td>
+   331→                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", item.status === "matched" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
+   332→                    <td className={tdStyle}>{item.status !== "matched" && <button onClick={() => handleMatch(item.id)} disabled={actionId === item.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{actionId === item.id ? "جارٍ…" : "مطابقة"}</button>}</td>
+   333→                  </tr>
+   334→                ))}
+   335→              </tbody>
+   336→            </table>
+   337→          </div>
+   338→        )}
+   339→      </div>
+   340→    </div>
+   341→  );
+   342→}
+   343→
+   344→/* ─── CSV Import ────────────────────────────────────────────────────────────── */
+   345→function CSVImportView({ company }: { company: { slug: string } }) {
+   346→  const [accountId, setAccountId] = useState<number | null>(null);
+   347→  const [csvContent, setCsvContent] = useState("");
+   348→  const [importing, setImporting] = useState(false);
+   349→  const [result, setResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
+   350→
+   351→  const slug = encodeURIComponent(company.slug);
+   352→
+   353→  const bankAccountsQuery = useBankAccountsList(slug);
+   354→  const accounts = bankAccountsQuery.data?.bankAccounts ?? [];
+   355→  const bankImportMutation = useBankImport();
+   356→
+   357→  const handleImport = () => {
+   358→    if (!accountId) { toast.error("اختر حساب بنكي"); return; }
+   359→    if (!csvContent.trim()) { toast.error("أدخل محتوى CSV"); return; }
+   360→    setImporting(true); setResult(null);
+   361→    const formData = new FormData();
+   362→    formData.append("accountId", String(accountId));
+   363→    formData.append("csvContent", csvContent);
+   364→    formData.append("companySlug", company.slug);
+   365→    bankImportMutation.mutate(
+   366→      formData,
+   367→      {
+   368→        onSuccess: (data) => { setResult(data as { imported: number; skipped: number; errors: string[] }); toast.success(`تم استيراد ${(data as { imported: number }).imported} حركة`); setCsvContent(""); setImporting(false); },
+   369→        onError: (err) => { toast.error(err.message || "تعذّر الاستيراد"); setImporting(false); },
+   370→      },
+   371→    );
+   372→  };
+   373→
+   374→  const sampleCSV = `Date,Description,Amount
+   375→2025-01-15,Customer Payment,5000
+   376→2025-01-16,Supplier Invoice,-1200
+   377→2025-01-18,Bank Charges,-50`;
+   378→
+   379→  return (
+   380→    <div className="flex flex-col gap-4">
+   381→      <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   382→        <h3 className="text-[15px] font-bold flex items-center gap-2"><Upload size={16} /> استيراد كشف بنكي CSV</h3>
+   383→        <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   384→          <div><label className={labelStyle}>الحساب البنكي *</label>
+   385→            <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   386→              <option value="">— اختر حساب —</option>
+   387→              {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber}</option>)}
+   388→            </select>
+   389→          </div>
+   390→        </div>
+   391→        <div>
+   392→          <label className={labelStyle}>محتوى CSV *</label>
+   393→          <textarea
+   394→            value={csvContent}
+   395→            onChange={(e) => setCsvContent(e.target.value)}
+   396→            rows={8}
+   397→            className={cn(inputStyle, "min-h-[160px] resize-y font-mono text-[12px]")}
+   398→            dir="ltr"
+   399→            placeholder={sampleCSV}
+   400→          />
+   401→        </div>
+   402→        <div className="bg-muted rounded-md p-3 text-[12px] text-muted-foreground leading-relaxed">
+   403→          تنسيق CSV المطلوب: <strong dir="ltr">Date, Description, Amount</strong> — الحقول مفصولة بفواصل، المبلغ يمكن أن يكون سالب للمسحوبات.
+   404→          <br />يمكنك لصق محتوى الكشف البنكي مباشرة أو نسخه من ملف CSV.
+   405→        </div>
+   406→        <button onClick={handleImport} disabled={importing || !accountId || !csvContent.trim()} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+   407→          <Upload size={14} /> {importing ? "جارٍ الاستيراد…" : "استيراد"}
+   408→        </button>
+   409→      </div>
+   410→      {result && (
+   411→        <div className="bg-card rounded-[14px] border border-border p-5">
+   412→          <h4 className="font-bold text-[14px] mb-3">نتيجة الاستيراد</h4>
+   413→          <div className="flex gap-3 mb-3">
+   414→            <div className="py-2 px-4 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[13px] font-bold">مستورد: {result.imported}</div>
+   415→            <div className="py-2 px-4 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 text-[13px] font-bold">متجاوز: {result.skipped}</div>
+   416→          </div>
+   417→          {result.errors.length > 0 && (
+   418→            <div className="bg-red-500/5 rounded-md p-3 text-[12px] max-h-48 overflow-y-auto garfix-scroll">
+   419→              <div className="font-bold text-red-600 mb-1">أخطاء ({result.errors.length}):</div>
+   420→              {result.errors.map((e, i) => <div key={i} className="text-muted-foreground">{e}</div>)}
+   421→            </div>
+   422→          )}
+   423→        </div>
+   424→      )}
+   425→    </div>
+   426→  );
+   427→}
+   428→
+   429→/* ─── Transfer Form ────────────────────────────────────────────────────────── */
+   430→function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: BankAccount[]; company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+   431→  const [fromAccountId, setFromAccountId] = useState<number | null>(null);
+   432→  const [toAccountId, setToAccountId] = useState<number | null>(null);
+   433→  const [amount, setAmount] = useState(0);
+   434→  const [currency, setCurrency] = useState("KWD");
+   435→  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+   436→  const [description, setDescription] = useState("");
+   437→  const [saving, setSaving] = useState(false);
+   438→  const createBankTransferMutation = useCreateBankTransfer();
+   439→
+   440→  const fromAccount = accounts.find(a => a.id === fromAccountId);
+   441→  const toAccount = accounts.find(a => a.id === toAccountId);
+   442→
+   443→  // Auto-set currency when selecting source account
+   444→  useEffect(() => {
+   445→     
+   446→    if (fromAccount) setCurrency(fromAccount.currency);
+   447→  }, [fromAccount]);
+   448→
+   449→  const submit = () => {
+   450→    if (!fromAccountId || !toAccountId || amount <= 0) { toast.error("اختر الحسابات والمبلغ"); return; }
+   451→    if (fromAccountId === toAccountId) { toast.error("لا يمكن التحويل إلى نفس الحساب"); return; }
+   452→    setSaving(true);
+   453→    createBankTransferMutation.mutate(
+   454→      { fromAccountId, toAccountId, amount, currency, date, description, companySlug: company.slug },
+   455→      {
+   456→        onSuccess: () => { toast.success("تم إنشاء التحويل"); onSaved(); setSaving(false); },
+   457→        onError: (err) => { toast.error(err.message || "خطأ"); setSaving(false); },
+   458→      },
+   459→    );
+   460→  };
+   461→
+   462→  return (
+   463→    <div className="bg-card rounded-[14px] border border-border p-5 flex flex-col gap-3.5">
+   464→      <h3 className="text-[15px] font-bold flex items-center gap-2"><ArrowRightLeft size={16} /> تحويل جديد</h3>
+   465→      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+   466→        <div><label className={labelStyle}>من حساب *</label>
+   467→          <select value={fromAccountId ?? ""} onChange={(e) => setFromAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   468→            <option value="">— اختر —</option>
+   469→            {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
+   470→          </select>
+   471→          {fromAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className={cn("font-bold", fromAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(fromAccount.balance)} {fromAccount.currency}</span></div>}
+   472→        </div>
+   473→        <div><label className={labelStyle}>إلى حساب *</label>
+   474→          <select value={toAccountId ?? ""} onChange={(e) => setToAccountId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+   475→            <option value="">— اختر —</option>
+   476→            {accounts.filter(a => a.id !== fromAccountId).map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber} ({a.currency})</option>)}
+   477→          </select>
+   478→          {toAccount && <div className="text-[11px] text-muted-foreground mt-1">الرصيد: <span className={cn("font-bold", toAccount.balance >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(toAccount.balance)} {toAccount.currency}</span></div>}
+   479→        </div>
+   480→        <div><label className={labelStyle}>المبلغ *</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={inputStyle} dir="ltr" min={0} /></div>
+   481→        <div><label className={labelStyle}>العملة</label>
+   482→          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputStyle}>
+   483→            <option value="KWD">KWD</option><option value="SAR">SAR</option><option value="AED">AED</option><option value="USD">USD</option><option value="EUR">EUR</option>
+   484→          </select>
+   485→        </div>
+   486→        <div><label className={labelStyle}>التاريخ</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputStyle} dir="ltr" /></div>
+   487→        <div><label className={labelStyle}>الوصف</label><input value={description} onChange={(e) => setDescription(e.target.value)} className={inputStyle} placeholder="وصف التحويل" /></div>
+   488→      </div>
+   489→      <div className="flex gap-2.5 justify-end">
+   490→        <button onClick={onClose} className="py-2.5 px-5 rounded-md bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer">إلغاء</button>
+   491→        <button onClick={submit} disabled={saving} className="py-2.5 px-6 rounded-md bg-primary text-primary-foreground border-none text-[13px] font-extrabold cursor-pointer disabled:opacity-70">{saving ? "جارٍ…" : "حفظ"}</button>
+   492→      </div>
+   493→    </div>
+   494→  );
+   495→}
+   496→
+   497→export default BankingView;
+   498→
