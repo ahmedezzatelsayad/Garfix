@@ -77,7 +77,7 @@ export default function HelpPage() {
     >
       <div className="space-y-10 text-white/80 text-[15px] leading-[1.9]">
         {/* بحث سريع */}
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center">
+        <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center shadow-brand-md">
           <div className="flex items-center gap-3 max-w-[500px] mx-auto bg-white/[0.05] border border-white/[0.1] rounded-lg px-4 py-3">
             <Search size={18} className="text-white/40" />
             <input
@@ -100,7 +100,7 @@ export default function HelpPage() {
             <Link
               key={link.label}
               href={link.href}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.06] transition-all no-underline"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl glass border border-emerald-500/20 text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all duration-120 hover-lift no-underline shadow-brand-sm"
             >
               <div className="text-emerald-400">{link.icon}</div>
               <span className="text-xs font-bold">{link.label}</span>
@@ -115,7 +115,7 @@ export default function HelpPage() {
             {HELP_CATEGORIES.map((cat) => (
               <div
                 key={cat.title}
-                className="bg-white/[0.03] rounded-xl p-5 border border-white/[0.06]"
+                className="glass rounded-xl p-5 border border-emerald-500/10 hover-lift duration-120 transition-all shadow-brand-sm"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -127,7 +127,7 @@ export default function HelpPage() {
                   {cat.articles.map((article) => (
                     <div
                       key={article.title}
-                      className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] cursor-pointer hover:bg-white/[0.05] transition-all"
+                      className="p-3 rounded-lg bg-white/[0.02] border border-emerald-500/10 cursor-pointer hover:bg-emerald-500/10 transition-all duration-120"
                     >
                       <div className="text-white/90 text-sm font-bold mb-0.5">{article.title}</div>
                       <div className="text-white/50 text-[12px]">{article.desc}</div>
@@ -146,7 +146,7 @@ export default function HelpPage() {
             {FAQ_ITEMS.map((faq) => (
               <details
                 key={faq.q}
-                className="p-4 px-5 rounded-lg bg-white/[0.03] border border-white/[0.06] cursor-pointer"
+                className="p-4 px-5 rounded-lg glass border border-emerald-500/10 cursor-pointer hover-lift duration-120 transition-all"
               >
                 <summary className="text-[14px] font-bold text-white outline-none">{faq.q}</summary>
                 <p className="text-[13px] text-white/70 leading-relaxed mt-2.5">{faq.a}</p>
@@ -156,14 +156,14 @@ export default function HelpPage() {
         </div>
 
         {/* التواصل */}
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center">
+        <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center shadow-brand-md">
           <h3 className="font-extrabold text-white text-lg mb-2">لم تجد إجابتك؟</h3>
           <p className="text-white/60 text-sm mb-4">
             فريق الدعم الفني متاح على مدار الساعة لمساعدتك
           </p>
           <Link
             href="/contact"
-            className="inline-block px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm no-underline transition-all hover:shadow-[0_4px_12px_rgba(4,120,87,0.4)] active-press duration-150"
+            className="inline-block px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm no-underline transition-all hover:shadow-brand-md active-press duration-150 shadow-brand-sm"
           >
             تواصل مع الدعم
           </Link>

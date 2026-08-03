@@ -11,8 +11,8 @@ export default function TermsPage() {
       lastUpdated="يوليو 2025"
     >
       <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">1. قبول الشروط</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">1. قبول الشروط</h2>
           <p>
             باستخدامك لمنصة GARFIX (المشار إليها فيما بعد بـ &quot;المنصة&quot;)، فإنك توافق على الالتزام
             بهذه الشروط والأحكام كاملةً. إذا كنت لا توافق على أي جزء من هذه الشروط، يُمنع عليك استخدام
@@ -34,7 +34,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-xl font-extrabold text-white mb-3">3. الاشتراكات والفوترة</h2>
-          <div className="bg-white/[0.03] rounded-xl p-5 space-y-4">
+          <div className="glass rounded-xl p-5 space-y-4 border border-emerald-500/10 hover-lift duration-120 transition-all">
             <div>
               <h3 className="font-bold text-emerald-400 mb-1">أ. الفترة التجريبية</h3>
               <p>
@@ -98,8 +98,8 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">7. إخلاء المسؤولية</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">7. إخلاء المسؤولية</h2>
           <p>
             تُقدَّم المنصة &quot;كما هي&quot; بدون أي ضمانات صريحة أو ضمنية. لا نضمن أن المنصة ستكون
             خالية من الأخطاء أو متاحة بشكل غير منقطع. لا نتحمل مسؤولية أي أضرار مباشرة أو غير مباشرة
@@ -128,8 +128,8 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">10. التواصل</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">10. التواصل</h2>
           <p>
             لأي استفسارات حول هذه الشروط والأحكام، يمكنك التواصل معنا عبر{" "}
             <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
