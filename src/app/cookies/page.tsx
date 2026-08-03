@@ -63,8 +63,8 @@ export default function CookiesPage() {
       lastUpdated="يوليو 2025"
     >
       <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">ما هي ملفات تعريف الارتباط؟</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">ما هي ملفات تعريف الارتباط؟</h2>
           <p>
             ملفات تعريف الارتباط (Cookies) هي ملفات نصية صغيرة تُخزّن على جهازك عند زيارة موقع إلكتروني.
             تُستخدم هذه الملفات لتمكين وظائف أساسية وتحسين تجربتك وتقديم محتوى مخصص. في GARFIX،
@@ -79,7 +79,7 @@ export default function CookiesPage() {
             {COOKIE_CATEGORIES.map((cat) => (
               <div
                 key={cat.id}
-                className="bg-white/[0.03] rounded-xl p-5 border border-white/[0.06] flex gap-4 items-start"
+                className="glass rounded-xl p-5 border border-emerald-500/10 flex gap-4 items-start hover-lift duration-120 transition-all shadow-brand-sm"
               >
                 <button
                   onClick={() => toggleCookie(cat.id)}
@@ -113,12 +113,12 @@ export default function CookiesPage() {
           </div>
         </section>
 
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">ملفات تعريف الارتباط التي نستخدمها</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">ملفات تعريف الارتباط التي نستخدمها</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-emerald-500/20 bg-emerald-500/5">
                   <th className="text-right py-3 px-3 text-white/90 font-bold">الاسم</th>
                   <th className="text-right py-3 px-3 text-white/90 font-bold">النوع</th>
                   <th className="text-right py-3 px-3 text-white/90 font-bold">الغرض</th>
@@ -161,8 +161,8 @@ export default function CookiesPage() {
           </div>
         </section>
 
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">كيفية التحكم في ملفات تعريف الارتباط</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">كيفية التحكم في ملفات تعريف الارتباط</h2>
           <p>
             يمكنك التحكم في ملفات تعريف الارتباط بعدة طرق: استخدام أداة التفضيلات أعلاه لتخصيص
             أنواع ملفات تعريف الارتباط المسموح بها، أو تعديل إعدادات المتصفح لحظر أو حذف ملفات
@@ -176,13 +176,13 @@ export default function CookiesPage() {
         <div className="flex flex-wrap gap-3 pt-4 border-t border-white/[0.08]">
           <button
             onClick={acceptAll}
-            className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer transition-all hover:shadow-brand-md active-press duration-150"
+            className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer transition-all hover:shadow-brand-lg active-press duration-150 shadow-brand-sm"
           >
             قبول الكل
           </button>
           <button
             onClick={savePreferences}
-            className="px-6 py-3 rounded-lg bg-white/10 text-white font-bold text-sm cursor-pointer transition-all hover:bg-white/15"
+            className="px-6 py-3 rounded-lg glass text-white font-bold text-sm cursor-pointer transition-all hover:bg-white/15 active-press duration-150 border border-white/10"
           >
             حفظ التفضيلات
           </button>

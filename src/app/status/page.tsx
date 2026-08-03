@@ -79,7 +79,7 @@ export default function StatusPage() {
     >
       <div className="space-y-10 text-white/80 text-[15px] leading-[1.9]">
         {/* الحالة الإجمالية */}
-        <div className={`${overallConfig.bg} border border-white/[0.06] rounded-xl p-6 text-center`}>
+        <div className={`glass-strong ${overallConfig.bg} border border-emerald-500/20 rounded-xl p-6 text-center shadow-brand-md`}>
           <div className={`inline-flex items-center gap-2 ${overallConfig.color} text-lg font-extrabold mb-2`}>
             {overallConfig.icon}
             جميع الأنظمة تعمل بشكل طبيعي
@@ -107,7 +107,7 @@ export default function StatusPage() {
             { label: "حوادث الشهر", value: "1", sub: "يوليو 2025" },
             { label: "وقت الاسترداد", value: "< 30 د", sub: "متوسط" },
           ].map((stat) => (
-            <div key={stat.label} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center">
+            <div key={stat.label} className="kpi-card p-4 rounded-xl text-center hover-lift duration-120 transition-all">
               <div className="text-2xl font-black text-[#fbbf24]">{stat.value}</div>
               <div className="text-xs text-white/70 font-bold mt-0.5">{stat.label}</div>
               <div className="text-[10px] text-white/40">{stat.sub}</div>
@@ -124,7 +124,7 @@ export default function StatusPage() {
               return (
                 <div
                   key={service.name}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-all"
+                  className="flex items-center gap-4 p-4 rounded-xl glass border border-emerald-500/10 hover:bg-emerald-500/5 transition-all duration-120 hover-lift"
                 >
                   <div className={`${config.color} shrink-0`}>{config.icon}</div>
                   <div className="flex-1 min-w-0">
@@ -153,7 +153,7 @@ export default function StatusPage() {
             {INCIDENT_HISTORY.map((incident) => (
               <div
                 key={incident.title}
-                className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5"
+                className="glass border border-emerald-500/10 rounded-xl p-5 shadow-brand-sm"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="text-white/40 text-xs">{incident.date}</span>
@@ -170,7 +170,7 @@ export default function StatusPage() {
         </section>
 
         {/* الاشتراك في التحديثات */}
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center">
+        <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center shadow-brand-md">
           <h3 className="font-bold text-white text-sm mb-2">اشترك في تحديثات حالة الخدمة</h3>
           <p className="text-white/50 text-[13px] mb-4">
             احصل على إشعارات فورية عند حدوث أي تغيير في حالة الخدمات
@@ -182,7 +182,7 @@ export default function StatusPage() {
               className="flex-1 px-4 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
               dir="ltr"
             />
-            <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer border-none transition-all hover:shadow-brand-md active-press duration-150 whitespace-nowrap">
+            <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer border-none transition-all hover:shadow-brand-lg active-press duration-150 whitespace-nowrap shadow-brand-sm">
               اشترك
             </button>
           </div>

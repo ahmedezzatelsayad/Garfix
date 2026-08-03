@@ -178,11 +178,11 @@ const API_ENDPOINTS: ApiEndpoint[] = [
 
 // ─── Method Badge Colors ──────────────────────────────────────────────
 const METHOD_COLORS: Record<string, { bg: string; text: string }> = {
-  GET: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  POST: { bg: "bg-blue-100", text: "text-blue-700" },
-  PATCH: { bg: "bg-amber-100", text: "text-amber-700" },
-  DELETE: { bg: "bg-red-100", text: "text-red-700" },
-  PUT: { bg: "bg-purple-100", text: "text-purple-700" },
+  GET: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
+  POST: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  PATCH: { bg: "bg-[#d4a574]/20", text: "text-[#d4a574]" },
+  DELETE: { bg: "bg-red-500/20", text: "text-red-400" },
+  PUT: { bg: "bg-purple-500/20", text: "text-purple-400" },
 };
 
 const TAG_COLORS: Record<string, string> = {
@@ -242,20 +242,20 @@ export default function ApiDocsPage() {
 
   return (
     <div
-      className={`min-h-screen bg-gray-50 ${isRtl ? "rtl" : "ltr"}`}
+      className={`min-h-screen bg-[#0b1220] ${isRtl ? "rtl" : "ltr"}`}
       dir={isRtl ? "rtl" : "ltr"}
     >
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white border-b shadow-sm">
+      <header className="sticky top-0 z-40 glass-strong bg-[#111827]/90 border-b border-emerald-500/20 shadow-brand-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shadow-brand-sm">
               G
             </div>
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-white">
               {isRtl ? "موثقة API جارفكس" : "Garfix EOS API Docs"}
             </h1>
-            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
               v12.0.0
             </span>
           </div>
@@ -263,7 +263,7 @@ export default function ApiDocsPage() {
           {/* Language toggle */}
           <button
             onClick={() => setLang(lang === "en" ? "ar" : "en")}
-            className="px-3 py-1 text-sm rounded-md border border-gray-200 hover:bg-gray-100 transition"
+            className="px-3 py-1 text-sm rounded-lg border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-all duration-120 focus-ring cursor-pointer"
           >
             {isRtl ? "English" : "عربي"}
           </button>
@@ -275,12 +275,12 @@ export default function ApiDocsPage() {
               placeholder={isRtl ? "بحث في API..." : "Search endpoints..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
+              className="w-full px-3 py-2 border border-white/10 rounded-lg text-sm bg-white/[0.05] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all duration-150"
             />
           </div>
 
           {/* Stats */}
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-white/60">
             {filtered.length} {isRtl ? "نقطة نهاية" : "endpoints"}
             {activeTag ? ` (${activeTag})` : ""}
           </div>
@@ -290,10 +290,10 @@ export default function ApiDocsPage() {
         <div className="max-w-7xl mx-auto px-4 pb-2 flex gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveTag(null)}
-            className={`px-3 py-1 text-xs rounded-full border transition whitespace-nowrap ${
+            className={`px-3 py-1 text-xs rounded-full border transition-all duration-120 whitespace-nowrap ${
               !activeTag
-                ? "bg-violet-100 text-violet-700 border-violet-300"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-brand-sm"
+                : "glass text-white/70 border-white/10 hover:bg-white/[0.06] hover:text-white"
             }`}
           >
             {isRtl ? "الكل" : "All"}
@@ -302,10 +302,10 @@ export default function ApiDocsPage() {
             <button
               key={tag}
               onClick={() => setActiveTag(tag)}
-              className={`px-3 py-1 text-xs rounded-full border transition whitespace-nowrap ${
+              className={`px-3 py-1 text-xs rounded-full border transition-all duration-120 whitespace-nowrap ${
                 activeTag === tag
-                  ? "bg-violet-100 text-violet-700 border-violet-300"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-brand-sm"
+                  : "glass text-white/70 border-white/10 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
               <span
@@ -322,11 +322,11 @@ export default function ApiDocsPage() {
 
       {/* ── Auth info banner ──────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 mt-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
-          <div className="font-semibold text-amber-800 mb-1">
+        <div className="glass bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-xl p-3 text-sm shadow-brand-sm">
+          <div className="font-semibold text-[#d4a574] mb-1">
             {isRtl ? "المصادقة والتصاريح" : "Authentication & Permissions"}
           </div>
-          <div className="text-amber-700">
+          <div className="text-white/70">
             {isRtl
               ? "جميع نقاط النهاية (ما عدا /health و /webhooks) تتطلب JWT Bearer عبر HttpOnly cookies. التصاريح: view_invoices, finance_access, settings_access, employee_management, bulk_input, reports_access, edit_customer, create_invoice, edit_invoice, delete_invoice, delete_customer. التصاريح متعددة المستأجرين عبر companySlug أو X-Company-Slug header."
               : "All endpoints (except /health and /webhooks) require JWT Bearer via HttpOnly cookies. Permissions: view_invoices, finance_access, settings_access, employee_management, bulk_input, reports_access, edit_customer, create_invoice, edit_invoice, delete_invoice, delete_customer. Multi-tenant scoping via companySlug query param or X-Company-Slug header."}
@@ -337,7 +337,7 @@ export default function ApiDocsPage() {
       {/* ── Endpoint list ─────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 py-4 space-y-2">
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-white/40 state-empty">
             {isRtl ? "لا توجد نتائج" : "No endpoints found"}
           </div>
         )}
@@ -350,21 +350,21 @@ export default function ApiDocsPage() {
           return (
             <div
               key={key}
-              className="bg-white rounded-lg border hover:border-gray-300 transition"
+              className="glass rounded-xl border border-emerald-500/15 hover:border-emerald-500/30 transition-all duration-120 hover-lift shadow-brand-sm"
             >
               <button
                 onClick={() => toggleExpand(key)}
-                className="w-full px-4 py-3 flex items-center gap-3 text-left"
+                className="w-full px-4 py-3 flex items-center gap-3 text-right"
               >
                 <span
                   className={`px-2 py-0.5 text-xs font-bold rounded ${mc.bg} ${mc.text}`}
                 >
                   {ep.method}
                 </span>
-                <span className="text-sm font-mono text-gray-800 flex-1">
+                <span className="text-sm font-mono text-emerald-300 flex-1">
                   {ep.path}
                 </span>
-                <span className="text-sm text-gray-600 hidden sm:block">
+                <span className="text-sm text-white/70 hidden sm:block">
                   {isRtl ? ep.summaryAr : ep.summary}
                 </span>
                 <span
@@ -379,7 +379,7 @@ export default function ApiDocsPage() {
                   </span>
                 )}
                 <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                  className={`w-4 h-4 text-emerald-400 transition-transform duration-150 ${
                     expanded ? "rotate-180" : ""
                   }`}
                   fill="none"
@@ -396,16 +396,16 @@ export default function ApiDocsPage() {
               </button>
 
               {expanded && (
-                <div className="px-4 pb-4 border-t">
+                <div className="px-4 pb-4 border-t border-white/[0.06]">
                   {/* Description */}
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-white/70 mt-2">
                     {isRtl ? ep.summaryAr : ep.summary} — {ep.description}
                   </p>
 
                   {/* Permission badge */}
                   {ep.permission && (
                     <div className="mt-2">
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
+                      <span className="text-xs bg-[#d4a574]/20 text-[#d4a574] px-2 py-0.5 rounded border border-[#d4a574]/30">
                         {isRtl ? "تصريح:" : "Permission:"} {ep.permission}
                       </span>
                     </div>
@@ -416,8 +416,8 @@ export default function ApiDocsPage() {
                     <span
                       className={`text-xs px-2 py-0.5 rounded ${
                         ep.authRequired
-                          ? "bg-red-100 text-red-700"
-                          : "bg-green-100 text-green-700"
+                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                          : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                       }`}
                     >
                       {ep.authRequired
@@ -433,13 +433,13 @@ export default function ApiDocsPage() {
                   {/* Parameters */}
                   {ep.params && ep.params.length > 0 && (
                     <div className="mt-3">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                      <h4 className="text-xs font-semibold text-white/50 uppercase mb-1">
                         {isRtl ? "المعلمات" : "Parameters"}
                       </h4>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-xs text-gray-400 border-b">
+                            <tr className="text-xs text-white/40 border-b border-white/[0.06]">
                               <th className="py-1 pr-2">
                                 {isRtl ? "الاسم" : "Name"}
                               </th>
@@ -461,27 +461,27 @@ export default function ApiDocsPage() {
                             {ep.params.map((p, i) => (
                               <tr
                                 key={i}
-                                className="border-b border-gray-50"
+                                className="border-b border-white/[0.04]"
                               >
-                                <td className="py-1 pr-2 font-mono text-violet-600">
+                                <td className="py-1 pr-2 font-mono text-emerald-400">
                                   {p.name}
                                 </td>
-                                <td className="py-1 pr-2 text-gray-500">
+                                <td className="py-1 pr-2 text-white/50">
                                   {p.in}
                                 </td>
                                 <td className="py-1 pr-2">
                                   {p.required ? (
-                                    <span className="text-red-500 font-bold">
+                                    <span className="text-red-400 font-bold">
                                       *
                                     </span>
                                   ) : (
-                                    <span className="text-gray-400">—</span>
+                                    <span className="text-white/30">—</span>
                                   )}
                                 </td>
-                                <td className="py-1 pr-2 text-gray-500">
+                                <td className="py-1 pr-2 text-white/50">
                                   {p.type}
                                 </td>
-                                <td className="py-1 text-gray-600">
+                                <td className="py-1 text-white/70">
                                   {p.description}
                                 </td>
                               </tr>
@@ -495,10 +495,10 @@ export default function ApiDocsPage() {
                   {/* Request Body */}
                   {ep.requestBody && (
                     <div className="mt-3">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                      <h4 className="text-xs font-semibold text-white/50 uppercase mb-1">
                         {isRtl ? "هيكل الطلب" : "Request Body"}
                       </h4>
-                      <div className="bg-gray-50 rounded p-2 text-xs font-mono text-gray-700">
+                      <div className="bg-[#0b1220] rounded-lg p-2 text-xs font-mono text-emerald-300 border border-emerald-500/20">
                         {ep.requestBody}
                       </div>
                     </div>
@@ -507,7 +507,7 @@ export default function ApiDocsPage() {
                   {/* Responses */}
                   {ep.responses && ep.responses.length > 0 && (
                     <div className="mt-3">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                      <h4 className="text-xs font-semibold text-white/50 uppercase mb-1">
                         {isRtl ? "الاستجابات" : "Responses"}
                       </h4>
                       <div className="space-y-1">
@@ -517,17 +517,17 @@ export default function ApiDocsPage() {
                             className="flex items-center gap-2 text-sm"
                           >
                             <span
-                              className={`px-2 py-0.5 text-xs font-bold rounded ${
+                              className={`px-2 py-0.5 text-xs font-bold rounded border ${
                                 r.status.startsWith("2")
-                                  ? "bg-emerald-100 text-emerald-700"
+                                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                                   : r.status.startsWith("4")
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-red-100 text-red-700"
+                                  ? "bg-[#d4a574]/20 text-[#d4a574] border-[#d4a574]/30"
+                                  : "bg-red-500/20 text-red-400 border-red-500/30"
                               }`}
                             >
                               {r.status}
                             </span>
-                            <span className="text-gray-600">
+                            <span className="text-white/70">
                               {r.description}
                             </span>
                           </div>

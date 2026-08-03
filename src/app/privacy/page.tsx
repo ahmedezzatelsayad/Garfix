@@ -12,8 +12,8 @@ export default function PrivacyPage() {
     >
       <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
         {/* المقدمة */}
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">1. مقدمة</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">1. مقدمة</h2>
           <p>
             مرحباً بك في GARFIX. نحن ندرك أهمية خصوصيتك ونلتزم بحماية بياناتك الشخصية بشفافية تامة.
             تسري سياسة الخصوصية هذه على جميع خدمات GARFIX (المشار إليها فيما بعد بـ &quot;المنصة&quot; أو &quot;نحن&quot;)،
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <p className="mb-3">
             نجمع أنواعاً مختلفة من البيانات لتقديم خدماتنا وتحسينها. إليك التفاصيل:
           </p>
-          <div className="bg-white/[0.03] rounded-xl p-5 space-y-4">
+          <div className="glass rounded-xl p-5 space-y-4 border border-emerald-500/10 hover-lift duration-120 transition-all">
             <div>
               <h3 className="font-bold text-emerald-400 mb-1">أ. بيانات الحساب</h3>
               <p>
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
               { title: "نسخ احتياطي مشفر", desc: "نسخ احتياطية يومية مشفرة لضمان استمرارية البيانات" },
               { title: "مراقبة مستمرة", desc: "أنظمة كشف التسلل ومراقبة الأنشطة المشبوهة على مدار الساعة" },
             ].map((item) => (
-              <div key={item.title} className="bg-white/[0.03] rounded-lg p-4 border border-emerald-500/20 hover-lift duration-120 transition-all">
+              <div key={item.title} className="bg-emerald-500/5 rounded-lg p-4 border border-emerald-500/20 hover-lift duration-120 transition-all shadow-brand-sm">
                 <div className="font-bold text-emerald-400 text-sm mb-1">{item.title}</div>
                 <div className="text-white/60 text-[13px]">{item.desc}</div>
               </div>
@@ -115,8 +115,8 @@ export default function PrivacyPage() {
         </section>
 
         {/* حقوقك */}
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">6. حقوقك</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">6. حقوقك</h2>
           <p>لديك الحقوق التالية فيما يتعلق ببياناتك الشخصية:</p>
           <ul className="list-disc pr-6 space-y-2 text-white/70 mt-3">
             <li><strong className="text-white/90">حق الوصول:</strong> يمكنك طلب نسخة من بياناتك الشخصية المخزنة لدينا</li>
@@ -152,8 +152,8 @@ export default function PrivacyPage() {
         </section>
 
         {/* التعديلات */}
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">9. التعديلات على السياسة</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">9. التعديلات على السياسة</h2>
           <p>
             قد نقوم بتحديث سياسة الخصوصية هذه من وقت لآخر للاستجابة للتغييرات في خدماتنا
             أو المتطلبات القانونية. سنُخطرك بأي تغييرات جوهرية عبر البريد الإلكتروني أو إشعار
@@ -163,8 +163,8 @@ export default function PrivacyPage() {
         </section>
 
         {/* التواصل */}
-        <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">10. التواصل معنا</h2>
+        <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
+          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">10. التواصل معنا</h2>
           <p>
             إذا كان لديك أي أسئلة أو استفسارات حول سياسة الخصوصية أو كيفية تعاملنا مع بياناتك،
             يمكنك التواصل معنا من خلال{" "}
