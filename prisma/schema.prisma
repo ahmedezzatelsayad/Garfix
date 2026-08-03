@@ -48,6 +48,9 @@ model AppUser {
 
   mFASecrets MFASecret[]
   sessions   SessionRegistry[]
+  
+  // API Key Pool - User can have one assigned key
+  assignedApiKey ApiKeyPool? @relation("KeyAssignedToUser")
 
   @@map("app_users")
 }
@@ -110,6 +113,9 @@ model Company {
   purchaseOrders      PurchaseOrder[]
 
   aiConfig            CompanyAIConfig?
+  
+  // API Key Pool - Keys assigned to this company's users
+  assignedApiKeys     ApiKeyPool[] @relation("KeyAssignedToCompany")
 
   @@map("companies")
 }
@@ -2053,6 +2059,65 @@ model CompanyAIConfig {
   company                   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("company_ai_configs")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// API Key Pool System
+// 
+// Founder uploads API keys → Auto-distribute to new users
+// Track usage, remaining, alerts when low
+// ═══════════════════════════════════════════════════════════════════
+
+model ApiKeyPool {
+  id                  String    @id @default(cuid())
+  
+  // The actual API key (encrypted at rest)
+  keyValue            String    @unique
+  
+  // Provider detection (auto-detected from key format)
+  provider            String    @default("openrouter") // openrouter | gemini | openai
+  
+  // Which model(s) this key is for
+  model               String    @default("deepseek/deepseek-chat-v3-0324")
+  
+  // Status tracking
+  status              String    @default("available") // available | assigned | exhausted | revoked
+  
+  // Who's using this key (if assigned)
+  assignedToUserId    String?   @unique                // One key per user
+  assignedToCompanyId String?                          // User's company
+  assignedAt          DateTime?
+  
+  // Usage tracking
+  timesUsed           BigInt    @default(0)
+  lastUsedAt          DateTime?
+  
+  // Rate limit info for this specific key
+  rpmLimit            Int       @default(60)           // Requests per minute
+  dailyLimit          Int       @default(1000)         // Requests per day
+  usedToday           BigInt    @default(0)
+  resetAt             DateTime?                       // When daily counter resets
+  
+  // Metadata
+  addedBy             String?                          // Founder user ID
+  notes               String?                          // Internal notes
+  priority            Int       @default(0)            // Higher = use first
+  
+  // Alerts
+  lowUsageAlert       Boolean   @default(true)         // Alert when running low
+  alertThreshold      Int       @default(10)            // Alert when X% used
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relations
+  assignedUser        AppUser?  @relation("KeyAssignedToUser", fields: [assignedToUserId], references: [uid])
+  assignedCompany     Company?  @relation("KeyAssignedToCompany", fields: [assignedToCompanyId], references: [id])
+  
+  @@index([status])
+  @@index([provider])
+  @@index([assignedToUserId])
+  @@map("api_key_pool")
 }
 
 // ─── Outbox Event ───
