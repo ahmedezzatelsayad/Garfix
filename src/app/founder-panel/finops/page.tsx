@@ -189,7 +189,7 @@ export default function FinOpsDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
           <KPICard label="Revenue (MTD)" value={hasData ? fmt(data.revenueMtd) : "N/A"} detail={`est. ${fmt(data.totalMonthlyRevenue)}/mo`} color="text-emerald-600" />
           <KPICard label="AI Cost (MTD)" value={data.totalRequestsMtd > 0 ? fmt(data.aiCostMtd) : "N/A"} detail={`${na(data.totalRequestsMtd, data.totalRequestsMtd)} requests`} color="text-red-600" />
-          <KPICard label="Infra Cost (MTD)" value={data.activeRuntimeCount > 0 ? fmt(data.infraCostMtd) : "N/A"} detail={`$${INFRA_COST_PER_DAY}/day × ${data.activeRuntimeCount} companies`} color="text-amber-600" />
+          <KPICard label="Infra Cost (MTD)" value={data.activeRuntimeCount > 0 ? fmt(data.infraCostMtd) : "N/A"} detail={`$${INFRA_COST_PER_DAY}/day × ${data.activeRuntimeCount} companies`} color="text-[#d4a574]" />
           <KPICard label="Profit (MTD)" value={hasData ? fmt(data.profitMtd) : "N/A"} detail={hasData ? `${data.profitPct >= 0 ? "+" : ""}${fmtPct(data.profitPct)} margin` : "no data"} color={data.profitMtd >= 0 ? "text-emerald-600" : "text-red-600"} />
           <KPICard label="AI Saved (cascade)" value={data.platformSavings?.savedUsd ? fmt(data.platformSavings.savedUsd) : "N/A"} detail={data.platformSavings ? `${fmtPct(data.platformSavings.savingsPct)} savings rate` : "no request data"} color="text-emerald-600" />
           <KPICard label="Est. Month-End Profit" value={hasData ? fmt(data.estProfitEom) : "N/A"} detail={hasData ? `${data.estProfitPctEom >= 0 ? "+" : ""}${fmtPct(data.estProfitPctEom)} projected` : "no data"} color={data.estProfitEom >= 0 ? "text-emerald-600" : "text-red-600"} />

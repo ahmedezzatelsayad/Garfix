@@ -127,7 +127,7 @@ const FEATURES = [
     key: 'memory' as const, 
     label: 'الذاكرة والسياق', 
     icon: '🧠', 
-    color: 'amber',
+    color: 'gold',
     description: 'Context & History Memory',
     rateLimitDefault: 30,
   },
@@ -204,7 +204,7 @@ const FEATURE_COLORS: Record<string, string> = {
   blue: 'border-blue-500 bg-blue-50',
   emerald: 'border-emerald-500 bg-emerald-50',
   purple: 'border-purple-500 bg-purple-50',
-  amber: 'border-amber-500 bg-amber-50',
+  gold: 'border-[#d4a574]/50 bg-[#d4a574]/10',
 };
 
 // ── Main Component ──────────────────────────────────────────
@@ -516,7 +516,7 @@ export default function CompaniesPerFeatureAIPage() {
                 <span className="text-xl">🔍</span> Parse Token
               </div>
               <span className="text-gray-400">+</span>
-              <div className="bg-amber-100 dark:bg-amber-900 px-4 py-2 rounded-lg">
+              <div className="bg-[#d4a574]/20 dark:bg-[#d4a574]/20 px-4 py-2 rounded-lg border border-[#d4a574]/30">
                 <span className="text-xl">🧠</span> Memory Token
               </div>
               <span className="text-gray-400">=</span>

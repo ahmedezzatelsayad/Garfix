@@ -183,7 +183,7 @@ export const SPRINGS: Record<string, SpringConfig> = {
  * GarfiX DS Preset Animations
  * Ready-to-use animation definitions
  */
-export const PRESETS: Record<string, KeyframeAnimation> => {
+export const PRESETS: Record<string, KeyframeAnimation> = {
   // ── Enter Animations ──────────────────────────────
   
   /** Fade in from transparent */
