@@ -280,7 +280,7 @@ export default function FounderApiKeyPoolPage() {
 
         {/* ══ Stats Cards ══ */}
         {!isLoading && stats && (
-          <GarfixGrid cols={4} className="mb-8">
+          <GarfixGrid cols={1} colsSm={2} colsMd={3} colsLg={4} className="mb-8">
             <MotionCard>
               <div className="text-center p-4">
                 <div className="text-3xl font-bold text-gray-800">{stats.totalKeys}</div>
@@ -465,7 +465,7 @@ export default function FounderApiKeyPoolPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 نوع المفتاح (Provider)
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[
                   { value: 'openrouter', label: '🟠 OpenRouter', desc: 'DeepSeek + الكل' },
                   { value: 'gemini', label: '🔵 Gemini', desc: 'Google Flash' },

@@ -315,7 +315,7 @@ export default function FinOpsDashboard() {
               <CardContent>
                 {data.platformSavings ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                       <div>
                         <p className="text-sm text-gray-500">Total Saved</p>
                         <p className="text-xl font-bold text-emerald-600">{fmt(data.platformSavings.savedUsd)}</p>

@@ -782,7 +782,7 @@ export default function AISettingsPage() {
                       اختبر اتصالك بـ Google Gemini API للتأكد من أن المفتاح يعمل بشكل صحيح.
                     </p>
                     
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                       <div>
                         <p className="text-sm text-gray-500">الموفر</p>
                         <p className="font-medium">Google Gemini</p>

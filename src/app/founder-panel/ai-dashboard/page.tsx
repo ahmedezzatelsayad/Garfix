@@ -243,7 +243,7 @@ function KeyHealthCard({ key: k }: { key: KeyMetrics }) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+      <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 text-center text-xs">
         <div className="bg-white rounded p-2">
           <p className="text-gray-500">التأخير</p>
           <p className="font-mono font-semibold">{formatTime(k.avgLatencyMs)}</p>
@@ -289,7 +289,7 @@ function WorkerCard({ worker }: { worker: WorkerMetrics }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
         <div className="bg-blue-50 rounded p-2">
           <p className="text-xs text-blue-600">نشط</p>
           <p className="font-bold text-blue-900">{worker.activeJobs}</p>
