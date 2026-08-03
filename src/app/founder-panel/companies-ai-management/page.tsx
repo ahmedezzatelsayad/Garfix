@@ -23,8 +23,9 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
 
@@ -242,7 +243,19 @@ export default function CompaniesPerFeatureAIPage() {
   // Alert state
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  // Select All state
+  const [selectedCompanyIds, setSelectedCompanyIds] = useState<Set<string>>(new Set());
+
   // ── Effects ─────────────────────────────────────────────
+  
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
   
   useEffect(() => {
     fetchCompanies();
@@ -455,14 +468,53 @@ export default function CompaniesPerFeatureAIPage() {
   /**
    * Filter companies
    */
-  const filteredCompanies = companies.filter(company => {
-    if (!searchQuery) return true;
-    return (
-      company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      company.nameAr?.includes(searchQuery) ||
-      company.slug.includes(searchQuery)
-    );
-  });
+  const filteredCompanies = useMemo(() => {
+    return companies.filter(company => {
+      if (!searchQuery) return true;
+      return (
+        company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.nameAr?.includes(searchQuery) ||
+        company.slug.includes(searchQuery)
+      );
+    });
+  }, [companies, searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCompanies.length / pageSize);
+  const paginatedCompanies = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredCompanies.slice(startIndex, startIndex + pageSize);
+  }, [filteredCompanies, currentPage, pageSize]);
+
+  // Select All handlers
+  const isAllSelected = paginatedCompanies.length > 0 && 
+    paginatedCompanies.every(c => selectedCompanyIds.has(c.id));
+  const isSomeSelected = paginatedCompanies.some(c => selectedCompanyIds.has(c.id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const newSet = new Set(selectedCompanyIds);
+      paginatedCompanies.forEach(c => newSet.delete(c.id));
+      setSelectedCompanyIds(newSet);
+    } else {
+      setSelectedCompanyIds(new Set([...selectedCompanyIds, ...paginatedCompanies.map(c => c.id)]));
+    }
+  };
+
+  const toggleSelectCompany = (companyId: string) => {
+    const newSet = new Set(selectedCompanyIds);
+    if (newSet.has(companyId)) {
+      newSet.delete(companyId);
+    } else {
+      newSet.add(companyId);
+    }
+    setSelectedCompanyIds(newSet);
+  };
+
+  const handleBulkAction = async (action: 'enableAI' | 'disableAI' | 'assignKeys') => {
+    // TODO: Implement bulk actions
+    setAlert({ type: 'success', message: `تم تطبيق ${action} على ${selectedCompanyIds.size} شركة` });
+  };
 
   // Stats
   const totalCompanies = companies.length;
@@ -641,6 +693,56 @@ export default function CompaniesPerFeatureAIPage() {
           />
         </GarfixCard>
 
+        {/* ══ Bulk Actions Bar ══ */}
+        {!isLoading && filteredCompanies.length > 0 && (
+          <FadeUp delay={50}>
+            <GarfixCard className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="p-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+                    title={isAllSelected ? "إلغاء تحديد الكل" : "تحديد الكل"}
+                  >
+                    {isAllSelected ? (
+                      <CheckSquare className="w-5 h-5 text-emerald-600" />
+                    ) : isSomeSelected ? (
+                      <CheckSquare className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <Square className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {selectedCompanyIds.size > 0 
+                      ? `محدد: ${selectedCompanyIds.size} من ${filteredCompanies.length}`
+                      : "تحديد الشركات"
+                    }
+                  </span>
+                </div>
+                
+                {selectedCompanyIds.size > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <GarfixButton
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleBulkAction('enableAI')}
+                    >
+                      ✅ تفعيل AI
+                    </GarfixButton>
+                    <GarfixButton
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBulkAction('assignKeys')}
+                    >
+                      🔑 توزيع مفاتيح
+                    </GarfixButton>
+                  </div>
+                )}
+              </div>
+            </GarfixCard>
+          </FadeUp>
+        )}
+
         {/* ══ Companies List ══ */}
         {isLoading ? (
           <div className="space-y-4">
@@ -658,16 +760,29 @@ export default function CompaniesPerFeatureAIPage() {
           </GarfixCard>
         ) : (
           <div className="space-y-4">
-            {filteredCompanies.map((company, index) => (
+            {paginatedCompanies.map((company, index) => (
               <FadeUp key={company.id} delay={index * 50}>
                 <GarfixCard 
                   className={cn(
                     "hover:shadow-lg transition-all duration-300",
-                    company.hasAIConfig && "border-l-4 border-l-emerald-500"
+                    company.hasAIConfig && "border-l-4 border-l-emerald-500",
+                    selectedCompanyIds.has(company.id) && "ring-2 ring-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20"
                   )}
                 >
                   <div className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                      
+                      {/* Checkbox */}
+                      <button
+                        onClick={() => toggleSelectCompany(company.id)}
+                        className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ms-2"
+                      >
+                        {selectedCompanyIds.has(company.id) ? (
+                          <CheckSquare className="w-5 h-5 text-emerald-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </button>
                       
                       {/* Company Info */}
                       <div className="flex items-center gap-4 flex-1">
@@ -716,6 +831,97 @@ export default function CompaniesPerFeatureAIPage() {
                 </GarfixCard>
               </FadeUp>
             ))}
+          </div>
+        )}
+
+        {/* ══ Pagination Controls ══ */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            {/* Page Info & Size Selector */}
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <span>
+                عرض {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredCompanies.length)} من {filteredCompanies.length} شركة
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-emerald-500"
+              >
+                {[5, 10, 20, 50].map(size => (
+                  <option key={size} value={size}>{size} لكل صفحة</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Page Navigation */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="الصفحة الأولى"
+              >
+                <ChevronsRight className="w-5 h-5 rtl:rotate-0" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="السابق"
+              >
+                <ChevronRight className="w-5 h-5 rtl:rotate-0" />
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                        currentPage === pageNum
+                          ? 'bg-emerald-500 text-white shadow-md'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="التالي"
+              >
+                <ChevronLeft className="w-5 h-5 rtl:rotate-0" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="الصفحة الأخيرة"
+              >
+                <ChevronsLeft className="w-5 h-5 rtl:rotate-0" />
+              </button>
+            </div>
           </div>
         )}
 

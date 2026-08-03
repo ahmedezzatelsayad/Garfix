@@ -20,6 +20,7 @@ import {
   ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, XCircle,
   Calendar, DollarSign, ArrowUpDown,
   FileText, Receipt, Globe, CreditCard, Building2, Package, Users,
+  RefreshCcw, Shield, BookOpen,
 } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
 
@@ -36,6 +37,9 @@ const LazyBudgetsView = lazy(() => import("@/modules/accounting/BudgetsView").th
 const LazyAccountantCollabView = lazy(() => import("@/modules/accounting/AccountantCollabView").then((m) => ({ default: m.AccountantCollabView })));
 const LazyPaymentRailsView = lazy(() => import("@/modules/accounting/PaymentRailsView").then((m) => ({ default: m.PaymentRailsView })));
 const LazyMultiCompanyView = lazy(() => import("@/modules/accounting/MultiCompanyView"));
+const LazyRecurringEntriesView = lazy(() => import("@/modules/accounting/RecurringEntriesView").then((m) => ({ default: m.RecurringEntriesView })));
+const LazyFiscalYearCloseView = lazy(() => import("@/modules/accounting/FiscalYearCloseView").then((m) => ({ default: m.FiscalYearCloseView })));
+const LazyGeneralLedgerView = lazy(() => import("@/modules/accounting/GeneralLedgerView").then((m) => ({ default: m.GeneralLedgerView })));
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 type ModuleTab =
@@ -52,7 +56,10 @@ type ModuleTab =
   | "budgets"       // BudgetsView
   | "collab"        // AccountantCollabView
   | "payments"      // PaymentRailsView
-  | "multi-company"; // MultiCompanyView
+  | "multi-company" // MultiCompanyView
+  | "recurring"     // RecurringEntriesView - القيود الدورية
+  | "fiscal-close"  // FiscalYearCloseView - إغلاق السنة المالية
+  | "general-ledger"; // GeneralLedgerView - الأستاذ العام
 
 type Tab = "dashboard" | "accounts" | "journal" | "trial" | "statements" | "fiscal-periods" | "cost-centers" | "aging" | "banking";
 type StatementType = "profit-loss" | "balance-sheet" | "cash-flow";
@@ -85,6 +92,9 @@ const MODULE_TABS: Array<{ key: ModuleTab; label: string; icon: React.ComponentT
   { key: "collab", label: "المحاسب الخارجي", icon: Users },
   { key: "payments", label: "طرق الدفع المحلية", icon: CreditCard },
   { key: "multi-company", label: "الشركات المتعددة", icon: Building2 },
+  { key: "recurring", label: "القيود الدورية", icon: RefreshCcw },
+  { key: "fiscal-close", label: "إغلاق السنة المالية", icon: Shield },
+  { key: "general-ledger", label: "الأستاذ العام", icon: BookOpen },
 ];
 
 const PAGE_SIZE = 20;
@@ -497,6 +507,9 @@ export function AccountingView() {
           {moduleTab === "collab" && <LazyAccountantCollabView />}
           {moduleTab === "payments" && <LazyPaymentRailsView />}
           {moduleTab === "multi-company" && <LazyMultiCompanyView />}
+          {moduleTab === "recurring" && <LazyRecurringEntriesView companySlug={slug} />}
+          {moduleTab === "fiscal-close" && <LazyFiscalYearCloseView companySlug={slug} />}
+          {moduleTab === "general-ledger" && <LazyGeneralLedgerView companySlug={slug} />}
         </Suspense>
       )}
     </div>
