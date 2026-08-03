@@ -27,6 +27,7 @@ import {
   GarfixCard,
   GarfixInput,
   GarfixTextarea,
+  GarfixBadge,
 } from '@/components/garfix-ds/core';
 
 import {
@@ -38,7 +39,6 @@ import {
 import {
   GarfixAlert,
   GarfixSkeleton,
-  GarfixBadge,
 } from '@/components/garfix-ds/feedback';
 
 import { GarfixModal } from '@/components/garfix-ds/overlay';

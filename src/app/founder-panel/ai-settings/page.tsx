@@ -153,7 +153,7 @@ export default function AISettingsPage() {
   
   // Form state
   const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [temperature, setTemperature] = useState(0.7);
@@ -722,7 +722,7 @@ export default function AISettingsPage() {
                             usageData.overview.usagePercent > 90
                               ? 'red'
                               : usageData.overview.usagePercent > 70
-                              ? 'amber'
+                              ? 'gold'
                               : 'emerald'
                           }
                         />
@@ -906,3 +906,4 @@ export default function AISettingsPage() {
       </GarfixPageTransition>
     );
   }
+}

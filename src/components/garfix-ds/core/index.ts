@@ -41,6 +41,9 @@ export type {
   InputState,
 } from './GarfixInput'
 
+export { GarfixTextarea } from './GarfixTextarea'
+export type { GarfixTextareaProps } from './GarfixTextarea'
+
 export {
   GarfixBadge,
   StatusBadge,
