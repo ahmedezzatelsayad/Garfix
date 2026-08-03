@@ -158,6 +158,45 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     },
   });
 
+  // 🤖 Auto-create AI Config slot for new company (Multi-Tenant Architecture)
+  // Each company gets its own isolated API key configuration
+  // The founder can then assign a dedicated API key from Founder Panel
+  try {
+    await db.companyAIConfig.create({
+      data: {
+        companyId: company.id,
+        primaryProvider: JSON.stringify({
+          provider: 'google-gemini',
+          apiKey: '', // Empty - founder will add from Founder Panel
+          model: 'gemini-2.0-flash',
+          maxTokens: 4096,
+          temperature: 0.7,
+          enabled: false, // Disabled until founder adds key
+          rateLimitRpm: 60,
+          monthlyTokenQuota: 1000000,
+        }),
+        systemPrompt: '',
+        enableChat: true,
+        enableSmartParse: true,
+        enableInvoiceExtraction: true,
+        enableMemory: true,
+        memoryRetentionDays: 30,
+        costOptimization: 'balanced',
+        notifyHighUsage: true,
+        usageNotificationThreshold: 80,
+        tokensUsedThisMonth: 0,
+        requestsThisMonth: 0,
+        lastResetAt: new Date(),
+      },
+    });
+    
+    console.log(`[companies] Auto-created AI config slot for company ${company.id} (${company.name})`);
+  } catch (aiConfigError) {
+    // Non-critical error - company was created successfully
+    // AI config can be created later when needed
+    console.error('[companies] Failed to auto-create AI config slot:', aiConfigError);
+  }
+
   // Auto-assign the new company to the creator AND promote them to admin if
   // this is their first company. Without the role promotion, an `employee`
   // user could create a company but then couldn't manage it (no settings_access,

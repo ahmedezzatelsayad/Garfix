@@ -109,6 +109,8 @@ model Company {
   quotations          Quotation[]
   purchaseOrders      PurchaseOrder[]
 
+  aiConfig            CompanyAIConfig?
+
   @@map("companies")
 }
 
@@ -1947,6 +1949,59 @@ model OutboxEvent {
 
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Multi-Tenant AI Configuration (P0: Per-Company API Keys)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Company AI Config (matches db.companyAIConfig) ───
+
+// Stores per-company AI provider configuration with encrypted API keys.
+// Each company gets its own isolated API key → no shared key bottleneck.
+// Only founders can view/edit via Founder Panel.
+
+model CompanyAIConfig {
+  id                        String    @id @default(cuid())
+  companyId                 String    @unique
+  
+  // Primary AI Provider (JSON string - parsed at runtime)
+  // Contains: { provider, apiKey, model, baseUrl, maxTokens, temperature, enabled, rateLimitRpm, monthlyTokenQuota }
+  primaryProvider           String    @default("{}")
+  
+  // Fallback Provider (optional - if primary fails)
+  fallbackProvider          String?
+  
+  // Company-specific system prompt for AI context
+  systemPrompt              String    @default("")
+  
+  // Feature toggles per company
+  enableChat                Boolean   @default(true)
+  enableSmartParse          Boolean   @default(true)
+  enableInvoiceExtraction   Boolean   @default(true)
+  enableMemory              Boolean   @default(true)
+  
+  // Memory configuration
+  memoryRetentionDays       Int       @default(30)
+  
+  // Cost optimization: aggressive | balanced | quality
+  costOptimization          String    @default("balanced")
+  
+  // Usage notifications
+  notifyHighUsage           Boolean   @default(true)
+  usageNotificationThreshold Int      @default(80) // %
+  
+  // Usage tracking (reset monthly)
+  tokensUsedThisMonth       BigInt    @default(0)
+  requestsThisMonth         BigInt    @default(0)
+  lastResetAt               DateTime  @default(now())
+  
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  company                   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_ai_configs")
 }
 
 // ─── Outbox Event ───

@@ -176,7 +176,7 @@ interface RecommendationItem {
   category: string;
 }
 
-// ── Mock Data ───────────────────────────────────────────────
+// ── Mock Data (Fallback when API unavailable) ──────────────
 
 const MOCK_AI_METRICS: AIMetricsData = {
   success: true,
@@ -499,18 +499,42 @@ export function GarfixEnhancedAIDashboard() {
   const { shouldReduceMotion } = useReducedMotion();
   const aiContext = useAIPersonalization();
 
-  // Fetch AI Metrics
+  // Fetch AI Metrics from Real API
   const fetchMetrics = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setMetrics(MOCK_AI_METRICS);
       
-      // Track view event for personalization
-      aiContext?.trackEvent('dashboard_view', { tab: activeTab });
+      // 🔄 Call Real API: /api/ai/metrics
+      const response = await fetch('/api/ai/metrics');
+      
+      if (response.ok) {
+        const apiData = await response.json();
+        
+        if (apiData.success) {
+          // ✅ Use real data from API
+          setMetrics(apiData);
+          
+          // Track view event for personalization
+          aiContext?.trackEvent('dashboard_view', { 
+            tab: activeTab, 
+            dataSource: 'real_api' 
+          });
+          return;
+        }
+      }
+      
+      // ⚠️ Fallback to mock data if API fails
+      console.warn('AI Metrics API unavailable, using fallback data');
+      setMetrics(MOCK_AI_METRICS);
+      aiContext?.trackEvent('dashboard_view', { 
+        tab: activeTab, 
+        dataSource: 'mock_fallback' 
+      });
+      
     } catch (error) {
       console.error('Failed to fetch AI metrics:', error);
+      // ❌ Error fallback - use mock data
+      setMetrics(MOCK_AI_METRICS);
     } finally {
       setIsLoading(false);
     }
@@ -565,6 +589,17 @@ export function GarfixEnhancedAIDashboard() {
                 <GarfixBadge variant="primary" size="sm">
                   v4.0
                 </GarfixBadge>
+                
+                {/* Data Source Indicator */}
+                {metrics && (
+                  <GarfixBadge 
+                    variant={metrics.timestamp?.includes('2026') ? "success" : "warning"} 
+                    size="sm"
+                    title={metrics.timestamp ? `آخر تحديث: ${new Date(metrics.timestamp).toLocaleTimeString('ar-EG')}` : 'بيانات تجريبية'}
+                  >
+                    {metrics.timestamp?.includes('2026') ? '🟢 API حقيقي' : '⚠️ تجريبي'}
+                  </GarfixBadge>
+                )}
               </div>
               
               <div className="flex items-center gap-3">
