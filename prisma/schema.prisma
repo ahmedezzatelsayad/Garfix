@@ -1952,34 +1952,85 @@ model OutboxEvent {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Multi-Tenant AI Configuration (P0: Per-Company API Keys)
+// Multi-Tenant AI Configuration (P0: Per-Company, Per-Feature API Keys)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ─── Company AI Config (matches db.companyAIConfig) ───
 
-// Stores per-company AI provider configuration with encrypted API keys.
-// Each company gets its own isolated API key → no shared key bottleneck.
-// Only founders can view/edit via Founder Panel.
+// 🎯 ADVANCED MULTI-TENANT ARCHITECTURE
+// 
+// Each company gets ISOLATED API keys per FEATURE:
+// ┌─────────────────────────────────────────────────────────────┐
+// │  Company: "شركة النور للتجارة"                              │
+// ├─────────────────────────────────────────────────────────────┤
+// │  🔑 chatApiKey      → For AI Chat conversations             │
+// │  📄 invoiceApiKey   → For invoice extraction & processing    │
+// │  🔍 parseApiKey     → For smart document parsing            │
+// │  🧠 memoryApiKey    → For context memory & history          │
+// └─────────────────────────────────────────────────────────────┘
+//
+// Benefits:
+// ✅ No bottleneck - each feature has its own rate limit
+// ✅ If chat is busy, invoices still process
+// ✅ Per-feature quota management
+// ✅ Independent enable/disable per feature
+// ✅ Different models per feature if needed
 
 model CompanyAIConfig {
   id                        String    @id @default(cuid())
   companyId                 String    @unique
   
-  // Primary AI Provider (JSON string - parsed at runtime)
-  // Contains: { provider, apiKey, model, baseUrl, maxTokens, temperature, enabled, rateLimitRpm, monthlyTokenQuota }
-  primaryProvider           String    @default("{}")
+  // ═══════════════════════════════════════════════════════════
+  // PER-FEATURE API KEYS (Isolated Connections)
+  // Each feature gets its own API key → no shared bottleneck!
+  // ═══════════════════════════════════════════════════════════
   
-  // Fallback Provider (optional - if primary fails)
+  // 💬 Chat Feature - AI Conversations & Copilot
+  // Used for: Chat messages, Q&A, suggestions
+  chatApiKey                String    @default("")    // Encrypted key
+  chatModel                 String    @default("gemini-2.0-flash")
+  chatEnabled               Boolean   @default(false) // Founder must enable
+  chatRateLimitRpm          Int       @default(60)
+  chatTokensUsed            BigInt    @default(0)
+  chatRequestsCount         BigInt    @default(0)
+  
+  // 📄 Invoice Feature - Extraction & Processing
+  // Used for: Invoice OCR, data extraction, line items
+  invoiceApiKey             String    @default("")    // Encrypted key
+  invoiceModel              String    @default("gemini-2.0-flash")
+  invoiceEnabled            Boolean   @default(false)
+  invoiceRateLimitRpm       Int       @default(100)   // Higher limit for batch processing
+  invoiceTokensUsed         BigInt    @default(0)
+  invoiceRequestsCount      BigInt    @default(0)
+  
+  // 🔍 Smart Parse - Document Analysis
+  // Used for: Document parsing, categorization, matching
+  parseApiKey               String    @default("")    // Encrypted key
+  parseModel                String    @default("gemini-2.0-flash")
+  parseEnabled              Boolean   @default(false)
+  parseRateLimitRpm         Int       @default(80)
+  parseTokensUsed           BigInt    @default(0)
+  parseRequestsCount        BigInt    @default(0)
+  
+  // 🧠 Memory & Context - Conversation History
+  // Used for: Context storage, user preferences, learning
+  memoryApiKey              String    @default("")    // Encrypted key
+  memoryModel               String    @default("gemini-2.0-flash")
+  memoryEnabled             Boolean   @default(false)
+  memoryRateLimitRpm        Int       @default(30)   // Lower - less frequent
+  memoryTokensUsed          BigInt    @default(0)
+  memoryRequestsCount       BigInt    @default(0)
+  
+  // ═══════════════════════════════════════════════════════════
+  // SHARED CONFIGURATION
+  // ═══════════════════════════════════════════════════════════
+  
+  // Default provider info (for backward compatibility)
+  primaryProvider           String    @default("{}")
   fallbackProvider          String?
   
   // Company-specific system prompt for AI context
   systemPrompt              String    @default("")
-  
-  // Feature toggles per company
-  enableChat                Boolean   @default(true)
-  enableSmartParse          Boolean   @default(true)
-  enableInvoiceExtraction   Boolean   @default(true)
-  enableMemory              Boolean   @default(true)
   
   // Memory configuration
   memoryRetentionDays       Int       @default(30)
@@ -1991,7 +2042,7 @@ model CompanyAIConfig {
   notifyHighUsage           Boolean   @default(true)
   usageNotificationThreshold Int      @default(80) // %
   
-  // Usage tracking (reset monthly)
+  // Global usage tracking (reset monthly)
   tokensUsedThisMonth       BigInt    @default(0)
   requestsThisMonth         BigInt    @default(0)
   lastResetAt               DateTime  @default(now())

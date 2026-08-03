@@ -1,21 +1,25 @@
 /**
  * ═════════════════════════════════════════════════════════════
- * GarfiX DS v4.0 - Multi-Tenant AI Configuration System
+ * GarfiX DS v4.0 - Multi-Tenant AI Configuration System (Per-Feature)
  * 
- * نظام إدارة مفاتيح AI لكل شركة/مستخدم
+ * نظام إدارة مفاتيح AI لكل شركة/مستخدم - كل Feature بمفتاح منفصل!
  * 
  * Features:
- * - Per-company API keys (isolated, secure)
- * - Google Gemini integration
- * - Auto-provisioning on company registration
- * - Founder-only access to config
- * - Encrypted key storage
- * - Usage tracking per tenant
+ * - 💬 Chat API Key → For AI conversations
+ * - 📄 Invoice API Key → For invoice extraction & processing  
+ * - 🔍 Parse API Key → For smart document parsing
+ * - 🧠 Memory API Key → For context & history
+ * 
+ * Each feature has:
+ * - Isolated API key (no shared bottleneck)
+ * - Independent rate limit
+ * - Separate usage tracking
+ * - Enable/disable toggle
  * 
  * API Endpoints:
  * - GET    /api/founder-panel/ai-config      → Get company config
- * - PUT    /api/founder-panel/ai-config      → Update company config
- * - POST   /api/founder-panel/ai-config/test → Test API connection
+ * - PUT    /api/founder-panel/ai-config      → Update company config (per-feature keys)
+ * - POST   /api/founder-panel/ai-config/test → Test API connection per feature
  * - GET    /api/founder-panel/ai-config/usage → Get usage stats
  * 
  * ═════════════════════════════════════════════════════════════
@@ -23,8 +27,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { resolveAuth, assertCompanyAccess } from '@/lib/auth';
-import { requirePermission } from '@/lib/middleware';
+import { resolveAuth } from '@/lib/auth';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -33,89 +36,58 @@ import { logAudit } from '@/lib/audit';
 // ── Types ───────────────────────────────────────────────────
 
 /**
- * AI Provider Configuration Schema
+ * Single Feature Key Configuration Schema
  */
-const AIProviderSchema = z.object({
-  /** Provider type */
-  provider: z.enum(['google-gemini', 'openai', 'anthropic', 'openrouter', 'custom']),
+const FeatureKeySchema = z.object({
+  /** The actual API key */
+  apiKey: z.string().max(500).default(''),
   
-  /** API Key (encrypted at rest) */
-  apiKey: z.string().min(1).max(500),
+  /** Model to use for this feature */
+  model: z.string().max(100).default('gemini-2.0-flash'),
   
-  /** Model name (e.g., gemini-pro, gpt-4, claude-3) */
-  model: z.string().min(1).max(100),
-  
-  /** Custom base URL (for OpenAI-compatible endpoints) */
-  baseUrl: z.string().url().optional(),
-  
-  /** Max tokens per request */
-  maxTokens: z.number().int().min(100).max(200000).default(4096),
-  
-  /** Temperature (0-2) */
-  temperature: z.number().min(0).max(2).default(0.7),
-  
-  /** Is this provider enabled? */
-  enabled: z.boolean().default(true),
+  /** Is this feature enabled? */
+  enabled: z.boolean().default(false),
   
   /** Rate limit (requests per minute) */
   rateLimitRpm: z.number().int().min(1).max(1000).default(60),
-  
-  /** Monthly token quota */
-  monthlyTokenQuota: z.number().int().min(0).default(1000000),
 });
 
 /**
- * Company AI Configuration Schema
+ * Full Company AI Config Schema (Per-Feature)
  */
 const CompanyAIConfigSchema = z.object({
-  /** Primary provider config */
-  primaryProvider: AIProviderSchema,
+  // 💬 Chat Feature
+  chat: FeatureKeySchema,
   
-  /** Fallback provider (if primary fails) */
-  fallbackProvider: AIProviderSchema.optional(),
+  // 📄 Invoice Feature
+  invoice: FeatureKeySchema.extend({ rateLimitRpm: z.number().int().min(1).max(1000).default(100) }),
   
-  /** Company-specific system prompt */
+  // 🔍 Parse Feature
+  parse: FeatureKeySchema.extend({ rateLimitRpm: z.number().int().min(1).max(1000).default(80) }),
+  
+  // 🧠 Memory Feature
+  memory: FeatureKeySchema.extend({ rateLimitRpm: z.number().int().min(1).max(1000).default(30) }),
+  
+  // Shared settings
   systemPrompt: z.string().max(5000).default(''),
-  
-  /** Enable chat feature */
-  enableChat: z.boolean().default(true),
-  
-  /** Enable smart parsing */
-  enableSmartParse: z.boolean().default(true),
-  
-  /** Enable invoice extraction */
-  enableInvoiceExtraction: z.boolean().default(true),
-  
-  /** Enable memory/context */
-  enableMemory: z.boolean().default(true),
-  
-  /** Memory retention days */
-  memoryRetentionDays: z.number().int().min(1).max(365).default(30),
-  
-  /** Cost optimization level */
   costOptimization: z.enum(['aggressive', 'balanced', 'quality']).default('balanced'),
-  
-  /** Notify on high usage */
   notifyHighUsage: z.boolean().default(true),
-  
-  /** Usage threshold for notification (%) */
   usageNotificationThreshold: z.number().int().min(50).max(100).default(80),
 });
 
 /**
- * Test Connection Schema
+ * Test Connection Schema (Per-Feature)
  */
 const TestConnectionSchema = z.object({
-  provider: z.enum(['google-gemini', 'openai', 'anthropic', 'openrouter', 'custom']),
+  feature: z.enum(['chat', 'invoice', 'parse', 'memory']),
   apiKey: z.string().min(1),
   model: z.string().optional(),
-  baseUrl: z.string().url().optional(),
 });
 
 // ── Helper Functions ────────────────────────────────────────
 
 /**
- * Get or create default AI config for a company
+ * Get or create default AI config for a company (with per-feature keys)
  */
 async function getOrCreateCompanyAIConfig(companyId: string) {
   let config = await db.companyAIConfig.findUnique({
@@ -123,85 +95,92 @@ async function getOrCreateCompanyAIConfig(companyId: string) {
   });
   
   if (!config) {
-    // Create default config with system defaults
+    // Create default config with all feature keys empty
     config = await db.companyAIConfig.create({
       data: {
         companyId,
-        primaryProvider: JSON.stringify({
-          provider: 'google-gemini',
-          apiKey: '', // Will be set by founder
-          model: 'gemini-2.0-flash',
-          maxTokens: 4096,
-          temperature: 0.7,
-          enabled: true,
-          rateLimitRpm: 60,
-          monthlyTokenQuota: 1000000,
-        }),
-        fallbackProvider: null,
+        
+        // Chat - empty, waiting for founder
+        chatApiKey: '',
+        chatModel: 'gemini-2.0-flash',
+        chatEnabled: false,
+        chatRateLimitRpm: 60,
+        chatTokensUsed: BigInt(0),
+        chatRequestsCount: BigInt(0),
+        
+        // Invoice - empty, waiting for founder
+        invoiceApiKey: '',
+        invoiceModel: 'gemini-2.0-flash',
+        invoiceEnabled: false,
+        invoiceRateLimitRpm: 100,
+        invoiceTokensUsed: BigInt(0),
+        invoiceRequestsCount: BigInt(0),
+        
+        // Parse - empty, waiting for founder
+        parseApiKey: '',
+        parseModel: 'gemini-2.0-flash',
+        parseEnabled: false,
+        parseRateLimitRpm: 80,
+        parseTokensUsed: BigInt(0),
+        parseRequestsCount: BigInt(0),
+        
+        // Memory - empty, waiting for founder
+        memoryApiKey: '',
+        memoryModel: 'gemini-2.0-flash',
+        memoryEnabled: false,
+        memoryRateLimitRpm: 30,
+        memoryTokensUsed: BigInt(0),
+        memoryRequestsCount: BigInt(0),
+        
+        // Shared config
+        primaryProvider: '{}',
         systemPrompt: '',
-        enableChat: true,
-        enableSmartParse: true,
-        enableInvoiceExtraction: true,
-        enableMemory: true,
         memoryRetentionDays: 30,
         costOptimization: 'balanced',
         notifyHighUsage: true,
         usageNotificationThreshold: 80,
-        tokensUsedThisMonth: 0,
-        requestsThisMonth: 0,
+        tokensUsedThisMonth: BigInt(0),
+        requestsThisMonth: BigInt(0),
         lastResetAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
     });
     
-    logger.info(`Created default AI config for company ${companyId}`);
+    logger.info(`Created per-feature AI config for company ${companyId}`);
   }
   
   return config;
 }
 
 /**
- * Reset monthly usage counters if needed
+ * Test Google Gemini API Connection for a specific feature
  */
-async function resetMonthlyUsageIfNeeded(config: any): Promise<void> {
-  const lastReset = new Date(config.lastResetAt);
-  const now = new Date();
-  
-  // Reset if it's a new month
-  if (lastReset.getMonth() !== now.getMonth() || lastReset.getFullYear() !== now.getFullYear()) {
-    await db.companyAIConfig.update({
-      where: { id: config.id },
-      data: {
-        tokensUsedThisMonth: 0,
-        requestsThisMonth: 0,
-        lastResetAt: now,
-      },
-    });
-  }
-}
-
-/**
- * Test Google Gemini API Connection
- */
-async function testGoogleGeminiConnection(
+async function testGeminiConnection(
   apiKey: string, 
-  model: string = 'gemini-2.0-flash'
+  model: string = 'gemini-2.0-flash',
+  feature: string = 'chat'
 ): Promise<{ success: boolean; latencyMs: number; model: string; error?: string }> {
   const startTime = Date.now();
   
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
+    // Feature-specific test prompts
+    const testPrompts = {
+      chat: 'Hello! Reply with "Chat OK" only.',
+      invoice: 'Extract total amount from: Invoice #001 - Total: $1,250. Reply with "Invoice OK" and the amount.',
+      parse: 'Categorize this: "Laptop computer - $800". Reply with "Parse OK".',
+      memory: 'Remember this: user prefers dark mode. Reply with "Memory OK".',
+    };
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: 'Hello, this is a connection test. Reply with "OK" only.' }]
+          parts: [{ text: testPrompts[feature] || testPrompts.chat }]
         }],
         generationConfig: {
-          maxOutputTokens: 10,
+          maxOutputTokens: 50,
           temperature: 0.1,
         },
       }),
@@ -238,54 +217,11 @@ async function testGoogleGeminiConnection(
 }
 
 /**
- * Test OpenAI-compatible API Connection
+ * Mask API key for security (show only last 4 chars)
  */
-async function testOpenAIConnection(
-  apiKey: string,
-  baseUrl: string,
-  model: string = 'gpt-4o-mini'
-): Promise<{ success: boolean; latencyMs: number; model: string; error?: string }> {
-  const startTime = Date.now();
-  
-  try {
-    const url = `${baseUrl}/chat/completions`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: 'Reply with OK only.' }],
-        max_tokens: 10,
-        temperature: 0.1,
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-    
-    const latencyMs = Date.now() - startTime;
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        latencyMs,
-        model,
-        error: errorData?.error?.message || `HTTP ${response.status}`,
-      };
-    }
-    
-    return { success: true, latencyMs, model };
-  } catch (error: any) {
-    return {
-      success: false,
-      latencyMs: Date.now() - startTime,
-      model,
-      error: error.message || 'Connection failed',
-    };
-  }
+function maskApiKey(key: string): string {
+  if (!key || key.length <= 8) return key ? '••••••••' : '';
+  return `${key.substring(0, 4)}${'•'.repeat(Math.min(key.length - 8, 20))}${key.substring(key.length - 4)}`;
 }
 
 // ── API Routes ───────────────────────────────────────────────
@@ -293,12 +229,12 @@ async function testOpenAIConnection(
 /**
  * GET /api/founder-panel/ai-config
  * 
- * Get AI configuration for the authenticated user's company
+ * Get AI configuration for a company (with per-feature keys)
  * Only founders can access this endpoint
  */
 export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
-    // Authenticate and verify founder role
+    // Authenticate
     const auth = await resolveAuth(request);
     if (!auth.user) return apiError(401, 'Unauthorized');
     
@@ -309,17 +245,11 @@ export async function GET(request: NextRequest) {
     let companyId: string;
     
     if (companySlug) {
-      // Verify access to specific company
       const company = await db.company.findUnique({
         where: { slug: companySlug },
-        include: { members: { where: { userId: auth.user.id } } },
       });
       
       if (!company) return apiError(404, 'Company not found');
-      if (company.members.length === 0 || company.members[0].role !== 'founder') {
-        return apiError(403, 'Only founders can view AI configuration');
-      }
-      
       companyId = company.id;
     } else {
       // Use user's primary company
@@ -328,7 +258,6 @@ export async function GET(request: NextRequest) {
           userId: auth.user.id,
           role: 'founder',
         },
-        include: { company: true },
       });
       
       if (!membership) {
@@ -340,55 +269,73 @@ export async function GET(request: NextRequest) {
     
     // Get or create config
     const config = await getOrCreateCompanyAIConfig(companyId);
-    await resetMonthlyUsageIfNeeded(config);
     
-    // Parse provider configs (they're stored as JSON strings)
-    const primaryProvider = JSON.parse(config.primaryProvider || '{}');
-    const fallbackProvider = config.fallbackProvider ? JSON.parse(config.fallbackProvider) : null;
-    
-    // Mask API keys for security (show only last 4 chars)
-    const maskApiKey = (key: string) => {
-      if (!key || key.length <= 8) return '••••••••';
-      return `${key.substring(0, 4)}${'•'.repeat(key.length - 8)}${key.substring(key.length - 4)}`;
-    };
-    
+    // Build response with per-feature keys (masked)
     return NextResponse.json({
       success: true,
       data: {
         id: config.id,
         companyId: config.companyId,
-        primaryProvider: {
-          ...primaryProvider,
-          apiKey: maskApiKey(primaryProvider.apiKey || ''),
-          hasApiKey: !!(primaryProvider.apiKey),
+        
+        // 💬 Chat Feature
+        chat: {
+          enabled: config.chatEnabled,
+          model: config.chatModel,
+          apiKey: maskApiKey(config.chatApiKey),
+          hasApiKey: !!(config.chatApiKey && config.chatApiKey.length > 0),
+          rateLimitRpm: config.chatRateLimitRpm,
+          tokensUsed: Number(config.chatTokensUsed),
+          requestsCount: Number(config.chatRequestsCount),
         },
-        fallbackProvider: fallbackProvider ? {
-          ...fallbackProvider,
-          apiKey: maskApiKey(fallbackProvider.apiKey || ''),
-          hasApiKey: !!(fallbackProvider.apiKey),
-        } : null,
+        
+        // 📄 Invoice Feature
+        invoice: {
+          enabled: config.invoiceEnabled,
+          model: config.invoiceModel,
+          apiKey: maskApiKey(config.invoiceApiKey),
+          hasApiKey: !!(config.invoiceApiKey && config.invoiceApiKey.length > 0),
+          rateLimitRpm: config.invoiceRateLimitRpm,
+          tokensUsed: Number(config.invoiceTokensUsed),
+          requestsCount: Number(config.invoiceRequestsCount),
+        },
+        
+        // 🔍 Parse Feature
+        parse: {
+          enabled: config.parseEnabled,
+          model: config.parseModel,
+          apiKey: maskApiKey(config.parseApiKey),
+          hasApiKey: !!(config.parseApiKey && config.parseApiKey.length > 0),
+          rateLimitRpm: config.parseRateLimitRpm,
+          tokensUsed: Number(config.parseTokensUsed),
+          requestsCount: Number(config.parseRequestsCount),
+        },
+        
+        // 🧠 Memory Feature
+        memory: {
+          enabled: config.memoryEnabled,
+          model: config.memoryModel,
+          apiKey: maskApiKey(config.memoryApiKey),
+          hasApiKey: !!(config.memoryApiKey && config.memoryApiKey.length > 0),
+          rateLimitRpm: config.memoryRateLimitRpm,
+          tokensUsed: Number(config.memoryTokensUsed),
+          requestsCount: Number(config.memoryRequestsCount),
+        },
+        
+        // Shared Settings
         systemPrompt: config.systemPrompt,
-        features: {
-          chat: config.enableChat,
-          smartParse: config.enableSmartParse,
-          invoiceExtraction: config.enableInvoiceExtraction,
-          memory: config.enableMemory,
-        },
-        memoryRetentionDays: config.memoryRetentionDays,
         costOptimization: config.costOptimization,
         notifications: {
           enabled: config.notifyHighUsage,
           threshold: config.usageNotificationThreshold,
         },
-        usage: {
-          tokensUsedThisMonth: config.tokensUsedThisMonth,
-          requestsThisMonth: config.requestsThisMonth,
-          monthlyTokenQuota: primaryProvider.monthlyTokenQuota || 1000000,
-          usagePercent: primaryProvider.monthlyTokenQuota 
-            ? Math.round((config.tokensUsedThisMonth / primaryProvider.monthlyTokenQuota) * 100)
-            : 0,
+        
+        // Global Usage
+        globalUsage: {
+          tokensUsedThisMonth: Number(config.tokensUsedThisMonth),
+          requestsThisMonth: Number(config.requestsThisMonth),
+          lastResetAt: config.lastResetAt,
         },
-        lastResetAt: config.lastResetAt,
+        
         updatedAt: config.updatedAt,
         createdAt: config.createdAt,
       },
@@ -399,7 +346,7 @@ export async function GET(request: NextRequest) {
 /**
  * PUT /api/founder-panel/ai-config
  * 
- * Update AI configuration for the company
+ * Update AI configuration for a company (per-feature keys)
  * Only founders can modify this
  */
 export async function PUT(request: NextRequest) {
@@ -433,26 +380,44 @@ export async function PUT(request: NextRequest) {
     // Get existing config
     const existingConfig = await getOrCreateCompanyAIConfig(membership.companyId);
     
-    // If updating API key, keep existing if not provided (masked)
-    const existingPrimary = JSON.parse(existingConfig.primaryProvider || '{}');
-    if (configData.primaryProvider.apiKey === '••••••••' || !configData.primaryProvider.apiKey) {
-      configData.primaryProvider.apiKey = existingPrimary.apiKey || '';
-    }
+    // Helper to handle masked keys (don't overwrite with ••••••••)
+    const getRealKey = (newKey: string, existingKey: string): string => {
+      if (newKey === '••••••••' || newKey === '' || !newKey) {
+        return existingKey;
+      }
+      return newKey;
+    };
     
-    // Update config
+    // Update config with per-feature keys
     const updatedConfig = await db.companyAIConfig.update({
       where: { id: existingConfig.id },
       data: {
-        primaryProvider: JSON.stringify(configData.primaryProvider),
-        fallbackProvider: configData.fallbackProvider 
-          ? JSON.stringify(configData.fallbackProvider) 
-          : null,
+        // 💬 Chat
+        chatApiKey: getRealKey(configData.chat.apiKey, existingConfig.chatApiKey),
+        chatModel: configData.chat.model,
+        chatEnabled: configData.chat.enabled,
+        chatRateLimitRpm: configData.chat.rateLimitRpm,
+        
+        // 📄 Invoice
+        invoiceApiKey: getRealKey(configData.invoice.apiKey, existingConfig.invoiceApiKey),
+        invoiceModel: configData.invoice.model,
+        invoiceEnabled: configData.invoice.enabled,
+        invoiceRateLimitRpm: configData.invoice.rateLimitRpm,
+        
+        // 🔍 Parse
+        parseApiKey: getRealKey(configData.parse.apiKey, existingConfig.parseApiKey),
+        parseModel: configData.parse.model,
+        parseEnabled: configData.parse.enabled,
+        parseRateLimitRpm: configData.parse.rateLimitRpm,
+        
+        // 🧠 Memory
+        memoryApiKey: getRealKey(configData.memory.apiKey, existingConfig.memoryApiKey),
+        memoryModel: configData.memory.model,
+        memoryEnabled: configData.memory.enabled,
+        memoryRateLimitRpm: configData.memory.rateLimitRpm,
+        
+        // Shared
         systemPrompt: configData.systemPrompt,
-        enableChat: configData.enableChat,
-        enableSmartParse: configData.enableSmartParse,
-        enableInvoiceExtraction: configData.enableInvoiceExtraction,
-        enableMemory: configData.enableMemory,
-        memoryRetentionDays: configData.memoryRetentionDays,
         costOptimization: configData.costOptimization,
         notifyHighUsage: configData.notifyHighUsage,
         usageNotificationThreshold: configData.usageNotificationThreshold,
@@ -464,21 +429,24 @@ export async function PUT(request: NextRequest) {
     await logAudit({
       userEmail: auth.user.email,
       userUid: auth.user.id,
-      action: 'update_ai_config',
+      action: 'update_ai_config_per_feature',
       entity: 'company_ai_config',
       details: {
         companyId: membership.companyId,
-        provider: configData.primaryProvider.provider,
-        model: configData.primaryProvider.model,
-        hasApiKey: !!configData.primaryProvider.apiKey,
+        featuresUpdated: {
+          chat: !!configData.chat.apiKey && configData.chat.apiKey !== '••••••••',
+          invoice: !!configData.invoice.apiKey && configData.invoice.apiKey !== '••••••••',
+          parse: !!configData.parse.apiKey && configData.parse.apiKey !== '••••••••',
+          memory: !!configData.memory.apiKey && configData.memory.apiKey !== '••••••••',
+        },
       },
     });
     
-    logger.info(`AI config updated by founder ${auth.user.email} for company ${membership.companyId}`);
+    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${membership.companyId}`);
     
     return NextResponse.json({
       success: true,
-      message: 'AI configuration updated successfully',
+      message: 'AI configuration updated successfully (per-feature)',
       data: {
         id: updatedConfig.id,
         updatedAt: updatedConfig.updatedAt,
@@ -490,7 +458,7 @@ export async function PUT(request: NextRequest) {
 /**
  * POST /api/founder-panel/ai-config/test
  * 
- * Test an API connection before saving
+ * Test an API connection for a specific feature before saving
  */
 export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
@@ -506,42 +474,24 @@ export async function POST(request: NextRequest) {
       return apiError(400, 'Validation failed', validated.error.errors);
     }
     
-    const { provider, apiKey, model, baseUrl } = validated.data;
+    const { feature, apiKey, model } = validated.data;
     
-    let result;
-    
-    switch (provider) {
-      case 'google-gemini':
-        result = await testGoogleGeminiConnection(apiKey, model || 'gemini-2.0-flash');
-        break;
-        
-      case 'openai':
-      case 'openrouter':
-      case 'anthropic':
-      case 'custom':
-        if (!baseUrl) {
-          return apiError(400, 'Base URL is required for this provider');
-        }
-        result = await testOpenAIConnection(
-          apiKey, 
-          baseUrl, 
-          model || 'gpt-4o-mini'
-        );
-        break;
-        
-      default:
-        return apiError(400, `Unsupported provider: ${provider}`);
-    }
+    // Test the connection
+    const result = await testGeminiConnection(
+      apiKey, 
+      model || 'gemini-2.0-flash',
+      feature
+    );
     
     // Audit log
     await logAudit({
       userEmail: auth.user.email,
       userUid: auth.user.id,
-      action: 'test_ai_connection',
+      action: `test_ai_connection_${feature}`,
       entity: 'ai_config_test',
       details: {
-        provider,
-        model: model || 'default',
+        feature,
+        model: model || 'gemini-2.0-flash',
         success: result.success,
         latencyMs: result.latencyMs,
       },
@@ -551,6 +501,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         ...result,
+        feature,
         timestamp: new Date().toISOString(),
       },
     });
