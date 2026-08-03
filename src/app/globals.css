@@ -1850,4 +1850,130 @@
       color: #666;
     }
   }
+
+  /* ════════════════════════════════════════════════════════════════════════
+   * SECTION H: Mobile-First Enhancements (Quick Win v4.0.1)
+   * Touch targets, safe areas, gesture support
+   * ════════════════════════════════════════════════════════════════════════ */
+  
+  /* Touch-friendly sizing (44px minimum for iOS/Android) */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .touch-target-sm {
+    min-height: 36px;
+    min-width: 36px;
+  }
+  
+  /* Safe area insets for notched devices */
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Prevent text size adjustment on landscape mobile */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Smooth scrolling on mobile */
+  @supports (scroll-behavior: smooth) {
+    html {
+      scroll-behavior: smooth;
+    }
+    /* Respect user preference for reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+  }
+  
+  /* Mobile-specific card adjustments */
+  @media (max-width: 640px) {
+    /* Larger touch targets on cards */
+    .glass-strong, 
+    [class*="rounded-xl"],
+    [class*="Card"] {
+      border-radius: 12px;
+    }
+    
+    /* Better spacing for thumbs */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    select,
+    textarea {
+      font-size: 16px !important; /* Prevent iOS zoom */
+    }
+    
+    /* Full-width buttons on mobile */
+    .btn-mobile-full {
+      width: 100% !important;
+    }
+    
+    /* Stack flex containers vertically */
+    .mobile-stack {
+      flex-direction: column !important;
+    }
+    
+    /* Reduce padding on small screens */
+    .mobile-compact {
+      padding: 0.75rem !important;
+    }
+    
+    /* Hide decorative elements on mobile */
+    .hide-on-mobile-decorative {
+      display: none !important;
+    }
+  }
+  
+  /* Tablet optimizations (641px - 1024px) */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .tablet-two-col {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+  
+  /* Large screen enhancements */
+  @media (min-width: 1440px) {
+    .container-garfix {
+      max-width: 1320px;
+    }
+  }
+  
+  /* Gesture feedback for touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    /* Remove hover effects on touch devices */
+    .hover-lift:hover {
+      transform: none;
+    }
+    
+    /* Add active feedback instead */
+    .touch-feedback:active {
+      opacity: 0.8;
+      transform: scale(0.98);
+      transition: all 100ms ease-out;
+    }
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    :root {
+      --border-opacity: 1;
+      --muted-foreground: #a1a1aa;
+    }
+    
+    .glass-strong {
+      background: var(--card);
+      border-width: 2px;
+    }
+  }
 }
