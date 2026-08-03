@@ -323,3 +323,35 @@ export type {
   GarfixPersonalizedActionsProps,
   GarfixAILearningProgressProps,
 } from './ai'
+
+// ── 10. Animation Components (نظام الحركة المتقدم) ─────────────────
+
+export {
+  GarfixAnimatedContainer,
+  FadeIn,
+  FadeUp,
+  ScaleIn,
+  SlideDown,
+  GarfixMotionDiv,
+  MotionCard,
+  MotionButton,
+  MotionListItem,
+  GarfixPageTransition,
+  FadeTransition,
+  SlideUpTransition,
+  BlurTransition,
+  GarfixLayoutTransition,
+  GarfixAnimatedCounter,
+  GarfixCircularProgress,
+  GarfixStatCounter,
+} from './animations'
+
+export type {
+  AnimatedContainerProps,
+  MotionDivProps,
+  PageTransitionProps,
+  LayoutTransitionProps,
+  AnimatedCounterProps,
+  CircularProgressProps,
+  StatCounterProps,
+} from './animations'
