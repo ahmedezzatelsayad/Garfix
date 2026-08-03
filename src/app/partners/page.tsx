@@ -83,7 +83,7 @@ export default function PartnersPage() {
                 <ul className="space-y-1.5">
                   {partner.benefits.map((b) => (
                     <li key={b} className="flex items-center gap-2 text-[13px] text-white/70">
-                      <CheckCircle size={14} className="text-[#a78bfa] shrink-0" />
+                      <CheckCircle size={14} className="text-emerald-400 shrink-0" />
                       {b}
                     </li>
                   ))}
@@ -104,7 +104,7 @@ export default function PartnersPage() {
               { step: "4", title: "إطلاق الشراكة", desc: "توقيع اتفاقية الشراكة واستلام الأدوات التسويقية والبدء في التعاون" },
             ].map((item) => (
               <div key={item.step} className="flex gap-4 bg-white/[0.03] rounded-xl p-5 border border-white/[0.06]">
-                <div className="w-10 h-10 rounded-full bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {item.step}
                 </div>
                 <div>
@@ -117,15 +117,15 @@ export default function PartnersPage() {
         </section>
 
         {/* CTA */}
-        <div className="bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.2)] rounded-xl p-8 text-center">
-          <Handshake size={36} className="text-[#c4b5fd] mx-auto mb-4" />
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center">
+          <Handshake size={36} className="text-emerald-400 mx-auto mb-4" />
           <h3 className="font-extrabold text-white text-lg mb-2">هل أنت مستعد للشراكة؟</h3>
           <p className="text-white/60 text-sm mb-5 max-w-[500px] mx-auto">
             تواصل معنا اليوم واستكشف فرص الشراكة التي تناسب أعمالك
           </p>
           <Link
             href="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white font-bold text-sm no-underline transition-all hover:shadow-[0_4px_12px_rgba(124,58,237,0.3)]"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm no-underline transition-all hover:shadow-brand-md active-press duration-150"
           >
             تقدم بطلب الشراكة
             <ArrowRight size={16} />

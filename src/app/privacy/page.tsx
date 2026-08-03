@@ -31,21 +31,21 @@ export default function PrivacyPage() {
           </p>
           <div className="bg-white/[0.03] rounded-xl p-5 space-y-4">
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">أ. بيانات الحساب</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">أ. بيانات الحساب</h3>
               <p>
                 عند إنشاء حساب، نجمع اسمك الكامل وعنوان بريدك الإلكتروني ورقم الهاتف واسم شركتك
                 ومعلومات التسجيل التجاري. هذه البيانات ضرورية لإنشاء هويتك على المنصة وربطك بشركتك.
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">ب. بيانات الأعمال</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">ب. بيانات الأعمال</h3>
               <p>
                 تشمل بيانات الفواتير والعملاء والموردين والمشتريات والمحاسبة والموارد البشرية التي تدخلها
                 في المنصة. هذه البيانات ملكك تماماً ولا نستخدمها لأي غرض سوى تقديم الخدمة المتفق عليها.
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">ج. بيانات الاستخدام</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">ج. بيانات الاستخدام</h3>
               <p>
                 نجمع بيانات حول كيفية تفاعلك مع المنصة، مثل الصفحات التي تزورها والميزات التي تستخدمها
                 وتكرار الاستخدام والأخطاء التقنية التي تواجهها. تساعدنا هذه البيانات في تحسين تجربة المستخدم
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">د. بيانات الجهاز</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">د. بيانات الجهاز</h3>
               <p>
                 نجمع معلومات تقنية تلقائية مثل نوع المتصفح ونظام التشغيل ودقة الشاشة وعنوان IP
                 ونوع الجهاز. تُستخدم هذه البيانات لضمان التوافق التقني وتوفير تجربة سلسة عبر جميع الأجهزة.
@@ -106,8 +106,8 @@ export default function PrivacyPage() {
               { title: "نسخ احتياطي مشفر", desc: "نسخ احتياطية يومية مشفرة لضمان استمرارية البيانات" },
               { title: "مراقبة مستمرة", desc: "أنظمة كشف التسلل ومراقبة الأنشطة المشبوهة على مدار الساعة" },
             ].map((item) => (
-              <div key={item.title} className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.05]">
-                <div className="font-bold text-[#c4b5fd] text-sm mb-1">{item.title}</div>
+              <div key={item.title} className="bg-white/[0.03] rounded-lg p-4 border border-emerald-500/20 hover-lift duration-120 transition-all">
+                <div className="font-bold text-emerald-400 text-sm mb-1">{item.title}</div>
                 <div className="text-white/60 text-[13px]">{item.desc}</div>
               </div>
             ))}
@@ -133,7 +133,7 @@ export default function PrivacyPage() {
           <p>
             نستخدم ملفات تعريف الارتباط والتقنيات المشابهة لتحسين تجربتك. للحصول على تفاصيل كاملة حول
             كيفية استخدامنا لهذه التقنيات وخيارات التحكم المتاحة لك، يُرجى الاطلاع على{" "}
-            <Link href="/cookies" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/cookies" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
               سياسة إدارة ملفات تعريف الارتباط
             </Link>.
           </p>
@@ -168,7 +168,7 @@ export default function PrivacyPage() {
           <p>
             إذا كان لديك أي أسئلة أو استفسارات حول سياسة الخصوصية أو كيفية تعاملنا مع بياناتك،
             يمكنك التواصل معنا من خلال{" "}
-            <Link href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
               صفحة التواصل
             </Link>{" "}
             أو إرسال بريد إلكتروني إلى فريق حماية البيانات. نلتزم بالرد على جميع الاستفسارات

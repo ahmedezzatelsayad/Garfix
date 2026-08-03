@@ -34,9 +34,9 @@ export default function RefundPage() {
 
         <section>
           <h2 className="text-xl font-extrabold text-white mb-3">3. ضمان استرداد 14 يوماً</h2>
-          <div className="bg-[rgba(124,58,237,0.1)] border border-[rgba(124,58,237,0.25)] rounded-xl p-6 mb-4">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 mb-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-xl bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-white font-black text-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-center text-white font-black text-lg">
                 14
               </div>
               <div>
@@ -96,7 +96,7 @@ export default function RefundPage() {
               { step: "4", title: "تصدير البيانات", desc: "يُنصح بتصدير بياناتك قبل معالجة الاسترداد — يتوفر 30 يوماً للتصدير بعد الإلغاء" },
             ].map((item) => (
               <div key={item.step} className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {item.step}
                 </div>
                 <div>
@@ -123,11 +123,11 @@ export default function RefundPage() {
           <h2 className="text-xl font-extrabold text-white mb-3">8. التواصل</h2>
           <p>
             لطرح أي أسئلة حول سياسة الاسترداد أو لتقديم طلب استرداد، يمكنك التواصل معنا عبر{" "}
-            <Link href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
               صفحة التواصل
             </Link>{" "}
             أو زيارة{" "}
-            <Link href="/help" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/help" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
               مركز المساعدة
             </Link>. فريق الدعم متاح على مدار الساعة لمساعدتك.
           </p>

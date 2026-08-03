@@ -77,7 +77,7 @@ export default function HelpPage() {
     >
       <div className="space-y-10 text-white/80 text-[15px] leading-[1.9]">
         {/* بحث سريع */}
-        <div className="bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.2)] rounded-xl p-6 text-center">
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center">
           <div className="flex items-center gap-3 max-w-[500px] mx-auto bg-white/[0.05] border border-white/[0.1] rounded-lg px-4 py-3">
             <Search size={18} className="text-white/40" />
             <input
@@ -102,7 +102,7 @@ export default function HelpPage() {
               href={link.href}
               className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/70 hover:text-white hover:bg-white/[0.06] transition-all no-underline"
             >
-              <div className="text-[#c4b5fd]">{link.icon}</div>
+              <div className="text-emerald-400">{link.icon}</div>
               <span className="text-xs font-bold">{link.label}</span>
             </Link>
           ))}
@@ -118,7 +118,7 @@ export default function HelpPage() {
                 className="bg-white/[0.03] rounded-xl p-5 border border-white/[0.06]"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-[rgba(124,58,237,0.15)] flex items-center justify-center text-[#c4b5fd]">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
                     {cat.icon}
                   </div>
                   <h3 className="font-extrabold text-white text-sm">{cat.title}</h3>
@@ -156,14 +156,14 @@ export default function HelpPage() {
         </div>
 
         {/* التواصل */}
-        <div className="bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.2)] rounded-xl p-8 text-center">
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center">
           <h3 className="font-extrabold text-white text-lg mb-2">لم تجد إجابتك؟</h3>
           <p className="text-white/60 text-sm mb-4">
             فريق الدعم الفني متاح على مدار الساعة لمساعدتك
           </p>
           <Link
             href="/contact"
-            className="inline-block px-6 py-3 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white font-bold text-sm no-underline transition-all hover:shadow-[0_4px_12px_rgba(124,58,237,0.3)]"
+            className="inline-block px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm no-underline transition-all hover:shadow-[0_4px_12px_rgba(4,120,87,0.4)] active-press duration-150"
           >
             تواصل مع الدعم
           </Link>

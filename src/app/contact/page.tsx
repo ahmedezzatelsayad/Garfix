@@ -69,12 +69,12 @@ export default function ContactPage() {
               rel={method.action.startsWith("http") ? "noopener noreferrer" : undefined}
               className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 flex gap-4 items-start no-underline hover:bg-white/[0.06] transition-all group"
             >
-              <div className="w-11 h-11 rounded-lg bg-[rgba(124,58,237,0.15)] flex items-center justify-center text-[#c4b5fd] shrink-0 group-hover:bg-[rgba(124,58,237,0.25)] transition-all">
+              <div className="w-11 h-11 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 group-hover:bg-emerald-500/30 transition-all">
                 {method.icon}
               </div>
               <div>
                 <div className="font-bold text-white text-sm mb-0.5">{method.title}</div>
-                <div className="text-[#c4b5fd] text-sm font-bold mb-1">{method.detail}</div>
+                <div className="text-emerald-400 text-sm font-bold mb-1">{method.detail}</div>
                 <div className="text-white/50 text-[12px]">{method.desc}</div>
               </div>
             </a>
@@ -82,8 +82,8 @@ export default function ContactPage() {
         </div>
 
         {/* ساعات العمل */}
-        <div className="bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.2)] rounded-xl p-5 flex items-center gap-4">
-          <Clock size={22} className="text-[#c4b5fd] shrink-0" />
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5 flex items-center gap-4">
+          <Clock size={22} className="text-emerald-400 shrink-0" />
           <div>
             <div className="font-bold text-white text-sm mb-0.5">ساعات العمل</div>
             <div className="text-white/60 text-[13px]">
@@ -109,7 +109,7 @@ export default function ContactPage() {
                   value={formData.name}
                   onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus:border-[#7c3aed] transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
                   placeholder="أدخل اسمك"
                   dir="rtl"
                 />
@@ -121,7 +121,7 @@ export default function ContactPage() {
                   value={formData.email}
                   onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus:border-[#7c3aed] transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
                   placeholder="example@email.com"
                   dir="ltr"
                 />
@@ -133,7 +133,7 @@ export default function ContactPage() {
                 value={formData.subject}
                 onChange={(e) => setFormData((p) => ({ ...p, subject: e.target.value }))}
                 required
-                className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus:border-[#7c3aed] transition-colors appearance-none"
+                className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors appearance-none"
               >
                 <option value="" className="bg-[#1a1035]">اختر الموضوع</option>
                 <option value="support" className="bg-[#1a1035]">دعم فني</option>
@@ -151,14 +151,14 @@ export default function ContactPage() {
                 onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
                 required
                 rows={5}
-                className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus:border-[#7c3aed] transition-colors resize-y"
+                className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors resize-y"
                 placeholder="اكتب رسالتك هنا..."
                 dir="rtl"
               />
             </div>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white font-bold text-sm cursor-pointer transition-all hover:shadow-[0_4px_12px_rgba(124,58,237,0.3)] border-none"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer transition-all hover:shadow-brand-md active-press duration-150 border-none"
             >
               <Send size={16} />
               إرسال الرسالة

@@ -170,7 +170,7 @@ export default function StatusPage() {
         </section>
 
         {/* الاشتراك في التحديثات */}
-        <div className="bg-[rgba(124,58,237,0.08)] border border-[rgba(124,58,237,0.2)] rounded-xl p-6 text-center">
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center">
           <h3 className="font-bold text-white text-sm mb-2">اشترك في تحديثات حالة الخدمة</h3>
           <p className="text-white/50 text-[13px] mb-4">
             احصل على إشعارات فورية عند حدوث أي تغيير في حالة الخدمات
@@ -179,10 +179,10 @@ export default function StatusPage() {
             <input
               type="email"
               placeholder="بريدك الإلكتروني"
-              className="flex-1 px-4 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus:border-[#7c3aed] transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
               dir="ltr"
             />
-            <button className="px-5 py-2.5 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white font-bold text-sm cursor-pointer border-none transition-all hover:shadow-[0_4px_12px_rgba(124,58,237,0.3)] whitespace-nowrap">
+            <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer border-none transition-all hover:shadow-brand-md active-press duration-150 whitespace-nowrap">
               اشترك
             </button>
           </div>
