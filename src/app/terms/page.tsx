@@ -36,7 +36,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-extrabold text-white mb-3">3. الاشتراكات والفوترة</h2>
           <div className="bg-white/[0.03] rounded-xl p-5 space-y-4">
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">أ. الفترة التجريبية</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">أ. الفترة التجريبية</h3>
               <p>
                 تقدم المنصة فترة تجريبية مجانية لمدة 30 يوماً تتضمن جميع الميزات. لا تحتاج لبطاقة ائتمان
                 لبدء التجربة. في نهاية الفترة التجريبية، يمكنك اختيار خطة اشتراك مناسبة أو إلغاء الاشتراك
@@ -44,7 +44,7 @@ export default function TermsPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">ب. خطط الاشتراك</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">ب. خطط الاشتراك</h3>
               <p>
                 تتوفر خطط اشتراك متنوعة تناسب مختلف أحجام الأعمال. الأسعار المعروضة تشمل الضريبة
                 حيثما ينطبق ذلك. يمكن ترقية أو تخفيض الخطة في أي وقت، مع احتساب الفرق في الرسوم
@@ -52,7 +52,7 @@ export default function TermsPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-[#c4b5fd] mb-1">ج. الدفع</h3>
+              <h3 className="font-bold text-emerald-400 mb-1">ج. الدفع</h3>
               <p>
                 يتم خصم رسوم الاشتراك تلقائياً في بداية كل فترة فوترة (شهرية أو سنوية). نقبل
                 بطاقات الائتمان والخصم والتحويل البنكي. في حال فشل عملية الدفع، نمنح مهلة 7 أيام
@@ -132,7 +132,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-extrabold text-white mb-3">10. التواصل</h2>
           <p>
             لأي استفسارات حول هذه الشروط والأحكام، يمكنك التواصل معنا عبر{" "}
-            <Link href="/contact" className="text-[#c4b5fd] underline hover:text-white transition-colors">
+            <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
               صفحة التواصل
             </Link>{" "}
             أو من خلال مركز المساعدة المتاح على المنصة.

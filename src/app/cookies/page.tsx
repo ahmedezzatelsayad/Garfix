@@ -85,7 +85,7 @@ export default function CookiesPage() {
                   onClick={() => toggleCookie(cat.id)}
                   className={`mt-1 w-10 h-6 rounded-full shrink-0 transition-all relative ${
                     preferences[cat.id]
-                      ? "bg-[linear-gradient(135deg,#7c3aed,#a78bfa)]"
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-700"
                       : "bg-white/10"
                   } ${cat.required ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
                   disabled={cat.required}
@@ -101,7 +101,7 @@ export default function CookiesPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-white text-sm">{cat.title}</h3>
                     {cat.required && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[rgba(124,58,237,0.2)] text-[#c4b5fd] font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
                         مطلوبة
                       </span>
                     )}
@@ -176,7 +176,7 @@ export default function CookiesPage() {
         <div className="flex flex-wrap gap-3 pt-4 border-t border-white/[0.08]">
           <button
             onClick={acceptAll}
-            className="px-6 py-3 rounded-lg bg-[linear-gradient(135deg,#7c3aed,#a78bfa)] text-white font-bold text-sm cursor-pointer transition-all hover:shadow-[0_4px_12px_rgba(124,58,237,0.3)]"
+            className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer transition-all hover:shadow-brand-md active-press duration-150"
           >
             قبول الكل
           </button>
