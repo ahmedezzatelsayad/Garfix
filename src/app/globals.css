@@ -1977,3 +1977,71 @@
     }
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Section I: Theme System (Dark/Light Mode)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Theme transition animation */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition-property: 
+    background-color, 
+    color, 
+    border-color, 
+    box-shadow, 
+    fill, 
+    stroke,
+    opacity !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-duration: var(--theme-transition-duration, 200ms) !important;
+}
+
+/* Prevent flash of wrong theme on page load */
+html:not([data-theme]) {
+  visibility: hidden;
+}
+
+html[data-theme] {
+  visibility: visible;
+}
+
+/* Smooth theme switching for specific elements */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Focus visible styles for keyboard navigation */
+.keyboard-nav :focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px !important;
+}
+
+.mouse-nav :focus-visible {
+  outline: none !important;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .theme-transitioning,
+  .theme-transitioning *,
+  .theme-transitioning *::before,
+  .theme-transitioning *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+
+  .hover-lift:hover {
+    transform: none !important;
+  }
+
+  [data-animate] {
+    animation: none !important;
+  }
+}
