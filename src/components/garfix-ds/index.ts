@@ -257,3 +257,42 @@ export type {
   DrawerSide,
   DrawerSize,
 } from './overlay/GarfixDrawer'
+
+// ── 7. Accessibility Components ───────────────────────────────────────
+
+export {
+  GarfixSkipLinks,
+  MainContentMarker,
+  NavigationMarker,
+  FooterMarker,
+  GarfixAccessibilityProvider,
+  useAccessibility,
+} from './accessibility'
+
+export type {
+  GarfixSkipLinksProps,
+  SkipLink,
+  GarfixAccessibilityProviderProps,
+  AccessibilityContextValue,
+} from './accessibility'
+
+// ── 8. Theme Components ────────────────────────────────────────────────
+
+export {
+  GarfixThemeProvider,
+  useTheme,
+  GarfixThemeToggle,
+  GarfixThemeIcon,
+  GarfixThemeSwitch,
+  GarfixThemeSegmented,
+} from './theme'
+
+export type {
+  GarfixThemeProviderProps,
+  ThemeMode,
+  ResolvedTheme,
+  ThemeContextValue,
+  GarfixThemeToggleProps,
+  ToggleVariant,
+  ToggleSize,
+} from './theme'
