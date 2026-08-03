@@ -417,6 +417,11 @@ async function callGeminiAPI(
  * Detect AI provider from API key format or model name
  */
 export function detectProvider(apiKey: string, model: string): AIProvider {
+  // DeepSeek models (via OpenRouter)
+  if (model.includes('deepseek')) {
+    return 'openrouter'; // DeepSeek works through OpenRouter
+  }
+  
   // OpenRouter keys start with 'sk-or-'
   if (apiKey.startsWith('sk-or-')) {
     return 'openrouter';
@@ -439,6 +444,21 @@ export function detectProvider(apiKey: string, model: string): AIProvider {
   
   // Default fallback
   return 'openai';
+}
+
+/**
+ * Get default model for a provider
+ */
+export function getDefaultModel(provider: AIProvider): string {
+  switch (provider) {
+    case 'gemini':
+      return 'gemini-2.0-flash';
+    case 'openrouter':
+      return 'deepseek/deepseek-chat-v3-0324'; // DeepSeek as default!
+    case 'openai':
+    default:
+      return 'gpt-4o-mini';
+  }
 }
 
 // ── OpenAI/OpenRouter API Integration ──────────────────────
@@ -814,13 +834,6 @@ export async function getCompanyFeaturesStatus(companyId: string): Promise<
   return status;
 }
 
-// ── Export Types ─────────────────────────────────────────────
+// ── Re-exports for convenience ───────────────────────────────
 
-export type {
-  FeatureConfig,
-  FeatureClient,
-  GenerateParams,
-  GenerateResult,
-  ExtractParams,
-  ExtractResult,
-};
+export { detectProvider, getDefaultModel };
