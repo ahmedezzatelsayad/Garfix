@@ -20,8 +20,8 @@
 
 // Test Configuration
 const TEST_CONFIG = {
-  // Use the provided API key (Gemini Flash - Free Tier)
-  apiKey: process.env.TEST_GEMINI_API_KEY || 'REMOVED_FOR_SECURITY',
+  // Use environment variable for API key (NEVER hardcode keys!)
+  apiKey: process.env.TEST_GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || '',
   
   // Model to test
   model: 'gemini-2.0-flash',
