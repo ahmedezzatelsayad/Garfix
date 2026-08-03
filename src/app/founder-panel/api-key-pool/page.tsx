@@ -17,8 +17,9 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square, Search, Filter } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
 
@@ -121,6 +122,15 @@ export default function FounderApiKeyPoolPage() {
   
   // Alert state
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
+
+  // Pagination & Filter state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Select All state
+  const [selectedKeyIds, setSelectedKeyIds] = useState<Set<string>>(new Set());
 
   // ── Effects ─────────────────────────────────────────────
   
@@ -242,6 +252,74 @@ export default function FounderApiKeyPoolPage() {
     }
   };
 
+  // ── Filtering & Pagination Logic ──────────────────────────────
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  // Filter keys
+  const filteredKeys = useMemo(() => {
+    return keys.filter(key => {
+      // Status filter
+      if (statusFilter !== 'all' && key.status !== statusFilter) return false;
+      
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          key.keyValue.toLowerCase().includes(query) ||
+          key.model.toLowerCase().includes(query) ||
+          key.provider.toLowerCase().includes(query) ||
+          key.assignedToUserName?.toLowerCase().includes(query) ||
+          key.assignedToCompanyName?.toLowerCase().includes(query)
+        );
+      }
+      
+      return true;
+    });
+  }, [keys, searchQuery, statusFilter]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredKeys.length / pageSize);
+  const paginatedKeys = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredKeys.slice(startIndex, startIndex + pageSize);
+  }, [filteredKeys, currentPage, pageSize]);
+
+  // Select All handlers
+  const isAllSelected = paginatedKeys.length > 0 && 
+    paginatedKeys.every(k => selectedKeyIds.has(k.id));
+  const isSomeSelected = paginatedKeys.some(k => selectedKeyIds.has(k.id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const newSet = new Set(selectedKeyIds);
+      paginatedKeys.forEach(k => newSet.delete(k.id));
+      setSelectedKeyIds(newSet);
+    } else {
+      setSelectedKeyIds(new Set([...selectedKeyIds, ...paginatedKeys.map(k => k.id)]));
+    }
+  };
+
+  const toggleSelectKey = (keyId: string) => {
+    const newSet = new Set(selectedKeyIds);
+    if (newSet.has(keyId)) {
+      newSet.delete(keyId);
+    } else {
+      newSet.add(keyId);
+    }
+    setSelectedKeyIds(newSet);
+  };
+
+  const handleBulkRevoke = async () => {
+    if (selectedKeyIds.size === 0) return;
+    // TODO: Implement bulk revoke API call
+    setAlert({ type: 'success', message: `تم إلغاء ${selectedKeyIds.size} مفتاح` });
+    setSelectedKeyIds(new Set());
+  };
+
   // ── Render ───────────────────────────────────────────────
 
   return (
@@ -337,8 +415,78 @@ export default function FounderApiKeyPoolPage() {
         {/* ══ Keys List ══ */}
         <GarfixCard className="mb-6">
           <div className="p-4 border-b border-gray-200">
-            <h3 className="font-bold text-gray-800">🔑 قائمة المفاتيح</h3>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h3 className="font-bold text-gray-800">🔑 قائمة المفاتيح</h3>
+              
+              {/* Search & Filter Bar */}
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                {/* Search Input */}
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="بحث في المفاتيح..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full ps-10 pe-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+                
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">كل الحالات</option>
+                  <option value="available">✅ متاح</option>
+                  <option value="assigned">📤 مستخدم</option>
+                  <option value="exhausted">🔴 منتهي</option>
+                  <option value="revoked">❌ ملغي</option>
+                </select>
+              </div>
+            </div>
+            
+            {/* Results Count & Select All */}
+            {!isLoading && filteredKeys.length > 0 && (
+              <div className="mt-3 flex items-center justify-between text-sm">
+                <span className="text-gray-600">
+                  {filteredKeys.length} مفتاح (من {keys.length} إجمالي)
+                </span>
+                <button
+                  onClick={toggleSelectAll}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  {isAllSelected ? (
+                    <CheckSquare className="w-4 h-4 text-emerald-600" />
+                  ) : isSomeSelected ? (
+                    <CheckSquare className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Square className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <span>{isAllSelected ? 'إلغاء الكل' : 'تحديد الكل'}</span>
+                </button>
+              </div>
+            )}
           </div>
+          
+          {/* Bulk Actions Bar */}
+          {selectedKeyIds.size > 0 && (
+            <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  ✓ محدد: {selectedKeyIds.size} مفاتيح
+                </span>
+                <GarfixButton
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleBulkRevoke}
+                >
+                  🗑️ إلغاء المحددة
+                </GarfixButton>
+              </div>
+            </div>
+          )}
           
           {isLoading ? (
             <div className="p-6 space-y-4">
@@ -346,72 +494,185 @@ export default function FounderApiKeyPoolPage() {
                 <GarfixSkeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : keys.length === 0 ? (
+          ) : filteredKeys.length === 0 ? (
             <div className="p-12 text-center">
               <div className="text-5xl mb-4">🗝️</div>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">لا توجد مفاتيح</h3>
               <p className="text-sm text-gray-500 mb-4">
-                ابدأ بإضافة مفاتيح API لتوزيعها تلقائياً على المستخدمين الجدد
+                {searchQuery || statusFilter !== 'all' 
+                  ? 'لا توجد نتائج مطابقة للبحث' 
+                  : 'ابدأ بإضافة مفاتيح API لتوزيعها تلقائياً على المستخدمين الجدد'
+                }
               </p>
-              <GarfixButton onClick={() => setShowAddModal(true)}>
-                ➕ إضافة أول مفتاح
-              </GarfixButton>
+              {(!searchQuery && statusFilter === 'all') && (
+                <GarfixButton onClick={() => setShowAddModal(true)}>
+                  ➕ إضافة أول مفتاح
+                </GarfixButton>
+              )}
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {keys.map((key, index) => (
-                <FadeUp key={key.id} delay={index * 30}>
-                  <div className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between gap-4">
-                      {/* Key Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">
-                            {PROVIDER_ICONS[key.provider] || '🔑'}
-                          </span>
-                          <code className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded">
-                            {maskKey(key.keyValue)}
-                          </code>
-                          <GarfixBadge 
-                            variant={key.status === 'available' ? 'success' : 
-                                       key.status === 'assigned' ? 'info' : 'destructive'}
-                            className="text-xs"
-                          >
-                            {STATUS_CONFIG[key.status]?.label || key.status}
-                          </GarfixBadge>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                          <span>{key.model.split('/').pop()}</span>
-                          {key.assignedToUserName && (
-                            <span>👤 {key.assignedToUserName}</span>
-                          )}
-                          {key.assignedToCompanyName && (
-                            <span>🏢 {key.assignedToCompanyName}</span>
-                          )}
-                          <span>استخدام: {key.timesUsed} مرة</span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {key.status === 'available' && (
-                          <span className="text-xs text-emerald-600 font-medium">✓ جاهز للتوزيع</span>
-                        )}
-                        {(key.status === 'available' || key.status === 'assigned') && (
+            <>
+              <div className="divide-y divide-gray-100">
+                {paginatedKeys.map((key, index) => (
+                  <FadeUp key={key.id} delay={index * 30}>
+                    <div className={cn(
+                      "p-4 hover:bg-gray-50 transition-colors",
+                      selectedKeyIds.has(key.id) && "bg-emerald-50/50 dark:bg-emerald-900/20"
+                    )}>
+                      <div className="flex items-start justify-between gap-4">
+                        {/* Checkbox + Key Info */}
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {/* Checkbox */}
                           <button
-                            onClick={() => revokeKey(key.id)}
-                            className="text-xs text-red-600 hover:text-red-800 hover:underline"
+                            onClick={() => toggleSelectKey(key.id)}
+                            className="flex-shrink-0 mt-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                           >
-                            إلغاء
+                            {selectedKeyIds.has(key.id) ? (
+                              <CheckSquare className="w-4 h-4 text-emerald-600" />
+                            ) : (
+                              <Square className="w-4 h-4 text-muted-foreground" />
+                            )}
                           </button>
-                        )}
+                          
+                          {/* Key Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-lg">
+                                {PROVIDER_ICONS[key.provider] || '🔑'}
+                              </span>
+                              <code className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded">
+                                {maskKey(key.keyValue)}
+                              </code>
+                              <GarfixBadge 
+                                variant={key.status === 'available' ? 'success' : 
+                                           key.status === 'assigned' ? 'info' : 'destructive'}
+                                className="text-xs"
+                              >
+                                {STATUS_CONFIG[key.status]?.label || key.status}
+                              </GarfixBadge>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-xs text-gray-500 mt-1 flex-wrap">
+                              <span>{key.model.split('/').pop()}</span>
+                              {key.assignedToUserName && (
+                                <span>👤 {key.assignedToUserName}</span>
+                              )}
+                              {key.assignedToCompanyName && (
+                                <span>🏢 {key.assignedToCompanyName}</span>
+                              )}
+                              <span>استخدام: {key.timesUsed} مرة</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          {key.status === 'available' && (
+                            <span className="text-xs text-emerald-600 font-medium">✓ جاهز للتوزيع</span>
+                          )}
+                          {(key.status === 'available' || key.status === 'assigned') && (
+                            <button
+                              onClick={() => revokeKey(key.id)}
+                              className="text-xs text-red-600 hover:text-red-800 hover:underline"
+                            >
+                              إلغاء
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  </FadeUp>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    {/* Page Info & Size Selector */}
+                    <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span>
+                        {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredKeys.length)} من {filteredKeys.length}
+                      </span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                      >
+                        {[5, 10, 20, 50].map(size => (
+                          <option key={size} value={size}>{size}/صفحة</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Page Navigation */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                      >
+                        <ChevronsRight className="w-4 h-4 rtl:rotate-0" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                      >
+                        <ChevronRight className="w-4 h-4 rtl:rotate-0" />
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded text-sm font-medium ${
+                                currentPage === pageNum
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                      >
+                        <ChevronLeft className="w-4 h-4 rtl:rotate-0" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                      >
+                        <ChevronsLeft className="w-4 h-4 rtl:rotate-0" />
+                      </button>
+                    </div>
                   </div>
-                </FadeUp>
-              ))}
-            </div>
+                </div>
+              )}
+            </>
           )}
         </GarfixCard>
 

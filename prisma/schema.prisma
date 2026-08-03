@@ -116,6 +116,10 @@ model Company {
   
   // API Key Pool - Keys assigned to this company's users
   assignedApiKeys     ApiKeyPool[] @relation("KeyAssignedToCompany")
+  
+  // Recurring & Fiscal Year features
+  recurringEntries    RecurringJournalEntry[]
+  fiscalYearCloses    FiscalYearClose[]
 
   @@map("companies")
 }
@@ -2118,6 +2122,81 @@ model ApiKeyPool {
   @@index([provider])
   @@index([assignedToUserId])
   @@map("api_key_pool")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Accounting Module - Recurring & Fiscal Year Features
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Recurring Journal Entry (قيد دوري) ───
+// Automated recurring journal entries that generate JEs on a schedule.
+
+model RecurringJournalEntry {
+  id              String   @id @default(cuid())
+  companyId       String
+  companySlug     String   @default("default")
+  
+  title           String
+  description     String?
+  
+  // Schedule
+  frequency       String   // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+  intervalValue   Int      @default(1) // e.g., every 2 months
+  startDate       DateTime
+  endDate         DateTime? // null = forever
+  nextRunDate     DateTime
+  lastRunDate     DateTime?
+  
+  // Entry template (copied on each run)
+  templateLines   Json     // Array of {accountId, debit, credit, description}
+  
+  // Auto-post settings
+  autoPost        Boolean  @default(true)
+  requireApproval Boolean  @default(false)
+  
+  // Status
+  isActive        Boolean  @default(true)
+  totalPosted     Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  company         Company  @relation(fields: [companyId], references: [id])
+  
+  @@index([companySlug])
+  @@index([companyId, isActive])
+  @@index([nextRunDate])
+  @@map("recurring_journal_entries")
+}
+
+// ─── Fiscal Year Close (إغلاق السنة المالية) ───
+// Records when a fiscal year is closed and its state.
+
+model FiscalYearClose {
+  id              String   @id @default(cuid())
+  companyId       String
+  companySlug     String   @default("default")
+  year            Int
+  closedAt        DateTime
+  closedBy        String   // userId (email or uid)
+  openingRetainedEarnings Decimal @default(0) // Calculated P&L carried forward
+  notes           String?
+  
+  // Snapshots
+  trialBalanceSnapshot Json? // TB at time of close
+  
+  isReopened      Boolean  @default(false)
+  reopenedAt      DateTime?
+  reopenedBy      String?
+  
+  createdAt       DateTime @default(now())
+  
+  company         Company  @relation(fields: [companyId], references: [id])
+  
+  @@unique([companyId, year])
+  @@index([companySlug])
+  @@index([year])
+  @@map("fiscal_year_closes")
 }
 
 // ─── Outbox Event ───
