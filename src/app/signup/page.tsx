@@ -158,25 +158,49 @@ export default function SignupPage() {
 
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
-          <CardHeader className="space-y-2 text-center">
-            <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-md">
-              <UserPlus className="h-7 w-7 text-white" />
+          {/* ── DS v4.0 Enhanced Onboarding Header ── */}
+          <CardHeader className="space-y-3 text-center pb-2">
+            {/* Animated Logo with Badge */}
+            <div className="mx-auto relative">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-lg animate-pulse-slow">
+                <UserPlus className="h-8 w-8 text-white" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#d4a574] flex items-center justify-center shadow-gold-sm animate-bounce-slow">
+                <span className="text-[10px] font-bold text-white">جديد</span>
+              </div>
             </div>
-            <CardTitle className="text-2xl text-foreground">إنشاء حساب GarfiX جديد</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              ابدأ إدارة فواتيرك ومحاسبتك والموارد البشرية — كل شيء في مكان واحد
-            </CardDescription>
+            
+            {/* Welcome Message */}
+            <div className="space-y-1.5">
+              <CardTitle className="text-2xl text-foreground font-extrabold">أنشئ حسابك المجاني 🚀</CardTitle>
+              <CardDescription className="text-muted-foreground text-sm leading-relaxed">
+                ابدأ رحلتك مع GarfiX في أقل من دقيقة
+              </CardDescription>
+            </div>
+            
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center gap-1.5 pt-1">
+              <div className="h-1.5 w-6 rounded-full bg-emerald-500 shadow-sm" />
+              <div className="h-1.5 w-6 rounded-full bg-emerald-400/60" />
+              <div className="h-1.5 w-6 rounded-full bg-muted-foreground/20" />
+            </div>
           </CardHeader>
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {/* ── Enhanced Error with Solution ── */}
               {error && (
                 <div
                   role="alert"
-                  className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 glass"
+                  className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 glass-strong shadow-brand-sm animate-shake duration-300"
                 >
-                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span className="break-words">{error}</span>
+                  <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-400" />
+                  <div className="flex-1 space-y-1">
+                    <p className="font-medium text-red-300">{error}</p>
+                    <p className="text-xs text-red-400/70">
+                      💡 تأكد من ملء جميع الحقول بشكل صحيح
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -265,25 +289,37 @@ export default function SignupPage() {
             </CardContent>
 
             <CardFooter className="flex flex-col gap-3">
+              {/* ── Enhanced CTA Button ── */}
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-brand-md active-press duration-150 transition-all"
-                disabled={submitting || !email || !password || !displayName}
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-brand-md hover:shadow-brand-lg active:scale-[0.98] duration-150 transition-all text-base py-6 rounded-xl font-bold tracking-wide hover-lift"
+                disabled={submitting || !email || !password || !displayName || pwdScore < 3}
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    جارٍ إنشاء الحساب…
+                    <Loader2 className="h-5 w-5 ml-2 animate-spin" />
+                    <span>جارٍ إنشاء الحساب…</span>
                   </>
                 ) : (
-                  "إنشاء الحساب"
+                  <span>إنشاء الحساب مجاناً →</span>
                 )}
               </Button>
 
+              {/* ── Enhanced Login Link ── */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-muted-foreground/20" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-3 text-muted-foreground">أو</span>
+                </div>
+              </div>
+              
               <p className="text-sm text-muted-foreground text-center">
                 لديك حساب بالفعل؟{" "}
-                <Link href="/login" className="font-medium text-emerald-400 hover:text-emerald-300 underline transition-colors duration-120 hover-lift">
+                <Link href="/login" className="font-semibold text-emerald-400 hover:text-emerald-300 underline decoration-2 underline-offset-4 transition-all duration-150 hover:text-emerald-200 hover-lift inline-flex items-center gap-1 group">
                   تسجيل الدخول
+                  <span className="group-hover:-translate-x-1 transition-transform duration-150">←</span>
                 </Link>
               </p>
 
