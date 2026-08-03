@@ -133,11 +133,33 @@ const FEATURES = [
   },
 ] as const;
 
-const GEMINI_MODELS = [
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (سريع + مجاني)' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (متقدم)' },
+const AI_MODELS = [
+  // ── Gemini Models (Google) ──
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (سريع + مجاني)', provider: 'gemini' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', provider: 'gemini' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (متقدم)', provider: 'gemini' },
+  
+  // ── OpenAI Models ──
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (اقتصادي)', provider: 'openai' },
+  { value: 'gpt-4o', label: 'GPT-4o (متقدم)', provider: 'openai' },
+  
+  // ── OpenRouter Models (Multi-provider) ──
+  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 (مجاني/رخيص)', provider: 'openrouter' },
+  { value: 'google/gemini-pro-1.5', label: 'Gemini Pro 1.5 via Router', provider: 'openrouter' },
+  { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B', provider: 'openrouter' },
 ];
+
+const PROVIDER_LABELS: Record<string, string> = {
+  gemini: '🔵 Google Gemini',
+  openai: '🟢 OpenAI',
+  openrouter: '🟠 OpenRouter',
+};
+
+const PROVIDER_KEY_HINTS: Record<string, string> = {
+  gemini: 'يبدأ بـ AIza... أو AQ...',
+  openai: 'يبدأ بـ sk-...',
+  openrouter: 'يبدأ بـ sk-or-...',
+};
 
 const FEATURE_COLORS: Record<string, string> = {
   blue: 'border-blue-500 bg-blue-50',

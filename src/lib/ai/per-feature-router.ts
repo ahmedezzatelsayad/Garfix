@@ -33,13 +33,19 @@ import { logger } from '@/lib/logger';
 
 export type FeatureType = 'chat' | 'invoice' | 'parse' | 'memory';
 
+export type AIProvider = 'gemini' | 'openai' | 'openrouter';
+
 export interface FeatureConfig {
   /** Is this feature enabled for this company? */
   enabled: boolean;
   /** API Key for this specific feature */
   apiKey: string;
-  /** Model to use (e.g., gemini-2.0-flash) */
+  /** Model to use (e.g., gemini-2.0-flash, gpt-4o-mini, deepseek/deepseek-chat) */
   model: string;
+  /** Provider type (auto-detected from key/model) */
+  provider?: AIProvider;
+  /** Base URL (for custom endpoints) */
+  baseUrl?: string;
   /** Rate limit (requests per minute) */
   rateLimitRpm: number;
   /** Tokens used this billing period */
@@ -405,6 +411,161 @@ async function callGeminiAPI(
   }
 }
 
+// ── Provider Detection ─────────────────────────────────────
+
+/**
+ * Detect AI provider from API key format or model name
+ */
+export function detectProvider(apiKey: string, model: string): AIProvider {
+  // OpenRouter keys start with 'sk-or-'
+  if (apiKey.startsWith('sk-or-')) {
+    return 'openrouter';
+  }
+  
+  // OpenAI keys start with 'sk-'
+  if (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-')) {
+    return 'openai';
+  }
+  
+  // Gemini models
+  if (model.includes('gemini') || model.includes('bison')) {
+    return 'gemini';
+  }
+  
+  // Default to gemini for keys that look like Google API keys
+  if (apiKey.startsWith('AI') || apiKey.includes('google')) {
+    return 'gemini';
+  }
+  
+  // Default fallback
+  return 'openai';
+}
+
+// ── OpenAI/OpenRouter API Integration ──────────────────────
+
+/**
+ * Call OpenAI-compatible API (works with OpenAI, OpenRouter, etc.)
+ */
+async function callOpenAIAPI(
+  apiKey: string,
+  model: string,
+  params: GenerateParams,
+  feature: FeatureType,
+  baseUrl: string = 'https://api.openai.com/v1'
+): Promise<GenerateResult> {
+  const startTime = Date.now();
+  
+  try {
+    // Determine endpoint based on provider
+    const url = `${baseUrl}/chat/completions`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        // OpenRouter optional headers
+        ...(baseUrl.includes('openrouter') ? {
+          'HTTP-Referer': process.env.APP_URL || 'https://garfix.app',
+          'X-Title': 'GarfiX ERP',
+        } : {}),
+      },
+      body: JSON.stringify({
+        model,
+        messages: params.messages,
+        temperature: params.temperature ?? 0.7,
+        max_tokens: params.maxTokens ?? 2048,
+        ...(params.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    
+    const latencyMs = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      if (response.status === 429) {
+        return {
+          success: false,
+          latencyMs,
+          model,
+          error: 'Rate limit exceeded',
+          rateLimited: true,
+        };
+      }
+      
+      return {
+        success: false,
+        latencyMs,
+        model,
+        error: errorData?.error?.message || `HTTP ${response.status}`,
+      };
+    }
+    
+    const data = await response.json();
+    
+    const text = data?.choices?.[0]?.message?.content || '';
+    const usage = data?.usage ? {
+      promptTokens: data.usage.prompt_tokens || 0,
+      completionTokens: data.usage.completion_tokens || 0,
+      totalTokens: data.usage.total_tokens || 0,
+    } : undefined;
+    
+    return {
+      success: true,
+      content: text,
+      usage,
+      latencyMs,
+      model: data?.model || model,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      latencyMs: Date.now() - startTime,
+      model,
+      error: error.message || 'Connection failed',
+    };
+  }
+}
+
+// ── Unified API Caller ─────────────────────────────────────
+
+/**
+ * Call the appropriate API based on detected provider
+ */
+async function callAIProvider(
+  config: FeatureConfig,
+  params: GenerateParams,
+  feature: FeatureType
+): Promise<GenerateResult> {
+  const provider = config.provider || detectProvider(config.apiKey, config.model);
+  
+  switch (provider) {
+    case 'gemini':
+      return callGeminiAPI(config.apiKey, config.model, params, feature);
+      
+    case 'openrouter':
+      return callOpenAIAPI(
+        config.apiKey,
+        config.model,
+        params,
+        feature,
+        'https://openrouter.ai/api/v1'
+      );
+      
+    case 'openai':
+    default:
+      return callOpenAIAPI(
+        config.apiKey,
+        config.model,
+        params,
+        feature,
+        config.baseUrl || 'https://api.openai.com/v1'
+      );
+  }
+}
+
 // ── Public API ──────────────────────────────────────────────
 
 /**
@@ -471,8 +632,8 @@ export async function getFeatureClient(
         };
       }
       
-      // Call the API
-      const result = await callGeminiAPI(config.apiKey, config.model, params, feature);
+      // Call the appropriate API (auto-detects provider)
+      const result = await callAIProvider(config, params, feature);
       
       // Update usage stats on success
       if (result.success && result.usage) {
@@ -515,7 +676,7 @@ ${params.text}
 Respond ONLY with valid JSON matching the schema. Do not include explanations outside the JSON.
 `.trim();
       
-      const generateResult = await callGeminiAPI(config.apiKey, config.model, {
+      const generateResult = await callAIProvider(config, {
         messages: [{ role: 'user', content: extractPrompt }],
         temperature: 0.1, // Low temperature for extraction
         maxTokens: 4096,
