@@ -122,7 +122,8 @@ export function signRefreshToken(uid: string, tv: number): string {
 
 export function verifyToken(token: string): AuthPayload | null {
   try {
-    const decoded = jwt.verify(token, getJwtSecret()) as jwt.JwtPayload & AuthPayload & { type?: string };
+    // P0-02: Pin algorithm to HS256 to prevent alg-confusion / alg:none attacks.
+    const decoded = jwt.verify(token, getJwtSecret(), { algorithms: ["HS256"] }) as jwt.JwtPayload & AuthPayload & { type?: string };
     if (decoded.type !== "access") return null;
     return {
       uid: decoded.uid,
@@ -140,7 +141,8 @@ export function verifyToken(token: string): AuthPayload | null {
 
 export function verifyRefreshToken(token: string): { uid: string; tv: number } | null {
   try {
-    const decoded = jwt.verify(token, getJwtRefreshSecret()) as jwt.JwtPayload & {
+    // P0-02: Pin algorithm to HS256 to prevent alg-confusion / alg:none attacks.
+    const decoded = jwt.verify(token, getJwtRefreshSecret(), { algorithms: ["HS256"] }) as jwt.JwtPayload & {
       uid: string;
       tv: number;
       type?: string;
