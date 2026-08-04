@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
         stats,
       },
     });
-  });
+  })();
 }
 
 /**
@@ -244,47 +244,20 @@ export async function POST(request: NextRequest) {
         duplicatesSkipped: keys.length - newKeys.length,
       },
     });
-  });
+  })();
 }
 
 /**
  * DELETE /api/founder-panel/api-key-pool/:id
+ *
+ * NOTE: This handler was a duplicate of the one in `[id]/route.ts`.
+ * The parent route `/api/founder-panel/api-key-pool` has no `[id]` URL
+ * segment, so declaring `params: Promise<{ id: string }>` here caused
+ * a RouteHandlerConfig type mismatch (Next.js expected `Promise<{}>`).
+ * The actual DELETE endpoint lives at `[id]/route.ts` and the frontend
+ * correctly calls `DELETE /api/founder-panel/api-key-pool/${keyId}`.
+ * Removed the duplicate to fix `next build` type check.
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withErrorHandler(async () => {
-    // Authenticate (founder only)
-    const auth = await resolveAuth(request);
-    if (!auth.user) return apiError('Unauthorized', 401);
-
-    const { id } = await params;
-
-    // Check if key exists
-    const existingKey = await db.apiKeyPool.findUnique({ where: { id } });
-    if (!existingKey) {
-      return apiError('Key not found', 404);
-    }
-
-    // Revoke the key
-    await db.apiKeyPool.update({
-      where: { id },
-      data: {
-        status: 'revoked',
-        assignedToUserId: null,
-        assignedToCompanyId: null,
-      },
-    });
-
-    logger.info(`[ApiKeyPool] Revoked key ${id} by founder ${auth.user.email}`);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Key revoked successfully',
-    });
-  });
-}
 
 // ── Public Assignment Endpoint ─────────────────────────────
 
@@ -314,7 +287,7 @@ export async function ASSIGN_KEY_API(request: NextRequest) {
       success: true,
       data: result,
     });
-  });
+  })();
 }
 
 // ── Provider Limits ─────────────────────────────────────────

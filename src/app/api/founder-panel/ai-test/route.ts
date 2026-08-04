@@ -313,5 +313,5 @@ export async function POST(request: NextRequest) {
         detectedProvider: provider,
       },
     });
-  });
+  })();
 }

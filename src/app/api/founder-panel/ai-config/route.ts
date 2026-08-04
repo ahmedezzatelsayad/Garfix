@@ -340,7 +340,7 @@ export async function GET(request: NextRequest) {
         createdAt: config.createdAt,
       },
     });
-  });
+  })();
 }
 
 /**
@@ -452,7 +452,7 @@ export async function PUT(request: NextRequest) {
         updatedAt: updatedConfig.updatedAt,
       },
     });
-  });
+  })();
 }
 
 /**
@@ -505,5 +505,5 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
     });
-  });
+  })();
 }
