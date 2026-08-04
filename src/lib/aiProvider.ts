@@ -20,6 +20,10 @@ import { db } from "./db";
 import { decryptSecret, encryptSecret } from "./cryptoVault";
 import { logger } from "./logger";
 import { z } from "zod";
+// P1-1: fetchSafe provides DNS-pinning SSRF protection. Used for custom AI
+// endpoints (type: "custom") where the user supplies baseUrl — all other
+// provider types hit hard-coded public URLs and don't need this guard.
+import { fetchSafe } from "./ssrf";
 
 // P0 FIX (audit finding: missing timeout on AI external API calls):
 // All AI provider HTTP calls now go through `fetchWithTimeout`. A hung
@@ -38,7 +42,11 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    // P1-1: route through fetchSafe for DNS-pinning SSRF protection. For
+    // hard-coded public provider URLs (openrouter, openai, deepseek, gemini)
+    // this is a tiny perf cost (one DNS lookup, OS-cached after first call).
+    // For custom endpoints it's a critical security boundary.
+    return await fetchSafe(url, { ...init, signal: controller.signal });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new Error(`AI request timed out after ${timeoutMs}ms — ${url}`);

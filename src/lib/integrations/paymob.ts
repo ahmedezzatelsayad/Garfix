@@ -27,6 +27,8 @@
 import { logger } from '@/lib/logger';
 import type { IntegrationProvider } from './types';
 import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } from './registry';
+// P1-1: fetchSafe provides DNS-pinning SSRF protection.
+import { fetchSafe } from '@/lib/ssrf';
 
 // ─── SSRF-safe base URL validation ─────────────────────────────────────────
 
@@ -107,7 +109,8 @@ async function getPaymobAuthToken(
   apiKey: string,
 ): Promise<{ ok: boolean; token?: string; error?: string }> {
   try {
-    const res = await fetch(`${baseUrl}/api/auth/tokens`, {
+    // P1-1: DNS-rebinding protection via fetchSafe — pins resolved IP.
+    const res = await fetchSafe(`${baseUrl}/api/auth/tokens`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_key: apiKey }),
@@ -230,7 +233,7 @@ export async function initiatePaymobPayment(params: {
 
   // 2. Create order
   try {
-    const orderRes = await fetch(`${baseUrl}/api/ecommerce/orders`, {
+    const orderRes = await fetchSafe(`${baseUrl}/api/ecommerce/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -259,7 +262,7 @@ export async function initiatePaymobPayment(params: {
     const orderId = orderData.id;
 
     // 3. Generate payment key
-    const payKeyRes = await fetch(`${baseUrl}/api/acceptance/payment_keys`, {
+    const payKeyRes = await fetchSafe(`${baseUrl}/api/acceptance/payment_keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

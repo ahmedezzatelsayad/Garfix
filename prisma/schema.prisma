@@ -116,11 +116,14 @@ model Company {
   
   // API Key Pool - Keys assigned to this company's users
   assignedApiKeys     ApiKeyPool[] @relation("KeyAssignedToCompany")
-  
+
   // Recurring & Fiscal Year features
   recurringEntries    RecurringJournalEntry[]
   fiscalYearCloses    FiscalYearClose[]
 
+  // P1-3: Company has soft-delete (deletedAt) but no index. /api/companies
+  // list queries filter `where: { deletedAt: null }`.
+  @@index([deletedAt])
   @@map("companies")
 }
 
@@ -179,6 +182,8 @@ model Client {
 
   @@index([companySlug])
   @@index([companyId])
+  // P1-3: soft-delete index — clients/route.ts filters `where: { deletedAt: null }`
+  @@index([companySlug, deletedAt])
   @@map("clients")
 }
 
@@ -209,7 +214,10 @@ model Supplier {
   @@unique([code, companyId])
   @@index([companySlug])
   @@index([companyId])
-  @@index([deletedAt])
+  // P1-3: composite soft-delete index — supplier-statement/route.ts filters
+  // `where: { companySlug, deletedAt: null }`. Composite is more selective
+  // than the standalone @@index([deletedAt]) that was here before.
+  @@index([companySlug, deletedAt])
 }
 
 // ─── Product Catalog (matches db.productCatalog) ───
@@ -344,6 +352,12 @@ model JournalEntry {
   @@unique([number, companyId])
   @@index([companySlug])
   @@index([companyId])
+  // P1-3: soft-delete index — every list query filters `where: { deletedAt: null }`
+  // Without this index the query scans the whole table; the deleted fraction
+  // grows over time, slowing list responses linearly.
+  @@index([companySlug, deletedAt])
+  // P1-3: date index — dashboard/aging queries filter by date range
+  @@index([date])
   @@map("journal_entries")
 }
 
@@ -360,6 +374,10 @@ model JournalEntryLine {
   account        Account      @relation(fields: [accountId], references: [id])
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 
+  // P1-3: FK indexes — queries that join JournalEntry -> lines scan this
+  // table without these. journal_entry_lines grows with every journal entry.
+  @@index([journalEntryId])
+  @@index([accountId])
   @@map("journal_entry_lines")
 }
 
@@ -575,6 +593,12 @@ model BankTransaction {
 
   @@index([companySlug])
   @@index([companyId])
+  // P1-3: FK index on bankAccountId — BankingView joins BankAccount -> transactions
+  // and the reconciliation view filters by bankAccountId + reconciled.
+  @@index([bankAccountId])
+  // P1-3: date index — bank statement import + reconciliation queries
+  // filter by date range
+  @@index([date])
   @@map("bank_transactions")
 }
 
@@ -677,6 +701,11 @@ model BudgetLine {
   updatedAt     DateTime    @updatedAt
   budget        Budget      @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   costCenter    CostCenter? @relation(fields: [costCenterId], references: [id])
+
+  // P1-3: FK indexes — BudgetView joins Budget -> lines.
+  @@index([budgetId])
+  @@index([accountId])
+  @@index([costCenterId])
 }
 
 // ─── Cost Center (matches db.costCenter) ───
@@ -937,6 +966,10 @@ model Invoice {
 
   @@unique([companySlug, invoiceNumber])
   @@index([companyId])
+  // P1-3: invoices/route.ts list query filters `where: { companySlug, deletedAt: null, status }`
+  // and orders by createdAt DESC. Add composite + date indexes.
+  @@index([companySlug, deletedAt])
+  @@index([status, createdAt])
   @@map("invoices")
 }
 
@@ -971,6 +1004,9 @@ model PurchaseInvoice {
 
   @@index([companySlug])
   @@index([companyId])
+  // P1-3: soft-delete + supplier FK indexes
+  @@index([companySlug, deletedAt])
+  @@index([supplierId])
   @@map("purchase_invoices")
 }
 
@@ -1224,17 +1260,48 @@ model MFASecret {
 }
 
 // ─── Session Registry (matches db.sessionRegistry) ───
+//
+// P1-2 FIX (audit): schema was out of sync with code. The migration
+// 20260730000000_fix_schema_drift.sql added columns `userUid`, `jti`,
+// `userAgent` to the table at the DB level, but schema.prisma kept the
+// legacy `userId`, `tokenHash`, `deviceInfo` fields. Prisma client was
+// generated from the stale schema, so `db.sessionRegistry.create({ userUid,
+// jti, userAgent })` would throw "Unknown field" at runtime — except the
+// throw was masked by `db: any` in src/lib/db.ts (P0-14 deferred issue).
+//
+// The schema now matches what the code writes. We also add the missing
+// @@unique([jti]) and @@index([userUid]) — both were added at the DB
+// level by the migration but not declared in the schema, so Prisma
+// client didn't know about them. With these declared, future
+// `prisma generate` runs will produce correct types.
+//
+// Legacy `userId` / `tokenHash` / `deviceInfo` columns still exist in the
+// production DB (they were never dropped) but are unused. A separate
+// cleanup migration can drop them later — keeping them for now in case
+// any historical data needs to be queried.
 
 model SessionRegistry {
   id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String
-  deviceInfo String?
+  // P1-2: code writes `userUid` (not `userId`). Migration already added
+  // this column at the DB level. Schema now matches.
+  userUid    String
+  // P1-2: code writes `jti` (JWT Token ID) — unique per session. Used
+  // by isSessionValid(jti) for revocation lookups.
+  jti        String   @unique
+  // P1-2: code writes `userAgent` (not `deviceInfo`). Migration added it.
+  userAgent  String?
   ipAddress  String?
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  user       AppUser  @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  user       AppUser  @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+
+  // P1-2: index on userUid — enforceSessionLimit() queries
+  // `findMany({ where: { userUid } })` on every login. Without this index
+  // that query is a full scan.
+  @@index([userUid])
+  // P1-2: index on expiresAt — maintenance cron sweeps expired sessions.
+  @@index([expiresAt])
 }
 
 // ─── Role Permission (matches db.rolePermission) ───
@@ -1302,6 +1369,11 @@ model PlatformSettingsHistory {
   createdAt DateTime         @default(now())
   setting   PlatformSettings @relation(fields: [settingId], references: [id])
 
+  // P1-3: FK + time indexes — the founder panel shows settings change history
+  // filtered by settingId and paginated by createdAt.
+  @@index([settingId])
+  @@index([createdAt])
+  @@index([changedBy])
   @@map("platform_settings_history")
 }
 
@@ -1376,6 +1448,14 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   @@index([companySlug])
+  // P1-3: append-only audit log grows unboundedly. Without an index on
+  // createdAt, `ORDER BY createdAt DESC LIMIT 50` is a full scan.
+  @@index([createdAt])
+  // P1-3: entity+entityId index — the audit trail UI filters by entity
+  // ("show me all changes to Invoice #123") — without this it's a scan.
+  @@index([entity, entityId])
+  // P1-3: userUid index — "show me all actions by user X" queries
+  @@index([userUid])
   @@map("audit_logs")
 }
 
@@ -1392,6 +1472,9 @@ model AccountingAuditLog {
   createdAt   DateTime @default(now())
 
   @@index([companySlug])
+  // P1-3: same as AuditLog — append-only, filtered by date + entity
+  @@index([createdAt])
+  @@index([entity, entityId])
   @@map("accounting_audit_logs")
 }
 
@@ -1405,6 +1488,11 @@ model AdminAuditLog {
   details    String?
   createdAt  DateTime @default(now())
 
+  // P1-3: AdminAuditLog had NO indexes at all. Platform admin panel filters
+  // by adminEmail + paginates by createdAt.
+  @@index([adminEmail])
+  @@index([createdAt])
+  @@index([targetSlug])
   @@map("admin_audit_logs")
 }
 
@@ -1766,6 +1854,10 @@ model AutomationExecutionLog {
   updatedAt   DateTime       @updatedAt
   rule        AutomationRule @relation(fields: [ruleId], references: [id])
 
+  // P1-3: FK + status indexes — the dashboard shows "recent runs" and
+  // "failed runs" by filtering status + ORDER BY triggeredAt DESC.
+  @@index([ruleId])
+  @@index([status, triggeredAt])
   @@map("automation_execution_logs")
 }
 

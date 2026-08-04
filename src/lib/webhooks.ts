@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { logger } from "./logger";
 import { encryptSecret, decryptSecret } from "./cryptoVault";
-import { validateBaseUrl } from "./ssrf";
+import { validateBaseUrl, fetchSafe } from "./ssrf";
 
 export interface WebhookPayload {
   event: string;
@@ -139,6 +139,12 @@ export async function processPendingDeliveries(): Promise<{
       // a row edited directly in the DB after the initial registerWebhook()
       // validation. If the URL is unsafe, fail the delivery (and the retry
       // logic will eventually mark it as failed).
+      //
+      // P1-1 (DNS Rebinding): use fetchSafe() instead of fetch() — it resolves
+      // the hostname ONCE, validates every resolved IP against private ranges,
+      // and pins the IP for the actual request. This defeats DNS-rebinding
+      // attacks where a hostname resolves to a public IP at validation time
+      // and a private IP at fetch time.
       try {
         validateBaseUrl(endpoint.url);
       } catch (err) {
@@ -147,7 +153,7 @@ export async function processPendingDeliveries(): Promise<{
         throw new Error(`عنوان الـ webhook غير آمن: ${msg}`);
       }
 
-      const response = await fetch(endpoint.url, {
+      const response = await fetchSafe(endpoint.url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

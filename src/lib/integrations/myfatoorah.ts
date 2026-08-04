@@ -23,6 +23,11 @@
 import { logger } from "@/lib/logger";
 import type { IntegrationProvider } from "./types";
 import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } from "./registry";
+// P1-1: fetchSafe provides DNS-pinning SSRF protection. The local validateBaseUrl
+// below is still exported for backward compatibility with existing callers, but
+// the fetchSafe import from the canonical ssrf.ts is the one that actually
+// protects against DNS rebinding.
+import { fetchSafe } from "@/lib/ssrf";
 
 /**
  * Validate that a base URL is safe to send authenticated requests to.
@@ -144,7 +149,10 @@ class MyFatoorahProvider implements IntegrationProvider {
     }
     try {
       const url = `${normalizeBaseUrl(cfg.base_url)}/api/v2/GetCountries`;
-      const res = await fetch(url, {
+      // P1-1 (DNS Rebinding): use fetchSafe() instead of fetch() — pins the
+      // resolved IP at fetch time so a DNS-rebinding attack that flipped the
+      // hostname to a private IP between validateBaseUrl() and fetch() is blocked.
+      const res = await fetchSafe(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${cfg.api_key}`,
