@@ -24,6 +24,27 @@ import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPick
 import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
 import { EmptyInvoices, AISearchBar } from "@/components/garfix";
+
+/**
+ * P0 FIX (audit feedback): local LineItem variant with a stable client-side `localId`
+ * for React keys. The shared `LineItem` interface in `./types.ts` is also used by
+ * e-invoicing and money calc modules, so we can't add a client-only field there
+ * without breaking them. Instead we extend it locally — `EditableLineItem` is a
+ * superset of `LineItem`, so it satisfies any code that expects a `LineItem`.
+ *
+ * Why localId: a composite key like `${description}-${qty}-${price}` collides
+ * if the user adds the same product twice (legal in ERP — e.g. two batches
+ * of the same item at the same price). React would merge the two rows and
+ * the second one's inputs would bind to the first row's record.
+ */
+interface EditableLineItem extends LineItem {
+  localId: string;
+}
+
+/** Generate a unique-enough client-side id (matches RecurringEntriesView pattern). */
+function makeLineLocalId(): string {
+  return `li_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -787,8 +808,10 @@ function InvoiceForm({
   const [issueDate, setIssueDate] = useState(editing?.issueDate || todayStr());
   const [dueDate, setDueDate] = useState(editing?.dueDate || addDaysStr(30));
   const [status, setStatus] = useState(editing?.status || "draft");
-  const [lineItems, setLineItems] = useState<LineItem[]>(
-    editing?.lineItems?.length ? editing.lineItems : [{ description: "", qty: 1, price: 0 }]
+  const [lineItems, setLineItems] = useState<EditableLineItem[]>(
+    editing?.lineItems?.length
+      ? editing.lineItems.map((it) => ({ ...it, localId: makeLineLocalId() }))
+      : [{ description: "", qty: 1, price: 0, localId: makeLineLocalId() }]
   );
   const [taxRate, setTaxRate] = useState(editing?.taxRate ?? parseFloat(company.defaultTaxRate || "0"));
   const [shipping, setShipping] = useState(editing?.shipping ?? 0);
@@ -801,7 +824,7 @@ function InvoiceForm({
   const [createDialogIndex, setCreateDialogIndex] = useState<number | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Record<number, ProductOption>>({});
 
-  const updateItem = (i: number, field: keyof LineItem, value: string | number) => {
+  const updateItem = (i: number, field: keyof EditableLineItem, value: string | number) => {
     setLineItems((items) => items.map((it, idx) => {
       if (idx !== i) return it;
       const next = { ...it, [field]: value };
@@ -811,7 +834,7 @@ function InvoiceForm({
       return next;
     }));
   };
-  const addItem = () => setLineItems((items) => [...items, { description: "", qty: 1, price: 0 }]);
+  const addItem = () => setLineItems((items) => [...items, { description: "", qty: 1, price: 0, localId: makeLineLocalId() }]);
   const removeItem = (i: number) => setLineItems((items) => items.filter((_, idx) => idx !== i));
   
   // 🆕 Handle product selection
@@ -867,7 +890,11 @@ function InvoiceForm({
         companySlug: company.slug,
         invoiceNumber, clientName, clientEmail, clientPhone, clientAddress,
         issueDate, dueDate,
-        lineItems: lineItems.filter((it) => it.description || it.qty || it.price),
+        // P0 FIX: strip client-only `localId` before sending to API — backend
+        // expects the canonical LineItem shape (description/qty/price/total).
+        lineItems: lineItems
+          .filter((it) => it.description || it.qty || it.price)
+          .map(({ localId: _localId, ...rest }) => rest),
         taxRate, shipping, discount, notes,
         expectedVersion: editing?.version,
       };
@@ -990,8 +1017,10 @@ function InvoiceForm({
         </div>
         <div className="flex flex-col gap-2">
           {lineItems.map((it, i) => (
-            // P0 FIX: stable composite key. Same fix as the print view above.
-            <div key={`${it.description}-${it.qty}-${it.price}` || `item-${i}`} className="grid grid-cols-1 sm:grid-cols-[1.5fr_80px_100px_110px_32px] gap-2 items-center">
+            // P0 FIX: stable key from localId (unique per line, survives
+            // edits/reorders/duplicate products). Previous `key={i}` and the
+            // interim composite key both had collision bugs — see EditableLineItem.
+            <div key={it.localId} className="grid grid-cols-1 sm:grid-cols-[1.5fr_80px_100px_110px_32px] gap-2 items-center">
               {/* 🆕 Product Picker instead of plain input */}
               <ProductPicker
                 companySlug={company.slug}
