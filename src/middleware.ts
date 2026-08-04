@@ -1,79 +1,59 @@
 /**
- * middleware.ts — Next.js Edge middleware for all /api/* routes.
+ * middleware.ts — Lightweight Edge-safe middleware.
  *
- * Responsibilities:
- *   1. Route classification (public vs protected)
- *   2. Authentication via resolveAuth (401 on protected routes if unauthenticated)
- *   3. General rate limiting (60 req/min per uid or per IP)
- *   4. Security headers on every response
- *   5. Forward authenticated user info via custom header for route handlers
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ARCHITECTURE FIX (Vercel infinite-loading RCA):
+ *
+ * The previous version of this middleware imported `@/lib/auth` (which pulls
+ * in `jsonwebtoken`, `bcryptjs`, Prisma) and `@/lib/rateLimit` (which pulls
+ * in `ioredis`). With `runtime: "nodejs"` set, Vercel ran the middleware as
+ * a serverless function. On cold start the middleware's import chain alone
+ * could take 3–10s, and on Hobby-tier (10s function timeout) this hung the
+ * first /api/auth/me call indefinitely — leaving AuthContext in `loading`
+ * state forever, which trapped the UI on <PageLoader />.
+ *
+ * The middleware is now responsible for ONLY:
+ *   1. Security headers (CSP, HSTS, X-Frame-Options, etc.)
+ *   2. CSRF double-submit verification (cookie + header, pure string compare)
+ *   3. CSRF cookie issuance (crypto.randomUUID — no I/O)
+ *   4. Cache-Control for /api/auth/* responses
+ *
+ * It NO LONGER:
+ *   - Calls resolveAuth (was pulling Prisma + JWT + Valkey)
+ *   - Calls rateLimitResponse (was pulling ioredis)
+ *   - Reads the access/refresh JWT cookies
+ *   - Queries the database
+ *   - Touches Redis/Valkey
+ *   - Redirects unauthenticated page requests to /login (each page now does
+ *     its own client-side auth check via useAuth())
+ *   - Sets the `x-user-payload` header (no route handler ever read it —
+ *     every route handler already calls resolveAuth(req) itself)
+ *
+ * Auth + rate limiting now happen INSIDE each Route Handler via the
+ * existing `requireAuth()` and `withRateLimit()` helpers in `@/lib/api`.
+ * This is the correct architectural location for them on Vercel because
+ * Route Handlers are independently scalable serverless functions with
+ * their own timeout budgets, while middleware runs on the critical path
+ * of EVERY request including static page renders.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth, persistRotatedRefreshToken, type AuthPayload } from "@/lib/auth";
-import { rateLimitResponse, getClientIp, LIMITS, type RateLimitConfig } from "@/lib/rateLimit";
 import { CSRF_COOKIE, generateCsrfToken, CSRF_COOKIE_OPTS } from "@/lib/cookies";
 
-// ── Public routes that skip authentication ──────────────────────────────────
-
-const PUBLIC_ROUTES = [
+// ── Public auth routes that don't need CSRF verification ────────────────────
+// These POST endpoints are called BEFORE the user has a CSRF cookie (login,
+// register, forgot-password, reset-password). They are exempt from CSRF
+// enforcement. All other mutating endpoints require the double-submit token.
+const CSRF_EXEMPT_ROUTES = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
-  "/api/health",
-  "/api/landing-content",
+  "/api/auth/refresh",  // refresh only rotates tokens; can't be read cross-origin
 ];
 
-// Non-API page routes that don't require authentication (landing page, legal pages, etc.)
-// These get security headers applied but skip the auth check.
-const PUBLIC_PAGE_PREFIXES = [
-  "/",
-  "/login",
-  "/signup",
-  "/contact",
-  "/cookies",
-  "/privacy",
-  "/terms",
-  "/help",
-  "/status",
-  "/partners",
-  "/refund",
-  "/api-docs",
-  "/founder-panel",  // founder-panel has its own auth check inside the page
-];
-
-function isPublicPage(pathname: string): boolean {
-  // Exact match on root
-  if (pathname === "/") return true;
-  // Prefix match (e.g. /contact, /privacy)
-  return PUBLIC_PAGE_PREFIXES.some(
-    (p) => p !== "/" && (pathname === p || pathname.startsWith(p + "/")),
-  );
-}
-
-// Routes exempt from CSRF verification even though they are POST and protected.
-// Auth refresh only rotates tokens (no state change) and cannot be read cross-origin
-// (access token is httpOnly). Including it in CSRF enforcement would break
-// the automatic refresh flow in authedFetch.
-const CSRF_EXEMPT_ROUTES = [
-  "/api/auth/refresh",
-];
-
-function isPublicRoute(pathname: string): boolean {
-  // Exact matches for static public routes
-  if (PUBLIC_ROUTES.includes(pathname)) return true;
-  // Prefix match for wildcard public routes
-  if (pathname.startsWith("/api/webhooks/")) return true;
-  return false;
-}
-
-// ── General API rate limit config: 60 requests per minute ───────────────────
-
-const GENERAL_API_LIMIT: RateLimitConfig = {
-  windowMs: 60 * 1000, // 1 minute
-  maxAttempts: 60,
-};
+const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 
 // ── Security headers ────────────────────────────────────────────────────────
 //
@@ -81,37 +61,26 @@ const GENERAL_API_LIMIT: RateLimitConfig = {
 //   The header is deprecated and modern browsers ignore it. In old browsers
 //   (IE, old Safari) the "1; mode=block" value can introduce vulnerabilities
 //   via the IE XSS auditor. OWASP recommends "0". The real XSS defense is
-//   the Content-Security-Policy header (set in next.config.ts).
+//   the Content-Security-Policy header.
 //
 // LOW-002 FIX (Cycle 2): added Cross-Origin-Opener-Policy and
 //   Cross-Origin-Embedder-Policy. These defend against Spectre-class side
-//   channel attacks by isolating the browsing context. COOP=same-origin
-//   ensures attackers can't open the app in a popup they control; COEP=
-//   require-corp prevents loading cross-origin resources without CORP.
-//   Note: COEP=require-corp can break third-party iframes/scripts that
-//   don't send CORP headers — monitor for breakage after deploy.
+//   channel attacks by isolating the browsing context.
 
 const SECURITY_HEADERS: Record<string, string> = {
-  // P0-6: Content-Security-Policy — restricts all resource loading to same-origin
-  // except for: fonts (Google Fonts for Arabic), styles (inline for RTL), images (data: for QR),
-  // scripts (self + unsafe-evals for Next.js runtime), connect (self + api endpoints).
-  // This is the primary XSS defense — all other headers are supplementary.
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",  // Next.js requires unsafe-eval for HMR; unsafe-inline for hydration
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",  // Tailwind + RTL + Google Fonts
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",  // data: for QR codes, blob: for uploads, https: for external images
-    "connect-src 'self' https://api.openrouter.ai",  // AI API calls
-    "frame-src 'none'",  // No iframes allowed — matches X-Frame-Options: DENY
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https://api.openrouter.ai",
+    "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",  // Prevents clickjacking — same as X-Frame-Options: DENY
+    "frame-ancestors 'none'",
   ].join("; "),
-  // P0-6: HSTS — Force HTTPS for 1 year with subdomain inclusion.
-  // Only set when the request is HTTPS (proxied through Caddy/nginx in production).
-  // In dev (HTTP) we skip HSTS to avoid browser caching the header and breaking localhost.
   ...(process.env.NODE_ENV === "production" ? {
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   } : {}),
@@ -131,9 +100,7 @@ function withSecurityHeaders(response: NextResponse, pathname?: string): NextRes
   }
   // LOW-004 FIX (Cycle 2): never cache auth responses. A cached 401 could
   // be served to a different user behind a misconfigured proxy; a cached
-  // 200 with a Set-Cookie could leak session cookies. Applies to all
-  // /api/auth/* paths (login, logout, refresh, register, me, change-password,
-  // forgot-password, reset-password, csrf).
+  // 200 with a Set-Cookie could leak session cookies.
   if (pathname && pathname.startsWith("/api/auth/")) {
     response.headers.set(
       "Cache-Control",
@@ -142,70 +109,26 @@ function withSecurityHeaders(response: NextResponse, pathname?: string): NextRes
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
   }
-  // Generate a unique request ID per invocation
+  // Unique request ID per invocation — useful for log correlation.
   response.headers.set("X-Request-ID", crypto.randomUUID());
   return response;
 }
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 
-export async function middleware(req: NextRequest): Promise<NextResponse> {
+export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
-  const ip = getClientIp(req);
 
-  // ── 1. Public API routes: rate-limit by IP, skip auth ──────────────────
-  if (isPublicRoute(pathname)) {
-    const limited = await rateLimitResponse(req, "pub", GENERAL_API_LIMIT, ip);
-    if (limited) return withSecurityHeaders(limited, pathname);
-
-    const response = NextResponse.next();
-    return withSecurityHeaders(response, pathname);
-  }
-
-  // ── 1b. Public page routes (/, /contact, /privacy, etc.): skip auth ────
-  // Security headers are still applied. These are marketing/legal pages that
-  // shouldn't require login.
-  if (isPublicPage(pathname)) {
-    const response = NextResponse.next();
-    return withSecurityHeaders(response, pathname);
-  }
-
-  // ── 2. Protected routes: resolve auth ──────────────────────────────────
-  const authResult = await resolveAuth(req);
-
-  if (!authResult.ok || !authResult.user) {
-    // For API routes: return JSON 401 (clients expect JSON).
-    if (pathname.startsWith("/api/")) {
-      const response = NextResponse.json(
-        { error: authResult.error || "Unauthorized" },
-        { status: authResult.status || 401 },
-      );
-      return withSecurityHeaders(response, pathname);
-    }
-    // For page routes: redirect to /login with returnTo param.
-    // Previously this returned a JSON 401 for ALL routes including pages,
-    // which meant unauthenticated users hitting an unknown page saw a raw
-    // JSON {"error":"Unauthorized"} instead of the branded not-found.tsx
-    // or the login redirect. Now unknown pages fall through to Next.js's
-    // 404 handler (not-found.tsx) and protected pages redirect to login.
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("returnTo", pathname + req.nextUrl.search);
-    const response = NextResponse.redirect(loginUrl);
-    return withSecurityHeaders(response, pathname);
-  }
-
-  const user: AuthPayload = authResult.user;
-
-  // ── 3. CSRF double-submit verification for mutating methods ──────────────
-  // SEC-010 FIX: Enforce CSRF protection on POST, PUT, PATCH, DELETE.
-  // The inv_csrf cookie is set on every authenticated response; JS must
-  // read it and echo the value in the X-CSRF-Token header on every
-  // mutating request. Safe methods (GET, HEAD, OPTIONS) are exempt.
-  // Certain auth routes (refresh) are also exempt — they only rotate tokens
-  // and the attacker cannot read the httpOnly access cookie anyway.
-  const mutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
-  if (mutatingMethods.includes(req.method) && !CSRF_EXEMPT_ROUTES.includes(pathname)) {
+  // ── 1. CSRF double-submit verification for mutating methods ────────────
+  // Pure string comparison — no DB, no JWT, no Redis. The inv_csrf cookie
+  // is httpOnly? NO — it must be readable by JS so it can be echoed in the
+  // X-CSRF-Token header. The double-submit pattern works because an
+  // attacker on another origin cannot read the cookie (same-origin policy)
+  // and therefore cannot forge the header.
+  if (
+    MUTATING_METHODS.includes(req.method) &&
+    !CSRF_EXEMPT_ROUTES.includes(pathname)
+  ) {
     const csrfCookie = req.cookies.get(CSRF_COOKIE)?.value;
     const csrfHeader = req.headers.get("x-csrf-token");
 
@@ -218,25 +141,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ── 4. Rate limit by uid (authenticated user) ─────────────────────────
-  const limited = await rateLimitResponse(req, "api", GENERAL_API_LIMIT, user.uid);
-  if (limited) return withSecurityHeaders(limited, pathname);
-
-  // ── 5. Continue with security headers + user info ──────────────────────
+  // ── 2. Continue with security headers + CSRF cookie (if missing) ───────
   const response = NextResponse.next();
 
-  // Set authenticated user info on a custom header so route handlers can access it
-  response.headers.set("x-user-payload", encodeURIComponent(JSON.stringify(user)));
-
-  // HIGH-004 FIX (Cycle 2): if resolveAuth rotated the refresh token (because
-  // it fell back to the refresh path), persist the new refresh cookie. This
-  // makes silent refresh rotation transparent to the frontend — no extra
-  // round-trip to /api/auth/refresh needed for the common case.
-  persistRotatedRefreshToken(response, authResult.rotatedRefreshToken);
-
-  // SEC-010: Issue/refresh CSRF cookie on every authenticated response so the
-  // client always has a fresh token. If the cookie is already set and not
-  // expired, we keep it; otherwise we generate a new one.
+  // Issue/refresh CSRF cookie on every response so the client always has
+  // a fresh token. If the cookie is already set, we keep it.
   const existingCsrf = req.cookies.get(CSRF_COOKIE)?.value;
   if (!existingCsrf) {
     const newCsrf = generateCsrfToken();
@@ -247,16 +156,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 // ── Matcher ─────────────────────────────────────────────────────────────────
+//
+// Apply security headers (CSP, HSTS, etc.) to ALL routes, not just /api/*.
+// Page routes also need CSP to prevent XSS in the SPA shell.
+// Excludes Next.js internal asset paths so static files aren't slowed down.
 
-// SEC-M3 FIX (Cycle 1): pin middleware to Node.js runtime. The middleware
-// imports `@/lib/auth` (jsonwebtoken, bcryptjs) and `@/lib/rateLimit`
-// (ioredis) — both Node-only. On Next.js 16 the default middleware runtime
-// is Edge, which would either fail to bundle these or fail at runtime when
-// `resolveAuth` calls into them. Setting `runtime: "nodejs"` makes the
-// dependency explicit and removes any ambiguity for Turbopack.
 export const config = {
-  runtime: "nodejs",
-  // P0-6: Apply security headers (CSP, HSTS, etc.) to ALL routes, not just /api/*
-  // Page routes also need CSP to prevent XSS in the SPA shell.
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

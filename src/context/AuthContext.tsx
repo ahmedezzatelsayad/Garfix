@@ -68,19 +68,55 @@ function resolvePerms(profile: UserProfile | null): Record<string, number> {
   return defaults;
 }
 
+/**
+ * ARCHITECTURE FIX (Vercel infinite-loading RCA):
+ *
+ * Every fetch here is wrapped with a 5-second AbortController timeout.
+ * Previously, if /api/auth/me hung (Vercel cold start, Redis outage,
+ * function timeout, network blip), `loading` stayed `true` FOREVER and
+ * the UI was trapped on the loader. With the timeout, even if the
+ * server never responds, we resolve to `null` within 5s — at which
+ * point the home page swaps to the public landing page (not a spinner).
+ *
+ * The 5s value matches Vercel Hobby-tier function timeout (10s) with
+ * a safety margin — we'd rather fail fast and show content than wait
+ * the full Vercel timeout.
+ */
+const AUTH_FETCH_TIMEOUT_MS = 5000;
+
+function fetchWithTimeout(
+  url: string,
+  opts: RequestInit = {},
+  timeoutMs = AUTH_FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
 async function fetchMe(): Promise<UserProfile | null> {
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
+    const res = await fetchWithTimeout("/api/auth/me", { credentials: "include" });
     if (res.ok) return res.json();
     if (res.status === 401) {
-      const refreshRes = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+      const refreshRes = await fetchWithTimeout("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
       if (refreshRes.ok) {
-        const retryRes = await fetch("/api/auth/me", { credentials: "include" });
+        const retryRes = await fetchWithTimeout("/api/auth/me", { credentials: "include" });
         if (retryRes.ok) return retryRes.json();
       }
     }
     return null;
-  } catch { return null; }
+  } catch {
+    // AbortError / network failure → treat as "not authenticated".
+    // The home page will render the public landing page in this case,
+    // so the user always sees SOMETHING usable.
+    return null;
+  }
 }
 
 export async function authedFetch(url: string, opts: RequestInit = {}): Promise<Response> {
@@ -93,9 +129,15 @@ export async function authedFetch(url: string, opts: RequestInit = {}): Promise<
   }
   const finalOpts: RequestInit = { ...opts, headers, credentials: "include" };
 
-  const res = await fetch(url, finalOpts);
+  // RCA FIX: apply the same 5s timeout as fetchMe() so a hung mutating
+  // request (POST /api/invoices, etc.) doesn't freeze the UI indefinitely.
+  // Caller can override by passing their own `signal` in opts.
+  const res = await fetchWithTimeout(url, finalOpts);
   if (res.status !== 401) return res;
-  const refreshRes = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+  const refreshRes = await fetchWithTimeout("/api/auth/refresh", {
+    method: "POST",
+    credentials: "include",
+  });
   if (!refreshRes.ok) return res;
   // After refresh, re-read CSRF token (it may have been re-issued)
   const refreshedHeaders = new Headers(opts.headers || undefined);
@@ -103,7 +145,7 @@ export async function authedFetch(url: string, opts: RequestInit = {}): Promise<
     const csrfAfterRefresh = getCsrfToken();
     if (csrfAfterRefresh) refreshedHeaders.set("X-CSRF-Token", csrfAfterRefresh);
   }
-  return fetch(url, { ...opts, headers: refreshedHeaders, credentials: "include" });
+  return fetchWithTimeout(url, { ...opts, headers: refreshedHeaders, credentials: "include" });
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

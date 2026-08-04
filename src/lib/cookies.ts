@@ -45,8 +45,19 @@ export const CSRF_COOKIE_OPTS = {
   maxAge: CSRF_TTL,
 } as const;
 
-/** Generate a CSRF token (HMAC of random bytes + timestamp). */
-import crypto from "node:crypto";
+/**
+ * Generate a CSRF token (32 random bytes → 64-char hex string).
+ *
+ * Uses the Web Crypto API (globalThis.crypto) which is available in both
+ * the Edge Runtime and Node.js 19+, so this function is safe to call
+ * from middleware (which now runs on Edge) and from Route Handlers.
+ *
+ * Previously this used `node:crypto.randomBytes()` — that broke when
+ * middleware was migrated off `runtime: "nodejs"` because node:crypto
+ * is not available in the Edge Runtime.
+ */
 export function generateCsrfToken(): string {
-  return crypto.randomBytes(32).toString("hex");
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
