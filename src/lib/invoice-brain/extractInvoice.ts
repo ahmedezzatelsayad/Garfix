@@ -202,10 +202,10 @@ async function handleExistingPattern(
   // Decision based on confidence tier
   switch (confidenceMetrics.recommendedAction) {
     case "use_directly":
-      return await usePatternDirectly(text, template, fingerprint, store, confidenceMetrics);
+      return await applyPatternDirectly(text, template, fingerprint, store, confidenceMetrics);
       
     case "verify":
-      return await usePatternWithVerification(text, template, fingerprint, store, confidenceMetrics);
+      return await applyPatternWithVerification(text, template, fingerprint, store, confidenceMetrics);
       
     case "use_ai":
       // Low confidence - fall back to AI
@@ -224,7 +224,7 @@ async function handleExistingPattern(
 /**
  * Use pattern directly without verification (high confidence).
  */
-async function usePatternDirectly(
+async function applyPatternDirectly(
   text: string,
   template: NonNullable<Awaited<ReturnType<PatternStore["get"]>>>,
   fingerprint: string,
@@ -276,7 +276,7 @@ async function usePatternDirectly(
 /**
  * Use pattern with verification (medium confidence).
  */
-async function usePatternWithVerification(
+async function applyPatternWithVerification(
   text: string,
   template: NonNullable<Awaited<ReturnType<PatternStore["get"]>>>,
   fingerprint: string,
