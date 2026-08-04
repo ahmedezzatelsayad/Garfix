@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
       'lucide-react',
       'recharts',
       '@prisma/client',
+      'date-fns',
+      'framer-motion',
+      'react-syntax-highlighter',
+      '@mdxeditor/editor',
       // Radix UI primitives (curated list of packages actually imported):
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
@@ -84,9 +88,11 @@ const nextConfig: NextConfig = {
   },
   // turbopack disabled temporarily - use webpack for compatibility
   // turbopack: { root: __dirname },
-  // Skip type checking for now - pre-existing type errors in codebase
+  // All 274 TS errors resolved (commit cbc244d) — type checking re-enabled.
+  // If new type errors are introduced, `next build` will fail loudly instead
+  // of silently shipping broken types to production.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 

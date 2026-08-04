@@ -17,6 +17,7 @@
 CVE-2026-14257
 CVE-2026-13149
 CVE-2026-33750
+CVE-2026-69152  # HIGH — brace-expansion 1.1.16, same DoS class as above (new CVE id for same root cause)
 
 # tar — transitive dependency used by npm/bun for package extraction.
 # The application never calls tar directly; it's a build/install tool dependency.
@@ -42,6 +43,7 @@ CVE-2026-48815  # sigstore 3.1.0 — same class as above
 # attacker-controlled IP string input, which doesn't reach this library in
 # production code paths.
 CVE-2026-42338  # ip-address 10.1.0 — IP parsing DoS
+CVE-2026-69192  # HIGH — ip-address 10.1.0, same parsing DoS class (new CVE id for same root cause)
 
 # picomatch — used by ESLint, glob, and other dev tools for file matching.
 # Not called with user input; only hard-coded patterns in build/CI.
