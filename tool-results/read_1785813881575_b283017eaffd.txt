@@ -1,0 +1,623 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * TeamView — "My Team" page (hash route: #team)
+     5→ *
+     6→ * Lists company members, lets admins invite new members by email, edit each
+     7→ * member's role + per-permission toggles, and remove members (without deleting
+     8→ * the underlying user account).
+     9→ *
+    10→ * Backend: /api/companies/[slug]/members (GET/POST) and
+    11→ *          /api/companies/[slug]/members/[uid] (PATCH/DELETE)
+    12→ */
+    13→import { useState, useMemo } from "react";
+    14→import { useBrand } from "@/context/BrandContext";
+    15→import {
+    16→  useCompanyMembers, useRemoveCompanyMember,
+    17→  useAddCompanyMember, useUpdateCompanyMember,
+    18→} from "@/hooks/queries";
+    19→import { toast } from "sonner";
+    20→import {
+    21→  Users, Trash2, Edit2, X, Mail, Crown, UserPlus, Key,
+    22→} from "lucide-react";
+    23→import {
+    24→  PERMISSION_CATALOG, ROLE_PRESETS, LOCKED_PERMS,
+    25→} from "@/lib/permissions";
+    26→import { cn, paginate } from "@/lib/utils";
+    27→
+    28→interface Member {
+    29→  uid: string;
+    30→  email: string;
+    31→  displayName: string;
+    32→  role: string;
+    33→  companies: string[];
+    34→  permissions: Record<string, number>;
+    35→  isFounder?: boolean;
+    36→  createdAt: string;
+    37→}
+    38→
+    39→const ROLE_LABEL: Record<string, string> = ROLE_PRESETS.reduce(
+    40→  (acc, r) => {
+    41→    acc[r.value] = r.label;
+    42→    return acc;
+    43→  },
+    44→  { admin: "مدير 👑", editor: "وصول كامل ✏️", employee: "موظف طلبات 👤", viewer: "عرض فقط 👁️" } as Record<string, string>,
+    45→);
+    46→
+    47→function roleColor(role: string): string {
+    48→  const preset = ROLE_PRESETS.find((r) => r.value === role);
+    49→  return preset?.color || "#6b7280";
+    50→}
+    51→
+    52→/** Build a short text summary of a member's permissions for the table. */
+    53→function permSummary(perms: Record<string, number>, role: string, isFounder?: boolean): string {
+    54→  if (isFounder || role === "admin") return "كل الصلاحيات";
+    55→  const enabled = PERMISSION_CATALOG.filter((p) => !p.locked && perms[p.key]);
+    56→  if (enabled.length === 0) return "بدون صلاحيات";
+    57→  if (enabled.length === PERMISSION_CATALOG.filter((p) => !p.locked).length) return "كل الصلاحيات (غير الإدارية)";
+    58→  return `${enabled.length} صلاحية`;
+    59→}
+    60→
+    61→/* DS v4.0 Design System Classes */
+    62→const inputStyle = "w-full py-[9px] px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px]"; // focus-ring added per DS v4.0
+    63→const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+    64→const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-semibold";
+    65→const tdStyle = "px-3 py-2.5 align-middle";
+    66→const iconBtn = "w-7 h-7 rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center hover-lift duration-120"; // hover-lift per DS v4.0
+    67→const primaryBtn = "active-press duration-150 px-6 py-2.5 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] shadow-brand-sm"; // active-press + emerald gradient per DS v4.0
+    68→const ghostBtn = "hover-lift duration-120 px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"; // hover-lift per DS v4.0
+    69→const kpiCardClass = "kpi-card p-4 rounded-[14px] border border-border"; // kpi-card per DS v4.0
+    70→
+    71→export function TeamView() {
+    72→  const { activeCompany } = useBrand();
+    73→  const removeMemberMutation = useRemoveCompanyMember();
+    74→  const { data: membersData, isLoading: loading, refetch } = useCompanyMembers(activeCompany?.slug || "");
+    75→  const members: Member[] = (membersData?.members ?? []) as unknown as Member[];
+    76→  const [showInvite, setShowInvite] = useState(false);
+    77→  const [editing, setEditing] = useState<Member | null>(null);
+    78→  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    79→  const [currentPage, setCurrentPage] = useState(1);
+    80→  const [bulkDeleting, setBulkDeleting] = useState(false);
+    81→  const pageSize = 20;
+    82→
+    83→  const totalPages = Math.max(1, Math.ceil(members.length / pageSize));
+    84→  const pageMembers = paginate(members, currentPage, pageSize);
+    85→  const safePage = Math.min(currentPage, totalPages);
+    86→
+    87→  const toggleSelectAll = () => {
+    88→    if (selectedIds.size === pageMembers.length && pageMembers.length > 0) setSelectedIds(new Set());
+    89→    else setSelectedIds(new Set(pageMembers.map((m) => m.uid)));
+    90→  };
+    91→  const toggleRow = (uid: string) => {
+    92→    setSelectedIds((prev) => {
+    93→      const next = new Set(prev);
+    94→      if (next.has(uid)) next.delete(uid);
+    95→      else next.add(uid);
+    96→      return next;
+    97→    });
+    98→  };
+    99→
+   100→  const handleBulkDelete = async () => {
+   101→    if (!activeCompany || selectedIds.size === 0) return;
+   102→    if (!confirm(`إزالة ${selectedIds.size} عضو من الشركة؟`)) return;
+   103→    setBulkDeleting(true);
+   104→    let okCount = 0, failCount = 0;
+   105→    for (const uid of selectedIds) {
+   106→      try {
+   107→        await removeMemberMutation.mutateAsync({ slug: activeCompany.slug, uid });
+   108→        okCount++;
+   109→      } catch { failCount++; }
+   110→    }
+   111→    setBulkDeleting(false);
+   112→    setSelectedIds(new Set());
+   113→    if (okCount > 0) toast.success(`تمت إزالة ${okCount} عضو`);
+   114→    if (failCount > 0) toast.error(`تعذّرت إزالة ${failCount} عضو`);
+   115→  };
+   116→
+   117→  const handleRemove = async (m: Member) => {
+   118→    if (!activeCompany) return;
+   119→    if (m.isFounder) { toast.error("لا يمكن إزالة المؤسس"); return; }
+   120→    if (!confirm(`إزالة ${m.displayName} من شركة "${activeCompany.nameAr || activeCompany.name}"؟\n(لن يتم حذف حساب المستخدم)`)) return;
+   121→    removeMemberMutation.mutate(
+   122→      { slug: activeCompany.slug, uid: m.uid },
+   123→      {
+   124→        onSuccess: () => toast.success("تمت إزالة العضو من الشركة"),
+   125→        onError: (err) => toast.error(err.message || "تعذّرت الإزالة"),
+   126→      },
+   127→    );
+   128→  };
+   129→
+   130→  if (!activeCompany) {
+   131→    return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة أولاً</div>;
+   132→  }
+   133→
+   134→  return (
+   135→    <div className="flex flex-col gap-4">
+   136→      <div className="flex flex-wrap justify-between items-center gap-3">
+   137→        <div>
+   138→          <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2">
+   139→            <Users size={20} /> فريقي
+   140→          </h1>
+   141→          <p className="text-[13px] text-muted-foreground">
+   142→            {members.length} عضو في {activeCompany.nameAr || activeCompany.name}
+   143→          </p>
+   144→        </div>
+   145→        <button
+   146→          onClick={() => setShowInvite(true)}
+   147→          className="active-press duration-150 inline-flex items-center gap-1.5 px-[18px] py-2.5 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-bold text-[13px] cursor-pointer max-md:min-h-[44px] shadow-brand-sm"
+   148→        >
+   149→          <UserPlus size={16} /> دعوة عضو
+   150→        </button>
+   151→      </div>
+   152→
+   153→      {selectedIds.size > 0 && (
+   154→        <div className="py-2.5 px-4 bg-destructive text-white rounded-md flex flex-wrap justify-between items-center gap-2">
+   155→          <span className="font-bold text-[13px]">{selectedIds.size} عضو محدد</span>
+   156→          <div className="flex gap-2">
+   157→            <button
+   158→              onClick={() => setSelectedIds(new Set())}
+   159→              disabled={bulkDeleting}
+   160→              className="bg-white/15 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed max-md:min-h-[44px]"
+   161→            >إلغاء التحديد</button>
+   162→            <button
+   163→              onClick={handleBulkDelete}
+   164→              disabled={bulkDeleting}
+   165→              className="bg-white/25 text-white border-none rounded-sm px-3.5 py-1.5 cursor-pointer font-bold text-xs disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px]"
+   166→            >{bulkDeleting ? "جارٍ الإزالة…" : "حذف المحدد"}</button>
+   167→          </div>
+   168→        </div>
+   169→      )}
+   170→
+   171→      <div className="bg-card rounded-[14px] border border-border overflow-hidden shadow-brand-md">
+   172→        {loading ? (
+   173→          <div className="p-8 md:p-12 text-center text-muted-foreground">جارٍ التحميل…</div>
+   174→        ) : members.length === 0 ? (
+   175→          <div className="p-8 md:p-12 text-center text-muted-foreground">
+   176→            <Users size={36} className="opacity-30 mb-2" />
+   177→            <div>لا يوجد أعضاء بعد</div>
+   178→          </div>
+   179→        ) : (
+   180→          <>
+   181→          {/* Desktop table */}
+   182→          <div className="hidden md:block overflow-x-auto garfix-scroll">
+   183→            <table className="w-full border-collapse text-[13px]">
+   184→              <thead>
+   185→                <tr className="border-b border-border bg-muted">
+   186→                  <th scope="col" className="w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground">
+   187→                    <input type="checkbox" checked={selectedIds.size === pageMembers.length && pageMembers.length > 0} onChange={toggleSelectAll} className="cursor-pointer w-4 h-4" aria-label="تحديد الكل" />
+   188→                  </th>
+   189→                  <th scope="col" className={thStyle}>الاسم</th>
+   190→                  <th scope="col" className={thStyle}>البريد</th>
+   191→                  <th scope="col" className={thStyle}>الدور</th>
+   192→                  <th scope="col" className={thStyle}>الصلاحيات</th>
+   193→                  <th scope="col" className={thStyle}>إجراءات</th>
+   194→                </tr>
+   195→              </thead>
+   196→              <tbody>
+   197→                {pageMembers.map((m) => {
+   198→                  const checked = selectedIds.has(m.uid);
+   199→                  return (
+   200→                    <tr key={m.uid} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+   201→                      <td className="px-2 py-2.5 text-center">
+   202→                        <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
+   203→                      </td>
+   204→                      <td className={tdStyle}>
+   205→                        <div className="flex items-center gap-2">
+   206→                          <div
+   207→                            className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0 ring-2 ring-offset-2 ring-offset-background", m.role === "admin" ? "ring-emerald-500" : "ring-transparent")}
+   208→                            style={{ background: `linear-gradient(135deg, ${m.role === 'admin' ? '#047857' : roleColor(m.role)}, var(--accent))` }}
+   209→                          >
+   210→                            {m.displayName.charAt(0).toUpperCase()}
+   211→                          </div>
+   212→                        <span className="inline-flex items-center gap-1">
+   213→                          <Mail size={12} className="opacity-50" />
+   214→                          {m.email}
+   215→                        </span>
+   216→                        </div>
+   217→                      </td>
+   218→                      <td className={tdStyle}>
+   219→                        <span
+   220→                          className={cn("inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold", m.role === "admin" ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}
+   221→                        >
+   222→                          {ROLE_LABEL[m.role] || m.role}
+   223→                        </span>
+   224→                      </td>
+   225→                      <td className={tdStyle}>{permSummary(m.permissions, m.role, m.isFounder)}</td>
+   226→                      <td className={tdStyle}>
+   227→                        <div className="flex gap-1">
+   228→                          <button
+   229→                            onClick={() => setEditing(m)}
+   230→                            title="تعديل"
+   231→                            aria-label="تعديل"
+   232→                            className={iconBtn}
+   233→                          ><Edit2 size={14} /></button>
+   234→                          <button
+   235→                            onClick={() => handleRemove(m)}
+   236→                            title="إزالة من الشركة"
+   237→                            aria-label="إزالة"
+   238→                            disabled={m.isFounder}
+   239→                            className={cn(iconBtn, "text-destructive disabled:opacity-40 disabled:cursor-not-allowed")}
+   240→                          ><Trash2 size={14} /></button>
+   241→                        </div>
+   242→                      </td>
+   243→                    </tr>
+   244→                  );
+   245→                })}
+   246→              </tbody>
+   247→            </table>
+   248→          </div>
+   249→          {/* Mobile cards */}
+   250→          <div className="md:hidden flex flex-col divide-y divide-border">
+   251→            {pageMembers.map((m) => {
+   252→              const checked = selectedIds.has(m.uid);
+   253→              return (
+   254→                <div key={m.uid} className={cn("p-3 flex flex-col gap-3 hover-lift duration-120", checked ? "bg-accent" : "bg-transparent")}>
+   255→                  <div className="flex items-center justify-between gap-2">
+   256→                    <label className="flex items-center gap-2 min-h-[44px]">
+   257→                      <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
+   258→                      <div
+   259→                        className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-[13px] shrink-0 ring-2 ring-offset-2 ring-offset-background", m.role === "admin" ? "ring-emerald-500" : "ring-transparent")}
+   260→                        style={{ background: `linear-gradient(135deg, ${m.role === 'admin' ? '#047857' : roleColor(m.role)}, var(--accent))` }}
+   261→                      >
+   262→                        {m.displayName.charAt(0).toUpperCase()}
+   263→                      </div>
+   264→                      <div className="flex flex-col">
+   265→                        <span className="font-bold text-[13px]">{m.displayName}</span>
+   266→                        {m.isFounder && (
+   267→                          <span className="text-[10px] text-[#f59e0b] inline-flex items-center gap-0.5">
+   268→                            <Crown size={10} /> مؤسس
+   269→                          </span>
+   270→                        )}
+   271→                      </div>
+   272→                    </label>
+   273→                    <div className="flex gap-1">
+   274→                      <button onClick={() => setEditing(m)} title="تعديل" aria-label="تعديل" className="min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center"><Edit2 size={14} /></button>
+   275→                      <button onClick={() => handleRemove(m)} title="إزالة من الشركة" aria-label="إزالة" disabled={m.isFounder} className={cn("min-w-[44px] min-h-[44px] rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed")}><Trash2 size={14} /></button>
+   276→                    </div>
+   277→                  </div>
+   278→                  <div className="flex flex-col gap-1 text-[13px]">
+   279→                    <div className="flex items-center gap-1 [direction:ltr] text-end">
+   280→                      <Mail size={12} className="opacity-50" />
+   281→                      <span dir="ltr">{m.email}</span>
+   282→                    </div>
+   283→                    <div className="flex items-center justify-between gap-2">
+   284→                      <span className="text-[11px] text-muted-foreground">الدور:</span>
+   285→                      <span
+   286→                        className="inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold"
+   287→                        style={{ background: `${roleColor(m.role)}22`, color: roleColor(m.role) }}
+   288→                      >
+   289→                        {ROLE_LABEL[m.role] || m.role}
+   290→                      </span>
+   291→                    </div>
+   292→                    <div className="flex items-center justify-between gap-2">
+   293→                      <span className="text-[11px] text-muted-foreground">الصلاحيات:</span>
+   294→                      <span className="text-[12px]">{permSummary(m.permissions, m.role, m.isFounder)}</span>
+   295→                    </div>
+   296→                  </div>
+   297→                </div>
+   298→              );
+   299→            })}
+   300→          </div>
+   301→          <div className="flex flex-wrap justify-between items-center px-4 py-3 border-t border-border gap-2">
+   302→            <span className="text-xs text-muted-foreground">صفحة {safePage} من {totalPages} ({members.length} عضو)</span>
+   303→            <div className="flex items-center gap-1.5">
+   304→              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === 1 ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>السابق</button>
+   305→              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className={cn("px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]", safePage === totalPages ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" : "bg-card text-foreground cursor-pointer")}>التالي</button>
+   306→            </div>
+   307→          </div>
+   308→          </>
+   309→        )}
+   310→      </div>
+   311→
+   312→      {showInvite && (
+   313→        <InviteDialog
+   314→          companySlug={activeCompany.slug}
+   315→          onClose={() => setShowInvite(false)}
+   316→          onSaved={() => { setShowInvite(false); refetch(); }}
+   317→        />
+   318→      )}
+   319→
+   320→      {editing && (
+   321→        <EditDialog
+   322→          member={editing}
+   323→          companySlug={activeCompany.slug}
+   324→          onClose={() => setEditing(null)}
+   325→          onSaved={() => { setEditing(null); refetch(); }}
+   326→        />
+   327→      )}
+   328→    </div>
+   329→  );
+   330→}
+   331→
+   332→// ─── Invite Dialog ────────────────────────────────────────────────────────
+   333→
+   334→function InviteDialog({
+   335→  companySlug, onClose, onSaved,
+   336→}: { companySlug: string; onClose: () => void; onSaved: () => void }) {
+   337→  const [email, setEmail] = useState("");
+   338→  const [displayName, setDisplayName] = useState("");
+   339→  const [role, setRole] = useState<string>("employee");
+   340→  const [perms, setPerms] = useState<Record<string, number>>({});
+   341→  const addMemberMutation = useAddCompanyMember();
+   342→  const [result, setResult] = useState<{ temporaryPassword?: string | null; created?: boolean; email?: string } | null>(null);
+   343→
+   344→  const togglePerm = (key: string) => {
+   345→    setPerms((p) => ({ ...p, [key]: p[key] ? 0 : 1 }));
+   346→  };
+   347→
+   348→  const submit = async () => {
+   349→    if (!email) { toast.error("البريد الإلكتروني مطلوب"); return; }
+   350→    try {
+   351→      const raw = await addMemberMutation.mutateAsync({
+   352→        slug: companySlug,
+   353→        uid: email, // API accepts email as uid for invite
+   354→        role,
+   355→        permissions: perms,
+   356→        email,
+   357→        displayName: displayName || undefined,
+   358→      });
+   359→      const data = raw as unknown as Record<string, unknown>;
+   360→      if (data.created) {
+   361→        toast.success("تم إنشاء الحساب وإضافته للشركة");
+   362→      } else {
+   363→        toast.success("تمت إضافة العضو للشركة");
+   364→      }
+   365→      setResult({
+   366→        temporaryPassword: data.temporaryPassword as string | null | undefined,
+   367→        created: data.created as boolean | undefined,
+   368→        email: (data.member as Record<string, unknown> | undefined)?.email as string | undefined,
+   369→      });
+   370→      // Don't close immediately if a temp password was returned — let admin copy it
+   371→      if (!data.temporaryPassword) {
+   372→        onSaved();
+   373→      }
+   374→    } catch (err) {
+   375→      toast.error(err instanceof Error ? err.message : "خطأ");
+   376→    }
+   377→  };
+   378→
+   379→  const saving = addMemberMutation.isPending;
+   380→
+   381→  return (
+   382→    <DialogShell title="دعوة عضو جديد" icon={<UserPlus size={18} />} onClose={onClose}>
+   383→      {result ? (
+   384→        <div className="flex flex-col gap-3.5">
+   385→          <div className="p-3.5 rounded-md bg-muted border border-border">
+   386→            <div className="text-[13px] font-bold mb-1.5">
+   387→              {result.created ? "✅ تم إنشاء حساب جديد" : "✅ تمت إضافة العضو"}
+   388→            </div>
+   389→            {result.temporaryPassword ? (
+   390→              <div className="text-xs text-muted-foreground flex flex-col gap-1.5">
+   391→                <div>البريد: <span dir="ltr">{result.email}</span></div>
+   392→                <div>كلمة المرور المؤقتة:</div>
+   393→                <div className="[direction:ltr] text-center p-2.5 rounded-sm bg-background border border-dashed border-border font-mono text-sm font-bold tracking-wider">
+   394→                  {result.temporaryPassword}
+   395→                </div>
+   396→                <div className="text-[11px] text-muted-foreground">
+   397→                  شاركها مع المستخدم. يمكنه تغييرها لاحقاً عبر "نسيت كلمة المرور".
+   398→                </div>
+   399→              </div>
+   400→            ) : (
+   401→              <div className="text-xs text-muted-foreground">
+   402→                المستخدم موجود مسبقاً وتم إضافته للشركة بالصلاحيات المحددة.
+   403→              </div>
+   404→            )}
+   405→          </div>
+   406→          <div className="flex justify-end">
+   407→            <button onClick={onSaved} className={primaryBtn}>تم</button>
+   408→          </div>
+   409→        </div>
+   410→      ) : (
+   411→        <div className="flex flex-col gap-3.5">
+   412→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   413→            <div>
+   414→              <label className={labelStyle}>البريد الإلكتروني *</label>
+   415→              <input value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" aria-label="البريد الإلكتروني" className={inputStyle} placeholder="user@example.com" />
+   416→            </div>
+   417→            <div>
+   418→              <label className={labelStyle}>الاسم (للمستخدم الجديد)</label>
+   419→              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} aria-label="الاسم" className={inputStyle} placeholder="محمد علي" />
+   420→            </div>
+   421→          </div>
+   422→
+   423→          <div>
+   424→            <label className={labelStyle}>الدور</label>
+   425→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+   426→              {ROLE_PRESETS.map((r) => (
+   427→                <button
+   428→                  key={r.value}
+   429→                  onClick={() => setRole(r.value)}
+   430→                  className={`max-md:min-h-[44px] py-2.5 px-3 rounded-[10px] font-inherit text-xs font-bold cursor-pointer text-right flex flex-col items-start gap-0.5 ${role === r.value ? `[background:${r.color}22] text-[${r.color}]` : "bg-[var(--background)] text-[var(--foreground)]"}`}
+   431→                  style={{ border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}` }}
+   432→                >
+   433→                  <span>{r.label}</span>
+   434→                  <span className="text-[10px] font-normal opacity-80">{r.desc}</span>
+   435→                </button>
+   436→              ))}
+   437→            </div>
+   438→          </div>
+   439→
+   440→          {role !== "admin" && (
+   441→            <PermEditor perms={perms} onToggle={togglePerm} compact />
+   442→          )}
+   443→
+   444→          <div className="flex gap-2.5 justify-end">
+   445→            <button onClick={onClose} className={ghostBtn}>إلغاء</button>
+   446→            <button onClick={submit} disabled={saving} className={primaryBtn}>
+   447→              {saving ? "جارٍ…" : "دعوة"}
+   448→            </button>
+   449→          </div>
+   450→        </div>
+   451→      )}
+   452→    </DialogShell>
+   453→  );
+   454→}
+   455→
+   456→// ─── Edit Dialog (permissions editor) ─────────────────────────────────────
+   457→
+   458→function EditDialog({
+   459→  member, companySlug, onClose, onSaved,
+   460→}: { member: Member; companySlug: string; onClose: () => void; onSaved: () => void }) {
+   461→  const updateMemberMutation = useUpdateCompanyMember();
+   462→  const [role, setRole] = useState<string>(member.role);
+   463→  const [perms, setPerms] = useState<Record<string, number>>({ ...member.permissions });
+   464→
+   465→  const togglePerm = (key: string) => {
+   466→    setPerms((p) => ({ ...p, [key]: p[key] ? 0 : 1 }));
+   467→  };
+   468→
+   469→  const save = async () => {
+   470→    try {
+   471→      await updateMemberMutation.mutateAsync({
+   472→        slug: companySlug, uid: member.uid, role, permissions: perms,
+   473→      });
+   474→      toast.success("تم تحديث العضو");
+   475→      onSaved();
+   476→    } catch (err) {
+   477→      toast.error(err instanceof Error ? err.message : "خطأ");
+   478→    }
+   479→  };
+   480→
+   481→  const saving = updateMemberMutation.isPending;
+   482→
+   483→  const isFounder = member.isFounder;
+   484→
+   485→  return (
+   486→    <DialogShell title={`تعديل: ${member.displayName}`} icon={<Key size={18} />} onClose={onClose}>
+   487→      <div className="flex flex-col gap-3.5">
+   488→        <div className="p-2.5 px-3 rounded-md bg-muted border border-border text-xs text-muted-foreground flex items-center gap-2">
+   489→          <Mail size={14} />
+   490→          <span dir="ltr">{member.email}</span>
+   491→        </div>
+   492→
+   493→        <div>
+   494→          <label className={labelStyle}>الدور</label>
+   495→          {isFounder ? (
+   496→            <div className="p-2.5 px-3 rounded-md bg-[#f59e0b22] border border-[#f59e0b] text-[#f59e0b] text-xs font-bold flex items-center gap-1.5">
+   497→              <Crown size={14} /> مؤسس — لا يمكن تغيير الدور
+   498→            </div>
+   499→          ) : (
+   500→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+   501→              {ROLE_PRESETS.map((r) => (
+   502→                <button
+   503→                  key={r.value}
+   504→                  onClick={() => setRole(r.value)}
+   505→                  className={`max-md:min-h-[44px] py-2 px-2.5 rounded-lg font-inherit text-[11px] font-bold cursor-pointer text-right ${role === r.value ? `[background:${r.color}22] text-[${r.color}]` : "bg-[var(--background)] text-[var(--foreground)]"}`}
+   506→                  style={{ border: `1.5px solid ${role === r.value ? r.color : "var(--border)"}` }}
+   507→                >
+   508→                  {r.label}
+   509→                </button>
+   510→              ))}
+   511→            </div>
+   512→          )}
+   513→        </div>
+   514→
+   515→        {!isFounder && role !== "admin" && (
+   516→          <PermEditor perms={perms} onToggle={togglePerm} />
+   517→        )}
+   518→
+   519→        {(isFounder || role === "admin") && (
+   520→          <div className="p-2.5 px-3 rounded-md bg-muted border border-border text-[11px] text-muted-foreground">
+   521→            {isFounder
+   522→              ? "👑 المؤسس يملك كل الصلاحيات تلقائياً ولا يمكن تقييدها."
+   523→              : "👑 المدير يملك كل الصلاحيات تلقائياً ولا يمكن تقييدها."}
+   524→          </div>
+   525→        )}
+   526→
+   527→        <div className="flex gap-2.5 justify-end">
+   528→          <button onClick={onClose} className={ghostBtn}>إلغاء</button>
+   529→          <button onClick={save} disabled={saving || isFounder} className={primaryBtn}>
+   530→            {saving ? "جارٍ…" : "حفظ"}
+   531→          </button>
+   532→        </div>
+   533→      </div>
+   534→    </DialogShell>
+   535→  );
+   536→}
+   537→
+   538→// ─── Permission toggles ───────────────────────────────────────────────────
+   539→
+   540→function PermEditor({
+   541→  perms, onToggle, compact = false,
+   542→}: { perms: Record<string, number>; onToggle: (key: string) => void; compact?: boolean }) {
+   543→  // Group permissions by their `group` field
+   544→  const groups = useMemo(() => {
+   545→    const m: Record<string, typeof PERMISSION_CATALOG> = {};
+   546→    for (const p of PERMISSION_CATALOG) {
+   547→      (m[p.group] = m[p.group] || []).push(p);
+   548→    }
+   549→    return m;
+   550→  }, []);
+   551→
+   552→  return (
+   553→    <div>
+   554→      <label className={labelStyle}>الصلاحيات التفصيلية</label>
+   555→      <div className="bg-background border border-border rounded-md p-2.5 flex flex-col gap-2.5">
+   556→        {Object.entries(groups).map(([group, items]) => (
+   557→          <div key={group}>
+   558→            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">{group}</div>
+   559→            <div className={cn("grid gap-1.5", compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]")}>
+   560→              {items.map((p) => {
+   561→                const on = !!perms[p.key];
+   562→                const locked = LOCKED_PERMS.includes(p.key);
+   563→                return (
+   564→                  <button
+   565→                    key={p.key}
+   566→                    onClick={() => onToggle(p.key)}
+   567→                    className={`max-md:min-h-[44px] flex items-center gap-2 py-2 px-2.5 rounded-lg font-inherit text-xs cursor-pointer text-right text-[var(--foreground)] ${on ? "bg-[var(--primary)]/15" : "bg-[var(--card)]"} ${locked ? "opacity-65" : "opacity-100"}`}
+   568→                    style={{ border: `1px solid ${on ? "var(--primary)" : "var(--border)"}` }}
+   569→                    title={locked ? "صلاحية إدارية — تمنح تلقائياً للمدير فقط" : p.label}
+   570→                  >
+   571→                    <span className="text-sm">{p.icon}</span>
+   572→                    <span className="flex-1">{p.label}</span>
+   573→                    <span
+   574→                      className={`w-8 h-[18px] rounded-full relative shrink-0 transition-[background] duration-[150ms] ${on ? "bg-[var(--primary)]" : "bg-[var(--muted)]"}`}
+   575→                    >
+   576→                      <span
+   577→                        className={`absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-[left] duration-[150ms] ${on ? "left-0.5" : "left-4"}`}
+   578→                      />
+   579→                    </span>
+   580→                  </button>
+   581→                );
+   582→              })}
+   583→            </div>
+   584→          </div>
+   585→        ))}
+   586→      </div>
+   587→      <div className="text-[10px] text-muted-foreground mt-1.5">
+   588→        🔒 الصلاحيات الإدارية تُمنح تلقائياً للمدير والمؤسس فقط.
+   589→      </div>
+   590→    </div>
+   591→  );
+   592→}
+   593→
+   594→// ─── Dialog shell ─────────────────────────────────────────────────────────
+   595→
+   596→function DialogShell({
+   597→  title, icon, onClose, children,
+   598→}: { title: string; icon: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
+   599→  return (
+   600→    <div
+   601→      onClick={onClose}
+   602→      className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[1000] flex items-center justify-center p-4"
+   603→    >
+   604→      <div
+   605→        onClick={(e) => e.stopPropagation()}
+   606→        className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto bg-card border border-border rounded-xl p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] garfix-scroll"
+   607→      >
+   608→        <div className="flex justify-between items-center mb-4">
+   609→          <h2 className="text-base font-extrabold flex items-center gap-2">
+   610→            {icon} {title}
+   611→          </h2>
+   612→          <button onClick={onClose} className="bg-transparent border-none text-muted-foreground cursor-pointer p-1 max-md:min-h-[44px] max-md:min-w-[44px] flex items-center justify-center">
+   613→            <X size={18} />
+   614→          </button>
+   615→        </div>
+   616→        {children}
+   617→      </div>
+   618→    </div>
+   619→  );
+   620→}
+   621→
+   622→export default TeamView;
+   623→
