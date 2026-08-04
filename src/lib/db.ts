@@ -4,6 +4,29 @@
  * Uses Prisma's $extends API for soft-delete filtering.
  * The extended client automatically adds deletedAt: null to
  * findMany/findFirst queries on soft-delete models.
+ *
+ * P0-14 (Engineering Audit): The audit flagged `export const db: any`
+ * as Critical because it cascades `any` to every caller, defeating
+ * Prisma's type safety. The fix is to type db as the extended Prisma
+ * client (ReturnType<typeof $extends>).
+ *
+ * However, applying that fix in this P0 sprint exposes ~80+ pre-existing
+ * type mismatches across src/app/api/accounting/* (e.g. routes writing
+ * `companySlug` to RolePermission which has no such column, routes
+ * reading `disposalDate` from FixedAsset which has no such field,
+ * routes passing `number` IDs to `string` FK columns). These are real
+ * bugs that were HIDDEN by the `any` type — but fixing them all is a
+ * huge modification that violates the P0 sprint constraints:
+ *   - 'Keep changes minimal'
+ *   - 'Verify: TypeScript'
+ *   - User guidance: don't open huge TS modifications in this sprint
+ *
+ * The fix is therefore deferred to a follow-up sprint where the ~80
+ * exposed sites can be reconciled with the Prisma schema one by one.
+ * The deferral is documented inline so the next auditor knows this
+ * was a conscious decision. The audit's other Critical fixes (SSRF,
+ * JWT, auth, schema drift, rate-limit, code-split, Account.id
+ * validators) ARE applied in this sprint.
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -56,7 +79,11 @@ const extendedPrisma = basePrisma.$extends({
   },
 });
 
-// Export as `db` — type as any to avoid TS extension type issues
+// P0-14: Export typed as `any` for now — see file-level comment above.
+// The proper fix is `export const db = globalForPrisma.prisma ?? extendedPrisma;`
+// (no explicit type annotation needed — TS infers the extended client type).
+// That fix is deferred because it exposes ~80 pre-existing type mismatches
+// across the codebase that would need to be reconciled individually.
 export const db: any = globalForPrisma.prisma ?? extendedPrisma;
 
 function appendPoolParams(url: string, poolSize: number): string {
