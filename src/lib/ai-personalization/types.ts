@@ -175,6 +175,12 @@ export interface AIInsight {
   actions: InsightAction[];
   /** Related metrics */
   relatedMetrics?: MetricRef[];
+  /**
+   * Human-readable estimate of the time the user could save by acting on
+   * this insight (e.g. "5 ساعات/أسبوع"). Only populated for
+   * `optimization_suggestion`-style insights.
+   */
+  estimatedTimeSaved?: string;
   /** When insight was generated */
   generatedAt: Date;
   /** Expiration (if applicable) */

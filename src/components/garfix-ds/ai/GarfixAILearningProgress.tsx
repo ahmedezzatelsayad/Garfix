@@ -155,7 +155,7 @@ export const GarfixAILearningProgress: React.FC<GarfixAILearningProgressProps> =
       <GarfixProgressBar
         value={learningProgress}
         size="md"
-        color={learningProgress > 80 ? "emerald" : "primary"}
+        color={learningProgress > 80 ? "emerald" : "blue"}
         labelPosition="top"
         label={`مستوى التعلم: ${learningProgress}%`}
       />

@@ -29,18 +29,18 @@ export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate and verify founder role
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
     
     // Verify user is a founder of at least one company
     const founderMembership = await db.companyMember.findFirst({
       where: {
-        userId: auth.user.id,
+        userId: auth.user.uid,
         role: 'founder',
       },
     });
     
     if (!founderMembership) {
-      return apiError(403, 'Access denied. Founder role required.');
+      return apiError('Access denied. Founder role required.', 403);
     }
     
     // Parse query params
@@ -97,9 +97,23 @@ export async function GET(request: NextRequest) {
     });
     
     // Process results
+    type AiConfigData = {
+      id: string;
+      primaryProvider: Record<string, unknown> & {
+        hasApiKey: boolean;
+        apiKey: string;
+      };
+      usage: {
+        tokensUsedThisMonth: number;
+        requestsThisMonth: number;
+        monthlyTokenQuota: number;
+        usagePercent: number;
+      };
+      updatedAt: Date;
+    };
     const processedCompanies = companies.map(company => {
       const hasAIConfig = !!company.aiConfig;
-      let aiConfigData = null;
+      let aiConfigData: AiConfigData | null = null;
       
       if (includeAIStatus && company.aiConfig) {
         try {
@@ -165,5 +179,5 @@ export async function GET(request: NextRequest) {
         stats,
       },
     });
-  }, request);
+  });
 }

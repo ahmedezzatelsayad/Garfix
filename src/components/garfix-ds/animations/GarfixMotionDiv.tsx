@@ -27,7 +27,7 @@ import {
 
 // ── Types ───────────────────────────────────────────────────
 
-interface MotionDivProps {
+export interface MotionDivProps {
   children: React.ReactNode;
   
   // Hover Effects
@@ -263,10 +263,12 @@ export function GarfixMotionDiv({
       onFocus={onFocus}
       onBlur={onBlur}
       onMouseEnter={hoverHandlers.onMouseEnter}
-      onMouseLeave={hoverHandlers.onMouseLeave}
+      onMouseLeave={() => {
+        hoverHandlers.onMouseLeave();
+        pressHandlers.onMouseLeave();
+      }}
       onMouseDown={pressHandlers.onMouseDown}
       onMouseUp={pressHandlers.onMouseUp}
-      onMouseLeaveCapture={pressHandlers.onMouseLeave}
       onTouchStart={pressHandlers.onTouchStart}
       onTouchEnd={pressHandlers.onTouchEnd}
       onPointerDown={handlePointerDown}

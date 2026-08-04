@@ -40,7 +40,7 @@ async function getCompanyId(request: NextRequest): Promise<{ companyId: string; 
   const auth = await resolveAuth(request);
   
   if (!auth.ok || !auth.user) {
-    return { companyId: '', error: apiError(401, 'Unauthorized') };
+    return { companyId: '', error: apiError('Unauthorized', 401) };
   }
   
   // Get user's company membership
@@ -61,7 +61,7 @@ async function getCompanyId(request: NextRequest): Promise<{ companyId: string; 
   });
   
   if (!membership) {
-    return { companyId: '', error: apiError(404, 'No company found for this user') };
+    return { companyId: '', error: apiError('No company found for this user', 404) };
   }
   
   return { companyId: membership.companyId };
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     
     // Validate action
     if (!action || !['generate', 'extract', 'status'].includes(action)) {
-      return apiError(400, 'Invalid action. Must be: generate, extract, or status');
+      return apiError('Invalid action. Must be: generate, 400, extract, or status');
     }
     
     // Handle status check (doesn't require a specific feature)
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Validate feature for other actions
     const validFeatures: FeatureType[] = ['chat', 'invoice', 'parse', 'memory'];
     if (!feature || !validFeatures.includes(feature)) {
-      return apiError(400, `Invalid feature. Must be one of: ${validFeatures.join(', ')}`);
+      return apiError(`Invalid feature. Must be one of: ${validFeatures.join(', 400, ')}`);
     }
     
     // Log the request
@@ -123,9 +123,9 @@ export async function POST(request: NextRequest) {
         return handleExtract(companyId, feature, params);
         
       default:
-        return apiError(400, 'Unknown action');
+        return apiError('Unknown action', 400);
     }
-  }, request);
+  });
 }
 
 /**
@@ -138,7 +138,7 @@ async function handleGenerate(
 ): Promise<NextResponse> {
   // Validate messages
   if (!params.messages || !Array.isArray(params.messages) || params.messages.length === 0) {
-    return apiError(400, 'messages array is required');
+    return apiError('messages array is required', 400);
   }
   
   // Call the per-feature router
@@ -176,7 +176,7 @@ async function handleExtract(
 ): Promise<NextResponse> {
   // Validate text
   if (!params.text || typeof params.text !== 'string') {
-    return apiError(400, 'text is required');
+    return apiError('text is required', 400);
   }
   
   // Call the per-feature router
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
       data: status,
       companyId,
     });
-  }, request);
+  });
 }
 
 // ── Export for use in other endpoints ───────────────────────

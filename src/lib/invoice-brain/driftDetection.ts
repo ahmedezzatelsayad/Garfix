@@ -94,6 +94,7 @@ export interface DriftBaseline {
       stdDev: number;
       min: number;
       max: number;
+      sampleCount: number;
       lastUpdated: string;
     };
   };

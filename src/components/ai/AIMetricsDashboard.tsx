@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { 
   Activity, 
   Zap, 
@@ -47,7 +48,7 @@ import {
 interface KeyHealthStatus {
   keyId: string;
   keyName: string;
-  health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  health: 'healthy' | 'degraded' | 'critical' | 'unknown';
   circuitState: 'closed' | 'open' | 'half-open';
   rpmUsed: number;
   rpmLimit: number;
@@ -192,7 +193,7 @@ const generateMockMetrics = (): AIMetricsData => ({
     {
       keyId: 'key-5',
       keyName: 'Sibling4',
-      health: 'unhealthy',
+      health: 'critical',
       circuitState: 'open',
       rpmUsed: 0,
       rpmLimit: 15,

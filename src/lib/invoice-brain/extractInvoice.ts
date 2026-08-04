@@ -244,7 +244,7 @@ async function applyPatternDirectly(
     // Parse failed - fall through to AI
     logger.warn("[brain-v2] excellent pattern parse failed", { 
       fingerprint,
-      errors: parsed.error.errors.slice(0, 3).map(e => e.message),
+      errors: parsed.error.issues.slice(0, 3).map(e => e.message),
     });
     return await handleAIExtraction(text, fingerprint, store, undefined, null);
   }

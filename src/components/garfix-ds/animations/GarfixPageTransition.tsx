@@ -25,7 +25,7 @@ import {
 
 // ── Types ───────────────────────────────────────────────────
 
-interface PageTransitionProps {
+export interface PageTransitionProps {
   /** Current page content */
   children: React.ReactNode;
   
@@ -258,7 +258,7 @@ export function BlurTransition(props: Omit<PageTransitionProps, 'enterAnimation'
 
 // ── Layout Transition Wrapper ───────────────────────────────
 
-interface LayoutTransitionProps {
+export interface LayoutTransitionProps {
   children: React.ReactNode;
   layoutId?: string;
   className?: string;

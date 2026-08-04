@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate (founder only)
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
 
     // Fetch all keys with relations
     const keys = await db.apiKeyPool.findMany({
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
         stats,
       },
     });
-  }, request);
+  });
 }
 
 /**
@@ -189,14 +189,15 @@ export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate (founder only)
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    const user = auth.user;
+    if (!user) return apiError('Unauthorized', 401);
 
     // Parse body
     const body = await request.json().catch(() => ({}));
     const validated = AddKeysSchema.safeParse(body);
 
     if (!validated.success) {
-      return apiError(400, 'Validation failed', validated.error.errors);
+      return apiError('Validation failed', 400, validated.error.issues);
     }
 
     const { keys, provider, model, notes } = validated.data;
@@ -211,7 +212,7 @@ export async function POST(request: NextRequest) {
     const newKeys = keys.filter(k => !existingKeyValues.has(k));
 
     if (newKeys.length === 0) {
-      return apiError(409, 'All keys already exist in pool');
+      return apiError('All keys already exist in pool', 409);
     }
 
     // Create key records
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
             provider: detectProviderFromKey(key), // Auto-detect from key format
             model,
             status: 'available',
-            addedBy: auth.user.uid,
+            addedBy: user.uid,
             notes,
             rpmLimit: getRpmLimitForProvider(detectProviderFromKey(key)),
             dailyLimit: getDailyLimitForProvider(detectProviderFromKey(key)),
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    logger.info(`[ApiKeyPool] Added ${createdKeys.length} keys by founder ${auth.user.email}`);
+    logger.info(`[ApiKeyPool] Added ${createdKeys.length} keys by founder ${user.email}`);
 
     return NextResponse.json({
       success: true,
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
         duplicatesSkipped: keys.length - newKeys.length,
       },
     });
-  }, request);
+  });
 }
 
 /**
@@ -256,14 +257,14 @@ export async function DELETE(
   return withErrorHandler(async () => {
     // Authenticate (founder only)
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
 
     const { id } = await params;
 
     // Check if key exists
     const existingKey = await db.apiKeyPool.findUnique({ where: { id } });
     if (!existingKey) {
-      return apiError(404, 'Key not found');
+      return apiError('Key not found', 404);
     }
 
     // Revoke the key
@@ -282,7 +283,7 @@ export async function DELETE(
       success: true,
       message: 'Key revoked successfully',
     });
-  }, request);
+  });
 }
 
 // ── Public Assignment Endpoint ─────────────────────────────
@@ -300,27 +301,26 @@ export async function ASSIGN_KEY_API(request: NextRequest) {
     const { userId, companyId } = body;
 
     if (!userId) {
-      return apiError(400, 'userId is required');
+      return apiError('userId is required', 400);
     }
 
     const result = await assignKeyToUser(userId, companyId);
 
     if (!result.success) {
-      return apiError(503, result.error);
+      return apiError(result.error || 'Failed to assign key', 503);
     }
 
     return NextResponse.json({
       success: true,
       data: result,
     });
-  }, request);
+  });
 }
 
 // ── Provider Limits ─────────────────────────────────────────
 
 function getRpmLimitForProvider(provider: AIProvider): number {
   switch (provider) {
-    case 'deepseek':
     case 'openrouter':
       return 60; // OpenRouter typically allows 60 RPM
     case 'gemini':
@@ -334,7 +334,6 @@ function getRpmLimitForProvider(provider: AIProvider): number {
 
 function getDailyLimitForProvider(provider: AIProvider): number {
   switch (provider) {
-    case 'deepseek':
     case 'openrouter':
       return 1000; // Generous limit
     case 'gemini':

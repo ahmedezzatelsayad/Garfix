@@ -38,6 +38,8 @@ export interface IntegrationFieldDef {
   default?: string | boolean;
   /** Options for select type. */
   options?: string[];
+  /** Whether this field is optional (UI hint). Defaults to false. */
+  optional?: boolean;
 }
 
 /** Category of integration for grouping in the UI. */
@@ -85,7 +87,7 @@ export const INTEGRATION_INFO: Array<{
   type: string;
   name: string;
   description: string;
-  requiredFields: Array<{ key: string; label: string; type: "text" | "password" }>;
+  requiredFields: IntegrationFieldDef[];
 }> = [
   // ─── Existing Integrations ──────────────────────────────────────────────
   {

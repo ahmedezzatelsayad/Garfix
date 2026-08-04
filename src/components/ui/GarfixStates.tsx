@@ -44,7 +44,7 @@ export interface EmptyStateProps {
   /** أيقونة مخصصة */
   icon?: React.ReactNode
   /** العنوان الرئيسي */
-  title: string
+  title?: string
   /** الوصف التفصيلي */
   description?: string
   /** زر الإجراء */
@@ -70,7 +70,7 @@ const illustrationIcons = {
 
 export function GarfixEmptyState({
   icon,
-  title,
+  title = "",
   description,
   action,
   illustration = "documents",
@@ -270,7 +270,7 @@ export interface ErrorStateProps {
   /** عنوان الخطأ */
   title?: string
   /** رسالة الخطأ */
-  message: string
+  message?: string
   /** نص زر إعادة المحاولة */
   retryLabel?: string
   /** دالة إعادة المحاولة */
@@ -289,7 +289,7 @@ export interface ErrorStateProps {
 
 export function GarfixErrorState({
   title = "حدث خطأ",
-  message,
+  message = "",
   retryLabel = "إعادة المحاولة",
   onRetry,
   code,
@@ -720,7 +720,7 @@ export function GarfixSkeleton({
 // PRE-CONFIGURED COMBO COMPONENTS — مكونات جاهزة شائعة الاستخدام
 // ════════════════════════════════════════════════════════════════════════
 
-interface PageStateProps {
+export interface PageStateProps {
   /** نوع الحالة */
   state: "loading" | "empty" | "error" | "offline" | "maintenance"
   /** props خاصة بكل حالة */

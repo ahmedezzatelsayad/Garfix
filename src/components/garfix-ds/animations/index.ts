@@ -46,3 +46,22 @@ export {
   GarfixCircularProgress,
   GarfixStatCounter,
 } from './GarfixAnimatedCounter';
+
+export type {
+  AnimatedContainerProps,
+} from './GarfixAnimatedContainer';
+
+export type {
+  MotionDivProps,
+} from './GarfixMotionDiv';
+
+export type {
+  PageTransitionProps,
+  LayoutTransitionProps,
+} from './GarfixPageTransition';
+
+export type {
+  AnimatedCounterProps,
+  CircularProgressProps,
+  StatCounterProps,
+} from './GarfixAnimatedCounter';

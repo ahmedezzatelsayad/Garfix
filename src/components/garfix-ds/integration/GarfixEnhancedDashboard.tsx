@@ -58,7 +58,7 @@ import {
 } from '@/components/garfix-ds/feedback';
 
 // Navigation Components
-import { GarfixTabs, GarfixTabPanel } from '@/components/garfix-ds/navigation';
+import { GarfixTabPanel } from '@/components/garfix-ds/navigation';
 
 // Overlay Components
 import { GarfixModal, GarfixDrawer } from '@/components/garfix-ds/overlay';
@@ -290,16 +290,18 @@ function AnimatedKPICard({
   icon,
   color = 'emerald',
   delay = 0,
+  suffix,
 }: {
   title: string;
   value: number;
   subtitle?: string;
   trend?: { direction: 'up' | 'down'; value: number };
   icon?: React.ReactNode;
-  color?: 'emerald' | 'blue' | 'gold' | 'red' | 'purple';
+  color?: 'emerald' | 'blue' | 'gold' | 'red' | 'purple' | 'amber';
   delay?: number;
+  suffix?: string;
 }) {
-  const { style: hoverStyle, handlers } = useHoverAnimation({ hoverY: -4 });
+  const { style: hoverStyle, handlers } = useHoverAnimation({ translateY: -4 });
   
   const colorClasses = {
     emerald: 'from-emerald-500 to-emerald-600',
@@ -307,6 +309,7 @@ function AnimatedKPICard({
     gold: 'from-[#d4a574] to-[#c49464]',
     red: 'from-red-500 to-red-600',
     purple: 'from-purple-500 to-purple-600',
+    amber: 'from-amber-500 to-amber-600',
   };
 
   return (
@@ -320,7 +323,7 @@ function AnimatedKPICard({
                 <GarfixAnimatedCounter
                   value={value}
                   prefix={value >= 1000 ? '' : ''}
-                  suffix={value >= 1000 ? '' : ''}
+                  suffix={suffix || (value >= 1000 ? '' : '')}
                   abbreviate
                   decimals={value >= 100 ? 1 : 0}
                   className="text-3xl font-bold text-white"
@@ -440,7 +443,7 @@ function WorkerCard({
             value={healthPercent} 
             max={100}
             size="sm"
-            color={healthPercent > 70 ? 'emerald' : healthPercent > 40 ? 'amber' : 'red'}
+            color={healthPercent > 70 ? 'emerald' : healthPercent > 40 ? 'gold' : 'red'}
           />
         </div>
       </div>
@@ -515,9 +518,13 @@ export function GarfixEnhancedAIDashboard() {
           setMetrics(apiData);
           
           // Track view event for personalization
-          aiContext?.trackEvent('dashboard_view', { 
-            tab: activeTab, 
-            dataSource: 'real_api' 
+          aiContext?.trackEvent({
+            type: 'page_view',
+            context: { page: '/ai-dashboard' },
+            data: {
+              tab: activeTab,
+              dataSource: 'real_api',
+            },
           });
           return;
         }
@@ -526,9 +533,13 @@ export function GarfixEnhancedAIDashboard() {
       // ⚠️ Fallback to mock data if API fails
       console.warn('AI Metrics API unavailable, using fallback data');
       setMetrics(MOCK_AI_METRICS);
-      aiContext?.trackEvent('dashboard_view', { 
-        tab: activeTab, 
-        dataSource: 'mock_fallback' 
+      aiContext?.trackEvent({
+        type: 'page_view',
+        context: { page: '/ai-dashboard' },
+        data: {
+          tab: activeTab,
+          dataSource: 'mock_fallback',
+        },
       });
       
     } catch (error) {
@@ -551,16 +562,15 @@ export function GarfixEnhancedAIDashboard() {
   // Get personalized recommendations
   const personalizedRecs = useMemo(() => {
     if (!aiContext?.recommendations.length) return MOCK_RECOMMENDATIONS;
-    
-    // Combine mock data with AI-personalized suggestions
-    const userPrefs = aiContext.userPreferences;
+
+    // Combine mock data with AI-personalized suggestions.
+    // Note: UserPreferences has no `preferredCategory` field, so we keep
+    // the original priorities from the mock recommendations.
     return MOCK_RECOMMENDATIONS.map(rec => ({
       ...rec,
-      priority: userPrefs.preferredCategory === rec.category 
-        ? ('high' as const) 
-        : rec.priority,
+      priority: rec.priority,
     }));
-  }, [aiContext?.recommendations, aiContext?.userPreferences]);
+  }, [aiContext?.recommendations, aiContext?.preferences]);
 
   // Loading State
   if (isLoading && !metrics) {
@@ -592,13 +602,16 @@ export function GarfixEnhancedAIDashboard() {
                 
                 {/* Data Source Indicator */}
                 {metrics && (
-                  <GarfixBadge 
-                    variant={metrics.timestamp?.includes('2026') ? "success" : "warning"} 
-                    size="sm"
+                  <span
                     title={metrics.timestamp ? `آخر تحديث: ${new Date(metrics.timestamp).toLocaleTimeString('ar-EG')}` : 'بيانات تجريبية'}
                   >
-                    {metrics.timestamp?.includes('2026') ? '🟢 API حقيقي' : '⚠️ تجريبي'}
-                  </GarfixBadge>
+                    <GarfixBadge 
+                      variant={metrics.timestamp?.includes('2026') ? "success" : "warning"} 
+                      size="sm"
+                    >
+                      {metrics.timestamp?.includes('2026') ? '🟢 API حقيقي' : '⚠️ تجريبي'}
+                    </GarfixBadge>
+                  </span>
                 )}
               </div>
               
@@ -612,14 +625,14 @@ export function GarfixEnhancedAIDashboard() {
                   size="sm"
                   onClick={fetchMetrics}
                   isLoading={isLoading}
-                  icon={<span>🔄</span>}
+                  leadingIcon={<span>🔄</span>}
                 >
                   تحديث
                 </GarfixButton>
                 
                 {/* User Avatar */}
                 <GarfixAvatar 
-                  name={aiContext?.userProfile.name || 'المستخدم'} 
+                  fallback={aiContext?.user?.name || 'المستخدم'} 
                   size="md"
                   status="online"
                 />
@@ -640,7 +653,7 @@ export function GarfixEnhancedAIDashboard() {
                 { label: 'الذكاء الاصطناعي' },
               ]}
               actions={
-                <GarfixButton variant="gold" size="sm" icon={<span>✨</span>}>
+                <GarfixButton variant="gold" size="sm" leadingIcon={<span>✨</span>}>
                   اقتراحات ذكية
                 </GarfixButton>
               }
@@ -695,12 +708,7 @@ export function GarfixEnhancedAIDashboard() {
             )}
 
             {/* Tabs Navigation */}
-            <GarfixTabs
-              defaultValue="overview"
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="mb-6"
-            >
+            <div className="mb-6">
               <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
                 <button
                   data-value="overview"
@@ -752,7 +760,7 @@ export function GarfixEnhancedAIDashboard() {
               </div>
 
               {/* Tab Panels */}
-              <GarfixTabPanel value="overview">
+              <GarfixTabPanel tabId="overview" activeTab={activeTab}>
                 <GarfixGrid cols={3} gap="lg">
                   {/* Workers Section */}
                   <div className="col-span-2 space-y-4">
@@ -815,11 +823,7 @@ export function GarfixEnhancedAIDashboard() {
                     )}
 
                     {/* Learning Progress */}
-                    <GarfixAILearningProgress
-                      eventsCount={aiContext?.behaviorEvents.length || 0}
-                      accuracy={85 + Math.random() * 10}
-                      lastUpdated={new Date()}
-                    />
+                    <GarfixAILearningProgress detailed />
 
                     {/* Alerts */}
                     {metrics && metrics.data.alerts.length > 0 && (
@@ -835,7 +839,7 @@ export function GarfixEnhancedAIDashboard() {
                 </GarfixGrid>
               </GarfixTabPanel>
 
-              <GarfixTabPanel value="workers">
+              <GarfixTabPanel tabId="workers" activeTab={activeTab}>
                 <GarfixGrid cols={2} gap="lg">
                   {metrics?.data.workers.map((worker, index) => (
                     <WorkerCard key={worker.type} worker={worker} index={index} />
@@ -843,73 +847,56 @@ export function GarfixEnhancedAIDashboard() {
                 </GarfixGrid>
               </GarfixTabPanel>
 
-              <GarfixTabPanel value="keys">
+              <GarfixTabPanel tabId="keys" activeTab={activeTab}>
                 {metrics && (
                   <GarfixDataTable
-                    data={metrics.data.keys}
+                    data={metrics.data.keys as unknown as Record<string, unknown>[]}
+                    rowKey="id"
                     columns={[
-                      { key: 'name', label: 'اسم المفتاح' },
+                      { key: 'name', header: 'اسم المفتاح' },
                       { 
                         key: 'rpmUtilizationPct', 
-                        label: 'الاستخدام %',
-                        render: (val: number) => `${val.toFixed(1)}%`
+                        header: 'الاستخدام %',
+                        render: (val: unknown) => `${Number(val).toFixed(1)}%`
                       },
                       { 
                         key: 'tokensUsed', 
-                        label: 'التوكنات',
-                        render: (val: number) => formatNumber(val)
+                        header: 'التوكنات',
+                        render: (val: unknown) => formatNumber(Number(val))
                       },
                       { 
                         key: 'avgLatencyMs', 
-                        label: 'زمن الاستجابة',
-                        render: (val: number) => `${val}ms`
+                        header: 'زمن الاستجابة',
+                        render: (val: unknown) => `${Number(val)}ms`
                       },
                       { 
                         key: 'successRate', 
-                        label: 'معدل النجاح',
-                        render: (val: number) => `${val}%`
+                        header: 'معدل النجاح',
+                        render: (val: unknown) => `${Number(val)}%`
                       },
                       {
                         key: 'healthy',
-                        label: 'الحالة',
-                        render: (val: boolean) => (
+                        header: 'الحالة',
+                        render: (val: unknown) => (
                           <GarfixBadge variant={val ? 'success' : 'error'} dot>
                             {val ? 'سليم' : 'مشكلة'}
                           </GarfixBadge>
                         )
                       },
                     ]}
-                    searchable
                     selectable
                   />
                 )}
               </GarfixTabPanel>
 
-              <GarfixTabPanel value="recommendations">
+              <GarfixTabPanel tabId="recommendations" activeTab={activeTab}>
                 <div className="space-y-6">
-                  <GarfixSmartRecommendations 
-                    recommendations={personalizedRecs}
-                    onActionClick={(rec) => {
-                      aiContext?.trackEvent('recommendation_action', { 
-                        recommendationId: rec.id,
-                        priority: rec.priority 
-                      });
-                    }}
-                  />
+                  <GarfixSmartRecommendations showFeedback />
                   
-                  <GarfixPersonalizedActions
-                    suggestedActions={[
-                      { id: '1', label: 'تصدير التقرير', icon: '📄', category: 'report' },
-                      { id: '2', label: 'جدولة صيانة', icon: '🔧', category: 'maintenance' },
-                      { id: '3', label: 'مراجعة السجلات', icon: '📝', category: 'logs' },
-                    ]}
-                    onActionExecute={(action) => {
-                      console.log('Executing action:', action);
-                    }}
-                  />
+                  <GarfixPersonalizedActions showRecent showPinned />
                 </div>
               </GarfixTabPanel>
-            </GarfixTabs>
+            </div>
           </GarfixContainer>
         </main>
 
@@ -1003,5 +990,3 @@ export default function EnhancedAIDashboardWithProviders() {
     </GarfixThemeProvider>
   );
 }
-
-export { GarfixEnhancedAIDashboard };

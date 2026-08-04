@@ -13,7 +13,7 @@
  */
 import ExcelJS from "exceljs";
 import { InvoiceSchema, INVOICE_FIELDS, type InvoiceField } from "./schema";
-import type { ExtractionResult } from "./extractInvoice";
+import type { ExtractionResult, ExtractionSource } from "./extractInvoice";
 import { fingerprintHeaders, type HeaderMapStore } from "./headerMapStore";
 import { logger } from "@/lib/logger";
 
@@ -144,7 +144,7 @@ function parseRows(
   rows: Record<string, unknown>[],
   mapping: Record<string, InvoiceField>,
   fingerprint: string,
-  source: "pattern" | "ai"
+  source: ExtractionSource
 ): ExtractionResult[] {
   const results: ExtractionResult[] = [];
   for (const row of rows) {
@@ -173,7 +173,7 @@ export async function extractFromTabular(
   for (const sheet of sheets) {
     const headers = Object.keys(sheet.rows[0]);
     const { mapping, usedAI, fingerprint } = await resolveMapping(headers, headerStore, resolveUnknownHeaders);
-    const source: "pattern" | "ai" = usedAI ? "ai" : "pattern";
+    const source: ExtractionSource = usedAI ? "ai" : "pattern-verified";
     results.push(...parseRows(sheet.rows, mapping, fingerprint, source));
   }
   return results;
@@ -196,7 +196,7 @@ export async function* extractFromTabularBatched(
     if (sheet.rows.length === 0) continue;
     const headers = Object.keys(sheet.rows[0]);
     const { mapping, usedAI, fingerprint } = await resolveMapping(headers, headerStore, resolveUnknownHeaders);
-    const source: "pattern" | "ai" = usedAI ? "ai" : "pattern";
+    const source: ExtractionSource = usedAI ? "ai" : "pattern-verified";
 
     for (let i = 0; i < sheet.rows.length; i += chunkSize) {
       const chunk = sheet.rows.slice(i, i + chunkSize);

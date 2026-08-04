@@ -113,7 +113,7 @@ export const GarfixAlert: React.FC<GarfixAlertProps> = ({
   const [isVisible, setIsVisible] = useState(true);
 
   const config = variantConfig[variant];
-  const IconComponent = icon ? undefined : config.icon;
+  const IconComponent = config.icon;
 
   const handleDismiss = () => {
     setIsVisible(false);

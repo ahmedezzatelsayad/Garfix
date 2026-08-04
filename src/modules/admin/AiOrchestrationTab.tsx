@@ -128,7 +128,7 @@ export function AiOrchestrationTab() {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <KpiCard label="نداءات وُفّرت (Pattern)" value={data.optimizerStats.counts["use-pattern"]} color="#10b981" />
         <KpiCard label="نداءات وُفّرت (Cache)" value={data.optimizerStats.counts["use-cache"]} color="#3b82f6" />
-        <KpiCard label="تُوجّه لمجاني" value={data.optimizerStats.counts["route-free"]} color="#047857" className="kpi-card-gold" />
+        <KpiCard label="تُوجّه لمجاني" value={data.optimizerStats.counts["route-free"]} color="#047857" gold />
         <KpiCard label="تُوجّه للأفضل" value={data.optimizerStats.counts["route-best"]} color="#f59e0b" />
         <KpiCard label="إجمالي نداءات متجنّبة" value={data.optimizerStats.callsAvoided} color="#10b981" />
         <KpiCard label="توفير تقديري ($)" value={data.optimizerStats.estSavingsUsd.toFixed(4)} color="#10b981" />

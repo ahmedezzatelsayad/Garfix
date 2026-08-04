@@ -375,7 +375,7 @@ export function ClientList({
               columns={columns}
               density="default"
               onRowClick={(row) => onSelectClient(row.id as number)}
-              selectedRows={new Set(currentPageClients.findIndex(c => selectedIds.has(c.id)).filter(i => i >= 0))}
+              selectedRows={new Set(currentPageClients.map((c, i) => (selectedIds.has(c.id) ? i : -1)).filter(i => i >= 0))}
               onSelectionChange={(indices) => {
                 const newSelection = new Set<number>();
                 indices.forEach(i => {

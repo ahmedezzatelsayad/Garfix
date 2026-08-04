@@ -51,8 +51,8 @@ export function AiUsageTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        <KpiCard label="نداءات اليوم" value={data.totals.callsToday} color="#047857" className="kpi-card-gold" />
-        <KpiCard label="إجمالي النداءات" value={data.totals.totalCalls} color="#047857" className="kpi-card-gold" />
+        <KpiCard label="نداءات اليوم" value={data.totals.callsToday} color="#047857" gold />
+        <KpiCard label="إجمالي النداءات" value={data.totals.totalCalls} color="#047857" gold />
         <KpiCard label="معدل النجاح" value={data.totals.successRate !== null ? `${data.totals.successRate}%` : "—"} color="#10b981" />
         <KpiCard label="التكلفة ($)" value={data.totals.totalCost.toFixed(4)} color="#10b981" />
         <KpiCard label="إجمالي الرموز" value={data.totals.totalTokens} color="#3b82f6" />

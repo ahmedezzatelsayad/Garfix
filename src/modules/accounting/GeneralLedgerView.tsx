@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import { apiGet, ApiError } from "@/hooks/api-client";
 import {
@@ -68,8 +67,6 @@ interface AccountOption {
 /* ─── Main Component ────────────────────────────────────────────────────────── */
 
 export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
-  const { brand } = useBrand();
-  
   // State
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [fromDate, setFromDate] = useState<string>(

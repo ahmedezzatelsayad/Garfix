@@ -33,6 +33,7 @@ import {
   GarfixButton,
   GarfixCard,
   GarfixInput,
+  GarfixBadge,
 } from '@/components/garfix-ds/core';
 
 import {
@@ -394,7 +395,7 @@ export default function CompaniesPerFeatureAIPage() {
       setTestingFeature(featureKey);
       
       const feature = FEATURES.find(f => f.key === featureKey);
-      const model = aiConfig?.[featureKey as keyof CompanyAIConfigData]?.model || 'gemini-2.0-flash';
+      const model = aiConfig?.[featureKey as 'chat' | 'invoice' | 'parse' | 'memory']?.model || 'gemini-2.0-flash';
       
       const response = await fetch('/api/founder-panel/ai-config/test', {
         method: 'POST',
@@ -524,27 +525,29 @@ export default function CompaniesPerFeatureAIPage() {
 
   return (
     <GarfixPageTransition>
-      <GarfixContainer maxWidth="7xl">
+      <GarfixContainer variant="default">
         
         {/* ══ Page Header ══ */}
         <GarfixPageHeader
           title="إدارة مفاتيح AI المتقدمة"
           subtitle="نظام متعدد المستأجرين - كل شركة بمفاتيح منعزلة لكل ميزة AI"
-          badge={{
-            text: `${totalCompanies} شركة`,
-            variant: totalCompanies > 0 ? 'default' : 'outline',
-          }}
+          actions={
+            <GarfixBadge variant={totalCompanies > 0 ? 'default' : 'secondary'}>
+              {`${totalCompanies} شركة`}
+            </GarfixBadge>
+          }
         />
 
         {/* ══ Alert ══ */}
         {alert && (
           <FadeUp delay={100}>
             <GarfixAlert
-              type={alert.type}
-              message={alert.message}
-              onClose={() => setAlert(null)}
+              variant={alert.type}
+              onDismiss={() => setAlert(null)}
               className="mb-6"
-            />
+            >
+              {alert.message}
+            </GarfixAlert>
           </FadeUp>
         )}
 
@@ -940,10 +943,11 @@ export default function CompaniesPerFeatureAIPage() {
             {/* Alert */}
             {alert && (
               <GarfixAlert
-                type={alert.type}
-                message={alert.message}
-                onClose={() => setAlert(null)}
-              />
+                variant={alert.type}
+                onDismiss={() => setAlert(null)}
+              >
+                {alert.message}
+              </GarfixAlert>
             )}
 
             {/* Features Grid */}
@@ -970,11 +974,11 @@ export default function CompaniesPerFeatureAIPage() {
                       {testResults[feature.key] && (
                         <span className={cn(
                           "px-2 py-1 rounded-full text-xs font-medium",
-                          testResults[feature.key].success 
+                          testResults[feature.key]?.success 
                             ? "bg-green-100 text-green-800" 
                             : "bg-red-100 text-red-800"
                         )}>
-                          {testResults[feature.key].success ? '✅ متصل' : '❌ فشل'}
+                          {testResults[feature.key]?.success ? '✅ متصل' : '❌ فشل'}
                         </span>
                       )}
                     </div>
@@ -985,13 +989,13 @@ export default function CompaniesPerFeatureAIPage() {
                         النموذج (Model)
                       </label>
                       <select
-                        value={aiConfig?.[feature.key as keyof CompanyAIConfigData]?.model || 'gemini-2.0-flash'}
+                        value={aiConfig?.[feature.key]?.model || 'gemini-2.0-flash'}
                         onChange={(e) => {
                           if (aiConfig) {
                             setAiConfig({
                               ...aiConfig,
                               [feature.key]: {
-                                ...aiConfig[feature.key as keyof CompanyAIConfigData],
+                                ...aiConfig[feature.key],
                                 model: e.target.value,
                               } as FeatureConfig,
                             });
@@ -1039,7 +1043,7 @@ export default function CompaniesPerFeatureAIPage() {
                       {/* Provider Hint */}
                       <p className="text-xs text-gray-500 mt-1">
                         💡 {(() => {
-                          const selectedModel = aiConfig[feature.key as keyof CompanyAIConfigData]?.model || '';
+                          const selectedModel = aiConfig?.[feature.key]?.model || '';
                           if (selectedModel.includes('deepseek')) return 'DeepSeek: أسرع وأرخص - يستخدم مفتاح OpenRouter';
                           if (selectedModel.includes('gemini')) return 'Gemini: مجاني من Google';
                           if (selectedModel.startsWith('gpt')) return 'OpenAI: قوي وموثوق';
@@ -1076,16 +1080,16 @@ export default function CompaniesPerFeatureAIPage() {
                     {testResults[feature.key] && (
                       <div className={cn(
                         "p-3 rounded-lg text-sm mb-3",
-                        testResults[feature.key].success 
+                        testResults[feature.key]?.success 
                           ? "bg-green-50 text-green-800" 
                           : "bg-red-50 text-red-800"
                       )}>
                         <div className="flex items-center gap-2">
-                          <span>{testResults[feature.key].success ? '✅' : '❌'}</span>
+                          <span>{testResults[feature.key]?.success ? '✅' : '❌'}</span>
                           <span>
-                            {testResults[feature.key].success 
-                              ? `اتصال ناجح! (${testResults[feature.key].latencyMs}ms)`
-                              : testResults[feature.key].error
+                            {testResults[feature.key]?.success 
+                              ? `اتصال ناجح! (${testResults[feature.key]?.latencyMs}ms)`
+                              : testResults[feature.key]?.error
                             }
                           </span>
                         </div>

@@ -22,12 +22,11 @@ export {
 } from './GarfixEnterpriseTable'
 
 export type {
-  EnterpriseTableProps,
-  BulkActionsProps,
-  EditableCellProps,
-  ColumnDef,
-  Density,
-  RowStatus,
+  EnterpriseColumn,
+  GarfixEnterpriseTableProps,
+  BulkAction,
+  GarfixBulkActionsProps,
+  GarfixEditableCellProps,
 } from './GarfixEnterpriseTable'
 
 // ── Notification System (Section E) ────────────────────────────────────
@@ -43,8 +42,10 @@ export type {
   ToastProps,
   BannerProps,
   ConfirmDialogProps,
-  ToastAction,
-  ToastOptions,
+  ToastType,
+  BannerType,
+  ConfirmDialogVariant,
+  QuickToastOptions,
   UseToastReturn,
 } from './GarfixNotifications'
 
@@ -67,9 +68,6 @@ export type {
   MaintenanceStateProps,
   SkeletonProps,
   PageStateProps,
-  IllustrationType,
-  LoadingVariant,
-  ErrorSeverity,
 } from './GarfixStates'
 
 // ── Re-export commonly used UI components ─────────────────────────────

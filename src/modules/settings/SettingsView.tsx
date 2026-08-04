@@ -268,7 +268,7 @@ function calculateCompletion(company: CompanyInfo): number {
   return Math.round((filled / total) * 100);
 }
 
-function formatLastUpdate(dateStr?: string): string {
+function formatLastUpdate(dateStr?: string | null): string {
   if (!dateStr) return "غير محدد";
   
   try {

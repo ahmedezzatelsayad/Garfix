@@ -30,6 +30,7 @@ import {
   BookOpen,
   LayoutTemplate,
   Wand2,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIPersonalization, Recommendation } from "@/lib/ai-personalization/AIPersonalizationProvider";

@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
     
     // Get company from query or user context
     const { searchParams } = new URL(request.url);
@@ -249,19 +249,19 @@ export async function GET(request: NextRequest) {
         where: { slug: companySlug },
       });
       
-      if (!company) return apiError(404, 'Company not found');
+      if (!company) return apiError('Company not found', 404);
       companyId = company.id;
     } else {
       // Use user's primary company
       const membership = await db.companyMember.findFirst({
         where: { 
-          userId: auth.user.id,
+          userId: auth.user.uid,
           role: 'founder',
         },
       });
       
       if (!membership) {
-        return apiError(403, 'No founder role found. Access denied.');
+        return apiError('No founder role found. Access denied.', 403);
       }
       
       companyId = membership.companyId;
@@ -340,7 +340,7 @@ export async function GET(request: NextRequest) {
         createdAt: config.createdAt,
       },
     });
-  }, request);
+  });
 }
 
 /**
@@ -353,14 +353,14 @@ export async function PUT(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
     
     // Parse and validate body
     const body = await request.json().catch(() => ({}));
     const validated = CompanyAIConfigSchema.safeParse(body);
     
     if (!validated.success) {
-      return apiError(400, 'Validation failed', validated.error.errors);
+      return apiError('Validation failed', 400, validated.error.issues);
     }
     
     const configData = validated.data;
@@ -368,13 +368,13 @@ export async function PUT(request: NextRequest) {
     // Verify founder access
     const membership = await db.companyMember.findFirst({
       where: { 
-        userId: auth.user.id,
+        userId: auth.user.uid,
         role: 'founder',
       },
     });
     
     if (!membership) {
-      return apiError(403, 'Only founders can modify AI configuration');
+      return apiError('Only founders can modify AI configuration', 403);
     }
     
     // Get existing config
@@ -428,7 +428,7 @@ export async function PUT(request: NextRequest) {
     // Audit log
     await logAudit({
       userEmail: auth.user.email,
-      userUid: auth.user.id,
+      userUid: auth.user.uid,
       action: 'update_ai_config_per_feature',
       entity: 'company_ai_config',
       details: {
@@ -452,7 +452,7 @@ export async function PUT(request: NextRequest) {
         updatedAt: updatedConfig.updatedAt,
       },
     });
-  }, request);
+  });
 }
 
 /**
@@ -464,14 +464,14 @@ export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
     
     // Parse body
     const body = await request.json().catch(() => ({}));
     const validated = TestConnectionSchema.safeParse(body);
     
     if (!validated.success) {
-      return apiError(400, 'Validation failed', validated.error.errors);
+      return apiError('Validation failed', 400, validated.error.issues);
     }
     
     const { feature, apiKey, model } = validated.data;
@@ -486,7 +486,7 @@ export async function POST(request: NextRequest) {
     // Audit log
     await logAudit({
       userEmail: auth.user.email,
-      userUid: auth.user.id,
+      userUid: auth.user.uid,
       action: `test_ai_connection_${feature}`,
       entity: 'ai_config_test',
       details: {
@@ -505,5 +505,5 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
     });
-  }, request);
+  });
 }

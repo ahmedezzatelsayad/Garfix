@@ -25,7 +25,7 @@ import { subDays, format } from 'date-fns';
 export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
     
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30', 10);
@@ -37,21 +37,21 @@ export async function GET(request: NextRequest) {
     if (companySlug) {
       const company = await db.company.findUnique({
         where: { slug: companySlug },
-        include: { members: { where: { userId: auth.user.id } } },
+        include: { members: { where: { userId: auth.user.uid } } },
       });
       
       if (!company || company.members.length === 0) {
-        return apiError(404, 'Company not found or access denied');
+        return apiError('Company not found or access denied', 404);
       }
       
       companyId = company.id;
     } else {
       const membership = await db.companyMember.findFirst({
-        where: { userId: auth.user.id },
+        where: { userId: auth.user.uid },
         include: { company: true },
       });
       
-      if (!membership) return apiError(403, 'No company membership found');
+      if (!membership) return apiError('No company membership found', 403);
       companyId = membership.companyId;
     }
     
@@ -81,7 +81,12 @@ export async function GET(request: NextRequest) {
     );
     
     // Get daily usage for the chart (simulated based on current totals)
-    const dailyUsage = [];
+    const dailyUsage: Array<{
+      date: string;
+      day: string;
+      tokens: number;
+      requests: number;
+    }> = [];
     const now = new Date();
     
     for (let i = days - 1; i >= 0; i--) {
@@ -135,7 +140,7 @@ export async function GET(request: NextRequest) {
         recommendations: generateRecommendations(usagePercent, config),
       },
     });
-  }, request);
+  });
 }
 
 /**

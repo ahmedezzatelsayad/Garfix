@@ -414,7 +414,7 @@ export class TelemetryCollector {
     const now = Date.now();
     const recentErrors = this.events.filter(e => 
       e.type.startsWith("error.") && 
-      new Date(e.timestamp).getTime > now - 5 * 60 * 1000 // Last 5 minutes
+      new Date(e.timestamp).getTime() > now - 5 * 60 * 1000 // Last 5 minutes
     );
     
     const avgConfidence = this.getGaugeValue("invoice_brain.confidence.average");
@@ -586,7 +586,7 @@ export class TelemetryCollector {
 
 // ─── Type Exports ──────────────────────────────────────────
 
-interface MetricsSnapshot {
+export interface MetricsSnapshot {
   timestamp: string;
   counters: Record<string, number>;
   gauges: Record<string, { current: number; min: number; max: number; avg: number }>;
@@ -597,13 +597,13 @@ interface MetricsSnapshot {
   };
 }
 
-interface DashboardData {
+export interface DashboardData {
   dashboard: string;
   metrics: Array<MetricDefinition & { value: number | null }>;
   generatedAt: string;
 }
 
-interface HealthStatus {
+export interface HealthStatus {
   status: "healthy" | "degraded" | "unhealthy";
   issues: string[];
   checks: Record<string, "pass" | "warn" | "fail" | "unknown">;

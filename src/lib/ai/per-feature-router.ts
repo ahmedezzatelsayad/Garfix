@@ -33,7 +33,7 @@ import { logger } from '@/lib/logger';
 
 export type FeatureType = 'chat' | 'invoice' | 'parse' | 'memory';
 
-export type AIProvider = 'gemini' | 'openai' | 'openrouter';
+export type AIProvider = 'gemini' | 'openai' | 'openrouter' | 'deepseek';
 
 export interface FeatureConfig {
   /** Is this feature enabled for this company? */
@@ -834,6 +834,5 @@ export async function getCompanyFeaturesStatus(companyId: string): Promise<
   return status;
 }
 
-// ── Re-exports for convenience ───────────────────────────────
-
-export { detectProvider, getDefaultModel };
+// `detectProvider` and `getDefaultModel` are already exported via `export function`
+// declarations above, so no additional re-export block is needed here.

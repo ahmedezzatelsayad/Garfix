@@ -30,7 +30,15 @@ export interface AlertRule {
   // Condition configuration
   metricPath: string;          // e.g., 'pool.healthFactor', 'keys[0].latencyMs'
   operator: 'gt' | 'lt' | 'eq' | 'gte' | 'lte' | 'between' | 'outside';
-  threshold: number | number[];
+  /**
+   * Threshold value to compare the metric against.
+   *
+   * Usually numeric, but for state-equality rules (e.g. circuit breaker
+   * `circuitState === 'open'`) a string threshold is supported. The metric
+   * evaluator converts string matches into a 0/1 numeric value before
+   * applying the operator.
+   */
+  threshold: number | number[] | string;
   durationMs?: number;         // How long condition must persist before alerting
   
   // Alert configuration
@@ -56,7 +64,7 @@ export interface Alert {
   source: string;
   metricPath: string;
   currentValue: number;
-  threshold: number | number[];
+  threshold: number | number[] | string;
   
   // Timestamps
   triggeredAt: Date;
@@ -285,7 +293,7 @@ function generateId(): string {
 function evaluateCondition(
   currentValue: number,
   operator: AlertRule['operator'],
-  threshold: number | number[]
+  threshold: number | number[] | string
 ): boolean {
   switch (operator) {
     case 'gt': return currentValue > (threshold as number);
@@ -451,7 +459,12 @@ export class AIAlertManager extends EventEmitter {
    * Configure a notification channel
    */
   configureChannel(channel: NotificationChannel, config: Partial<ChannelConfig>): void {
-    const current = this.channelConfigs.get(channel) || {};
+    const current: ChannelConfig = this.channelConfigs.get(channel) ?? {
+      enabled: false,
+      rateLimitPerMinute: 10,
+      maxRetries: 3,
+      retryDelayMs: 1000,
+    };
     this.channelConfigs.set(channel, { ...current, ...config });
     this.emit('channel-configured', channel);
   }

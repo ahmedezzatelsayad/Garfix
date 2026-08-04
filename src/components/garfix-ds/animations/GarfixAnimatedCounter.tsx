@@ -23,7 +23,7 @@ import { useNumberAnimation } from '@/hooks/useAnimation';
 
 // ── Types ───────────────────────────────────────────────────
 
-interface AnimatedCounterProps {
+export interface AnimatedCounterProps {
   /** Target value */
   value: number;
   /** Starting value */
@@ -60,7 +60,7 @@ interface AnimatedCounterProps {
   onComplete?: (finalValue: number) => void;
 }
 
-interface CircularProgressProps {
+export interface CircularProgressProps {
   /** Progress percentage 0-100 */
   progress: number;
   /** Size in pixels */
@@ -101,7 +101,7 @@ function abbreviateNumber(num: number, decimals: number = 1): string {
     return `${(num / 1_000_000_000).toFixed(decimals)}B`;
   }
   if (absNum >= 1_000_000) {
-    return `${(num / 1_000_000).toFixed(decisions ?? 1)}M`;
+    return `${(num / 1_000_000).toFixed(decimals ?? 1)}M`;
   }
   if (absNum >= 1_000) {
     return `${(num / 1_000).toFixed(decimals)}K`;
@@ -319,7 +319,7 @@ export function GarfixCircularProgress({
 
 // ── Component: StatCounter ──────────────────────────────────
 
-interface StatCounterProps {
+export interface StatCounterProps {
   /** Current value */
   value: number;
   /** Previous value for comparison */
@@ -379,7 +379,6 @@ export function GarfixStatCounter({
           prefix={formattedPrefix}
           suffix={suffix}
           decimals={isCurrency ? 2 : 1}
-          isCurrency={isCurrency}
           trend={showTrend && previousValue !== undefined 
             ? (isPositive ? 'up' : change < 0 ? 'down' : 'neutral')
             : 'neutral'

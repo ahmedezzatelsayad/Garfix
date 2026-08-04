@@ -23,6 +23,7 @@ interface PurchaseItem { description: string; qty: number; price: number; }
 interface Purchase {
   id: number; num: string; date: string; supplier: string;
   items: PurchaseItem[]; totalQty: number; notes?: string;
+  [key: string]: unknown;
 }
 
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
@@ -195,8 +196,7 @@ export function PurchasesView() {
             illustration="inbox"
             title="لا توجد فواتير شراء"
             description="ابدأ بإنشاء فاتورة شراء جديدة لتتبع مشترياتك"
-            actionLabel="إنشاء فاتورة شراء"
-            onAction={() => setShowForm(true)}
+            action={{ label: "إنشاء فاتورة شراء", onClick: () => setShowForm(true) }}
           />
         ) : (
           <GarfixEnterpriseTable
