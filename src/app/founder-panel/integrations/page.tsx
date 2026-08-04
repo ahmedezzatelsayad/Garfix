@@ -39,13 +39,18 @@ import { INTEGRATION_META_FULL, CATEGORY_LABELS, type IntegrationMeta, type Inte
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
-interface IntegrationWithMeta extends ReturnType<typeof usePlatformIntegrations>["data"] extends (readonly unknown[] | undefined) ? number : never {
+interface IntegrationWithMeta {
+  id: string;
   type: string;
   name: string;
   description: string;
+  category: string;
+  status: "active" | "inactive" | "error";
   hasCredentials: boolean;
   credentialsLastUpdatedAt: string | null;
   isRegistered: boolean;
+  lastTestAt?: string | null;
+  config?: Record<string, unknown>;
 }
 
 // ─── View Mode ──────────────────────────────────────────────────────────

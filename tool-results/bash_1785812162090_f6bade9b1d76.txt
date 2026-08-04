@@ -1,0 +1,1002 @@
+Line 409, Col 28: depth=4
+  Context:            onClick={() => setActiveTab(tab.value)}
+Line 410, Col 1: depth=4
+  Context:                   className={c
+Line 411, Col 1: depth=4
+  Context:                     'px-4 py-2
+Line 412, Col 1: depth=4
+  Context:                     activeTab 
+Line 413, Col 1: depth=4
+  Context:                       ? 'bg-em
+Line 414, Col 1: depth=4
+  Context:                       : 'text-
+Line 415, Col 1: depth=4
+  Context:                   )}
+Line 416, Col 1: depth=4
+  Context:                 >
+Line 417, Col 1: depth=4
+  Context:                   {tab.label}
+Line 418, Col 1: depth=4
+  Context:                 </button>
+Line 419, Col 1: depth=4
+  Context:               ))}
+Line 420, Col 1: depth=4
+  Context:             </div>
+Line 421, Col 1: depth=4
+  Context:             
+Line 422, Col 1: depth=4
+  Context:             {/* ── Config Tab 
+Line 423, Col 1: depth=4
+  Context:             <GarfixTabPanel va
+Line 424, Col 1: depth=4
+  Context:               <GarfixGrid cols
+Line 425, Col 1: depth=4
+  Context:                 {/* API Key Co
+Line 426, Col 1: depth=4
+  Context:                 <FadeUp delay=
+Line 427, Col 1: depth=4
+  Context:                   <MotionCard 
+Line 428, Col 1: depth=4
+  Context:                     <h3 classN
+Line 429, Col 1: depth=4
+  Context:                       <span>🔑
+Line 430, Col 1: depth=4
+  Context:                       مفتاح Go
+Line 431, Col 1: depth=4
+  Context:                     </h3>
+Line 432, Col 1: depth=4
+  Context:                     
+Line 433, Col 1: depth=4
+  Context:                     <div class
+Line 434, Col 1: depth=4
+  Context:                       <div>
+Line 435, Col 1: depth=4
+  Context:                         <label
+Line 436, Col 1: depth=4
+  Context:                           مفتا
+Line 437, Col 1: depth=4
+  Context:                         </labe
+Line 438, Col 1: depth=4
+  Context:                         <div c
+Line 439, Col 1: depth=4
+  Context:                           <Gar
+Line 440, Col 1: depth=4
+  Context:                             ty
+Line 441, Col 1: depth=4
+  Context:                             va
+Line 442, Col 1: depth=4
+  Context:                             on
+Line 443, Col 1: depth=4
+  Context:                             pl
+Line 444, Col 1: depth=4
+  Context:                               
+Line 445, Col 1: depth=4
+  Context:                               
+Line 446, Col 1: depth=4
+  Context:                               
+Line 447, Col 1: depth=4
+  Context:                             }
+Line 448, Col 1: depth=4
+  Context:                             cl
+Line 449, Col 1: depth=4
+  Context:                           />
+Line 450, Col 1: depth=4
+  Context:                           <but
+Line 451, Col 1: depth=4
+  Context:                             ty
+Line 452, Col 1: depth=4
+  Context:                             on
+Line 453, Col 1: depth=4
+  Context:                             cl
+Line 454, Col 1: depth=4
+  Context:                           >
+Line 455, Col 1: depth=4
+  Context:                             {s
+Line 456, Col 1: depth=4
+  Context:                           </bu
+Line 457, Col 1: depth=4
+  Context:                         </div>
+Line 458, Col 1: depth=4
+  Context:                         <p cla
+Line 459, Col 1: depth=4
+  Context:                           المف
+Line 460, Col 1: depth=4
+  Context:                         </p>
+Line 461, Col 1: depth=4
+  Context:                       </div>
+Line 462, Col 1: depth=4
+  Context:                       
+Line 463, Col 1: depth=4
+  Context:                       <div>
+Line 464, Col 1: depth=4
+  Context:                         <label
+Line 465, Col 1: depth=4
+  Context:                           النم
+Line 466, Col 1: depth=4
+  Context:                         </labe
+Line 467, Col 1: depth=4
+  Context:                         <selec
+Line 468, Col 1: depth=4
+  Context:                           valu
+Line 469, Col 1: depth=4
+  Context:                           onCh
+Line 470, Col 1: depth=4
+  Context:                           clas
+Line 471, Col 1: depth=4
+  Context:                         >
+Line 472, Col 1: depth=4
+  Context:                           <opt
+Line 473, Col 1: depth=4
+  Context:                           <opt
+Line 474, Col 1: depth=4
+  Context:                           <opt
+Line 475, Col 1: depth=4
+  Context:                           <opt
+Line 476, Col 1: depth=4
+  Context:                         </sele
+Line 477, Col 1: depth=4
+  Context:                       </div>
+Line 478, Col 1: depth=4
+  Context:                       
+Line 479, Col 1: depth=4
+  Context:                       <div>
+Line 480, Col 1: depth=4
+  Context:                         <label
+Line 481, Col 1: depth=4
+  Context:                           درجة
+Line 482, Col 1: depth=4
+  Context:                         </labe
+Line 483, Col 1: depth=4
+  Context:                         <input
+Line 484, Col 1: depth=4
+  Context:                           type
+Line 485, Col 1: depth=4
+  Context:                           min=
+Line 486, Col 1: depth=4
+  Context:                           max=
+Line 487, Col 1: depth=4
+  Context:                           step
+Line 488, Col 1: depth=4
+  Context:                           valu
+Line 489, Col 1: depth=4
+  Context:                           onCh
+Line 490, Col 1: depth=4
+  Context:                           clas
+Line 491, Col 1: depth=4
+  Context:                         />
+Line 492, Col 1: depth=4
+  Context:                         <div c
+Line 493, Col 1: depth=4
+  Context:                           <spa
+Line 494, Col 1: depth=4
+  Context:                           <spa
+Line 495, Col 1: depth=4
+  Context:                         </div>
+Line 496, Col 1: depth=4
+  Context:                       </div>
+Line 497, Col 1: depth=4
+  Context:                       
+Line 498, Col 1: depth=4
+  Context:                       <div cla
+Line 499, Col 1: depth=4
+  Context:                         <Garfi
+Line 500, Col 1: depth=4
+  Context:                           vari
+Line 501, Col 1: depth=4
+  Context:                           size
+Line 502, Col 1: depth=4
+  Context:                           onCl
+Line 503, Col 1: depth=4
+  Context:                           isLo
+Line 504, Col 1: depth=4
+  Context:                           icon
+Line 505, Col 1: depth=4
+  Context:                           clas
+Line 506, Col 1: depth=4
+  Context:                         >
+Line 507, Col 1: depth=4
+  Context:                           اختب
+Line 508, Col 1: depth=4
+  Context:                         </Garf
+Line 509, Col 1: depth=4
+  Context:                       </div>
+Line 510, Col 1: depth=4
+  Context:                     </div>
+Line 511, Col 1: depth=4
+  Context:                   </MotionCard
+Line 512, Col 1: depth=4
+  Context:                 </FadeUp>
+Line 513, Col 1: depth=4
+  Context:                 
+Line 514, Col 1: depth=4
+  Context:                 {/* System Pro
+Line 515, Col 1: depth=4
+  Context:                 <FadeUp delay=
+Line 516, Col 1: depth=4
+  Context:                   <MotionCard 
+Line 517, Col 1: depth=4
+  Context:                     <h3 classN
+Line 518, Col 1: depth=4
+  Context:                       <span>📝
+Line 519, Col 1: depth=4
+  Context:                       التعليما
+Line 520, Col 1: depth=4
+  Context:                     </h3>
+Line 521, Col 1: depth=4
+  Context:                     
+Line 522, Col 1: depth=4
+  Context:                     <div class
+Line 523, Col 1: depth=4
+  Context:                       <div>
+Line 524, Col 1: depth=4
+  Context:                         <texta
+Line 525, Col 1: depth=4
+  Context:                           valu
+Line 526, Col 1: depth=4
+  Context:                           onCh
+Line 527, Col 1: depth=4
+  Context:                           plac
+Line 528, Col 1: depth=4
+  Context:                           rows
+Line 529, Col 1: depth=4
+  Context:                           clas
+Line 530, Col 1: depth=4
+  Context:                           maxL
+Line 531, Col 1: depth=4
+  Context:                         />
+Line 532, Col 1: depth=4
+  Context:                         <p cla
+Line 533, Col 1: depth=4
+  Context:                           {sys
+Line 534, Col 1: depth=4
+  Context:                         </p>
+Line 535, Col 1: depth=4
+  Context:                       </div>
+Line 536, Col 1: depth=4
+  Context:                       
+Line 537, Col 1: depth=4
+  Context:                       {/* Quic
+Line 538, Col 1: depth=4
+  Context:                       <div>
+Line 539, Col 1: depth=4
+  Context:                         <label
+Line 540, Col 1: depth=4
+  Context:                           قوال
+Line 541, Col 1: depth=4
+  Context:                         </labe
+Line 542, Col 1: depth=4
+  Context:                         <div c
+Line 543, Col 1: depth=4
+  Context:                           {[
+Line 544, Col 1: depth=4
+  Context:                             { 
+Line 545, Col 1: depth=4
+  Context:                             { 
+Line 546, Col 1: depth=4
+  Context:                             { 
+Line 547, Col 1: depth=4
+  Context:                           ].ma
+Line 548, Col 1: depth=4
+  Context:                             <b
+Line 549, Col 1: depth=4
+  Context:                               
+Line 550, Col 1: depth=4
+  Context:                               
+Line 551, Col 1: depth=4
+  Context:                               
+Line 552, Col 1: depth=4
+  Context:                             >
+Line 553, Col 1: depth=4
+  Context:                               
+Line 554, Col 1: depth=4
+  Context:                             </
+Line 555, Col 1: depth=4
+  Context:                           ))}
+Line 556, Col 1: depth=4
+  Context:                         </div>
+Line 557, Col 1: depth=4
+  Context:                       </div>
+Line 558, Col 1: depth=4
+  Context:                     </div>
+Line 559, Col 1: depth=4
+  Context:                   </MotionCard
+Line 560, Col 1: depth=4
+  Context:                 </FadeUp>
+Line 561, Col 1: depth=4
+  Context:               </GarfixGrid>
+Line 562, Col 1: depth=4
+  Context:             </GarfixTabPanel>
+Line 563, Col 1: depth=4
+  Context:             
+Line 564, Col 1: depth=4
+  Context:             {/* ── Features Ta
+Line 565, Col 1: depth=4
+  Context:             <GarfixTabPanel va
+Line 566, Col 1: depth=4
+  Context:               <FadeUp>
+Line 567, Col 1: depth=4
+  Context:                 <MotionCard cl
+Line 568, Col 1: depth=4
+  Context:                   <h3 classNam
+Line 569, Col 1: depth=4
+  Context:                     <span>🔧</
+Line 570, Col 1: depth=4
+  Context:                     تفعيل / تع
+Line 571, Col 1: depth=4
+  Context:                   </h3>
+Line 572, Col 1: depth=4
+  Context:                   
+Line 573, Col 1: depth=4
+  Context:                   <div classNa
+Line 574, Col 1: depth=4
+  Context:                     {[
+Line 575, Col 1: depth=4
+  Context:                       {
+Line 576, Col 1: depth=4
+  Context:                         key: '
+Line 577, Col 1: depth=4
+  Context:                         title:
+Line 578, Col 1: depth=4
+  Context:                         descri
+Line 579, Col 1: depth=4
+  Context:                         icon: 
+Line 580, Col 1: depth=4
+  Context:                       },
+Line 581, Col 1: depth=4
+  Context:                       {
+Line 582, Col 1: depth=4
+  Context:                         key: '
+Line 583, Col 1: depth=4
+  Context:                         title:
+Line 584, Col 1: depth=4
+  Context:                         descri
+Line 585, Col 1: depth=4
+  Context:                         icon: 
+Line 586, Col 1: depth=4
+  Context:                       },
+Line 587, Col 1: depth=4
+  Context:                       {
+Line 588, Col 1: depth=4
+  Context:                         key: '
+Line 589, Col 1: depth=4
+  Context:                         title:
+Line 590, Col 1: depth=4
+  Context:                         descri
+Line 591, Col 1: depth=4
+  Context:                         icon: 
+Line 592, Col 1: depth=4
+  Context:                       },
+Line 593, Col 1: depth=4
+  Context:                       {
+Line 594, Col 1: depth=4
+  Context:                         key: '
+Line 595, Col 1: depth=4
+  Context:                         title:
+Line 596, Col 1: depth=4
+  Context:                         descri
+Line 597, Col 1: depth=4
+  Context:                         icon: 
+Line 598, Col 1: depth=4
+  Context:                       },
+Line 599, Col 1: depth=4
+  Context:                     ].map(feat
+Line 600, Col 1: depth=4
+  Context:                       <div
+Line 601, Col 1: depth=4
+  Context:                         key={f
+Line 602, Col 1: depth=4
+  Context:                         classN
+Line 603, Col 1: depth=4
+  Context:                           'fle
+Line 604, Col 1: depth=4
+  Context:                           feat
+Line 605, Col 1: depth=4
+  Context:                             ? 
+Line 606, Col 1: depth=4
+  Context:                             : 
+Line 607, Col 1: depth=4
+  Context:                         )}
+Line 608, Col 1: depth=4
+  Context:                       >
+Line 609, Col 1: depth=4
+  Context:                         <div c
+Line 610, Col 1: depth=4
+  Context:                           <spa
+Line 611, Col 1: depth=4
+  Context:                           <div
+Line 612, Col 1: depth=4
+  Context:                             <h
+Line 613, Col 1: depth=4
+  Context:                               
+Line 614, Col 1: depth=4
+  Context:                             </
+Line 615, Col 1: depth=4
+  Context:                             <p
+Line 616, Col 1: depth=4
+  Context:                               
+Line 617, Col 1: depth=4
+  Context:                             </
+Line 618, Col 1: depth=4
+  Context:                           </di
+Line 619, Col 1: depth=4
+  Context:                         </div>
+Line 620, Col 1: depth=4
+  Context:                         
+Line 621, Col 1: depth=4
+  Context:                         {/* To
+Line 622, Col 1: depth=4
+  Context:                         <butto
+Line 623, Col 1: depth=4
+  Context:                           onCl
+Line 624, Col 1: depth=4
+  Context:                             se
+Line 625, Col 1: depth=4
+  Context:                               
+Line 626, Col 1: depth=4
+  Context:                               
+Line 627, Col 1: depth=4
+  Context:                             })
+Line 628, Col 1: depth=4
+  Context:                           }
+Line 629, Col 1: depth=4
+  Context:                           clas
+Line 630, Col 1: depth=4
+  Context:                             'r
+Line 631, Col 1: depth=4
+  Context:                             fe
+Line 632, Col 1: depth=4
+  Context:                               
+Line 633, Col 1: depth=4
+  Context:                               
+Line 634, Col 1: depth=4
+  Context:                           )}
+Line 635, Col 1: depth=4
+  Context:                         >
+Line 636, Col 1: depth=4
+  Context:                           <spa
+Line 637, Col 1: depth=4
+  Context:                             cl
+Line 638, Col 1: depth=4
+  Context:                               
+Line 639, Col 1: depth=4
+  Context:                               
+Line 640, Col 1: depth=4
+  Context:                             )}
+Line 641, Col 1: depth=4
+  Context:                           />
+Line 642, Col 1: depth=4
+  Context:                         </butt
+Line 643, Col 1: depth=4
+  Context:                       </div>
+Line 644, Col 1: depth=4
+  Context:                     ))}
+Line 645, Col 1: depth=4
+  Context:                   </div>
+Line 646, Col 1: depth=4
+  Context:                 </MotionCard>
+Line 647, Col 1: depth=4
+  Context:               </FadeUp>
+Line 648, Col 1: depth=4
+  Context:             </GarfixTabPanel>
+Line 649, Col 1: depth=4
+  Context:             
+Line 650, Col 1: depth=4
+  Context:             {/* ── Usage Tab ─
+Line 651, Col 1: depth=4
+  Context:             <GarfixTabPanel va
+Line 652, Col 1: depth=4
+  Context:               {usageData ? (
+Line 653, Col 1: depth=4
+  Context:                 <GarfixGrid co
+Line 654, Col 1: depth=4
+  Context:                   {/* Overview
+Line 655, Col 1: depth=4
+  Context:                   <>
+Line 656, Col 1: depth=4
+  Context:                     <ScaleIn d
+Line 657, Col 1: depth=4
+  Context:                       <MotionC
+Line 658, Col 1: depth=4
+  Context:                         <p cla
+Line 659, Col 1: depth=4
+  Context:                         <p cla
+Line 660, Col 1: depth=4
+  Context:                           <Gar
+Line 661, Col 1: depth=4
+  Context:                             va
+Line 662, Col 1: depth=4
+  Context:                             ab
+Line 663, Col 1: depth=4
+  Context:                             au
+Line 664, Col 1: depth=4
+  Context:                           />
+Line 665, Col 1: depth=4
+  Context:                         </p>
+Line 666, Col 1: depth=4
+  Context:                         <p cla
+Line 667, Col 1: depth=4
+  Context:                           من {
+Line 668, Col 1: depth=4
+  Context:                         </p>
+Line 669, Col 1: depth=4
+  Context:                       </Motion
+Line 670, Col 1: depth=4
+  Context:                     </ScaleIn>
+Line 671, Col 1: depth=4
+  Context:                     
+Line 672, Col 1: depth=4
+  Context:                     <ScaleIn d
+Line 673, Col 1: depth=4
+  Context:                       <MotionC
+Line 674, Col 1: depth=4
+  Context:                         <p cla
+Line 675, Col 1: depth=4
+  Context:                         <p cla
+Line 676, Col 1: depth=4
+  Context:                           <Gar
+Line 677, Col 1: depth=4
+  Context:                             va
+Line 678, Col 1: depth=4
+  Context:                             au
+Line 679, Col 1: depth=4
+  Context:                           />
+Line 680, Col 1: depth=4
+  Context:                         </p>
+Line 681, Col 1: depth=4
+  Context:                         <p cla
+Line 682, Col 1: depth=4
+  Context:                       </Motion
+Line 683, Col 1: depth=4
+  Context:                     </ScaleIn>
+Line 684, Col 1: depth=4
+  Context:                     
+Line 685, Col 1: depth=4
+  Context:                     <ScaleIn d
+Line 686, Col 1: depth=4
+  Context:                       <MotionC
+Line 687, Col 1: depth=4
+  Context:                         <p cla
+Line 688, Col 1: depth=4
+  Context:                         <p cla
+Line 689, Col 1: depth=4
+  Context:                           ${us
+Line 690, Col 1: depth=4
+  Context:                         </p>
+Line 691, Col 1: depth=4
+  Context:                         <p cla
+Line 692, Col 1: depth=4
+  Context:                       </Motion
+Line 693, Col 1: depth=4
+  Context:                     </ScaleIn>
+Line 694, Col 1: depth=4
+  Context:                   </>
+Line 695, Col 1: depth=4
+  Context:                   
+Line 696, Col 1: depth=4
+  Context:                   {/* Usage Pr
+Line 697, Col 1: depth=4
+  Context:                   <div classNa
+Line 698, Col 1: depth=4
+  Context:                     <FadeUp>
+Line 699, Col 1: depth=4
+  Context:                       <MotionC
+Line 700, Col 1: depth=4
+  Context:                         <div c
+Line 701, Col 1: depth=4
+  Context:                           <h3 
+Line 702, Col 1: depth=4
+  Context:                             اس
+Line 703, Col 1: depth=4
+  Context:                           </h3
+Line 704, Col 1: depth=4
+  Context:                           <Gar
+Line 705, Col 1: depth=4
+  Context:                             va
+Line 706, Col 1: depth=4
+  Context:                               
+Line 707, Col 1: depth=4
+  Context:                               
+Line 708, Col 1: depth=4
+  Context:                               
+Line 709, Col 1: depth=4
+  Context:                               
+Line 710, Col 1: depth=4
+  Context:                               
+Line 711, Col 1: depth=4
+  Context:                             }
+Line 712, Col 1: depth=4
+  Context:                           >
+Line 713, Col 1: depth=4
+  Context:                             {u
+Line 714, Col 1: depth=4
+  Context:                           </Ga
+Line 715, Col 1: depth=4
+  Context:                         </div>
+Line 716, Col 1: depth=4
+  Context:                         
+Line 717, Col 1: depth=4
+  Context:                         <Garfi
+Line 718, Col 1: depth=4
+  Context:                           valu
+Line 719, Col 1: depth=4
+  Context:                           max=
+Line 720, Col 1: depth=4
+  Context:                           size
+Line 721, Col 1: depth=4
+  Context:                           colo
+Line 722, Col 1: depth=4
+  Context:                             us
+Line 723, Col 1: depth=4
+  Context:                               
+Line 724, Col 1: depth=4
+  Context:                               
+Line 725, Col 1: depth=4
+  Context:                               
+Line 726, Col 1: depth=4
+  Context:                               
+Line 727, Col 1: depth=4
+  Context:                           }
+Line 728, Col 1: depth=4
+  Context:                         />
+Line 729, Col 1: depth=4
+  Context:                         
+Line 730, Col 1: depth=4
+  Context:                         <div c
+Line 731, Col 1: depth=4
+  Context:                           <spa
+Line 732, Col 1: depth=4
+  Context:                           <spa
+Line 733, Col 1: depth=4
+  Context:                         </div>
+Line 734, Col 1: depth=4
+  Context:                       </Motion
+Line 735, Col 1: depth=4
+  Context:                     </FadeUp>
+Line 736, Col 1: depth=4
+  Context:                   </div>
+Line 737, Col 1: depth=4
+  Context:                   
+Line 738, Col 1: depth=4
+  Context:                   {/* Recommen
+Line 739, Col 1: depth=4
+  Context:                   <div classNa
+Line 740, Col 1: depth=4
+  Context:                     <FadeUp de
+Line 741, Col 1: depth=4
+  Context:                       <MotionC
+Line 742, Col 1: depth=4
+  Context:                         <h3 cl
+Line 743, Col 1: depth=4
+  Context:                           💡 ا
+Line 744, Col 1: depth=4
+  Context:                         </h3>
+Line 745, Col 1: depth=4
+  Context:                         <div c
+Line 746, Col 1: depth=4
+  Context:                           {usa
+Line 747, Col 1: depth=4
+  Context:                             <G
+Line 748, Col 1: depth=4
+  Context:                               
+Line 749, Col 1: depth=4
+  Context:                               
+Line 750, Col 1: depth=4
+  Context:                               
+Line 751, Col 1: depth=4
+  Context:                               
+Line 752, Col 1: depth=4
+  Context:                               
+Line 753, Col 1: depth=4
+  Context:                               
+Line 754, Col 1: depth=4
+  Context:                               
+Line 755, Col 1: depth=4
+  Context:                               
+Line 756, Col 1: depth=4
+  Context:                               
+Line 757, Col 1: depth=4
+  Context:                             >
+Line 758, Col 1: depth=4
+  Context:                               
+Line 759, Col 1: depth=4
+  Context:                             </
+Line 760, Col 1: depth=4
+  Context:                           ))}
+Line 761, Col 1: depth=4
+  Context:                         </div>
+Line 762, Col 1: depth=4
+  Context:                       </Motion
+Line 763, Col 1: depth=4
+  Context:                     </FadeUp>
+Line 764, Col 1: depth=4
+  Context:                   </div>
+Line 765, Col 1: depth=4
+  Context:                 </GarfixGrid>
+Line 766, Col 1: depth=4
+  Context:               ) : (
+Line 767, Col 1: depth=4
+  Context:                 <GarfixSkeleto
+Line 768, Col 1: depth=4
+  Context:               )}
+Line 769, Col 1: depth=4
+  Context:             </GarfixTabPanel>
+Line 770, Col 1: depth=4
+  Context:             
+Line 771, Col 1: depth=4
+  Context:             {/* ── Test Tab ──
+Line 772, Col 1: depth=4
+  Context:             <GarfixTabPanel va
+Line 773, Col 1: depth=4
+  Context:               <FadeUp>
+Line 774, Col 1: depth=4
+  Context:                 <MotionCard cl
+Line 775, Col 1: depth=4
+  Context:                   <h3 classNam
+Line 776, Col 1: depth=4
+  Context:                     <span>🧪</
+Line 777, Col 1: depth=4
+  Context:                     اختبار اتص
+Line 778, Col 1: depth=4
+  Context:                   </h3>
+Line 779, Col 1: depth=4
+  Context:                   
+Line 780, Col 1: depth=4
+  Context:                   <div classNa
+Line 781, Col 1: depth=4
+  Context:                     <p classNa
+Line 782, Col 1: depth=4
+  Context:                       اختبر ات
+Line 783, Col 1: depth=4
+  Context:                     </p>
+Line 784, Col 1: depth=4
+  Context:                     
+Line 785, Col 1: depth=4
+  Context:                     <div class
+Line 786, Col 1: depth=4
+  Context:                       <div>
+Line 787, Col 1: depth=4
+  Context:                         <p cla
+Line 788, Col 1: depth=4
+  Context:                         <p cla
+Line 789, Col 1: depth=4
+  Context:                       </div>
+Line 790, Col 1: depth=4
+  Context:                       <div>
+Line 791, Col 1: depth=4
+  Context:                         <p cla
+Line 792, Col 1: depth=4
+  Context:                         <p cla
+Line 793, Col 1: depth=4
+  Context:                       </div>
+Line 794, Col 1: depth=4
+  Context:                       <div>
+Line 795, Col 1: depth=4
+  Context:                         <p cla
+Line 796, Col 1: depth=4
+  Context:                         <p cla
+Line 797, Col 1: depth=4
+  Context:                           {con
+Line 798, Col 1: depth=4
+  Context:                         </p>
+Line 799, Col 1: depth=4
+  Context:                       </div>
+Line 800, Col 1: depth=4
+  Context:                       <div>
+Line 801, Col 1: depth=4
+  Context:                         <p cla
+Line 802, Col 1: depth=4
+  Context:                         <p cla
+Line 803, Col 1: depth=4
+  Context:                           {con
+Line 804, Col 1: depth=4
+  Context:                             ? 
+Line 805, Col 1: depth=4
+  Context:                             : 
+Line 806, Col 1: depth=4
+  Context:                           }
+Line 807, Col 1: depth=4
+  Context:                         </p>
+Line 808, Col 1: depth=4
+  Context:                       </div>
+Line 809, Col 1: depth=4
+  Context:                     </div>
+Line 810, Col 1: depth=4
+  Context:                     
+Line 811, Col 1: depth=4
+  Context:                     <GarfixBut
+Line 812, Col 1: depth=4
+  Context:                       onClick=
+Line 813, Col 1: depth=4
+  Context:                       isLoadin
+Line 814, Col 1: depth=4
+  Context:                       variant=
+Line 815, Col 1: depth=4
+  Context:                       icon={<s
+Line 816, Col 1: depth=4
+  Context:                       classNam
+Line 817, Col 1: depth=4
+  Context:                     >
+Line 818, Col 1: depth=4
+  Context:                       تشغيل ال
+Line 819, Col 1: depth=4
+  Context:                     </GarfixBu
+Line 820, Col 1: depth=4
+  Context:                     
+Line 821, Col 1: depth=4
+  Context:                     {/* Last T
+Line 822, Col 1: depth=4
+  Context:                     {testResul
+Line 823, Col 1: depth=4
+  Context:                       <div
+Line 824, Col 1: depth=4
+  Context:                         classN
+Line 825, Col 1: depth=4
+  Context:                           'p-4
+Line 826, Col 1: depth=4
+  Context:                           test
+Line 827, Col 1: depth=4
+  Context:                             ? 
+Line 828, Col 1: depth=4
+  Context:                             : 
+Line 829, Col 1: depth=4
+  Context:                         )}
+Line 830, Col 1: depth=4
+  Context:                       >
+Line 831, Col 1: depth=4
+  Context:                         <div c
+Line 832, Col 1: depth=4
+  Context:                           <spa
+Line 833, Col 1: depth=4
+  Context:                             {t
+Line 834, Col 1: depth=4
+  Context:                           </sp
+Line 835, Col 1: depth=4
+  Context:                           <spa
+Line 836, Col 1: depth=4
+  Context:                             {t
+Line 837, Col 1: depth=4
+  Context:                           </sp
+Line 838, Col 1: depth=4
+  Context:                         </div>
+Line 839, Col 1: depth=4
+  Context:                         <p cla
+Line 840, Col 1: depth=4
+  Context:                           زمن 
+Line 841, Col 1: depth=4
+  Context:                         </p>
+Line 842, Col 1: depth=4
+  Context:                         {testR
+Line 843, Col 1: depth=4
+  Context:                           <p c
+Line 844, Col 1: depth=4
+  Context:                             ال
+Line 845, Col 1: depth=4
+  Context:                           </p>
+Line 846, Col 1: depth=4
+  Context:                         )}
+Line 847, Col 1: depth=4
+  Context:                       </div>
+Line 848, Col 1: depth=4
+  Context:                     )}
+Line 849, Col 1: depth=4
+  Context:                   </div>
+Line 850, Col 1: depth=4
+  Context:                 </MotionCard>
+Line 851, Col 1: depth=4
+  Context:               </FadeUp>
+Line 852, Col 1: depth=4
+  Context:             </GarfixTabPanel>
+Line 853, Col 1: depth=4
+  Context:           </GarfixTabs>
+Line 854, Col 1: depth=4
+  Context:         </GarfixContainer>
+Line 855, Col 1: depth=4
+  Context:         
+Line 856, Col 1: depth=4
+  Context:         {/* Test Result Modal 
+Line 857, Col 1: depth=4
+  Context:         {showTestModal && (
+Line 858, Col 1: depth=4
+  Context:           <GarfixModal
+Line 859, Col 1: depth=4
+  Context:             open={showTestModa
+Line 860, Col 1: depth=4
+  Context:             onClose={() => set
+Line 861, Col 1: depth=4
+  Context:             title="نتيجة الاخت
+Line 862, Col 1: depth=4
+  Context:             size="md"
+Line 863, Col 1: depth=4
+  Context:           >
+Line 864, Col 1: depth=4
+  Context:             {testResult && (
+Line 865, Col 1: depth=4
+  Context:               <div className="
+Line 866, Col 1: depth=4
+  Context:                 <div
+Line 867, Col 1: depth=4
+  Context:                   className={c
+Line 868, Col 1: depth=4
+  Context:                     'text-cent
+Line 869, Col 1: depth=4
+  Context:                     testResult
+Line 870, Col 1: depth=4
+  Context:                       ? 'bg-gr
+Line 871, Col 1: depth=4
+  Context:                       : 'bg-re
+Line 872, Col 1: depth=4
+  Context:                   )}
+Line 873, Col 1: depth=4
+  Context:                 >
+Line 874, Col 1: depth=4
+  Context:                   <span classN
+Line 875, Col 1: depth=4
+  Context:                     {testResul
+Line 876, Col 1: depth=4
+  Context:                   </span>
+Line 877, Col 1: depth=4
+  Context:                   <h3
+Line 878, Col 1: depth=4
+  Context:                     className=
+Line 879, Col 1: depth=4
+  Context:                       'text-xl
+Line 880, Col 1: depth=4
+  Context:                       testResu
+Line 881, Col 1: depth=4
+  Context:                         ? 'tex
+Line 882, Col 1: depth=4
+  Context:                         : 'tex
+Line 883, Col 1: depth=4
+  Context:                     )}
+Line 884, Col 1: depth=4
+  Context:                   >
+Line 885, Col 1: depth=4
+  Context:                     {testResul
+Line 886, Col 1: depth=4
+  Context:                   </h3>
+Line 887, Col 1: depth=4
+  Context:                   <p className
+Line 888, Col 1: depth=4
+  Context:                     زمن الاستج
+Line 889, Col 1: depth=4
+  Context:                   </p>
+Line 890, Col 1: depth=4
+  Context:                   {testResult.
+Line 891, Col 1: depth=4
+  Context:                     <p classNa
+Line 892, Col 1: depth=4
+  Context:                       {testRes
+Line 893, Col 1: depth=4
+  Context:                     </p>
+Line 894, Col 1: depth=4
+  Context:                   )}
+Line 895, Col 1: depth=4
+  Context:                 </div>
+Line 896, Col 1: depth=4
+  Context:                 
+Line 897, Col 1: depth=4
+  Context:                 <div className
+Line 898, Col 1: depth=4
+  Context:                   <GarfixButto
+Line 899, Col 1: depth=4
+  Context:                     حسناً
+Line 900, Col 1: depth=4
+  Context:                   </GarfixButt
+Line 901, Col 1: depth=4
+  Context:                 </div>
+Line 902, Col 1: depth=4
+  Context:               </div>
+Line 903, Col 1: depth=4
+  Context:             )}
+Line 904, Col 1: depth=4
+  Context:           </GarfixModal>
+Line 905, Col 1: depth=4
+  Context:         </div>
+Line 906, Col 1: depth=4
+  Context:       </GarfixPageTransition>
+Line 907, Col 1: depth=4
+  Context:     );
+Line 908, Col 1: depth=4
+  Context:   }
+Line 909, Col 1: depth=4
+  Context: }

@@ -153,7 +153,7 @@ export function TradeFinanceView() {
           return (
             <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
               "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5",
-              tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+              tab === t.key ? "bg-primary text-primary-foreground" : "bg-white dark:bg-gray-900 text-muted-foreground",
             )}>
               {Icon && <Icon size={14} />} {t.label}
             </button>
@@ -204,10 +204,8 @@ export function TradeFinanceView() {
       )}
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "lc" ? (
-        /* ── LC Tab ──────────────────────────────────────────────────────────── */
         showLcForm ? (
-          {/* DS v4.0: Form card with hover-lift */}
-          <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
+          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border p-5 hover-lift duration-120">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">اعتماد مستندي جديد</h2>
               <button onClick={() => { setShowLcForm(false); resetLcForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -236,8 +234,7 @@ export function TradeFinanceView() {
             </div>
           </div>
         ) : lcs.length === 0 ? <Empty label="اعتمادات مستندية" /> : (
-          {/* DS v4.0: Table with enterprise styling */}
-          <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
             <div className="overflow-x-auto garfix-scroll">
               <table className="w-full border-collapse table-enterprise">
                 <thead><tr className="border-b border-border bg-muted">
@@ -271,10 +268,8 @@ export function TradeFinanceView() {
           </div>
         )
       ) : (
-        /* ── FX Tab ──────────────────────────────────────────────────────────── */
         showFxForm ? (
-          {/* DS v4.0: FX Form card with hover-lift */}
-          <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
+          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border p-5 hover-lift duration-120">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">حساب تقييم العملات</h2>
               <button onClick={() => { setShowFxForm(false); resetFxForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -314,8 +309,7 @@ export function TradeFinanceView() {
             </div>
           </div>
         ) : fxEntries.length === 0 ? <Empty label="تقييمات عملات" /> : (
-          {/* DS v4.0: FX Table container with hover-lift */}
-          <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
             {/* Summary cards - DS v4.0: Using kpi-card classes */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-border">
               {(() => {
@@ -331,15 +325,13 @@ export function TradeFinanceView() {
                   { label: "أرباح غير محققة", value: totalUnrealizedGain, badgeClass: "bg-[#d4a574]/20 text-[#d4a574]", textClass: "text-[#d4a574]", icon: <TrendingUp size={16} />, cardClass: "kpi-card-gold" },
                   { label: "خسائر غير محققة", value: totalUnrealizedLoss, badgeClass: "bg-amber-500/20 text-amber-500", textClass: "text-amber-500", icon: <TrendingDown size={16} />, cardClass: "kpi-card" },
                 ].map((m, i) => (
-                  // DS v4.0: KPI card with hover effect
-                  <div key={i} className={cn(m.cardClass, "p-3 flex items-center gap-2")}
+                  <div key={i} className={cn(m.cardClass, "p-3 flex items-center gap-2")}>
                     <div className={cn("w-8 h-8 rounded-md flex items-center justify-center", m.badgeClass)}>{m.icon}</div>
                     <div><p className="text-[11px] text-muted-foreground">{m.label}</p><p className={cn("text-[15px] font-bold", m.textClass)}>{fmt(m.value)}</p></div>
                   </div>
                 ));
               })()}
             </div>
-            {/* DS v4.0: Enterprise table */}
             <div className="overflow-x-auto garfix-scroll">
               <table className="w-full border-collapse table-enterprise">
                 <thead><tr className="border-b border-border bg-muted">

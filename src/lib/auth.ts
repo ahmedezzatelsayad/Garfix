@@ -549,3 +549,6 @@ export async function verifyRefreshTokenWithBlacklist(
 
   return { ...payload, jti };
 }
+
+// Re-export hasPermission from middleware for backward compatibility
+export { hasPermission } from "./middleware";
