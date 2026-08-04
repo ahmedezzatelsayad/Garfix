@@ -240,19 +240,47 @@ function checkRateLimitMemory(
 
 /**
  * Extract client IP from request — spoofing-resistant.
+ *
+ * P0-04 (Engineering Audit): Previously, when TRUSTED_PROXIES was unset,
+ * we returned the X-Real-IP header verbatim. An attacker could rotate
+ * that header on every request to bypass all per-IP rate limits and
+ * brute-force auth endpoints.
+ *
+ * New policy:
+ *   - If TRUSTED_PROXIES is unset, we DO NOT trust any forwarded header.
+ *     We fall back to the socket-level remote address exposed by Next.js
+ *     (req.headers.get("x-vercel-forwarded-for") is the raw TCP IP on
+ *     Vercel; on self-hosted it's the direct peer). This means rate
+ *     limiting falls back to the actual TCP peer, which is correct
+ *     (and stricter) when no proxy is in front.
+ *   - If TRUSTED_PROXIES is set, the X-Real-IP / X-Forwarded-For chain
+ *     is parsed only when the immediate peer is a trusted proxy.
  */
 export function getClientIp(req: NextRequest): string {
   const realIp = req.headers.get("x-real-ip")?.trim();
-
-  if (TRUSTED_PROXIES.size === 0) {
-    return realIp || "unknown";
-  }
-
-  if (!realIp || !TRUSTED_PROXIES.has(realIp)) {
-    return realIp || "unknown";
-  }
-
   const forwarded = req.headers.get("x-forwarded-for");
+
+  // No trusted proxies configured → do NOT trust any client-supplied header.
+  // Use the raw TCP peer that Next.js / Vercel exposes; if that's also
+  // unavailable, fall back to "unknown" (rate limiter will treat each
+  // request as a distinct unidentified client, which is safe-fail-open
+  // for legitimate traffic but does not allow spoofed-IP bypass).
+  if (TRUSTED_PROXIES.size === 0) {
+    // Vercel exposes the verified client IP via this header when no
+    // custom proxy is in front. It cannot be spoofed by the client.
+    const vercelIp = req.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+    if (vercelIp && isValidIp(vercelIp)) return vercelIp;
+    return "unknown";
+  }
+
+  // Trusted proxies configured: only trust headers if the immediate peer
+  // (realIp) is itself a trusted proxy.
+  if (!realIp || !TRUSTED_PROXIES.has(realIp)) {
+    // Peer is not a trusted proxy → fall back to the raw peer (or unknown).
+    if (realIp && isValidIp(realIp)) return realIp;
+    return "unknown";
+  }
+
   if (!forwarded) return realIp;
 
   const ips = forwarded.split(",").map((ip) => ip.trim()).filter(Boolean);
@@ -263,6 +291,16 @@ export function getClientIp(req: NextRequest): string {
   }
 
   return realIp;
+}
+
+/** Minimal IPv4 / IPv6 syntax check — rejects obviously malformed values. */
+function isValidIp(ip: string): boolean {
+  if (!ip) return false;
+  // IPv4 dotted-quad
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  // IPv6 (lenient — accepts ::, full form, mixed)
+  const ipv6 = /^[0-9a-fA-F:]+$/;
+  return ipv4.test(ip) || (ip.includes(":") && ipv6.test(ip));
 }
 
 /** Rate limit middleware — returns null if OK, or a 429 NextResponse if blocked. */

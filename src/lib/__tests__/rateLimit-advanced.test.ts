@@ -302,9 +302,17 @@ describe("rateLimitResponse", () => {
 // ─── getClientIp ───────────────────────────────────────────────────────────
 
 describe("getClientIp", () => {
-  it("extracts x-real-ip header", () => {
+  // P0-04: TRUSTED_PROXIES is unset in the test env (and in default prod).
+  // Under that policy, getClientIp MUST NOT trust X-Real-IP or
+  // X-Forwarded-For headers — otherwise an attacker can rotate them to
+  // bypass per-IP rate limits. The only client-supplied header we still
+  // honor is x-vercel-forwarded-for, which Vercel sets from the verified
+  // TCP peer and which cannot be spoofed by the client.
+
+  it("ignores spoofable x-real-ip when TRUSTED_PROXIES is unset", () => {
     const req = makeRequest({ "x-real-ip": "10.0.0.1" });
-    expect(getClientIp(req)).toBe("10.0.0.1");
+    // No x-vercel-forwarded-for set → falls back to "unknown"
+    expect(getClientIp(req)).toBe("unknown");
   });
 
   it("returns 'unknown' when no IP headers present", () => {
@@ -312,22 +320,32 @@ describe("getClientIp", () => {
     expect(getClientIp(req)).toBe("unknown");
   });
 
-  it("trims whitespace from x-real-ip", () => {
+  it("ignores whitespace-only x-real-ip when TRUSTED_PROXIES is unset", () => {
     const req = makeRequest({ "x-real-ip": "  10.0.0.2  " });
-    expect(getClientIp(req)).toBe("10.0.0.2");
+    expect(getClientIp(req)).toBe("unknown");
   });
 
-  it("prefers x-real-ip over x-forwarded-for when no trusted proxies", () => {
+  it("ignores both x-real-ip and x-forwarded-for when no trusted proxies", () => {
     const req = makeRequest({
       "x-real-ip": "10.0.0.3",
       "x-forwarded-for": "192.168.1.1, 10.0.0.3",
     });
-    // TRUSTED_PROXIES is empty (env not set), so it should return x-real-ip
-    expect(getClientIp(req)).toBe("10.0.0.3");
+    // TRUSTED_PROXIES is empty (env not set) — both headers are untrusted.
+    expect(getClientIp(req)).toBe("unknown");
   });
 
   it("returns 'unknown' for empty x-real-ip", () => {
     const req = makeRequest({ "x-real-ip": "" });
+    expect(getClientIp(req)).toBe("unknown");
+  });
+
+  it("trusts x-vercel-forwarded-for (verified TCP peer) when TRUSTED_PROXIES unset", () => {
+    const req = makeRequest({ "x-vercel-forwarded-for": "203.0.113.5" });
+    expect(getClientIp(req)).toBe("203.0.113.5");
+  });
+
+  it("rejects malformed x-vercel-forwarded-for values", () => {
+    const req = makeRequest({ "x-vercel-forwarded-for": "not-an-ip" });
     expect(getClientIp(req)).toBe("unknown");
   });
 });
