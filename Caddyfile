@@ -1,16 +1,10 @@
 :81 {
-	@transform_port_query {
-		query XTransformPort=*
-	}
-
-	handle @transform_port_query {
-		reverse_proxy localhost:{query.XTransformPort} {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
-		}
-	}
+	# Production Caddyfile — reverse proxy to Next.js only.
+	# NOTE: The `?XTransformPort=` open-proxy passthrough that used to live here
+	# was removed (P0-01 from Engineering Audit). It allowed any external
+	# attacker to relay traffic to arbitrary localhost ports (Postgres, Valkey,
+	# admin services) by appending `?XTransformPort=5432` to any request.
+	# The dev-only equivalent is preserved in Caddyfile.dev.
 
 	handle {
 		reverse_proxy localhost:3000 {
