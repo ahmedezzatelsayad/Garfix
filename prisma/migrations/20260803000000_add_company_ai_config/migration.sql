@@ -5,7 +5,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS company_ai_configs (
-    id                        TEXT PRIMARY KEY DEFAULT (cuid()),
+    id                        TEXT PRIMARY KEY DEFAULT (replace(gen_random_uuid()::text, '-', '')),
     company_id                TEXT NOT NULL UNIQUE,
     
     -- Primary AI Provider (JSON string)

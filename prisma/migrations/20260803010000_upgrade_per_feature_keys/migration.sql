@@ -12,7 +12,7 @@ BEGIN
     -- Create table if not exists (for fresh installations)
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'company_ai_configs') THEN
         CREATE TABLE company_ai_configs (
-            id TEXT PRIMARY KEY DEFAULT (cuid()),
+            id TEXT PRIMARY KEY DEFAULT (replace(gen_random_uuid()::text, '-', '')),
             company_id TEXT NOT NULL UNIQUE,
             
             -- Per-Feature API Keys (Isolated Connections)
@@ -163,7 +163,7 @@ BEGIN
         END IF;
         
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'company_ai_configs' AND column_name = 'memory_tokens_used') THEN
-            ALTER TABLE company_ai_configs ADD COLUMN memory_tokens_used BIGINT NOTINT NOT DEFAULT 0;
+            ALTER TABLE company_ai_configs ADD COLUMN memory_tokens_used BIGINT NOT NULL DEFAULT 0;
         END IF;
         
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'company_ai_configs' AND column_name = 'memory_requests_count') THEN
