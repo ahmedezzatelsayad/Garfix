@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { resolveAuth } from '@/lib/auth';
+import { requireFounder } from '@/lib/middleware';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
@@ -15,9 +15,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withErrorHandler(async () => {
-    // Authenticate (founder only)
-    const auth = await resolveAuth(request);
-    if (!auth.user) return apiError('Unauthorized', 401);
+    // P0-03: Require founder authorization (not just any authenticated user).
+    const founderAccess = await requireFounder(request);
+    if (founderAccess instanceof NextResponse) return founderAccess;
 
     const { id } = await params;
 
@@ -37,7 +37,7 @@ export async function DELETE(
       },
     });
 
-    logger.info(`[ApiKeyPool] Revoked key ${id} by founder ${auth.user.email}`);
+    logger.info(`[ApiKeyPool] Revoked key ${id} by founder ${founderAccess.user.email}`);
 
     return NextResponse.json({
       success: true,
