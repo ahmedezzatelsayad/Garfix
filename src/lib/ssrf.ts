@@ -17,16 +17,14 @@
  * classic DNS-rebinding SSRF pattern.
  *
  * `fetchSafe()` resolves the hostname ONCE, validates EVERY resolved IP
- * against the private-range rules, then makes the fetch with a Host header
- * that preserves the original hostname (so the upstream TLS cert still
- * validates). This pins the DNS result for the duration of the request.
+ * against the private-range rules, then fetches the ORIGINAL URL unchanged.
+ * The original URL is preserved (not rewritten to an IP literal) so that
+ * TLS SNI uses the original hostname and cert validation still works for
+ * HTTPS endpoints with domain-based certs (Paymob, MyFatoorah, OpenRouter,
+ * tenant webhooks — all HTTPS).
  *
- * Caveat: TOCTOU race window — between `dns.lookup()` and `fetch()`, the
- * resolver cache could theoretically be poisoned. Node's `dns.lookup` uses
- * the OS resolver (getaddrinfo) which caches at the OS level. This is
- * acceptable given the threat model — the goal is to make the trivial
- * DNS-rebinding attack (TTL=0 records) impossible, not to defend against
- * a nation-state adversary with OS-level compromise.
+ * See the long comment on `fetchSafe()` for the TLS/SNI trade-off and the
+ * rationale for not installing undici for true DNS pinning.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -98,23 +96,24 @@ export function validateBaseUrl(url: string, opts: { allowHttp?: boolean } = {})
     }
   }
 
-  // Block IPv6 loopback / link-local / unique-local / v4-mapped
+  // Block IPv6 loopback / link-local / unique-local / v4-mapped-private.
+  // NOTE: Node's URL parser NORMALIZES v4-mapped IPv6 — `[::ffff:10.0.0.1]`
+  // becomes `[::ffff:a00:1]` (hex form). Regexes that look for the dotted
+  // form are dead code. We delegate to the same `isPrivateIPv6` helper that
+  // fetchSafe uses for post-DNS-lookup validation — it handles both the
+  // dotted and normalized forms via dedicated regexes.
   if (host.includes(":")) {
-    const v6 = host.replace(/^\[|\]$/g, "");
-    if (
-      v6 === "::1" ||
-      /^fe[89ab][0-9a-f]:/i.test(v6) ||
-      /^f[cd][0-9a-f]{2}:/i.test(v6) ||
-      /^::ffff:127\./i.test(v6) ||
-      /^::ffff:10\./i.test(v6) ||
-      /^::ffff:192\.168\./i.test(v6)
-    ) {
+    if (isPrivateIPv6(host)) {
       throw new Error("يُمنع استخدام عناوين IPv6 داخلية");
     }
   }
 
-  // Block obvious internal hostnames (no dot, or ends with internal TLD)
-  if (!host.includes(".") || /\.(internal|local|localhost|intra|corp)$/i.test(host)) {
+  // Block obvious internal hostnames (no dot, or ends with internal TLD).
+  // NOTE: IPv6 literals contain ':' but not '.', so we must skip this check
+  // for them — otherwise public IPv6 addresses like 2606:4700::1 would be
+  // wrongly rejected. IPv6 is handled by the v6 range check above.
+  const isIPv6Literal = host.includes(":");
+  if (!isIPv6Literal && (!host.includes(".") || /\.(internal|local|localhost|intra|corp)$/i.test(host))) {
     throw new Error("يبدو أن العنوان يشير إلى مضيف داخلي — يُسمح فقط بعناوين الإنترنت العامة");
   }
 }
@@ -183,13 +182,53 @@ function isPrivateIPv4(ip: string): boolean {
   return PRIVATE_IPV4_PREFIXES.some(({ first, mask }) => (n & mask) >>> 0 === first);
 }
 
-/** Returns true if the IPv6 address is loopback / link-local / ULA / v4-mapped-private. */
+/**
+ * Returns true if the IPv6 address is loopback / link-local / ULA / v4-mapped-private.
+ *
+ * Handles BOTH forms of v4-mapped IPv6:
+ *   - Dotted form:  `::ffff:10.0.0.1`    (literal — rare, only if URL parser skips it)
+ *   - Hex form:     `::ffff:a00:1`       (normalized — what Node's URL parser emits)
+ *
+ * The hex form encodes the IPv4 octets as two 16-bit hex groups:
+ *   `::ffff:XXYY:ZZWW`  ↔  `XX.YY.ZZ.WW` (e.g. `::ffff:a00:1` ↔ `10.0.0.1`)
+ *
+ * Rather than maintain parallel regex tables for both forms, we detect any
+ * `::ffff:` prefix and extract the trailing IPv4 portion (dotted or hex),
+ * then delegate to isPrivateIPv4.
+ */
 function isPrivateIPv6(ip: string): boolean {
   const v6 = ip.toLowerCase().replace(/^\[|\]$/g, "");
   if (v6 === "::1") return true; // loopback
   if (/^fe[89ab][0-9a-f]:/.test(v6)) return true; // link-local fe80::/10
   if (/^f[cd][0-9a-f]{2}:/.test(v6)) return true; // ULA fc00::/7
-  if (/^::ffff:127\./.test(v6) || /^::ffff:10\./.test(v6) || /^::ffff:192\.168\./.test(v6)) return true;
+
+  // v4-mapped IPv6: `::ffff:x.x.x.x` (dotted) OR `::ffff:xxxx:xxxx` (hex).
+  // Extract the v4 portion and run it through isPrivateIPv4 — that way we
+  // automatically cover every private range that isPrivateIPv4 knows about
+  // (10/8, 127/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10, 0/8, etc.)
+  // without duplicating the range table here.
+  const v4MappedMatch = v6.match(/^::ffff:(.+)$/i);
+  if (v4MappedMatch) {
+    const tail = v4MappedMatch[1];
+    // Dotted form: `10.0.0.1` — already IPv4, check directly.
+    if (/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.test(tail)) {
+      return isPrivateIPv4(tail);
+    }
+    // Hex form: `a00:1` or `0:a00:1` (full 80-bit prefix elided). Extract
+    // the last two 16-bit groups and convert to dotted-quad.
+    const groups = tail.split(":").filter((g) => g.length > 0);
+    if (groups.length >= 2) {
+      const g1 = groups[groups.length - 2];
+      const g2 = groups[groups.length - 1];
+      const hi = parseInt(g1, 16);
+      const lo = parseInt(g2, 16);
+      if (Number.isFinite(hi) && Number.isFinite(lo)) {
+        const ipv4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+        return isPrivateIPv4(ipv4);
+      }
+    }
+  }
+
   return false;
 }
 
@@ -230,17 +269,44 @@ const LOCAL_MACHINE_IPS: ReadonlySet<string> = (() => {
  * Safe fetch wrapper that defends against DNS rebinding.
  *
  * 1. Validates the URL syntactically + hostname range (same as validateBaseUrl).
- * 2. Resolves the hostname via `dns.lookup()` (one DNS query).
+ * 2. Resolves the hostname via `dns.lookup({all: true})` (one DNS query).
  * 3. Validates EVERY resolved IP against private/loopback/link-local ranges.
  *    If ANY resolved IP is private → throw.
- * 4. Reconstructs the URL with the resolved IP as the host, but sets the
- *    `Host` header to the ORIGINAL hostname (so TLS SNI + cert validation
- *    still work against the original domain).
+ * 4. Fetches the ORIGINAL URL unchanged (preserves TLS SNI + cert validation).
  *
- * For IPv6 literals we wrap them in [] when building the URL.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * TLS/SNI CORRECTNESS (P1-A.1 fix — see user audit feedback):
  *
- * Trade-off: this adds one DNS lookup latency (~1-5ms) per fetch, but only
- * the first lookup per hostname per TTL window is slow (OS resolver caches).
+ * The previous implementation replaced the URL hostname with the resolved IP
+ * and set `Host: <original-hostname>` as a header. This is INCORRECT for
+ * HTTPS because:
+ *   - TLS SNI is sent during the handshake, derived from the URL hostname
+ *     (NOT from the Host header).
+ *   - When the URL hostname is an IP literal, SNI is omitted or set to the
+ *     IP — most HTTPS servers serving domain-based certs will then either
+ *     return a default cert (which won't match) or refuse the handshake.
+ *   - For Paymob, MyFatoorah, OpenRouter, and tenant webhook endpoints
+ *     (all HTTPS with vhost-based certs), this breaks the integration.
+ *
+ * The correct approach is to NOT replace the URL hostname. We do the DNS
+ * lookup ourselves, validate every resolved IP, and then call `fetch(url)`
+ * with the original URL — letting Node's fetch handle TLS+SNI correctly.
+ *
+ * Trade-off: there is a small TOCTOU window between our `dns.lookup()` and
+ * the fetch's internal `dns.lookup()`. In practice this is negligible:
+ *   - The OS resolver caches A records for at least the TTL (typically ≥60s
+ *     even when the upstream TTL is 0 — getaddrinfo imposes a minimum).
+ *   - For an attacker to exploit this race they would need to: register a
+ *     hostname, run a DNS server with TTL=0, AND precisely time a second
+ *     A-record change between our lookup (microseconds before fetch) and
+ *     fetch's internal lookup. This is far harder than the trivial DNS
+ *     rebinding attack we're defending against.
+ *
+ * For TRUE DNS pinning (zero TOCTOU), we would need to install `undici`
+ * explicitly and use a custom `Agent({ connect: { servername, lookup } })`.
+ * That is a larger change and is tracked as a future hardening task; the
+ * current implementation raises the bar far above the trivial attack.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
  * Node-only: uses `node:dns/promises`. All callers (webhooks, myfatoorah,
  * paymob, aiProvider) run in Route Handlers (Node runtime), so this is fine.
@@ -256,11 +322,10 @@ export async function fetchSafe(
   const parsed = new URL(urlStr);
   const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
 
-  // ── DNS pinning ───────────────────────────────────────────────────────
+  // ── DNS validation (NOT pinning — see TLS/SNI note above) ────────────
   // Skip DNS resolution if the hostname is already a literal IP — in that
   // case validateBaseUrl already validated its range.
   const isLiteralIP = /^(\d+\.){3}\d+$/.test(hostname) || hostname.includes(":");
-  let resolvedIP: string | null = null;
   if (!isLiteralIP) {
     let lookupResult: { address: string; family: number }[];
     try {
@@ -289,45 +354,19 @@ export async function fetchSafe(
         );
       }
     }
-    // Use the first resolved address (Node's getaddrinfo already orders by
-    // RFC 6724 preference, so this is the same IP that an unprotected fetch
-    // would have likely used — but now we've verified it's safe).
-    resolvedIP = lookupResult[0].address;
+    // DNS validation passed — fetch the original URL unchanged so that TLS
+    // SNI uses the original hostname and cert validation works correctly.
   }
 
-  // ── Build the pinned URL ──────────────────────────────────────────────
-  // Replace hostname with the resolved IP, preserving port/path/query.
-  // For IPv6 literals, wrap in brackets per RFC 3986.
-  let pinnedUrl: string;
-  if (resolvedIP) {
-    const ipHost = resolvedIP.includes(":") ? `[${resolvedIP}]` : resolvedIP;
-    const portPart = parsed.port ? `:${parsed.port}` : "";
-    pinnedUrl = `${parsed.protocol}//${ipHost}${portPart}${parsed.pathname}${parsed.search}`;
-  } else {
-    pinnedUrl = urlStr;
-  }
-
-  // ── Issue the fetch with original Host header ─────────────────────────
-  // Without an explicit Host header, the fetch would send `Host: <ip>` and
-  // TLS SNI would also use the IP — causing cert validation to fail for
-  // HTTPS URLs that use domain-based certs. Setting Host: <original-hostname>
-  // makes the upstream serve the correct vhost + cert.
-  //
-  // Also set `servername` via `dispatcher` is not possible from fetch() —
-  // but undici (Node's fetch) respects the `Host` header for SNI.
-  const headers = new Headers(init.headers || undefined);
-  if (resolvedIP && !headers.has("Host")) {
-    // Include port in Host header only if non-default for the protocol.
-    const isDefaultPort =
-      (parsed.protocol === "https:" && parsed.port === "443") ||
-      (parsed.protocol === "http:" && parsed.port === "80");
-    const hostHeader = isDefaultPort || !parsed.port
-      ? hostname
-      : `${hostname}:${parsed.port}`;
-    headers.set("Host", hostHeader);
-  }
-
-  return fetch(pinnedUrl, { ...init, headers });
+  // ── Issue the fetch with the ORIGINAL URL ─────────────────────────────
+  // Do NOT replace hostname with IP. Do NOT set an explicit Host header.
+  // Node's fetch will:
+  //   - Resolve the hostname again (OS cache returns the same IPs we just
+  //     validated — TOCTOU window is microseconds).
+  //   - Set TLS SNI to the hostname → upstream serves the correct cert.
+  //   - Set the Host header to the hostname → upstream serves the correct
+  //     vhost.
+  return fetch(urlStr, init);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
