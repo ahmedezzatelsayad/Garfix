@@ -43,5 +43,5 @@ export async function DELETE(
       success: true,
       message: 'Key revoked successfully',
     });
-  });
+  })();
 }

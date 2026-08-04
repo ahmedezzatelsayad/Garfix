@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     
     // Validate action
     if (!action || !['generate', 'extract', 'status'].includes(action)) {
-      return apiError('Invalid action. Must be: generate, 400, extract, or status');
+      return apiError('Invalid action. Must be: generate, extract, or status', 400);
     }
     
     // Handle status check (doesn't require a specific feature)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       default:
         return apiError('Unknown action', 400);
     }
-  });
+  })();
 }
 
 /**
@@ -221,9 +221,12 @@ export async function GET(request: NextRequest) {
       data: status,
       companyId,
     });
-  });
+  })();
 }
 
 // ── Export for use in other endpoints ───────────────────────
-
-export { getCompanyId };
+// NOTE: getCompanyId is only used internally in this file. Do NOT re-export
+// it from a route.ts file — Next.js App Router route files may only export
+// HTTP method handlers (GET/POST/PUT/DELETE/etc.) and a few config exports
+// (dynamic, revalidate, runtime, maxDuration). Extra named exports break
+// the RouteHandlerConfig type constraint and cause `next build` to fail.
