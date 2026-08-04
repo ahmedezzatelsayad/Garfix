@@ -918,7 +918,10 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
                   const total = mode === "receivable" ? totalAR : totalAP;
                   const pct = total > 0 ? (val / total * 100).toFixed(1) : "0";
                   return (
-                    <tr key={i} className="border-b border-border">
+                    // P0 FIX: stable key from aging range label (unique per
+                    // bucket: current / 30 / 60 / 90+). Previous `key={i}`
+                    // broke row identity on filter/sort changes.
+                    <tr key={b.range || `bucket-${i}`} className="border-b border-border">
                       <td className={cn(tdStyle, "font-bold")}>{b.range}</td>
                       <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", val > 0 ? (mode === "receivable" ? "text-emerald-700" : "text-amber-500") : "text-emerald-500")}>{fmt(val)}</td>
                       <td className={tdStyle}>{b.count}</td>

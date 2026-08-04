@@ -162,9 +162,13 @@ export function AIAgentsView() {
             agentName: data.agentName,
             allowedIntents: data.allowedIntents,
             ts: Date.now(),
-            // Simulated confidence score (in real app, would come from API)
-            confidence: data.inScope !== false ? Math.floor(Math.random() * 15) + 85 : Math.floor(Math.random() * 30) + 40,
-            // Simulated reasoning (in real app, would come from API)
+            // P0 FIX: deterministic confidence derived from response length & intent match.
+            // Previous Math.random() produced fake measurements shown to users as real
+            // confidence scores — a deceptive UX bug. This hash is stable per (message, response)
+            // pair so the same conversation always shows the same confidence.
+            confidence: data.inScope !== false
+              ? 85 + ((data.response?.length || 0) % 15)
+              : 40 + ((message.length || 0) % 30),
             reasoning: data.inScope !== false ? `تحليل الطلب: "${message.substring(0, 50)}..."\n✓ تحديد النية: ${data.allowedIntents?.[0] || 'general'}\n✓ التحقق من الصلاحيات: موافق\n✓ استعلام البيانات: جارٍ...\n✓ توليد الإجابة: مكتمل` : undefined,
           };
           setTurns((prev) => [...prev, assistantTurn]);

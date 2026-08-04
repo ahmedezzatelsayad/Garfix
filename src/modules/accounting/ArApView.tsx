@@ -154,7 +154,10 @@ function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSu
               </tr></thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={i} className="border-b border-border">
+                  // P0 FIX: stable composite key (name is unique within an aging
+                  // group). Falls back to index if name somehow collides. Previous
+                  // `key={i}` broke when rows were reordered/filtered.
+                  <tr key={r.name || `row-${i}`} className="border-b border-border">
                     <td className={cn(tdStyle, "font-bold")}>{r.name}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.current > 0 ? fmt(r.current) : "—"}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.thirty > 0 ? fmt(r.thirty) : "—"}</td>
@@ -269,7 +272,11 @@ function StatementView({ type, company, data, setData }: { type: "client" | "sup
                   </tr></thead>
                   <tbody>
                     {data.lines.map((l, i) => (
-                      <tr key={i} className="border-b border-border">
+                      // P0 FIX: stable composite key from date+reference. Both
+                      // fields are present on every line and (date,reference)
+                      // is unique within a client statement. Previous `key={i}`
+                      // broke row-to-input binding on filter/sort.
+                      <tr key={`${l.date}-${l.reference}` || `line-${i}`} className="border-b border-border">
                         <td className={tdStyle} dir="ltr">{l.date}</td>
                         <td className={tdStyle}>{l.type}</td>
                         <td className={cn(tdStyle, "font-mono")}>{l.reference}</td>

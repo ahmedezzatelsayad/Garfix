@@ -19,6 +19,16 @@ interface TemplateLine {
   debit: number | string;
   credit: number | string;
   description?: string;
+  /** P0 FIX: stable client-side identifier for React keys.
+   *  Previous code used `key={index}` which breaks when lines are
+   *  inserted/deleted/reordered — React may bind inputs to wrong
+   *  rows. localId is generated once per line and never reused. */
+  localId: string;
+}
+
+/** Generate a unique-enough client-side id without pulling in a UUID dep. */
+function makeLocalId(): string {
+  return `l_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 interface RecurringEntry {
@@ -609,10 +619,10 @@ function RecurringEntryModal({
   });
   
   const [lines, setLines] = useState<TemplateLine[]>(
-    entry?.templateLines || [
-      { accountId: "", debit: 0, credit: 0, description: "" },
-      { accountId: "", debit: 0, credit: 0, description: "" },
-    ]
+    (entry?.templateLines?.map((l) => ({ ...l, localId: makeLocalId() })) || [
+      { accountId: "", debit: 0, credit: 0, description: "", localId: makeLocalId() },
+      { accountId: "", debit: 0, credit: 0, description: "", localId: makeLocalId() },
+    ])
   );
 
   const [accounts, setAccounts] = useState<Array<{ id: string; code: string; name: string; nameAr?: string }>>([]);
@@ -627,7 +637,7 @@ function RecurringEntryModal({
 
   // Handlers
   const addLine = () => {
-    setLines([...lines, { accountId: "", debit: 0, credit: 0, description: "" }]);
+    setLines([...lines, { accountId: "", debit: 0, credit: 0, description: "", localId: makeLocalId() }]);
   };
 
   const removeLine = (index: number) => {
@@ -674,7 +684,7 @@ function RecurringEntryModal({
         companySlug,
         ...formData,
         endDate: formData.endDate || null,
-        templateLines: lines.map((l) => ({
+        templateLines: lines.map(({ localId: _localId, ...l }) => ({
           ...l,
           debit: Number(l.debit),
           credit: Number(l.credit),
@@ -877,7 +887,7 @@ function RecurringEntryModal({
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {lines.map((line, index) => (
-                    <tr key={index}>
+                    <tr key={line.localId}>
                       <td className="px-3 py-2">
                         <select
                           value={line.accountId}

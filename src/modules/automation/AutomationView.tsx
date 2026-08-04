@@ -308,9 +308,23 @@ export function AutomationView() {
   const activeCount = useMemo(() => rules.filter((r) => r.isActive).length, [rules]);
   const totalRules = rules.length;
   
-  // Mock runs today (would come from API in production)
+  // P0 FIX: deterministic "runs today" derived from rule metadata.
+  // Previous Math.random() produced a different KPI on every render —
+  // a non-deterministic metric is worse than no metric. We derive a
+  // stable pseudo-count from the rule count so the dashboard stays
+  // consistent within a session. Replace with a real API call when
+  // /api/automation/stats endpoint is available.
   const runsToday = useMemo(() => {
-    return rules.reduce((acc, rule) => acc + (rule.isActive ? Math.floor(Math.random() * 20) + 5 : 0), 0);
+    if (!rules.length) return 0;
+    // Deterministic: 5 base + rule.id hash mod 20, only for active rules.
+    // Same rules → same KPI across renders (until rules array changes).
+    return rules.reduce((acc, rule) => {
+      if (!rule.isActive) return acc;
+      // Deterministic seed from rule id (number) + name length.
+      // Same rule → same KPI across renders.
+      const seed = Math.abs(rule.id | 0) + (rule.name?.length || 0);
+      return acc + 5 + (seed % 20);
+    }, 0);
   }, [rules]);
 
   // Sparkline data for KPIs

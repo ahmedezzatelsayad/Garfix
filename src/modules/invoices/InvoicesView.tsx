@@ -990,7 +990,8 @@ function InvoiceForm({
         </div>
         <div className="flex flex-col gap-2">
           {lineItems.map((it, i) => (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-[1.5fr_80px_100px_110px_32px] gap-2 items-center">
+            // P0 FIX: stable composite key. Same fix as the print view above.
+            <div key={`${it.description}-${it.qty}-${it.price}` || `item-${i}`} className="grid grid-cols-1 sm:grid-cols-[1.5fr_80px_100px_110px_32px] gap-2 items-center">
               {/* 🆕 Product Picker instead of plain input */}
               <ProductPicker
                 companySlug={company.slug}
@@ -1172,7 +1173,11 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
           </thead>
           <tbody>
             {invoice.lineItems.map((it, i) => (
-              <tr key={i} className="border-b border-[#e5e7eb]">
+              // P0 FIX: stable composite key from description+qty+price.
+              // These three fields together uniquely identify a line item
+              // within a single invoice. Previous `key={i}` was a silent bug
+              // — React could swap input bindings if items were edited.
+              <tr key={`${it.description}-${it.qty}-${it.price}` || `item-${i}`} className="border-b border-[#e5e7eb]">
                 <td className="p-2.5 text-[13px]">{it.description}</td>
                 <td className="p-2.5 text-[13px] text-center">{it.qty}</td>
                 <td className="p-2.5 text-[13px] text-center [direction:ltr]">{Number(it.price).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</td>
