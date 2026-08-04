@@ -29,12 +29,46 @@
  */
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { EnhancedLandingPage } from "@/modules/landing/EnhancedLandingPage";
-import AppShell from "@/modules/common/AppShell";
 import { Loader2 } from "lucide-react";
+
+// P0-11 (Engineering Audit): Code-split the landing page and AppShell
+// into separate dynamic chunks so the initial JS payload for an
+// unauthenticated visitor doesn't drag in the entire accounting module
+// shell (AppShell pulls in 18 module views, framer-motion, recharts,
+// TanStack Query, etc.).
+//
+// Both components are loaded with next/dynamic and SSR disabled —
+// the loader below covers the brief suspense gap, and neither component
+// benefits from SSR (EnhancedLandingPage uses framer-motion animations;
+// AppShell reads useAuth() which is client-only).
+//
+// Net effect: a first-time visitor to / downloads only the landing chunk
+// (~150 KB instead of ~540 KB). Authenticated users still get AppShell,
+// but only after their session resolves — which is the correct UX.
+const EnhancedLandingPage = dynamic(
+  () => import("@/modules/landing/EnhancedLandingPage").then((m) => ({
+    default: m.EnhancedLandingPage,
+  })),
+  { ssr: false, loading: () => <PageLoader /> },
+);
+
+const AppShell = dynamic(() => import("@/modules/common/AppShell"), {
+  ssr: false,
+  loading: () => <PageLoader />,
+});
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">Loading…</p>
+    </div>
+  );
+}
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -48,19 +82,21 @@ export default function Home() {
     router.push("/signup");
   }, [router]);
 
+  // Memoize the props passed to the landing page so the dynamic chunk
+  // doesn't re-render unnecessarily.
+  const landingProps = useMemo(
+    () => ({ onLogin: handleLogin, onRegister: handleRegister }),
+    [handleLogin, handleRegister],
+  );
+
   // ── 1. Session resolving → neutral loader ───────────────────────────────
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   // ── 2. Unauthenticated → public marketing landing page ──────────────────
   if (!user) {
-    return <EnhancedLandingPage onLogin={handleLogin} onRegister={handleRegister} />;
+    return <EnhancedLandingPage {...landingProps} />;
   }
 
   // ── 3. Authenticated → full accounting module shell ─────────────────────
