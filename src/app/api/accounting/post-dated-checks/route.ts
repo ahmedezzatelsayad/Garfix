@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -26,9 +27,9 @@ const CreateSchema = z.object({
   payee: z.string().optional(),
   payer: z.string().optional(),
   direction: z.enum(["receivable", "payable"]),
-  clientId: z.number().int().optional().nullable(),
-  supplierId: z.number().int().optional().nullable(),
-  glAccountId: z.number().int().optional().nullable(),
+  clientId: entityIdNullable,
+  supplierId: entityIdNullable,
+  glAccountId: entityIdNullable,
 });
 
 // ── GET: List post-dated checks ──────────────────────────────────────────────────

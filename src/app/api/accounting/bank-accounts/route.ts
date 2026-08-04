@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -21,7 +22,7 @@ const CreateSchema = z.object({
   branchCode: z.string().optional(),
   currency: z.string().default("KWD"),
   accountType: z.enum(["checking", "savings", "cash_vault"]).default("checking"),
-  glAccountId: z.number().int().optional(),
+  glAccountId: entityIdOptional,
 });
 
 export const GET = withErrorHandler(async (req: NextRequest) => {

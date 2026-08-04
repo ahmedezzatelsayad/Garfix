@@ -13,8 +13,9 @@ import { parseJsonField } from "@/lib/api";
 
 export interface TrackLCInput {
   lcNumber: string;
-  supplierId: number;
-  bankAccountId: number;
+  // P0-10: IDs are Prisma String cuids — accept string (preferred) or number.
+  supplierId: string | number;
+  bankAccountId: string | number;
   amount: string;
   currency: string;
   issueDate: string;

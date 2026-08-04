@@ -12,9 +12,10 @@ import { logAudit } from "@/lib/audit";
 import { num, toNum } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const BudgetEntrySchema = z.object({
-  accountId: z.number().int(),
+  accountId: entityId,
   costCenterId: z.number().int().optional(),
   plannedAmount: z.union([z.number(), z.string()]),
 });

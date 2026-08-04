@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const UpdateSchema = z.object({
   companySlug: z.string().min(1),
@@ -22,7 +23,7 @@ const UpdateSchema = z.object({
   branchCode: z.string().optional(),
   currency: z.string().optional(),
   accountType: z.enum(["checking", "savings", "cash_vault"]).optional(),
-  glAccountId: z.number().int().optional(),
+  glAccountId: entityIdOptional,
   isActive: z.boolean().optional(),
 });
 

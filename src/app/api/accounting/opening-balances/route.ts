@@ -12,6 +12,7 @@ import { logAccountingChange } from "@/lib/accounting/accountant-collab";
 import { num } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ─── POST (create entries) ────────────────────────────────────────────
 
 const EntrySchema = z.object({
-  accountId: z.number().int(),
+  accountId: entityId,
   amount: z.union([z.number(), z.string()]),
 });
 

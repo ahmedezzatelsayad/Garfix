@@ -58,7 +58,8 @@ export interface UnmatchedGlItem {
  */
 export async function reconcileBankAccount(
   companySlug: string,
-  bankAccountId: number,
+  // P0-10: IDs are Prisma String cuids — accept string (preferred) or number.
+  bankAccountId: string | number,
   periodStart: string,
   periodEnd: string,
   statementBalance: string,
@@ -214,7 +215,8 @@ export interface ImportResult {
  */
 export async function importBankStatement(
   companySlug: string,
-  bankAccountId: number,
+  // P0-10: IDs are Prisma String cuids — accept string (preferred) or number.
+  bankAccountId: string | number,
   csvData: string,
 ): Promise<ImportResult> {
   // Parse CSV rows
@@ -240,7 +242,7 @@ export async function importBankStatement(
 
   const transactions: Array<{
     companySlug: string;
-    bankAccountId: number;
+    bankAccountId: string;
     date: string;
     reference: string | null;
     description: string | null;
@@ -294,7 +296,9 @@ export async function importBankStatement(
 
     transactions.push({
       companySlug,
-      bankAccountId,
+      // P0-10: bankAccountId is now string | number — Prisma column is
+      // String, so coerce to string for the create payload.
+      bankAccountId: String(bankAccountId),
       date,
       reference: reference || null,
       description: description || null,

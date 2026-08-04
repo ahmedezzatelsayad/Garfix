@@ -15,9 +15,10 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { preventPostingToClosedPeriod } from "@/lib/accounting/period-close";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const LineSchema = z.object({
-  accountId: z.number().int(),
+  accountId: entityId,
   debit: z.union([z.number(), z.string()]).default(0),
   credit: z.union([z.number(), z.string()]).default(0),
   description: z.string().optional(),
@@ -130,7 +131,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     // Update account balances if posted — within same transaction
     if (data.status === "posted") {
-      const deltas = new Map<number, number>();
+      // P0-10: accountId is now a string (Prisma cuid). The deltas Map
+      // keys must be string to match.
+      const deltas = new Map<string, number>();
       for (const line of data.lines) {
         const acc = accountMap.get(line.accountId);
         if (!acc) continue;

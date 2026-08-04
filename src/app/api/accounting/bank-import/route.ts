@@ -8,10 +8,11 @@ import { logAudit } from "@/lib/audit";
 import { importBankStatement } from "@/lib/accounting/banking";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const ImportSchema = z.object({
   companySlug: z.string().min(1),
-  bankAccountId: z.number().int(),
+  bankAccountId: entityId,
   csvData: z.string().min(1),
 });
 

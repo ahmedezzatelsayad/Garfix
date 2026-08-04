@@ -11,12 +11,13 @@ import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { trackLetterOfCredit } from "@/lib/accounting/trade-finance";
 import { z } from "zod";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const CreateLCSchema = z.object({
   companySlug: z.string().min(1),
   lcNumber: z.string().min(1),
-  supplierId: z.number().int(),
-  bankAccountId: z.number().int(),
+  supplierId: entityId,
+  bankAccountId: entityId,
   amount: z.union([z.number(), z.string()]),
   currency: z.string().default("KWD"),
   issueDate: z.string().min(1),
