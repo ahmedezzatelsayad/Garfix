@@ -122,6 +122,18 @@
   --sidebar-accent-foreground: #064e3b;
   --sidebar-border: #e5e7eb;
   --sidebar-ring: #047857;
+  /* ═══ Brand Shadow System (emerald-tinted depth) ═══ */
+  --shadow-brand-xs: 0 1px 2px rgba(4, 120, 87, 0.05);
+  --shadow-brand-sm: 0 2px 8px rgba(4, 120, 87, 0.1);
+  --shadow-brand-md: 0 4px 16px rgba(4, 120, 87, 0.14);
+  --shadow-brand-lg: 0 8px 32px rgba(4, 120, 87, 0.18);
+  --shadow-brand-xl: 0 16px 48px rgba(4, 120, 87, 0.22);
+  --shadow-brand-glow: 0 0 24px rgba(4, 120, 87, 0.3);
+  /* ⚠️ Gold shadows — RESTRICTED USE (AI/Premium only) ⚠️ */
+  --shadow-gold-xs: 0 1px 2px rgba(212, 165, 116, 0.06);
+  --shadow-gold-sm: 0 2px 8px rgba(212, 165, 116, 0.12);
+  --shadow-gold-md: 0 4px 16px rgba(212, 165, 116, 0.19);
+  --shadow-gold-glow: 0 0 24px rgba(212, 165, 116, 0.25);
 }
 
 /* ── Dark theme (.dark on <html>) ─────────────────────────────────────
@@ -184,20 +196,6 @@
  * ════════════════════════════════════════════════════════════════════════ */
 
 @layer utilities {
-  /* ═══ Brand Shadow System (emerald-tinted depth) ═══ */
-  --shadow-brand-xs: 0 1px 2px rgba(4, 120, 87, 0.05);
-  --shadow-brand-sm: 0 2px 8px rgba(4, 120, 87, 0.1);
-  --shadow-brand-md: 0 4px 16px rgba(4, 120, 87, 0.14);
-  --shadow-brand-lg: 0 8px 32px rgba(4, 120, 87, 0.18);
-  --shadow-brand-xl: 0 16px 48px rgba(4, 120, 87, 0.22);
-  --shadow-brand-glow: 0 0 24px rgba(4, 120, 87, 0.3);
-
-  /* ⚠️ Gold shadows — RESTRICTED USE (AI/Premium only) ⚠️ */
-  --shadow-gold-xs: 0 1px 2px rgba(212, 165, 116, 0.06);
-  --shadow-gold-sm: 0 2px 8px rgba(212, 165, 116, 0.12);
-  --shadow-gold-md: 0 4px 16px rgba(212, 165, 116, 0.19);
-  --shadow-gold-glow: 0 0 24px rgba(212, 165, 116, 0.25);
-
   .shadow-brand-xs { box-shadow: var(--shadow-brand-xs); }
   .shadow-brand-sm { box-shadow: var(--shadow-brand-sm); }
   .shadow-brand-md { box-shadow: var(--shadow-brand-md); }
