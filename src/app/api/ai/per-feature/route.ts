@@ -39,14 +39,14 @@ import { logger } from '@/lib/logger';
 async function getCompanyId(request: NextRequest): Promise<{ companyId: string; error?: NextResponse }> {
   const auth = await resolveAuth(request);
   
-  if (!auth.user || !auth.session) {
+  if (!auth.ok || !auth.user) {
     return { companyId: '', error: apiError(401, 'Unauthorized') };
   }
   
   // Get user's company membership
   const membership = await db.companyMember.findFirst({
     where: {
-      userId: auth.user.id,
+      uid: auth.user.uid,
     },
     select: {
       companyId: true,

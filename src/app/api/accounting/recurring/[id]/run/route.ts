@@ -143,7 +143,10 @@ export const POST = withErrorHandler(async (req: NextRequest, ctx: RouteContext)
         const acc = accountMap.get(line.accountId);
         if (!acc) continue;
         
-        const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+        // Use type assertion for account properties
+        const accAny = acc as Record<string, unknown>;
+        const accType = String(accAny.type ?? '');
+        const isDebitNormal = accType === "asset" || accType === "expense";
         const delta = isDebitNormal
           ? num(line.debit, 3) - num(line.credit, 3)
           : num(line.credit, 3) - num(line.debit, 3);
@@ -153,7 +156,8 @@ export const POST = withErrorHandler(async (req: NextRequest, ctx: RouteContext)
 
       for (const [accountId, delta] of deltas) {
         const acc = accountMap.get(accountId)!;
-        const currentBalance = num(acc.balance, 3);
+        const accAny = acc as Record<string, unknown>;
+        const currentBalance = Number(accAny.balance ?? 0);
         await tx.account.update({
           where: { id: accountId },
           data: { balance: (currentBalance + delta).toFixed(3) },
