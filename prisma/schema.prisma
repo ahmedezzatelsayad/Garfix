@@ -148,6 +148,8 @@ model Account {
   children          Account[]             @relation("AccountHierarchy")
   openingBalances   OpeningBalanceEntry[]
   journalEntryLines JournalEntryLine[]
+  // P0-06: back-relation for PaymentVoucher.glAccountId
+  paymentVouchersGL PaymentVoucher[]      @relation("PaymentVoucherGLAccount")
 
   @@unique([code, companyId])
   @@index([companySlug])
@@ -193,6 +195,10 @@ model Supplier {
   companyId        String
   companySlug      String            @default("default")
   isActive         Boolean           @default(true)
+  // P0-08: Soft-delete column — the /api/suppliers GET route filters on
+  // `WHERE deletedAt IS NULL`. The column was missing → every list call
+  // returned empty / errored.
+  deletedAt        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   company          Company           @relation(fields: [companyId], references: [id])
@@ -203,6 +209,7 @@ model Supplier {
   @@unique([code, companyId])
   @@index([companySlug])
   @@index([companyId])
+  @@index([deletedAt])
 }
 
 // ─── Product Catalog (matches db.productCatalog) ───
@@ -329,6 +336,10 @@ model JournalEntry {
   updatedAt   DateTime           @updatedAt
   company     Company            @relation(fields: [companyId], references: [id])
   lines       JournalEntryLine[]
+  // P0-05/P0-06: back-relations for OpeningBalanceEntry.journalEntryId and
+  // PaymentVoucher.journalEntryId.
+  openingBalanceEntries OpeningBalanceEntry[]
+  paymentVouchers       PaymentVoucher[]
 
   @@unique([number, companyId])
   @@index([companySlug])
@@ -368,16 +379,33 @@ model PaymentVoucher {
   supplierId           String?
   companyId            String
   companySlug          String                @default("default")
+  // ── P0-06: Fields written by createVoucher() in src/lib/accounting/vouchers.ts
+  // The library writes these names (separate from `number` / `paymentType` /
+  // `direction`). Without them, every voucher create 500s.
+  voucherNumber        String?
+  voucherType          String? // receipt, payment
+  currency             String                @default("SAR")
+  amountArText         String?
+  payee                String?
+  payer                String?
+  bankAccountId        String?
+  glAccountId          String?
+  journalEntryId       String?
+  createdBy            String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   client               Client?               @relation(fields: [clientId], references: [id])
   supplier             Supplier?             @relation(fields: [supplierId], references: [id])
   company              Company               @relation(fields: [companyId], references: [id])
+  bankAccount          BankAccount?          @relation(fields: [bankAccountId], references: [id])
+  glAccount            Account?              @relation("PaymentVoucherGLAccount", fields: [glAccountId], references: [id])
+  journalEntry         JournalEntry?         @relation(fields: [journalEntryId], references: [id])
   installmentSchedules InstallmentSchedule[]
 
   @@unique([number, companyId])
   @@index([companySlug])
   @@index([companyId])
+  @@index([companySlug, voucherNumber])
   @@map("payment_vouchers")
 }
 
@@ -406,15 +434,23 @@ model OpeningBalanceEntry {
   credit      Decimal      @default(0)
   companyId   String
   companySlug String       @default("default")
+  // ── P0-05: Fields written by /api/accounting/opening-balances
+  asOfDate       String?     // YYYY-MM-DD, used as JE date when posting
+  status         String      @default("draft") // draft, posted
+  journalEntryId String?     // FK to journal_entries.id, set when posted
+  amount         Decimal     @default(0) // single-field amount (code uses this)
+  importedFrom   String      @default("manual") // manual, csv, xlsx
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   account     Account      @relation(fields: [accountId], references: [id])
   period      FiscalPeriod @relation(fields: [periodId], references: [id])
   company     Company      @relation(fields: [companyId], references: [id])
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
 
   @@unique([accountId, periodId])
   @@index([companySlug])
   @@index([companyId])
+  @@index([companySlug, status])
   @@map("opening_balance_entries")
 }
 
@@ -510,6 +546,8 @@ model BankAccount {
   company             Company              @relation(fields: [companyId], references: [id])
   bankTransactions    BankTransaction[]
   bankReconciliations BankReconciliation[]
+  // P0-06: back-relation for PaymentVoucher.bankAccountId
+  paymentVouchers     PaymentVoucher[]
 
   @@index([companySlug])
   @@index([companyId])
@@ -1760,9 +1798,17 @@ model WebhookDelivery {
   response   String?
   attempts   Int             @default(0)
   status     String          @default("pending") // pending, delivered, failed
+  // ── P0-07: Fields read/written by src/lib/webhooks.ts
+  // The library writes eventType at enqueue time, reads it for the
+  // X-Garfix-Event header, and filters pending deliveries by nextRetryAt.
+  eventType  String?
+  nextRetryAt DateTime?
+  maxAttempts Int             @default(3)
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
   endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id])
+
+  @@index([status, nextRetryAt])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
