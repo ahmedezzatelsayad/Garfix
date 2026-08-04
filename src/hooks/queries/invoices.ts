@@ -13,40 +13,30 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// P0-15 (Engineering Audit): Re-export the canonical Invoice + LineItem
+// types from src/modules/invoices/types.ts so there is exactly one
+// Invoice shape across the codebase. Previously this file declared a
+// divergent Invoice interface with different fields (items? vs lineItems,
+// no version, no outstanding, no taxRate/shipping/discount, clientId
+// typed as number instead of string|null).
+//
+// For backward compatibility with existing imports from this module,
+// we keep the InvoiceItem alias (it has the same shape as LineItem plus
+// an optional `id`).
+import type { Invoice, LineItem } from "@/modules/invoices/types";
+export type { Invoice, LineItem };
 
-/** A single line item on an invoice. */
-export interface InvoiceItem {
-  id: number;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
-
-/** Shape of an invoice record returned by the API. */
-export interface Invoice {
-  id: number;
-  invoiceNumber: string;
-  clientId: number;
-  clientName: string;
-  clientEmail?: string;
-  clientPhone?: string;
-  issueDate: string;
-  dueDate: string;
-  status: string;
-  subtotal: number;
-  taxAmount: number;
-  total: number;
-  paid: number;
-  companySlug: string;
-  items?: InvoiceItem[];
+/** Legacy alias for LineItem — kept for backward compat with imports
+ *  that used `InvoiceItem` from this module. */
+export interface InvoiceItem extends LineItem {
+  id?: number;
 }
 
 /** Payload for creating a new invoice. */
 export interface CreateInvoicePayload {
   invoiceNumber: string;
-  clientId?: number;
+  /** Prisma `String?` — nullable FK to clients.id (cuid). */
+  clientId?: string | number;
   clientName?: string;
   clientEmail?: string;
   clientPhone?: string;
@@ -58,6 +48,7 @@ export interface CreateInvoicePayload {
   taxAmount?: number;
   total?: number;
   companySlug: string;
+  /** Legacy alias — the API accepts both `items` and `lineItems`. */
   items?: Omit<InvoiceItem, "id">[];
   lineItems?: Omit<InvoiceItem, "id">[];
   taxRate?: number;

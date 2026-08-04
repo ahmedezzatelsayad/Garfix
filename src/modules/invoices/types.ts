@@ -1,3 +1,7 @@
+/**
+ * Line item on an invoice. The API parses this from the JSON-encoded
+ * `lineItems` column on the Invoice table (parseJsonField returns []).
+ */
 export interface LineItem {
   description: string;
   qty: number;
@@ -5,19 +9,37 @@ export interface LineItem {
   total?: number;
 }
 
+/**
+ * Canonical Invoice type — single source of truth for the frontend.
+ *
+ * P0-15 (Engineering Audit): Reconciled with the duplicate interface in
+ * src/hooks/queries/invoices.ts. Both files now re-export THIS interface
+ * so there is exactly one Invoice shape across the codebase.
+ *
+ * Field shapes match the actual API response (src/app/api/invoices/route.ts
+ * GET handler) — Prisma Decimal fields are converted to `number` via
+ * `num()` before serialization, and `lineItems` is parsed from the JSON
+ * string column into an array. `clientId` is `string | null` to match
+ * the Prisma schema (`String?`); the previous `number` was wrong.
+ */
 export interface Invoice {
   id: number;
   invoiceNumber: string;
   companySlug: string;
-  clientId: number | null;
+  /** Prisma `String?` — nullable FK to clients.id (cuid). */
+  clientId: string | null;
   clientName: string;
   clientEmail?: string;
   clientPhone?: string;
   clientAddress?: string;
+  /** ISO date string (Prisma DateTime serialized to JSON). */
   issueDate: string;
+  /** ISO date string (Prisma DateTime? serialized to JSON). */
   dueDate: string;
   status: string;
+  /** Parsed from the JSON-encoded `lineItems` column. */
   lineItems: LineItem[];
+  /** Prisma Decimal → number (via num() in the API). */
   subtotal: number;
   taxRate: number;
   taxAmount: number;
@@ -25,9 +47,12 @@ export interface Invoice {
   shipping: number;
   discount: number;
   paid: number;
+  /** Computed by the frontend (total - paid). */
   outstanding: number;
   notes?: string;
+  /** Prisma Int — optimistic lock version. */
   version: number;
+  /** Escape hatch for fields not yet typed. */
   [key: string]: unknown;
 }
 
