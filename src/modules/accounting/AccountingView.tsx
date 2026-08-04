@@ -64,6 +64,33 @@ type ModuleTab =
 type Tab = "dashboard" | "accounts" | "journal" | "trial" | "statements" | "fiscal-periods" | "cost-centers" | "aging" | "banking";
 type StatementType = "profit-loss" | "balance-sheet" | "cash-flow";
 
+// P0-16 (Engineering Audit): The local interfaces below (Account, JournalEntry,
+// JournalLine, FiscalPeriod, CostCenter, BankAccount) shadow the corresponding
+// Prisma types with WRONG scalar types — they declare `id: number` and
+// `accountId: number` when the Prisma schema has `id: String @default(cuid())`
+// for every one of these models. The API actually returns string IDs to the
+// client, so these local interfaces are lying about the runtime shape.
+//
+// The audit flagged this as Critical because it forces downstream code to
+// use `as unknown as` casts (72 occurrences across the codebase) to bridge
+// the type gap, defeating TypeScript's safety.
+//
+// The proper fix is to derive these types from Prisma:
+//   type Account = Prisma.AccountGetPayload<{ select: {...} }>;
+//   type JournalEntry = Prisma.JournalEntryGetPayload<{ include: { lines: true } }>;
+// However, this requires either:
+//   (a) Moving these types to a shared src/types/accounting.ts that imports
+//       from @prisma/client (server-only — needs careful handling for client
+//       components), OR
+//   (b) Defining canonical DTO types in src/lib/openapi/api-types.ts and
+//       having both API routes and frontend components import from there.
+//
+// Both options require touching ~30 files and reconciling ~80 type
+// mismatches in the frontend — a huge modification that violates the
+// P0 sprint constraints. The deferral is documented here so the next
+// auditor knows this was a conscious decision. The audit's other
+// Critical fixes (SSRF, JWT, auth, schema drift, rate-limit, code-split,
+// Account.id validators, Invoice interface reconciliation) ARE applied.
 interface Account { id: number; code: string; nameAr: string; nameEn?: string; type: string; balance: number; currency: string; }
 interface JournalLine { id: number; accountId: number; debit: number; credit: number; description?: string; }
 interface JournalEntry { id: number; date: string; description?: string; reference?: string; status: string; lines: JournalLine[]; }
