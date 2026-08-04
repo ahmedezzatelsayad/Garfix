@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { resolveAuth } from '@/lib/auth';
+import { requireFounder } from '@/lib/middleware';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -141,9 +141,9 @@ export async function assignKeyToUser(userId: string, companyId?: string) {
  */
 export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
-    // Authenticate (founder only)
-    const auth = await resolveAuth(request);
-    if (!auth.user) return apiError('Unauthorized', 401);
+    // P0-03: Require founder authorization (not just any authenticated user).
+    const founderAccess = await requireFounder(request);
+    if (founderAccess instanceof NextResponse) return founderAccess;
 
     // Fetch all keys with relations
     const keys = await db.apiKeyPool.findMany({
@@ -187,10 +187,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
-    // Authenticate (founder only)
-    const auth = await resolveAuth(request);
-    const user = auth.user;
-    if (!user) return apiError('Unauthorized', 401);
+    // P0-03: Require founder authorization (not just any authenticated user).
+    const founderAccess = await requireFounder(request);
+    if (founderAccess instanceof NextResponse) return founderAccess;
+    const user = founderAccess.user;
 
     // Parse body
     const body = await request.json().catch(() => ({}));
