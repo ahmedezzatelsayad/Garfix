@@ -240,6 +240,13 @@ export class PatternVersionManager {
   }
   
   /**
+   * Get the versioned pattern record itself (including metadata and versions).
+   */
+  getPattern(fingerprint: string): VersionedPattern | null {
+    return this.patterns.get(fingerprint) ?? null;
+  }
+  
+  /**
    * Record usage of current version and update stats.
    */
   recordUsage(
@@ -536,8 +543,8 @@ export function migrateToVersioned(
   // Check if already migrated
   const existing = manager.getAllVersions(legacyTemplate.fingerprint);
   if (existing.length > 0) {
-    const pattern = manager.patterns.get(legacyTemplate.fingerprint)!;
-    return pattern;
+    const pattern = manager.getPattern(legacyTemplate.fingerprint);
+    if (pattern) return pattern;
   }
   
   // Create new versioned pattern from legacy

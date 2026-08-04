@@ -28,6 +28,7 @@ export interface Invoice {
   outstanding: number;
   notes?: string;
   version: number;
+  [key: string]: unknown;
 }
 
 export type StatusFilter = "all" | "paid" | "pending" | "overdue";

@@ -182,7 +182,7 @@ export const TestConnectionModal: React.FC<TestConnectionModalProps> = ({
   return (
     <GarfixModal
       isOpen={isOpen}
-      onClose={status === "testing" ? undefined : onClose}
+      onClose={status === "testing" ? () => {} : onClose}
       title={`اختبار الاتصال — ${integrationName}`}
       description={
         status === "idle" 

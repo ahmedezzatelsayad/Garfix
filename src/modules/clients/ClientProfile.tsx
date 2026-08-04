@@ -595,7 +595,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 <Brain size={28} className="opacity-25" />
                 <div>لا توجد ملاحظات ذكاء اصطناعي لهذا العميل بعد.</div>
                 <button 
-                  onClick={() => document.querySelector('textarea[aria-label="ملاحظة ذكاء اصطناعي"]')?.focus()}
+                  onClick={() => (document.querySelector('textarea[aria-label="ملاحظة ذكاء اصطناعي"]') as HTMLElement | null)?.focus()}
                   className="text-primary hover:underline text-[11px]"
                 >
                   أضف أول ملاحظة

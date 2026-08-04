@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 // ── Types ───────────────────────────────────────────────────────────────
 
 export type BadgeVariant = "default" | "primary" | "secondary" | "success" | "warning" | "error" | "info" | "gold";
-export type BadgeSize = "sm" | "md" | "lg";
+export type BadgeSize = "xs" | "sm" | "md" | "lg";
 
 export interface GarfixBadgeProps {
   /** Badge content */
@@ -75,12 +75,14 @@ const dotColorStyles: Record<BadgeVariant, string> = {
 // ── Size Styles ─────────────────────────────────────────────────────────
 
 const sizeStyles: Record<BadgeSize, string> = {
+  xs: "text-[10px] px-1 py-0 gap-0.5",
   sm: "text-xs px-1.5 py-0.5 gap-1",
   md: "text-xs px-2.5 py-1 gap-1.5",
   lg: "text-sm px-3 py-1.5 gap-2",
 };
 
 const dotSizes: Record<BadgeSize, string> = {
+  xs: "h-1 w-1",
   sm: "h-1.5 w-1.5",
   md: "h-2 w-2",
   lg: "h-2.5 w-2.5",
@@ -112,7 +114,7 @@ export const GarfixBadge: React.FC<GarfixBadgeProps> = ({
       {dot && (
         <span className={cn(
           "rounded-full",
-          dotSizes[dot],
+          dotSizes[size],
           dotColorStyles[variant],
           pulse && "animate-pulse"
         )} />

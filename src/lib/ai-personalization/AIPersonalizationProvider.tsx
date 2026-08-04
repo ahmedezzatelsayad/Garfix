@@ -50,6 +50,7 @@ import {
   UserSession,
   AIInsight,
   Recommendation,
+  RecommendationType,
   AdaptiveUIState,
   FrequentFeature,
   RecentItem,

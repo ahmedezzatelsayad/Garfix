@@ -189,7 +189,7 @@ class AIMetricsCollector {
     this.metrics.pool.totalTokens += tokens;
 
     // RPM window
-    this.rpmWindow.push(Date.now());
+    this.metrics.rpmWindow.push(Date.now());
   }
 
   /** Record a failed API call */
@@ -235,10 +235,10 @@ class AIMetricsCollector {
     const now = Date.now();
     const oneMinuteAgo = now - 60_000;
     // Clean old entries
-    while (this.rpmWindow.length > 0 && this.rpmWindow[0] < oneMinuteAgo) {
-      this.rpmWindow.shift();
+    while (this.metrics.rpmWindow.length > 0 && this.metrics.rpmWindow[0] < oneMinuteAgo) {
+      this.metrics.rpmWindow.shift();
     }
-    return this.rpmWindow.length;
+    return this.metrics.rpmWindow.length;
   }
 
   /** Check if pool can accept more requests */
@@ -250,7 +250,7 @@ class AIMetricsCollector {
   getTimeUntilAvailable(): number {
     if (this.canAcceptRequest()) return 0;
     const now = Date.now();
-    const oldestInWindow = this.rpmWindow[0];
+    const oldestInWindow = this.metrics.rpmWindow[0];
     if (!oldestInWindow) return 0;
     return Math.max(0, (oldestInWindow + 60_000) - now);
   }
@@ -342,9 +342,10 @@ class AIRateLimiter {
     
     if (capacityCheck.allowed) {
       try {
-        const jobId = await enqueue(QUEUE_NAMES.AI, {
-          type: workerType,
+        const jobId = crypto.randomUUID();
+        await enqueue(QUEUE_NAMES.AI, {
           ...payload,
+          type: workerType,
         });
         aiMetrics.recordQueued();
         return { enqueued: true, jobId };
@@ -365,10 +366,10 @@ class AIRateLimiter {
 
     // Enqueue for later processing
     try {
-      const jobId = await enqueue(QUEUE_NAMES.AI, {
-        type: workerType,
+      const jobId = crypto.randomUUID();
+      await enqueue(QUEUE_NAMES.AI, {
         ...payload,
-        priority: payload.priority || 5,
+        type: workerType,
       });
       aiMetrics.recordQueued();
       return { enqueued: true, jobId };
@@ -412,9 +413,12 @@ async function handleChatJob(data: Record<string, unknown>): Promise<void> {
 
   try {
     const brain = getGarfixBrain();
+    const lastMessage = Array.isArray(messages) && messages.length > 0
+      ? messages[messages.length - 1]
+      : null;
     const result = await brain.chat(
-      messages || [],
-      { companySlug, userId, module: 'general' }
+      lastMessage?.content ?? '',
+      { context: { module: 'general', language: 'auto' } }
     );
 
     const latency = Date.now() - startTime;
@@ -423,7 +427,7 @@ async function handleChatJob(data: Record<string, unknown>): Promise<void> {
     logger.info("[ai-worker-chat] completed", { 
       companySlug, 
       latency,
-      tokens: result.metadata?.tokens,
+      tokens: result.tokensUsed,
     });
 
     // Update conversation if needed
@@ -478,16 +482,16 @@ async function handleInvoiceExtractJob(data: Record<string, unknown>): Promise<v
     });
 
     const store = new PrismaPatternStore();
-    const orders = await extractInvoice(rawText, ctx, store);
+    const result = await extractInvoice(rawText, store, { companySlug });
 
     const latency = Date.now() - startTime;
 
     // Link to invoice if provided
-    if (invoiceId && orders.length > 0) {
+    if (invoiceId && result.data) {
       await db.invoice.update({
         where: { id: invoiceId },
         data: {
-          aiExtractedData: JSON.stringify(orders[0].order),
+          aiExtractedData: JSON.stringify(result.data),
           aiProcessedAt: new Date(),
           status: 'extracted', // Custom status
         },
@@ -496,7 +500,7 @@ async function handleInvoiceExtractJob(data: Record<string, unknown>): Promise<v
 
     logger.info("[ai-worker-invoice] extracted", {
       companySlug,
-      ordersCount: orders.length,
+      ordersCount: result.data ? 1 : 0,
       latency,
       source: source || 'unknown',
     });
@@ -521,7 +525,7 @@ async function handleSmartParseJob(data: Record<string, unknown>): Promise<void>
 
   try {
     // Use AI provider directly for parsing
-    const systemPrompt = `أنت محلل مستندات ذكي لشركة ${companyUsername}. 
+    const systemPrompt = `أنت محلل مستندات ذكي لشركة ${companySlug}. 
       استخرج: المورد، التاريخ، الأصناف، الكميات، الأسعار، الإجمالي، الضريبة.
       رد بـ JSON فقط.`;
 

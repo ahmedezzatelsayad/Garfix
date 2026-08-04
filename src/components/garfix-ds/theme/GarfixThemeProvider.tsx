@@ -277,9 +277,9 @@ export const GarfixThemeProvider: React.FC<GarfixThemeProviderProps> = ({
           .join(" ")}
         style={
           mounted && enableTransitions
-            ? {
+            ? ({
                 "--theme-transition-duration": `${transitionDuration}ms`,
-              }
+              } as React.CSSProperties)
             : undefined
         }
         data-theme={resolvedTheme}

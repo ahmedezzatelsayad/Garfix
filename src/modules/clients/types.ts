@@ -9,4 +9,6 @@ export interface Client {
   address?: string;
   notes?: string;
   companySlug: string;
+  createdAt?: string | null;
+  [key: string]: unknown;
 }

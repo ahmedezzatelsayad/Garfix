@@ -239,8 +239,13 @@ export class AdvancedGeminiLoadBalancer {
 
   /**
    * Record a failed API call with automatic failover
+   *
+   * Returns a Promise that resolves to an alternative healthy key (or null if
+   * none are available) so callers can `await` the failover target. The
+   * underlying `getNextKey` is async because the health-check / selection
+   * strategy may need to await I/O.
    */
-  recordFailure(keyId: string, error: string): AIProviderConfig | null {
+  async recordFailure(keyId: string, error: string): Promise<AIProviderConfig | null> {
     const keyData = this.keys.get(keyId);
     if (!keyData) return null;
 
@@ -499,7 +504,7 @@ export class AdvancedGeminiLoadBalancer {
       // Simple health check - minimal API call
       const model = keyData.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
       await model.generateContent({
-        contents: [{ parts: [{ text: 'ping' }] }],
+        contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
         generationConfig: { maxOutputTokens: 1 },
       });
 

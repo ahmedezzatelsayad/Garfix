@@ -292,7 +292,7 @@ function estimateAIFallbackRate(dataset: BenchmarkDataset): MetricResult {
     unit: "%",
     target,
     status,
-    details: `Inverse of pattern hit rate (~${patternHitRate.toFixed(1)}%) plus margin`,
+    details: `Inverse of pattern hit rate (~${patternHitEstimate.toFixed(1)}%) plus margin`,
   };
 }
 

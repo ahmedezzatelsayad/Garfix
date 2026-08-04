@@ -79,7 +79,10 @@ export function validateBody<T>(
 }
 
 /** Standard error response. */
-export function apiError(message: string, status = 400): NextResponse {
+export function apiError(message: string, status = 400, details?: unknown): NextResponse {
+  if (details !== undefined) {
+    return NextResponse.json({ error: message, details }, { status });
+  }
   return NextResponse.json({ error: message }, { status });
 }
 

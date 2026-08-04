@@ -310,7 +310,7 @@ function generateInvoice(supplier: SupplierProfile, idx: number, config: Dataset
   
   const itemCount = randInt(1, 4);
   const products = PRODUCTS[supplier.country as keyof typeof PRODUCTS] || PRODUCTS.KW;
-  const items = [];
+  const items: Array<{ name: string; qty: number; unitPrice: number; total: number }> = [];
   
   for (let i = 0; i < itemCount; i++) {
     const prod = pick(products);

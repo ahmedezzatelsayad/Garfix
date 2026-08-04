@@ -17,14 +17,14 @@ export async function DELETE(
   return withErrorHandler(async () => {
     // Authenticate (founder only)
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
 
     const { id } = await params;
 
     // Check if key exists
     const existingKey = await db.apiKeyPool.findUnique({ where: { id } });
     if (!existingKey) {
-      return apiError(404, 'Key not found');
+      return apiError('Key not found', 404);
     }
 
     // Revoke the key (soft delete - mark as revoked)
@@ -43,5 +43,5 @@ export async function DELETE(
       success: true,
       message: 'Key revoked successfully',
     });
-  }, request);
+  });
 }

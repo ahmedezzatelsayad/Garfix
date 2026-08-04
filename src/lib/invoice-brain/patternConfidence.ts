@@ -212,7 +212,7 @@ function computeWeightedScore(breakdown: ConfidenceBreakdown): number {
   
   const weightedSum = 
     breakdown.successRate * weights.successRate +
-    breakdown.sampleSizeFactor * weights.sampleSize +
+    calculateSampleSizeFactor(breakdown.sampleSize) * weights.sampleSize +
     breakdown.recencyFactor * weights.recency +
     breakdown.consistencyFactor * weights.consistency +
     breakdown.ageFactor * weights.age;

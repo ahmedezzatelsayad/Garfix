@@ -167,21 +167,21 @@ export function reportWebVitals(
 
   // Dynamic import of web-vitals for code splitting
   // This ensures the library is only loaded when needed
-  import("web-vitals").then(({ onCLS, onFID, onFCP, onLCP, onTTFB, onINP }) => {
+  // NOTE: web-vitals v6 dropped `onFID` (deprecated in favor of `onINP`, which
+  // is now a Core Web Vital). We register `onINP` as a core metric instead.
+  import("web-vitals").then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
     // Core Web Vitals (always reported)
     onCLS(handleMetric);
-    onFID(handleMetric);
+    onINP(handleMetric);
     onFCP(handleMetric);
     onLCP(handleMetric);
     onTTFB(handleMetric);
 
-    // Additional metrics (optional)
+    // `reportAll` is retained for API compatibility, but with web-vitals v6
+    // every supported metric (CLS, INP, FCP, LCP, TTFB) is already reported
+    // above, so there is nothing additional to opt into.
     if (reportAll) {
-      try {
-        onINP?.(handleMetric);
-      } catch {
-        // INP might not be available in older versions
-      }
+      // No additional metrics beyond the core set in v6.
     }
   }).catch(() => {
     console.warn("[Web Vitals] Failed to load web-vitals library");
@@ -241,7 +241,7 @@ export function getPerformanceSummary(): Promise<Record<string, unknown>> {
     }
 
     const summary: Record<string, unknown> = {};
-    let pending = 5; // CLS, FID, FCP, LCP, TTFB
+    let pending = 5; // CLS, INP, FCP, LCP, TTFB
 
     const checkComplete = () => {
       pending--;
@@ -250,9 +250,9 @@ export function getPerformanceSummary(): Promise<Record<string, unknown>> {
       }
     };
 
-    import("web-vitals").then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
+    import("web-vitals").then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
       onCLS((m) => { summary.CLS = m.value; checkComplete(); });
-      onFID((m) => { summary.FID = m.value; checkComplete(); });
+      onINP((m) => { summary.INP = m.value; checkComplete(); });
       onFCP((m) => { summary.FCP = m.value; checkComplete(); });
       onLCP((m) => { summary.LCP = m.value; checkComplete(); });
       onTTFB((m) => { summary.TTFB = m.value; checkComplete(); });

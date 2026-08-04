@@ -43,7 +43,7 @@ import {
   GarfixSkeleton,
 } from '@/components/garfix-ds/feedback';
 
-import { GarfixTabs, GarfixTabPanel } from '@/components/garfix-ds/navigation';
+import { GarfixTabPanel } from '@/components/garfix-ds/navigation';
 
 import { GarfixModal } from '@/components/garfix-ds/overlay';
 
@@ -328,10 +328,10 @@ export default function AISettingsPage() {
   
   const renderLoading = () => (
     <div className="space-y-6">
-      <GarfixSkeleton variant="card" className="h-48" />
+      <GarfixSkeleton shape="rounded" className="h-48" />
       <GarfixGrid cols={2}>
-        <GarfixSkeleton variant="card" className="h-64" />
-        <GarfixSkeleton variant="card" className="h-64" />
+        <GarfixSkeleton shape="rounded" className="h-64" />
+        <GarfixSkeleton shape="rounded" className="h-64" />
       </GarfixGrid>
     </div>
   );
@@ -343,7 +343,7 @@ export default function AISettingsPage() {
       <GarfixAlert
         variant={alert.type === 'success' ? 'success' : 'error'}
         dismissible
-        onClose={() => setAlert(null)}
+        onDismiss={() => setAlert(null)}
         className="mb-4"
       >
         {alert.message}
@@ -379,7 +379,7 @@ export default function AISettingsPage() {
               <GarfixButton
                 onClick={saveConfig}
                 isLoading={isSaving}
-                icon={<span>💾</span>}
+                leadingIcon={<span>💾</span>}
               >
                 حفظ الإعدادات
               </GarfixButton>
@@ -390,12 +390,7 @@ export default function AISettingsPage() {
           {renderAlert()}
           
           {/* Tabs */}
-          <GarfixTabs
-            defaultValue="config"
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="mt-6"
-          >
+          <div className="mt-6">
             <div className="flex gap-1 p-1 bg-white dark:bg-gray-900 rounded-xl shadow-sm w-fit border border-gray-200 dark:border-gray-800">
               {[
                 { value: 'config', label: '⚙️ الإعدادات الأساسية' },
@@ -420,7 +415,7 @@ export default function AISettingsPage() {
             </div>
             
             {/* ── Config Tab ──────────────────────────────── */}
-            <GarfixTabPanel value="config" className="mt-6">
+            <GarfixTabPanel tabId="config" activeTab={activeTab} className="mt-6">
               <GarfixGrid cols={2} gap="lg">
                 {/* API Key Configuration */}
                 <FadeUp delay={0}>
@@ -501,7 +496,7 @@ export default function AISettingsPage() {
                           size="sm"
                           onClick={testConnection}
                           isLoading={isTesting}
-                          icon={<span>🧪</span>}
+                          leadingIcon={<span>🧪</span>}
                           className="w-full"
                         >
                           اختبار الاتصال
@@ -562,7 +557,7 @@ export default function AISettingsPage() {
             </GarfixTabPanel>
             
             {/* ── Features Tab ─────────────────────────────── */}
-            <GarfixTabPanel value="features" className="mt-6">
+            <GarfixTabPanel tabId="features" activeTab={activeTab} className="mt-6">
               <FadeUp>
                 <MotionCard className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
@@ -648,7 +643,7 @@ export default function AISettingsPage() {
             </GarfixTabPanel>
             
             {/* ── Usage Tab ───────────────────────────────── */}
-            <GarfixTabPanel value="usage" className="mt-6">
+            <GarfixTabPanel tabId="usage" activeTab={activeTab} className="mt-6">
               {usageData ? (
                 <GarfixGrid cols={3} gap="lg">
                   {/* Overview Cards */}
@@ -764,12 +759,12 @@ export default function AISettingsPage() {
                   </div>
                 </GarfixGrid>
               ) : (
-                <GarfixSkeleton variant="card" className="h-64" />
+                <GarfixSkeleton shape="rounded" className="h-64" />
               )}
             </GarfixTabPanel>
             
             {/* ── Test Tab ─────────────────────────────────── */}
-            <GarfixTabPanel value="test" className="mt-6">
+            <GarfixTabPanel tabId="test" activeTab={activeTab} className="mt-6">
               <FadeUp>
                 <MotionCard className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -812,7 +807,7 @@ export default function AISettingsPage() {
                       onClick={testConnection}
                       isLoading={isTesting}
                       variant="primary"
-                      icon={<span>🚀</span>}
+                      leadingIcon={<span>🚀</span>}
                       className="w-full"
                     >
                       تشغيل الاختبار الآن
@@ -850,13 +845,13 @@ export default function AISettingsPage() {
                 </MotionCard>
               </FadeUp>
             </GarfixTabPanel>
-          </GarfixTabs>
+          </div>
         </GarfixContainer>
         
         {/* Test Result Modal */}
         {showTestModal && (
           <GarfixModal
-            open={showTestModal}
+            isOpen={showTestModal}
             onClose={() => setShowTestModal(false)}
             title="نتيجة الاختبار"
             size="md"

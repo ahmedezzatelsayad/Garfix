@@ -27,7 +27,7 @@ import {
 
 // ── Types ───────────────────────────────────────────────────
 
-interface AnimatedContainerProps {
+export interface AnimatedContainerProps {
   /** Container content */
   children: React.ReactNode;
   
@@ -65,7 +65,7 @@ interface AnimatedContainerProps {
   /** Inline styles */
   style?: React.CSSProperties;
   /** HTML element to render */
-  as?: keyof JSX.IntrinsicElements;
+  as?: React.ElementType;
   
   // Callbacks
   /** Called when animation starts */

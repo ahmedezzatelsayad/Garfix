@@ -31,6 +31,7 @@ import {
   Download,
   Settings,
   Star,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIPersonalization } from "@/lib/ai-personalization/AIPersonalizationProvider";

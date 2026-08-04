@@ -28,7 +28,7 @@ import { GarfixSkipLinks } from "./GarfixSkipLinks";
 
 // ── Context Types ───────────────────────────────────────────────────────
 
-interface AccessibilityContextValue {
+export interface AccessibilityContextValue {
   /** User prefers reduced motion */
   prefersReducedMotion: boolean;
   /** Current high contrast mode */

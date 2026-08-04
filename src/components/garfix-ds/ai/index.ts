@@ -20,6 +20,9 @@ export {
 
 export type {
   AIPersonalizationProviderProps,
+} from '@/lib/ai-personalization/AIPersonalizationProvider'
+
+export type {
   AIPersonalizationContextValue,
   UserProfile,
   UserPreferences,
@@ -27,7 +30,7 @@ export type {
   Recommendation,
   AdaptiveUIState,
   BehaviorEventType,
-} from '@/lib/ai-personalization/AIPersonalizationProvider'
+} from '@/lib/ai-personalization/types'
 
 export type {
   // Re-export types for convenience

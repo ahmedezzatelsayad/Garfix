@@ -324,23 +324,26 @@ export default function FounderApiKeyPoolPage() {
 
   return (
     <GarfixPageTransition>
-      <GarfixContainer maxWidth="7xl">
+      <GarfixContainer variant="default">
         
         {/* ══ Page Header ══ */}
         <GarfixPageHeader
           title="مجمع مفاتيح API"
           subtitle="إدارة وتوزيع مفاتيح AI تلقائياً على المستخدمين الجدد"
-          badge={stats ? {
-            text: `${stats.availableKeys} متاح`,
-            variant: stats.availableKeys > 5 ? 'default' : 'destructive',
-          } : undefined}
-          action={
-            <GarfixButton
-              onClick={() => setShowAddModal(true)}
-              className="gap-2"
-            >
-              ➕ إضافة مفاتيح جديدة
-            </GarfixButton>
+          actions={
+            <>
+              {stats && (
+                <GarfixBadge variant={stats.availableKeys > 5 ? 'default' : 'error'}>
+                  {`${stats.availableKeys} متاح`}
+                </GarfixBadge>
+              )}
+              <GarfixButton
+                onClick={() => setShowAddModal(true)}
+                className="gap-2"
+              >
+                ➕ إضافة مفاتيح جديدة
+              </GarfixButton>
+            </>
           }
         />
 
@@ -348,39 +351,40 @@ export default function FounderApiKeyPoolPage() {
         {alert && (
           <FadeUp delay={100}>
             <GarfixAlert
-              type={alert.type}
-              message={alert.message}
-              onClose={() => setAlert(null)}
+              variant={alert.type}
+              onDismiss={() => setAlert(null)}
               className="mb-6"
-            />
+            >
+              {alert.message}
+            </GarfixAlert>
           </FadeUp>
         )}
 
         {/* ══ Stats Cards ══ */}
         {!isLoading && stats && (
           <GarfixGrid cols={1} colsSm={2} colsMd={3} colsLg={4} className="mb-8">
-            <MotionCard>
+            <MotionCard initial="fadeUp" initialDelay={0}>
               <div className="text-center p-4">
                 <div className="text-3xl font-bold text-gray-800">{stats.totalKeys}</div>
                 <div className="text-sm text-gray-500 mt-1">إجمالي المفاتيح</div>
               </div>
             </MotionCard>
 
-            <MotionCard delay={50}>
+            <MotionCard initial="fadeUp" initialDelay={50}>
               <div className="text-center p-4">
                 <div className="text-3xl font-bold text-emerald-600">{stats.availableKeys}</div>
                 <div className="text-sm text-gray-500 mt-1">متاحة للتوزيع ✅</div>
               </div>
             </MotionCard>
 
-            <MotionCard delay={100}>
+            <MotionCard initial="fadeUp" initialDelay={100}>
               <div className="text-center p-4">
                 <div className="text-3xl font-bold text-blue-600">{stats.assignedKeys}</div>
                 <div className="text-sm text-gray-500 mt-1">مستخدمة حالياً 👥</div>
               </div>
             </MotionCard>
 
-            <MotionCard delay={150}>
+            <MotionCard initial="fadeUp" initialDelay={150}>
               <div className="text-center p-4">
                 <div className="text-3xl font-bold text-red-600">{stats.exhaustedKeys}</div>
                 <div className="text-sm text-gray-500 mt-1">منتهية ⚠️</div>
@@ -545,7 +549,7 @@ export default function FounderApiKeyPoolPage() {
                               </code>
                               <GarfixBadge 
                                 variant={key.status === 'available' ? 'success' : 
-                                           key.status === 'assigned' ? 'info' : 'destructive'}
+                                           key.status === 'assigned' ? 'info' : 'error'}
                                 className="text-xs"
                               >
                                 {STATUS_CONFIG[key.status]?.label || key.status}
@@ -704,7 +708,7 @@ export default function FounderApiKeyPoolPage() {
             <div className="text-center p-3">
               <div className="text-2xl mb-2">4️⃣</div>
               <div className="font-semibold">تنبيهات ذكية</div>
-              <div class="text-xs text-gray-600 mt-1">نبهك لما المفاتيح تقل</div>
+              <div className="text-xs text-gray-600 mt-1">نبهك لما المفاتيح تقل</div>
             </div>
           </div>
           

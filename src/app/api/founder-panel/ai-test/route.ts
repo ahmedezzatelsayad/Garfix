@@ -259,14 +259,14 @@ export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);
-    if (!auth.user) return apiError(401, 'Unauthorized');
+    if (!auth.user) return apiError('Unauthorized', 401);
     
     // Parse body
     const body = await request.json().catch(() => ({}));
     const validated = TestConnectionSchema.safeParse(body);
     
     if (!validated.success) {
-      return apiError(400, 'Validation failed', validated.error.errors);
+      return apiError('Validation failed', 400, validated.error.issues);
     }
     
     const { feature, apiKey, model } = validated.data;
@@ -313,5 +313,5 @@ export async function POST(request: NextRequest) {
         detectedProvider: provider,
       },
     });
-  }, request);
+  });
 }

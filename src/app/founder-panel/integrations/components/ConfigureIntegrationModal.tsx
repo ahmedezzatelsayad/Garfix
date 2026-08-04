@@ -71,7 +71,7 @@ const FieldInput: React.FC<FieldInputProps> = ({ field, value, onChange, error }
       {isBooleanField ? (
         <button
           type="button"
-          onClick={() => onChange(field.key, !value)}
+          onClick={() => onChange(field.key, String(!value))}
           className={cn(
             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
             value ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"
@@ -233,8 +233,8 @@ export const ConfigureIntegrationModal: React.FC<ConfigureIntegrationModalProps>
   return (
     <GarfixModal
       isOpen={isOpen}
-      onClose={isSaving ? undefined : onClose}
-      title={
+      onClose={isSaving ? () => {} : onClose}
+      header={
         <div className="flex items-center gap-3">
           <span className="text-2xl">{integration.icon}</span>
           <div>

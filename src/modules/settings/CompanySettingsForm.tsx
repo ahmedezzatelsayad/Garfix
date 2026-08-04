@@ -106,7 +106,7 @@ interface CompanySettingsFormProps {
 // ─── Input Field Component (DS v4.0) ─────────────────────────────────────
 
 interface FieldProps {
-  label: string;
+  label: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   dir?: string;

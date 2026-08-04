@@ -83,7 +83,7 @@ interface ToastItem extends Omit<ToastProps, 'isOpen' | 'onClose'> {
   isClosing: boolean;
 }
 
-interface UseToastReturn {
+export interface UseToastReturn {
   toasts: ToastItem[];
   addToast: (toast: Omit<ToastProps, 'id' | 'isOpen' | 'onClose'>) => string;
   removeToast: (id: string) => void;

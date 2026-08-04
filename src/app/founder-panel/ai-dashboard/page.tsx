@@ -186,7 +186,7 @@ function MetricCard({
   );
 }
 
-function KeyHealthCard({ key: k }: { key: KeyMetrics }) {
+function KeyHealthCard({ k }: { k: KeyMetrics }) {
   const isHealthy = k.healthy && k.circuitState === 'closed';
   
   return (

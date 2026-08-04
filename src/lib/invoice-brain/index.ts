@@ -120,18 +120,21 @@ export {
   runBenchmark,
   quickBenchmark,
 } from "./benchmark/runner";
-export type { 
-  BenchmarkResult, 
-  BenchmarkDataset, 
-  GeneratedInvoice, 
-  SupplierProfile as BenchmarkSupplier,
-  DatasetConfig,
+export type {
+  BenchmarkResult,
   MetricResult,
   ProcessingTimeMetrics,
   SupplierBreakdown,
   ConfidenceDistribution,
   SplitRuleStats,
 } from "./benchmark/runner";
+
+export type {
+  BenchmarkDataset,
+  GeneratedInvoice,
+  SupplierProfile as BenchmarkSupplier,
+  DatasetConfig,
+} from "./benchmark/dataset";
 export { generateBenchmarkDataset as generateBenchmarkDatasetFromGenerator } from "./benchmark/dataset";
 
 // ─── Pattern Versioning (NEW) ─────────────────────────────

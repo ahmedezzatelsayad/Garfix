@@ -95,7 +95,7 @@ function SortIndicator({
 // LOADING SKELETON COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-function TableSkeleton({ columns, rows = 5 }: { columns: EnterpriseColumn[]; rows?: number }) {
+function TableSkeleton<T extends Record<string, unknown> = Record<string, unknown>>({ columns, rows = 5 }: { columns: EnterpriseColumn<T>[]; rows?: number }) {
   return (
     <tbody>
       {Array.from({ length: rows }).map((_, rowIndex) => (
@@ -323,7 +323,7 @@ export function GarfixEnterpriseTable<
                         ) : col.render ? (
                           col.render(value, row as T, rowIndex)
                         ) : (
-                          <span>{value ?? ""}</span>
+                          <span>{value != null ? String(value) : ""}</span>
                         )}
                       </td>
                     )
@@ -480,9 +480,6 @@ export function GarfixEditableCell({
 // ═══════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
-
-// Re-export types for convenience
-export type { EnterpriseColumn, BulkAction }
 
 // Default export
 export default GarfixEnterpriseTable

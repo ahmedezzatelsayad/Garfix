@@ -86,6 +86,7 @@
         "tesseract.js": "^7.0.0",
         "uuid": "^11.1.1",
         "vaul": "^1.1.2",
+        "web-vitals": "^6.0.1",
         "z-ai-web-dev-sdk": "^0.0.17",
         "zod": "^4.0.2",
         "zustand": "^5.0.6",
@@ -2533,6 +2534,8 @@
     "wasm-feature-detect": ["wasm-feature-detect@1.8.0", "", {}, "sha512-zksaLKM2fVlnB5jQQDqKXXwYHLQUVH9es+5TOOHwGOVJOCeRBCiPjwSg+3tN2AdTCzjgli4jijCH290kXb/zWQ=="],
 
     "web-streams-polyfill": ["web-streams-polyfill@3.3.3", "", {}, "sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw=="],
+
+    "web-vitals": ["web-vitals@6.0.1", "", {}, "sha512-iF3+kno3Anlqi5fPVTQk9gYLfsCiL8P69Hof+AmZyVVx00E3e/BiGVvu+EsOy6jvTLqTKuiaRloPyw0JtdKbSw=="],
 
     "webidl-conversions": ["webidl-conversions@3.0.1", "", {}, "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="],
 

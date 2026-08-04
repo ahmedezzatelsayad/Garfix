@@ -32,6 +32,7 @@ interface Product {
   purchasePrice: number | null;
   sellingPrice: number | null;
   companySlug: string;
+  [key: string]: unknown;
 }
 
 const inputStyle = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px] transition-all duration-150";
@@ -160,12 +161,12 @@ export function CatalogView() {
       key: 'code', 
       label: 'الكود', 
       pinned: true,
-      render: (val) => <span className="font-mono">{val || "—"}</span>
+      render: (val) => <span className="font-mono">{val ? String(val) : "—"}</span>
     },
     { 
       key: 'name', 
       label: 'اسم المنتج',
-      render: (val) => <span className="font-bold">{val}</span>
+      render: (val) => <span className="font-bold">{String(val)}</span>
     },
     { 
       key: 'purchasePrice', 

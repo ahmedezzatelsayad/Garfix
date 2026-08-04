@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import { apiGet, apiPost, ApiError } from "@/hooks/api-client";
 import {
@@ -45,8 +44,6 @@ interface AuditLogResponse {
 /* ─── Main Component ────────────────────────────────────────────────────────── */
 
 export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
-  const { brand } = useBrand();
-  
   // State
   const [currentYear] = useState(new Date().getFullYear());
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
@@ -352,7 +349,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                     </div>
                   )}
 
-                  {yearStatus.closeRecord.isReopened && (
+                  {yearStatus.closeRecord.reopenedAt && (
                     <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg md:col-span-2 border border-yellow-200 dark:border-yellow-800">
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />

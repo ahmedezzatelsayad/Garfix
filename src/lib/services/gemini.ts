@@ -55,18 +55,29 @@ export interface ChatResponse {
 
 // ── Default Configuration ───────────────────────────────────
 
-const DEFAULT_CONFIG = {
-  model: 'gemini-2.0-flash' as const,
+/** All supported Gemini model identifiers (mirrors `GeminiConfig.model`). */
+type GeminiModel = NonNullable<GeminiConfig["model"]>;
+
+const DEFAULT_CONFIG: {
+  model: GeminiModel;
+  maxOutputTokens: number;
+  temperature: number;
+} = {
+  model: "gemini-2.0-flash",
   maxOutputTokens: 4096,
   temperature: 0.7,
 };
 
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 // ── Gemini Service Class ─────────────────────────────────────
 
 export class GeminiService {
-  private config: GeminiConfig & typeof DEFAULT_CONFIG;
+  private config: GeminiConfig & {
+    model: GeminiModel;
+    maxOutputTokens: number;
+    temperature: number;
+  };
   
   constructor(config: GeminiConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -287,7 +298,7 @@ export class GeminiService {
     return `${baseUrl}/models/${this.config.model}:${endpoint}?key=${this.config.apiKey}`;
   }
   
-  private buildRequestBody(contents: any[]): object {
+  private buildRequestBody(contents: any[]): string {
     const body: any = {
       contents,
       generationConfig: {
@@ -302,7 +313,7 @@ export class GeminiService {
       };
     }
     
-    return body;
+    return JSON.stringify(body);
   }
   
   private formatMessages(messages: ChatMessage[]): any[] {

@@ -329,7 +329,7 @@ export function InventoryView() {
                         const labels: Record<string, string> = { OK: 'متوفر', Low: 'منخفض', Out: 'نفد' };
                         return (
                           <span className={`table-row-status ${classes[val as string] || 'active'}`}>
-                            {labels[val as string] || val}
+                            {labels[val as string] || String(val)}
                           </span>
                         );
                       }

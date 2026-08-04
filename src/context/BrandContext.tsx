@@ -32,6 +32,7 @@ export interface CompanyInfo {
   plan: string;
   subscriptionStatus: string;
   trialEndsAt?: string | null;
+  updatedAt?: string | null;
 }
 
 interface BrandContextValue {
