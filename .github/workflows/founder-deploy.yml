@@ -259,7 +259,7 @@ jobs:
       # Vercel Deployment (recommended for Next.js)
       - name: Deploy to Vercel
         if: inputs.environment == 'staging'
-        uses: amondnet/vercel-action@v25
+        uses: amondnet/vercel-action@v42
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -268,7 +268,7 @@ jobs:
 
       - name: Production Deploy (Vercel)
         if: inputs.environment == 'production'
-        uses: amondnet/vercel-action@v25
+        uses: amondnet/vercel-action@v42
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
