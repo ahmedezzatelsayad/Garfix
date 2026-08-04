@@ -24,13 +24,27 @@ import { getValkeyClient } from "@/lib/valkey";
 // during `next build` because NODE_ENV=production is set at build time.
 // Using getters defers resolution to first actual use (at runtime), not at import.
 // During build, the module is imported for type analysis only — no secrets needed.
+//
+// RCA FIX (Vercel infinite-loading): the previous `isBuildPhase` condition
+// included `!process.env.RUNTIME_STARTUP` as a fallback heuristic. The intent
+// was to detect "we're at runtime, not build time" — but the heuristic was
+// backwards: on Vercel, RUNTIME_STARTUP is never set, so the condition
+// evaluated to `true` (treating runtime as build phase) and `resolveSecret`
+// returned the build-placeholder secret instead of throwing. This meant
+// JWT signing silently used a known-public placeholder secret, which caused
+// token verification to behave unpredictably across cold starts.
+//
+// The correct signal for "we're inside `next build`" is NEXT_PHASE ===
+// "phase-production-build" — that's the only value Next.js sets during
+// build. At runtime (whether dev, preview, or prod) NEXT_PHASE is either
+// unset or a different value (phase-production-server, phase-dev-server).
+// We now use ONLY that check.
 function resolveSecret(envVar: string, name: string): string {
   const val = process.env[envVar];
   if (!val) {
     // P0 FIX: During `next build`, do NOT throw — secrets are not needed for
     // static page compilation. Next.js sets NEXT_PHASE during build phases.
-    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
-      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
     if (isBuildPhase) {
       console.warn(`⚠️  ${name} not set during build — will be validated at runtime. DO NOT deploy without setting this.`);
       return `build-placeholder-${name.toLowerCase()}-not-for-runtime-use`;

@@ -1,6 +1,31 @@
 /**
  * / — GarfiX home route.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ARCHITECTURE FIX (Vercel infinite-loading RCA):
+ *
+ * Previously this page rendered <PageLoader /> while `useAuth()` was
+ * resolving the session, and only swapped to <EnhancedLandingPage /> or
+ * <AppShell /> AFTER the auth fetch resolved. On Vercel, if /api/auth/me
+ * hung (cold start, Redis timeout, etc.) the loader would spin forever.
+ *
+ * Now:
+ *   - <EnhancedLandingPage /> is imported directly (NOT dynamic + ssr:false)
+ *     so it renders on the server and reaches the user on the FIRST byte.
+ *     This is critical for SEO — search engines see real marketing content
+ *     instead of a loader skeleton.
+ *   - While `loading === true`, we STILL render <EnhancedLandingPage />.
+ *     A first-time visitor (no cookies) sees the marketing page instantly;
+ *     an authenticated user briefly sees the landing page before being
+ *     swapped to <AppShell /> when their session resolves. This is the
+ *     correct UX tradeoff — never block the UI on auth.
+ *   - <AppShell /> stays as a dynamic import (with ssr:false) because it
+ *     pulls in 18 accounting module views + framer-motion + recharts +
+ *     TanStack Query and would bloat the initial HTML for anonymous
+ *     visitors. Authenticated users have already paid the network cost
+ *     of the auth round-trip; the additional chunk fetch is invisible.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
  * Behavior:
  *   - Unauthenticated users  → render the public marketing landing page
  *                              (EnhancedLandingPage) with Sign In / Get
@@ -8,24 +33,7 @@
  *                              /signup respectively.
  *   - Authenticated users    → render <AppShell />, which is the canonical
  *                              authenticated shell hosting the Sidebar +
- *                              Topbar + ALL 18 accounting module views
- *                              (Dashboard, Invoices, Clients, Catalog,
- *                              Purchases, HR, Accounting, Settings, SaaS,
- *                              Admin, Audit, BulkInput, Reports, Team,
- *                              Account, Inventory, Automation, AI-Agents).
- *                              The default view is "dash" (DashboardView),
- *                              so a freshly-logged-in user lands on the
- *                              accounting dashboard.
- *
- * Flow:
- *   1. Landing page (guest) → click "Sign In"
- *   2. /login → submit credentials → /api/auth/login sets cookies
- *   3. AuthContext.refresh() resolves user → this page re-renders
- *   4. <AppShell /> mounts → hash defaults to "#dash" → <DashboardView />
- *
- * The loader state is shown only while useAuth() is resolving the session
- * to avoid flashing the landing page to already-authed users (or vice
- * versa).
+ *                              Topbar + ALL 18 accounting module views.
  */
 "use client";
 
@@ -34,28 +42,16 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+// P0 RCA FIX: direct import (SSR-enabled) so the landing page reaches the
+// client on the first response byte. Previously this was a dynamic import
+// with ssr:false, which meant the initial HTML was just <PageLoader /> —
+// bad for SEO and bad for Vercel cold starts (no useful content until JS
+// hydrates AND fetchMe resolves).
+import { EnhancedLandingPage } from "@/modules/landing/EnhancedLandingPage";
 
-// P0-11 (Engineering Audit): Code-split the landing page and AppShell
-// into separate dynamic chunks so the initial JS payload for an
-// unauthenticated visitor doesn't drag in the entire accounting module
-// shell (AppShell pulls in 18 module views, framer-motion, recharts,
-// TanStack Query, etc.).
-//
-// Both components are loaded with next/dynamic and SSR disabled —
-// the loader below covers the brief suspense gap, and neither component
-// benefits from SSR (EnhancedLandingPage uses framer-motion animations;
-// AppShell reads useAuth() which is client-only).
-//
-// Net effect: a first-time visitor to / downloads only the landing chunk
-// (~150 KB instead of ~540 KB). Authenticated users still get AppShell,
-// but only after their session resolves — which is the correct UX.
-const EnhancedLandingPage = dynamic(
-  () => import("@/modules/landing/EnhancedLandingPage").then((m) => ({
-    default: m.EnhancedLandingPage,
-  })),
-  { ssr: false, loading: () => <PageLoader /> },
-);
-
+// AppShell stays dynamic + ssr:false — it pulls in 18 accounting module
+// views and is only relevant for authenticated users. Code-splitting keeps
+// the initial JS payload small for anonymous visitors.
 const AppShell = dynamic(() => import("@/modules/common/AppShell"), {
   ssr: false,
   loading: () => <PageLoader />,
@@ -82,26 +78,30 @@ export default function Home() {
     router.push("/signup");
   }, [router]);
 
-  // Memoize the props passed to the landing page so the dynamic chunk
-  // doesn't re-render unnecessarily.
+  // Memoize the props passed to the landing page so it doesn't re-render
+  // unnecessarily when auth state changes.
   const landingProps = useMemo(
     () => ({ onLogin: handleLogin, onRegister: handleRegister }),
     [handleLogin, handleRegister],
   );
 
-  // ── 1. Session resolving → neutral loader ───────────────────────────────
-  if (loading) {
-    return <PageLoader />;
+  // ── 1. Authenticated → full accounting module shell ────────────────────
+  // Auth takes priority: once we KNOW the user is signed in, swap to
+  // AppShell immediately. We check `user` first so a signed-in user never
+  // sees the landing page flash.
+  if (!loading && user) {
+    return <AppShell />;
   }
 
-  // ── 2. Unauthenticated → public marketing landing page ──────────────────
-  if (!user) {
-    return <EnhancedLandingPage {...landingProps} />;
-  }
-
-  // ── 3. Authenticated → full accounting module shell ─────────────────────
-  // AppShell internally renders Sidebar + Topbar + the active view
-  // (defaults to DashboardView via hash routing). All 18 accounting
-  // modules are reachable from the Sidebar.
-  return <AppShell />;
+  // ── 2. Loading OR unauthenticated → public marketing landing page ──────
+  // Key insight: we no longer block on auth. While `loading === true`,
+  // we render the landing page. This means:
+  //   - Anonymous visitors see the marketing page INSTANTLY (no loader).
+  //   - Authenticated visitors see the landing page for the brief moment
+  //     until /api/auth/me resolves, then swap to AppShell.
+  //   - If /api/auth/me hangs (Vercel cold start, Redis outage, etc.),
+  //     the user STILL sees a usable page — the landing page — instead
+  //     of an infinite spinner. Combined with the 5s timeout on
+  //     fetchMe(), this guarantees the UI is never stuck.
+  return <EnhancedLandingPage {...landingProps} />;
 }

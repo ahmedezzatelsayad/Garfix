@@ -18,7 +18,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "seed": "bun prisma/seed.ts"
+    "seed": "bun prisma/seed.ts",
+    "verify:env": "node scripts/verify-env.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
