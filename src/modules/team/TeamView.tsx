@@ -213,6 +213,7 @@ export function TeamView() {
                           <Mail size={12} className="opacity-50" />
                           {m.email}
                         </span>
+                        </div>
                       </td>
                       <td className={tdStyle}>
                         <span

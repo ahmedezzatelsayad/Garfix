@@ -104,7 +104,7 @@ export const GarfixInput = forwardRef<HTMLInputElement, GarfixInputProps>(
       type: providedType,
       disabled,
       ...props
-    ),
+    },
     ref
   ) => {
     const [showPassword, setShowPassword] = useState(false);

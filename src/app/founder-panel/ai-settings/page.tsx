@@ -902,8 +902,8 @@ export default function AISettingsPage() {
               </div>
             )}
           </GarfixModal>
+        )}
         </div>
       </GarfixPageTransition>
     );
   }
-}

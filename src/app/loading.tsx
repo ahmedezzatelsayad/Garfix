@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * /loading — GarfiX Global Loading State (DS v4.0 Enhanced)
  *
