@@ -24,6 +24,8 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "react-hooks/error-boundaries": "off",
     "react-hooks/immutability": "off",
     "react-hooks/static-components": "off",
+    "react-hooks/preserve-manual-memoization": "off",
+    "react-hooks/refs": "off",
     "react/no-unescaped-entities": "off",
     "react/display-name": "off",
     "react/prop-types": "off",
