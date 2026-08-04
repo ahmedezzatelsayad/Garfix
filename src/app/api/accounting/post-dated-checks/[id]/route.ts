@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -23,9 +24,9 @@ const PatchSchema = z.object({
   payee: z.string().optional(),
   payer: z.string().optional(),
   direction: z.enum(["receivable", "payable"]).optional(),
-  clientId: z.number().int().optional().nullable(),
-  supplierId: z.number().int().optional().nullable(),
-  glAccountId: z.number().int().optional().nullable(),
+  clientId: entityIdNullable,
+  supplierId: entityIdNullable,
+  glAccountId: entityIdNullable,
   returnedReason: z.string().optional(),
 });
 

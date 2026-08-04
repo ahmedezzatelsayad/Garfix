@@ -28,16 +28,18 @@ export interface CreateVoucherInput {
   payer: string;
   description?: string;
   reference?: string;
-  clientId?: number;
-  supplierId?: number;
-  bankAccountId?: number;
-  glAccountId?: number;
+  // P0-10: IDs are Prisma String cuids — accept string (preferred) or number
+  // (legacy clients) and let the validator normalize to string.
+  clientId?: string | number;
+  supplierId?: string | number;
+  bankAccountId?: string | number;
+  glAccountId?: string | number;
   createdBy: string;
 }
 
 export interface VoucherResult {
   voucher: {
-    id: number;
+    id: string;
     voucherNumber: string;
     voucherType: string;
     date: string;
@@ -48,23 +50,23 @@ export interface VoucherResult {
     payer: string;
     description: string | null;
     reference: string | null;
-    clientId: number | null;
-    supplierId: number | null;
-    bankAccountId: number | null;
-    glAccountId: number | null;
-    journalEntryId: number | null;
+    clientId: string | null;
+    supplierId: string | null;
+    bankAccountId: string | null;
+    glAccountId: string | null;
+    journalEntryId: string | null;
     status: string;
     createdBy: string;
     createdAt: Date;
   };
   journalEntry?: {
-    id: number;
+    id: string;
     date: string;
     description: string | null;
     reference: string | null;
     status: string;
     lines: Array<{
-      accountId: number;
+      accountId: string;
       accountCode: string;
       accountNameAr: string;
       debit: string;
@@ -114,18 +116,18 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
     //   Debit: Supplier/Expense account (supplierId → find supplier's AP or Expense account)
     //   Credit: Cash/Bank account (bankAccountId → BankAccount.glAccountId, or glAccountId)
 
-    let debitAccountId: number;
-    let creditAccountId: number;
+    let debitAccountId: string;
+    let creditAccountId: string;
     let debitDescription: string;
     let creditDescription: string;
 
     if (input.voucherType === "receipt") {
       // Debit: Cash/Bank
       if (input.bankAccountId) {
-        const bankAcc = await tx.bankAccount.findUnique({ where: { id: input.bankAccountId } });
-        debitAccountId = bankAcc?.glAccountId ?? input.glAccountId ?? await findDefaultCashAccount(tx, input.companySlug);
+        const bankAcc = await tx.bankAccount.findUnique({ where: { id: String(input.bankAccountId) } });
+        debitAccountId = bankAcc?.glAccountId ?? (input.glAccountId ? String(input.glAccountId) : undefined) ?? await findDefaultCashAccount(tx, input.companySlug);
       } else if (input.glAccountId) {
-        debitAccountId = input.glAccountId;
+        debitAccountId = String(input.glAccountId);
       } else {
         debitAccountId = await findDefaultCashAccount(tx, input.companySlug);
       }
@@ -144,7 +146,7 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
       if (input.supplierId) {
         debitAccountId = await findSupplierAPAccount(tx, input.companySlug, input.supplierId);
       } else if (input.glAccountId) {
-        debitAccountId = input.glAccountId;
+        debitAccountId = String(input.glAccountId);
       } else {
         debitAccountId = await findDefaultExpenseAccount(tx, input.companySlug);
       }
@@ -152,10 +154,10 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
 
       // Credit: Cash/Bank
       if (input.bankAccountId) {
-        const bankAcc = await tx.bankAccount.findUnique({ where: { id: input.bankAccountId } });
-        creditAccountId = bankAcc?.glAccountId ?? input.glAccountId ?? await findDefaultCashAccount(tx, input.companySlug);
+        const bankAcc = await tx.bankAccount.findUnique({ where: { id: String(input.bankAccountId) } });
+        creditAccountId = bankAcc?.glAccountId ?? (input.glAccountId ? String(input.glAccountId) : undefined) ?? await findDefaultCashAccount(tx, input.companySlug);
       } else if (input.glAccountId) {
-        creditAccountId = input.glAccountId;
+        creditAccountId = String(input.glAccountId);
       } else {
         creditAccountId = await findDefaultCashAccount(tx, input.companySlug);
       }
@@ -400,7 +402,7 @@ export async function cancelVoucher(
 
 // ─── Helper: Find default accounts ────────────────────────────────────────────
 
-async function findDefaultCashAccount(tx: any, companySlug: string): Promise<number> {
+async function findDefaultCashAccount(tx: any, companySlug: string): Promise<string> {
   // Find the first asset account with code starting with "1" (cash/bank range)
   const cashAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", isActive: true },
@@ -410,7 +412,7 @@ async function findDefaultCashAccount(tx: any, companySlug: string): Promise<num
   return cashAccount.id;
 }
 
-async function findDefaultRevenueAccount(tx: any, companySlug: string): Promise<number> {
+async function findDefaultRevenueAccount(tx: any, companySlug: string): Promise<string> {
   const revenueAccount = await tx.account.findFirst({
     where: { companySlug, type: "revenue", isActive: true },
     orderBy: { code: "asc" },
@@ -419,7 +421,7 @@ async function findDefaultRevenueAccount(tx: any, companySlug: string): Promise<
   return revenueAccount.id;
 }
 
-async function findDefaultExpenseAccount(tx: any, companySlug: string): Promise<number> {
+async function findDefaultExpenseAccount(tx: any, companySlug: string): Promise<string> {
   const expenseAccount = await tx.account.findFirst({
     where: { companySlug, type: "expense", isActive: true },
     orderBy: { code: "asc" },
@@ -428,7 +430,7 @@ async function findDefaultExpenseAccount(tx: any, companySlug: string): Promise<
   return expenseAccount.id;
 }
 
-async function findClientARAccount(tx: any, companySlug: string, clientId: number): Promise<number> {
+async function findClientARAccount(tx: any, companySlug: string, clientId: string | number): Promise<string> {
   // Find AR (Accounts Receivable) account — typically code 1200 or similar
   const arAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", code: { startsWith: "12" }, isActive: true },
@@ -441,7 +443,7 @@ async function findClientARAccount(tx: any, companySlug: string, clientId: numbe
   return arAccount.id;
 }
 
-async function findSupplierAPAccount(tx: any, companySlug: string, supplierId: number): Promise<number> {
+async function findSupplierAPAccount(tx: any, companySlug: string, supplierId: string | number): Promise<string> {
   // Find AP (Accounts Payable) account — typically code 2100 or similar
   const apAccount = await tx.account.findFirst({
     where: { companySlug, type: "liability", code: { startsWith: "21" }, isActive: true },

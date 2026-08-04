@@ -12,6 +12,7 @@ import { disposeAsset } from "@/lib/accounting/fixed-assets";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const UpdateSchema = z.object({
   companySlug: z.string().min(1),
@@ -20,7 +21,7 @@ const UpdateSchema = z.object({
   category: z.enum(["vehicle", "equipment", "building", "it", "furniture", "other"]).optional(),
   location: z.string().optional(),
   assetTag: z.string().optional(),
-  glAccountId: z.number().int().optional(),
+  glAccountId: entityIdOptional,
   depreciationAccountId: z.number().int().optional(),
   expenseAccountId: z.number().int().optional(),
 });

@@ -12,6 +12,7 @@ import { createVoucher, type VoucherType } from "@/lib/accounting/vouchers";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { num } from "@/lib/money";
 import { z } from "zod";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -70,10 +71,10 @@ const CreateVoucherSchema = z.object({
   payer: z.string().min(1, "Payer is required"),
   description: z.string().optional(),
   reference: z.string().optional(),
-  clientId: z.number().int().optional(),
-  supplierId: z.number().int().optional(),
-  bankAccountId: z.number().int().optional(),
-  glAccountId: z.number().int().optional(),
+  clientId: entityIdOptional,
+  supplierId: entityIdOptional,
+  bankAccountId: entityIdOptional,
+  glAccountId: entityIdOptional,
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {

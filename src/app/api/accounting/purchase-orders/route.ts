@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ const POLineItemSchema = z.object({
 
 const CreatePOSchema = z.object({
   companySlug: z.string().min(1),
-  supplierId: z.number().int(),
+  supplierId: entityId,
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   expectedDelivery: z.string().optional(),
   lineItems: z.array(POLineItemSchema).min(1, "At least one line item required"),

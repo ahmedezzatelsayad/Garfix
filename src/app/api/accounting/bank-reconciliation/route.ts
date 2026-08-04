@@ -12,10 +12,11 @@ import { reconcileBankAccount } from "@/lib/accounting/banking";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
-  bankAccountId: z.number().int(),
+  bankAccountId: entityId,
   periodStart: z.string().min(1), // YYYY-MM-DD
   periodEnd: z.string().min(1), // YYYY-MM-DD
   statementBalance: z.union([z.number(), z.string()]),

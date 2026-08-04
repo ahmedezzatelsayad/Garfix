@@ -12,6 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ const LineItemSchema = z.object({
 
 const CreateQuotationSchema = z.object({
   companySlug: z.string().min(1),
-  clientId: z.number().int(),
+  clientId: entityId,
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   lineItems: z.array(LineItemSchema).min(1, "At least one line item required"),

@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -25,7 +26,7 @@ const CreateSchema = z.object({
   decliningRate: z.union([z.number(), z.string()]).default("0"),
   location: z.string().optional(),
   assetTag: z.string().optional(),
-  glAccountId: z.number().int().optional(),
+  glAccountId: entityIdOptional,
   depreciationAccountId: z.number().int().optional(),
   expenseAccountId: z.number().int().optional(),
 });
