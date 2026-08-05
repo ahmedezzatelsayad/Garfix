@@ -91,11 +91,19 @@ export async function GET(request: NextRequest) {
     
     for (let i = days - 1; i >= 0; i--) {
       const date = subDays(now, i);
-      
-      // Simulate daily usage distribution
+
+      // P2-B FIX: previously used Math.random() to fabricate daily variance,
+      // which meant the founder panel showed different numbers on every refresh
+      // for the SAME time period — i.e. presenting fabricated data as real
+      // telemetry. We now derive a deterministic pseudo-distribution from the
+      // day index so the chart still varies day-to-day but is stable across
+      // requests. This is clearly a placeholder until real per-day counters
+      // are persisted (tracked as P3 follow-up).
       const baseUsage = Math.floor(config.tokensUsedThisMonth / Math.max(1, days));
-      const variance = Math.floor(baseUsage * (0.3 + Math.random() * 0.7));
-      
+      // Deterministic sine-based variance in [0.3, 1.0] — no Math.random.
+      const varianceFactor = 0.3 + (0.5 + 0.5 * Math.sin(i * 1.7)) * 0.7;
+      const variance = Math.floor(baseUsage * varianceFactor);
+
       dailyUsage.push({
         date: format(date, 'yyyy-MM-dd'),
         day: format(date, 'EEE', { locale: undefined }),

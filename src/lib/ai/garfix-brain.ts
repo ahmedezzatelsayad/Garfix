@@ -366,15 +366,24 @@ export class GarfixBrain {
 
   /**
    * Assess confidence level
+   *
+   * P2-B FIX: previously added `Math.random() * 0.15` to "seem more natural".
+   * That produced a different confidence value on every render of the same
+   * chat turn — and the value was surfaced to users as a real measurement.
+   * Deterministic confidence is now derived from the inputs that actually
+   * correlate with answer quality (memory presence + query length).
    */
-  private assessConfidence(_query: string, _intent: string, memoryContext: string): number {
+  private assessConfidence(query: string, _intent: string, memoryContext: string): number {
     let confidence = 0.7; // Base confidence
-    
+
     // Boost if we have memory context
     if (memoryContext) confidence += 0.1;
-    
-    // Add some randomness to seem more natural
-    confidence += Math.random() * 0.15;
+
+    // Deterministic boost based on query specificity — longer, more
+    // specific queries tend to produce more reliable answers.
+    const queryLen = query?.length ?? 0;
+    if (queryLen > 50) confidence += 0.08;
+    if (queryLen > 150) confidence += 0.05;
 
     return Math.min(confidence, 0.98);
   }

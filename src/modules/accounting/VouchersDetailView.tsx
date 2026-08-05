@@ -33,7 +33,7 @@ interface PurchaseOrder {
   id: number; supplierName: string; date: string; expectedDelivery: string;
   lineItems: LineItem[]; totalAmount: number; status: string;
 }
-interface LineItem { id?: number; description: string; quantity: number; unitPrice: number; total: number; }
+interface LineItem { id?: number; localId?: string; description: string; quantity: number; unitPrice: number; total: number; }
 interface OpeningBalance { id: number; accountId: number; accountCode: string; accountNameAr: string; amount: number; posted: boolean; }
 interface Commission { id: number; salesperson: string; totalSales: number; commissionAmount: number; posted: boolean; }
 interface ProfitDistribution { id: number; partnerName: string; ownershipPercent: number; profitShare: number; posted: boolean; }
@@ -54,6 +54,13 @@ function Empty({ label }: { label: string }) {
 }
 
 /* ─── Main Component ────────────────────────────────────────────────────────── */
+
+/** Generate a stable client-side id for editable line items (P2-B fix).
+ *  Matches the pattern used in RecurringEntriesView and InvoicesView. */
+function makeLineLocalId(): string {
+  return `vli_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function VouchersDetailView() {
   const { activeCompany } = useBrand();
   const [tab, setTab] = useState<Tab>("vouchers");
@@ -71,13 +78,13 @@ export function VouchersDetailView() {
   const [qClient, setQClient] = useState("");
   const [qDate, setQDate] = useState("");
   const [qValidUntil, setQValidUntil] = useState("");
-  const [qLineItems, setQLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+  const [qLineItems, setQLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0, localId: makeLineLocalId() }]);
 
   /* PO form */
   const [poSupplier, setPoSupplier] = useState("");
   const [poDate, setPoDate] = useState("");
   const [poDelivery, setPoDelivery] = useState("");
-  const [poLineItems, setPoLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+  const [poLineItems, setPoLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, total: 0, localId: makeLineLocalId() }]);
 
   /* Opening Balance form */
   const [obAccountId, setObAccountId] = useState("");
@@ -171,8 +178,10 @@ export function VouchersDetailView() {
   /* ── Create Quotation ────────────────────────────────────────────────────── */
   const handleCreateQuotation = () => {
     if (!activeCompany || !qClient || !qDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+    // P2-B: strip localId before sending — it's a client-only UI key.
+    const payloadItems = qLineItems.map(({ localId: _localId, ...rest }) => rest);
     createQuotationMutation.mutate(
-      { companySlug: activeCompany.slug, clientName: qClient, date: qDate, validUntil: qValidUntil, lineItems: qLineItems, totalAmount: qLineItems.reduce((s, li) => s + li.total, 0) },
+      { companySlug: activeCompany.slug, clientName: qClient, date: qDate, validUntil: qValidUntil, lineItems: payloadItems, totalAmount: qLineItems.reduce((s, li) => s + li.total, 0) },
       {
         onSuccess: () => { toast.success("تم إنشاء عرض السعر"); setShowForm(false); quotationsQuery.refetch(); },
         onError: (err) => { toast.error(err.message || "تعذّر إنشاء عرض السعر"); },
@@ -195,8 +204,10 @@ export function VouchersDetailView() {
   /* ── Create PO ────────────────────────────────────────────────────────────── */
   const handleCreatePO = () => {
     if (!activeCompany || !poSupplier || !poDate) { toast.error("يرجى ملء جميع الحقول المطلوبة"); return; }
+    // P2-B: strip localId before sending — it's a client-only UI key.
+    const payloadItems = poLineItems.map(({ localId: _localId, ...rest }) => rest);
     createPurchaseOrderMutation.mutate(
-      { companySlug: activeCompany.slug, supplierName: poSupplier, date: poDate, expectedDelivery: poDelivery, lineItems: poLineItems, totalAmount: poLineItems.reduce((s, li) => s + li.total, 0) },
+      { companySlug: activeCompany.slug, supplierName: poSupplier, date: poDate, expectedDelivery: poDelivery, lineItems: payloadItems, totalAmount: poLineItems.reduce((s, li) => s + li.total, 0) },
       {
         onSuccess: () => { toast.success("تم إنشاء أمر الشراء"); setShowForm(false); purchaseOrdersQuery.refetch(); },
         onError: (err) => { toast.error(err.message || "تعذّر إنشاء أمر الشراء"); },
@@ -442,14 +453,16 @@ export function VouchersDetailView() {
               {/* Line items */}
               <div className="mb-3"><label className={labelStyle}>بنود عرض السعر</label></div>
               {qLineItems.map((li, idx) => (
-                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-end">
+                // P2-B FIX: use localId as key so React doesn't swap input
+                // bindings when items are edited/reordered/duplicated.
+                <div key={li.localId} className="grid grid-cols-4 gap-2 mb-2 items-end">
                   <input value={li.description} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
                   <input value={li.quantity} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
                   <input value={li.unitPrice} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
                   <div className="text-[13px] font-bold text-end py-2">{fmt(li.total)}</div>
                 </div>
               ))}
-              <button onClick={() => setQLineItems([...qLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
+              <button onClick={() => setQLineItems([...qLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0, localId: makeLineLocalId() }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
               <div className="flex gap-2 justify-end mt-5">
                 <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
                 <button onClick={handleCreateQuotation} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><FileText size={14} /> إنشاء</button>
@@ -498,14 +511,16 @@ export function VouchersDetailView() {
                 <div><label className={labelStyle}>التسليم المتوقع</label><input value={poDelivery} onChange={(e) => setPoDelivery(e.target.value)} className={inputStyle} type="date" /></div>
               </div>
               {poLineItems.map((li, idx) => (
-                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 items-end">
+                // P2-B FIX: use localId as key so React doesn't swap input
+                // bindings when items are edited/reordered/duplicated.
+                <div key={li.localId} className="grid grid-cols-4 gap-2 mb-2 items-end">
                   <input value={li.description} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
                   <input value={li.quantity} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
                   <input value={li.unitPrice} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
                   <div className="text-[13px] font-bold text-end py-2">{fmt(li.total)}</div>
                 </div>
               ))}
-              <button onClick={() => setPoLineItems([...poLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0 }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
+              <button onClick={() => setPoLineItems([...poLineItems, { description: "", quantity: 1, unitPrice: 0, total: 0, localId: makeLineLocalId() }])} className="text-[12px] text-primary font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> بند جديد</button>
               <div className="flex gap-2 justify-end mt-5">
                 <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer">إلغاء</button>
                 <button onClick={handleCreatePO} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold cursor-pointer"><ShoppingCart size={14} /> إنشاء</button>

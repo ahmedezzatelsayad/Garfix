@@ -429,47 +429,53 @@ export function useAITestConnection() {
 }
 
 // ── Mock Data Generator ────────────────────────────────────
+//
+// P2-B FIX: previously used Math.random() to vary the numbers on every call,
+// which made the panel flicker and presented fabricated metrics as if they
+// were live. Mock values are now STATIC — clearly fake, clearly stable, and
+// easy to spot. Real metrics must come from the backend (which has the
+// actual counters); this generator is a fallback for offline / no-config
+// state and must NOT impersonate real telemetry.
 
-function getMockMetrics(): AIMetricsData {
-  return {
-    success: true,
-    timestamp: new Date().toISOString(),
-    data: {
-      pool: {
-        totalRPM: 10000,
-        usedRPM: 4250 + Math.floor(Math.random() * 500),
-        availableRPM: 5750,
-        utilizationPct: 42.5 + Math.random() * 5,
-        status: 'healthy',
+const MOCK_METRICS: AIMetricsData = {
+  success: true,
+  timestamp: new Date().toISOString(),
+  data: {
+    pool: {
+      totalRPM: 10000,
+      usedRPM: 4250,
+      availableRPM: 5750,
+      utilizationPct: 42.5,
+      status: 'healthy',
+    },
+    keys: [
+      {
+        id: 'key-1',
+        name: 'المفتاح الرئيسي',
+        healthy: true,
+        circuitState: 'closed',
+        rpmUsed: 2500,
+        rpmLimit: 5000,
+        rpmUtilizationPct: 50,
+        tokensUsed: 1250000,
+        tokensLimit: 2000000,
+        avgLatencyMs: 245,
+        successRate: 99.2,
       },
-      keys: [
-        {
-          id: 'key-1',
-          name: 'المفتاح الرئيسي',
-          healthy: true,
-          circuitState: 'closed',
-          rpmUsed: 2500,
-          rpmLimit: 5000,
-          rpmUtilizationPct: 50,
-          tokensUsed: 1250000 + Math.floor(Math.random() * 100000),
-          tokensLimit: 2000000,
-          avgLatencyMs: 245 + Math.floor(Math.random() * 50),
-          successRate: 99.2,
-        },
-        {
-          id: 'key-2',
-          name: 'مفتاح الاحتياطي',
-          healthy: true,
-          circuitState: 'closed',
-          rpmUsed: 1750,
-          rpmLimit: 3000,
-          rpmUtilizationPct: 58.3,
-          tokensUsed: 875000,
-          tokensLimit: 1500000,
-          avgLatencyMs: 312,
-          successRate: 98.7,
-        },
-      ],
+      {
+        id: 'key-2',
+        name: 'مفتاح الاحتياطي',
+        healthy: true,
+        circuitState: 'closed',
+        rpmUsed: 1750,
+        rpmLimit: 3000,
+        rpmUtilizationPct: 58.3,
+        tokensUsed: 875000,
+        tokensLimit: 1500000,
+        avgLatencyMs: 312,
+        successRate: 98.7,
+      },
+    ],
       workers: [
         { type: 'ai-chat', activeJobs: 12, processedToday: 1450, avgLatencyMs: 180 },
         { type: 'ai-invoice-extract', activeJobs: 5, processedToday: 680, avgLatencyMs: 420 },
@@ -484,8 +490,8 @@ function getMockMetrics(): AIMetricsData {
         estimatedWaitTimeMs: 1200,
       },
       today: {
-        totalRequests: 3405 + Math.floor(Math.random() * 100),
-        totalTokens: 2125000 + Math.floor(Math.random() * 50000),
+        totalRequests: 3405,
+        totalTokens: 2125000,
         totalFailures: 12,
         rejectionRate: 0.35,
       },
@@ -494,7 +500,16 @@ function getMockMetrics(): AIMetricsData {
         { level: 'warning', message: 'استخدام الذاكرة مرتفع على عامل المحادثة', timestamp: new Date().toISOString() },
       ],
     },
-  };
+};
+
+/**
+ * Returns static mock metrics. Re-rendered on every call but values never
+ * change, so the panel won't flicker. Real metrics must come from the API.
+ */
+function getMockMetrics(): AIMetricsData {
+  // Refresh the timestamp on each call so consumers that check "freshness"
+  // don't think the data is stale — values are still static otherwise.
+  return { ...MOCK_METRICS, timestamp: new Date().toISOString() };
 }
 
 // ── Export All ────────────────────────────────────────────

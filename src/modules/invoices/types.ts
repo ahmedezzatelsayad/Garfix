@@ -3,6 +3,8 @@
  * `lineItems` column on the Invoice table (parseJsonField returns []).
  */
 export interface LineItem {
+  /** Optional stable id (DB-sourced items may carry one in the future). */
+  id?: string | number;
   description: string;
   qty: number;
   price: number;
