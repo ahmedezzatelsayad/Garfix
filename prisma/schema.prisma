@@ -125,6 +125,10 @@ model Company {
   // list queries filter `where: { deletedAt: null }`.
   @@index([deletedAt])
   @@map("companies")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn                       String?
+  currencyDecimalPlaces        Int
 }
 
 // ─── Account (Chart of Accounts — matches db.account) ───
@@ -185,6 +189,9 @@ model Client {
   // P1-3: soft-delete index — clients/route.ts filters `where: { deletedAt: null }`
   @@index([companySlug, deletedAt])
   @@map("clients")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn                       String?
 }
 
 // ─── Supplier (Accounts Payable — matches db.supplier) ───
@@ -218,6 +225,9 @@ model Supplier {
   // `where: { companySlug, deletedAt: null }`. Composite is more selective
   // than the standalone @@index([deletedAt]) that was here before.
   @@index([companySlug, deletedAt])
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn                       String?
 }
 
 // ─── Product Catalog (matches db.productCatalog) ───
@@ -246,6 +256,10 @@ model ProductCatalog {
   @@index([companySlug])
   @@index([companyId])
   @@map("product_catalog")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr                       String?
+  nameEn                       String?
 }
 
 // ─── Inventory Item (matches db.inventoryItem) ───
@@ -292,6 +306,9 @@ model Warehouse {
   @@index([companySlug])
   @@index([companyId])
   @@map("warehouses")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr                       String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -319,6 +336,10 @@ model FiscalPeriod {
   @@index([companySlug])
   @@index([companyId])
   @@map("fiscal_periods")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  fiscalYear                   Int
+  periodType                   String
 }
 
 // ─── Journal Entry (matches db.journalEntry — renamed from Voucher) ───
@@ -379,6 +400,11 @@ model JournalEntryLine {
   @@index([journalEntryId])
   @@index([accountId])
   @@map("journal_entry_lines")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  entryId                      Int
+  createdAt                    DateTime
+  updatedAt                    DateTime
 }
 
 // ─── Payment Voucher (matches db.paymentVoucher) ───
@@ -470,6 +496,9 @@ model OpeningBalanceEntry {
   @@index([companyId])
   @@index([companySlug, status])
   @@map("opening_balance_entries")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  notes                        String?
 }
 
 // ─── Profit Distribution (matches existing) ───
@@ -490,6 +519,9 @@ model ProfitDistribution {
   entries          ProfitDistributionEntry[]
 
   @@index([companyId])
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  companySlug                  String
 }
 
 model ProfitDistributionEntry {
@@ -529,6 +561,11 @@ model LetterOfCredit {
   @@unique([number, companyId])
   @@index([companyId])
   @@map("letters_of_credit")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  lcNumber                     String
+  bankAccountId                Int?
+  companySlug                  String
 }
 
 model LetterOfCreditDocument {
@@ -570,6 +607,12 @@ model BankAccount {
   @@index([companySlug])
   @@index([companyId])
   @@map("bank_accounts")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  accountName                  String
+  branchCode                   String?
+  accountType                  String
+  glAccountId                  Int?
 }
 
 // ─── Bank Transaction (matches db.bankTransaction) ───
@@ -600,6 +643,13 @@ model BankTransaction {
   // filter by date range
   @@index([date])
   @@map("bank_transactions")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  transactionType              String
+  isReconciled                 Boolean
+  reconciledWith               String?
+  reconciledId                 Int?
+  category                     String?
 }
 
 // ─── Bank Reconciliation (matches db.bankReconciliation) ───
@@ -623,6 +673,15 @@ model BankReconciliation {
   @@index([companySlug])
   @@index([companyId])
   @@map("bank_reconciliations")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  periodStart                  String
+  periodEnd                    String
+  statementBalance             String
+  bookBalance                  String
+  adjustedBalance              String
+  difference                   String
+  completedBy                  String?
 }
 
 // ─── Fixed Asset (matches db.fixedAsset) ───
@@ -650,6 +709,25 @@ model FixedAsset {
   @@index([companySlug])
   @@index([companyId])
   @@map("fixed_assets")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr                       String
+  nameEn                       String?
+  acquisitionDate              String
+  acquisitionCost              String
+  salvageValue                 String
+  depreciationMethod           String
+  decliningRate                String
+  currentBookValue             String
+  location                     String?
+  assetTag                     String?
+  isActive                     Boolean
+  disposalDate                 String?
+  disposalAmount               String?
+  disposalMethod               String?
+  glAccountId                  Int?
+  depreciationAccountId        Int?
+  expenseAccountId             Int?
 }
 
 // ─── Depreciation Entry (matches db.depreciationEntry) ───
@@ -668,6 +746,12 @@ model DepreciationEntry {
 
   @@index([companyId])
   @@map("depreciation_entries")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  period                       String
+  depreciationAmount           String
+  bookValueAfter               String
+  isPosted                     Boolean
 }
 
 // ─── Budget (matches db.budget) ───
@@ -688,6 +772,17 @@ model Budget {
   @@index([companySlug])
   @@index([companyId])
   @@map("budgets")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  fiscalYear                   Int
+  period                       String
+  periodName                   String
+  accountId                    Int
+  costCenterId                 Int?
+  plannedAmount                String
+  actualAmount                 String
+  variance                     String
+  notes                        String?
 }
 
 model BudgetLine {
@@ -727,6 +822,11 @@ model CostCenter {
   @@index([companySlug])
   @@index([companyId])
   @@map("cost_centers")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr                       String
+  nameEn                       String?
+  parentId                     Int?
 }
 
 // ─── FX Revaluation (matches db.fxRevaluation) ───
@@ -746,6 +846,15 @@ model FxRevaluation {
   @@index([companySlug])
   @@index([companyId])
   @@map("fx_revaluations")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  revaluationDate              String
+  baseCurrency                 String
+  targetCurrency               String
+  exchangeRate                 String
+  totalGainLoss                String
+  journalEntryId               Int?
+  notes                        String?
 }
 
 // ─── Inter-Company Transaction (matches db.interCompanyTransaction) ───
@@ -762,6 +871,15 @@ model InterCompanyTransaction {
   updatedAt     DateTime @updatedAt
 
   @@map("inter_company_transactions")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  companySlug                  String
+  fromCompanySlug              String
+  toCompanySlug                String
+  currency                     String
+  reference                    String?
+  settledAt                    DateTime?
+  journalEntryId               Int?
 }
 
 // ─── Landed Cost Allocation (matches db.landedCostAllocation/landedCostLine) ───
@@ -781,6 +899,13 @@ model LandedCostAllocation {
   @@index([companySlug])
   @@index([companyId])
   @@map("landed_cost_allocations")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  allocationMethod             String
+  costType                     String
+  amount                       String
+  currency                     String
+  notes                        String?
 }
 
 model LandedCostLine {
@@ -826,6 +951,16 @@ model Employee {
   @@index([companySlug])
   @@index([companyId])
   @@map("hr_employees")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn                       String?
+  phone                        String?
+  email                        String?
+  baseSalary                   String
+  currency                     String
+  joinDate                     String?
+  notes                        String?
+  deletedAt                    DateTime?
 }
 
 // ─── HR Salary (matches db.hRSalary) ───
@@ -1008,6 +1143,16 @@ model PurchaseInvoice {
   @@index([companySlug, deletedAt])
   @@index([supplierId])
   @@map("purchase_invoices")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  supplierName                 String?
+  lineItems                    String
+  subtotal                     String
+  taxRate                      String
+  taxAmount                    String
+  paid                         String
+  purchaseOrderId              Int?
+  createdBy                    String?
 }
 
 // ─── Quotation (matches db.quotation) ───
@@ -1029,6 +1174,18 @@ model Quotation {
   @@index([companySlug])
   @@index([companyId])
   @@map("quotations")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  quotationNumber              String
+  date                         String
+  validUntil                   String?
+  lineItems                    String
+  subtotal                     String
+  taxRate                      String
+  taxAmount                    String
+  notes                        String?
+  convertedInvoiceId           Int?
+  createdBy                    String?
 }
 
 // ─── Purchase Order (matches db.purchaseOrder) ───
@@ -1050,6 +1207,16 @@ model PurchaseOrder {
   @@index([companySlug])
   @@index([companyId])
   @@map("purchase_orders")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  poNumber                     String
+  date                         String
+  lineItems                    String
+  subtotal                     String
+  taxRate                      String
+  taxAmount                    String
+  notes                        String?
+  createdBy                    String?
 }
 
 // ─── Stock Movement (matches db.stockMovement) ───
@@ -1068,6 +1235,11 @@ model StockMovement {
 
   @@index([companySlug])
   @@map("stock_movements")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  movementType                 String
+  sourceType                   String?
+  sourceId                     String?
 }
 
 // ─── Payment Transaction (matches db.paymentTransaction) ───
@@ -1126,6 +1298,19 @@ model PostDatedCheck {
   @@index([companySlug])
   @@index([companyId])
   @@map("post_dated_checks")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  date                         String
+  payee                        String?
+  payer                        String?
+  direction                    String
+  clientId                     Int?
+  supplierId                   Int?
+  bankAccountId                Int?
+  glAccountId                  Int?
+  depositedAt                  DateTime?
+  cancelledAt                  DateTime?
+  notes                        String?
 }
 
 // ─── Tax Filing (matches db.taxFiling) ───
@@ -1145,6 +1330,21 @@ model TaxFiling {
   @@index([companySlug])
   @@index([companyId])
   @@map("tax_filings")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  country                      String
+  taxType                      String
+  periodFrom                   String
+  periodTo                     String
+  totalSales                   String
+  totalPurchases               String
+  outputVat                    String
+  inputVat                     String
+  vatDue                       String
+  filingNumber                 String?
+  submittedBy                  String?
+  submittedAt                  DateTime?
+  notes                        String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1173,6 +1373,17 @@ model EInvoice {
 
   @@index([companySlug])
   @@map("e_invoices")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  invoiceNumber                String
+  authority                    String
+  status                       String
+  submissionId                 String?
+  qrCode                       String?
+  digitalSignature             String?
+  xmlContent                   String?
+  clearanceStatus              String?
+  deletedAt                    DateTime?
 }
 
 // ─── ZATCA Certificate (matches db.zatcaCertificate) ───
@@ -1209,6 +1420,13 @@ model ProductAlias {
   @@unique([alias, companySlug, language])
   @@index([companySlug])
   @@map("product_aliases")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  productCatalogId             Int
+  source                       String
+  confidence                   Float
+  isVerified                   Boolean
+  createdBy                    String?
 }
 
 model ProductMatchAudit {
@@ -1224,6 +1442,16 @@ model ProductMatchAudit {
 
   @@index([companySlug])
   @@map("product_match_audit")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  invoiceId                    Int?
+  matchedAlias                 String?
+  tier                         String
+  action                       String
+  resolvedBy                   String?
+  isUndone                     Boolean
+  undoneBy                     String?
+  undoneAt                     DateTime?
 }
 
 model MatchOverride {
@@ -1239,6 +1467,14 @@ model MatchOverride {
   @@unique([inputText, companySlug])
   @@index([companySlug])
   @@map("match_overrides")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  inputNormalized              String?
+  fromProductId                Int?
+  toProductId                  Int?
+  chosenAlias                  String?
+  auditId                      Int?
+  reason                       String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1316,6 +1552,13 @@ model RolePermission {
   // Note: RolePermission.role is not a FK to AppUser.role — it's a standalone mapping
   @@unique([role, permissionKey])
   @@map("role_permissions")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  companySlug                  String
+  permissions                  String
+  assignedTo                   String?
+  isActive                     Boolean
+  expiresAt                    DateTime?
 }
 
 // ─── Email Verification (matches db.emailVerification) ───
@@ -1356,6 +1599,9 @@ model PlatformSettings {
   history     PlatformSettingsHistory[]
 
   @@map("platform_settings")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  valueType                    String
 }
 
 // ─── Platform Settings History (matches db.platformSettingsHistory) ───
@@ -1375,6 +1621,9 @@ model PlatformSettingsHistory {
   @@index([createdAt])
   @@index([changedBy])
   @@map("platform_settings_history")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  settingKey                   String
 }
 
 // ─── Feature Flag (matches db.featureFlag) ───
@@ -1391,6 +1640,11 @@ model FeatureFlag {
   updatedAt   DateTime @updatedAt
 
   @@map("feature_flags")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  label                        String
+  plans                        String
+  isActive                     Boolean
 }
 
 // ─── Support Ticket (matches db.supportTicket) ───
@@ -1409,6 +1663,11 @@ model SupportTicket {
 
   @@index([companySlug])
   @@map("support_tickets")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  userEmail                    String
+  body                         String?
+  category                     String?
 }
 
 // ─── Landing Content (matches db.landingContent) ───
@@ -1840,6 +2099,12 @@ model AutomationRule {
 
   @@index([companySlug])
   @@map("automation_rules")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  trigger                      String
+  actions                      String
+  lastRunAt                    DateTime?
+  runCount                     Int
 }
 
 model AutomationExecutionLog {
@@ -1879,6 +2144,9 @@ model WebhookEndpoint {
 
   @@index([companySlug])
   @@index([companyId])
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  description                  String?
 }
 
 model WebhookDelivery {
@@ -1901,6 +2169,10 @@ model WebhookDelivery {
   endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id])
 
   @@index([status, nextRetryAt])
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  eventId                      Int?
+  responseBody                 String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1943,6 +2215,19 @@ model InvoiceTemplate {
 
   @@index([companySlug])
   @@map("invoice_templates")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  isDefault                    Boolean
+  layoutType                   String
+  primaryColor                 String
+  fontFamily                   String
+  logoPosition                 String
+  showTaxNumber                Boolean
+  showQrCode                   Boolean
+  showBankDetails              Boolean
+  footerText                   String?
+  termsAndConditions           String?
+  paperSize                    String
 }
 
 model InvoiceTemplateSettings {
@@ -1956,6 +2241,15 @@ model InvoiceTemplateSettings {
   updatedAt         DateTime @updatedAt
 
   @@map("invoice_template_settings")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  templateId                   Int?
+  primaryColor                 String
+  fontFamily                   String
+  fontSize                     Int
+  logoPosition                 String
+  showPaymentInfo              Boolean
+  showStamp                    Boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1975,6 +2269,10 @@ model Announcement {
   updatedAt  DateTime @updatedAt
 
   @@map("announcements")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  startsAt                     DateTime?
+  endsAt                       DateTime?
 }
 
 // ─── Chat History (matches db.chatHistory) ───
@@ -2050,6 +2348,17 @@ model WPSFile {
 
   @@index([companySlug])
   @@map("wps_files")
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  country                      String
+  month                        String
+  fileContent                  String?
+  totalEmployees               Int
+  totalAmount                  String
+  status                       String
+  submittedBy                  String?
+  submittedAt                  DateTime?
+  updatedAt                    DateTime
 }
 
 // ─── Module (matches db.module) ───

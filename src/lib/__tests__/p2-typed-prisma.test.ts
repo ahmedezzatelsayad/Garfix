@@ -194,3 +194,85 @@ describe("P2 Typed Prisma — graduated migration discipline", () => {
     expect(src).toContain("graduated");
   });
 });
+
+describe("P2-Reconciliation — schema.prisma aligned with actual DB", () => {
+  it("schema.prisma has the reconciliation marker comment", () => {
+    // The apply-reconciliation-patches.py script inserts this comment header
+    // before each block of added columns. If it's gone, the reconciliation
+    // was reverted.
+    const schema = readFileSync(
+      resolve(import.meta.dir, "../../../prisma/schema.prisma"),
+      "utf8",
+    );
+    expect(schema).toContain("P2-Reconciliation");
+  });
+
+  it("PlatformSettings model has the `valueType` column (was missing pre-reconciliation)", () => {
+    // DB has `valueType TEXT NOT NULL DEFAULT 'string'` but schema.prisma
+    // didn't declare it. The reconciliation script should have added it.
+    const schema = readFileSync(
+      resolve(import.meta.dir, "../../../prisma/schema.prisma"),
+      "utf8",
+    );
+    const modelMatch = schema.match(
+      /model\s+PlatformSettings\s*\{([^}]+)\}/,
+    );
+    expect(modelMatch).not.toBeNull();
+    const body = modelMatch![1];
+    expect(body).toMatch(/valueType\s+String/);
+  });
+
+  it("ProductMatchAudit model has the `tier` column (was missing pre-reconciliation)", () => {
+    // DB has `tier TEXT NOT NULL` but schema.prisma declared `matchTier`
+    // (which doesn't exist in DB). The reconciliation should have added `tier`
+    // alongside (we don't remove matchTier — that's a separate cleanup).
+    const schema = readFileSync(
+      resolve(import.meta.dir, "../../../prisma/schema.prisma"),
+      "utf8",
+    );
+    const modelMatch = schema.match(
+      /model\s+ProductMatchAudit\s*\{([^}]+)\}/,
+    );
+    expect(modelMatch).not.toBeNull();
+    const body = modelMatch![1];
+    expect(body).toMatch(/tier\s+String/);
+  });
+
+  it("ai-provisioning.ts: platformSettings.create passes the required `valueType` field", () => {
+    // After reconciliation, `valueType` is NOT NULL in schema. The previous
+    // create call would now throw a TS error. Verify the fix is in place.
+    const src = readSrc("services/ai-provisioning.ts");
+    expect(src).toMatch(/valueType:\s*['"]string['"]/);
+  });
+});
+
+describe("P2-Sprint-3 — additional file migrations post-reconciliation", () => {
+  // After schema reconciliation (adding 223 missing columns to schema.prisma),
+  // 11 additional files became safe to migrate from `db: any` to `dbTyped`.
+  // These tests verify those migrations stay in place.
+
+  const migratedFiles = [
+    "src/app/api/accounting/accountant-access/route.ts",
+    "src/app/api/accounting/bank-transfer/route.ts",
+    "src/app/api/accounting/tax-filing/route.ts",
+    "src/app/api/accounting/vouchers/route.ts",
+    "src/app/api/feature-flags/route.ts",
+    "src/app/api/invoice-templates/[id]/route.ts",
+    "src/app/api/platform-admin/ai-providers/route.ts",
+    "src/app/api/product-matching/review/route.ts",
+    "src/lib/ai/costOptimizer.ts",
+    "src/lib/integrations/registry.ts",
+  ];
+
+  for (const file of migratedFiles) {
+    it(`${file} imports dbTyped (not the untyped db)`, () => {
+      const abs = resolve(import.meta.dir, "../../../", file);
+      const src = readFileSync(abs, "utf8");
+      // Allow either single or double quote style
+      const hasDbTyped =
+        src.includes('import { dbTyped as db } from "@/lib/db"') ||
+        src.includes("import { dbTyped as db } from '@/lib/db'");
+      expect(hasDbTyped).toBe(true);
+    });
+  }
+});

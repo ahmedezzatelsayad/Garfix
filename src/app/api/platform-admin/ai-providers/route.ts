@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireFounder } from "@/lib/middleware";
 import { getAiProviders, setProviderApiKey, setProviderModel, setProviderEnabled, setProviderPriority, PROVIDER_INFO, type ProviderType } from "@/lib/aiProvider";
 import { decryptSecret, isEncrypted } from "@/lib/cryptoVault";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logAdminAction } from "@/lib/audit";
 import { withErrorHandler, parseJsonBody, apiError } from "@/lib/api";
 import { validateBaseUrl } from "@/lib/ssrf";
