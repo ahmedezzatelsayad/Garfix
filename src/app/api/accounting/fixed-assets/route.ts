@@ -27,8 +27,9 @@ const CreateSchema = z.object({
   location: z.string().optional(),
   assetTag: z.string().optional(),
   glAccountId: entityIdOptional,
-  depreciationAccountId: z.number().int().optional(),
-  expenseAccountId: z.number().int().optional(),
+  // P2-Sprint6: FixedAsset.depreciationAccountId/expenseAccountId are now String? (cuid FKs).
+  depreciationAccountId: entityIdOptional,
+  expenseAccountId: entityIdOptional,
 });
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -157,10 +158,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       accumulatedDepreciation: "0.000",
       location: data.location || null,
       assetTag: data.assetTag || null,
-      // TODO(P2-Sprint5-A): FixedAsset.glAccountId is Int? (scalar) — convert string cuid.
-      glAccountId: data.glAccountId ? Number(data.glAccountId) : null,
-      depreciationAccountId: data.depreciationAccountId || null,
-      expenseAccountId: data.expenseAccountId || null,
+      // P2-Sprint6: FixedAsset.glAccountId/depreciationAccountId/expenseAccountId
+      // are now String? (cuid FKs). entityIdOptional already transforms to string.
+      glAccountId: data.glAccountId ?? null,
+      depreciationAccountId: data.depreciationAccountId ?? null,
+      expenseAccountId: data.expenseAccountId ?? null,
     },
     // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
     // `expenseAccount` relations — removed include.

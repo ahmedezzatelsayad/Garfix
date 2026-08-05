@@ -15,7 +15,8 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 const BudgetEntrySchema = z.object({
   accountId: entityId,
-  costCenterId: z.number().int().optional(),
+  // P2-Sprint6: Budget.costCenterId is now String? (cuid FK) — accept string input.
+  costCenterId: entityIdOptional,
   plannedAmount: z.union([z.number(), z.string()]),
 });
 
@@ -67,10 +68,10 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
         where: {
           companySlug: data.companySlug,
           periodName: budget.periodName,
-          // TODO(P2-Sprint5-A): Budget.accountId is Int? (scalar) — convert
-          // string cuid input via Number(). Legacy `db: any` hid the mismatch.
-          accountId: Number(entry.accountId),
-          costCenterId: entry.costCenterId || null,
+          // P2-Sprint6: Budget.accountId/costCenterId are now String? (cuid FKs).
+          // entityId/entityIdOptional already transform input to string.
+          accountId: entry.accountId,
+          costCenterId: entry.costCenterId ?? null,
         },
       });
 

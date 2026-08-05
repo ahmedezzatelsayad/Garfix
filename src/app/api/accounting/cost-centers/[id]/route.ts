@@ -102,7 +102,8 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
 
   // Check if any children exist
   const children = await db.costCenter.count({
-    where: { parentId: Number(id) },
+    // P2-Sprint6: CostCenter.parentId is now String? (cuid FK).
+    where: { parentId: id },
   });
   if (children > 0) {
     return apiError(

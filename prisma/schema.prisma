@@ -159,6 +159,12 @@ model Account {
   journalEntryLines JournalEntryLine[]
   // P0-06: back-relation for PaymentVoucher.glAccountId
   paymentVouchersGL PaymentVoucher[]      @relation("PaymentVoucherGLAccount")
+  // P2-Sprint6: back-relations for BankAccount/FixedAsset/Budget
+  bankAccountsGL    BankAccount[]         @relation("BankAccountGLAccount")
+  fixedAssetsGL     FixedAsset[]          @relation("FixedAssetGLAccount")
+  fixedAssetsDep    FixedAsset[]          @relation("FixedAssetDepreciationAccount")
+  fixedAssetsExp    FixedAsset[]          @relation("FixedAssetExpenseAccount")
+  budgets           Budget[]              @relation("BudgetAccount")
 
   @@unique([code, companyId])
   @@index([companySlug])
@@ -185,6 +191,7 @@ model Client {
   company         Company?         @relation(fields: [companyId], references: [id])
   paymentVouchers PaymentVoucher[]
   invoices        Invoice[]
+  quotations      Quotation[]
 
   @@index([companySlug])
   @@index([companyId])
@@ -194,6 +201,9 @@ model Client {
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   nameEn                       String?
+  // ── P2-Sprint6: add clientCompany, notes ──
+  clientCompany                String?
+  notes                        String?
 }
 
 // ─── Supplier (Accounts Payable — matches db.supplier) ───
@@ -254,6 +264,7 @@ model ProductCatalog {
   productAliases     ProductAlias[]
   productMatchAudits ProductMatchAudit[]
   matchOverrides     MatchOverride[]
+  landedCostLines    LandedCostLine[]
 
   @@index([companySlug])
   @@index([companyId])
@@ -262,6 +273,8 @@ model ProductCatalog {
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   nameAr                       String?
   nameEn                       String?
+  // ── P2-Sprint6: add wholesalePrice ──
+  wholesalePrice               Decimal   @default(0)
 }
 
 // ─── Inventory Item (matches db.inventoryItem) ───
@@ -286,6 +299,9 @@ model InventoryItem {
   @@index([companySlug])
   @@index([companyId])
   @@map("inventory_items")
+
+  // ── P2-Sprint6: add reorderQty alias for backward compat ──
+  reorderQty                   Decimal   @default(0)
 }
 
 // ─── Warehouse (matches db.warehouse) ───
@@ -303,6 +319,7 @@ model Warehouse {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
   company        Company?        @relation(fields: [companyId], references: [id])
 
   @@index([companySlug])
@@ -375,6 +392,8 @@ model JournalEntry {
   // PaymentVoucher.journalEntryId.
   openingBalanceEntries OpeningBalanceEntry[]
   paymentVouchers       PaymentVoucher[]
+  // P2-Sprint6: back-relation for FxRevaluation.journalEntryId
+  fxRevaluations        FxRevaluation[]      @relation("FxRevaluationJournalEntry")
 
   @@unique([number, companyId])
   @@index([companySlug])
@@ -414,6 +433,9 @@ model JournalEntryLine {
   entryId                      Int?
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
+  // ── P2-Sprint6: add costCenterId ──
+  costCenterId                 String?
+  costCenter                   CostCenter?  @relation(fields: [costCenterId], references: [id])
 }
 
 // ─── Payment Voucher (matches db.paymentVoucher) ───
@@ -445,6 +467,7 @@ model PaymentVoucher {
   glAccountId          String?
   journalEntryId       String?
   createdBy            String?
+  approvedBy           String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   client               Client?               @relation(fields: [clientId], references: [id])
@@ -565,16 +588,22 @@ model LetterOfCredit {
   updatedAt   DateTime                 @updatedAt
   supplier    Supplier?                @relation(fields: [supplierId], references: [id])
   company     Company                  @relation(fields: [companyId], references: [id])
+  bankAccount BankAccount?             @relation("LetterOfCreditBankAccount", fields: [bankAccountId], references: [id])
   lcDocuments LetterOfCreditDocument[]
 
   @@unique([number, companyId])
   @@index([companyId])
+  @@index([bankAccountId])
   @@map("letters_of_credit")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   lcNumber                     String
-  bankAccountId                Int?
+  bankAccountId                String?
   companySlug                  String
+  // ── P2-Sprint6: schema reconciliation ──
+  utilizationAmount            Decimal   @default(0)
+  documentsRequired            String?
+  beneficiaryBank              String?
 }
 
 model LetterOfCreditDocument {
@@ -621,7 +650,10 @@ model BankAccount {
   accountName                  String
   branchCode                   String?
   accountType                  String
-  glAccountId                  Int?
+  glAccountId                  String?
+  // P2-Sprint6: fix glAccountId to String? (Account.id is cuid) + add relation
+  glAccount                    Account?            @relation("BankAccountGLAccount", fields: [glAccountId], references: [id])
+  lettersOfCredit              LetterOfCredit[]    @relation("LetterOfCreditBankAccount")
 }
 
 // ─── Bank Transaction (matches db.bankTransaction) ───
@@ -691,6 +723,8 @@ model BankReconciliation {
   adjustedBalance              String
   difference                   String
   completedBy                  String?
+  // ── P2-Sprint6: add completedAt ──
+  completedAt                  DateTime?
 }
 
 // ─── Fixed Asset (matches db.fixedAsset) ───
@@ -734,9 +768,13 @@ model FixedAsset {
   disposalDate                 String?
   disposalAmount               String?
   disposalMethod               String?
-  glAccountId                  Int?
-  depreciationAccountId        Int?
-  expenseAccountId             Int?
+  glAccountId                  String?
+  depreciationAccountId        String?
+  expenseAccountId             String?
+  // P2-Sprint6: fix *AccountId to String? (Account.id is cuid) + add relations
+  glAccount                    Account?            @relation("FixedAssetGLAccount", fields: [glAccountId], references: [id])
+  depreciationAccount          Account?            @relation("FixedAssetDepreciationAccount", fields: [depreciationAccountId], references: [id])
+  expenseAccount               Account?            @relation("FixedAssetExpenseAccount", fields: [expenseAccountId], references: [id])
 }
 
 // ─── Depreciation Entry (matches db.depreciationEntry) ───
@@ -786,12 +824,15 @@ model Budget {
   fiscalYear                   Int
   period                       String
   periodName                   String
-  accountId                    Int
-  costCenterId                 Int?
+  accountId                    String
+  costCenterId                 String?
   plannedAmount                String
   actualAmount                 String
   variance                     String
   notes                        String?
+  // ── P2-Sprint6: fix accountId/costCenterId to String? and add relations ──
+  account                      Account?      @relation("BudgetAccount", fields: [accountId], references: [id])
+  costCenter                   CostCenter?   @relation("BudgetCostCenter", fields: [costCenterId], references: [id])
 }
 
 model BudgetLine {
@@ -826,6 +867,8 @@ model CostCenter {
   updatedAt   DateTime     @updatedAt
   company     Company      @relation(fields: [companyId], references: [id])
   budgetLines BudgetLine[]
+  budgets     Budget[]                 @relation("BudgetCostCenter")
+  journalEntryLines           JournalEntryLine[]
 
   @@unique([code, companyId])
   @@index([companySlug])
@@ -835,7 +878,10 @@ model CostCenter {
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   nameAr                       String
   nameEn                       String?
-  parentId                     Int?
+  parentId                     String?
+  // ── P2-Sprint6: fix parentId to String? and add self-relation ──
+  parent                       CostCenter?   @relation("CostCenterParent", fields: [parentId], references: [id])
+  children                     CostCenter[]  @relation("CostCenterParent")
 }
 
 // ─── FX Revaluation (matches db.fxRevaluation) ───
@@ -862,8 +908,15 @@ model FxRevaluation {
   targetCurrency               String
   exchangeRate                 String
   totalGainLoss                String
-  journalEntryId               Int?
+  journalEntryId               String?
   notes                        String?
+  // ── P2-Sprint6: gain/loss breakdown + period + journalEntry relation ──
+  period                       String?
+  realizedGain                 Decimal   @default(0)
+  realizedLoss                 Decimal   @default(0)
+  unrealizedGain               Decimal   @default(0)
+  unrealizedLoss               Decimal   @default(0)
+  journalEntry                 JournalEntry? @relation("FxRevaluationJournalEntry", fields: [journalEntryId], references: [id])
 }
 
 // ─── Inter-Company Transaction (matches db.interCompanyTransaction) ───
@@ -908,6 +961,7 @@ model LandedCostAllocation {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   lines             LandedCostLine[]
+  purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
 
   @@index([companySlug])
   @@index([companyId])
@@ -927,10 +981,16 @@ model LandedCostLine {
   costType             String // freight, insurance, customs, handling
   amount               Decimal              @default(0)
   allocationMethod     String               @default("quantity") // quantity, weight, value, manual
+  productId            String?
+  proportionalWeight   Decimal              @default(0)
+  allocatedAmount      Decimal              @default(0)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   landedCostAllocation LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  product              ProductCatalog?      @relation(fields: [productId], references: [id])
 
+  @@index([allocationId])
+  @@index([productId])
   @@map("landed_cost_lines")
 }
 
@@ -974,85 +1034,111 @@ model Employee {
   joinDate                     String?
   notes                        String?
   deletedAt                    DateTime?
+  // ── P2-Sprint6: schema reconciliation — columns referenced by HR routes ──
+  civilId                      String?
+  allowances                   Decimal   @default(0)
+  endDate                      DateTime?
+  bankAccount                  String?
+  nationality                  String?
+  residenceExpiry              DateTime?
+  passportNumber               String?
 }
 
 // ─── HR Salary (matches db.hRSalary) ───
 
 model HRSalary {
-  id         String    @id @default(cuid())
-  employeeId String
-  amount     Decimal
-  month      String // "2026-01"
-  status     String    @default("draft") // draft, paid, cancelled
-  paidDate   DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  employee   Employee  @relation(fields: [employeeId], references: [id])
+  id          String    @id @default(cuid())
+  employeeId  String
+  companySlug String    @default("default")
+  amount      Decimal
+  baseSalary  Decimal   @default(0)
+  netSalary   Decimal   @default(0)
+  month       String // "2026-01"
+  status      String    @default("draft") // draft, paid, cancelled
+  paidDate    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  employee    Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([companySlug])
   @@map("hr_salaries")
 }
 
 // ─── HR Commission (matches db.hRCommission) ───
 
 model HRCommission {
-  id         String   @id @default(cuid())
-  employeeId String
-  amount     Decimal
-  period     String
-  status     String   @default("draft")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id          String   @id @default(cuid())
+  employeeId  String
+  companySlug String   @default("default")
+  amount      Decimal
+  period      String
+  date        DateTime @default(now())
+  type        String   @default("sales") // sales, referral, performance
+  isPaid      Boolean  @default(false)
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employee    Employee @relation(fields: [employeeId], references: [id])
 
+  @@index([companySlug])
   @@map("hr_commissions")
 }
 
 // ─── HR Attendance (matches db.hRAttendance) ───
 
 model HRAttendance {
-  id         String    @id @default(cuid())
-  employeeId String
-  date       DateTime
-  checkIn    DateTime?
-  checkOut   DateTime?
-  status     String    @default("present") // present, absent, late, excused
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  employee   Employee  @relation(fields: [employeeId], references: [id])
+  id          String    @id @default(cuid())
+  employeeId  String
+  companySlug String    @default("default")
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  status      String    @default("present") // present, absent, late, excused
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  employee    Employee  @relation(fields: [employeeId], references: [id])
 
+  @@index([companySlug])
   @@map("hr_attendance")
 }
 
 // ─── HR Leave Request (matches db.hRLeaveRequest) ───
 
 model HRLeaveRequest {
-  id         String   @id @default(cuid())
-  employeeId String
-  type       String // annual, sick, maternity, emergency
-  startDate  DateTime
-  endDate    DateTime
-  status     String   @default("pending") // pending, approved, rejected
-  approvedBy String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id          String   @id @default(cuid())
+  employeeId  String
+  companySlug String   @default("default")
+  type        String // annual, sick, maternity, emergency
+  startDate   DateTime
+  endDate     DateTime
+  days        Decimal  @default(0)
+  reason      String?
+  status      String   @default("pending") // pending, approved, rejected
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employee    Employee @relation(fields: [employeeId], references: [id])
 
+  @@index([companySlug])
   @@map("hr_leave_requests")
 }
 
 // ─── HR Performance (matches db.hRPerformance) ───
 
 model HRPerformance {
-  id         String   @id @default(cuid())
-  employeeId String
-  period     String
-  rating     Decimal  @default(0)
-  goals      String?
-  feedback   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id          String   @id @default(cuid())
+  employeeId  String
+  companySlug String   @default("default")
+  period      String
+  rating      Decimal  @default(0)
+  goals       String?
+  feedback    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employee    Employee @relation(fields: [employeeId], references: [id])
 
+  @@index([companySlug])
   @@map("hr_performance")
 }
 
@@ -1166,6 +1252,8 @@ model PurchaseInvoice {
   paid                         String
   purchaseOrderId              Int?
   createdBy                    String?
+  // P2-Sprint6: back-relation for LandedCostAllocation
+  landedCostAllocations        LandedCostAllocation[]
 }
 
 // ─── Quotation (matches db.quotation) ───
@@ -1183,9 +1271,11 @@ model Quotation {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   company     Company?  @relation(fields: [companyId], references: [id])
+  client      Client?   @relation(fields: [clientId], references: [id])
 
   @@index([companySlug])
   @@index([companyId])
+  @@index([clientId])
   @@map("quotations")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
@@ -1253,6 +1343,9 @@ model StockMovement {
   movementType                 String
   sourceType                   String?
   sourceId                     String?
+  // ── P2-Sprint6: add warehouseId, productId fix ──
+  warehouseId                  String?
+  warehouseRef                 Warehouse?  @relation(fields: [warehouseId], references: [id])
 }
 
 // ─── Payment Transaction (matches db.paymentTransaction) ───
@@ -1350,6 +1443,7 @@ model PostDatedCheck {
   glAccountId                  Int?
   depositedAt                  DateTime?
   cancelledAt                  DateTime?
+  clearedAt                    DateTime?
   notes                        String?
 }
 
@@ -1642,6 +1736,8 @@ model PlatformSettings {
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   valueType                    String
+  // ── P2-Sprint6: add updatedBy ──
+  updatedBy                    String?
 }
 
 // ─── Platform Settings History (matches db.platformSettingsHistory) ───
@@ -1664,6 +1760,8 @@ model PlatformSettingsHistory {
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   settingKey                   String
+  // ── P2-Sprint6: add changedByEmail ──
+  changedByEmail               String?
 }
 
 // ─── Feature Flag (matches db.featureFlag) ───
@@ -2290,6 +2388,8 @@ model InvoiceTemplateSettings {
   logoPosition                 String
   showPaymentInfo              Boolean
   showStamp                    Boolean
+  // ── P2-Sprint6: add name ──
+  name                         String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2337,11 +2437,15 @@ model IdempotencyKey {
   key          String   @unique
   method       String // POST, PATCH
   path         String
+  companySlug  String   @default("default")
+  endpoint     String?
   statusCode   Int?
   responseBody String?
+  responseJson String?
   createdAt    DateTime @default(now())
   expiresAt    DateTime
 
+  @@index([companySlug])
   @@map("idempotency_keys")
 }
 

@@ -100,9 +100,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       branchCode: data.branchCode || null,
       currency: data.currency,
       accountType: data.accountType,
-      // TODO(P2-Sprint5-A): BankAccount.glAccountId is Int? in schema — convert
-      // string cuid input via Number(). Legacy `db: any` hid the type mismatch.
-      glAccountId: data.glAccountId ? Number(data.glAccountId) : null,
+      // P2-Sprint6: BankAccount.glAccountId is now String? (cuid FK).
+      // Pass the string value directly.
+      glAccountId: data.glAccountId ? String(data.glAccountId) : null,
       balance: "0.000",
     },
     // TODO(P2-Sprint5-A): BankAccount has no `glAccount` relation — removed include.

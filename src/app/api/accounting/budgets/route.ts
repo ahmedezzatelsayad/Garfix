@@ -16,7 +16,8 @@ import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 
 const BudgetEntrySchema = z.object({
   accountId: entityId,
-  costCenterId: z.number().int().optional(),
+  // P2-Sprint6: Budget.costCenterId is now String? (cuid FK) — accept string input.
+  costCenterId: entityIdOptional,
   plannedAmount: z.union([z.number(), z.string()]),
 });
 
@@ -107,7 +108,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Validate cost center IDs
-  const costCenterIds = data.entries.filter((e) => e.costCenterId).map((e) => String(e.costCenterId!));
+  const costCenterIds = data.entries
+    .filter((e) => e.costCenterId)
+    .map((e) => e.costCenterId!);
   if (costCenterIds.length > 0) {
     const costCenters = await db.costCenter.findMany({
       where: { id: { in: costCenterIds }, companySlug: data.companySlug, isActive: true },
@@ -127,9 +130,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         where: {
           companySlug: data.companySlug,
           periodName: data.periodName,
-          // TODO(P2-Sprint5-A): Budget.accountId is Int (scalar) — convert string cuid.
-          accountId: Number(entry.accountId),
-          costCenterId: entry.costCenterId || null,
+          // P2-Sprint6: Budget.accountId/costCenterId are now String (cuid FKs).
+          // entityId/entityIdOptional already transform input to string.
+          accountId: entry.accountId,
+          costCenterId: entry.costCenterId ?? null,
         },
       });
 
@@ -164,9 +168,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             fiscalYear: data.fiscalYear,
             period: data.period,
             periodName: data.periodName,
-            // TODO(P2-Sprint5-A): Budget.accountId is Int (scalar) — convert string cuid.
-            accountId: Number(entry.accountId),
-            costCenterId: entry.costCenterId || null,
+            // P2-Sprint6: Budget.accountId/costCenterId are now String (cuid FKs).
+            accountId: entry.accountId,
+            costCenterId: entry.costCenterId ?? null,
             plannedAmount: toNum(entry.plannedAmount),
             actualAmount: "0",
             variance: "0",
@@ -268,9 +272,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
           where: {
             companySlug: data.companySlug,
             periodName: data.periodName,
-            // TODO(P2-Sprint5-A): Budget.accountId is Int (scalar) — convert string cuid.
-            accountId: Number(entry.accountId),
-            costCenterId: entry.costCenterId || null,
+            // P2-Sprint6: Budget.accountId/costCenterId are now String (cuid FKs).
+            accountId: entry.accountId,
+            costCenterId: entry.costCenterId ?? null,
           },
         });
 

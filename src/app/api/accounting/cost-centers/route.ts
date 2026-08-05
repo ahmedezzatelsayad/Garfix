@@ -9,6 +9,7 @@ import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { entityIdNullable } from "@/lib/validation";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,8 @@ const CreateSchema = z.object({
   code: z.string().min(1),
   nameAr: z.string().min(1),
   nameEn: z.string().optional(),
-  parentId: z.number().int().optional().nullable(),
+  // P2-Sprint6: CostCenter.parentId is now String? (cuid FK).
+  parentId: entityIdNullable,
 });
 
 // ── GET: List cost centers ──────────────────────────────────────────────────────
@@ -73,7 +75,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Validate parent belongs to same company
   if (data.parentId) {
     const parent = await db.costCenter.findFirst({
-      where: { id: String(data.parentId), companySlug: data.companySlug },
+      where: { id: data.parentId, companySlug: data.companySlug },
     });
     if (!parent) {
       return apiError("Parent cost center not found or belongs to a different company", 400);
