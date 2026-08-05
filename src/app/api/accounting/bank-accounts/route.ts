@@ -12,6 +12,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -82,12 +83,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const account = await db.bankAccount.create({
     data: {
       companySlug: data.companySlug,
-      // Note (P2): companyId is required (String FK) but the legacy
-      // route never had a real one — `db: any` hid this. Placeholder "0".
-      companyId: "0",
+      companyId,
       // Note (P2): BankAccount.name is a required String column
       // (legacy field). The newer P2 `accountName` column carries the same
       // human-readable label — populate both for compatibility.

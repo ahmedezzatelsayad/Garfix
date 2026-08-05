@@ -16,6 +16,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { preventPostingToClosedPeriod } from "@/lib/accounting/period-close";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 const LineSchema = z.object({
   accountId: entityId,
@@ -113,16 +114,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug BEFORE the transaction
+  // (does not need to be inside the tx). Was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   // DB-03 FIX: Wrap entry creation + balance updates in a single transaction
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
         companySlug: data.companySlug,
-        // Note (P2): `number` and `companyId` are required String
-        // fields without defaults. Legacy `db: any` hid these missing fields.
-        // Generate a unique number from timestamp; companyId "0" placeholder.
+        // Note (P2): `number` is a required String field without a default.
+        // Generate a unique number from timestamp.
         number: `JE-${Date.now()}`,
-        companyId: "0",
+        companyId,
         date: data.date, description: data.description || null,
         reference: data.reference || null, status: data.status, createdBy: user.email,
         lines: {

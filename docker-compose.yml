@@ -121,10 +121,12 @@ services:
       SESSION_REGISTRY_ENFORCED: ${SESSION_REGISTRY_ENFORCED:-false}
     volumes:
       - app-storage:/app/storage
-      # CONT-002 FIX (Cycle 3): tmpfs mounts for the writable directories
-      # that Next.js standalone expects to exist at runtime.
-      - tmpfs:/tmp:rw,noexec,nosuid,nodev,size=64m
     read_only: true
+    # M8 FIX: removed bogus `tmpfs:/tmp:...` named-volume line below.
+    # The `tmpfs:` block (correct syntax) handles /tmp — Docker does NOT
+    # interpret `tmpfs:/tmp:opts` under `volumes:` as a tmpfs mount; it
+    # would create an empty named volume called "tmpfs" and mount it at
+    # "/tmp:rw,noexec,nosuid,nodev,size=64m" (a path with colons — invalid).
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
     # P1 FIX: Add resource limits for the app container

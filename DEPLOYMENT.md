@@ -362,7 +362,23 @@ volumes:
 |----------|---------|------|
 | `/api/health` | System health check | Public |
 | `/api/startup-check` | Detailed startup status | Internal |
+| `/api/metrics` | Prometheus scraping | `METRICS_TOKEN` (header or query) |
 | `/platform-admin/stats` | Platform metrics | Admin |
+
+### METRICS_TOKEN (required for production)
+- Used by: `/api/metrics` endpoint (Prometheus scraping).
+- Generate with: `openssl rand -hex 32`
+- Configure in Prometheus scrape config:
+  ```yaml
+  scrape_configs:
+    - job_name: 'garfix'
+      metrics_path: '/api/metrics'
+      params:
+        token: ['<METRICS_TOKEN>']
+      static_configs:
+        - targets: ['your-host:3000']
+  ```
+- Or use the `X-Prometheus-Token` header.
 
 ### Key Metrics to Monitor
 

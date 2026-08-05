@@ -38,6 +38,7 @@ import { dbTyped as db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { getActiveWorkerCounts } from "@/lib/ai-fabric/worker-scaler";
 import { requireFounder } from "@/lib/middleware";
+import { logger } from "@/lib/logger";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -246,7 +247,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MissionControl
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[mission-control-api] Error fetching data:", error);
+    logger.error("[mission-control] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       {
         error: "Failed to fetch mission control data",

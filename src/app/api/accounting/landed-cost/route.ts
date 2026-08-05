@@ -11,6 +11,7 @@ import { num } from "@/lib/money";
 import { calculateLandedCost } from "@/lib/accounting/inventory-costing";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 // ── GET: List landed cost allocations ───────────────────────────────────────────
 
@@ -104,14 +105,23 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   });
 
   // Create allocation with lines in a transaction
+  // P5-C1: resolve real Company.id (cuid) from slug BEFORE the transaction
+  // (does not need to be inside the tx). Was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const allocation = await db.$transaction(async (tx) => {
     const created = await tx.landedCostAllocation.create({
       data: {
         companySlug: data.companySlug,
         // Note (P2): LandedCostAllocation.purchaseInvoiceId is String?;
         // convert number input. Also `amount`, `currency`, `costType`,
-        // `allocationMethod`, `companyId` are required — legacy `db: any` hid this.
-        companyId: "0",
+        // `allocationMethod` are required — legacy `db: any` hid this.
+        companyId,
         purchaseInvoiceId: String(data.purchaseInvoiceId),
         costType: data.costType,
         amount: totalCostStr,

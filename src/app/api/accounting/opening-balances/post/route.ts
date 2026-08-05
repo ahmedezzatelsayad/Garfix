@@ -14,6 +14,7 @@ import { logAccountingChange } from "@/lib/accounting/accountant-collab";
 import { num } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 const PostSchema = z.object({ companySlug: z.string().min(1) });
 
@@ -86,15 +87,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const jeDate = draftEntries[0].asOfDate;
 
+  // P5-C1: resolve real Company.id (cuid) from slug BEFORE the transaction
+  // (does not need to be inside the tx). Was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   // Create JE + update opening balance entries in a transaction
   const result = await db.$transaction(async (tx) => {
     const je = await tx.journalEntry.create({
       data: {
         companySlug: data.companySlug,
-        // Note (P2): `number` and `companyId` are required String
-        // fields without defaults. Legacy `db: any` hid these missing fields.
+        // Note (P2): `number` is a required String field without a default.
+        // Legacy `db: any` hid this. Generate a unique number from timestamp.
         number: `OB-${Date.now()}`,
-        companyId: "0",
+        companyId,
         date: jeDate ?? new Date().toISOString(),
         description: "ترحيل أرصدة افتتاحية",
         reference: "OB-OPENING",

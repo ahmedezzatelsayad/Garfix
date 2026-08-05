@@ -16,15 +16,18 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Founder only" }, { status: 403 });
   }
 
-  const [tenantsCount, usersCount, invoicesCount, ticketsOpen] = await Promise.all([
+  const [tenantsCount, usersCount, ticketsOpen] = await Promise.all([
     db.company.count(),
     db.appUser.count(),
-    db.invoice.count(),
     db.supportTicket.count({ where: { status: "open" } }),
   ]);
 
-  const revenueRows = await db.invoice.findMany({ select: { total: true } });
-  const totalRevenue = revenueRows.reduce((s, r) => s + num(r.total, 3), 0);
+  // M3 FIX: single aggregate query replaces findMany+reduce (and the
+  // separate db.invoice.count() that used to live in Promise.all).
+  const revenueAgg = await db.invoice.aggregate({ _sum: { total: true }, _count: true });
+  const totalRevenue = num(revenueAgg._sum.total ?? 0, 3);
+  const totalInvoices = revenueAgg._count;
+  const invoicesCount = totalInvoices;
 
   // Plan distribution
   const planCounts = await db.company.groupBy({ by: ["plan"], _count: true });

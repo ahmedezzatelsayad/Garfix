@@ -13,6 +13,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -92,12 +93,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("Payable PDCs should have a supplierId, not a clientId", 400);
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const check = await db.postDatedCheck.create({
     data: {
       companySlug: data.companySlug,
-      // Note (P2): `companyId` and `date` are required String fields
-      // without defaults. Legacy `db: any` hid these. Use placeholders.
-      companyId: "0",
+      // Note (P2): `date` is a required String field without a default.
+      // Legacy `db: any` hid this. Use dueDate as the check date.
+      companyId,
       date: data.dueDate,
       checkNumber: data.checkNumber,
       bankName: data.bankName,

@@ -13,6 +13,7 @@ import { num, toNum } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 const BudgetEntrySchema = z.object({
   accountId: entityId,
@@ -118,6 +119,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug BEFORE the transaction
+  // (does not need to be inside the tx). Was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   // Create/update budget entries
   const createdBudgets = await db.$transaction(async (tx) => {
     const results: Array<Record<string, unknown>> = [];
@@ -158,11 +168,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         const created = await tx.budget.create({
           data: {
             companySlug: data.companySlug,
-            // Note (P2): `name` and `companyId` are required String
-            // fields without defaults. Legacy `db: any` hid these missing
-            // fields. Placeholder name from periodName; companyId "0".
+            // Note (P2): `name` is a required String field without a default.
+            // Legacy `db: any` hid this. Placeholder name from periodName.
             name: data.periodName,
-            companyId: "0",
+            companyId,
             fiscalYear: data.fiscalYear,
             period: data.period,
             periodName: data.periodName,

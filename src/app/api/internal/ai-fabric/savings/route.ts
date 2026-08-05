@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { calculateSavedCost, getPlatformSavings, getCascadeBreakdown } from "@/lib/ai-fabric/cost-optimizer";
 import { requireFounder } from "@/lib/middleware";
 
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
       breakdown: savings.breakdown,
     });
   } catch (err) {
-    console.error("[ai-fabric/savings] error:", err);
+    logger.error("[savings] compute failed", { err: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: "Failed to compute savings" },
       { status: 500 },

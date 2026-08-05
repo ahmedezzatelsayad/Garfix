@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const costCenter = await db.costCenter.create({
     data: {
       companySlug: data.companySlug,
@@ -89,9 +98,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       nameAr: data.nameAr,
       nameEn: data.nameEn || null,
       parentId: data.parentId || null,
-      // Note (P2): companyId is required (String FK) but legacy route
-      // never had a real one — `db: any` hid this. Placeholder "0".
-      companyId: "0",
+      companyId,
     },
   });
 

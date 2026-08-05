@@ -404,6 +404,9 @@ model JournalEntry {
   @@index([companySlug, deletedAt])
   // P1-3: date index — dashboard/aging queries filter by date range
   @@index([date])
+  // P5-M1: composite (companySlug, date) backs the tenant+time-range list
+  // ordering used by GET /api/journal-entries and aging reports.
+  @@index([companySlug, date])
   @@map("journal_entries")
 }
 
@@ -683,6 +686,9 @@ model BankTransaction {
   // P1-3: date index — bank statement import + reconciliation queries
   // filter by date range
   @@index([date])
+  // P5-M1: composite (companySlug, date) backs the reconciliation +
+  // bank-import date-range list queries.
+  @@index([companySlug, date])
   @@map("bank_transactions")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
@@ -1204,6 +1210,10 @@ model Invoice {
   // and orders by createdAt DESC. Add composite + date indexes.
   @@index([companySlug, deletedAt])
   @@index([status, createdAt])
+  // P5-M1: composite (companySlug, createdAt) backs the tenant+time-range list
+  // ordering used by GET /api/invoices. Without it Postgres picked the
+  // single-column companySlug index and sorted in memory.
+  @@index([companySlug, createdAt])
   @@map("invoices")
 }
 
@@ -1386,6 +1396,9 @@ model PaymentTransaction {
   @@index([companyId])
   @@index([provider, providerPaymentId])
   @@index([status])
+  // P5-M1: composite (companySlug, createdAt) backs the tenant+time-range
+  // list ordering used by GET /api/payments.
+  @@index([companySlug, createdAt])
   @@map("payment_transactions")
 }
 
@@ -1853,6 +1866,9 @@ model AuditLog {
   @@index([entity, entityId])
   // P1-3: userUid index — "show me all actions by user X" queries
   @@index([userUid])
+  // P5-M1: composite (companySlug, createdAt) backs the tenant+time-range
+  // list ordering used by GET /api/audit-logs.
+  @@index([companySlug, createdAt])
   @@map("audit_logs")
 }
 

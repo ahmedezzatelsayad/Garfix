@@ -13,6 +13,7 @@ import { num } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -151,16 +152,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // Use the asOfDate from the first entry as the JE date
     const jeDate = draftEntries[0].asOfDate;
 
+    // P5-C1: resolve real Company.id (cuid) from slug BEFORE the transaction
+    // (does not need to be inside the tx). Was `companyId: "0"` placeholder.
+    let companyId: string;
+    try {
+      companyId = await resolveCompanyId(data.companySlug);
+    } catch {
+      return apiError("Invalid company", 400);
+    }
+
     // Create JE + update opening balance entries in a transaction
     const result = await db.$transaction(async (tx) => {
       // Create the journal entry
       const je = await tx.journalEntry.create({
         data: {
           companySlug: data.companySlug,
-          // Note (P2): `number` and `companyId` are required String
-          // fields without defaults. Legacy `db: any` hid these.
+          // Note (P2): `number` is a required String field without a default.
+          // Legacy `db: any` hid this. Generate a unique number from timestamp.
           number: `OB-${Date.now()}`,
-          companyId: "0",
+          companyId,
           date: jeDate ?? new Date().toISOString(),
           description: "ترحيل أرصدة افتتاحية",
           reference: "OB-OPENING",
@@ -239,6 +249,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError(`Accounts not found or not active: ${missing.join(", ")}`, 400);
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   // Create opening balance entries.
   // Note (P2): schema unique is `accountId_periodId` — the legacy
   // `companySlug_accountId_asOfDate` composite doesn't exist. The previous
@@ -250,13 +268,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     journalEntryId: string | null; account: { id: string; code: string; nameAr: string | null; type: string };
   }> = [];
   for (const entry of data.entries) {
-    // Note (P2): `periodId` and `companyId` are required String
-    // fields without defaults. Legacy `db: any` hid these. Use placeholder
-    // periodId/companyId — should be sourced from FiscalPeriod lookup.
+    // Note (P2): `periodId` is a required String field without a default.
+    // Legacy `db: any` hid this. Use placeholder periodId — should be sourced
+    // from FiscalPeriod lookup. companyId is now resolved from slug (P5-C1).
     const ob = await db.openingBalanceEntry.create({
       data: {
         companySlug: data.companySlug,
-        companyId: "0",
+        companyId,
         periodId: "0",
         accountId: entry.accountId,
         amount: num(entry.amount, 3).toFixed(3),

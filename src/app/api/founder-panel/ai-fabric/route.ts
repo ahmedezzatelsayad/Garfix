@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { requireFounder } from "@/lib/middleware";
+import { logger } from "@/lib/logger";
 
 export interface AIFabricData {
   companiesCount: number;
@@ -105,7 +106,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>>
       periodEnd: periodEnd.toISOString(),
     });
   } catch (error) {
-    console.error("[ai-fabric-api] Error:", error);
+    logger.error("[ai-fabric] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch AI Fabric data" } as unknown as AIFabricData,
       { status: 500 }

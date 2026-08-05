@@ -120,10 +120,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     },
   });
 
-  // Mark matched bank transactions as reconciled
-  for (const match of reconResult.matchedItems) {
-    await db.bankTransaction.update({
-      where: { id: String(match.bankTransactionId) },
+  // Mark matched bank transactions as reconciled (single statement, no N+1)
+  const matchedBankTxnIds = reconResult.matchedItems.map((m) => m.bankTransactionId);
+  if (matchedBankTxnIds.length > 0) {
+    await db.bankTransaction.updateMany({
+      where: { id: { in: matchedBankTxnIds } },
       data: {
         isReconciled: true,
         reconciledWith: "journal_entry",

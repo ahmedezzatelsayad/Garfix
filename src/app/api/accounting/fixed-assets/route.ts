@@ -12,6 +12,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -132,16 +133,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const salvageValueStr = num(data.salvageValue, 3).toFixed(3);
   const decliningRateStr = num(data.decliningRate, 3).toFixed(3);
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const asset = await db.fixedAsset.create({
     data: {
       companySlug: data.companySlug,
       // Note (P2): `name`, `code`, `purchaseDate`, `purchasePrice`,
-      // `currentValue`, `companyId`, `isActive` are required fields without
+      // `currentValue`, `isActive` are required fields without
       // defaults. Legacy `db: any` hid these. Use nameAr for name, generate
       // code from name, derive purchaseDate/price/currentValue from P2 fields.
       name: data.nameAr,
       code: data.assetTag || data.nameAr,
-      companyId: "0",
+      companyId,
       purchaseDate: new Date(data.acquisitionDate),
       purchasePrice: acquisitionCostStr,
       currentValue: acquisitionCostStr,

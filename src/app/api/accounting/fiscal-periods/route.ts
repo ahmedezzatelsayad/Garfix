@@ -13,6 +13,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { closeFiscalPeriod, reopenFiscalPeriod } from "@/lib/accounting/period-close";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("End date must be after start date", 400);
   }
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const period = await db.fiscalPeriod.create({
     data: {
       companySlug: data.companySlug,
@@ -106,9 +115,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       fiscalYear: data.fiscalYear,
       periodType: data.periodType,
       status: "open",
-      // Note (P2): companyId is required (String FK) but legacy route
-      // never had a real one — `db: any` hid this. Placeholder "0".
-      companyId: "0",
+      companyId,
     },
   });
 

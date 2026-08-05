@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { resolveCompanyId } from "@/lib/company-resolver";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
@@ -57,15 +58,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
   const user = access.user;
 
+  // P5-C1: resolve real Company.id (cuid) from slug — was `companyId: "0"` placeholder.
+  let companyId: string;
+  try {
+    companyId = await resolveCompanyId(data.companySlug);
+  } catch {
+    return apiError("Invalid company", 400);
+  }
+
   const account = await db.account.create({
     data: {
       companySlug: data.companySlug, code: data.code, name: data.nameAr ?? '', nameAr: data.nameAr, nameEn: data.nameEn || null,
       type: data.type, parentId: data.parentId || null,
       balance: num(data.balance, 3).toFixed(3),
-      // Note (P2): companyId is required (String FK) but the legacy route
-      // never had a real one — the previous `db: any` hid this bug. Use "0" as
-      // a placeholder so types pass; callers must pass a valid companyId.
-      companyId: "0",
+      companyId,
     },
   });
   await logAudit({

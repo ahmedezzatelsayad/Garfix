@@ -12,6 +12,7 @@ import { requirePermission } from "@/lib/middleware";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { DEFAULT_PLANS } from "@/lib/plans";
+import { logger } from "@/lib/logger";
 
 const CreateSchema = z.object({
   name: z.string().min(1, "اسم الشركة مطلوب"),
@@ -215,10 +216,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       },
     });
     
-    console.log(`[companies] Auto-created per-feature AI config for company ${company.id} (${company.name})`);
-    console.log(`[companies] → Ready for: Chat, Invoice, Parse, Memory keys`);
+    logger.info("[companies] Auto-created per-feature AI config", { companyId: company.id, companyName: company.name });
+    logger.info("[companies] Ready for: Chat, Invoice, Parse, Memory keys");
   } catch (aiConfigError) {
-    console.error('[companies] Failed to auto-create AI config slot:', aiConfigError);
+    logger.error("[companies] Failed to auto-create AI config slot", { err: aiConfigError instanceof Error ? aiConfigError.message : String(aiConfigError) });
   }
 
   // Auto-assign the new company to the creator AND promote them to admin if
@@ -288,7 +289,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   } catch (err) {
     // Best-effort — the company was created, just don't refresh the session.
-    console.error("[companies] failed to refresh session after create:", err);
+    logger.error("[companies] failed to refresh session after create", { err: err instanceof Error ? err.message : String(err) });
   }
   return response;
 });

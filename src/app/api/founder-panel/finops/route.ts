@@ -9,6 +9,7 @@ import { dbTyped as db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { getPlatformProfit } from "@/lib/ai-fabric/profit-engine";
 import { requireFounder } from "@/lib/middleware";
+import { logger } from "@/lib/logger";
 
 const PLAN_REVENUE_MONTHLY_USD: Record<string, number> = {
   trial: 0,
@@ -259,7 +260,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData>> {
       daysInMonth,
     });
   } catch (error) {
-    console.error("[finops-api] Error:", error);
+    logger.error("[finops] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to fetch FinOps data" } as unknown as FinOpsData,
       { status: 500 }
