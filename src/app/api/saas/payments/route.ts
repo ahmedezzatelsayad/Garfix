@@ -3,7 +3,7 @@
  * GET — list payment transactions (founder: all; admin: scoped to assigned companies)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasUnrestrictedScope } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api";
 import { num } from "@/lib/money";

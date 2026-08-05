@@ -17,7 +17,7 @@
 'use node';
 
 import crypto from 'node:crypto';
-import { db } from '@/lib/db';
+import { dbTyped as db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getIntegrationConfig } from '@/lib/integrations/registry';
 import { safeCompare } from '@/lib/cryptoVault';

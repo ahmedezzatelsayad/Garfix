@@ -7,7 +7,7 @@
  * to ensure atomicity (JE creation + transaction update).
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -22,7 +22,7 @@ const SettleSchema = z.object({
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const transactionId = parseInt(id, 10);
+  const transactionId = id;
 
   const body = await parseJsonBody(req);
   const parsed = SettleSchema.safeParse(body);
@@ -110,17 +110,26 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     orderBy: { code: "asc" },
   }) || payableAccountTo;
 
+  // P2-Sprint-4: look up company IDs (JournalEntry.companyId is required)
+  const companyFrom = await db.company.findUnique({ where: { slug: existing.companySlugFrom } });
+  const companyTo = await db.company.findUnique({ where: { slug: existing.companySlugTo } });
+  if (!companyFrom || !companyTo) {
+    return apiError("Could not resolve company records for inter-company settlement", 400);
+  }
+
   // Perform all operations in a single $transaction for atomicity
   const result = await db.$transaction(async (tx) => {
     // Create JE for the "from" company
     const jeFrom = await tx.journalEntry.create({
       data: {
+        number: `JE-IC-FROM-${transactionId}-${Date.now()}`,
+        companyId: companyFrom.id,
         companySlug: existing.companySlugFrom,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(),
         description: `Inter-company settlement with ${existing.companySlugTo} — transaction #${transactionId}`,
         status: "posted",
         sourceType: "inter_company_settlement",
-        sourceId: String(transactionId),
+        sourceId: transactionId,
         createdBy: user.email,
         lines: {
           create: [
@@ -144,12 +153,14 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     // Create JE for the "to" company
     const jeTo = await tx.journalEntry.create({
       data: {
+        number: `JE-IC-TO-${transactionId}-${Date.now()}`,
+        companyId: companyTo.id,
         companySlug: existing.companySlugTo,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(),
         description: `Inter-company settlement with ${existing.companySlugFrom} — transaction #${transactionId}`,
         status: "posted",
         sourceType: "inter_company_settlement",
-        sourceId: String(transactionId),
+        sourceId: transactionId,
         createdBy: user.email,
         lines: {
           create: [

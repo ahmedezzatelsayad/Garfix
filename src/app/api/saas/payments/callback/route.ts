@@ -7,7 +7,7 @@
  * PaymentTransaction record, and redirect the user to the app.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { getIntegrationConfig } from "@/lib/integrations/registry";
 import { logger } from "@/lib/logger";
 

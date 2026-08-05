@@ -86,6 +86,8 @@ model Company {
   whatsappAppSecretEnc    String?
   whatsappPhoneNumberId   String?
   whatsappEnabled         Boolean   @default(false)
+  // P2-Sprint-4: subscription billing cycle end (used by subscription-engine)
+  currentBillingCycleEnd  DateTime?
   deletedAt               DateTime? // P0-3: Soft Delete
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
@@ -360,6 +362,10 @@ model JournalEntry {
   companySlug String             @default("default")
   createdBy   String?
   version     Int                @default(0) // P0-8: Optimistic Locking
+  // P2-Sprint-4: sourceType/sourceId exist in DB migration but were missing from schema.
+  // Used by inter-company settle route and audit trails to track what created the entry.
+  sourceType  String? // e.g. "inter_company", "invoice", "payment", "manual"
+  sourceId    String? // P2-Sprint-4: changed from Int? to String? — polymorphic FK to source record (cuid)
   deletedAt   DateTime? // P0-3: Soft Delete
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -402,9 +408,12 @@ model JournalEntryLine {
   @@map("journal_entry_lines")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  entryId                      Int
-  createdAt                    DateTime
-  updatedAt                    DateTime
+  // P2-Sprint-4: made entryId/createdAt/updatedAt optional — many call sites
+  // create JournalEntryLine without these (they're auto-managed by the DB
+  // via defaults or populated later by audit hooks).
+  entryId                      Int?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 }
 
 // ─── Payment Voucher (matches db.paymentVoucher) ───
@@ -859,27 +868,31 @@ model FxRevaluation {
 
 // ─── Inter-Company Transaction (matches db.interCompanyTransaction) ───
 
+// P2-Sprint-4: aligned with actual migration SQL (20260723000000_add_accounting_module)
+// + code usage in consolidation.ts and inter-company/[id]/settle/route.ts.
+// Previous schema had fromCompanyId/toCompanyId which don't exist in DB;
+// the real columns are companySlugFrom/companySlugTo (matching the code).
+// Also added journalEntryIdFrom/journalEntryIdTo which the DB has but
+// schema was missing.
 model InterCompanyTransaction {
-  id            String   @id @default(cuid())
-  type          String // transfer, invoice, payment
-  amount        Decimal
-  fromCompanyId String
-  toCompanyId   String
-  status        String   @default("draft") // draft, posted, settled
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  type                String // transfer, invoice, payment
+  amount              Decimal  @default(0)
+  currency            String   @default("USD")
+  companySlugFrom     String
+  companySlugTo       String
+  status              String   @default("pending") // pending, posted, settled
+  description         String?
+  journalEntryIdFrom  String? // P2-Sprint-4: changed from Int? to String? — references JournalEntry.id (cuid)
+  journalEntryIdTo    String? // P2-Sprint-4: changed from Int? to String? — references JournalEntry.id (cuid)
+  settledAt           DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
+  @@index([companySlugFrom])
+  @@index([companySlugTo])
+  @@index([companySlugFrom, companySlugTo, status])
   @@map("inter_company_transactions")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  companySlug                  String
-  fromCompanySlug              String
-  toCompanySlug                String
-  currency                     String
-  reference                    String?
-  settledAt                    DateTime?
-  journalEntryId               Int?
 }
 
 // ─── Landed Cost Allocation (matches db.landedCostAllocation/landedCostLine) ───
@@ -1244,41 +1257,68 @@ model StockMovement {
 
 // ─── Payment Transaction (matches db.paymentTransaction) ───
 
+// P2-Sprint-4: aligned with code usage in subscription-engine.ts + payment routes.
+// Previous schema was missing: plan, provider, currency, providerPaymentId,
+// providerOrderId, providerEventId, checkoutUrl, failureReason, metadata, createdBy.
+// These are all used by the MyFatoorah/Paymob payment flow but were never declared,
+// meaning every PaymentTransaction.create with these fields would throw at runtime.
 model PaymentTransaction {
-  id          String   @id @default(cuid())
-  invoiceId   Int?
-  amount      Decimal
-  method      String // cash, bank_transfer, card, online
-  reference   String?
-  date        DateTime @default(now())
-  status      String   @default("completed") // completed, pending, failed, reversed
-  companySlug String   @default("default")
-  companyId   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
+  id                String   @id @default(cuid())
+  invoiceId         Int?
+  amount            Decimal
+  method            String // cash, bank_transfer, card, online
+  reference         String?
+  date              DateTime @default(now())
+  status            String   @default("completed") // completed, pending, failed, reversed
+  companySlug       String   @default("default")
+  companyId         String?
+  // P2-Sprint-4: subscription billing + provider tracking fields
+  plan              String?
+  provider          String?
+  currency          String   @default("USD")
+  providerPaymentId String?
+  providerOrderId   String?
+  providerEventId   String?
+  checkoutUrl       String?
+  failureReason     String?
+  metadata          String? // JSON-encoded
+  createdBy         String?
+  deletedAt         DateTime? // P0-3: Soft Delete
+  deletedBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  invoice           Invoice? @relation(fields: [invoiceId], references: [id])
 
   @@index([companySlug])
   @@index([companyId])
+  @@index([provider, providerPaymentId])
+  @@index([status])
   @@map("payment_transactions")
 }
 
 // ─── Refund Transaction (matches db.refundTransaction) ───
 
+// P2-Sprint-4: aligned with code usage in myfatoorah-refund.ts.
+// Previous schema was missing: paymentTransactionId, providerRefundId,
+// processedAt — all used by the refund flow but never declared.
 model RefundTransaction {
-  id                    String   @id @default(cuid())
-  originalTransactionId String?
-  amount                Decimal
-  reason                String?
-  date                  DateTime @default(now())
-  status                String   @default("draft") // draft, approved, processed
-  companySlug           String   @default("default")
-  companyId             String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  originalTransactionId  String?
+  paymentTransactionId   String? // P2-Sprint-4: link to PaymentTransaction
+  amount                 Decimal  @default(0)
+  reason                 String?
+  status                 String   @default("pending") // pending, approved, processed, failed
+  providerRefundId       String? // P2-Sprint-4: provider-side refund ID
+  processedAt            DateTime?
+  companySlug            String   @default("default")
+  companyId              String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@index([companySlug])
   @@index([companyId])
+  @@index([paymentTransactionId])
+  @@map("refund_transactions")
 }
 
 // ─── Post-Dated Check (matches db.postDatedCheck) ───
@@ -2323,17 +2363,34 @@ model SetupWizardProgress {
 
 // ─── Subscription Schedule (matches db.subscriptionSchedule) ───
 
+// P2-Sprint-4: aligned with actual migration SQL (20260729000000_add_missing_tables)
+// plus dunning fields added in 20260805020000_add_subscription_dunning_fields.
+// Previous schema had `id Int @default(autoincrement())`, `startDate`, `endDate`,
+// `autoRenew` — none of which exist in the actual `subscription_schedules` table.
 model SubscriptionSchedule {
-  id          Int       @id @default(autoincrement())
-  companySlug String
-  plan        String
-  startDate   DateTime
-  endDate     DateTime?
-  autoRenew   Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String   @id @default(cuid())
+  companySlug     String
+  plan            String
+  amount          String   @default("0")
+  currency        String   @default("USD")
+  billingCycle    String   @default("monthly") // monthly | yearly
+  nextBillingDate DateTime
+  status          String   @default("active") // active | past_due | cancelled | downgraded
+  // P2-Sprint-4: dunning + provider tracking (added via migration)
+  provider        String?  // myfatoorah | paymob
+  paymentMethod   String?
+  retryCount      Int      @default(0)
+  maxRetries      Int      @default(3)
+  downgradePlan   String   @default("trial")
+  cycleStart      DateTime?
+  cycleEnd        DateTime?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([companySlug])
+  @@index([status, nextBillingDate])
+  @@map("subscription_schedules")
 }
 
 // ─── WPS File (matches db.wpsFile) ───

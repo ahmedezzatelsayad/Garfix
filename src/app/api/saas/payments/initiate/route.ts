@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, apiError } from "@/lib/api";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { getIntegrationConfig } from "@/lib/integrations/registry";
 import { logger } from "@/lib/logger";
 import { getCountryPricing, getCountryCurrency } from "@/lib/billing/pricing";
