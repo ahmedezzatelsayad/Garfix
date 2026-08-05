@@ -276,3 +276,120 @@ describe("P2-Sprint-3 — additional file migrations post-reconciliation", () =>
     });
   }
 });
+
+// ─── P2-Sprint-4 — subscription-engine + payment + inter-company migrations ───
+describe("P2-Sprint-4 — subscription-engine + payment + inter-company migrations", () => {
+  // These files were migrated after fixing the SubscriptionSchedule,
+  // PaymentTransaction, RefundTransaction, and InterCompanyTransaction
+  // schemas to match the actual DB + code expectations.
+
+  const migratedFiles = [
+    "src/lib/billing/subscription-engine.ts",
+    "src/app/api/saas/payments/callback/route.ts",
+    "src/app/api/saas/payments/initiate/route.ts",
+    "src/app/api/saas/payments/route.ts",
+    "src/lib/e-invoicing/retention.ts",
+    "src/app/api/accounting/inter-company/route.ts",
+    "src/app/api/accounting/inter-company/[id]/settle/route.ts",
+    "src/lib/integrations/myfatoorah-webhook.ts",
+  ];
+
+  for (const file of migratedFiles) {
+    it(`${file} imports dbTyped (not the untyped db)`, () => {
+      const abs = resolve(import.meta.dir, "../../../", file);
+      const src = readFileSync(abs, "utf8");
+      const hasDbTyped =
+        src.includes('import { dbTyped as db } from "@/lib/db"') ||
+        src.includes("import { dbTyped as db } from '@/lib/db'");
+      expect(hasDbTyped).toBe(true);
+    });
+  }
+
+  // ── Schema alignment regression tests ──
+
+  it("SubscriptionSchedule schema has billingCycle (not billingPeriod)", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    expect(schema).toContain("billingCycle");
+    expect(schema).not.toContain("billingPeriod =");
+  });
+
+  it("SubscriptionSchedule schema has nextBillingDate (not nextChargeDate)", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    expect(schema).toContain("nextBillingDate");
+  });
+
+  it("SubscriptionSchedule schema has dunning fields (retryCount, maxRetries, downgradePlan)", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    const ssBlock = schema.match(/model SubscriptionSchedule \{[\s\S]*?\}/)?.[0] || "";
+    expect(ssBlock).toContain("retryCount");
+    expect(ssBlock).toContain("maxRetries");
+    expect(ssBlock).toContain("downgradePlan");
+    expect(ssBlock).toContain("provider");
+    expect(ssBlock).toContain("paymentMethod");
+  });
+
+  it("PaymentTransaction schema has provider tracking fields", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    const ptBlock = schema.match(/model PaymentTransaction \{[\s\S]*?\}/)?.[0] || "";
+    expect(ptBlock).toContain("providerPaymentId");
+    expect(ptBlock).toContain("providerOrderId");
+    expect(ptBlock).toContain("checkoutUrl");
+    expect(ptBlock).toContain("failureReason");
+    expect(ptBlock).toContain("metadata");
+  });
+
+  it("RefundTransaction schema has paymentTransactionId + providerRefundId", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    const rtBlock = schema.match(/model RefundTransaction \{[\s\S]*?\}/)?.[0] || "";
+    expect(rtBlock).toContain("paymentTransactionId");
+    expect(rtBlock).toContain("providerRefundId");
+    expect(rtBlock).toContain("processedAt");
+  });
+
+  it("InterCompanyTransaction schema uses companySlugFrom/To (not fromCompanyId/toCompanyId)", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    const ictBlock = schema.match(/model InterCompanyTransaction \{[\s\S]*?\}/)?.[0] || "";
+    expect(ictBlock).toContain("companySlugFrom");
+    expect(ictBlock).toContain("companySlugTo");
+    expect(ictBlock).not.toContain("fromCompanyId");
+    expect(ictBlock).not.toContain("toCompanyId");
+  });
+
+  it("JournalEntry schema has sourceType + sourceId (String, not Int)", () => {
+    const schema = readFileSync(resolve(import.meta.dir, "../../../prisma/schema.prisma"), "utf8");
+    const jeBlock = schema.match(/model JournalEntry \{[\s\S]*?\}/)?.[0] || "";
+    expect(jeBlock).toContain("sourceType");
+    expect(jeBlock).toContain("sourceId");
+    // sourceId should be String? (not Int?) — cuid-based polymorphic FK
+    expect(jeBlock).toMatch(/sourceId\s+String\?/);
+  });
+
+  it("subscription-engine.ts uses billingCycle (DB field name) not billingPeriod in Prisma calls", () => {
+    const src = readSrc("billing/subscription-engine.ts");
+    // In create/update data, the code should use billingCycle (the DB column name)
+    expect(src).toContain("billingCycle: billingPeriod");
+    expect(src).toContain("nextBillingDate");
+    // The Prisma field 'billingCycle' should appear in create/update data blocks.
+    // The old code used 'billingPeriod' as the Prisma field name (which doesn't exist in DB).
+    // Now only the local variable / interface property keeps the name 'billingPeriod'.
+    expect(src).toContain("billingCycle: schedule.billingCycle");
+  });
+
+  it("inter-company settle route does NOT parseInt the transactionId (it's a cuid string)", () => {
+    const src = readSrc("../app/api/accounting/inter-company/[id]/settle/route.ts");
+    // The old code did `parseInt(id, 10)` which would break with cuid string IDs
+    expect(src).not.toContain("parseInt(id, 10)");
+  });
+
+  it("migration file 20260805020000_add_subscription_dunning_fields exists", () => {
+    const migration = readFileSync(
+      resolve(import.meta.dir, "../../../prisma/migrations/20260805020000_add_subscription_dunning_fields/migration.sql"),
+      "utf8"
+    );
+    expect(migration).toContain("subscription_schedules");
+    expect(migration).toContain("payment_transactions");
+    expect(migration).toContain("refund_transactions");
+    expect(migration).toContain("inter_company_transactions");
+    expect(migration).toContain("currentBillingCycleEnd");
+  });
+});

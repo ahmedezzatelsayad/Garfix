@@ -12,7 +12,7 @@
  * Fines up to 10,000 KWD can be imposed for violating retention requirements.
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { isKuwait, getRetentionYears, getDecreeRef } from "@/lib/gulfConfig";
 

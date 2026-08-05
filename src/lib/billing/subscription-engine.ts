@@ -22,7 +22,7 @@
  */
 'use node';
 
-import { db } from '@/lib/db';
+import { dbTyped as db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { enqueueBackground, QUEUE_NAMES } from '@/lib/queues';
 import { getIntegrationConfig } from '@/lib/integrations/registry';
@@ -63,7 +63,7 @@ const MAX_RETRIES = DUNNING_RETRY_INTERVALS_DAYS.length;
  */
 export async function createSubscription(input: CreateSubscriptionInput): Promise<{
   ok: boolean;
-  scheduleId?: number;
+  scheduleId?: string;
   error?: string;
 }> {
   const { companySlug, plan, billingPeriod, provider, paymentMethod, createdBy } = input;
@@ -101,13 +101,13 @@ export async function createSubscription(input: CreateSubscriptionInput): Promis
     data: {
       companySlug,
       plan,
-      billingPeriod,
+      billingCycle: billingPeriod,
       status: 'active',
       amount: String(amount),
       currency: pricing.currency,
       provider,
       paymentMethod,
-      nextChargeDate: now,
+      nextBillingDate: now,
       cycleStart,
       cycleEnd,
       maxRetries: MAX_RETRIES,
@@ -123,7 +123,7 @@ export async function createSubscription(input: CreateSubscriptionInput): Promis
     billingPeriod,
     amount,
     currency: pricing.currency,
-    nextChargeDate: schedule.nextChargeDate.toISOString(),
+    nextBillingDate: schedule.nextBillingDate.toISOString(),
   });
 
   // Update company billing cycle
@@ -156,7 +156,7 @@ export async function createSubscription(input: CreateSubscriptionInput): Promis
  *   3. On success: update schedule, advance nextChargeDate
  *   4. On failure: increment retryCount, schedule retry, or downgrade
  */
-export async function processScheduledCharge(scheduleId: number): Promise<{
+export async function processScheduledCharge(scheduleId: string): Promise<{
   ok: boolean;
   charged?: boolean;
   downgraded?: boolean;
@@ -191,23 +191,23 @@ export async function processScheduledCharge(scheduleId: number): Promise<{
     plan: schedule.plan,
     amount: schedule.amount.toString(),
     currency: schedule.currency,
-    provider: schedule.provider,
-    paymentMethod: schedule.paymentMethod,
-    billingPeriod: schedule.billingPeriod,
+    provider: schedule.provider ?? '',
+    paymentMethod: schedule.paymentMethod ?? '',
+    billingCycle: schedule.billingCycle,
   }, company);
 
   if (chargeResult.ok) {
     // ── Success: reset retry count, advance next charge date ──
     const now = new Date();
-    const nextChargeDate = computeCycleEnd(now, schedule.billingPeriod as BillingPeriod);
-    const cycleEnd = nextChargeDate;
+    const nextBillingDate = computeCycleEnd(now, schedule.billingCycle as BillingPeriod);
+    const cycleEnd = nextBillingDate;
 
     await db.subscriptionSchedule.update({
       where: { id: scheduleId },
       data: {
         status: 'active',
         retryCount: 0,
-        nextChargeDate,
+        nextBillingDate,
         cycleStart: now,
         cycleEnd,
       },
@@ -225,7 +225,7 @@ export async function processScheduledCharge(scheduleId: number): Promise<{
       scheduleId,
       companySlug: schedule.companySlug,
       txnId: chargeResult.txnId,
-      nextChargeDate: nextChargeDate.toISOString(),
+      nextBillingDate: nextBillingDate.toISOString(),
     });
 
     return { ok: true, charged: true };
@@ -278,7 +278,7 @@ export async function processScheduledCharge(scheduleId: number): Promise<{
     data: {
       status: 'past_due',
       retryCount: newRetryCount,
-      nextChargeDate: nextRetryDate,
+      nextBillingDate: nextRetryDate,
     },
   });
 
@@ -334,7 +334,7 @@ export async function cancelSubscription(
 export async function reactivateSubscription(
   companySlug: string,
   newPlan?: string,
-): Promise<{ ok: boolean; scheduleId?: number; error?: string }> {
+): Promise<{ ok: boolean; scheduleId?: string; error?: string }> {
   const cancelled = await db.subscriptionSchedule.findFirst({
     where: { companySlug, status: 'cancelled' },
   });
@@ -347,12 +347,12 @@ export async function reactivateSubscription(
       return { ok: false, error: 'باقة غير معروفة أو سعر غير متاح' };
     }
 
-    const amount = cancelled.billingPeriod === 'yearly'
+    const amount = cancelled.billingCycle === 'yearly'
       ? (countryPricing.priceMonthly * 12 * 0.8)
       : countryPricing.priceMonthly;
 
     const now = new Date();
-    const cycleEnd = computeCycleEnd(now, cancelled.billingPeriod as BillingPeriod);
+    const cycleEnd = computeCycleEnd(now, cancelled.billingCycle as BillingPeriod);
 
     await db.subscriptionSchedule.update({
       where: { id: cancelled.id },
@@ -361,7 +361,7 @@ export async function reactivateSubscription(
         plan,
         amount: String(amount),
         currency: countryPricing.currency,
-        nextChargeDate: now,
+        nextBillingDate: now,
         retryCount: 0,
         cycleStart: now,
         cycleEnd,
@@ -419,7 +419,7 @@ export async function reactivateSubscription(
  * Called by the scheduler tick on every run.
  */
 export async function findDueSchedules(): Promise<Array<{
-  id: number;
+  id: string;
   companySlug: string;
   plan: string;
   status: string;
@@ -428,7 +428,7 @@ export async function findDueSchedules(): Promise<Array<{
   const due = await db.subscriptionSchedule.findMany({
     where: {
       status: { in: ['active', 'past_due'] },
-      nextChargeDate: { lte: now },
+      nextBillingDate: { lte: now },
     },
     select: { id: true, companySlug: true, plan: true, status: true },
   });
@@ -462,14 +462,14 @@ async function getCompanyPricing(
  */
 async function initiateProviderCharge(
   schedule: {
-    id: number;
+    id: string;
     companySlug: string;
     plan: string;
     amount: string;
     currency: string;
     provider: string;
     paymentMethod: string;
-    billingPeriod: string;
+    billingCycle: string;
   },
   company: {
     slug: string;
@@ -478,7 +478,7 @@ async function initiateProviderCharge(
     myfatoorahCustomerId?: string | null;
     paymobCustomerId?: string | null;
   },
-): Promise<{ ok: boolean; txnId?: number; error?: string }> {
+): Promise<{ ok: boolean; txnId?: string; error?: string }> {
   const cfg = await getIntegrationConfig(schedule.provider);
   if (!cfg) {
     return { ok: false, error: `بوابة الدفع ${schedule.provider} غير مُهيّأة` };
@@ -495,7 +495,7 @@ async function initiateProviderCharge(
       currency: schedule.currency,
       status: 'pending',
       metadata: JSON.stringify({
-        billingPeriod: schedule.billingPeriod,
+        billingCycle: schedule.billingCycle,
         scheduleId: schedule.id,
         chargeType: 'recurring',
         initiatedAt: new Date().toISOString(),
@@ -556,7 +556,7 @@ async function initiateProviderCharge(
           CustomerReference: `sub-${schedule.id}`,
           InvoiceItems: [
             {
-              ItemName: `GARFIX ${schedule.plan} — ${schedule.billingPeriod === 'yearly' ? 'سنوي' : 'شهري'} (اشتراك متكرر)`,
+              ItemName: `GARFIX ${schedule.plan} — ${schedule.billingCycle === 'yearly' ? 'سنوي' : 'شهري'} (اشتراك متكرر)`,
               Quantity: 1,
               UnitPrice: parseFloat(schedule.amount),
             },
@@ -583,7 +583,7 @@ async function initiateProviderCharge(
           providerPaymentId: String(invoiceId || ''),
           checkoutUrl: paymentUrl || '',
           metadata: JSON.stringify({
-            billingPeriod: schedule.billingPeriod,
+            billingCycle: schedule.billingCycle,
             scheduleId: schedule.id,
             chargeType: 'recurring',
             paymentMethodId: methodId,
@@ -644,7 +644,7 @@ async function initiateProviderCharge(
             {
               name: `GARFIX ${schedule.plan} — recurring`,
               amount: Math.round(parseFloat(schedule.amount) * 100),
-              description: `اشتراك متكرر ${schedule.billingPeriod}`,
+              description: `اشتراك متكرر ${schedule.billingCycle}`,
               quantity: 1,
             },
           ],
@@ -704,7 +704,7 @@ async function initiateProviderCharge(
         data: {
           providerOrderId: String(orderId),
           metadata: JSON.stringify({
-            billingPeriod: schedule.billingPeriod,
+            billingCycle: schedule.billingCycle,
             scheduleId: schedule.id,
             chargeType: 'recurring',
             paymobOrderId: orderId,
