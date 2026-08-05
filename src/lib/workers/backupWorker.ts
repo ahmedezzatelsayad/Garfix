@@ -29,7 +29,7 @@
 import { logger } from "../logger";
 import { registerWorker, QUEUE_NAMES } from "../queues";
 import { runBackup, listBackups, getBackupDir } from "../backup";
-import { db } from "../db";
+import { dbTyped as db } from "../db";
 import fs from "node:fs/promises";
 import path from "node:path";
 

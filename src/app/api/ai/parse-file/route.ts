@@ -10,7 +10,7 @@
  * Returns: { orders: ParsedOrder[], meta: { ... } }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
@@ -221,14 +221,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug ?? "",
-        endpoint: "parse-file",
+        requestType: "parse-file",
         provider: "z-ai",
-        ordersCount: orders.length,
-        itemsCount,
-        processingMs,
-        inputTokens: aiResult.usage.prompt_tokens || 0,
-        outputTokens: aiResult.usage.completion_tokens || 0,
-        totalTokens: aiResult.usage.total_tokens || 0,
+        latencyMs: processingMs,
+        tokensUsed: aiResult.usage.total_tokens || 0,
         success: true,
       },
     });

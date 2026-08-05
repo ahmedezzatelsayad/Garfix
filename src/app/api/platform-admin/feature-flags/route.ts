@@ -5,7 +5,7 @@
  * POST — create a new flag (founder only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { logAdminAction } from "@/lib/audit";
 import { z } from "zod";
@@ -65,6 +65,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const flag = await db.featureFlag.create({
     data: {
+      // FeatureFlag.name is a required String column (no default); use label
+      // as the display name to satisfy the constraint.
+      name: data.label,
       key: data.key,
       label: data.label,
       description: data.description || null,

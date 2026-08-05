@@ -24,7 +24,7 @@
 import crypto from "node:crypto";
 import { encryptSecret, decryptSecret } from "@/lib/cryptoVault";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { ZATCA_AUTHORITY, ZATCA_PORTAL_BASE_URL } from "./zatca";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ export type ZatcaCertificateType = "csid" | "ccd";
 export type ZatcaCertificateStatus = "active" | "expired" | "revoked" | "pending";
 
 export interface ZatcaCertificateData {
-  id: number;
+  id: string;
   companySlug: string;
   certificateType: ZatcaCertificateType;
   serialNumber: string;
@@ -217,8 +217,8 @@ export async function retrieveZatcaCertificate(
 
   // Decrypt certificate data and private key
   try {
-    const certificateData = decryptSecret(certificate.certificateDataEnc);
-    const privateKeyData = decryptSecret(certificate.privateKeyDataEnc);
+    const certificateData = decryptSecret(certificate.certificateDataEnc ?? "");
+    const privateKeyData = decryptSecret(certificate.privateKeyDataEnc ?? "");
 
     return {
       id: certificate.id,
@@ -700,7 +700,7 @@ export async function renewZatcaCertificate(
  *
  * @param certificateId - Certificate ID
  */
-export async function revokeZatcaCertificate(certificateId: number): Promise<boolean> {
+export async function revokeZatcaCertificate(certificateId: string): Promise<boolean> {
   try {
     await db.zatcaCertificate.update({
       where: { id: certificateId },

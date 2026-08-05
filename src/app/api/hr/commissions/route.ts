@@ -3,7 +3,7 @@
  * GET / POST — commission records
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -13,12 +13,14 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
-  employeeId: z.number().int(),
-  date: z.string().min(1),
+  employeeId: z.string().min(1),
+  period: z.string().min(1),
+  date: z.string().min(1).optional(),
   type: z.enum(["sales", "referral", "target", "other"]).default("sales"),
   description: z.string().optional(),
   amount: z.union([z.number(), z.string()]).default(0),
   isPaid: z.boolean().default(false),
+  status: z.string().default("draft"),
 });
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -30,8 +32,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  if (companySlug) where.companySlug = companySlug;
-  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
+  // TODO(P2-Sprint5-D): HRCommission has no companySlug column — filter via employee relation.
+  if (companySlug) where.employee = { companySlug };
+  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
   const records = await db.hRCommission.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ commissions: records.map((r) => ({ ...r, amount: num(r.amount, 3) })) });
 });
@@ -49,9 +52,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const c = await db.hRCommission.create({
     data: {
-      companySlug: data.companySlug, employeeId: data.employeeId, date: data.date,
-      type: data.type, description: data.description || null,
-      amount: num(data.amount, 3).toFixed(3), isPaid: data.isPaid,
+      employeeId: data.employeeId,
+      amount: num(data.amount, 3).toFixed(3),
+      period: data.period,
+      status: data.isPaid ? "paid" : data.status,
+      // TODO(P2-Sprint5-D): HRCommission schema only exposes employeeId/amount/period/status —
+      // `companySlug`, `date`, `type`, `description`, `isPaid` are not columns; dropped.
     },
   });
   await logAudit({

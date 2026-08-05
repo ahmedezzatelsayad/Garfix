@@ -3,7 +3,7 @@
  * POST — cancel a post-dated check
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -17,8 +17,7 @@ const CancelSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const checkId = parseInt(id);
+  const { id: checkId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = CancelSchema.safeParse(body);

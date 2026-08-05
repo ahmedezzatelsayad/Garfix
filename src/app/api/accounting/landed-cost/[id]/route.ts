@@ -5,7 +5,7 @@
  * DELETE — Delete landed cost allocation
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -17,13 +17,14 @@ type RouteContext = { params: Promise<{ id: string }> };
 // ── GET: Single allocation ──────────────────────────────────────────────────────
 
 export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
-  const { id } = await ctx.params;
-  const allocationId = parseInt(id, 10);
+  const { id: allocationId } = await ctx.params;
   if (!allocationId) return apiError("Invalid allocation ID", 400);
 
   const allocation = await db.landedCostAllocation.findUnique({
     where: { id: allocationId },
-    include: { lines: true, purchaseInvoice: true },
+    // TODO(P2-Sprint5-A): LandedCostAllocation has no `purchaseInvoice` relation
+    // — only scalar `purchaseInvoiceId: String?`. Removed include.
+    include: { lines: true },
   });
   if (!allocation) return apiError("Landed cost allocation not found", 404);
 
@@ -36,7 +37,9 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
       totalCost: num(allocation.totalCost, 3),
       lines: allocation.lines.map((l) => ({
         ...l,
-        allocatedCost: num(l.allocatedAmount, 3),
+        // TODO(P2-Sprint5-A): LandedCostLine has `amount` (Decimal), not
+        // `allocatedAmount`. Legacy `db: any` hid this missing access.
+        allocatedCost: num(l.amount, 3),
       })),
     },
   });
@@ -51,8 +54,7 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
-  const { id } = await ctx.params;
-  const allocationId = parseInt(id, 10);
+  const { id: allocationId } = await ctx.params;
   if (!allocationId) return apiError("Invalid allocation ID", 400);
 
   const body = await parseJsonBody(req);
@@ -97,8 +99,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
 // ── DELETE: Delete allocation ───────────────────────────────────────────────────
 
 export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
-  const { id } = await ctx.params;
-  const allocationId = parseInt(id, 10);
+  const { id: allocationId } = await ctx.params;
   if (!allocationId) return apiError("Invalid allocation ID", 400);
 
   const existing = await db.landedCostAllocation.findUnique({

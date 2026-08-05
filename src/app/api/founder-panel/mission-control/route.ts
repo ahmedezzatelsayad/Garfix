@@ -34,7 +34,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { getActiveWorkerCounts } from "@/lib/ai-fabric/worker-scaler";
 import { requireFounder } from "@/lib/middleware";
@@ -200,11 +200,13 @@ export async function GET(req: NextRequest): Promise<NextResponse<MissionControl
         ? Math.round(((monthlyRevenue - infraCostMonthly - aiCostMonthly) / monthlyRevenue) * 1000) / 10
         : null;
 
-    // ── Source: db.aIModelRegistry WHERE isEnabled=true ──────────────────
+    // ── Source: db.aIModelRegistry WHERE isActive=true ──────────────────
+    // (Schema field is `isActive`, not `isEnabled` — the previous code used
+    // the wrong name and was masked by `db: any`.)
     let providerHealthCount = 0;
     try {
       providerHealthCount = await db.aIModelRegistry.count({
-        where: { isEnabled: true },
+        where: { isActive: true },
       });
     } catch {
       providerHealthCount = 0;

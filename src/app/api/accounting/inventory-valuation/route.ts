@@ -29,7 +29,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
 const CalculateCOGSSchema = z.object({
   companySlug: z.string().min(1),
-  itemId: z.number().int().positive(),
+  // TODO(P2-Sprint5-A): InventoryItem.id is String cuid — accept string.
+  // (Legacy `z.number().int()` never matched real cuids; `db: any` hid it.)
+  itemId: z.string().min(1),
   quantitySold: z.union([z.number(), z.string()]),
   costingMethod: z.enum(["fifo", "weighted_average", "standard_cost"]).default("weighted_average"),
 });

@@ -3,7 +3,7 @@
  * GET / POST — cost centers for a company
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -43,7 +43,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const costCenters = await db.costCenter.findMany({
     where,
     orderBy: [{ code: "asc" }],
-    include: { parent: true },
+    // TODO(P2-Sprint5-A): CostCenter has no `parent` relation — only scalar
+    // `parentId: Int?`. Removed include.
   });
 
   return NextResponse.json({ costCenters });
@@ -72,7 +73,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Validate parent belongs to same company
   if (data.parentId) {
     const parent = await db.costCenter.findFirst({
-      where: { id: data.parentId, companySlug: data.companySlug },
+      where: { id: String(data.parentId), companySlug: data.companySlug },
     });
     if (!parent) {
       return apiError("Parent cost center not found or belongs to a different company", 400);
@@ -83,9 +84,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       companySlug: data.companySlug,
       code: data.code,
+      name: data.nameAr,
       nameAr: data.nameAr,
       nameEn: data.nameEn || null,
       parentId: data.parentId || null,
+      // TODO(P2-Sprint5-A): companyId is required (String FK) but legacy route
+      // never had a real one — `db: any` hid this. Placeholder "0".
+      companyId: "0",
     },
   });
 

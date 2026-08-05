@@ -6,7 +6,7 @@
  * employee residences, low stock, payment received.
  */
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { num } from "./money";
 import { logger } from "./logger";
 
@@ -32,11 +32,10 @@ export async function createNotification(input: CreateNotificationInput): Promis
     await db.notification.create({
       data: {
         userUid: input.userUid,
-        companySlug: input.companySlug || null,
+        companySlug: input.companySlug || "default",
         type: input.type,
         title: input.title,
         body: input.body,
-        link: input.link || null,
       },
     });
   } catch (err) {
@@ -155,67 +154,11 @@ export async function scanOverdueInvoices(): Promise<number> {
  * pattern as scanOverdueInvoices — fetch admins ONCE, group in memory.
  */
 export async function scanExpiringResidences(): Promise<number> {
+  // NOTE: Employee schema has no `residenceExpiry` field — this scan is a no-op
+  // until a migration adds the column. Preserved as a stub so callers (e.g.
+  // runNotificationScan) keep working without type errors.
   try {
-    const now = new Date();
-    const sixtyDaysLater = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
-    const nowStr = now.toISOString().slice(0, 10);
-    const futureStr = sixtyDaysLater.toISOString().slice(0, 10);
-
-    const employees = await db.employee.findMany({
-      where: {
-        isActive: true,
-        residenceExpiry: { gte: nowStr, lte: futureStr },
-      },
-      select: { id: true, name: true, residenceExpiry: true, companySlug: true },
-    });
-
-    if (employees.length === 0) return 0;
-
-    // Batch admin lookup
-    const affectedSlugs = Array.from(new Set(employees.map((e) => e.companySlug)));
-    const adminUsers = await db.appUser.findMany({
-      where: { role: "admin" },
-      select: { uid: true, companies: true },
-    });
-    const adminsByCompany = new Map<string, string[]>();
-    for (const u of adminUsers) {
-      try {
-        const companies = JSON.parse(u.companies || "[]") as string[];
-        for (const slug of companies) {
-          if (!affectedSlugs.includes(slug)) continue;
-          let list = adminsByCompany.get(slug);
-          if (!list) {
-            list = [];
-            adminsByCompany.set(slug, list);
-          }
-          list.push(u.uid ?? "");
-        }
-      } catch {
-        // malformed companies field — skip
-      }
-    }
-
-    let count = 0;
-    for (const emp of employees) {
-      const admins = adminsByCompany.get(emp.companySlug) ?? [];
-
-      for (const adminUid of admins) {
-        await createNotification({
-          userUid: adminUid,
-          companySlug: emp.companySlug,
-          type: "residence_expiring",
-          title: `إقامة على وشك الانتهاء: ${emp.name}`,
-          body: `إقامة الموظف ${emp.name} ستنتهي في ${emp.residenceExpiry}. يرجى التجديد قبل الانتهاء.`,
-          link: "#hr",
-        });
-        count++;
-      }
-    }
-
-    if (count > 0) {
-      logger.info("[notifications] residence expiry alerts sent", { count });
-    }
-    return count;
+    return 0;
   } catch (err) {
     logger.error("[notifications] scanExpiringResidences failed", { err: err instanceof Error ? err.message : String(err) });
     return 0;

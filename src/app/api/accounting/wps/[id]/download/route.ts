@@ -3,7 +3,7 @@
  * GET — download a WPS file (returns SIF format data)
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, apiOk } from "@/lib/api";
@@ -18,7 +18,9 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const access = await requirePermissionForCompany(req, "finance_access", companySlug);
   if ("error" in access) return access.error;
 
-  const wpsFile = await db.wpsFile.findUnique({
+  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+  // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
+  const wpsFile = await db.wPSFile.findUnique({
     where: { id: parseInt(id, 10) },
   });
 

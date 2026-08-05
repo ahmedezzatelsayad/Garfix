@@ -1,7 +1,7 @@
 /**
  * audit.ts — Audit logging helper.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "./logger";
 import { appendToChain } from "./tamperAudit";
 
@@ -112,11 +112,13 @@ export async function logAdminAction(input: {
       data: {
         adminEmail: input.adminEmail,
         action: input.action,
-        targetType: input.targetType ?? null,
-        targetId: input.targetId ?? null,
-        changes: redactedChanges ? JSON.stringify(redactedChanges) : null,
-        ipAddress: input.ipAddress ?? null,
-        userAgent: input.userAgent ?? null,
+        targetSlug: input.targetId ?? null,
+        details: JSON.stringify({
+          targetType: input.targetType ?? null,
+          changes: redactedChanges,
+          ipAddress: input.ipAddress ?? null,
+          userAgent: input.userAgent ?? null,
+        }),
       },
     });
   } catch (err) {

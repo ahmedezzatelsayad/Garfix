@@ -99,7 +99,7 @@ export interface EInvoiceRouteResult {
 
 export interface EInvoiceSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: string;
   submissionId?: string;
   authority: EInvoiceAuthority;

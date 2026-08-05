@@ -3,7 +3,7 @@
  * GET / POST — attendance records
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -12,7 +12,7 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
-  employeeId: z.number().int(),
+  employeeId: z.string().min(1),
   date: z.string().min(1),
   status: z.enum(["present", "absent", "late", "half", "remote"]).default("present"),
   checkIn: z.string().optional(),
@@ -30,9 +30,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  if (companySlug) where.companySlug = companySlug;
-  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
-  if (employeeId) where.employeeId = parseInt(employeeId);
+  // TODO(P2-Sprint5-D): HRAttendance has no companySlug column — filter via employee relation.
+  if (companySlug) where.employee = { companySlug };
+  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
+  if (employeeId) where.employeeId = employeeId;
   const records = await db.hRAttendance.findMany({ where, orderBy: { date: "desc" }, take: 500 });
   return NextResponse.json({ attendance: records });
 });
@@ -50,13 +51,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const att = await db.hRAttendance.create({
     data: {
-      companySlug: data.companySlug,
       employeeId: data.employeeId,
-      date: data.date,
+      date: new Date(data.date),
       status: data.status,
-      checkIn: data.checkIn || null,
-      checkOut: data.checkOut || null,
-      notes: data.notes || null,
+      checkIn: data.checkIn ? new Date(data.checkIn) : null,
+      checkOut: data.checkOut ? new Date(data.checkOut) : null,
+      // TODO(P2-Sprint5-D): HRAttendance has no `companySlug` or `notes` columns — fields dropped.
     },
   });
   await logAudit({

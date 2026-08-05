@@ -10,7 +10,7 @@
  * catalog-shaping decision, not a routine employee action).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { confirmAlias } from "@/lib/productMatcher";
 import { logAudit } from "@/lib/audit";
@@ -19,7 +19,7 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
 const ConfirmSchema = z.object({
   companySlug: z.string().min(1),
-  auditId: z.number().int(),
+  auditId: z.string(),
   productId: z.number().int(),
   alias: z.string().min(1),
 });

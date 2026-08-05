@@ -4,7 +4,7 @@
  * PATCH — update WPS file status (submit/accept/reject)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -23,7 +23,9 @@ export async function GET(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    const wpsFile = await db.wpsFile.findUnique({
+    // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+    // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
+    const wpsFile = await db.wPSFile.findUnique({
       where: { id: parseInt(id, 10) },
     });
 
@@ -59,7 +61,7 @@ export async function PATCH(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.wpsFile.findUnique({
+    const existing = await db.wPSFile.findUnique({
       where: { id: wpsId },
     });
     if (!existing) return apiError("WPS file not found", 404);
@@ -89,7 +91,7 @@ export async function PATCH(
       updateData.rejectionReason = data.rejectionReason;
     }
 
-    const wpsFile = await db.wpsFile.update({
+    const wpsFile = await db.wPSFile.update({
       where: { id: wpsId },
       data: updateData,
     });

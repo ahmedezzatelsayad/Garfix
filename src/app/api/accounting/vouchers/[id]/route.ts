@@ -4,7 +4,7 @@
  * PATCH — Approve or cancel voucher
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { cancelVoucher } from "@/lib/accounting/vouchers";
@@ -18,8 +18,9 @@ type RouteParams = { params: Promise<{ id: string }> };
 // ─── GET ─────────────────────────────────────────────────────────────────
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const voucherId = parseInt(id);
+  // TODO(P2-Sprint5-A): PaymentVoucher.id is String cuid — pass `id` directly
+  // (no parseInt). Legacy `db: any` hid the type mismatch.
+  const { id: voucherId } = await params;
 
   const voucher = await db.paymentVoucher.findUnique({
     where: { id: voucherId },
@@ -79,8 +80,9 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const voucherId = parseInt(id);
+  // TODO(P2-Sprint5-A): PaymentVoucher.id is String cuid — pass `id` directly
+  // (no parseInt). Legacy `db: any` hid the type mismatch.
+  const { id: voucherId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = PatchSchema.safeParse(body);
@@ -102,7 +104,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
     const updated = await db.paymentVoucher.update({
       where: { id: voucherId },
-      data: { status: "posted", approvedBy: user.email },
+      // TODO(P2-Sprint5-A): PaymentVoucher has no `approvedBy` column — only
+      // `createdBy`. Legacy `db: any` silently dropped this. Status flip to
+      // "posted" is the durable approval signal.
+      data: { status: "posted" },
     });
 
     await logAudit({

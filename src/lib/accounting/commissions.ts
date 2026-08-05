@@ -6,7 +6,7 @@
  *  - postCommissionsJE: Create JE (Debit Commission Expense, Credit Commissions Payable)
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num } from "@/lib/money";
 import { logger } from "@/lib/logger";
 import { logAccountingChange } from "@/lib/accounting/accountant-collab";
@@ -14,7 +14,7 @@ import { logAccountingChange } from "@/lib/accounting/accountant-collab";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CommissionEntry {
-  salespersonId: number;
+  salespersonId: string;
   name: string;
   totalSales: string;
   commissionRate: string;
@@ -57,22 +57,12 @@ export async function calculateSalesCommissions(
   });
 
   // Create a map of employee email → employee data
-  const employeeMap = new Map<string, { id: number; name: string; commissionRate: number }>();
+  const employeeMap = new Map<string, { id: string; name: string; commissionRate: number }>();
   for (const emp of employees) {
-    // Default commission rate: 5% (can be configured per employee via notes or future schema addition)
-    // For now, we check if the employee has a commission percentage stored (from Commission model)
-    const existingCommissions = await db.hRCommission.findMany({
-      where: { employeeId: emp.id, companySlug, type: "sales" },
-      orderBy: { date: "desc" },
-      take: 1,
-    });
-
-    // Extract rate from description if stored, or default to 5%
-    let commissionRate = 5; // default 5%
-    if (existingCommissions.length > 0 && existingCommissions[0].description) {
-      const rateMatch = existingCommissions[0].description.match(/rate:\s*(\d+\.?\d*)%/i);
-      if (rateMatch) commissionRate = parseFloat(rateMatch[1]);
-    }
+    // Default commission rate: 5%. HRCommission schema has no `description` / `type` /
+    // `companySlug` columns (the previous code's lookup was dead code that always
+    // threw at runtime). Until a per-employee rate column is added, we use 5%.
+    const commissionRate = 5;
 
     if (emp.email) {
       employeeMap.set(emp.email, { id: emp.id, name: emp.name, commissionRate });
@@ -80,7 +70,7 @@ export async function calculateSalesCommissions(
   }
 
   // Sum total sales per salesperson (matched by createdByEmail)
-  const salesByPerson = new Map<number, { name: string; totalSales: number; commissionRate: number }>();
+  const salesByPerson = new Map<string, { name: string; totalSales: number; commissionRate: number }>();
 
   for (const invoice of invoices) {
     const salespersonEmail = invoice.createdByEmail;
@@ -128,7 +118,7 @@ export async function postCommissionsJE(
   commissions: CommissionEntry[],
   period: { from: string; to: string },
   createdBy: string,
-): Promise<{ jeId: number; lines: Array<{ accountId: number; accountCode: string; accountNameAr: string; debit: string; credit: string }> }> {
+): Promise<{ jeId: string; lines: Array<{ accountId: string; accountCode: string; accountNameAr: string | null; debit: string; credit: string }> }> {
   const totalAmount = commissions.reduce<number>((sum, c) => sum + num(c.commissionAmount, 3), 0);
   if (totalAmount <= 0) throw new Error("Total commission amount must be greater than zero");
 
@@ -182,11 +172,15 @@ export async function postCommissionsJE(
 
   // Create JE: Debit Commission Expense, Credit Commissions Payable
   // Also create individual Commission records for each salesperson
+  const company = await db.company.findUnique({ where: { slug: companySlug } });
+  if (!company) throw new Error(`Company not found for slug: ${companySlug}`);
   const result = await db.$transaction(async (tx) => {
     const je = await tx.journalEntry.create({
       data: {
+        number: `JE-COMM-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        companyId: company.id,
         companySlug,
-        date: period.to, // Use period end date
+        date: new Date(period.to), // Use period end date
         description: `عمولات المبيعات - ${period.from} إلى ${period.to}`,
         reference: `COMM-${period.from}-${period.to}`,
         status: "posted",
@@ -227,17 +221,16 @@ export async function postCommissionsJE(
       data: { balance: (num(payableAccount.balance, 3) + num(totalAmount, 3)).toFixed(3) },
     });
 
-    // Create Commission records for each salesperson
+    // Create Commission records for each salesperson.
+    // HRCommission schema requires `employeeId`, `amount`, `period`; it has no
+    // companySlug / type / date / description / isPaid columns.
     for (const comm of commissions) {
       await tx.hRCommission.create({
         data: {
-          companySlug,
           employeeId: comm.salespersonId,
-          date: period.to,
-          type: "sales",
-          description: `عمولات مبيعات ${period.from} - ${period.to} (rate:${comm.commissionRate}%)`,
+          period: `${period.from} - ${period.to}`,
           amount: num(comm.commissionAmount, 3).toFixed(3),
-          isPaid: false,
+          status: "draft",
         },
       });
     }

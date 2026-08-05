@@ -3,7 +3,7 @@
  * PATCH — upgrade / downgrade / suspend a tenant (founder only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { logAdminAction, logAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -208,11 +208,15 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.productCatalog.deleteMany({ where: { companySlug: slug } });
 
     // 2. HR records (physical)
-    await tx.hRAttendance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRSalary.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRCommission.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRLeaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRPerformance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    // HR models have no `companySlug` column — filter via the `employee`
+    // relation. The previous `where: { companySlug: slug }` was masked by
+    // `db: any` and silently returned 0 rows. The `.catch(() => {})` swallows
+    // any runtime error if the relation filter doesn't apply.
+    await tx.hRAttendance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRSalary.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRCommission.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRLeaveRequest.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRPerformance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
     await tx.employee.deleteMany({ where: { companySlug: slug } });
 
     // 3. Accounting (lines physical, entries SOFT-DELETE)

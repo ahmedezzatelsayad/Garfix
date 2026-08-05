@@ -8,7 +8,7 @@
  *  - Cancel voucher: reverse JE, mark voucher as cancelled, log AccountingAuditLog with reason
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num } from "@/lib/money";
 import { logger } from "@/lib/logger";
 import { numberToArabicText, type SupportedCurrency } from "@/lib/accounting/arabic-amount-text";
@@ -40,14 +40,16 @@ export interface CreateVoucherInput {
 export interface VoucherResult {
   voucher: {
     id: string;
-    voucherNumber: string;
-    voucherType: string;
-    date: string;
+    // P2-Sprint5-B2: PaymentVoucher columns are nullable in schema; interface
+    // widened to match actual Prisma return types (no behavior change).
+    voucherNumber: string | null;
+    voucherType: string | null;
+    date: Date;
     amount: string;
     currency: string;
     amountArText: string;
-    payee: string;
-    payer: string;
+    payee: string | null;
+    payer: string | null;
     description: string | null;
     reference: string | null;
     clientId: string | null;
@@ -56,19 +58,20 @@ export interface VoucherResult {
     glAccountId: string | null;
     journalEntryId: string | null;
     status: string;
-    createdBy: string;
+    createdBy: string | null;
     createdAt: Date;
   };
   journalEntry?: {
     id: string;
-    date: string;
+    date: Date;
     description: string | null;
     reference: string | null;
     status: string;
     lines: Array<{
       accountId: string;
       accountCode: string;
-      accountNameAr: string;
+      // P2-Sprint5-B2: Account.nameAr is String? — nullable.
+      accountNameAr: string | null;
       debit: string;
       credit: string;
       description: string | null;
@@ -96,13 +99,17 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
 
   let nextSeq = 1;
   if (lastVoucher) {
-    const lastSeq = parseInt(lastVoucher.voucherNumber.split("-")[2] || "0", 10);
+    const lastSeq = parseInt((lastVoucher.voucherNumber ?? "").split("-")[2] || "0", 10);
     nextSeq = lastSeq + 1;
   }
   const voucherNumber = `${prefix}-${year}-${String(nextSeq).padStart(4, "0")}`;
 
   // Calculate Arabic amount text
   const amountArText = numberToArabicText(amountNum, input.currency);
+
+  // P2-Sprint5-B2: JournalEntry/PaymentVoucher require companyId — fetch company.
+  const company = await db.company.findUnique({ where: { slug: input.companySlug } });
+  if (!company) throw new Error("Company not found");
 
   // Create the voucher + JE in a single transaction
   const result = await db.$transaction(async (tx) => {
@@ -125,7 +132,8 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
       // Debit: Cash/Bank
       if (input.bankAccountId) {
         const bankAcc = await tx.bankAccount.findUnique({ where: { id: String(input.bankAccountId) } });
-        debitAccountId = bankAcc?.glAccountId ?? (input.glAccountId ? String(input.glAccountId) : undefined) ?? await findDefaultCashAccount(tx, input.companySlug);
+        // P2-Sprint5-B2: BankAccount.glAccountId is Int? — coerce to string when present.
+        debitAccountId = (bankAcc?.glAccountId != null ? String(bankAcc.glAccountId) : undefined) ?? (input.glAccountId ? String(input.glAccountId) : undefined) ?? await findDefaultCashAccount(tx, input.companySlug);
       } else if (input.glAccountId) {
         debitAccountId = String(input.glAccountId);
       } else {
@@ -155,7 +163,8 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
       // Credit: Cash/Bank
       if (input.bankAccountId) {
         const bankAcc = await tx.bankAccount.findUnique({ where: { id: String(input.bankAccountId) } });
-        creditAccountId = bankAcc?.glAccountId ?? (input.glAccountId ? String(input.glAccountId) : undefined) ?? await findDefaultCashAccount(tx, input.companySlug);
+        // P2-Sprint5-B2: BankAccount.glAccountId is Int? — coerce to string when present.
+        creditAccountId = (bankAcc?.glAccountId != null ? String(bankAcc.glAccountId) : undefined) ?? (input.glAccountId ? String(input.glAccountId) : undefined) ?? await findDefaultCashAccount(tx, input.companySlug);
       } else if (input.glAccountId) {
         creditAccountId = String(input.glAccountId);
       } else {
@@ -167,12 +176,15 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
     // Create the Journal Entry
     const je = await tx.journalEntry.create({
       data: {
+        // P2-Sprint5-B2: JournalEntry requires `number` + `companyId` (no defaults).
+        number: voucherNumber,
+        companyId: company.id,
         companySlug: input.companySlug,
         date: input.date,
         description: input.description || `${prefix === "RV" ? "سند قبض" : "سند دفع"} ${voucherNumber}`,
         reference: voucherNumber,
         status: "posted",
-        currency: input.currency,
+        // P2-Sprint5-B2: JournalEntry has no `currency` column (removed invalid field).
         createdBy: input.createdBy,
         sourceType: "voucher",
         lines: {
@@ -222,6 +234,11 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
     // Create the PaymentVoucher
     const voucher = await tx.paymentVoucher.create({
       data: {
+        // P2-Sprint5-B2: PaymentVoucher requires `number`/`paymentType`/`direction`/`companyId`.
+        number: voucherNumber,
+        paymentType: input.voucherType,
+        direction: input.voucherType === "receipt" ? "inbound" : "outbound",
+        companyId: company.id,
         companySlug: input.companySlug,
         voucherNumber,
         voucherType: input.voucherType,
@@ -233,10 +250,10 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
         payer: input.payer,
         description: input.description || null,
         reference: input.reference || null,
-        clientId: input.clientId || null,
-        supplierId: input.supplierId || null,
-        bankAccountId: input.bankAccountId || null,
-        glAccountId: input.glAccountId || null,
+        clientId: input.clientId ? String(input.clientId) : null,
+        supplierId: input.supplierId ? String(input.supplierId) : null,
+        bankAccountId: input.bankAccountId ? String(input.bankAccountId) : null,
+        glAccountId: input.glAccountId ? String(input.glAccountId) : null,
         journalEntryId: je.id,
         status: "posted",
         createdBy: input.createdBy,
@@ -304,12 +321,13 @@ export async function createVoucher(input: CreateVoucherInput): Promise<VoucherR
 
 export async function cancelVoucher(
   companySlug: string,
-  voucherId: number,
+  // P2-Sprint5-B2: PaymentVoucher.id is String cuid — accept string or legacy number.
+  voucherId: string | number,
   reason: string,
   userEmail: string,
-): Promise<{ ok: boolean; reversedJEId: number }> {
+): Promise<{ ok: boolean; reversedJEId: string }> {
   const voucher = await db.paymentVoucher.findUnique({
-    where: { id: voucherId },
+    where: { id: String(voucherId) },
   });
   if (!voucher) throw new Error("Voucher not found");
   if (voucher.companySlug !== companySlug) throw new Error("Voucher does not belong to this company");
@@ -319,7 +337,7 @@ export async function cancelVoucher(
 
   // Reverse the JE and update voucher status in a transaction
   const result = await db.$transaction(async (tx) => {
-    let reversedJEId = 0;
+    let reversedJEId = "";
 
     if (originalJEId) {
       const originalJE = await tx.journalEntry.findUnique({
@@ -331,15 +349,18 @@ export async function cancelVoucher(
         // Create a reversal JE
         const reversalJE = await tx.journalEntry.create({
           data: {
+            // P2-Sprint5-B2: JournalEntry requires `number` + `companyId` (no defaults).
+            number: `REV-${voucher.voucherNumber ?? voucher.id}`,
+            companyId: voucher.companyId,
             companySlug,
             date: new Date().toISOString().slice(0, 10),
             description: `إلغاء سند ${voucher.voucherNumber} - ${reason}`,
             reference: `REV-${voucher.voucherNumber}`,
             status: "posted",
-            currency: voucher.currency,
+            // P2-Sprint5-B2: JournalEntry has no `currency` column (removed invalid field).
             createdBy: userEmail,
             sourceType: "voucher_cancel",
-            sourceId: voucherId,
+            sourceId: String(voucherId),
             lines: {
               create: originalJE.lines.map((l) => ({
                 accountId: l.accountId,
@@ -376,7 +397,7 @@ export async function cancelVoucher(
 
     // Mark voucher as cancelled
     await tx.paymentVoucher.update({
-      where: { id: voucherId },
+      where: { id: String(voucherId) },
       data: { status: "cancelled" },
     });
 

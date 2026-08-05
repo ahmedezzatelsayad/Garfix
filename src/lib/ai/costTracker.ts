@@ -12,7 +12,7 @@
  * paths that don't want to pull in the Prisma dependency (e.g. tests, edge
  * runtime, provider-optimizer.ts which is imported from many call sites).
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import {
   COST_PER_1K_TOKENS,
   getCostRates,
@@ -56,16 +56,12 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<void> {
     await db.aIUsageLog.create({
       data: {
         companySlug: params.companySlug ?? '',
-        userUid: params.userUid || null,
         provider: params.provider,
-        endpoint: params.endpoint,
+        model: params.model,
         tokensIn: params.tokensIn,
         tokensOut: params.tokensOut,
-        totalTokens: params.tokensIn + params.tokensOut,
-        estimatedCost,
-        processingMs: params.processingMs ?? undefined,
-        success: params.success,
-        errorMessage: params.errorMessage || null,
+        costUsd: estimatedCost,
+        requestType: params.endpoint,
       },
     });
   } catch (err) {

@@ -10,7 +10,7 @@
  * Phase 1 (Double-Entry Enhancements) of the GarfiX ERP accounting module.
  * ALL monetary values as String (no Float), use num() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -18,7 +18,7 @@ import { logger } from "@/lib/logger";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface Discrepancy {
-  accountId: number;
+  accountId: string;
   accountCode: string;
   accountNameAr: string;
   accountType: string;
@@ -40,7 +40,7 @@ export interface RecalculationResult {
   totalAccounts: number;
   fixedCount: number;
   beforeAfter: {
-    accountId: number;
+    accountId: string;
     accountCode: string;
     before: string;
     after: string;
@@ -63,7 +63,7 @@ export interface RecalculationResult {
  */
 export async function getDerivedBalance(
   companySlug: string,
-  accountId: number,
+  accountId: string,
   asOfDate?: string | null,
 ): Promise<string> {
   // Get the account to determine normal side
@@ -94,7 +94,7 @@ export async function getDerivedBalance(
   // Sum all posted lines for this account
   const postedLines = await db.journalEntryLine.findMany({
     where: {
-      entryId: { in: postedJEIdList },
+      journalEntryId: { in: postedJEIdList },
       accountId,
     },
   });
@@ -228,19 +228,19 @@ export async function recalculateAndFixAllBalances(
   const postedJEIdList = postedJEs.map((je) => je.id);
 
   const allLines = await db.journalEntryLine.findMany({
-    where: { entryId: { in: postedJEIdList } },
+    where: { journalEntryId: { in: postedJEIdList } },
   });
 
   // Build per-account line map for efficient calculation
-  const linesByAccount = new Map<number, typeof allLines>();
+  const linesByAccount = new Map<string, typeof allLines>();
   for (const line of allLines) {
-    const aid = line.accountId ?? 0;
+    const aid = line.accountId;
     const existing = linesByAccount.get(aid) || [];
     existing.push(line);
     linesByAccount.set(aid, existing);
   }
 
-  const beforeAfter: { accountId: number; accountCode: string; before: string; after: string; difference: string }[] = [];
+  const beforeAfter: { accountId: string; accountCode: string; before: string; after: string; difference: string }[] = [];
   let fixedCount = 0;
 
   await db.$transaction(async (tx) => {

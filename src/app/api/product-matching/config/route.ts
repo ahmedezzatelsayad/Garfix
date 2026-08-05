@@ -11,7 +11,7 @@
  * Permission: settings_access (admin/manager).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -124,7 +124,7 @@ export const PUT = withErrorHandler(async (req: NextRequest) => {
   for (const u of updates) {
     await db.platformSettings.upsert({
       where: { key: u.key },
-      update: { value: u.value, updatedBy: user.email },
+      update: { value: u.value },
       create: u,
     });
   }

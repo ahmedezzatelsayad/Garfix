@@ -29,7 +29,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   try {
-    const statement = await getClientStatement(companySlug, parseInt(clientId));
+    // TODO(P2-Sprint5-A): Client.id is String cuid — pass directly, no
+    // parseInt. Legacy `db: any` hid the type mismatch.
+    const statement = await getClientStatement(companySlug, clientId);
     return NextResponse.json(statement);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

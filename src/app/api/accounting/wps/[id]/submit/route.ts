@@ -3,7 +3,7 @@
  * POST — submit a WPS file
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -29,7 +29,9 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if ("error" in access) return access.error;
   const user = access.user;
 
-  const existing = await db.wpsFile.findUnique({
+  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+  // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
+  const existing = await db.wPSFile.findUnique({
     where: { id: wpsId },
   });
   if (!existing) return apiError("WPS file not found", 404);
@@ -40,7 +42,8 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     return apiError("Only draft WPS files can be submitted", 400);
   }
 
-  const wpsFile = await db.wpsFile.update({
+  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+  const wpsFile = await db.wPSFile.update({
     where: { id: wpsId },
     data: {
       status: "submitted",

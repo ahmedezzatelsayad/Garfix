@@ -7,7 +7,7 @@
  *
  * ALL monetary values as String — use num()/toNum()/addNums()/mulNums() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, mulNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -27,11 +27,11 @@ export interface ConsolidationResult {
   consolidatedBalanceSheet: ConsolidatedAccount[];
   consolidatedPnL: ConsolidatedAccount[];
   eliminatedTransactions: Array<{
-    id: number;
+    id: string;
     companyFrom: string;
     companyTo: string;
     amount: string;
-    eliminationJEId?: number;
+    eliminationJEId?: string;
   }>;
   companyCount: number;
   totalValue: string;
@@ -40,14 +40,14 @@ export interface ConsolidationResult {
 export interface EliminationResult {
   eliminatedAmount: string;
   entriesCreated: number;
-  fromJEId?: number;
-  toJEId?: number;
+  fromJEId?: string;
+  toJEId?: string;
 }
 
 export interface SettlementResult {
-  transactionId: number;
-  fromJEId: number;
-  toJEId: number;
+  transactionId: string;
+  fromJEId: string;
+  toJEId: string;
   amount: string;
   currency: string;
   status: string;
@@ -125,10 +125,10 @@ export async function consolidateGroup(
     });
 
     // Calculate balance per account from journal lines
-    const balanceMap = new Map<number, number>();
+    const balanceMap = new Map<string, number>();
     for (const entry of entries) {
       for (const line of entry.lines) {
-        const aid = line.accountId ?? 0;
+        const aid = line.accountId;
         const current = balanceMap.get(aid) || 0;
         balanceMap.set(aid, current + num(line.debit, 3) - num(line.credit, 3));
       }
@@ -174,11 +174,11 @@ export async function consolidateGroup(
 
   // Eliminate inter-company transactions
   const eliminatedTransactions: Array<{
-    id: number;
+    id: string;
     companyFrom: string;
     companyTo: string;
     amount: string;
-    eliminationJEId?: number;
+    eliminationJEId?: string;
   }> = [];
 
   for (const txn of interCompanyTxns) {
@@ -333,10 +333,16 @@ async function createEliminationJE(
 
   const date = `${period}-01`;
 
+  // Resolve companyId (JournalEntry.companyId is required, no default)
+  const company = await db.company.findUnique({ where: { slug: companySlug } });
+  if (!company) throw new Error(`Company not found for slug: ${companySlug}`);
+
   const entry = await db.journalEntry.create({
     data: {
+      number: `JE-ELIM-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+      companyId: company.id,
       companySlug,
-      date,
+      date: new Date(date),
       description,
       reference,
       status: "posted",
@@ -364,8 +370,7 @@ async function createEliminationJE(
 
   // Update account balances
   for (const line of entry.lines) {
-    const aid = line.accountId ?? 0;
-    if (aid === 0) continue;
+    const aid = line.accountId;
     const acc = await db.account.findUnique({ where: { id: aid } });
     if (!acc) continue;
     const isDebitNormal = acc.type === "asset" || acc.type === "expense";
@@ -464,8 +469,10 @@ export async function createInterCompanySettlement(
     // JE in companyFrom: Debit Cash, Credit IC Receivable
     const jeFrom = await tx.journalEntry.create({
       data: {
+        number: `JE-IC-FROM-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        companyId: companyFrom.id,
         companySlug: companySlugFrom,
-        date,
+        date: new Date(date),
         description: description || `Inter-company settlement to ${companySlugTo}`,
         reference: `IC-SETTLEMENT-${companySlugFrom}-${companySlugTo}`,
         status: "posted",
@@ -494,8 +501,10 @@ export async function createInterCompanySettlement(
     // JE in companyTo: Debit IC Payable, Credit Cash
     const jeTo = await tx.journalEntry.create({
       data: {
+        number: `JE-IC-TO-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        companyId: companyTo.id,
         companySlug: companySlugTo,
-        date,
+        date: new Date(date),
         description: description || `Inter-company settlement from ${companySlugFrom}`,
         reference: `IC-SETTLEMENT-${companySlugFrom}-${companySlugTo}`,
         status: "posted",
@@ -523,8 +532,7 @@ export async function createInterCompanySettlement(
 
     // Update account balances for both companies
     for (const line of jeFrom.lines) {
-      const aid = line.accountId ?? 0;
-      if (aid === 0) continue;
+      const aid = line.accountId;
       const acc = await tx.account.findUnique({ where: { id: aid } });
       if (!acc) continue;
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";
@@ -539,8 +547,7 @@ export async function createInterCompanySettlement(
     }
 
     for (const line of jeTo.lines) {
-      const aid = line.accountId ?? 0;
-      if (aid === 0) continue;
+      const aid = line.accountId;
       const acc = await tx.account.findUnique({ where: { id: aid } });
       if (!acc) continue;
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";
@@ -554,10 +561,11 @@ export async function createInterCompanySettlement(
       });
     }
 
-    // Create the InterCompanyTransaction record
+    // Create the InterCompanyTransaction record.
+    // Schema has no `companySlug` column — only `companySlugFrom` / `companySlugTo`.
     const transaction = await tx.interCompanyTransaction.create({
       data: {
-        companySlug: companySlugFrom,
+        type: "transfer",
         companySlugFrom,
         companySlugTo,
         amount: amountStr,

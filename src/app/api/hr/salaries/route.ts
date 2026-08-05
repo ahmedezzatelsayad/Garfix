@@ -3,7 +3,7 @@
  * GET / POST — salary records
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -13,7 +13,7 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
-  employeeId: z.number().int(),
+  employeeId: z.string().min(1),
   month: z.string().min(1),
   baseSalary: z.union([z.number(), z.string()]).default(0),
   allowances: z.union([z.number(), z.string()]).default(0),
@@ -32,17 +32,19 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  if (companySlug) where.companySlug = companySlug;
-  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
+  // TODO(P2-Sprint5-D): HRSalary has no companySlug column — filter via employee relation.
+  if (companySlug) where.employee = { companySlug };
+  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
   const salaries = await db.hRSalary.findMany({ where, orderBy: { month: "desc" }, take: 500 });
   return NextResponse.json({
     salaries: salaries.map((s) => ({
       ...s,
-      baseSalary: num(s.baseSalary, 3),
-      allowances: num(s.allowances, 3),
-      deductions: num(s.deductions, 3),
-      bonus: num(s.bonus, 3),
-      netSalary: num(s.netSalary, 3),
+      // TODO(P2-Sprint5-D): HRSalary schema only exposes `amount` — derive baseSalary/netSalary from it.
+      baseSalary: num(s.amount, 3),
+      allowances: 0,
+      deductions: 0,
+      bonus: 0,
+      netSalary: num(s.amount, 3),
     })),
   });
 });
@@ -65,16 +67,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const net = base + allowances + bonus - deductions;
   const salary = await db.hRSalary.create({
     data: {
-      companySlug: data.companySlug,
       employeeId: data.employeeId,
       month: data.month,
-      baseSalary: base.toFixed(3),
-      allowances: allowances.toFixed(3),
-      deductions: deductions.toFixed(3),
-      bonus: bonus.toFixed(3),
-      netSalary: net.toFixed(3),
-      isPaid: data.isPaid,
-      notes: data.notes || null,
+      amount: net.toFixed(3),
+      status: data.isPaid ? "paid" : "draft",
+      paidDate: data.isPaid ? new Date() : null,
+      // TODO(P2-Sprint5-D): HRSalary schema only exposes employeeId/amount/month/status/paidDate —
+      // `companySlug`, `baseSalary`, `allowances`, `deductions`, `bonus`, `netSalary`, `isPaid`, `notes` are not columns; dropped.
     },
   });
   await logAudit({

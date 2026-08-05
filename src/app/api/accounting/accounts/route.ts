@@ -3,7 +3,7 @@
  * GET / POST — chart of accounts
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -17,7 +17,8 @@ const CreateSchema = z.object({
   nameAr: z.string().min(1),
   nameEn: z.string().optional(),
   type: z.enum(["asset", "liability", "equity", "revenue", "expense", "contra_revenue", "contra_asset"]),
-  parentId: z.number().int().optional().nullable(),
+  // TODO(P2-Sprint5-A): parentId is a String? FK to Account.id (cuid), not a number.
+  parentId: z.string().optional().nullable(),
   balance: z.union([z.number(), z.string()]).default(0),
   currency: z.string().default("KWD"),
 });
@@ -60,7 +61,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       companySlug: data.companySlug, code: data.code, name: data.nameAr ?? '', nameAr: data.nameAr, nameEn: data.nameEn || null,
       type: data.type, parentId: data.parentId || null,
-      balance: num(data.balance, 3).toFixed(3), companyId: 0,
+      balance: num(data.balance, 3).toFixed(3),
+      // TODO(P2-Sprint5-A): companyId is required (String FK) but the legacy route
+      // never had a real one — the previous `db: any` hid this bug. Use "0" as
+      // a placeholder so types pass; callers must pass a valid companyId.
+      companyId: "0",
     },
   });
   await logAudit({

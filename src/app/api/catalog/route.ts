@@ -4,7 +4,7 @@
  * POST — create product
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -47,9 +47,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // Include the ProductAlias relation so we can flatten aliases into a string[]
   // on the response. Previously the code did `parseJsonField(p.code, [])` which
   // tried to parse the product CODE ("SKU-123") as JSON — always returned [].
+  // ProductCatalog.id is a String (cuid) — override cursor to use the string id.
   const allProducts: any[] = await db.productCatalog.findMany({
     where,
-    ...pagination,
+    take: pagination.take,
+    skip: pagination.skip,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: pagination.orderBy,
     include: { productAliases: { select: { alias: true } } },
   });
 
@@ -85,10 +89,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       code: data.code || null,
       name: data.name,
       sku: data.code || "",
-      companyId: 0,
-      purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : 0,
-      sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : 0,
-      wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : 0,
+      // TODO(P2-Sprint5-D): ProductCatalog.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
+      // companyId: 0,
+      purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : "0",
+      sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : "0",
+      // TODO(P2-Sprint5-D): ProductCatalog schema has no `wholesalePrice` column — field dropped.
+      // wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : "0",
     },
   });
   await logAudit({

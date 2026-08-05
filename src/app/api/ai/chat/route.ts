@@ -10,7 +10,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany, requirePermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
@@ -321,19 +321,19 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
   await db.chatHistory.create({
     data: {
       userUid: user.uid,
-      companySlug: data.companySlug || null,
+      companySlug: data.companySlug || "",
       role: "user",
       content: lastUserMsg.content,
-      conversationId,
+      sessionId: conversationId,
     },
   });
   await db.chatHistory.create({
     data: {
       userUid: user.uid,
-      companySlug: data.companySlug || null,
+      companySlug: data.companySlug || "",
       role: "assistant",
       content: reply,
-      conversationId,
+      sessionId: conversationId,
     },
   });
 

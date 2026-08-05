@@ -4,7 +4,7 @@
  * PATCH — Update transaction (settle, cancel)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -17,11 +17,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
   const { id } = await ctx.params;
-  const transactionId = parseInt(id, 10);
-  if (!transactionId) return apiError("Invalid transaction ID", 400);
+  if (!id) return apiError("Invalid transaction ID", 400);
 
   const transaction = await db.interCompanyTransaction.findUnique({
-    where: { id: transactionId },
+    where: { id },
   });
   if (!transaction) return apiError("Inter-company transaction not found", 404);
 
@@ -49,8 +48,7 @@ const PatchSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
   const { id } = await ctx.params;
-  const transactionId = parseInt(id, 10);
-  if (!transactionId) return apiError("Invalid transaction ID", 400);
+  if (!id) return apiError("Invalid transaction ID", 400);
 
   const body = await parseJsonBody(req);
   const parsed = PatchSchema.safeParse(body);
@@ -58,7 +56,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
   const data = parsed.data;
 
   const existing = await db.interCompanyTransaction.findUnique({
-    where: { id: transactionId },
+    where: { id },
   });
   if (!existing) return apiError("Inter-company transaction not found", 404);
 
@@ -91,7 +89,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
   if (data.description) updateData.description = data.description;
 
   const transaction = await db.interCompanyTransaction.update({
-    where: { id: transactionId },
+    where: { id },
     data: updateData,
   });
 
@@ -100,7 +98,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
     userUid: user.uid,
     action: data.status || "update",
     entity: "inter_company_transaction",
-    entityId: transactionId,
+    entityId: id,
     companySlug: existing.companySlugFrom,
     details: { previousStatus: existing.status, newStatus: data.status },
   });

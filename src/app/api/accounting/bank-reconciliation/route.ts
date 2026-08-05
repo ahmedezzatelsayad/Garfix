@@ -4,7 +4,7 @@
  * POST — start a reconciliation
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -98,9 +98,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const reconciliation = await db.bankReconciliation.create({
     data: {
       companySlug: data.companySlug,
+      companyId: bankAccount.companyId,
       bankAccountId: data.bankAccountId,
       periodStart: data.periodStart,
       periodEnd: data.periodEnd,
+      // TODO(P2-Sprint5-A): schema requires DateTime `startDate`/`endDate` and
+      // Decimal `openingBalance`/`closingBalance`. Derive from period dates /
+      // default to 0 — `db: any` previously hid these missing fields.
+      startDate: new Date(data.periodStart),
+      endDate: new Date(data.periodEnd),
+      openingBalance: "0",
+      closingBalance: reconResult.bookBalance,
       statementBalance: reconResult.statementBalance,
       bookBalance: reconResult.bookBalance,
       adjustedBalance: reconResult.adjustedBalance,
@@ -115,11 +123,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Mark matched bank transactions as reconciled
   for (const match of reconResult.matchedItems) {
     await db.bankTransaction.update({
-      where: { id: match.bankTransactionId },
+      where: { id: String(match.bankTransactionId) },
       data: {
         isReconciled: true,
         reconciledWith: "journal_entry",
-        reconciledId: match.journalEntryLineId,
+        // TODO(P2-Sprint5-A): BankTransaction.reconciledId is Int? but
+        // JournalEntryLine.id is a String cuid — fundamentally broken
+        // cross-reference (same pattern as MatchOverride.auditId in batch G).
+        // Passing null; the link can be reconstructed via reconciliationId
+        // + journalEntryId if needed. Legacy `db: any` silently dropped this.
+        reconciledId: null,
       },
     });
   }

@@ -4,7 +4,7 @@
  * PATCH — founder-only update
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAdminAction } from "@/lib/audit";
@@ -68,27 +68,35 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     const newValue = JSON.stringify(value);
     const valueType = typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : typeof value === "object" ? "json" : "string";
 
+    let settingId: number;
     if (existing) {
       await db.platformSettings.update({
         where: { key },
-        data: { value: newValue, valueType, updatedBy: result.user.email, updatedAt: new Date() },
+        // TODO(P2-Sprint5-D): PlatformSettings has no `updatedBy` column — field dropped.
+        data: { value: newValue, valueType, updatedAt: new Date() },
       });
+      settingId = existing.id;
     } else {
-      await db.platformSettings.create({
+      const created = await db.platformSettings.create({
         data: {
-          key, companySlug: "platform", category: key.split(".")[0] || "general",
-          valueType, value: newValue, updatedBy: result.user.email,
+          key, category: key.split(".")[0] || "general",
+          valueType, value: newValue,
+          // TODO(P2-Sprint5-D): PlatformSettings has no `companySlug` column — field dropped.
+          // companySlug: "platform",
         },
       });
+      settingId = created.id;
     }
 
     await db.platformSettingsHistory.create({
       data: {
+        settingId,
         settingKey: key,
         oldValue,
         newValue,
-        changedBy: result.user.uid,
-        changedByEmail: result.user.email,
+        changedBy: result.user.email,
+        // TODO(P2-Sprint5-D): PlatformSettingsHistory has no `changedByEmail` column — field dropped.
+        // changedByEmail: result.user.email,
       },
     });
   }

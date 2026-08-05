@@ -5,7 +5,7 @@
  *          P0-4: Cannot delete entries in closed/locked fiscal periods.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -17,7 +17,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
   const existing = await db.journalEntry.findUnique({
-    where: { id: parseInt(id) },
+    where: { id },
     include: { lines: true },
   });
   if (!existing) return apiError("Journal entry not found", 404);

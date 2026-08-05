@@ -26,7 +26,7 @@ import {
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -126,7 +126,7 @@ export interface BahrainNbrLineItemPayload {
 
 export interface BahrainNbrSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: "pending" | "submitted" | "approved" | "rejected";
   nbrSubmissionId?: string;
   error?: string;
@@ -627,6 +627,9 @@ export async function submitBahrainNbrInvoice(
         rawXml: JSON.stringify(payload),
         companySlug: payload.sellerNameEn, // Temporary — should use actual companySlug
         invoiceId: 0, // Placeholder — should link to actual invoice
+        invoiceNumber: payload.invoiceNumber,
+        authority: BAHRAIN_NBR_AUTHORITY,
+        status: "pending",
       },
     });
 

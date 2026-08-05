@@ -38,7 +38,7 @@
  */
 'use node';
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { VALKEY_CONFIGURED, getValkeyClient } from "./valkey";
 
@@ -71,7 +71,7 @@ export interface JobPayload {
   type: string;
   data: Record<string, unknown>;
   attempts?: number;
-  outboxEventId?: number;
+  outboxEventId?: string;
   aggregateType?: string;
   aggregateId?: string;
   eventType?: string;

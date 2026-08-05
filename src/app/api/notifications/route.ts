@@ -4,7 +4,7 @@
  * POST — mark all as read (body: { action: "mark_all_read" })
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody } from "@/lib/api";
 
@@ -35,7 +35,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (action === "mark_all_read") {
     await db.notification.updateMany({
       where: { userUid: user.uid, isRead: false },
-      data: { isRead: true, read: true },
+      // TODO(P2-Sprint5-D): Notification schema has no `read` column — only `isRead`.
+      data: { isRead: true, readAt: new Date() },
     });
     return NextResponse.json({ ok: true });
   }
@@ -46,7 +47,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         id: Number((body as Record<string, unknown>).id),
         userUid: user.uid, // ensure ownership
       },
-      data: { isRead: true, read: true },
+      // TODO(P2-Sprint5-D): Notification schema has no `read` column — only `isRead`.
+      data: { isRead: true, readAt: new Date() },
     });
     return NextResponse.json({ ok: true });
   }

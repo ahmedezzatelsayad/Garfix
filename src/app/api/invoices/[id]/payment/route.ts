@@ -14,7 +14,7 @@
  * IdempotencyKey model already exists in the schema but was unused.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -73,23 +73,19 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (data.idempotencyKey) {
     const idemCompositeKey = `inv-${existing.id}:${data.idempotencyKey}`;
     const ttlCutoff = new Date(Date.now() - IDEMPOTENCY_TTL_HOURS * 3600 * 1000);
+    // TODO(P2-Sprint5-D): IdempotencyKey has no `companySlug`/`endpoint`/composite unique —
+    // look up by the unique `key` column instead.
     const idem = await db.idempotencyKey.findUnique({
-      where: {
-        companySlug_endpoint_key: {
-          companySlug: existing.companySlug,
-          endpoint: IDEMPOTENCY_ENDPOINT,
-          key: idemCompositeKey,
-        },
-      },
+      where: { key: idemCompositeKey },
     });
     if (idem && idem.createdAt > ttlCutoff) {
       logger.info("[payment] idempotent replay — returning cached result", {
         invoiceId: existing.id,
         idempotencyKey: data.idempotencyKey,
       });
-      if (idem.responseJson) {
+      if (idem.responseBody) {
         try {
-          const cached = JSON.parse(idem.responseJson);
+          const cached = JSON.parse(idem.responseBody);
           return NextResponse.json(cached);
         } catch {
           // Cached body corrupted — fall through and recompute the response
@@ -157,24 +153,20 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     const responseBody = { ok: true, invoice };
     try {
       await db.idempotencyKey.upsert({
-        where: {
-          companySlug_endpoint_key: {
-            companySlug: existing.companySlug,
-            endpoint: IDEMPOTENCY_ENDPOINT,
-            key: idemCompositeKey,
-          },
-        },
+        where: { key: idemCompositeKey },
         create: {
-          companySlug: existing.companySlug,
-          endpoint: IDEMPOTENCY_ENDPOINT,
+          // TODO(P2-Sprint5-D): IdempotencyKey has no `companySlug`/`endpoint`/`responseJson` columns.
+          // `companySlug` dropped; `endpoint` → `path`; `responseJson` → `responseBody`.
           key: idemCompositeKey,
-          // requestHash: `${existing.id}:${data.amount}:${data.method}`,
-          responseJson: JSON.stringify(responseBody),
-          // status: 200,
+          method: "PATCH",
+          path: `/api/invoices/${existing.id}/payment`,
+          responseBody: JSON.stringify(responseBody),
+          statusCode: 200,
+          expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 3600 * 1000),
         },
         update: {
-          responseJson: JSON.stringify(responseBody),
-          // status: 200,
+          responseBody: JSON.stringify(responseBody),
+          statusCode: 200,
         },
       });
     } catch (err) {

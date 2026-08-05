@@ -4,7 +4,7 @@
  * PATCH — complete or approve reconciliation
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -23,7 +23,7 @@ export async function GET(
   return withErrorHandler(async () => {
     const { id } = await params;
     const reconciliation = await db.bankReconciliation.findUnique({
-      where: { id: parseInt(id, 10) },
+      where: { id },
       include: {
         bankAccount: {
           select: { id: true, bankName: true, accountName: true, currency: true },
@@ -54,7 +54,7 @@ export async function PATCH(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    const reconId = parseInt(id, 10);
+    const reconId = id;
     const body = await parseJsonBody(req);
     const parsed = PatchSchema.safeParse(body);
     if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

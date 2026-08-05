@@ -6,7 +6,7 @@
  * Both require `settings_access` permission.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -16,8 +16,8 @@ import { recordStockMovement } from "@/lib/inventorySync";
 
 const AdjustSchema = z.object({
   companySlug: z.string().min(1),
-  warehouseId: z.number().int().positive(),
-  productId: z.number().int().positive(),
+  warehouseId: z.string().min(1),
+  productId: z.string().min(1),
   quantity: z.union([z.number(), z.string()]).default("0"),
   reorderLevel: z.union([z.number(), z.string()]).default("0"),
   reorderQty: z.union([z.number(), z.string()]).default("0"),
@@ -42,11 +42,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
 
   const warehouseIdParam = sp.get("warehouseId");
-  const warehouseId = warehouseIdParam ? parseInt(warehouseIdParam) : undefined;
+  const warehouseId = warehouseIdParam || undefined;
   const status = sp.get("status") || undefined; // optional filter OK | Low | Out
 
   const where: Record<string, unknown> = { companySlug };
-  if (warehouseId && !Number.isNaN(warehouseId)) where.warehouseId = warehouseId;
+  if (warehouseId) where.warehouseId = warehouseId;
 
   const items = await db.inventoryItem.findMany({
     where,
@@ -58,8 +58,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   });
 
   const mapped = items.map((it) => {
-    const qty = it.quantity;
-    const reorder = it.reorderLevel;
+    const qty = num(it.quantity, 3);
+    const reorder = num(it.reorderLevel, 3);
     const itemStatus = computeStatus(qty, reorder);
     return {
       id: it.id,
@@ -72,7 +72,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       productName: it.product?.name || "—",
       quantity: qty,
       reorderLevel: reorder,
-      reorderQty: it.reorderQty,
+      // TODO(P2-Sprint5-D): InventoryItem schema has no `reorderQty` column — return reorderLevel.
+      reorderQty: reorder,
       batchNumber: it.batchNumber,
       expiryDate: it.expiryDate,
       status: itemStatus,
@@ -121,7 +122,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const newQuantity =
     data.mode === "adjust"
-      ? (existing?.quantity || 0) + num(data.quantity, 3)
+      ? num(existing?.quantity, 3) + num(data.quantity, 3)
       : num(data.quantity, 3);
 
   if (newQuantity < 0) {
@@ -133,7 +134,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // recordStockMovement must be called on manual adjustments so the
     // StockMovement ledger stays consistent with InventoryItem.quantity.
     // Wrapped in a transaction so the ledger + inventory update atomically.
-    const prevQty = existing.quantity || 0;
+    const prevQty = num(existing.quantity, 3);
     const signedDelta = newQuantity - prevQty; // +ve = stock in, -ve = stock out
     const updated = await db.$transaction(async (tx) => {
       const item = await tx.inventoryItem.update({
@@ -141,7 +142,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         data: {
           quantity: newQuantity,
           reorderLevel: num(data.reorderLevel, 3),
-          reorderQty: num(data.reorderQty, 3),
+          // TODO(P2-Sprint5-D): InventoryItem schema has no `reorderQty` column — dropped.
+          // reorderQty: num(data.reorderQty, 3),
           batchNumber: data.batchNumber ?? existing.batchNumber,
           expiryDate: data.expiryDate ?? existing.expiryDate,
         },
@@ -187,12 +189,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const item = await tx.inventoryItem.create({
       data: {
         companySlug: data.companySlug,
-        companyId: 0,
+        // TODO(P2-Sprint5-D): InventoryItem.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
+        // companyId: 0,
         warehouseId: data.warehouseId,
         productId: data.productId,
         quantity: initialQty,
         reorderLevel: num(data.reorderLevel, 3),
-        reorderQty: num(data.reorderQty, 3),
+        // TODO(P2-Sprint5-D): InventoryItem schema has no `reorderQty` column — dropped.
+        // reorderQty: num(data.reorderQty, 3),
         batchNumber: data.batchNumber || null,
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
       },

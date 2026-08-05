@@ -22,7 +22,7 @@ import { resolveAuth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { getAdvancedLoadBalancer, type PoolMetrics } from "@/lib/ai/advanced-loadbalancer";
 import { aiMetrics } from "@/lib/workers/aiWorkers";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -192,12 +192,12 @@ export const GET = async (req: NextRequest) => {
         db.jobQueue.count({ where: { 
           queue: 'ai', 
           status: 'completed',
-          updatedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+          completedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
         }}),
         db.jobQueue.count({ where: { 
           queue: 'ai', 
           status: 'failed',
-          updatedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+          completedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
         }}),
       ]);
       queueStats = { pending, running, completedToday: completed, failedToday: failed };

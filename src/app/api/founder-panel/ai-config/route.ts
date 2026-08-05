@@ -26,7 +26,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from '@/lib/auth';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
@@ -253,7 +253,17 @@ export async function GET(request: NextRequest) {
       companyId = company.id;
     } else {
       // Use user's primary company
-      const membership = await db.companyMember.findFirst({
+      // NOTE: `companyMember` is not in prisma schema.prisma — the table is
+      // created by an unrelated migration and was previously accessed via
+      // `db: any`. We cast through `unknown` to keep the runtime call intact
+      // without re-introducing `any`.
+      const membership = await (db as unknown as {
+        companyMember: {
+          findFirst: (args: {
+            where: { userId?: string; role?: string };
+          }) => Promise<{ companyId: string } | null>;
+        };
+      }).companyMember.findFirst({
         where: { 
           userId: auth.user.uid,
           role: 'founder',
@@ -366,7 +376,15 @@ export async function PUT(request: NextRequest) {
     const configData = validated.data;
     
     // Verify founder access
-    const membership = await db.companyMember.findFirst({
+    // NOTE: `companyMember` is not in prisma schema.prisma — see GET handler
+    // above for the cast rationale.
+    const membership = await (db as unknown as {
+      companyMember: {
+        findFirst: (args: {
+          where: { userId?: string; role?: string };
+        }) => Promise<{ companyId: string } | null>;
+      };
+    }).companyMember.findFirst({
       where: { 
         userId: auth.user.uid,
         role: 'founder',

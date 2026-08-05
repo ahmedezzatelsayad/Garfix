@@ -32,7 +32,7 @@ import {
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ export interface KuwaitLineItemPayload {
 
 export interface KuwaitSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: string;
   rejectionReason?: string;
   error?: string;
@@ -579,14 +579,16 @@ export async function submitKuwaitInvoice(
         authorityType: KUWAIT_AUTHORITY,
         submissionStatus: "pending",
         rawXml: JSON.stringify(payload),
+        invoiceNumber: payload.invoiceNumber,
+        authority: KUWAIT_AUTHORITY,
+        status: "pending",
       },
     });
 
-    // Update invoice's e-invoice status and authority
+    // Update invoice's e-invoice authority
     await db.invoice.update({
       where: { id: invoice.id },
       data: {
-        eInvoiceStatus: "pending",
         eInvoiceAuthority: KUWAIT_AUTHORITY,
       },
     });
@@ -618,7 +620,7 @@ export async function submitKuwaitInvoice(
  *
  * Currently returns local DB status since the portal API is not yet published.
  */
-export async function checkKuwaitInvoiceStatus(eInvoiceId: number): Promise<{
+export async function checkKuwaitInvoiceStatus(eInvoiceId: string): Promise<{
   status: string;
   authorityType: string;
   rejectionReason?: string;
@@ -646,7 +648,7 @@ export async function checkKuwaitInvoiceStatus(eInvoiceId: number): Promise<{
       authorityType: eInvoice.authorityType,
       rejectionReason: eInvoice.rejectionReason || undefined,
       submittedAt: eInvoice.submittedAt?.toISOString() || undefined,
-      approvedAt: eInvoice.approvedAt?.toISOString() || undefined,
+      approvedAt: eInvoice.clearedAt?.toISOString() || undefined,
     };
   } catch (err) {
     logger.error("[kuwait-e-invoice] status check failed", {

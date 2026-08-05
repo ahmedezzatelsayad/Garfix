@@ -7,7 +7,7 @@
  *
  * ALL monetary values are String — use num()/toNum()/addNums()/mulNums() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, mulNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -25,7 +25,7 @@ export interface COGSResult {
 }
 
 export interface InventoryValuationItem {
-  itemId: number;
+  itemId: string;
   name: string;
   qty: string;
   unitCost: string;
@@ -39,7 +39,7 @@ export interface InventoryValuationResult {
 }
 
 export interface LandedCostAllocationInput {
-  allocationId: number;
+  allocationId: string;
   costType: string;
   totalCost: string;
   allocationMethod: "quantity" | "value" | "weight" | "volume";
@@ -47,8 +47,8 @@ export interface LandedCostAllocationInput {
 }
 
 export interface LandedCostLineInput {
-  itemId?: number;
-  productId?: number;
+  itemId?: string;
+  productId?: string;
   baseQuantity?: string;
   baseValue?: string;
   weight?: string;
@@ -57,8 +57,8 @@ export interface LandedCostLineInput {
 
 export interface LandedCostAllocationResult {
   lines: Array<{
-    itemId?: number;
-    productId?: number;
+    itemId?: string;
+    productId?: string;
     allocatedCost: string;
     newUnitCost: string;
   }>;
@@ -68,14 +68,14 @@ export interface InventoryAdjustmentInput {
   companySlug: string;
   userEmail: string;
   userUid: string;
-  itemId: number;
+  itemId: string;
   bookQty: string;
   physicalQty: string;
   unitCost: string;
   description?: string;
   date: string;
-  inventoryAccountId: number;
-  cogsAccountId: number;
+  inventoryAccountId: string;
+  cogsAccountId: string;
 }
 
 // ── FIFO Costing ───────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export interface InventoryAdjustmentInput {
  */
 export async function calculateCOGS(
   companySlug: string,
-  itemId: number,
+  itemId: string,
   quantitySold: string,
   costingMethod: CostingMethod,
 ): Promise<COGSResult> {
@@ -104,7 +104,9 @@ export async function calculateCOGS(
     };
   }
 
-  // Get all inbound stock movements for this item, ordered by date (FIFO order)
+  // Get all inbound stock movements for this item, ordered by date (FIFO order).
+  // StockMovement schema has `quantity` (Decimal) and `cost` (Decimal) — the
+  // previous code used `qty` / `unitCost` which don't exist.
   const movements = await db.stockMovement.findMany({
     where: {
       companySlug,
@@ -115,11 +117,11 @@ export async function calculateCOGS(
   });
 
   if (costingMethod === "fifo") {
-    return calculateFIFO(movements.map(m => ({ qty: m.qty, unitCost: m.unitCost?.toString() })), qtySold, costingMethod);
+    return calculateFIFO(movements.map(m => ({ qty: m.quantity.toString(), unitCost: m.cost.toString() })), qtySold, costingMethod);
   }
 
   if (costingMethod === "weighted_average") {
-    return calculateWeightedAverage(movements.map(m => ({ qty: m.qty, unitCost: m.unitCost?.toString() })), qtySold, costingMethod);
+    return calculateWeightedAverage(movements.map(m => ({ qty: m.quantity.toString(), unitCost: m.cost.toString() })), qtySold, costingMethod);
   }
 
   if (costingMethod === "standard_cost") {
@@ -199,7 +201,7 @@ function calculateWeightedAverage(
 
 async function calculateStandardCost(
   companySlug: string,
-  productId: number,
+  productId: string,
   qtySold: number,
   costingMethod: CostingMethod,
 ): Promise<COGSResult> {
@@ -215,7 +217,7 @@ async function calculateStandardCost(
   const inventoryItems = await db.inventoryItem.findMany({
     where: { companySlug, productId },
   });
-  const totalOnHand = inventoryItems.reduce((s: number, i: { quantity: string }) => s + num(i.quantity, 3), 0);
+  const totalOnHand = inventoryItems.reduce((s, i) => s + num(i.quantity.toString(), 3), 0);
   const remainingOnHand = totalOnHand - qtySold;
   const remainingOnHandValue = remainingOnHand * standardCost;
 
@@ -264,17 +266,18 @@ export async function runInventoryValuation(
       orderBy: { createdAt: "asc" },
     });
 
-    // Calculate weighted average unit cost from inbound movements
+    // Calculate weighted average unit cost from inbound movements.
+    // StockMovement has `quantity` (Decimal) and `cost` (Decimal).
     let totalQty = 0;
     let totalCostValue = 0;
     for (const m of movements) {
-      const mQty = num(m.qty, 3);
-      const mCost = num(m.unitCost ?? "0", 3);
+      const mQty = num(m.quantity.toString(), 3);
+      const mCost = num(m.cost.toString(), 3);
       totalQty += mQty;
       totalCostValue += mQty * mCost;
     }
 
-    const unitCost = totalQty > 0 ? totalCostValue / totalQty : num(invItem.product.purchasePrice ?? "0", 3);
+    const unitCost = totalQty > 0 ? totalCostValue / totalQty : num(invItem.product.purchasePrice.toString(), 3);
     const itemTotalValue = qty * unitCost;
     totalValue += itemTotalValue;
 
@@ -332,8 +335,8 @@ export function calculateLandedCost(
   }
 
   const resultLines: Array<{
-    itemId?: number;
-    productId?: number;
+    itemId?: string;
+    productId?: string;
     allocatedCost: string;
     newUnitCost: string;
   }> = [];
@@ -373,7 +376,7 @@ export function calculateLandedCost(
  */
 export async function recordInventoryAdjustment(
   input: InventoryAdjustmentInput,
-): Promise<{ journalEntryId: number; discrepancyQty: string; discrepancyValue: string }> {
+): Promise<{ journalEntryId: string; discrepancyQty: string; discrepancyValue: string }> {
   const bookQty = num(input.bookQty, 3);
   const physicalQty = num(input.physicalQty, 3);
   const unitCost = num(input.unitCost, 3);
@@ -383,7 +386,7 @@ export async function recordInventoryAdjustment(
   if (Math.abs(discrepancy) < 0.001) {
     // No discrepancy — no adjustment needed
     return {
-      journalEntryId: 0,
+      journalEntryId: "",
       discrepancyQty: "0.000",
       discrepancyValue: "0.000",
     };
@@ -391,17 +394,23 @@ export async function recordInventoryAdjustment(
 
   const isShortfall = discrepancy > 0; // physical < book
 
+  // Resolve companyId for the JournalEntry create.
+  const company = await db.company.findUnique({ where: { slug: input.companySlug } });
+  if (!company) throw new Error(`Company not found for slug: ${input.companySlug}`);
+
   // Create journal entry for the adjustment
   const entry = await db.journalEntry.create({
     data: {
+      number: `JE-INV-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+      companyId: company.id,
       companySlug: input.companySlug,
-      date: input.date,
+      date: new Date(input.date),
       description: input.description || `Inventory adjustment: ${isShortfall ? "shortfall" : "excess"} of ${Math.abs(discrepancy).toFixed(3)} units`,
       reference: `INV-ADJ-${input.itemId}`,
       status: "posted",
       createdBy: input.userEmail,
       sourceType: "inventory_adjustment",
-      sourceId: input.itemId,
+      sourceId: String(input.itemId),
       lines: {
         create: isShortfall
           ? [

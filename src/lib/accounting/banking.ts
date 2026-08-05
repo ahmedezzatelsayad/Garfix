@@ -4,7 +4,7 @@
  * Phase 3 of the GarfiX ERP accounting module.
  * All monetary values as String (no Float), using num() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, subNums } from "@/lib/money";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -22,15 +22,15 @@ export interface ReconciliationResult {
 }
 
 export interface MatchedItem {
-  bankTransactionId: number;
-  journalEntryLineId: number;
+  bankTransactionId: string;
+  journalEntryLineId: string;
   amount: string;
   date: string;
   reference: string | null;
 }
 
 export interface UnmatchedBankItem {
-  bankTransactionId: number;
+  bankTransactionId: string;
   date: string;
   reference: string | null;
   description: string | null;
@@ -38,8 +38,8 @@ export interface UnmatchedBankItem {
 }
 
 export interface UnmatchedGlItem {
-  journalEntryId: number;
-  journalEntryLineId: number;
+  journalEntryId: string;
+  journalEntryLineId: string;
   date: string;
   reference: string | null;
   description: string | null;
@@ -68,8 +68,8 @@ export async function reconcileBankAccount(
   const bankTxns = await db.bankTransaction.findMany({
     where: {
       companySlug,
-      bankAccountId,
-      date: { gte: periodStart, lte: periodEnd },
+      bankAccountId: String(bankAccountId),
+      date: { gte: new Date(periodStart), lte: new Date(periodEnd) },
     },
     orderBy: { date: "asc" },
   });
@@ -77,7 +77,7 @@ export async function reconcileBankAccount(
   // 2. Get GL entries for the bank account in the period
   // The bank account is linked to a GL account via glAccountId
   const bankAccount = await db.bankAccount.findUnique({
-    where: { id: bankAccountId },
+    where: { id: String(bankAccountId) },
   });
   if (!bankAccount) throw new Error("Bank account not found");
 
@@ -86,22 +86,22 @@ export async function reconcileBankAccount(
 
   const glLines = await db.journalEntryLine.findMany({
     where: {
-      accountId: glAccountId,
-      entry: {
+      accountId: String(glAccountId),
+      journalEntry: {
         companySlug,
-        date: { gte: periodStart, lte: periodEnd },
+        date: { gte: new Date(periodStart), lte: new Date(periodEnd) },
         status: "posted",
         deletedAt: null,
       },
     },
-    include: { entry: true },
-    orderBy: { entry: { date: "asc" } },
+    include: { journalEntry: true },
+    orderBy: { journalEntry: { date: "asc" } },
   });
 
   // 3. Auto-match: transactions to GL entries by amount, date, reference
   const matchedItems: MatchedItem[] = [];
-  const matchedBankIds = new Set<number>();
-  const matchedGlIds = new Set<number>();
+  const matchedBankIds = new Set<string>();
+  const matchedGlIds = new Set<string>();
 
   // First pass: exact match on amount + date + reference
   for (const txn of bankTxns) {
@@ -117,12 +117,12 @@ export async function reconcileBankAccount(
       if (Math.abs(txnAmount - glAmount) < 0.01) {
         // Check date match (within 2 days tolerance)
         const txnDate = new Date(txn.date);
-        const glDate = new Date(line.entry.date);
+        const glDate = new Date(line.journalEntry.date);
         const dayDiff = Math.abs(txnDate.getTime() - glDate.getTime()) / (24 * 60 * 60 * 1000);
 
         // Check reference match or date proximity
         const refMatch =
-          (txn.reference && line.entry.reference && txn.reference === line.entry.reference) ||
+          (txn.reference && line.journalEntry.reference && txn.reference === line.journalEntry.reference) ||
           dayDiff <= 2;
 
         if (refMatch) {
@@ -130,8 +130,8 @@ export async function reconcileBankAccount(
             bankTransactionId: txn.id,
             journalEntryLineId: line.id,
             amount: num(txnAmount, 3).toFixed(3),
-            date: txn.date,
-            reference: txn.reference || line.entry.reference || null,
+            date: txn.date.toISOString().slice(0, 10),
+            reference: txn.reference || line.journalEntry.reference || null,
           });
           matchedBankIds.add(txn.id);
           matchedGlIds.add(line.id);
@@ -146,7 +146,7 @@ export async function reconcileBankAccount(
     .filter((t) => !matchedBankIds.has(t.id))
     .map((t) => ({
       bankTransactionId: t.id,
-      date: t.date,
+      date: t.date.toISOString().slice(0, 10),
       reference: t.reference,
       description: t.description,
       amount: num(t.amount, 3).toFixed(3),
@@ -155,11 +155,11 @@ export async function reconcileBankAccount(
   const unmatchedGlItems: UnmatchedGlItem[] = glLines
     .filter((l) => !matchedGlIds.has(l.id))
     .map((l) => ({
-      journalEntryId: l.entryId,
+      journalEntryId: l.journalEntryId,
       journalEntryLineId: l.id,
-      date: l.entry.date,
-      reference: l.entry.reference,
-      description: l.entry.description,
+      date: l.journalEntry.date.toISOString().slice(0, 10),
+      reference: l.journalEntry.reference,
+      description: l.journalEntry.description,
       amount: num(num(l.debit, 3) - num(l.credit, 3), 3).toFixed(3),
     }));
 
@@ -235,21 +235,22 @@ export async function importBankStatement(
 
   // Verify bank account exists
   const bankAccount = await db.bankAccount.findUnique({
-    where: { id: bankAccountId },
+    where: { id: String(bankAccountId) },
   });
   if (!bankAccount) throw new Error("Bank account not found");
   if (bankAccount.companySlug !== companySlug) throw new Error("Bank account does not belong to this company");
 
   const transactions: Array<{
     companySlug: string;
+    companyId: string;
     bankAccountId: string;
+    type: string;
     date: string;
     reference: string | null;
     description: string | null;
     amount: string;
     transactionType: string;
-    importedFrom: string;
-    rawRow: string;
+    isReconciled: boolean;
   }> = [];
 
   for (const row of dataRows) {
@@ -296,16 +297,17 @@ export async function importBankStatement(
 
     transactions.push({
       companySlug,
+      companyId: bankAccount.companyId,
       // P0-10: bankAccountId is now string | number — Prisma column is
       // String, so coerce to string for the create payload.
       bankAccountId: String(bankAccountId),
+      type: transactionType,
       date,
       reference: reference || null,
       description: description || null,
       amount: num(amount, 3).toFixed(3),
       transactionType,
-      importedFrom: "csv",
-      rawRow: row,
+      isReconciled: false,
     });
     importedCount++;
   }
@@ -331,9 +333,9 @@ export async function importBankStatement(
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface TransferResult {
-  withdrawalTransactionId: number;
-  depositTransactionId: number;
-  journalEntryId: number;
+  withdrawalTransactionId: string;
+  depositTransactionId: string;
+  journalEntryId: string;
   fromNewBalance: string;
   toNewBalance: string;
 }
@@ -349,8 +351,8 @@ export interface TransferResult {
  */
 export async function transferBetweenAccounts(
   companySlug: string,
-  fromAccountId: number,
-  toAccountId: number,
+  fromAccountId: string,
+  toAccountId: string,
   amount: string,
   currency: string,
   date: string,
@@ -383,13 +385,15 @@ export async function transferBetweenAccounts(
     const withdrawalTxn = await tx.bankTransaction.create({
       data: {
         companySlug,
+        companyId: fromAccount.companyId,
         bankAccountId: fromAccountId,
-        date,
+        type: "transfer",
+        date: new Date(date),
         reference: `TRF-${Date.now()}`,
         description: `Transfer to ${toAccount.accountName}: ${description}`,
         amount: num(-amountNum, 3).toFixed(3),
         transactionType: "transfer",
-        importedFrom: "manual",
+        isReconciled: false,
       },
     });
 
@@ -397,37 +401,41 @@ export async function transferBetweenAccounts(
     const depositTxn = await tx.bankTransaction.create({
       data: {
         companySlug,
+        companyId: toAccount.companyId,
         bankAccountId: toAccountId,
-        date,
+        type: "transfer",
+        date: new Date(date),
         reference: `TRF-${Date.now()}`,
         description: `Transfer from ${fromAccount.accountName}: ${description}`,
         amount: num(amountNum, 3).toFixed(3),
         transactionType: "transfer",
-        importedFrom: "manual",
+        isReconciled: false,
       },
     });
 
     // 3. Create JE: Debit destination account, Credit source account
+    // BankAccount.glAccountId is Int? but Account.id is a String cuid — coerce.
     const je = await tx.journalEntry.create({
       data: {
+        number: `JE-TRF-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        companyId: fromAccount.companyId,
         companySlug,
-        date,
+        date: new Date(date),
         description: `Bank transfer: ${description}`,
         reference: `TRF-${withdrawalTxn.id}-${depositTxn.id}`,
-        currency,
         status: "posted",
         createdBy,
         sourceType: "bank_transfer",
         lines: {
           create: [
             {
-              accountId: toAccount.glAccountId!,
+              accountId: String(toAccount.glAccountId),
               debit: num(amountNum, 3).toFixed(3),
               credit: "0.000",
               description: `Transfer from ${fromAccount.accountName}`,
             },
             {
-              accountId: fromAccount.glAccountId!,
+              accountId: String(fromAccount.glAccountId),
               debit: "0.000",
               credit: num(amountNum, 3).toFixed(3),
               description: `Transfer to ${toAccount.accountName}`,
@@ -452,19 +460,19 @@ export async function transferBetweenAccounts(
       data: { balance: toNewBalance },
     });
 
-    // Also update GL account balances
+    // Also update GL account balances (glAccountId is Int?, Account.id is String — coerce)
     await tx.account.update({
-      where: { id: fromAccount.glAccountId! },
+      where: { id: String(fromAccount.glAccountId) },
       data: { balance: subNums(
-        (await tx.account.findUnique({ where: { id: fromAccount.glAccountId! } }))!.balance,
+        (await tx.account.findUnique({ where: { id: String(fromAccount.glAccountId) } }))!.balance,
         amount,
       ) },
     });
 
     await tx.account.update({
-      where: { id: toAccount.glAccountId! },
+      where: { id: String(toAccount.glAccountId) },
       data: { balance: addNums(
-        (await tx.account.findUnique({ where: { id: toAccount.glAccountId! } }))!.balance,
+        (await tx.account.findUnique({ where: { id: String(toAccount.glAccountId) } }))!.balance,
         amount,
       ) },
     });

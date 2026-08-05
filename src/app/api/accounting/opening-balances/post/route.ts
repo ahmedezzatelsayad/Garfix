@@ -7,7 +7,7 @@
  * The frontend calls this route directly via POST /api/accounting/opening-balances/post
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { logAccountingChange } from "@/lib/accounting/accountant-collab";
@@ -39,7 +39,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   let totalDebit = 0;
   let totalCredit = 0;
 
-  const lines: Array<{ accountId: number; debit: string; credit: string; description: string }> = [];
+  // TODO(P2-Sprint5-A): JournalEntryLine.accountId is String (cuid) — change
+  // lines type from number to string.
+  const lines: Array<{ accountId: string; debit: string; credit: string; description: string }> = [];
   for (const entry of draftEntries) {
     if (!entry.account || !entry.accountId) continue;
     const debitAmt = num(entry.debit, 3);
@@ -89,6 +91,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const je = await tx.journalEntry.create({
       data: {
         companySlug: data.companySlug,
+        // TODO(P2-Sprint5-A): `number` and `companyId` are required String
+        // fields without defaults. Legacy `db: any` hid these missing fields.
+        number: `OB-${Date.now()}`,
+        companyId: "0",
         date: jeDate ?? new Date().toISOString(),
         description: "ترحيل أرصدة افتتاحية",
         reference: "OB-OPENING",

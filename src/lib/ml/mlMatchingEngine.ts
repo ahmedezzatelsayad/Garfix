@@ -15,7 +15,7 @@
  * 5. **A/B Testing**: مقارنة أداء ML vs Traditional
  */
 
-import { db } from "../db";
+import { dbTyped as db } from "../db";
 import { logger } from "../logger";
 import {
   recordCorrection,

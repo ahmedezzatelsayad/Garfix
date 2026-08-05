@@ -42,7 +42,7 @@
  * }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -290,12 +290,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   await db.aIProcessingLog.create({
     data: {
       companySlug,
-      endpoint: "invoice-brain",
+      requestType: "invoice-brain",
       model: "auto-detected", // Comes from aiOutcome in loop
       provider: "auto-detected",
-      ordersCount: orders.length,
-      itemsCount: orders.reduce((s, o) => s + o.order.items.length, 0),
-      processingMs,
+      latencyMs: processingMs,
       success: orders.length > 0,
     },
   }).catch(() => {});

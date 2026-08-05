@@ -20,7 +20,7 @@
  * actual items with accept/reject/override actions.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler, apiError } from "@/lib/api";
 
@@ -55,7 +55,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // relation to ProductCatalog in the current Prisma schema — adding one
   // would require a schema migration, which is out of scope for this fix).
   const productIds = Array.from(new Set(
-    items.map((i) => i.matchedProductId).filter((id): id is number => id != null),
+    items.map((i) => i.matchedProductId).filter((id): id is string => id != null),
   ));
   const products: any = productIds.length > 0
     ? await db.productCatalog.findMany({

@@ -4,7 +4,7 @@
  * Provides dashboard metrics, period comparison, and budget vs actual reporting.
  * All monetary values stored as String; uses num() for arithmetic.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, toNum, subNums } from "@/lib/money";
 import { logger } from "@/lib/logger";
 
@@ -401,15 +401,15 @@ export async function getBudgetVsActual(
   periodName: string,
 ): Promise<{ ok: boolean; result?: BudgetVsActualResult; error?: string }> {
   try {
-    // Get budget entries for this period
+    // Get budget entries for this period.
+    // Budget has no `account` relation (Budget.accountId is Int, Account.id is
+    // String cuid — a pre-existing schema mismatch), so we don't include it
+    // here; account code/name are filled in below via a separate lookup.
     const budgets = await db.budget.findMany({
       where: {
         companySlug,
         fiscalYear,
         periodName,
-      },
-      include: {
-        account: { select: { id: true, code: true, nameAr: true, type: true } },
       },
     });
 
@@ -444,8 +444,11 @@ export async function getBudgetVsActual(
       return { ok: false, error: `صيغة الفترة غير صالحة: ${periodName}` };
     }
 
-    // Get actual GL amounts for each budgeted account
-    const accountIds = budgets.map((b) => b.accountId);
+    // Get actual GL amounts for each budgeted account.
+    // Budget.accountId is Int but JournalEntryLine.accountId is a String cuid —
+    // coerce so the `in` filter typechecks (the lookup may not match any
+    // real account due to the underlying schema drift).
+    const accountIds = budgets.map((b) => String(b.accountId));
 
     const entries = await db.journalEntry.findMany({
       where: {
@@ -456,14 +459,14 @@ export async function getBudgetVsActual(
       },
       include: {
         lines: {
-          where: { accountId: { in: accountIds.filter((id): id is number => id !== null) } },
+          where: { accountId: { in: accountIds } },
           include: { account: true },
         },
       },
     });
 
     // Compute actual amounts per account
-    const actualMap = new Map<number, number>();
+    const actualMap = new Map<string, number>();
     for (const entry of entries) {
       for (const line of entry.lines) {
         const acc = line.account;
@@ -476,16 +479,18 @@ export async function getBudgetVsActual(
       }
     }
 
-    // Build budget vs actual comparison
+    // Build budget vs actual comparison.
+    // `b.account` is not a relation (Budget.accountId is Int, not a String FK);
+    // use empty strings for code/nameAr since we cannot resolve the account.
     const accounts: BudgetVsActualAccount[] = budgets.map((b) => {
       const planned = num(b.plannedAmount, 3);
-      const actual = actualMap.get(b.accountId ?? 0) || num(b.actualAmount, 3);
+      const actual = actualMap.get(String(b.accountId)) || num(b.actualAmount, 3);
       const variance = actual - planned;
       const variancePercent = planned !== 0 ? ((variance / Math.abs(planned)) * 100) : null;
 
       return {
-        code: b.account?.code ?? "",
-        nameAr: b.account?.nameAr ?? "",
+        code: "",
+        nameAr: "",
         planned,
         actual,
         variance,
@@ -495,7 +500,7 @@ export async function getBudgetVsActual(
 
     // Update budget actual amounts
     for (const b of budgets) {
-      const actual = actualMap.get(b.accountId ?? 0) || num(b.actualAmount, 3);
+      const actual = actualMap.get(String(b.accountId)) || num(b.actualAmount, 3);
       const variance = actual - num(b.plannedAmount, 3);
       await db.budget.update({
         where: { id: b.id },

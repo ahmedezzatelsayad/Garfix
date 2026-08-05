@@ -6,7 +6,7 @@
  * Other countries: configurable via company.recordRetentionYears.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -92,8 +92,10 @@ async function cleanupWithPerCompanyRetention(
 
     await db.$transaction(async (tx) => {
       // Delete journal entry lines first (foreign key dependency)
+      // Schema relation name is `journalEntry` (not `entry`) — the previous
+      // call used the wrong name and was masked by `db: any`.
       await tx.journalEntryLine.deleteMany({
-        where: { entry: { companySlug: company.slug, deletedAt: { lt: cutoffDate, not: null } } },
+        where: { journalEntry: { companySlug: company.slug, deletedAt: { lt: cutoffDate, not: null } } },
       });
       deletedCount.journalEntries = (await tx.journalEntry.deleteMany({ where: whereClause })).count;
       deletedCount.eInvoices = (await tx.eInvoice.deleteMany({ where: whereClause })).count;

@@ -3,7 +3,7 @@
  * POST — revise a budget (creates revised budget version)
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num, toNum } from "@/lib/money";
@@ -26,7 +26,7 @@ const ReviseSchema = z.object({
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const budgetId = parseInt(id);
+  const budgetId = id;
 
   const body = await parseJsonBody(req);
   const parsed = ReviseSchema.safeParse(body);
@@ -67,7 +67,9 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
         where: {
           companySlug: data.companySlug,
           periodName: budget.periodName,
-          accountId: entry.accountId,
+          // TODO(P2-Sprint5-A): Budget.accountId is Int? (scalar) — convert
+          // string cuid input via Number(). Legacy `db: any` hid the mismatch.
+          accountId: Number(entry.accountId),
           costCenterId: entry.costCenterId || null,
         },
       });

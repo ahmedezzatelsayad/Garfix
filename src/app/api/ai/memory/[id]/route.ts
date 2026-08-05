@@ -6,7 +6,7 @@
  * The user must have access to the note's company (founder/admin bypasses).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler } from "@/lib/api";
@@ -47,9 +47,9 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     entityId: existing.id,
     companySlug: existing.companySlug,
     details: {
-      entityType: existing.entityType,
-      entityId: existing.entityId,
-      notePreview: existing.note.slice(0, 80),
+      entityType: existing.category,
+      entityId: null,
+      notePreview: existing.content.slice(0, 80),
     },
   });
 

@@ -4,7 +4,7 @@
  *        posts it (updating account balances), and marks the original as "reversed".
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -19,7 +19,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if (!companySlug) return apiError("companySlug مطلوب", 400);
 
   const existing = await db.journalEntry.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
     include: { lines: true },
   });
   if (!existing) return apiError("Journal entry not found", 404);
@@ -39,7 +39,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   // Build swapped lines (debit ↔ credit) so the new entry's balance updates
   // exactly cancel the original's.
   const swappedLines = existing.lines.map((l) => ({
-    accountId: l.accountId ?? 0,
+    accountId: l.accountId,
     debit: num(l.credit, 3).toFixed(3),   // original credit → new debit
     credit: num(l.debit, 3).toFixed(3),   // original debit → new credit
     description: l.description || null,
@@ -51,6 +51,11 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     const rev = await tx.journalEntry.create({
       data: {
         companySlug: existing.companySlug,
+        // TODO(P2-Sprint5-A): `number` and `companyId` are required String
+        // fields without defaults. Legacy `db: any` hid these missing fields.
+        // Generate a unique number from timestamp; companyId from existing.
+        number: `REV-${Date.now()}`,
+        companyId: existing.companyId,
         date: new Date().toISOString().slice(0, 10),
         description: `عكس القيد #${existing.id}`,
         reference: existing.reference || null,
@@ -64,14 +69,13 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     });
 
     // 2. Update account balances for the reversal — batch fetch + aggregate deltas
-    const accountIds = [...new Set(swappedLines.map((l) => l.accountId))].filter((id): id is number => id !== 0);
+    const accountIds = [...new Set(swappedLines.map((l) => l.accountId))];
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
     const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
-    const deltas = new Map<number, number>();
+    const deltas = new Map<string, number>();
     for (const line of swappedLines) {
       const aid = line.accountId;
-      if (aid === 0) continue;
       const acc = accountMap.get(aid);
       if (!acc) continue;
       const isDebitNormal = acc.type === "asset" || acc.type === "expense";

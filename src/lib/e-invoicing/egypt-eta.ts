@@ -29,7 +29,7 @@ import {
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -132,7 +132,7 @@ export interface EgyptEtaLineItemPayload {
 
 export interface EgyptEtaSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: "pending" | "submitted" | "cleared" | "rejected";
   etaSubmissionId?: string; // ETA portal submission reference
   error?: string;
@@ -767,6 +767,9 @@ export async function submitEgyptEtaInvoice(
         rawXml: JSON.stringify(payload),
         companySlug: payload.sellerNameEn, // Temporary — should use actual companySlug
         invoiceId: 0, // Placeholder — should link to actual invoice
+        invoiceNumber: payload.invoiceNumber,
+        authority: EGYPT_ETA_AUTHORITY,
+        status: "pending",
       },
     });
 
@@ -808,7 +811,7 @@ export async function submitEgyptEtaInvoice(
  * @returns Status info from the EInvoice table
  */
 export async function checkEgyptEtaInvoiceStatus(
-  eInvoiceId: number,
+  eInvoiceId: string,
 ): Promise<{
   status: string;
   submissionId?: string;
@@ -831,7 +834,7 @@ export async function checkEgyptEtaInvoiceStatus(
       submissionId: eInvoice.uuid ?? undefined,
       rejectionReason: eInvoice.rejectionReason ?? undefined,
       submittedAt: eInvoice.submittedAt ?? undefined,
-      approvedAt: eInvoice.approvedAt ?? undefined,
+      approvedAt: eInvoice.clearedAt ?? undefined,
     };
   } catch (err) {
     logger.error("[egypt-eta] Failed to check EInvoice status", {

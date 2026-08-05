@@ -3,7 +3,7 @@
  * GET — list admin audit logs (founder only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler, parseJsonField } from "@/lib/api";
@@ -20,7 +20,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json({
     logs: logs.map((l) => ({
       ...l,
-      changes: l.changes ? parseJsonField(l.changes, null) : null,
+      // AdminAuditLog has no `changes` column — the closest is `details`
+      // (JSON-encoded string). We expose it under the `changes` key to
+      // preserve the API contract.
+      changes: l.details ? parseJsonField(l.details, null) : null,
     })),
   });
 });

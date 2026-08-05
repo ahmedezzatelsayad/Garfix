@@ -3,7 +3,7 @@
  * ACC-2: Balance Sheet (الميزانية العمومية)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { withErrorHandler } from "@/lib/api";
@@ -30,12 +30,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   });
 
   // Calculate balance per account from journal lines
-  const balanceMap = new Map<number, number>();
+  const balanceMap = new Map<string, number>();
   for (const entry of entries) {
     for (const line of entry.lines) {
       const debit = num(line.debit, 3);
       const credit = num(line.credit, 3);
-      const aid = line.accountId ?? 0;
+      const aid = line.accountId;
       const current = balanceMap.get(aid) ?? 0;
       balanceMap.set(aid, current + debit - credit);
     }

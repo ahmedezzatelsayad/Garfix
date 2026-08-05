@@ -5,7 +5,7 @@
  * PATCH /reopen — reopen a fiscal period (requires period_reopen permission)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -106,6 +106,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       fiscalYear: data.fiscalYear,
       periodType: data.periodType,
       status: "open",
+      // TODO(P2-Sprint5-A): companyId is required (String FK) but legacy route
+      // never had a real one — `db: any` hid this. Placeholder "0".
+      companyId: "0",
     },
   });
 

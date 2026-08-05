@@ -3,7 +3,7 @@
  * POST — cancel a payment voucher
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { cancelVoucher } from "@/lib/accounting/vouchers";
@@ -18,8 +18,7 @@ const CancelSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const voucherId = parseInt(id);
+  const { id: voucherId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = CancelSchema.safeParse(body);

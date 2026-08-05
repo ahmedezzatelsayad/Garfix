@@ -8,7 +8,7 @@
  * Checklist 6.2.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 import { PrismaPatternStore } from "@/lib/invoice-brain";
@@ -25,10 +25,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // we approximate the ratio from audit_logs (richer detail) if available,
   // else from the processing log counts.
   const recentLogs = await db.aIProcessingLog.findMany({
-    where: { endpoint: "invoice-brain" },
+    where: { requestType: "invoice-brain" },
     orderBy: { createdAt: "desc" },
     take: 100,
-    select: { success: true, createdAt: true, ordersCount: true, processingMs: true },
+    select: { success: true, createdAt: true, latencyMs: true },
   });
 
   const recentAudits = await db.auditLog.findMany({
@@ -57,11 +57,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     ? Number(((aiCount + mixedCount) / totalExtractions * 100).toFixed(1))
     : null;
 
-  // Top templates by reuse (most valuable — highest sampleCount)
+  // Top templates by reuse (most valuable — most recently updated)
   const topTemplates = await db.invoiceBrainTemplate.findMany({
-    orderBy: { sampleCount: "desc" },
+    orderBy: { updatedAt: "desc" },
     take: 5,
-    select: { fingerprint: true, sampleCount: true, lastUsedAt: true, createdAt: true },
+    select: { templateName: true, updatedAt: true, createdAt: true },
   });
 
   return NextResponse.json({
@@ -75,15 +75,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       mixedCount,
       aiRatioPercent: aiRatio, // lower = more learning = lower cost
       topTemplates: topTemplates.map((t) => ({
-        fingerprint: t.fingerprint,
-        sampleCount: t.sampleCount,
-        lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
+        fingerprint: t.templateName,
+        sampleCount: 0,
+        lastUsedAt: t.updatedAt.toISOString(),
         createdAt: t.createdAt.toISOString(),
       })),
       recentLogs: recentLogs.slice(0, 10).map((l) => ({
         success: l.success,
-        ordersCount: l.ordersCount,
-        processingMs: l.processingMs,
+        ordersCount: null,
+        processingMs: l.latencyMs,
         createdAt: l.createdAt.toISOString(),
       })),
     },

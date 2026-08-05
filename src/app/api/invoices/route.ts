@@ -4,7 +4,7 @@
  * POST — create a new invoice
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -26,7 +26,7 @@ const LineItemSchema = z.object({
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
   invoiceNumber: z.string().min(1, "رقم الفاتورة مطلوب"),
-  clientId: z.number().int().optional().nullable(),
+  clientId: z.string().optional().nullable(),
   clientName: z.string().min(1, "اسم العميل مطلوب"),
   clientEmail: z.string().email().optional().or(z.literal("")),
   clientPhone: z.string().optional(),

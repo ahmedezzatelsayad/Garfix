@@ -18,7 +18,7 @@
  *   getPatternStats() → PatternStats
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -125,7 +125,6 @@ export async function contributePattern(
   } else {
     await db.globalPattern.create({
       data: {
-        companySlug: "global",
         patternKey,
         suggestedSku: sku,
         suggestedVatCategory: vatCategory || null,

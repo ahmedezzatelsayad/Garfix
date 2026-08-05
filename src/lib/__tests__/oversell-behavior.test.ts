@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { isReviewQueueWarning, recordStockMovement } from "@/lib/inventorySync";
 
 // ─── Mock state ────────────────────────────────────────────────────────────

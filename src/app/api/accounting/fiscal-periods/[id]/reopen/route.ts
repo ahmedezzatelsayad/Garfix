@@ -7,7 +7,7 @@
  * period_reopen permission (not just finance_access).
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth } from "@/lib/auth";
 import { reopenFiscalPeriod } from "@/lib/accounting/period-close";
@@ -40,7 +40,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const user = ("user" in access) ? access.user : (await resolveAuth(req)).user!;
 
   const period = await db.fiscalPeriod.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
   });
   if (!period) return apiError("Fiscal period not found", 404);
   if (period.status !== "closed") return apiError("Only closed periods can be reopened", 400);

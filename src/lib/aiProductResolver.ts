@@ -15,7 +15,7 @@
  * the overturn-rate per model in the first two weeks of production usage.
  */
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { callAI, type ProviderType } from "./aiProvider";
 
@@ -41,7 +41,7 @@ export interface ResolveAmbiguousMatchInput {
 }
 
 export interface ResolveAmbiguousMatchCandidate {
-  id: number;
+  id: string;
   name: string;
   price?: number;
 }
@@ -66,15 +66,14 @@ export async function resolveAmbiguousMatch(
     orderBy: { createdAt: "desc" },
     take: 1,
   });
-  if (cached && Number(cached.confidence) >= 0.9 && cached.aiModel) {
-    const [provider, ...modelParts] = cached.aiModel.split("/");
+  if (cached && Number(cached.confidence) >= 0.9) {
     return {
       same_product: cached.tier === "auto-match",
       confidence: Number(cached.confidence),
-      reasoning_ar: cached.aiReasoning || "Cached",
+      reasoning_ar: "Cached",
       suggested_canonical_name: candidate.name,
-      provider: provider as ProviderType,
-      model: modelParts.join("/") || "unknown",
+      provider: "z-ai" as ProviderType,
+      model: "unknown",
     };
   }
 

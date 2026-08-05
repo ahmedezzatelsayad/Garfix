@@ -18,7 +18,7 @@
  *   getPostEventScaleDown()  — companies currently in post-event wind-down
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -339,15 +339,21 @@ export async function getPostEventScaleDown(
   const targets: ScaleDownTarget[] = [];
 
   for (const [companySlug, state] of scaleDownTargets.entries()) {
-    const runtime = await db.companyRuntime.findFirst({
-      where: {
-        company: { slug: companySlug },
-        status: "active",
-      },
-      include: { company: { select: { slug: true } } },
+    const company = await db.company.findUnique({
+      where: { slug: companySlug },
+      select: { id: true },
     });
 
-    if (!runtime) {
+    const runtime = company
+      ? await db.companyRuntime.findFirst({
+          where: {
+            companyId: company.id,
+            status: "active",
+          },
+        })
+      : null;
+
+    if (!runtime || !company) {
       scaleDownTargets.delete(companySlug);
       continue;
     }

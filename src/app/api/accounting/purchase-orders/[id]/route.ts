@@ -4,7 +4,7 @@
  * PATCH — Update purchase order (status, line items, etc.)
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -17,8 +17,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 // ─── GET ─────────────────────────────────────────────────────────────────
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const poId = parseInt(id);
+  const { id: poId } = await params;
 
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "finance_access");
@@ -58,8 +57,7 @@ const PatchPOSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const poId = parseInt(id);
+  const { id: poId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = PatchPOSchema.safeParse(body);

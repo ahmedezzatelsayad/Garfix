@@ -27,7 +27,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, type AuthPayload } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { calcInvoiceTotals, num } from "@/lib/money";
@@ -318,7 +318,7 @@ async function generatePreview(intent: string, params: Record<string, unknown>, 
       };
     }
     case "get_client_balance": {
-      const clientId = params.clientId as number;
+      const clientId = params.clientId as string;
       const slug = params.companySlug as string;
       // IDOR FIX: scope by companySlug in WHERE — a user from company A
       // must NOT be able to preview a client belonging to company B by
@@ -348,8 +348,8 @@ async function generatePreview(intent: string, params: Record<string, unknown>, 
     }
     case "adjust_inventory": {
       // File 5 prerequisite: AI Copilot inventory edit preview.
-      const productId = Number(params.productId);
-      const warehouseId = Number(params.warehouseId);
+      const productId = params.productId as string;
+      const warehouseId = params.warehouseId as string;
       const mode = (params.mode as "set" | "adjust") || "adjust";
       const delta = Number(params.quantity);
       const slug = params.companySlug as string;
@@ -509,7 +509,7 @@ async function executeIntent(
       }
 
       case "get_client_balance": {
-        const clientId = Number(params.clientId);
+        const clientId = params.clientId as string;
         // IDOR FIX: scope by companySlug in WHERE — previously fetch-then-verify.
         const client = await db.client.findFirst({ where: { id: clientId, companySlug } });
         if (!client) {
@@ -568,7 +568,7 @@ async function executeIntent(
             address: (params.address as string) || null,
             companySlug,
             code: `AI-${Date.now().toString().slice(-6)}`,
-            companyId: 0,
+            companyId: null,
           },
         });
         await logAudit({
@@ -589,11 +589,11 @@ async function executeIntent(
         if (!hasPermission(user, "settings_access")) {
           return { ok: false, summary: "ليس لديك صلاحية لتعديل المخزون" };
         }
-        const productId = Number(params.productId);
-        const warehouseId = Number(params.warehouseId);
+        const productId = params.productId as string;
+        const warehouseId = params.warehouseId as string;
         const mode = (params.mode as "set" | "adjust") || "adjust";
         const quantity = Number(params.quantity);
-        if (!Number.isFinite(productId) || !Number.isFinite(warehouseId) || !Number.isFinite(quantity)) {
+        if (!productId || !warehouseId || !Number.isFinite(quantity)) {
           return { ok: false, summary: "المعطيات غير صالحة: مطلوب productId + warehouseId + quantity (أرقام)" };
         }
 
@@ -637,12 +637,11 @@ async function executeIntent(
               data: {
                 quantity: Math.round(newQty),
                 reorderLevel: Number(existing.reorderLevel) || 0,
-                reorderQty: Number(existing.reorderQty) || 0,
               },
             });
             if (Math.abs(signedDelta) > 0.0001) {
               await recordStockMovement(
-                tx, companySlug, productId, warehouseId, signedDelta,
+                tx, companySlug, Number(productId), Number(warehouseId), signedDelta,
                 "ai_adjustment", null,
                 `AI Copilot ${mode === "adjust" ? "adjust" : "set"}: ${prevQty.toFixed(3)} → ${newQty.toFixed(3)} (delta ${signedDelta >= 0 ? "+" : ""}${signedDelta.toFixed(3)})`,
                 user.uid,
@@ -654,13 +653,13 @@ async function executeIntent(
             data: {
               companySlug, warehouseId, productId,
               quantity: Math.round(newQty),
-              reorderLevel: 0, reorderQty: 0,
-              companyId: 0,
+              reorderLevel: 0,
+              companyId: null,
             },
           });
           if (newQty > 0) {
             await recordStockMovement(
-              tx, companySlug, productId, warehouseId, newQty,
+              tx, companySlug, Number(productId), Number(warehouseId), newQty,
               "ai_initial_stock", null,
               `AI Copilot create: initial stock ${newQty.toFixed(3)}`,
               user.uid,

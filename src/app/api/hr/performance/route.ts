@@ -3,22 +3,23 @@
  * GET / POST — performance reviews
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
+import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
-  employeeId: z.number().int(),
+  employeeId: z.string().min(1),
   period: z.string().min(1),
   kpiScore: z.number().int().min(0).max(100).optional().nullable(),
   attendScore: z.number().int().min(0).max(100).optional().nullable(),
   teamScore: z.number().int().min(0).max(100).optional().nullable(),
   overallScore: z.number().int().min(0).max(100).optional().nullable(),
-  rating: z.string().optional(),
+  rating: z.union([z.number(), z.string()]).optional(),
   strengths: z.string().optional(),
   improvements: z.string().optional(),
   reviewerNote: z.string().optional(),
@@ -33,8 +34,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  if (companySlug) where.companySlug = companySlug;
-  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
+  // TODO(P2-Sprint5-D): HRPerformance has no companySlug column — filter via employee relation.
+  if (companySlug) where.employee = { companySlug };
+  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
   const records = await db.hRPerformance.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ performance: records });
 });
@@ -52,11 +54,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const p = await db.hRPerformance.create({
     data: {
-      companySlug: data.companySlug, employeeId: data.employeeId, period: data.period,
-      kpiScore: data.kpiScore != null ? data.kpiScore : 0, attendScore: data.attendScore != null ? data.attendScore : 0,
-      teamScore: data.teamScore != null ? data.teamScore : 0, overallScore: data.overallScore != null ? data.overallScore : 0,
-      rating: data.rating ?? "", strengths: data.strengths || null,
-      improvements: data.improvements || null, reviewerNote: data.reviewerNote || null,
+      employeeId: data.employeeId, period: data.period,
+      rating: num(data.rating ?? 0, 3).toFixed(3),
+      goals: data.strengths || null,
+      feedback: data.improvements || null,
+      // TODO(P2-Sprint5-D): HRPerformance schema only exposes employeeId/period/rating/goals/feedback —
+      // `companySlug`, `kpiScore`, `attendScore`, `teamScore`, `overallScore`, `reviewerNote` are not columns; dropped.
     },
   });
   await logAudit({

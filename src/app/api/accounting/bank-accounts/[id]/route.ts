@@ -5,7 +5,7 @@
  * DELETE — soft-delete (set isActive=false)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -38,9 +38,8 @@ export async function GET(
     if ("error" in access) return access.error;
     const user = access.user;
     const account = await db.bankAccount.findUnique({
-      where: { id: parseInt(id, 10) },
+      where: { id },
       include: {
-        glAccount: { select: { id: true, code: true, nameAr: true, nameEn: true, type: true } },
         bankTransactions: {
           where: { isReconciled: false },
           orderBy: { date: "desc" },
@@ -69,7 +68,6 @@ export async function PATCH(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    const accountId = parseInt(id, 10);
     const body = await parseJsonBody(req);
     const parsed = UpdateSchema.safeParse(body);
     if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
@@ -79,7 +77,7 @@ export async function PATCH(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.bankAccount.findFirst({ where: { id: accountId, companySlug: data.companySlug } });
+    const existing = await db.bankAccount.findFirst({ where: { id, companySlug: data.companySlug } });
     if (!existing) return apiError("Bank account not found", 404);
 
     // Validate GL account if updating
@@ -105,11 +103,10 @@ export async function PATCH(
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     const account = await db.bankAccount.update({
-      where: { id: accountId },
+      where: { id },
       data: updateData,
-      include: {
-        glAccount: { select: { id: true, code: true, nameAr: true, nameEn: true, type: true } },
-      },
+      // TODO(P2-Sprint5-A): BankAccount has no `glAccount` relation — only
+      // scalar `glAccountId: Int?`. Removed include.
     });
 
     await logAudit({
@@ -117,7 +114,7 @@ export async function PATCH(
       userUid: user.uid,
       action: "update",
       entity: "bank_account",
-      entityId: accountId,
+      entityId: id,
       companySlug: data.companySlug,
       details: { updatedFields: Object.keys(updateData) },
     });
@@ -135,7 +132,6 @@ export async function DELETE(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    const accountId = parseInt(id, 10);
 
     const sp = req.nextUrl.searchParams;
     const companySlug = sp.get("companySlug");
@@ -145,12 +141,12 @@ export async function DELETE(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.bankAccount.findFirst({ where: { id: accountId, companySlug } });
+    const existing = await db.bankAccount.findFirst({ where: { id, companySlug } });
     if (!existing) return apiError("Bank account not found", 404);
 
     // Soft delete: set isActive = false
     const account = await db.bankAccount.update({
-      where: { id: accountId },
+      where: { id },
       data: { isActive: false },
     });
 
@@ -159,7 +155,7 @@ export async function DELETE(
       userUid: user.uid,
       action: "delete",
       entity: "bank_account",
-      entityId: accountId,
+      entityId: id,
       companySlug,
       details: { bankName: existing.bankName, accountName: existing.accountName },
     });

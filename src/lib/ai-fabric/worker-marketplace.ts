@@ -19,7 +19,7 @@
  *   canPreempt(fromTier, toTier)                       → boolean
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import type { SLATier } from "./types";
 
@@ -125,8 +125,16 @@ export async function getGlobalPoolStatus(): Promise<GlobalPoolStatus> {
   // Get all active runtimes with their company's plan for tier info
   const runtimes = await db.companyRuntime.findMany({
     where: { status: "active" },
-    include: { company: { select: { slug: true, plan: true } } },
   });
+
+  const companyIds = runtimes.map((r) => r.companyId);
+  const companies = companyIds.length
+    ? await db.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, slug: true, plan: true },
+      })
+    : [];
+  const companyByCompanyId = new Map(companies.map((c) => [c.id, c]));
 
   let totalWorkers = 0;
   const tierMap = new Map<string, { running: number; waiting: number }>();
@@ -137,11 +145,13 @@ export async function getGlobalPoolStatus(): Promise<GlobalPoolStatus> {
   }
 
   for (const rt of runtimes) {
-    const slug = rt.company.slug;
+    const company = companyByCompanyId.get(rt.companyId);
+    const slug = company?.slug ?? "";
+    if (!slug) continue;
     totalWorkers += rt.workerPoolSize;
 
     // Determine SLA tier from CompanyRuntime (if set) or from plan
-    const slaTier = (rt.slaTier as SLATier) || planToSlaTier(rt.company.plan);
+    const slaTier = (rt.slaTier as SLATier) || planToSlaTier(company?.plan ?? "trial");
     const queueName = `ai-queue:${slug}`;
 
     // Count running jobs for this company
@@ -205,17 +215,26 @@ export async function findPreemptableJob(
   // Get all active runtimes with their tiers
   const runtimes = await db.companyRuntime.findMany({
     where: { status: "active" },
-    include: { company: { select: { slug: true, plan: true } } },
   });
+
+  const companyIds = runtimes.map((r) => r.companyId);
+  const companies = companyIds.length
+    ? await db.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, slug: true, plan: true },
+      })
+    : [];
+  const companyByCompanyId = new Map(companies.map((c) => [c.id, c]));
 
   let bestCandidate: { jobQueueId: number; companySlug: string; queue: string; tierRank: number } | null = null;
 
   for (const rt of runtimes) {
-    const slug = rt.company.slug;
+    const company = companyByCompanyId.get(rt.companyId);
+    const slug = company?.slug ?? "";
     if (!slug) continue;
     if (excludeCompanySlug && slug === excludeCompanySlug) continue;
 
-    const slaTier = (rt.slaTier as SLATier) || planToSlaTier(rt.company.plan);
+    const slaTier = (rt.slaTier as SLATier) || planToSlaTier(company?.plan ?? "trial");
     const fromRank = tierOrder[slaTier] ?? 0;
 
     // Can only preempt from strictly lower tier

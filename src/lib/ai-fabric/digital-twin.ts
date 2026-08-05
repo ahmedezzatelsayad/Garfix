@@ -14,7 +14,7 @@
  * Cache: db.aIMemoryEntry with category='digital-twin', refreshed every 15 min
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -81,8 +81,8 @@ export async function buildCompanySnapshot(
   let totalQuantity = 0;
   let lowStockItems = 0;
   for (const item of inventoryItems) {
-    const qty = item.quantity || 0;
-    const reorder = item.reorderLevel || 0;
+    const qty = Number(item.quantity) || 0;
+    const reorder = Number(item.reorderLevel) || 0;
     totalQuantity += qty;
     if (qty <= reorder) {
       lowStockItems++;

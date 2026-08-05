@@ -3,7 +3,7 @@
  * PATCH — close / reopen a support ticket (ticket owner or admin/founder)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
@@ -23,7 +23,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const user = result.user;
 
   const { id: idStr } = await params;
-  const id = parseInt(idStr);
+  // SupportTicket.id is String @id @default(cuid()) — the previous code
+  // wrapped it in parseInt() which would have produced NaN for any cuid input
+  // (and was masked by `db: any`).
+  const id = idStr;
   const isFounder = isFounderEmail(user.email);
   // IDOR mitigation (parity with upstream 5ca82cf Group D for replies route):
   // founder retains findUnique for platform-wide access; non-founder uses

@@ -31,7 +31,7 @@ import {
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { encryptSecret } from "@/lib/cryptoVault";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ export interface ZatcaLineItemPayload {
 
 export interface ZatcaSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: "pending" | "submitted" | "cleared" | "reported" | "rejected";
   zatcaClearedNumber?: string; // ZATCA clearance number for standard invoices
   zatcaReportingNumber?: string; // ZATCA reporting number for simplified invoices
@@ -1032,7 +1032,6 @@ export async function submitZatcaInvoice(
         await db.invoice.update({
           where: { id: invoiceId },
           data: {
-            eInvoiceStatus: submissionStatus,
             eInvoiceAuthority: ZATCA_AUTHORITY,
           },
         });
@@ -1060,6 +1059,9 @@ export async function submitZatcaInvoice(
           xmlHash: invoiceHash,
           uuid: generateZatcaUuid(),
           submittedAt: new Date(),
+          invoiceNumber: existingInvoice?.invoiceNumber ?? "",
+          authority: ZATCA_AUTHORITY,
+          status: submissionStatus,
         },
       });
 
@@ -1067,7 +1069,6 @@ export async function submitZatcaInvoice(
       await db.invoice.update({
         where: { id: invoiceId },
         data: {
-          eInvoiceStatus: submissionStatus,
           eInvoiceAuthority: ZATCA_AUTHORITY,
         },
       });
@@ -1109,7 +1110,7 @@ export async function submitZatcaInvoice(
  * Returns local DB status. In production, this would also query the ZATCA
  * portal API to get the latest status and update the local record.
  */
-export async function getZatcaInvoiceStatus(eInvoiceId: number): Promise<{
+export async function getZatcaInvoiceStatus(eInvoiceId: string): Promise<{
   status: string;
   authorityType: string;
   rejectionReason?: string;
@@ -1138,7 +1139,7 @@ export async function getZatcaInvoiceStatus(eInvoiceId: number): Promise<{
       authorityType: eInvoice.authorityType,
       rejectionReason: eInvoice.rejectionReason || undefined,
       submittedAt: eInvoice.submittedAt?.toISOString() || undefined,
-      approvedAt: eInvoice.approvedAt?.toISOString() || undefined,
+      approvedAt: eInvoice.clearedAt?.toISOString() || undefined,
     };
   } catch (err) {
     logger.error("[zatca] status check failed", {
@@ -1301,7 +1302,7 @@ export async function submitZatcaInvoiceWithRetry(
  * the local DB status immediately without polling.
  */
 export async function pollZatcaAck(
-  eInvoiceId: number,
+  eInvoiceId: string,
   opts?: { maxAttempts?: number; pollIntervalMs?: number },
 ): Promise<{
   state: "cleared" | "reported" | "rejected" | "pending" | "TIMEOUT";

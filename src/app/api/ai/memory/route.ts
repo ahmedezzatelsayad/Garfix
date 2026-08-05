@@ -8,7 +8,7 @@
  * read/write notes for entities within companies they can access).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -50,7 +50,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const notes = await db.aIMemoryNote.findMany({
-    where: { companySlug, entityType, entityId: String(entityId) },
+    where: { companySlug, category: entityType },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -59,10 +59,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     notes: notes.map((n) => ({
       id: n.id,
       companySlug: n.companySlug,
-      entityType: n.entityType,
-      entityId: n.entityId,
-      note: n.note,
-      createdBy: n.createdBy,
+      entityType: n.category,
+      entityId: null,
+      note: n.content,
+      createdBy: null,
       createdAt: n.createdAt,
     })),
   });
@@ -87,10 +87,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const note = await db.aIMemoryNote.create({
     data: {
       companySlug: data.companySlug,
-      entityType: data.entityType,
-      entityId: data.entityId != null ? String(data.entityId) : null,
-      note: data.note,
-      createdBy: user.email,
+      category: data.entityType,
+      content: data.note,
     },
   });
 
@@ -114,10 +112,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       note: {
         id: note.id,
         companySlug: note.companySlug,
-        entityType: note.entityType,
-        entityId: note.entityId,
-        note: note.note,
-        createdBy: note.createdBy,
+        entityType: note.category,
+        entityId: null,
+        note: note.content,
+        createdBy: null,
         createdAt: note.createdAt,
       },
     },

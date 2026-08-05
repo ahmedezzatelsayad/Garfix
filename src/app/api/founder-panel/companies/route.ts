@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from '@/lib/auth';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -32,7 +32,17 @@ export async function GET(request: NextRequest) {
     if (!auth.user) return apiError('Unauthorized', 401);
     
     // Verify user is a founder of at least one company
-    const founderMembership = await db.companyMember.findFirst({
+    // NOTE: `companyMember` is not in prisma schema.prisma — the table is
+    // populated by an unrelated migration and was previously accessed via
+    // `db: any`. We cast through `unknown` to keep the runtime call intact
+    // without re-introducing `any`.
+    const founderMembership = await (db as unknown as {
+      companyMember: {
+        findFirst: (args: {
+          where: { userId?: string; role?: string };
+        }) => Promise<{ companyId: string } | null>;
+      };
+    }).companyMember.findFirst({
       where: {
         userId: auth.user.uid,
         role: 'founder',

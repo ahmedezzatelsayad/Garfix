@@ -16,7 +16,7 @@
  *   requestSlot(companySlug)    → boolean (granted / denied)
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getValkeyClient } from "@/lib/valkey";
 import { TIER_WORKER_LIMITS, planToTier, type SLATier } from "./types";
@@ -100,8 +100,17 @@ export async function getAllocationMap(): Promise<Record<string, AllocationInfo>
   // Fetch all active runtimes with company info
   const runtimes = await db.companyRuntime.findMany({
     where: { status: "active" },
-    include: { company: { select: { slug: true, plan: true } } },
   });
+
+  // Fetch related companies (slug, plan) by companyId
+  const companyIds = runtimes.map((r) => r.companyId);
+  const companies = companyIds.length
+    ? await db.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, slug: true, plan: true },
+      })
+    : [];
+  const companyByCompanyId = new Map(companies.map((c) => [c.id, c]));
 
   // Build initial allocation map
   const map: Record<string, AllocationInfo> = {};
@@ -110,9 +119,10 @@ export async function getAllocationMap(): Promise<Record<string, AllocationInfo>
   let totalIdleExcess = 0;
 
   for (const rt of runtimes) {
-    const slug = rt.company.slug ?? "";
+    const company = companyByCompanyId.get(rt.companyId);
+    const slug = company?.slug ?? "";
     if (!slug) continue;
-    const tier = planToTier(rt.company.plan);
+    const tier = planToTier(company?.plan ?? "trial");
     const ceiling = TIER_WORKER_LIMITS[tier] as number;
     const queueDepth = await getCompanyQueueDepth(slug);
     const isIdle = queueDepth === 0 && !activeSlugs.has(slug);

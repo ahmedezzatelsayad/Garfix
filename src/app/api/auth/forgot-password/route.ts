@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { hashToken } from "@/lib/cryptoVault";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
@@ -53,7 +53,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.emailVerification.create({
       data: {
         email: user.email,
-        userId: user.id,
+        userId: user.uid,
+        code,
         codeHash,
         purpose: "password_reset",
         expiresAt,

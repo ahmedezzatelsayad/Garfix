@@ -4,7 +4,7 @@
  * POST — run depreciation for a period
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -50,7 +50,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: { createdAt: "desc" },
     take: 500,
     include: {
-      asset: {
+      // TODO(P2-Sprint5-A): DepreciationEntry has `fixedAsset` relation (not
+      // `asset`), and no `journalEntry` relation — removed.
+      fixedAsset: {
         select: {
           id: true,
           nameAr: true,
@@ -61,9 +63,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
           depreciationMethod: true,
         },
       },
-      journalEntry: {
-        select: { id: true, reference: true, status: true },
-      },
     },
   });
 
@@ -73,9 +72,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       depreciationAmount: num(e.depreciationAmount, 3).toFixed(3),
       bookValueAfter: num(e.bookValueAfter, 3).toFixed(3),
       asset: {
-        ...e.asset,
-        acquisitionCost: num(e.asset.acquisitionCost, 3).toFixed(3),
-        currentBookValue: num(e.asset.currentBookValue, 3).toFixed(3),
+        ...e.fixedAsset,
+        acquisitionCost: num(e.fixedAsset.acquisitionCost, 3).toFixed(3),
+        currentBookValue: num(e.fixedAsset.currentBookValue, 3).toFixed(3),
       },
     })),
   });

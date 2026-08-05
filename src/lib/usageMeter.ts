@@ -2,7 +2,7 @@
  * usageMeter.ts — SAAS-001 + SAAS-003 FIX
  * Enforces plan limits: trial expiry, monthly invoice quota, user count.
  */
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { DEFAULT_PLANS, type PlanKey } from "./plans";
 import { logger } from "./logger";
 

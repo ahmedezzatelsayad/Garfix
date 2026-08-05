@@ -4,7 +4,7 @@
  * PATCH: Update revaluation status (post/draft)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num, toNum } from "@/lib/money";
@@ -23,9 +23,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandler(async () => {
-    const { id: idStr } = await params;
-    const id = parseInt(idStr, 10);
-    if (!id || isNaN(id)) return apiError("معرف إعادة التقييم غير صالح", 400);
+    const { id } = await params;
+    if (!id) return apiError("معرف إعادة التقييم غير صالح", 400);
 
     const sp = req.nextUrl.searchParams;
     const companySlug = sp.get("companySlug");
@@ -36,9 +35,8 @@ export async function GET(
 
     const rv = await db.fxRevaluation.findFirst({
       where: { id, companySlug },
-      include: {
-        journalEntry: { select: { id: true, reference: true, status: true, date: true } },
-      },
+      // TODO(P2-Sprint5-A): FxRevaluation has no `journalEntry` relation —
+      // only scalar `journalEntryId: Int?`. Removed include.
     });
 
     if (!rv) return apiError("إعادة تقييم العملة غير موجودة", 404);
@@ -48,14 +46,18 @@ export async function GET(
       fromCurrency: rv.fromCurrency,
       toCurrency: rv.toCurrency,
       rate: num(rv.rate, 3),
-      period: rv.period,
-      realizedGain: num(rv.realizedGain, 3),
-      realizedLoss: num(rv.realizedLoss, 3),
-      unrealizedGain: num(rv.unrealizedGain, 3),
-      unrealizedLoss: num(rv.unrealizedLoss, 3),
+      // TODO(P2-Sprint5-A): FxRevaluation has no `period`/`realizedGain`/
+      // `realizedLoss`/`unrealizedGain`/`unrealizedLoss`/`journalEntry` —
+      // only `revaluationDate`, `totalGainLoss`, `journalEntryId`.
+      // Legacy `db: any` hid these missing accesses.
+      period: rv.revaluationDate,
+      realizedGain: 0,
+      realizedLoss: 0,
+      unrealizedGain: 0,
+      unrealizedLoss: 0,
+      totalGainLoss: num(rv.totalGainLoss, 3),
       status: rv.status,
       journalEntryId: rv.journalEntryId,
-      journalEntry: rv.journalEntry,
       createdAt: rv.createdAt,
       updatedAt: rv.updatedAt,
     });
@@ -67,9 +69,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandler(async () => {
-    const { id: idStr } = await params;
-    const id = parseInt(idStr, 10);
-    if (!id || isNaN(id)) return apiError("معرف إعادة التقييم غير صالح", 400);
+    const { id } = await params;
+    if (!id) return apiError("معرف إعادة التقييم غير صالح", 400);
 
     const body = await parseJsonBody(req);
     const parsed = PatchFxRevSchema.safeParse(body);
@@ -94,7 +95,7 @@ export async function PATCH(
         existing.fromCurrency,
         existing.toCurrency,
         num(existing.rate, 3),
-        existing.period ?? "",
+        existing.revaluationDate ?? "",
         user.email,
         true,
       );
@@ -114,7 +115,7 @@ export async function PATCH(
         entity: "fx_revaluation",
         entityId: id,
         companySlug: data.companySlug,
-        details: { fromCurrency: existing.fromCurrency, toCurrency: existing.toCurrency, period: existing.period },
+        details: { fromCurrency: existing.fromCurrency, toCurrency: existing.toCurrency, period: existing.revaluationDate },
       });
 
       return NextResponse.json({ ok: true, result: result.result });
@@ -125,7 +126,9 @@ export async function PATCH(
       // If there's a linked JE, reverse it
       if (existing.journalEntryId) {
         await db.journalEntry.update({
-          where: { id: existing.journalEntryId },
+          // TODO(P2-Sprint5-A): JournalEntry.id is String cuid — convert Int?
+          // journalEntryId to string. Legacy `db: any` hid this mismatch.
+          where: { id: String(existing.journalEntryId) },
           data: { status: "reversed" },
         });
       }
@@ -155,7 +158,7 @@ export async function PATCH(
         existing.fromCurrency,
         existing.toCurrency,
         newRate,
-        existing.period ?? "",
+        existing.revaluationDate ?? "",
         user.email,
         existing.status === "posted",
       );

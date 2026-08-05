@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // Phase 9
 import {

@@ -4,7 +4,7 @@
  * GET — List installment schedules
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -46,13 +46,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const schedules = await db.installmentSchedule.findMany({
     where,
     orderBy: [{ createdAt: "desc" }],
-    include: { company: { select: { slug: true, name: true } } },
+    // TODO(P2-Sprint5-A): InstallmentSchedule has no `company` relation —
+    // only scalar `paymentVoucherId` (FK to PaymentVoucher). Removed include.
   });
 
   return NextResponse.json({
     schedules: schedules.map((s) => ({
       ...s,
-      totalAmount: num(s.totalAmount, 3),
+      // TODO(P2-Sprint5-A): InstallmentSchedule has `amount` (Decimal),
+      // not `totalAmount`. Legacy `db: any` hid this missing access.
+      totalAmount: num(s.amount, 3),
     })),
   });
 });

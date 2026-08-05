@@ -16,7 +16,7 @@
  */
 'use node';
 
-import { db } from '@/lib/db';
+import { dbTyped as db } from "@/lib/db";
 import { logger } from '@/lib/logger';
 import { getIntegrationConfig } from '@/lib/integrations/registry';
 import { validateBaseUrl } from '@/lib/integrations/myfatoorah';
@@ -55,10 +55,10 @@ export async function initiateRefund(
   amount: number,
   reason?: string,
   createdBy?: string,
-): Promise<{ ok: boolean; refundId?: number; providerRefundId?: string; error?: string }> {
+): Promise<{ ok: boolean; refundId?: string; providerRefundId?: string; error?: string }> {
   // 1. Validate the payment transaction
   const txn = await db.paymentTransaction.findUnique({
-    where: { id: paymentTxnId },
+    where: { id: String(paymentTxnId) },
   });
 
   if (!txn) {
@@ -77,10 +77,9 @@ export async function initiateRefund(
   // 2. Create RefundTransaction record
   const refundRecord = await db.refundTransaction.create({
     data: {
-      paymentTransactionId: paymentTxnId,
+      paymentTransactionId: String(paymentTxnId),
       companySlug: txn.companySlug,
-      refundAmount: String(amount),
-      currency: txn.currency,
+      amount,
       reason: reason || 'استرجاع بناء على طلب العميل',
       status: 'pending',
     },
@@ -160,7 +159,7 @@ export async function initiateRefund(
     // Update original payment transaction metadata to reflect refund
     const existingMeta = (() => { try { return JSON.parse(txn.metadata || '{}'); } catch { return {}; } })();
     await db.paymentTransaction.update({
-      where: { id: paymentTxnId },
+      where: { id: String(paymentTxnId) },
       data: {
         metadata: JSON.stringify({
           ...existingMeta,
@@ -218,7 +217,7 @@ export async function getRefundStatus(
   reason?: string;
   error?: string;
 }> {
-  const refund = await db.refundTransaction.findUnique({ where: { id: refundId } });
+  const refund = await db.refundTransaction.findUnique({ where: { id: String(refundId) } });
   if (!refund) {
     return { ok: false, error: 'سجل الاسترجاع غير موجود' };
   }
@@ -229,8 +228,7 @@ export async function getRefundStatus(
       ok: true,
       status: refund.status,
       providerRefundId: refund.providerRefundId ?? undefined,
-      amount: refund.refundAmount.toString(),
-      currency: refund.currency ?? undefined,
+      amount: refund.amount.toString(),
       reason: refund.reason ?? undefined,
     };
   }
@@ -243,8 +241,7 @@ export async function getRefundStatus(
         ok: true,
         status: refund.status,
         providerRefundId: refund.providerRefundId ?? undefined,
-        amount: refund.refundAmount.toString(),
-        currency: refund.currency ?? undefined,
+        amount: refund.amount.toString(),
         reason: refund.reason ?? undefined,
       };
     }
@@ -257,8 +254,7 @@ export async function getRefundStatus(
         ok: true,
         status: refund.status,
         providerRefundId: refund.providerRefundId ?? undefined,
-        amount: refund.refundAmount.toString(),
-        currency: refund.currency ?? undefined,
+        amount: refund.amount.toString(),
         reason: refund.reason ?? undefined,
       };
     }
@@ -283,7 +279,7 @@ export async function getRefundStatus(
         const mappedStatus = mapRefundStatus(providerStatus);
 
         await db.refundTransaction.update({
-          where: { id: refundId },
+          where: { id: String(refundId) },
           data: {
             status: mappedStatus,
           },
@@ -293,8 +289,7 @@ export async function getRefundStatus(
           ok: true,
           status: mappedStatus,
           providerRefundId: refund.providerRefundId ?? undefined,
-          amount: refund.refundAmount.toString(),
-          currency: refund.currency ?? undefined,
+          amount: refund.amount.toString(),
           reason: refund.reason ?? undefined,
         };
       }
@@ -310,8 +305,7 @@ export async function getRefundStatus(
     ok: true,
     status: refund.status,
     providerRefundId: refund.providerRefundId ?? undefined,
-    amount: refund.refundAmount.toString(),
-    currency: refund.currency ?? undefined,
+    amount: refund.amount.toString(),
     reason: refund.reason ?? undefined,
   };
 }

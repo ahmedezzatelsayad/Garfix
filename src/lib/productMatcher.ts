@@ -73,7 +73,7 @@
  * go to the review queue (no auto-matching), regardless of confidence.
  */
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { num } from "./money";
 import { enqueueBackground, QUEUE_NAMES } from "./queues";
@@ -1253,10 +1253,20 @@ async function buildResult(args: BuildResultArgs): Promise<MatchResult> {
 // ─── Alias management ───────────────────────────────────────────────────────
 
 export async function confirmAlias(companySlug: string, productId: number, alias: string, createdBy: string): Promise<void> {
+  void createdBy; // not persisted — ProductAlias schema has no `createdBy` writer field
   await db.productAlias.upsert({
-    where: { companySlug_alias: { companySlug, alias: alias.trim() } },
+    where: { alias_companySlug_language: { alias: alias.trim(), companySlug, language: "ar" } },
     update: { isVerified: true, confidence: 1.0, source: "manual" },
-    create: { productCatalogId: productId, companySlug, alias: alias.trim(), source: "manual", confidence: 1.0, isVerified: true },
+    create: {
+      productId: String(productId),
+      productCatalogId: productId,
+      companySlug,
+      alias: alias.trim(),
+      language: "ar",
+      source: "manual",
+      confidence: 1.0,
+      isVerified: true,
+    },
   });
 }
 
@@ -1281,16 +1291,21 @@ export async function recordMatchOverride(params: {
   auditId?: number;
   reason?: string;
   overriddenBy: string;
-}): Promise<{ overrideId: number }> {
+}): Promise<{ overrideId: string }> {
   const { companySlug, inputText, fromProductId, toProductId, chosenAlias, auditId, reason, overriddenBy } = params;
   const inputNormalized = normalizeArabic(inputText);
   const override = await db.matchOverride.create({
     data: {
       companySlug,
+      productId: String(toProductId),
       inputText: inputText.trim(),
-      chosenAlias: chosenAlias?.trim() || "",
+      inputNormalized,
+      fromProductId: fromProductId ?? null,
+      toProductId,
+      chosenAlias: chosenAlias?.trim() || null,
       auditId: auditId ?? null,
       reason: reason?.trim() || null,
+      overriddenBy,
     },
   });
   logger.info("[product-matcher] match override recorded (learning engine)", {
@@ -1330,10 +1345,11 @@ export async function undoMatches(auditIds: number[], undoneBy: string): Promise
   let undone = 0;
   for (const id of auditIds) {
     try {
-      const audit = await db.productMatchAudit.findUnique({ where: { id } });
+      const auditId = String(id);
+      const audit = await db.productMatchAudit.findUnique({ where: { id: auditId } });
       if (!audit) { errors.push(`Audit ${id} not found`); continue; }
       if (audit.isUndone) { errors.push(`Audit ${id} already undone`); continue; }
-      await db.productMatchAudit.update({ where: { id }, data: { isUndone: true, undoneBy } });
+      await db.productMatchAudit.update({ where: { id: auditId }, data: { isUndone: true, undoneBy } });
       if (audit.matchedAlias && audit.tier === "auto-match") {
         await db.productAlias.deleteMany({ where: { companySlug: audit.companySlug, alias: audit.matchedAlias } }).catch(() => {});
       }

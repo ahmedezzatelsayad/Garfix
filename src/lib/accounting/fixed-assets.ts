@@ -4,7 +4,7 @@
  * Phase 5 of the GarfiX ERP accounting module.
  * All monetary values as String (no Float), using num() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, subNums, addNums, mulNums } from "@/lib/money";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ export function calculateDepreciation(asset: AssetData): DepreciationResult {
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface PeriodDepreciationResult {
-  assetId: number;
+  assetId: string;
   assetName: string;
   period: string;
   depreciationAmount: string;
@@ -109,7 +109,7 @@ export interface PeriodDepreciationResult {
   accumulatedAfter: string;
   method: string;
   status: string; // draft or posted
-  journalEntryId?: number;
+  journalEntryId?: string;
 }
 
 /**
@@ -141,11 +141,11 @@ export async function runDepreciationForPeriod(
   const results: PeriodDepreciationResult[] = [];
 
   for (const asset of assets) {
-    // Check if depreciation already exists for this period
-    const existingEntry = await db.depreciationEntry.findUnique({
-      where: {
-        assetId_period: { assetId: asset.id, period },
-      },
+    // Check if depreciation already exists for this period.
+    // DepreciationEntry has no @@unique([assetId, period]) constraint, so use
+    // findFirst instead of findUnique.
+    const existingEntry = await db.depreciationEntry.findFirst({
+      where: { assetId: asset.id, period },
     });
 
     if (existingEntry) {
@@ -158,8 +158,8 @@ export async function runDepreciationForPeriod(
         bookValueAfter: existingEntry.bookValueAfter.toString(),
         accumulatedAfter: asset.accumulatedDepreciation.toString(),
         method: asset.depreciationMethod,
-        status: existingEntry.status,
-        journalEntryId: existingEntry.journalEntryId ?? undefined,
+        status: existingEntry.isPosted ? "posted" : "draft",
+        journalEntryId: undefined,
       });
       continue;
     }
@@ -178,31 +178,41 @@ export async function runDepreciationForPeriod(
     // Use monthly depreciation for a monthly period
     const monthlyAmount = depreciation.monthlyDepreciation;
 
-    // 3. Create DepreciationEntry record (draft)
+    // 3. Create DepreciationEntry record (draft).
+    // Schema has no `companySlug` column — required fields are `assetId`,
+    // `amount`, `date`, `companyId`, `period` (P2-Recon), `depreciationAmount`
+    // (P2-Recon), `bookValueAfter` (P2-Recon), `isPosted` (P2-Recon).
+    const company = await db.company.findUnique({ where: { slug: companySlug } });
+    if (!company) throw new Error(`Company not found for slug: ${companySlug}`);
     const entry = await db.depreciationEntry.create({
       data: {
-        companySlug,
+        companyId: company.id,
         assetId: asset.id,
+        amount: monthlyAmount,
+        date: new Date(`${period}-01`),
         period,
         depreciationAmount: monthlyAmount,
         bookValueAfter: depreciation.newBookValue,
-        status: "draft",
+        isPosted: false,
       },
     });
 
-    let journalEntryId: number | undefined;
+    let journalEntryId: string | undefined;
 
     // 4. Optionally post (create JE)
     if (postImmediately && num(monthlyAmount, 3) > 0) {
       const je = await db.$transaction(async (tx) => {
-        // Create JE: Debit depreciation expense, Credit accumulated depreciation
+        // Create JE: Debit depreciation expense, Credit accumulated depreciation.
+        // FixedAsset.{expense,depreciation,gl}AccountId are Int? but Account.id
+        // is a String cuid — coerce with String().
         const journalEntry = await tx.journalEntry.create({
           data: {
+            number: `JE-DEP-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+            companyId: company.id,
             companySlug,
-            date: `${period}-01`, // first day of the month
+            date: new Date(`${period}-01`), // first day of the month
             description: `Monthly depreciation: ${asset.nameAr} (${period})`,
             reference: `DEP-${asset.id}-${period}`,
-            currency: "KWD",
             status: "posted",
             createdBy,
             sourceType: "depreciation",
@@ -210,13 +220,13 @@ export async function runDepreciationForPeriod(
             lines: {
               create: [
                 {
-                  accountId: asset.expenseAccountId ?? 0,
+                  accountId: String(asset.expenseAccountId ?? 0),
                   debit: monthlyAmount,
                   credit: "0.000",
                   description: `Depreciation expense: ${asset.nameAr}`,
                 },
                 {
-                  accountId: asset.depreciationAccountId ?? 0,
+                  accountId: String(asset.depreciationAccountId ?? 0),
                   debit: "0.000",
                   credit: monthlyAmount,
                   description: `Accumulated depreciation: ${asset.nameAr}`,
@@ -236,23 +246,23 @@ export async function runDepreciationForPeriod(
           },
         });
 
-        // Update depreciation entry status
+        // Update depreciation entry status (no `journalEntryId` column — use
+        // `isPosted` to mark as posted).
         await tx.depreciationEntry.update({
           where: { id: entry.id },
           data: {
-            status: "posted",
-            journalEntryId: journalEntry.id,
+            isPosted: true,
           },
         });
 
         // Update GL account balances
         if (asset.expenseAccountId) {
           const expenseAccount = await tx.account.findUnique({
-            where: { id: asset.expenseAccountId },
+            where: { id: String(asset.expenseAccountId) },
           });
           if (expenseAccount) {
             await tx.account.update({
-              where: { id: asset.expenseAccountId },
+              where: { id: String(asset.expenseAccountId) },
               data: { balance: addNums(expenseAccount.balance, monthlyAmount) },
             });
           }
@@ -260,12 +270,12 @@ export async function runDepreciationForPeriod(
 
         if (asset.depreciationAccountId) {
           const depAccount = await tx.account.findUnique({
-            where: { id: asset.depreciationAccountId },
+            where: { id: String(asset.depreciationAccountId) },
           });
           if (depAccount) {
             // Contra-asset: credit increases it
             await tx.account.update({
-              where: { id: asset.depreciationAccountId },
+              where: { id: String(asset.depreciationAccountId) },
               data: { balance: addNums(depAccount.balance, monthlyAmount) },
             });
           }
@@ -298,7 +308,7 @@ export async function runDepreciationForPeriod(
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface DisposalResult {
-  assetId: number;
+  assetId: string;
   assetName: string;
   disposalType: string;
   disposalAmount: string;
@@ -308,7 +318,7 @@ export interface DisposalResult {
   bookValueAtDisposal: string;
   gainLossAmount: string;
   gainLossType: "gain" | "loss" | "none";
-  journalEntryId: number;
+  journalEntryId: string;
   summary: string;
 }
 
@@ -327,7 +337,7 @@ export interface DisposalResult {
  */
 export async function disposeAsset(
   companySlug: string,
-  assetId: number,
+  assetId: string,
   disposalType: string, // sold/scrapped/donated
   disposalAmount: string, // proceeds from sale (0 for scrapped/donated)
   disposalDate: string, // YYYY-MM-DD
@@ -355,13 +365,14 @@ export async function disposeAsset(
 
   // Wrap in a transaction
   const result = await db.$transaction(async (tx) => {
-    // 1. Mark asset as inactive with disposal info
+    // 1. Mark asset as inactive with disposal info.
+    // FixedAsset has `disposalMethod` (not `disposalType`).
     await tx.fixedAsset.update({
       where: { id: assetId },
       data: {
         isActive: false,
         disposalDate,
-        disposalType,
+        disposalMethod: disposalType,
         disposalAmount: proceeds.toFixed(3),
         currentBookValue: "0.000", // zeroed out
         accumulatedDepreciation: accumulated.toFixed(3),
@@ -378,7 +389,7 @@ export async function disposeAsset(
     //    Debit/Credit: Gain/Loss on Disposal (difference)
 
     const lines: Array<{
-      accountId: number;
+      accountId: string;
       debit: string;
       credit: string;
       description: string;
@@ -387,7 +398,7 @@ export async function disposeAsset(
     // Debit: Accumulated Depreciation (remove the contra-asset)
     if (asset.depreciationAccountId) {
       lines.push({
-        accountId: asset.depreciationAccountId,
+        accountId: String(asset.depreciationAccountId),
         debit: accumulated.toFixed(3),
         credit: "0.000",
         description: `Remove accumulated depreciation for disposed asset: ${asset.nameAr ?? asset.nameEn ?? ""}`,
@@ -397,7 +408,7 @@ export async function disposeAsset(
     // Credit: Fixed Asset (remove the asset from books)
     if (asset.glAccountId) {
       lines.push({
-        accountId: asset.glAccountId,
+        accountId: String(asset.glAccountId),
         debit: "0.000",
         credit: cost.toFixed(3),
         description: `Remove disposed asset from books: ${asset.nameAr ?? asset.nameEn ?? ""}`,
@@ -412,7 +423,7 @@ export async function disposeAsset(
       });
       if (bankAccount?.glAccountId) {
         lines.push({
-          accountId: bankAccount.glAccountId,
+          accountId: String(bankAccount.glAccountId),
           debit: proceeds.toFixed(3),
           credit: "0.000",
           description: `Proceeds from asset disposal: ${asset.nameAr ?? asset.nameEn ?? ""}`,
@@ -454,13 +465,18 @@ export async function disposeAsset(
       }
     }
 
+    // Resolve companyId once for the disposal JE.
+    const disposalCompany = await tx.company.findUnique({ where: { slug: companySlug } });
+    if (!disposalCompany) throw new Error(`Company not found for slug: ${companySlug}`);
+
     const je = await tx.journalEntry.create({
       data: {
+        number: `JE-DISP-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        companyId: disposalCompany.id,
         companySlug,
-        date: disposalDate,
+        date: new Date(disposalDate),
         description: `Asset disposal: ${asset.nameAr ?? asset.nameEn ?? ""} (${disposalType})`,
         reference: `DISP-${assetId}-${disposalDate}`,
-        currency: "KWD",
         status: "posted",
         createdBy,
         sourceType: "asset_disposal",

@@ -10,7 +10,7 @@
  *   import { fireEvent } from "@/lib/automation/engine";
  *   await fireEvent({ type: "invoice_created", companySlug: "acme", data: { ... } });
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 export interface TriggerEvent {
@@ -20,7 +20,7 @@ export interface TriggerEvent {
 }
 
 export interface RuleShape {
-  id: number;
+  id: string;
   name: string;
   condition: string;
   actions: string;
@@ -148,9 +148,8 @@ export async function executeRule(rule: RuleShape, event: TriggerEvent): Promise
         data: {
           ruleId: rule.id,
           status,
-          triggerData: JSON.stringify(event.data),
+          result: JSON.stringify(event.data),
           error,
-          durationMs: Date.now() - start,
         },
       });
     } catch (logErr) {
@@ -217,6 +216,7 @@ async function executeAction(action: ActionShape, event: TriggerEvent): Promise<
             body: String(action.params?.description || JSON.stringify(event.data)),
             status: "open",
             priority: String(action.params?.priority || "normal"),
+            companySlug: event.companySlug,
           },
         });
         logger.info("[automation] create_task success", { title: action.params?.title });

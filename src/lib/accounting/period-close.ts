@@ -8,7 +8,7 @@
  * ALL monetary values as String (no Float), use num() from money.ts.
  * ALL mutations MUST log audit via logAudit.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -16,23 +16,23 @@ import { logger } from "@/lib/logger";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface ClosingResult {
-  periodId: number;
+  periodId: string;
   periodName: string;
   closedBy: string;
   closedAt: string;
   netIncome: string;
-  closingJEId: number;
+  closingJEId: string;
   revenueClosed: string;
   expensesClosed: string;
   retainedEarningsUpdate: string;
 }
 
 export interface ReopenResult {
-  periodId: number;
+  periodId: string;
   periodName: string;
   reopenedBy: string;
   reopenedAt: string;
-  reversalJEId: number | null;
+  reversalJEId: string | null;
   reason: string;
 }
 
@@ -110,21 +110,21 @@ export async function closeFiscalPeriod(
 
   const revenueLines = await db.journalEntryLine.findMany({
     where: {
-      entryId: { in: postedJEIdList },
+      journalEntryId: { in: postedJEIdList },
       accountId: { in: revenueAccountIds },
     },
   });
 
   const expenseLines = await db.journalEntryLine.findMany({
     where: {
-      entryId: { in: postedJEIdList },
+      journalEntryId: { in: postedJEIdList },
       accountId: { in: expenseAccountIds },
     },
   });
 
   const contraRevenueLines = await db.journalEntryLine.findMany({
     where: {
-      entryId: { in: postedJEIdList },
+      journalEntryId: { in: postedJEIdList },
       accountId: { in: contraRevenueAccountIds },
     },
   });
@@ -158,7 +158,7 @@ export async function closeFiscalPeriod(
   }
 
   // Build closing JE lines
-  const closingLines: { accountId: number; debit: string; credit: string; description: string | null }[] = [];
+  const closingLines: { accountId: string; debit: string; credit: string; description: string | null }[] = [];
 
   // Close Revenue accounts: Debit each revenue account, Credit Income Summary
   for (const acc of revenueAccounts) {
@@ -269,10 +269,12 @@ export async function closeFiscalPeriod(
   // 5-6. Create closing JE + mark period as closed + lock all JEs in the period
   const result = await db.$transaction(async (tx) => {
     // Create the closing JE
-    let closingJEId: number | null = null;
+    let closingJEId: string | null = null;
     if (closingLines.length > 0) {
       const closingJE = await tx.journalEntry.create({
         data: {
+          number: `JE-CLOSE-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+          companyId: period.companyId,
           companySlug,
           date: period.endDate,
           description: `Closing entries for period ${periodName}`,
@@ -290,7 +292,7 @@ export async function closeFiscalPeriod(
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
       const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
-      const deltas = new Map<number, number>();
+      const deltas = new Map<string, number>();
       for (const line of closingLines) {
         const acc = accountMap.get(line.accountId);
         if (!acc) continue;
@@ -347,7 +349,7 @@ export async function closeFiscalPeriod(
     closedBy: userEmail,
     closedAt: result.closedAt,
     netIncome: netIncome.toFixed(3),
-    closingJEId: result.closingJEId || 0,
+    closingJEId: result.closingJEId || "",
     revenueClosed: netRevenue.toFixed(3),
     expensesClosed: totalExpenses.toFixed(3),
     retainedEarningsUpdate: netIncome.toFixed(3),
@@ -394,7 +396,7 @@ export async function reopenFiscalPeriod(
   });
 
   const result = await db.$transaction(async (tx) => {
-    let reversalJEId: number | null = null;
+    let reversalJEId: string | null = null;
 
     if (closingJE) {
       // Build swapped lines to reverse the closing JE
@@ -408,8 +410,10 @@ export async function reopenFiscalPeriod(
       // Create reversal entry
       const reversal = await tx.journalEntry.create({
         data: {
+          number: `JE-REOPEN-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+          companyId: period.companyId,
           companySlug,
-          date: new Date().toISOString().slice(0, 10),
+          date: new Date(),
           description: `Reopen period ${periodName} — reversal of closing JE #${closingJE.id}`,
           status: "posted",
           sourceType: "reversal",
@@ -422,14 +426,14 @@ export async function reopenFiscalPeriod(
       reversalJEId = reversal.id;
 
       // Update account balances for the reversal
-      const accountIds = [...new Set(swappedLines.map((l) => l.accountId))].filter((id): id is number => id !== null);
+      const accountIds = [...new Set(swappedLines.map((l) => l.accountId))].filter((id): id is string => id !== null);
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
       const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
-      const deltas = new Map<number, number>();
+      const deltas = new Map<string, number>();
       for (const line of swappedLines) {
-        const aid = line.accountId ?? 0;
-        if (aid === 0) continue;
+        const aid = line.accountId;
+        if (!aid) continue;
         const acc = accountMap.get(aid);
         if (!acc) continue;
         const isDebitNormal = acc.type === "asset" || acc.type === "expense" || acc.type === "contra_revenue";

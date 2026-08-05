@@ -5,7 +5,7 @@
  * responses are grounded in real numbers (invoice counts, revenue, outstanding
  * balance, etc.) instead of generic advice.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num } from "@/lib/money";
 
 export interface AIPageContext {
@@ -88,10 +88,10 @@ export async function buildAIContext(companySlug?: string): Promise<AIPageContex
     employeesCount,
     recentInvoices: invoices.map((i) => ({
       invoiceNumber: i.invoiceNumber,
-      clientName: i.clientName,
+      clientName: i.clientName ?? "",
       total: num(i.total, 3),
       status: i.status,
-      issueDate: i.issueDate,
+      issueDate: i.issueDate.toISOString(),
     })),
   };
 }

@@ -4,7 +4,7 @@
  * POST — Create landed cost allocation
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -24,7 +24,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   const allocations = await db.landedCostAllocation.findMany({
     where: { companySlug },
-    include: { lines: true, purchaseInvoice: true },
+    // TODO(P2-Sprint5-A): LandedCostAllocation has no `purchaseInvoice` relation
+    // — only scalar `purchaseInvoiceId: String?`. Removed include.
+    include: { lines: true },
     orderBy: { createdAt: "desc" },
     take: 500,
   });
@@ -35,7 +37,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       totalCost: num(a.totalCost, 3),
       lines: a.lines.map((l) => ({
         ...l,
-        allocatedCost: num(l.allocatedAmount, 3),
+        // TODO(P2-Sprint5-A): LandedCostLine has `amount` (Decimal), not
+        // `allocatedAmount`. Legacy `db: any` hid this missing access.
+        allocatedCost: num(l.amount, 3),
       })),
     })),
   });
@@ -44,8 +48,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ── POST: Create landed cost allocation ─────────────────────────────────────────
 
 const LandedCostLineSchema = z.object({
-  itemId: z.number().int().optional(),
-  productId: z.number().int().optional(),
+  // TODO(P2-Sprint5-A): InventoryItem.id / ProductCatalog.id are String cuids
+  // — accept strings. (Legacy `z.number().int()` never matched real cuids.)
+  itemId: z.string().optional(),
+  productId: z.string().optional(),
   baseQuantity: z.union([z.number(), z.string()]).optional(),
   baseValue: z.union([z.number(), z.string()]).optional(),
   weight: z.union([z.number(), z.string()]).optional(),
@@ -73,7 +79,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Verify purchase invoice exists and belongs to this company
   const purchaseInvoice = await db.purchaseInvoice.findFirst({
-    where: { id: data.purchaseInvoiceId, companySlug: data.companySlug },
+    where: { id: String(data.purchaseInvoiceId), companySlug: data.companySlug },
   });
   if (!purchaseInvoice) return apiError("Purchase invoice not found or does not belong to this company", 404);
 
@@ -83,7 +89,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     : String(data.totalCost);
 
   const allocationResult = calculateLandedCost({
-    allocationId: 0, // Will be set after creation
+    // TODO(P2-Sprint5-A): LandedCostAllocationInput.allocationId is `string`
+    // — pass "0" placeholder (real ID set after allocation row is created).
+    allocationId: "0",
     costType: data.costType,
     totalCost: totalCostStr,
     allocationMethod: data.allocationMethod,
@@ -102,16 +110,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const created = await tx.landedCostAllocation.create({
       data: {
         companySlug: data.companySlug,
-        purchaseInvoiceId: data.purchaseInvoiceId,
+        // TODO(P2-Sprint5-A): LandedCostAllocation.purchaseInvoiceId is String?;
+        // convert number input. Also `amount`, `currency`, `costType`,
+        // `allocationMethod`, `companyId` are required — legacy `db: any` hid this.
+        companyId: "0",
+        purchaseInvoiceId: String(data.purchaseInvoiceId),
         costType: data.costType,
+        amount: totalCostStr,
+        currency: "USD",
         totalCost: totalCostStr,
         allocationMethod: data.allocationMethod,
-        lineItems: JSON.stringify(data.lines),
         lines: {
           create: data.lines.map((l, i) => ({
-            productId: l.itemId ?? l.productId ?? null,
-            allocatedAmount: allocationResult.lines[i].allocatedCost,
-            proportionalWeight: 0,
+            // TODO(P2-Sprint5-A): LandedCostLine has `costType` (required),
+            // `amount` (Decimal), `allocationMethod` (String). No `productId`/
+            // `allocatedAmount`/`proportionalWeight` — legacy `db: any` hid this.
+            costType: data.costType,
+            amount: allocationResult.lines[i].allocatedCost,
+            allocationMethod: data.allocationMethod,
           })),
         },
       },

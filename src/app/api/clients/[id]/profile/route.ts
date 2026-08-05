@@ -6,7 +6,7 @@
  * Permission: view_customers + company access
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { hasPermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
@@ -81,9 +81,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
       name: client.name,
       email: client.email,
       phone: client.phone,
-      company: client.clientCompany,
+      // TODO(P2-Sprint5-D): Client schema has no `clientCompany` or `notes` columns — fields dropped.
+      company: null,
       address: client.address,
-      notes: client.notes,
+      notes: null,
       companySlug: client.companySlug,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,

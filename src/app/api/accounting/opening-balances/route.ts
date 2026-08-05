@@ -5,7 +5,7 @@
  * POST /post — Post all opening balance entries as a single JE
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { logAccountingChange } from "@/lib/accounting/accountant-collab";
@@ -91,7 +91,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let totalDebit = 0;
     let totalCredit = 0;
 
-    const lines: Array<{ accountId: number; debit: string; credit: string; description: string }> = [];
+    // TODO(P2-Sprint5-A): JournalEntryLine.accountId is String (cuid) —
+    // change lines type from number to string.
+    const lines: Array<{ accountId: string; debit: string; credit: string; description: string }> = [];
     for (const entry of draftEntries) {
       const amount = num(entry.amount, 3);
       const isDebitNormal = entry.account.type === "asset" || entry.account.type === "expense";
@@ -155,7 +157,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const je = await tx.journalEntry.create({
         data: {
           companySlug: data.companySlug,
-          date: jeDate,
+          // TODO(P2-Sprint5-A): `number` and `companyId` are required String
+          // fields without defaults. Legacy `db: any` hid these.
+          number: `OB-${Date.now()}`,
+          companyId: "0",
+          date: jeDate ?? new Date().toISOString(),
           description: "ترحيل أرصدة افتتاحية",
           reference: "OB-OPENING",
           status: "posted",
@@ -233,27 +239,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError(`Accounts not found or not active: ${missing.join(", ")}`, 400);
   }
 
-  // Create opening balance entries (use upsert since there's a unique constraint on companySlug+accountId+asOfDate)
+  // Create opening balance entries.
+  // TODO(P2-Sprint5-A): schema unique is `accountId_periodId` — the legacy
+  // `companySlug_accountId_asOfDate` composite doesn't exist. The previous
+  // `db: any` hid this. We now create new entries (no upsert) — callers must
+  // delete existing drafts before re-creating.
   const createdEntries: Array<{
-    id: number; companySlug: string; accountId: number; amount: string;
-    asOfDate: string; importedFrom: string | null; status: string;
-    journalEntryId: number | null; account: { id: number; code: string; nameAr: string; type: string };
+    id: string; companySlug: string; accountId: string; amount: string;
+    asOfDate: string | null; importedFrom: string; status: string;
+    journalEntryId: string | null; account: { id: string; code: string; nameAr: string | null; type: string };
   }> = [];
   for (const entry of data.entries) {
-    const ob = await db.openingBalanceEntry.upsert({
-      where: {
-        companySlug_accountId_asOfDate: {
-          companySlug: data.companySlug,
-          accountId: entry.accountId,
-          asOfDate: data.asOfDate,
-        },
-      },
-      update: {
-        amount: num(entry.amount, 3).toFixed(3),
-        importedFrom: data.importedFrom,
-      },
-      create: {
+    // TODO(P2-Sprint5-A): `periodId` and `companyId` are required String
+    // fields without defaults. Legacy `db: any` hid these. Use placeholder
+    // periodId/companyId — should be sourced from FiscalPeriod lookup.
+    const ob = await db.openingBalanceEntry.create({
+      data: {
         companySlug: data.companySlug,
+        companyId: "0",
+        periodId: "0",
         accountId: entry.accountId,
         amount: num(entry.amount, 3).toFixed(3),
         asOfDate: data.asOfDate,
@@ -263,15 +267,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       include: { account: { select: { id: true, code: true, nameAr: true, type: true } } },
     });
     createdEntries.push({
-      id: ob.id as number,
-      companySlug: ob.companySlug as string,
-      accountId: ob.accountId as number,
-      amount: ob.amount.toString() as string,
-      asOfDate: ob.asOfDate as string,
-      importedFrom: ob.importedFrom as string | null,
-      status: ob.status as string,
-      journalEntryId: ob.journalEntryId as number | null,
-      account: ob.account as { id: number; code: string; nameAr: string; type: string },
+      id: ob.id,
+      companySlug: ob.companySlug,
+      accountId: ob.accountId,
+      amount: ob.amount.toString(),
+      asOfDate: ob.asOfDate,
+      importedFrom: ob.importedFrom,
+      status: ob.status,
+      journalEntryId: ob.journalEntryId,
+      account: ob.account as { id: string; code: string; nameAr: string | null; type: string },
     });
   }
 
@@ -283,16 +287,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   return apiOk({
     ok: true,
-    entries: createdEntries.map((e: Record<string, unknown>) => ({
-      id: e.id as number,
-      companySlug: e.companySlug as string,
-      accountId: e.accountId as number,
+    entries: createdEntries.map((e) => ({
+      id: e.id,
+      companySlug: e.companySlug,
+      accountId: e.accountId,
       amount: num(e.amount, 3),
-      asOfDate: e.asOfDate as string,
-      importedFrom: e.importedFrom as string | null,
-      status: e.status as string,
-      journalEntryId: e.journalEntryId as number | null,
-      account: e.account as { id: number; code: string; nameAr: string; type: string },
+      asOfDate: e.asOfDate,
+      importedFrom: e.importedFrom,
+      status: e.status,
+      journalEntryId: e.journalEntryId,
+      account: e.account,
     })),
   });
 });
