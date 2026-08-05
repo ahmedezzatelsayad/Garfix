@@ -432,10 +432,24 @@ export class GeminiLoadBalancer {
     const text = response.text();
 
     // Parse response for structured data
+    // P2-B FIX: previously `0.85 + (Math.random() * 0.15)` — a fake confidence
+    // value presented to users as a real measurement. Replaced with a
+    // deterministic value derived from response signals we actually have:
+    //   - presence of text content (got an answer at all)
+    //   - response length (longer answers generally more complete)
+    //   - token usage (non-trivial usage → real generation, not a cached stub)
+    const tokensUsed = response.usageMetadata?.totalTokenCount;
+    let confidence = 0.85;
+    if (!text || text.trim().length === 0) confidence = 0.0;
+    else {
+      if (text.length > 200) confidence += 0.08;
+      if (tokensUsed && tokensUsed > 50) confidence += 0.05;
+    }
+    confidence = Math.min(confidence, 0.98);
     return {
       text,
-      tokensUsed: response.usageMetadata?.totalTokenCount,
-      confidence: 0.85 + (Math.random() * 0.15), // Simulated confidence
+      tokensUsed,
+      confidence,
     };
   }
 

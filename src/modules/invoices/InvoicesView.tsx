@@ -1202,11 +1202,12 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
           </thead>
           <tbody>
             {invoice.lineItems.map((it, i) => (
-              // P0 FIX: stable composite key from description+qty+price.
-              // These three fields together uniquely identify a line item
-              // within a single invoice. Previous `key={i}` was a silent bug
-              // — React could swap input bindings if items were edited.
-              <tr key={`${it.description}-${it.qty}-${it.price}` || `item-${i}`} className="border-b border-[#e5e7eb]">
+              // P2-B FIX: prefer localId (set on editable items) so duplicate
+              // line items (same description+qty+price) don't collide.
+              // For read-only DB-sourced items without localId, fall back to
+              // the optional `id` field, then the index — read-only view has
+              // no input bindings to lose, so index fallback is safe here.
+              <tr key={(it as EditableLineItem).localId || it.id || `print-item-${i}`} className="border-b border-[#e5e7eb]">
                 <td className="p-2.5 text-[13px]">{it.description}</td>
                 <td className="p-2.5 text-[13px] text-center">{it.qty}</td>
                 <td className="p-2.5 text-[13px] text-center [direction:ltr]">{Number(it.price).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}</td>

@@ -19,7 +19,13 @@ import {
 
 const PAGE_SIZE = 20;
 
-interface PurchaseItem { description: string; qty: number; price: number; }
+/** Generate a stable client-side id for editable purchase line items (P2-B fix).
+ *  Matches the pattern used in InvoicesView and RecurringEntriesView. */
+function makePurchaseItemLocalId(): string {
+  return `pi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+interface PurchaseItem { localId: string; description: string; qty: number; price: number; }
 interface Purchase {
   id: number; num: string; date: string; supplier: string;
   items: PurchaseItem[]; totalQty: number; notes?: string;
@@ -307,21 +313,26 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
   const [num, setNum] = useState(`PUR-${Date.now().toString().slice(-6)}`);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [supplier, setSupplier] = useState("");
-  const [items, setItems] = useState<PurchaseItem[]>([{ description: "", qty: 1, price: 0 }]);
+  const [items, setItems] = useState<PurchaseItem[]>([{ description: "", qty: 1, price: 0, localId: makePurchaseItemLocalId() }]);
   const [notes, setNotes] = useState("");
 
   const updateItem = (i: number, field: keyof PurchaseItem, value: string | number) => {
     setItems((arr) => arr.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
   };
-  const addItem = () => setItems((arr) => [...arr, { description: "", qty: 1, price: 0 }]);
+  const addItem = () => setItems((arr) => [...arr, { description: "", qty: 1, price: 0, localId: makePurchaseItemLocalId() }]);
   const removeItem = (i: number) => setItems((arr) => arr.filter((_, idx) => idx !== i));
 
   const submit = async () => {
     if (!num) { toast.error("الرقم مطلوب"); return; }
     try {
+      // P2-B: strip localId before sending — it's a client-only UI key,
+      // never persisted. Backend never expects it.
+      const payloadItems = items
+        .filter((it) => it.description)
+        .map(({ localId: _localId, ...rest }) => rest);
       await createMutation.mutateAsync({
         num, date, supplier,
-        items: items.filter((it) => it.description),
+        items: payloadItems,
         notes, companySlug: company.slug,
       } as unknown as CreatePurchasePayload);
       toast.success("تم إنشاء فاتورة الشراء");
@@ -360,7 +371,9 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
           </div>
           <div className="flex flex-col gap-2">
             {items.map((it, i) => (
-              <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_80px_100px_32px] gap-2">
+              // P2-B FIX: use localId as key so React doesn't swap input
+              // bindings when items are edited/reordered/duplicated.
+              <div key={it.localId} className="grid grid-cols-1 sm:grid-cols-[1fr_80px_100px_32px] gap-2">
                 <input placeholder="وصف البند" value={it.description} onChange={(e) => updateItem(i, "description", e.target.value)} className={inputStyle} />
                 <input type="number" placeholder="كمية" value={it.qty} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <input type="number" placeholder="سعر" value={it.price} onChange={(e) => updateItem(i, "price", Number(e.target.value))} className={inputStyle} dir="ltr" />
