@@ -513,8 +513,45 @@ export default function CompaniesPerFeatureAIPage() {
   };
 
   const handleBulkAction = async (action: 'enableAI' | 'disableAI' | 'assignKeys') => {
-    // TODO: Implement bulk actions
-    setAlert({ type: 'success', message: `تم تطبيق ${action} على ${selectedCompanyIds.size} شركة` });
+    if (selectedCompanyIds.size === 0) return;
+
+    const actionLabels: Record<string, string> = {
+      enableAI: 'تفعيل AI',
+      disableAI: 'تعطيل AI',
+      assignKeys: 'توزيع مفاتيح',
+    };
+
+    if (!confirm(`هل أنت متأكد من ${actionLabels[action]} لـ ${selectedCompanyIds.size} شركة؟`)) return;
+
+    try {
+      const response = await fetch('/api/founder-panel/companies/bulk-ai-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyIds: Array.from(selectedCompanyIds),
+          action,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const { succeeded, failed } = data.data;
+        if (failed === 0) {
+          setAlert({ type: 'success', message: `✅ تم ${actionLabels[action]} لـ ${succeeded} شركة بنجاح` });
+        } else if (succeeded === 0) {
+          setAlert({ type: 'error', message: `❌ فشل ${actionLabels[action]} لجميع الشركات` });
+        } else {
+          setAlert({ type: 'success', message: `⚠️ تم ${actionLabels[action]} لـ ${succeeded} شركة، فشل ${failed}` });
+        }
+        setSelectedCompanyIds(new Set());
+        fetchCompanies();
+      } else {
+        setAlert({ type: 'error', message: data.error || 'فشلت العملية' });
+      }
+    } catch (error) {
+      setAlert({ type: 'error', message: 'خطأ في الاتصال' });
+    }
   };
 
   // Stats

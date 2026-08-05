@@ -54,8 +54,9 @@ const nextConfig: NextConfig = {
       '@prisma/client',
       'date-fns',
       'framer-motion',
-      'react-syntax-highlighter',
-      '@mdxeditor/editor',
+      // REMOVED (unused): 'react-syntax-highlighter' — not imported anywhere in src/
+      // REMOVED (unused): '@mdxeditor/editor' — not imported anywhere in src/
+      // These were inflating the config and misleading contributors.
       // Radix UI primitives (curated list of packages actually imported):
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
