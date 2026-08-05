@@ -28,6 +28,9 @@
 
 import { dbTyped as db } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { decryptApiKey } from './keyVault';
+import { checkAndRecordRateLimit } from './valkey-rate-limiter';
+import { pickPoolKey, markKeyRateLimited, recordKeyUse } from './key-pool';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -161,91 +164,14 @@ const FEATURE_DB_MAP: Record<FeatureType, {
   },
 };
 
-// ── In-Memory Rate Limiting Cache ───────────────────────────
-
-/**
- * Simple in-memory rate limiter per company+feature
- * In production, consider Redis for multi-instance support
- */
-class RateLimiterCache {
-  private static instance: RateLimiterCache;
-  private requests: Map<string, number[]> = new Map();
-  private cleanupInterval: NodeJS.Timeout;
-
-  private constructor() {
-    // Clean up old entries every minute
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60_000);
-  }
-
-  static getInstance(): RateLimiterCache {
-    if (!RateLimiterCache.instance) {
-      RateLimiterCache.instance = new RateLimiterCache();
-    }
-    return RateLimiterCache.instance;
-  }
-
-  /**
-   * Check if request is allowed and record it
-   */
-  checkAndRecord(key: string, limit: number): { allowed: boolean; retryAfterMs?: number; currentUsage: number } {
-    const now = Date.now();
-    const windowStart = now - 60_000; // 1 minute window
-    
-    // Get or create request timestamps array
-    let timestamps = this.requests.get(key);
-    if (!timestamps) {
-      timestamps = [];
-      this.requests.set(key, timestamps);
-    }
-    
-    // Filter out old requests outside the window
-    const recentTimestamps = timestamps.filter(t => t > windowStart);
-    this.requests.set(key, recentTimestamps);
-    
-    const currentUsage = recentTimestamps.length;
-    
-    if (currentUsage >= limit) {
-      // Calculate when oldest request will expire
-      const oldestInWindow = recentTimestamps[0];
-      const retryAfterMs = oldestInWindow - windowStart;
-      
-      return {
-        allowed: false,
-        retryAfterMs,
-        currentUsage,
-      };
-    }
-    
-    // Record this request
-    recentTimestamps.push(now);
-    
-    return {
-      allowed: true,
-      currentUsage: currentUsage + 1,
-    };
-  }
-
-  private cleanup() {
-    const now = Date.now();
-    const windowStart = now - 60_000;
-    
-    for (const [key, timestamps] of this.requests.entries()) {
-      const recent = timestamps.filter(t => t > windowStart);
-      if (recent.length === 0) {
-        this.requests.delete(key);
-      } else {
-        this.requests.set(key, recent);
-      }
-    }
-  }
-
-  destroy() {
-    clearInterval(this.cleanupInterval);
-    this.requests.clear();
-  }
-}
-
-const rateLimiter = RateLimiterCache.getInstance();
+// ── Rate Limiting ───────────────────────────────────────────
+//
+// Rate limiting is delegated to `valkey-rate-limiter.ts`, which uses
+// Valkey (Redis-compatible) for distributed counting across all app
+// instances. Falls back to in-memory when Valkey is not configured
+// (local dev).
+//
+// See: src/lib/ai/valkey-rate-limiter.ts
 
 // ── Core Functions ──────────────────────────────────────────
 
@@ -268,9 +194,14 @@ async function getFeatureConfigFromDB(
     
     const mapping = FEATURE_DB_MAP[feature];
     
+    const rawApiKey = config[mapping.apiKeyCol as keyof typeof config] as string;
+    // Decrypt the stored API key. Returns "" if empty or decryption fails.
+    // Legacy plaintext keys are returned as-is (graceful migration).
+    const decryptedApiKey = decryptApiKey(rawApiKey);
+
     return {
       enabled: config[mapping.enabledCol as keyof typeof config] as boolean,
-      apiKey: config[mapping.apiKeyCol as keyof typeof config] as string,
+      apiKey: decryptedApiKey,
       model: config[mapping.modelCol as keyof typeof config] as string,
       rateLimitRpm: config[mapping.rateLimitCol as keyof typeof config] as number,
       tokensUsed: Number(config[mapping.tokensUsedCol as keyof typeof config]),
@@ -414,12 +345,27 @@ async function callGeminiAPI(
 // ── Provider Detection ─────────────────────────────────────
 
 /**
- * Detect AI provider from API key format or model name
+ * Detect AI provider from API key format or model name.
+ *
+ * Direct DeepSeek path:
+ *   - DeepSeek API keys start with `sk-` but are issued by api.deepseek.com
+ *   - We distinguish them from OpenAI by checking if the model name starts
+ *     with `deepseek/` (without OpenRouter prefix) OR if the key was
+ *     explicitly configured as a DeepSeek key in the pool.
+ *   - DeepSeek's own models: `deepseek-chat`, `deepseek-reasoner`, `deepseek-coder`
+ *   - OpenRouter-prefixed: `deepseek/deepseek-chat-v3-0324` (has slash)
  */
 export function detectProvider(apiKey: string, model: string): AIProvider {
-  // DeepSeek models (via OpenRouter)
-  if (model.includes('deepseek')) {
-    return 'openrouter'; // DeepSeek works through OpenRouter
+  // Direct DeepSeek — model starts with 'deepseek-' (no slash) OR
+  // the key was issued by DeepSeek (we can't perfectly distinguish from
+  // OpenAI keys, so the model name is the primary signal)
+  if (model.startsWith('deepseek-') || model === 'deepseek-chat' || model === 'deepseek-reasoner') {
+    return 'deepseek';
+  }
+
+  // DeepSeek models via OpenRouter (have slash prefix: 'deepseek/deepseek-...')
+  if (model.includes('deepseek/') || model.startsWith('openrouter/deepseek')) {
+    return 'openrouter';
   }
   
   // OpenRouter keys start with 'sk-or-'
@@ -429,6 +375,14 @@ export function detectProvider(apiKey: string, model: string): AIProvider {
   
   // OpenAI keys start with 'sk-'
   if (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-')) {
+    // Could be OpenAI OR DeepSeek — defer to model name
+    if (model.startsWith('gpt-') || model.startsWith('o1') || model.startsWith('o3')) {
+      return 'openai';
+    }
+    // Default to deepseek for sk- keys with non-OpenAI models
+    if (model.includes('deepseek')) {
+      return 'deepseek';
+    }
     return 'openai';
   }
   
@@ -453,8 +407,10 @@ export function getDefaultModel(provider: AIProvider): string {
   switch (provider) {
     case 'gemini':
       return 'gemini-2.0-flash';
+    case 'deepseek':
+      return 'deepseek-chat'; // Direct DeepSeek — no OpenRouter prefix
     case 'openrouter':
-      return 'deepseek/deepseek-chat-v3-0324'; // DeepSeek as default!
+      return 'deepseek/deepseek-chat-v3-0324'; // DeepSeek via OpenRouter
     case 'openai':
     default:
       return 'gpt-4o-mini';
@@ -552,7 +508,12 @@ async function callOpenAIAPI(
 // ── Unified API Caller ─────────────────────────────────────
 
 /**
- * Call the appropriate API based on detected provider
+ * Call the appropriate API based on detected provider.
+ *
+ * Direct DeepSeek path (new):
+ *   - Routes to https://api.deepseek.com/v1/chat/completions
+ *   - Same OpenAI-compatible protocol, just different base URL + key
+ *   - Bypasses OpenRouter entirely → no intermediary fees, no intermediary RPM limits
  */
 async function callAIProvider(
   config: FeatureConfig,
@@ -564,6 +525,16 @@ async function callAIProvider(
   switch (provider) {
     case 'gemini':
       return callGeminiAPI(config.apiKey, config.model, params, feature);
+      
+    case 'deepseek':
+      // Direct DeepSeek API — no OpenRouter intermediary
+      return callOpenAIAPI(
+        config.apiKey,
+        config.model,
+        params,
+        feature,
+        'https://api.deepseek.com/v1'
+      );
       
     case 'openrouter':
       return callOpenAIAPI(
@@ -621,43 +592,79 @@ export async function getFeatureClient(
     return null;
   }
   
+  // If company has no key configured, try the shared pool (round-robin).
+  // This implements the founder's distribution model: founder uploads N keys
+  // to the pool, and companies without their own key get served from it.
+  let activeConfig = config;
+  let poolKeyId: string | undefined;
+
   if (!config.apiKey) {
-    logger.warn(`[PerFeatureRouter] No API key for ${feature} in company ${companyId}`);
-    return null;
+    const provider = detectProvider('', config.model);
+    // Try OpenRouter-style provider name first, then DeepSeek directly.
+    const poolProvider = provider === 'deepseek' ? 'deepseek'
+                      : provider === 'openrouter' ? 'openrouter'
+                      : provider === 'gemini' ? 'gemini'
+                      : 'openrouter'; // safe fallback — OpenRouter has many models
+    
+    const poolResult = await pickPoolKey(poolProvider, companyId);
+    if (poolResult.key) {
+      // Use the pool key for this single request
+      activeConfig = {
+        ...config,
+        apiKey: poolResult.key.apiKey,
+        model: poolResult.key.model || config.model,
+        provider: poolResult.key.provider as AIProvider,
+      };
+      poolKeyId = poolResult.selectedKeyId;
+      logger.info(`[PerFeatureRouter] Using pool key ${poolKeyId} for ${feature} (company ${companyId} has no own key)`);
+    } else {
+      logger.warn(`[PerFeatureRouter] No API key for ${feature} in company ${companyId} and pool exhausted (${poolResult.reason})`);
+      return null;
+    }
   }
   
   // Create and return the feature client
-  const rateLimitKey = `${companyId}:${feature}`;
+  const rateLimitFeature = feature;
+  const rateLimitCompanyId = companyId;
+  const rateLimitRpm = activeConfig.rateLimitRpm;
   
   return {
     feature,
     companyId,
-    config,
+    config: activeConfig,
     
     async checkRateLimit() {
-      return rateLimiter.checkAndRecord(rateLimitKey, config.rateLimitRpm);
+      return checkAndRecordRateLimit(rateLimitCompanyId, rateLimitFeature, rateLimitRpm);
     },
     
     async generate(params: GenerateParams): Promise<GenerateResult> {
-      // Check rate limit first
-      const rateCheck = await rateLimiter.checkAndRecord(rateLimitKey, config.rateLimitRpm);
+      // Check rate limit first (Valkey-distributed when available)
+      const rateCheck = await checkAndRecordRateLimit(rateLimitCompanyId, rateLimitFeature, rateLimitRpm);
       
       if (!rateCheck.allowed) {
         return {
           success: false,
           latencyMs: 0,
-          model: config.model,
+          model: activeConfig.model,
           error: `Rate limit exceeded. Try again after ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s.`,
           rateLimited: true,
         };
       }
       
       // Call the appropriate API (auto-detects provider)
-      const result = await callAIProvider(config, params, feature);
+      const result = await callAIProvider(activeConfig, params, feature);
+      
+      // If the upstream returned 429, mark the pool key as rate-limited
+      if (result.rateLimited && poolKeyId) {
+        await markKeyRateLimited(poolKeyId);
+      }
       
       // Update usage stats on success
       if (result.success && result.usage) {
         await updateUsageStats(companyId, feature, result.usage.totalTokens);
+        if (poolKeyId) {
+          await recordKeyUse(poolKeyId, result.usage.totalTokens);
+        }
       }
       
       return result;
@@ -666,8 +673,8 @@ export async function getFeatureClient(
     async extract(params: ExtractParams): Promise<ExtractResult> {
       const startTime = Date.now();
       
-      // Check rate limit first
-      const rateCheck = await rateLimiter.checkAndRecord(rateLimitKey, config.rateLimitRpm);
+      // Check rate limit first (Valkey-distributed when available)
+      const rateCheck = await checkAndRecordRateLimit(rateLimitCompanyId, rateLimitFeature, rateLimitRpm);
       
       if (!rateCheck.allowed) {
         return {
@@ -696,7 +703,7 @@ ${params.text}
 Respond ONLY with valid JSON matching the schema. Do not include explanations outside the JSON.
 `.trim();
       
-      const generateResult = await callAIProvider(config, {
+      const generateResult = await callAIProvider(activeConfig, {
         messages: [{ role: 'user', content: extractPrompt }],
         temperature: 0.1, // Low temperature for extraction
         maxTokens: 4096,
@@ -704,6 +711,11 @@ Respond ONLY with valid JSON matching the schema. Do not include explanations ou
       }, feature);
       
       const latencyMs = Date.now() - startTime;
+      
+      // If the upstream returned 429, mark the pool key as rate-limited
+      if (generateResult.rateLimited && poolKeyId) {
+        await markKeyRateLimited(poolKeyId);
+      }
       
       if (!generateResult.success) {
         return {
@@ -732,6 +744,9 @@ Respond ONLY with valid JSON matching the schema. Do not include explanations ou
       // Update usage stats
       if (generateResult.usage) {
         await updateUsageStats(companyId, feature, generateResult.usage.totalTokens);
+        if (poolKeyId) {
+          await recordKeyUse(poolKeyId, generateResult.usage.totalTokens);
+        }
       }
       
       return {

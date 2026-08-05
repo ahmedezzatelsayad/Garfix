@@ -33,6 +33,7 @@ import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/audit';
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+import { maskApiKeyForDisplay, hasRealApiKey, resolveKeyForUpdate } from '@/lib/ai/keyVault';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -219,10 +220,15 @@ async function testGeminiConnection(
 
 /**
  * Mask API key for security (show only last 4 chars)
+ *
+ * DEPRECATED: this local helper assumed plaintext input. The new
+ * `maskApiKeyForDisplay` from `keyVault.ts` handles both encrypted and
+ * plaintext stored values correctly.
+ *
+ * Kept here as a thin wrapper for any callers that haven't been migrated.
  */
 function maskApiKey(key: string): string {
-  if (!key || key.length <= 8) return key ? '••••••••' : '';
-  return `${key.substring(0, 4)}${'•'.repeat(Math.min(key.length - 8, 20))}${key.substring(key.length - 4)}`;
+  return maskApiKeyForDisplay(key);
 }
 
 // ── API Routes ───────────────────────────────────────────────
@@ -293,7 +299,7 @@ export async function GET(request: NextRequest) {
           enabled: config.chatEnabled,
           model: config.chatModel,
           apiKey: maskApiKey(config.chatApiKey),
-          hasApiKey: !!(config.chatApiKey && config.chatApiKey.length > 0),
+          hasApiKey: hasRealApiKey(config.chatApiKey),
           rateLimitRpm: config.chatRateLimitRpm,
           tokensUsed: Number(config.chatTokensUsed),
           requestsCount: Number(config.chatRequestsCount),
@@ -304,7 +310,7 @@ export async function GET(request: NextRequest) {
           enabled: config.invoiceEnabled,
           model: config.invoiceModel,
           apiKey: maskApiKey(config.invoiceApiKey),
-          hasApiKey: !!(config.invoiceApiKey && config.invoiceApiKey.length > 0),
+          hasApiKey: hasRealApiKey(config.invoiceApiKey),
           rateLimitRpm: config.invoiceRateLimitRpm,
           tokensUsed: Number(config.invoiceTokensUsed),
           requestsCount: Number(config.invoiceRequestsCount),
@@ -315,7 +321,7 @@ export async function GET(request: NextRequest) {
           enabled: config.parseEnabled,
           model: config.parseModel,
           apiKey: maskApiKey(config.parseApiKey),
-          hasApiKey: !!(config.parseApiKey && config.parseApiKey.length > 0),
+          hasApiKey: hasRealApiKey(config.parseApiKey),
           rateLimitRpm: config.parseRateLimitRpm,
           tokensUsed: Number(config.parseTokensUsed),
           requestsCount: Number(config.parseRequestsCount),
@@ -326,7 +332,7 @@ export async function GET(request: NextRequest) {
           enabled: config.memoryEnabled,
           model: config.memoryModel,
           apiKey: maskApiKey(config.memoryApiKey),
-          hasApiKey: !!(config.memoryApiKey && config.memoryApiKey.length > 0),
+          hasApiKey: hasRealApiKey(config.memoryApiKey),
           rateLimitRpm: config.memoryRateLimitRpm,
           tokensUsed: Number(config.memoryTokensUsed),
           requestsCount: Number(config.memoryRequestsCount),
@@ -404,11 +410,11 @@ export async function PUT(request: NextRequest) {
     const existingConfig = await getOrCreateCompanyAIConfig(membership.companyId);
     
     // Helper to handle masked keys (don't overwrite with ••••••••)
+    // P2-SPRINT6 FIX: routes through `resolveKeyForUpdate()` from keyVault.ts
+    // which handles encryption of new keys + preserves existing encrypted keys
+    // when the masked placeholder is submitted.
     const getRealKey = (newKey: string, existingKey: string): string => {
-      if (newKey === '••••••••' || newKey === '' || !newKey) {
-        return existingKey;
-      }
-      return newKey;
+      return resolveKeyForUpdate(newKey, existingKey);
     };
     
     // Update config with per-feature keys

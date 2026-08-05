@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+import { encryptApiKey } from '@/lib/ai/keyVault';
 
 // ── Schema ──────────────────────────────────────────────────
 
@@ -111,7 +112,19 @@ export async function PATCH(request: NextRequest) {
           }
           // If no config exists, nothing to disable
         } else if (action === 'assignKeys') {
-          // Find an available API key from the pool
+          // Find an available API key from the pool.
+          //
+          // P2-SPRINT6 FIX (founder distribution model):
+          //   The previous implementation only set `primaryProvider` (a JSON
+          //   metadata blob) but never wrote the actual keyValue into the
+          //   per-feature columns the per-feature-router reads. As a result,
+          //   assigned keys appeared "configured" but `getFeatureClient()`
+          //   returned null at the `if (!config.apiKey)` check.
+          //
+          //   We now copy the (encrypted) keyValue into all 4 per-feature
+          //   columns AND keep `primaryProvider` for traceability. The pool
+          //   key's `keyValue` is itself already encrypted (or plaintext
+          //   legacy), so we route through encryptApiKey() which is idempotent.
           const availableKey = await db.apiKeyPool.findFirst({
             where: {
               status: 'available',
@@ -126,6 +139,21 @@ export async function PATCH(request: NextRequest) {
             continue;
           }
 
+          // Encrypt the keyValue once for storage in CompanyAIConfig.
+          // encryptApiKey() is idempotent: if the pool key was already
+          // encrypted (modern path), it returns it as-is; if it was legacy
+          // plaintext, it encrypts it.
+          const encryptedKey = encryptApiKey(availableKey.keyValue);
+
+          // Determine which model to set per feature.
+          // If the pool key's model is a DeepSeek variant, prefer the direct
+          // `deepseek-chat` form (routed to api.deepseek.com) over the
+          // OpenRouter-prefixed form — saves intermediary fees.
+          const poolModel = availableKey.model;
+          const directModel = poolModel.startsWith('deepseek/')
+            ? poolModel.split('/')[1] // e.g. 'deepseek-chat-v3-0324' → still works with DeepSeek API
+            : poolModel;
+
           // Assign the key to this company
           await db.apiKeyPool.update({
             where: { id: availableKey.id },
@@ -136,7 +164,8 @@ export async function PATCH(request: NextRequest) {
             },
           });
 
-          // Ensure AI config exists and is enabled
+          // Ensure AI config exists and is enabled — now WITH the actual
+          // per-feature API key populated (encrypted at rest).
           await db.companyAIConfig.upsert({
             where: { companyId: company.id },
             create: {
@@ -145,6 +174,17 @@ export async function PATCH(request: NextRequest) {
               invoiceEnabled: true,
               parseEnabled: true,
               memoryEnabled: true,
+              // Per-feature keys (encrypted)
+              chatApiKey: encryptedKey,
+              invoiceApiKey: encryptedKey,
+              parseApiKey: encryptedKey,
+              memoryApiKey: encryptedKey,
+              // Per-feature models — use the pool key's model
+              chatModel: directModel,
+              invoiceModel: directModel,
+              parseModel: directModel,
+              memoryModel: directModel,
+              // Traceability: which pool key was assigned
               primaryProvider: JSON.stringify({
                 provider: availableKey.provider,
                 model: availableKey.model,
@@ -157,6 +197,17 @@ export async function PATCH(request: NextRequest) {
               invoiceEnabled: true,
               parseEnabled: true,
               memoryEnabled: true,
+              // Per-feature keys (encrypted)
+              chatApiKey: encryptedKey,
+              invoiceApiKey: encryptedKey,
+              parseApiKey: encryptedKey,
+              memoryApiKey: encryptedKey,
+              // Per-feature models — use the pool key's model
+              chatModel: directModel,
+              invoiceModel: directModel,
+              parseModel: directModel,
+              memoryModel: directModel,
+              // Traceability: which pool key was assigned
               primaryProvider: JSON.stringify({
                 provider: availableKey.provider,
                 model: availableKey.model,
