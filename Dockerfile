@@ -23,10 +23,16 @@ WORKDIR /app
 # Build-time environment variables (needed for `next build` to succeed)
 # These are CI-only test values — production secrets come from the runtime env.
 ARG NODE_ENV=test
-# P1 FIX: Use SQLite for Docker build verification (dev-compatible)
-# Production deployments override this to PostgreSQL via runtime env
-ARG DATABASE_URL=file:/app/db/build-test.db
-ARG DATABASE_DIRECT_URL=file:/app/db/build-test.db
+# P4 FIX: Build-time DATABASE_URL must be PostgreSQL-formatted.
+# The codebase is PostgreSQL-only (commit 6f25a04 dropped SQLite) and the
+# Prisma schema declares provider = "postgresql". A `file:` URL here fails
+# Prisma schema validation during `prisma generate`. The build does NOT
+# connect to a database (all Prisma queries run at request time / runtime
+# bootstrap — see ci.yml "Build no longer requires database service"), so a
+# placeholder PostgreSQL URL is safe. Production deployments override this
+# via runtime env (docker-compose / Vercel / k8s secrets).
+ARG DATABASE_URL=postgresql://garfix:garfix@localhost:5432/garfix?schema=public
+ARG DATABASE_DIRECT_URL=postgresql://garfix:garfix@localhost:5432/garfix
 ARG JWT_SECRET=ci-build-jwt-secret-at-least-32-characters-long!!
 ARG JWT_REFRESH_SECRET=ci-build-refresh-secret-at-least-32-chars!!
 ARG FOUNDER_EMAIL=founder@test.com
