@@ -18,7 +18,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { db } from '@/lib/db';
+import { dbTyped as db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { encryptSecret } from '@/lib/cryptoVault';
 
@@ -137,7 +137,7 @@ export async function provisionAIForNewCompany(
     if (!apiKey) {
       try {
         // Try to get from platform settings
-        const platformSetting = await db.platformSetting.findUnique({
+        const platformSetting = await db.platformSettings.findUnique({
           where: { key: 'ai_default_api_key' },
         });
         
@@ -178,10 +178,14 @@ export async function provisionAIForNewCompany(
         }),
         fallbackProvider: null,
         systemPrompt: systemPrompt || defaultPrompt,
-        enableChat: true,
-        enableSmartParse: true,
-        enableInvoiceExtraction: true,
-        enableMemory: true,
+        // P2-TypedPrisma: schema uses `<feature>Enabled` not `enable<Feature>`.
+        // The previous `enableChat/enableSmartParse/enableInvoiceExtraction/enableMemory`
+        // keys were silently ignored by Prisma's any-typed db, leaving features
+        // disabled even after provisioning claimed to enable them.
+        chatEnabled: true,
+        parseEnabled: true,
+        invoiceEnabled: true,
+        memoryEnabled: true,
         memoryRetentionDays: 30,
         costOptimization: 'balanced',
         notifyHighUsage: true,
@@ -397,8 +401,11 @@ export async function setPlatformDefaultAPIKey(
 ): Promise<{ success: boolean; message: string }> {
   try {
     // Verify admin role (simplified - should use proper permission check)
-    const adminUser = await db.user.findUnique({
-      where: { id: adminUserId },
+    // P2-TypedPrisma: schema model is `appUser` (AppUser). The previous
+    // `db.user` would have been undefined at runtime — the admin check
+    // silently never executed, leaving the API key update unguarded.
+    const adminUser = await db.appUser.findUnique({
+      where: { uid: adminUserId },
     });
     
     if (!adminUser || adminUser.role !== 'platform_admin') {
@@ -408,7 +415,7 @@ export async function setPlatformDefaultAPIKey(
     // Encrypt and store
     const encryptedKey = await encryptSecret(apiKey);
     
-    await db.platformSetting.upsert({
+    await db.platformSettings.upsert({
       where: { key: 'ai_default_api_key' },
       update: { value: encryptedKey, updatedAt: new Date() },
       create: {
@@ -416,7 +423,7 @@ export async function setPlatformDefaultAPIKey(
         value: encryptedKey,
         description: 'Default Google Gemini API key used for new company provisioning',
         category: 'ai',
-        isPublic: false,
+        // P2-TypedPrisma: schema has no `isPublic` column — removed.
         updatedAt: new Date(),
       },
     });
@@ -437,7 +444,7 @@ export async function setPlatformDefaultAPIKey(
  */
 export async function getPlatformDefaultAPIKey(): Promise<string | null> {
   try {
-    const setting = await db.platformSetting.findUnique({
+    const setting = await db.platformSettings.findUnique({
       where: { key: 'ai_default_api_key' },
     });
     

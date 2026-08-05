@@ -14,7 +14,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { isFounderEmail } from "@/lib/founder";
 import { computeEffectivePermissions } from "@/lib/permissions";
 import { getValkeyClient } from "@/lib/valkey";

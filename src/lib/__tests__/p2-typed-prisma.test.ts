@@ -1,0 +1,196 @@
+/**
+ * P2 Typed Prisma — regression tests for bugs surfaced by switching from
+ * `db: any` to `dbTyped` in 5 security-critical lib files.
+ *
+ * The whole point of P2 is: every place that used `db: any` was hiding real
+ * production bugs. Each fix below documents a bug that was actually caught
+ * by the typed client and verifies the fix stays in place.
+ *
+ * These tests are STATIC (no DB) — they verify the source code patterns
+ * rather than runtime behavior, because the schema-vs-DB drift on the
+ * broader codebase means we can't run an actual Prisma query against
+ * every model in CI yet.
+ */
+
+import { describe, it, expect } from "bun:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const ROOT = resolve(import.meta.dir, "..");
+
+function readSrc(rel: string): string {
+  return readFileSync(resolve(ROOT, rel), "utf8");
+}
+
+function liveLines(src: string): string[] {
+  // Strip /* */ block comments and // line comments before pattern matching,
+  // so that references inside comments don't count as live code.
+  const noBlocks = src.replace(/\/\*[\s\S]*?\*\//g, "");
+  return noBlocks
+    .split("\n")
+    .map((l) => l.replace(/\/\/.*$/, ""))
+    .filter((l) => l.trim().length > 0);
+}
+
+describe("P2 Typed Prisma — migration invariants", () => {
+  it("auth.ts imports dbTyped (not the untyped db)", () => {
+    const src = readSrc("auth.ts");
+    expect(src).toContain('import { dbTyped as db } from "@/lib/db";');
+    expect(src).not.toMatch(/^import { db } from "@\/lib\/db";/m);
+  });
+
+  it("observatory.ts imports dbTyped (not the untyped db)", () => {
+    const src = readSrc("observatory.ts");
+    expect(src).toContain('import { dbTyped as db } from "@/lib/db";');
+  });
+
+  it("tamperAudit.ts imports dbTyped (not the untyped db)", () => {
+    const src = readSrc("tamperAudit.ts");
+    expect(src).toContain('import { dbTyped as db } from "@/lib/db";');
+  });
+
+  it("webhooks.ts imports dbTyped (not the untyped db)", () => {
+    const src = readSrc("webhooks.ts");
+    expect(src).toContain('import { dbTyped as db } from "@/lib/db";');
+  });
+
+  it("ai-provisioning.ts imports dbTyped (not the untyped db)", () => {
+    const src = readSrc("services/ai-provisioning.ts");
+    expect(src).toContain("import { dbTyped as db } from '@/lib/db';");
+  });
+});
+
+describe("P2 Typed Prisma — production bugs fixed", () => {
+  it("tamperAudit.ts: ChainEntry fields are nullable (matching schema)", () => {
+    // Schema declares contentHash/prevHash/chainOrder/entryId as nullable
+    // (String? / Int?). The previous ChainEntry interface declared them as
+    // non-nullable strings/numbers, which let verifyChain() do
+    //   entry.prevHash.substring(0, 12)
+    // without a null check — NPE on any legacy row with a null prevHash.
+    const src = readSrc("tamperAudit.ts");
+    expect(src).toMatch(/entryId:\s*string \| null/);
+    expect(src).toMatch(/contentHash:\s*string \| null/);
+    expect(src).toMatch(/prevHash:\s*string \| null/);
+    expect(src).toMatch(/chainOrder:\s*number \| null/);
+  });
+
+  it("tamperAudit.ts: lastEntry.chainOrder uses nullish coalescing (no silent null+1=1)", () => {
+    // Before: `const chainOrder = lastEntry ? lastEntry.chainOrder + 1 : 0;`
+    // If lastEntry existed but chainOrder was null (legacy row), this
+    // evaluated to `null + 1 = 1` — silent corruption of the chain order.
+    // After: `(lastEntry?.chainOrder ?? -1) + 1` → null becomes -1, +1 = 0.
+    const src = readSrc("tamperAudit.ts");
+    expect(src).toContain("(lastEntry?.chainOrder ?? -1) + 1");
+    expect(src).toContain('lastEntry?.contentHash ?? "GENESIS"');
+  });
+
+  it("tamperAudit.ts: verifyChain handles null prevHash/contentHash as tamper evidence", () => {
+    // A null prevHash on a non-genesis row is itself evidence of tampering
+    // or legacy data — we now treat it as a chain break, not an NPE.
+    const src = readSrc("tamperAudit.ts");
+    expect(src).toContain('const entryPrev = entry.prevHash ?? "";');
+    expect(src).toMatch(/entry\.contentHash == null/);
+  });
+
+  it("webhooks.ts: db.webhookDelivery.create sets the required `event` field", () => {
+    // Schema: WebhookDelivery.event is NOT NULL.
+    // Previous code only set `eventType` (the optional library-only field)
+    // and omitted `event` entirely — every create would throw at runtime.
+    // Fix: set BOTH (event for the schema constraint, eventType for the
+    // X-Garfix-Event header at delivery time).
+    const src = readSrc("webhooks.ts");
+    const lines = liveLines(src);
+    const createBlock = lines.find((l) => l.includes("event: payload.event"));
+    expect(createBlock).toBeDefined();
+    const eventTypeBlock = lines.find((l) =>
+      l.includes("eventType: payload.event"),
+    );
+    expect(eventTypeBlock).toBeDefined();
+  });
+
+  it("webhooks.ts: X-Garfix-Event header coalesces null eventType to event", () => {
+    // eventType is `string | null` in schema. Headers can't accept null.
+    // Before: `delivery.eventType` directly — TS error + runtime would
+    // set the header to "null" string. After: coalesce to the always-
+    // non-null `event` field.
+    const src = readSrc("webhooks.ts");
+    expect(src).toContain(
+      '"X-Garfix-Event": delivery.event ?? delivery.eventType ?? ""',
+    );
+  });
+
+  it("ai-provisioning.ts: uses db.platformSettings (plural) — not platformSetting", () => {
+    // Prisma auto-generates `db.platformSettings` from model `PlatformSettings`.
+    // The previous `db.platformSetting` (singular) was undefined at runtime —
+    // every platform settings lookup silently threw.
+    const src = readSrc("services/ai-provisioning.ts");
+    expect(src).toMatch(/db\.platformSettings\.findUnique/);
+    expect(src).toMatch(/db\.platformSettings\.upsert/);
+    expect(src).not.toMatch(/db\.platformSetting\./);
+  });
+
+  it("ai-provisioning.ts: admin role check uses db.appUser (not db.user)", () => {
+    // Schema model is `AppUser` → accessor `db.appUser`. The previous
+    // `db.user` was undefined at runtime, meaning the admin role check
+    // silently never executed — leaving the platform API key update
+    // unguarded.
+    const src = readSrc("services/ai-provisioning.ts");
+    expect(src).toMatch(/db\.appUser\.findUnique/);
+    expect(src).not.toMatch(/db\.user\.findUnique/);
+  });
+
+  it("ai-provisioning.ts: appUser lookup uses `uid` (the @id field), not `id`", () => {
+    // Schema: AppUser.uid is the @id field. The previous code queried
+    // by `id` (which doesn't exist) — Prisma would have thrown at runtime
+    // or silently returned null (depending on the any-typed vs typed path).
+    const src = readSrc("services/ai-provisioning.ts");
+    expect(src).toMatch(/where:\s*\{\s*uid:\s*adminUserId\s*\}/);
+    expect(src).not.toMatch(/where:\s*\{\s*id:\s*adminUserId\s*\}/);
+  });
+
+  it("ai-provisioning.ts: CompanyAIConfig create uses <feature>Enabled (schema field names)", () => {
+    // Schema fields: chatEnabled / parseEnabled / invoiceEnabled / memoryEnabled.
+    // Previous code wrote enableChat / enableSmartParse / enableInvoiceExtraction
+    // / enableMemory — keys that don't exist on the schema, silently ignored
+    // by the any-typed db. Net effect: features were left DISABLED even after
+    // provisioning claimed to enable them.
+    const src = readSrc("services/ai-provisioning.ts");
+    expect(src).toMatch(/chatEnabled:\s*true/);
+    expect(src).toMatch(/parseEnabled:\s*true/);
+    expect(src).toMatch(/invoiceEnabled:\s*true/);
+    expect(src).toMatch(/memoryEnabled:\s*true/);
+    expect(src).not.toMatch(/enableChat:/);
+    expect(src).not.toMatch(/enableSmartParse:/);
+    expect(src).not.toMatch(/enableInvoiceExtraction:/);
+    expect(src).not.toMatch(/enableMemory:/);
+  });
+
+  it("ai-provisioning.ts: platformSettings.upsert create does not pass nonexistent `isPublic` column", () => {
+    // Schema: PlatformSettings has no `isPublic` column. Previous code
+    // passed `isPublic: false` in the create payload — Prisma's any-typed
+    // path silently dropped it; the typed path errors.
+    const src = readSrc("services/ai-provisioning.ts");
+    // Make sure isPublic is NOT in any live create payload (comments OK).
+    const lines = liveLines(src);
+    const liveIsPublic = lines.find((l) => l.includes("isPublic:"));
+    expect(liveIsPublic).toBeUndefined();
+  });
+});
+
+describe("P2 Typed Prisma — graduated migration discipline", () => {
+  it("db.ts keeps dbTyped export available for new code", () => {
+    const src = readSrc("db.ts");
+    expect(src).toMatch(/export const dbTyped/);
+  });
+
+  it("db.ts keeps dbAsAny escape hatch for documented exceptions only", () => {
+    const src = readSrc("db.ts");
+    expect(src).toMatch(/export const dbAsAny:\s*any/);
+  });
+
+  it("db.ts retains the graduated-migration commentary (so future agents don't re-introduce any)", () => {
+    const src = readSrc("db.ts");
+    expect(src).toContain("P1-4 (Typed PrismaClient)");
+    expect(src).toContain("graduated");
+  });
+});

@@ -8,7 +8,7 @@
  * the way it was, including confidence scores, timing, and alternative paths.
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "./logger";
 
 export interface DecisionTrace {
