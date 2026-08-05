@@ -68,9 +68,16 @@ const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 //   channel attacks by isolating the browsing context.
 
 const SECURITY_HEADERS: Record<string, string> = {
+  // P5-L1: CSP tightened — 'unsafe-eval' is now DEV-ONLY. Next.js HMR
+  //   requires 'unsafe-eval' in development for its fast-refresh runtime,
+  //   but production builds don't need it. Keeping it in production was
+  //   a defense-in-depth gap (an injected script could eval() arbitrary
+  //   code). Now we conditionally include it based on NODE_ENV.
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    process.env.NODE_ENV === "development"
+      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
