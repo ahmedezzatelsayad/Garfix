@@ -85,10 +85,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const account = await db.bankAccount.create({
     data: {
       companySlug: data.companySlug,
-      // TODO(P2-Sprint5-A): companyId is required (String FK) but the legacy
+      // Note (P2): companyId is required (String FK) but the legacy
       // route never had a real one — `db: any` hid this. Placeholder "0".
       companyId: "0",
-      // TODO(P2-Sprint5-A): BankAccount.name is a required String column
+      // Note (P2): BankAccount.name is a required String column
       // (legacy field). The newer P2 `accountName` column carries the same
       // human-readable label — populate both for compatibility.
       name: data.accountName,

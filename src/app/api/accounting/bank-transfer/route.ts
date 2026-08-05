@@ -18,7 +18,7 @@ const GetSchema = z.object({
 
 const TransferSchema = z.object({
   companySlug: z.string().min(1),
-  // TODO(P2-Sprint5-A): BankAccount.id is String cuid — accept string IDs.
+  // Note (P2): BankAccount.id is String cuid — accept string IDs.
   // (Legacy code used `z.number().int()` but BankAccount.id has never been
   // numeric; the previous `db: any` hid the type mismatch.)
   fromAccountId: z.string().min(1),

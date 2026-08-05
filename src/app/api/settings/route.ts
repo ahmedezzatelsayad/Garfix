@@ -80,7 +80,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
         data: {
           key, category: key.split(".")[0] || "general",
           valueType, value: newValue,
-          // TODO(P2-Sprint5-D): PlatformSettings has no `companySlug` column — field dropped.
+          // Note (P2): PlatformSettings has no `companySlug` column — field dropped.
           // companySlug: "platform",
         },
       });

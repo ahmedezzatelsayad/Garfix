@@ -29,7 +29,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if ("error" in access) return access.error;
   const user = access.user;
 
-  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+  // Note (P2): Prisma accessor for model `WPSFile` is `db.wPSFile`.
   // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
   const existing = await db.wPSFile.findUnique({
     where: { id: wpsId },
@@ -42,7 +42,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     return apiError("Only draft WPS files can be submitted", 400);
   }
 
-  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+  // Note (P2): Prisma accessor for model `WPSFile` is `db.wPSFile`.
   const wpsFile = await db.wPSFile.update({
     where: { id: wpsId },
     data: {

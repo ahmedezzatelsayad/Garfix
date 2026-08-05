@@ -118,7 +118,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const created = await tx.journalEntry.create({
       data: {
         companySlug: data.companySlug,
-        // TODO(P2-Sprint5-A): `number` and `companyId` are required String
+        // Note (P2): `number` and `companyId` are required String
         // fields without defaults. Legacy `db: any` hid these missing fields.
         // Generate a unique number from timestamp; companyId "0" placeholder.
         number: `JE-${Date.now()}`,

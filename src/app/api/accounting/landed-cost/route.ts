@@ -35,7 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       totalCost: num(a.totalCost, 3),
       lines: a.lines.map((l) => ({
         ...l,
-        // TODO(P2-Sprint5-A): LandedCostLine has `amount` (Decimal), not
+        // Note (P2): LandedCostLine has `amount` (Decimal), not
         // `allocatedAmount`. Legacy `db: any` hid this missing access.
         allocatedCost: num(l.amount, 3),
       })),
@@ -46,7 +46,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ── POST: Create landed cost allocation ─────────────────────────────────────────
 
 const LandedCostLineSchema = z.object({
-  // TODO(P2-Sprint5-A): InventoryItem.id / ProductCatalog.id are String cuids
+  // Note (P2): InventoryItem.id / ProductCatalog.id are String cuids
   // — accept strings. (Legacy `z.number().int()` never matched real cuids.)
   itemId: z.string().optional(),
   productId: z.string().optional(),
@@ -87,7 +87,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     : String(data.totalCost);
 
   const allocationResult = calculateLandedCost({
-    // TODO(P2-Sprint5-A): LandedCostAllocationInput.allocationId is `string`
+    // Note (P2): LandedCostAllocationInput.allocationId is `string`
     // — pass "0" placeholder (real ID set after allocation row is created).
     allocationId: "0",
     costType: data.costType,
@@ -108,7 +108,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const created = await tx.landedCostAllocation.create({
       data: {
         companySlug: data.companySlug,
-        // TODO(P2-Sprint5-A): LandedCostAllocation.purchaseInvoiceId is String?;
+        // Note (P2): LandedCostAllocation.purchaseInvoiceId is String?;
         // convert number input. Also `amount`, `currency`, `costType`,
         // `allocationMethod`, `companyId` are required — legacy `db: any` hid this.
         companyId: "0",
@@ -120,7 +120,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         allocationMethod: data.allocationMethod,
         lines: {
           create: data.lines.map((l, i) => ({
-            // TODO(P2-Sprint5-A): LandedCostLine has `costType` (required),
+            // Note (P2): LandedCostLine has `costType` (required),
             // `amount` (Decimal), `allocationMethod` (String). No `productId`/
             // `allocatedAmount`/`proportionalWeight` — legacy `db: any` hid this.
             costType: data.costType,

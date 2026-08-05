@@ -95,7 +95,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const check = await db.postDatedCheck.create({
     data: {
       companySlug: data.companySlug,
-      // TODO(P2-Sprint5-A): `companyId` and `date` are required String fields
+      // Note (P2): `companyId` and `date` are required String fields
       // without defaults. Legacy `db: any` hid these. Use placeholders.
       companyId: "0",
       date: data.dueDate,
@@ -107,7 +107,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       payer: data.payer || null,
       direction: data.direction,
       status: "pending",
-      // TODO(P2-Sprint5-A): PostDatedCheck.clientId/supplierId/glAccountId are
+      // Note (P2): PostDatedCheck.clientId/supplierId/glAccountId are
       // Int? — convert string cuid input via Number(). Also `currency`/`issueDate`
       // don't exist on the schema — removed.
       clientId: data.clientId ? Number(data.clientId) : null,

@@ -156,7 +156,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.inventoryItem.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.warehouse.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.productCatalog.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    // TODO(P2-Sprint5-D): HR sub-models have no companySlug column — filter via employee relation.
+    // Note (P2): HR sub-models have no companySlug column — filter via employee relation.
     await tx.hRAttendance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
     await tx.hRSalary.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
     await tx.hRCommission.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});

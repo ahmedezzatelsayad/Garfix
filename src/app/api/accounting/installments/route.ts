@@ -46,14 +46,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const schedules = await db.installmentSchedule.findMany({
     where,
     orderBy: [{ createdAt: "desc" }],
-    // TODO(P2-Sprint5-A): InstallmentSchedule has no `company` relation —
+    // Note (P2): InstallmentSchedule has no `company` relation —
     // only scalar `paymentVoucherId` (FK to PaymentVoucher). Removed include.
   });
 
   return NextResponse.json({
     schedules: schedules.map((s) => ({
       ...s,
-      // TODO(P2-Sprint5-A): InstallmentSchedule has `amount` (Decimal),
+      // Note (P2): InstallmentSchedule has `amount` (Decimal),
       // not `totalAmount`. Legacy `db: any` hid this missing access.
       totalAmount: num(s.amount, 3),
     })),

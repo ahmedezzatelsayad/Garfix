@@ -47,7 +47,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       acquisitionDate: d.acquisitionDate,
       acquisitionCost: num(d.acquisitionCost, 3),
       disposalDate: d.disposalDate,
-      // TODO(P2-Sprint5-A): schema column is `disposalMethod` (not `disposalType`).
+      // Note (P2): schema column is `disposalMethod` (not `disposalType`).
       disposalType: d.disposalMethod,
       disposalAmount: num(d.disposalAmount ?? "0", 3),
       accumulatedDepreciation: num(d.accumulatedDepreciation, 3),

@@ -35,7 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
       totalCost: num(allocation.totalCost, 3),
       lines: allocation.lines.map((l) => ({
         ...l,
-        // TODO(P2-Sprint5-A): LandedCostLine has `amount` (Decimal), not
+        // Note (P2): LandedCostLine has `amount` (Decimal), not
         // `allocatedAmount`. Legacy `db: any` hid this missing access.
         allocatedCost: num(l.amount, 3),
       })),

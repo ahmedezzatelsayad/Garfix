@@ -187,7 +187,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const item = await tx.inventoryItem.create({
       data: {
         companySlug: data.companySlug,
-        // TODO(P2-Sprint5-D): InventoryItem.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
+        // Note (P2): InventoryItem.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
         // companyId: 0,
         warehouseId: data.warehouseId,
         productId: data.productId,

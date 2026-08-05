@@ -194,7 +194,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         where: { id: recurring.id },
         data: {
           lastRunDate: entryDate,
-          // TODO(P2-Sprint5-A): `nextRunDate` is DateTime (non-nullable). Always
+          // Note (P2): `nextRunDate` is DateTime (non-nullable). Always
           // set to the computed value — when isActive=false, the schedule is
           // disabled and nextRunDate is informational only.
           nextRunDate,

@@ -126,7 +126,7 @@ export async function PATCH(
       // If there's a linked JE, reverse it
       if (existing.journalEntryId) {
         await db.journalEntry.update({
-          // TODO(P2-Sprint5-A): JournalEntry.id is String cuid — convert Int?
+          // Note (P2): JournalEntry.id is String cuid — convert Int?
           // journalEntryId to string. Legacy `db: any` hid this mismatch.
           where: { id: String(existing.journalEntryId) },
           data: { status: "reversed" },

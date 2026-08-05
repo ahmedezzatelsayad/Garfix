@@ -47,7 +47,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where.companySlug = { in: user.companies };
   }
   if (search) {
-    // TODO(P2-Sprint5-D): Client schema has no `company` column — removed from search filter.
+    // Note (P2): Client schema has no `company` column — removed from search filter.
     where.OR = [
       { name: { contains: search } },
       { email: { contains: search } },

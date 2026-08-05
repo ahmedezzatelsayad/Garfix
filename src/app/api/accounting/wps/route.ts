@@ -40,7 +40,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const country = sp.get("country");
   if (country) where.country = country;
 
-  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`
+  // Note (P2): Prisma accessor for model `WPSFile` is `db.wPSFile`
   // (Prisma only lowercases the first letter of the model name). The previous
   // `db.wpsFile` only worked under `db: any`.
   const wpsFiles = await db.wPSFile.findMany({

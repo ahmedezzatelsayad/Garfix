@@ -89,7 +89,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       code: data.code || null,
       name: data.name,
       sku: data.code || "",
-      // TODO(P2-Sprint5-D): ProductCatalog.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
+      // Note (P2): ProductCatalog.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
       // companyId: 0,
       purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : "0",
       sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : "0",

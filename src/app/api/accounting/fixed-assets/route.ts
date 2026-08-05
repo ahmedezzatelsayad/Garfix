@@ -109,14 +109,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   if (data.depreciationAccountId) {
-    // TODO(P2-Sprint5-A): Account.id is String cuid — convert number input.
+    // Note (P2): Account.id is String cuid — convert number input.
     const dep = await db.account.findFirst({ where: { id: String(data.depreciationAccountId), companySlug: data.companySlug } });
     if (!dep) return apiError("Depreciation account does not belong to this company", 400);
     if (dep.type !== "contra_asset") return apiError("Depreciation account must be a contra-asset type", 400);
   }
 
   if (data.expenseAccountId) {
-    // TODO(P2-Sprint5-A): Account.id is String cuid — convert number input.
+    // Note (P2): Account.id is String cuid — convert number input.
     const exp = await db.account.findFirst({ where: { id: String(data.expenseAccountId), companySlug: data.companySlug } });
     if (!exp) return apiError("Expense account does not belong to this company", 400);
     if (exp.type !== "expense") return apiError("Depreciation expense must be an expense-type GL account", 400);
@@ -135,7 +135,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const asset = await db.fixedAsset.create({
     data: {
       companySlug: data.companySlug,
-      // TODO(P2-Sprint5-A): `name`, `code`, `purchaseDate`, `purchasePrice`,
+      // Note (P2): `name`, `code`, `purchaseDate`, `purchasePrice`,
       // `currentValue`, `companyId`, `isActive` are required fields without
       // defaults. Legacy `db: any` hid these. Use nameAr for name, generate
       // code from name, derive purchaseDate/price/currentValue from P2 fields.

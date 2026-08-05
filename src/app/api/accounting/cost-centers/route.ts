@@ -89,7 +89,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       nameAr: data.nameAr,
       nameEn: data.nameEn || null,
       parentId: data.parentId || null,
-      // TODO(P2-Sprint5-A): companyId is required (String FK) but legacy route
+      // Note (P2): companyId is required (String FK) but legacy route
       // never had a real one — `db: any` hid this. Placeholder "0".
       companyId: "0",
     },

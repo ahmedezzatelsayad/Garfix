@@ -50,7 +50,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: { createdAt: "desc" },
     take: 500,
     include: {
-      // TODO(P2-Sprint5-A): DepreciationEntry has `fixedAsset` relation (not
+      // Note (P2): DepreciationEntry has `fixedAsset` relation (not
       // `asset`), and no `journalEntry` relation — removed.
       fixedAsset: {
         select: {

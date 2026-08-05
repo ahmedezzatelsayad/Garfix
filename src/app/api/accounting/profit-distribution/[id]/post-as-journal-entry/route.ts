@@ -39,7 +39,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if (!period) return apiError("Fiscal period not found", 404);
 
   // Calculate profit distribution for this period
-  // TODO(P2-Sprint5-A): calculateProfitDistribution expects string dates;
+  // Note (P2): calculateProfitDistribution expects string dates;
   // FiscalPeriod.startDate/endDate are DateTime — convert via toISOString.
   const distribution = await calculateProfitDistribution(
     data.companySlug,

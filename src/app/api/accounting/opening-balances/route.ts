@@ -91,7 +91,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let totalDebit = 0;
     let totalCredit = 0;
 
-    // TODO(P2-Sprint5-A): JournalEntryLine.accountId is String (cuid) —
+    // Note (P2): JournalEntryLine.accountId is String (cuid) —
     // change lines type from number to string.
     const lines: Array<{ accountId: string; debit: string; credit: string; description: string }> = [];
     for (const entry of draftEntries) {
@@ -157,7 +157,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const je = await tx.journalEntry.create({
         data: {
           companySlug: data.companySlug,
-          // TODO(P2-Sprint5-A): `number` and `companyId` are required String
+          // Note (P2): `number` and `companyId` are required String
           // fields without defaults. Legacy `db: any` hid these.
           number: `OB-${Date.now()}`,
           companyId: "0",
@@ -240,7 +240,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Create opening balance entries.
-  // TODO(P2-Sprint5-A): schema unique is `accountId_periodId` — the legacy
+  // Note (P2): schema unique is `accountId_periodId` — the legacy
   // `companySlug_accountId_asOfDate` composite doesn't exist. The previous
   // `db: any` hid this. We now create new entries (no upsert) — callers must
   // delete existing drafts before re-creating.
@@ -250,7 +250,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     journalEntryId: string | null; account: { id: string; code: string; nameAr: string | null; type: string };
   }> = [];
   for (const entry of data.entries) {
-    // TODO(P2-Sprint5-A): `periodId` and `companyId` are required String
+    // Note (P2): `periodId` and `companyId` are required String
     // fields without defaults. Legacy `db: any` hid these. Use placeholder
     // periodId/companyId — should be sourced from FiscalPeriod lookup.
     const ob = await db.openingBalanceEntry.create({

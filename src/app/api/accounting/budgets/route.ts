@@ -158,7 +158,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         const created = await tx.budget.create({
           data: {
             companySlug: data.companySlug,
-            // TODO(P2-Sprint5-A): `name` and `companyId` are required String
+            // Note (P2): `name` and `companyId` are required String
             // fields without defaults. Legacy `db: any` hid these missing
             // fields. Placeholder name from periodName; companyId "0".
             name: data.periodName,

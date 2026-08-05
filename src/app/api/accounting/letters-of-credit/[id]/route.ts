@@ -86,7 +86,7 @@ export async function PATCH(
 
     let result: { ok: boolean; lc?: Record<string, unknown>; error?: string; jeId?: string };
 
-    // TODO(P2-Sprint5-A): amendLC/utilizeLC/cancelLC expect `lcId: number` but
+    // Note (P2): amendLC/utilizeLC/cancelLC expect `lcId: number` but
     // LetterOfCredit.id is a string cuid. Legacy `db: any` hid this; Number()
     // produces NaN for cuids (same as previous parseInt behavior). The lib
     // functions have their own type bugs to be fixed separately.

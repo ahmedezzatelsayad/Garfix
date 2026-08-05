@@ -29,7 +29,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   try {
-    // TODO(P2-Sprint5-A): Client.id is String cuid — pass directly, no
+    // Note (P2): Client.id is String cuid — pass directly, no
     // parseInt. Legacy `db: any` hid the type mismatch.
     const statement = await getClientStatement(companySlug, clientId);
     return NextResponse.json(statement);

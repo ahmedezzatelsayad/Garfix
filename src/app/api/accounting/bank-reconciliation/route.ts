@@ -102,7 +102,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       bankAccountId: data.bankAccountId,
       periodStart: data.periodStart,
       periodEnd: data.periodEnd,
-      // TODO(P2-Sprint5-A): schema requires DateTime `startDate`/`endDate` and
+      // Note (P2): schema requires DateTime `startDate`/`endDate` and
       // Decimal `openingBalance`/`closingBalance`. Derive from period dates /
       // default to 0 — `db: any` previously hid these missing fields.
       startDate: new Date(data.periodStart),
@@ -127,7 +127,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       data: {
         isReconciled: true,
         reconciledWith: "journal_entry",
-        // TODO(P2-Sprint5-A): BankTransaction.reconciledId is Int? but
+        // Note (P2): BankTransaction.reconciledId is Int? but
         // JournalEntryLine.id is a String cuid — fundamentally broken
         // cross-reference (same pattern as MatchOverride.auditId in batch G).
         // Passing null; the link can be reconstructed via reconciliationId

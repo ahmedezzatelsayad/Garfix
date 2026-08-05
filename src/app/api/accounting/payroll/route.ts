@@ -134,7 +134,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Calculate salary for each employee
-  // TODO(P2-Sprint5-A): calculateNetSalary() was migrated in P2-Sprint5-B2 to
+  // Note (P2): calculateNetSalary() was migrated in P2-Sprint5-B2 to
   // accept `employeeId: string` (Employee.id is a String cuid). Pass emp.id
   // directly — the previous Number() coercion produced NaN for cuids and only
   // "worked" under `db: any`.

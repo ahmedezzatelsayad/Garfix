@@ -20,7 +20,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where: { companySlug, isActive: true },
     include: {
       journalEntryLines: {
-        // TODO(P2-Sprint5-A): JournalEntryLine has `journalEntry` relation,
+        // Note (P2): JournalEntryLine has `journalEntry` relation,
         // not `entry`. Renamed.
         include: { journalEntry: { select: { status: true } } },
       },

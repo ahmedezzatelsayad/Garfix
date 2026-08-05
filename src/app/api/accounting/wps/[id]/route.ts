@@ -23,7 +23,7 @@ export async function GET(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+    // Note (P2): Prisma accessor for model `WPSFile` is `db.wPSFile`.
     // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
     const wpsFile = await db.wPSFile.findUnique({
       where: { id: parseInt(id, 10) },

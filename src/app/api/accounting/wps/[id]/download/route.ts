@@ -18,7 +18,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const access = await requirePermissionForCompany(req, "finance_access", companySlug);
   if ("error" in access) return access.error;
 
-  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+  // Note (P2): Prisma accessor for model `WPSFile` is `db.wPSFile`.
   // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
   const wpsFile = await db.wPSFile.findUnique({
     where: { id: parseInt(id, 10) },

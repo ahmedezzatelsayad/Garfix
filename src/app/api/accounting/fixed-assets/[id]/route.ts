@@ -83,7 +83,7 @@ export async function PATCH(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    // TODO(P2-Sprint5-A): FixedAsset.id is String cuid — pass directly.
+    // Note (P2): FixedAsset.id is String cuid — pass directly.
     // disposeAsset() expects `assetId: string` (migrated in lib). Legacy
     // `db: any` + Number() produced NaN for cuids.
     const assetId = id;
@@ -151,12 +151,12 @@ export async function PATCH(
       if (!gl) return apiError("GL account does not belong to this company", 400);
     }
     if (data.depreciationAccountId) {
-      // TODO(P2-Sprint5-A): Account.id is String cuid — convert number input.
+      // Note (P2): Account.id is String cuid — convert number input.
       const dep = await db.account.findFirst({ where: { id: String(data.depreciationAccountId), companySlug: data.companySlug } });
       if (!dep) return apiError("Depreciation account does not belong to this company", 400);
     }
     if (data.expenseAccountId) {
-      // TODO(P2-Sprint5-A): Account.id is String cuid — convert number input.
+      // Note (P2): Account.id is String cuid — convert number input.
       const exp = await db.account.findFirst({ where: { id: String(data.expenseAccountId), companySlug: data.companySlug } });
       if (!exp) return apiError("Expense account does not belong to this company", 400);
     }

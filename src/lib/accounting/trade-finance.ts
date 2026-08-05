@@ -56,10 +56,7 @@ export async function trackLetterOfCredit(
         number: lcData.lcNumber,
         lcNumber: lcData.lcNumber,
         supplierId: String(lcData.supplierId),
-        // TODO(P2-Sprint5-B1): LetterOfCredit.bankAccountId is Int? in schema
-        // (should be String? to match BankAccount.id cuid). Storing null until
-        // schema is fixed.
-        bankAccountId: null,
+        bankAccountId: String(lcData.bankAccountId),
         amount: toNum(lcData.amount),
         currency: lcData.currency || "KWD",
         issueDate: lcData.issueDate,
@@ -91,11 +88,9 @@ export async function trackLetterOfCredit(
         issueDate: lc.issueDate,
         expiryDate: lc.expiryDate,
         status: lc.status,
-        // TODO(P2-Sprint5-B1): utilizationAmount not tracked in schema — return 0
-        utilizationAmount: 0,
-        // TODO(P2-Sprint5-B1): documentsRequired not tracked in schema — return input
-        documentsRequired: lcData.documentsRequired || [],
-        // TODO(P2-Sprint5-B1): notes not in schema — map from description
+        utilizationAmount: num(lc.utilizationAmount, 3),
+        documentsRequired: parseJsonField<string[]>(lc.documentsRequired, lcData.documentsRequired || []),
+        // LetterOfCredit has no `notes` column — map from description
         notes: lc.description,
         createdAt: lc.createdAt,
         updatedAt: lc.updatedAt,
@@ -146,7 +141,9 @@ export async function amendLC(
       data: {
         amount: amendmentData.amount ? toNum(amendmentData.amount) : undefined,
         expiryDate: amendmentData.expiryDate || undefined,
-        // TODO(P2-Sprint5-B1): documentsRequired not in schema — dropped
+        documentsRequired: amendmentData.documentsRequired
+          ? JSON.stringify(amendmentData.documentsRequired)
+          : undefined,
         description: newNotes,
         status: "amended",
       },
@@ -171,9 +168,8 @@ export async function amendLC(
         issueDate: updated.issueDate,
         expiryDate: updated.expiryDate,
         status: updated.status,
-        // TODO(P2-Sprint5-B1): utilizationAmount/documentsRequired not in schema
-        utilizationAmount: 0,
-        documentsRequired: [],
+        utilizationAmount: num(updated.utilizationAmount, 3),
+        documentsRequired: parseJsonField<string[]>(updated.documentsRequired, []),
         notes: updated.description,
         createdAt: updated.createdAt,
         updatedAt: updated.updatedAt,
@@ -319,7 +315,6 @@ export async function utilizeLC(
         id: result.lc.id,
         lcNumber: result.lc.lcNumber,
         amount: num(result.lc.amount, 3),
-        // TODO(P2-Sprint5-B1): utilizationAmount not in schema — return computed total
         utilizationAmount: num(totalUtil, 3),
         status: result.lc.status,
       },
@@ -354,7 +349,7 @@ export async function cancelLC(
       where: { id: String(lcId) },
       data: {
         status: "cancelled",
-        // TODO(P2-Sprint5-B1): notes not in schema — using description
+        // Note (P2): notes not in schema — using description
         description: `${existing.description || ""}\n[إلغاء ${new Date().toISOString().slice(0, 10)}]`,
       },
     });
@@ -604,7 +599,7 @@ export async function allocateLandedCost(
 
 export interface FxRevaluationDetail {
   sourceType: string; // invoice / purchase_invoice / bank_account
-  // TODO(P2-Sprint5-B1): sourceId is polymorphic — Invoice.id is Int (autoincrement),
+  // Note (P2): sourceId is polymorphic — Invoice.id is Int (autoincrement),
   // PurchaseInvoice/BankAccount.id are String cuids. Accepting both.
   sourceId: string | number;
   originalAmount: number;
@@ -621,7 +616,7 @@ export interface FxRevaluationResult {
   unrealizedGain: number;
   unrealizedLoss: number;
   details: FxRevaluationDetail[];
-  // TODO(P2-Sprint5-B1): revaluationId/jeId are String cuids (FxRevaluation.id,
+  // Note (P2): revaluationId/jeId are String cuids (FxRevaluation.id,
   // JournalEntry.id), not numbers.
   revaluationId?: string;
   jeId?: string;
@@ -904,10 +899,12 @@ export async function calculateFxRevaluation(
             });
           }
 
-          // TODO(P2-Sprint5-B1): FxRevaluation.journalEntryId is Int? in schema
-          // (should be String? to match JournalEntry.id cuid). Cannot store
-          // the cuid FK — dropping the reverse link. The forward link
-          // (JE.sourceId = revaluation.id) still works.
+          // Store reverse link: FxRevaluation.journalEntryId → JournalEntry.id
+          // (forward link is JE.sourceId = revaluation.id, set during JE create)
+          await tx.fxRevaluation.update({
+            where: { id: revaluation.id },
+            data: { journalEntryId: entry.id },
+          });
 
           return entry;
         });

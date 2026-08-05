@@ -125,7 +125,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const quotation = await db.quotation.create({
     data: {
       companySlug: data.companySlug,
-      // TODO(P2-Sprint5-A): `number` is a required String field without a
+      // Note (P2): `number` is a required String field without a
       // default. Legacy `db: any` hid this missing field. Use quotationNumber.
       number: quotationNumber,
       quotationNumber,

@@ -18,7 +18,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 // ─── GET ─────────────────────────────────────────────────────────────────
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  // TODO(P2-Sprint5-A): PaymentVoucher.id is String cuid — pass `id` directly
+  // Note (P2): PaymentVoucher.id is String cuid — pass `id` directly
   // (no parseInt). Legacy `db: any` hid the type mismatch.
   const { id: voucherId } = await params;
 
@@ -80,7 +80,7 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  // TODO(P2-Sprint5-A): PaymentVoucher.id is String cuid — pass `id` directly
+  // Note (P2): PaymentVoucher.id is String cuid — pass `id` directly
   // (no parseInt). Legacy `db: any` hid the type mismatch.
   const { id: voucherId } = await params;
 
