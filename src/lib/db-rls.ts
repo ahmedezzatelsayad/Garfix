@@ -39,7 +39,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * USAGE FROM API ROUTES
  * ═══════════════════════════════════════════════════════════════════════════
- *   import { db } from "@/lib/db";
+ *   import { dbTyped as db } from "@/lib/db";
  *   import { withTenant } from "@/lib/db-rls";
  *
  *   export async function GET(req: NextRequest) {

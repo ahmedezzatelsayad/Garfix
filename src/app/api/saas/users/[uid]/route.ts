@@ -4,7 +4,7 @@
  * DELETE — soft-delete a user (founder only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder, requireAuth } from "@/lib/middleware";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";

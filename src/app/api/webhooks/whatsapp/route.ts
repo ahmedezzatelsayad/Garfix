@@ -25,7 +25,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { decryptSecret, hashToken, safeCompare, tryDecryptSecret } from "@/lib/cryptoVault";
 import { logger } from "@/lib/logger";
 import { z } from "zod";

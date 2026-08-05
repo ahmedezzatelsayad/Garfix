@@ -14,7 +14,7 @@
  *   - The gateway should check checkBudgetGate() before calling AI providers
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getValkeyClient } from "@/lib/valkey";
 import type { BudgetStatus } from "./types";

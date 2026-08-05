@@ -5,7 +5,7 @@
  * Returns a chronological list of all fiscal year close and reopen events.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasPermission, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { apiError, withErrorHandler } from "@/lib/api";
 

@@ -3,7 +3,7 @@
  * GET — platform-wide stats (founder only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler } from "@/lib/api";

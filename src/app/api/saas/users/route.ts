@@ -3,7 +3,7 @@
  * GET — list users (founder: all; admin: scoped to companies they manage)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasUnrestrictedScope } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler, parseJsonField } from "@/lib/api";

@@ -16,7 +16,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { hashToken, safeCompare } from "@/lib/cryptoVault";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";

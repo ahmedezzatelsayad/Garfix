@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, getQuery } from "@/lib/api";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── GET: Delivery history ────────────────────────────────────────────────────
 

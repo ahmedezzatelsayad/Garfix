@@ -8,7 +8,7 @@
  *   blacklist check inside resolveAuth.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import {
   resolveAuth,
   type SessionUser,

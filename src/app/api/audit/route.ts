@@ -3,7 +3,7 @@
  * GET — list audit logs (scoped to user's accessible companies)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { withErrorHandler, parseJsonField } from "@/lib/api";
 

@@ -17,7 +17,7 @@
  * Source: AIRequestLog table (from gateway.ts:logRequest)
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import type { CascadeBreakdownEntry, SavingsReport, CascadeStage } from "./types";
 
 const CASCADE_STAGES: CascadeStage[] = ["cache", "pattern", "rule", "memory", "ai"];

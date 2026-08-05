@@ -8,7 +8,7 @@ import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "@/lib/api";
 import { registerWebhook } from "@/lib/webhooks";
 import { logAudit } from "@/lib/audit";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { z } from "zod";
 
 // ── GET: List endpoints ──────────────────────────────────────────────────────

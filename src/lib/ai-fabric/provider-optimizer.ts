@@ -28,7 +28,7 @@
  *         capability-based smartRouter if no config exists.
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { callAIWithFallback, type RoutedChatOptions } from "@/lib/ai/smartRouter";
 import type { AIRequestType, ProviderRoutingDecision } from "./types";

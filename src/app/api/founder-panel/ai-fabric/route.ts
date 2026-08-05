@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { getPlatformSavings } from "@/lib/ai-fabric/cost-optimizer";
 import { requireFounder } from "@/lib/middleware";
 

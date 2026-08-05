@@ -8,7 +8,7 @@
  * close the browser and resume from where they left off.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { getAccountTemplate, getRecommendedModules, type BusinessType } from "@/lib/accountTemplates";

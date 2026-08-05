@@ -4,7 +4,7 @@
  * DELETE — delete purchase invoice
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";

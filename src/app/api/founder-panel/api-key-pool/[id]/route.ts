@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { dbTyped as db } from '@/lib/db';
 import { requireFounder } from '@/lib/middleware';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';

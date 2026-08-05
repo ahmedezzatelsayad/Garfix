@@ -13,7 +13,7 @@
  * SEC-L2 FIX (Cycle 1): rejects new password == current password.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hashPassword, verifyPassword, revokeAccessSession } from "@/lib/auth";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { logAudit } from "@/lib/audit";

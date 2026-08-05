@@ -25,7 +25,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { valkeyHealthCheck, VALKEY_CONFIGURED } from "@/lib/valkey";
 import { getBullMQStats } from "@/lib/queues";
 import { cacheStats } from "@/lib/cache";

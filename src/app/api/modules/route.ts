@@ -3,7 +3,7 @@
  * GET — list installed modules (with active state)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/api";
 import { parseJsonField } from "@/lib/api";

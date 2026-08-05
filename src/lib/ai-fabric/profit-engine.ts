@@ -17,7 +17,7 @@
  *   - Workers:  db.companyRuntime.workerPoolSize × ESTIMATED_WORKER_COST_PER_DAY
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
