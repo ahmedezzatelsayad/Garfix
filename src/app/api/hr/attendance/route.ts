@@ -30,9 +30,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  // TODO(P2-Sprint5-D): HRAttendance has no companySlug column — filter via employee relation.
-  if (companySlug) where.employee = { companySlug };
-  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
+  // companySlug filter (added P3)
+  if (companySlug) where.companySlug = companySlug;
+  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
   if (employeeId) where.employeeId = employeeId;
   const records = await db.hRAttendance.findMany({ where, orderBy: { date: "desc" }, take: 500 });
   return NextResponse.json({ attendance: records });
@@ -52,11 +52,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const att = await db.hRAttendance.create({
     data: {
       employeeId: data.employeeId,
+      companySlug: data.companySlug,
       date: new Date(data.date),
       status: data.status,
       checkIn: data.checkIn ? new Date(data.checkIn) : null,
       checkOut: data.checkOut ? new Date(data.checkOut) : null,
-      // TODO(P2-Sprint5-D): HRAttendance has no `companySlug` or `notes` columns — fields dropped.
+      notes: data.notes || null,
     },
   });
   await logAudit({

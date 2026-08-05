@@ -31,9 +31,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       disposalDate: { not: null },
     },
     orderBy: { disposalDate: "desc" },
-    // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
-    // `expenseAccount` relations — only scalar `*AccountId: Int?` columns.
-    // The legacy `db: any` hid the missing include. Removed.
+    include: {
+      glAccount: true,
+      depreciationAccount: true,
+      expenseAccount: true,
+    },
   });
 
   return apiOk({

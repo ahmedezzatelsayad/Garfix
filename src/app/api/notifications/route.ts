@@ -35,7 +35,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (action === "mark_all_read") {
     await db.notification.updateMany({
       where: { userUid: user.uid, isRead: false },
-      // TODO(P2-Sprint5-D): Notification schema has no `read` column — only `isRead`.
+      // Note: Notification schema uses `isRead` (not `read`) by design.
       data: { isRead: true, readAt: new Date() },
     });
     return NextResponse.json({ ok: true });
@@ -47,7 +47,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         id: Number((body as Record<string, unknown>).id),
         userUid: user.uid, // ensure ownership
       },
-      // TODO(P2-Sprint5-D): Notification schema has no `read` column — only `isRead`.
+      // Note: Notification schema uses `isRead` (not `read`) by design.
       data: { isRead: true, readAt: new Date() },
     });
     return NextResponse.json({ ok: true });

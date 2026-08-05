@@ -121,8 +121,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     settings = await db.invoiceTemplateSettings.create({
       data: {
         companySlug: data.companySlug,
-        // TODO(P2-Sprint5-D): InvoiceTemplateSettings has no `name` column — field dropped.
-        // name: data.templateId,
+        name: data.templateId,
         primaryColor: data.primaryColor,
         fontFamily: data.fontFamily,
         fontSize: data.fontSize,

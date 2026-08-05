@@ -52,10 +52,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const decimals = config?.currencyDecimalPlaces ?? 3;
 
   const payroll = await db.hRSalary.findMany({
-    // TODO(P2-Sprint5-A): HRSalary has no `companySlug` field — removed from
-    // where. Filter by month only (company scoping must go via employee).
-    where: { month: data.month },
-    include: { employee: { select: { id: true, name: true, nameEn: true } } },
+    // HRSalary.companySlug restored (P3)
+    where: { companySlug: data.companySlug, month: data.month },
+    include: { employee: { select: { id: true, name: true, nameEn: true, civilId: true } } },
     orderBy: { employeeId: "asc" },
   });
 
@@ -65,15 +64,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   let totalSocialInsurance = 0;
 
   for (const s of payroll) {
-    // TODO(P2-Sprint5-A): HRSalary has only `amount` (Decimal) — no
-    // `baseSalary`/`allowances`/`bonus`/`netSalary`/`deductions`.
-    // Legacy `db: any` hid these missing accesses.
-    const gross = num(s.amount, decimals);
+    // HRSalary.baseSalary/netSalary restored (P3); allowances/bonus/deductions
+    // were never in the schema (num() returned 0 for them under db: any).
+    const gross = num(s.baseSalary, decimals);
     totalGross += gross;
-    totalNet += gross; // net ≈ amount (no separate breakdown stored)
+    totalNet += num(s.netSalary, decimals);
     totalDeductions += 0;
     // Social insurance is computed using the payroll engine
-    const siResult = calculateSocialInsurance({ baseSalary: s.amount.toString(), allowances: "0" }, country);
+    const siResult = calculateSocialInsurance({ baseSalary: s.baseSalary.toString(), allowances: "0" }, country);
     totalSocialInsurance += num(siResult.employeePortion, decimals);
   }
 
@@ -83,9 +81,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       ...s,
       employeeName: s.employee.name,
       employeeNameEn: s.employee.nameEn,
-      // TODO(P2-Sprint5-A): Employee has no `civilId` — empty string.
-      civilId: "",
-      grossSalary: num(s.amount, decimals).toFixed(decimals),
+      // Employee.civilId restored (P3)
+      civilId: s.employee.civilId ?? "",
+      grossSalary: num(s.baseSalary, decimals).toFixed(decimals),
     })),
     totals: {
       totalGross: num(totalGross, decimals).toFixed(decimals),
@@ -159,8 +157,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       employeeId: emp.id,
       employeeName: emp.name,
       employeeNameEn: emp.nameEn,
-      // TODO(P2-Sprint5-A): Employee has no `civilId` field.
-      civilId: "",
+      // Employee.civilId restored (P3)
+      civilId: emp.civilId ?? "",
       salaryBreakdown: salaryResult,
     });
 
@@ -176,24 +174,31 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       where: {
         employeeId: result.employeeId,
         month: data.month,
+        // HRSalary.companySlug restored (P3)
+        companySlug: data.companySlug,
       },
     });
 
     if (existingSalary) {
       await db.hRSalary.update({
         where: { id: existingSalary.id },
+        // HRSalary.baseSalary/netSalary restored (P3); allowances/bonus/deductions
+        // still absent — `amount` still required so netSalary mirrors it.
         data: {
-          // TODO(P2-Sprint5-A): HRSalary has only `amount` (Decimal) — no
-          // `baseSalary`/`allowances`/`deductions`/`bonus`/`netSalary`.
-          // Store netSalary as amount.
+          baseSalary: result.salaryBreakdown.basicSalary,
+          netSalary: result.salaryBreakdown.netSalary,
           amount: result.salaryBreakdown.netSalary,
         },
       });
     } else {
       await db.hRSalary.create({
         data: {
+          // HRSalary.companySlug restored (P3)
+          companySlug: data.companySlug,
           employeeId: result.employeeId,
           month: data.month,
+          baseSalary: result.salaryBreakdown.basicSalary,
+          netSalary: result.salaryBreakdown.netSalary,
           amount: result.salaryBreakdown.netSalary,
         },
       });

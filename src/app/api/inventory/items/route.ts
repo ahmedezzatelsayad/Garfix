@@ -72,8 +72,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       productName: it.product?.name || "—",
       quantity: qty,
       reorderLevel: reorder,
-      // TODO(P2-Sprint5-D): InventoryItem schema has no `reorderQty` column — return reorderLevel.
-      reorderQty: reorder,
+      reorderQty: num(it.reorderQty, 3),
       batchNumber: it.batchNumber,
       expiryDate: it.expiryDate,
       status: itemStatus,
@@ -142,8 +141,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         data: {
           quantity: newQuantity,
           reorderLevel: num(data.reorderLevel, 3),
-          // TODO(P2-Sprint5-D): InventoryItem schema has no `reorderQty` column — dropped.
-          // reorderQty: num(data.reorderQty, 3),
+          reorderQty: num(data.reorderQty, 3),
           batchNumber: data.batchNumber ?? existing.batchNumber,
           expiryDate: data.expiryDate ?? existing.expiryDate,
         },
@@ -195,8 +193,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         productId: data.productId,
         quantity: initialQty,
         reorderLevel: num(data.reorderLevel, 3),
-        // TODO(P2-Sprint5-D): InventoryItem schema has no `reorderQty` column — dropped.
-        // reorderQty: num(data.reorderQty, 3),
+        reorderQty: num(data.reorderQty, 3),
         batchNumber: data.batchNumber || null,
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
       },

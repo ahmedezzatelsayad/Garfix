@@ -32,9 +32,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  // TODO(P2-Sprint5-D): HRCommission has no companySlug column — filter via employee relation.
-  if (companySlug) where.employee = { companySlug };
-  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
+  // companySlug filter (added P3)
+  if (companySlug) where.companySlug = companySlug;
+  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
   const records = await db.hRCommission.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ commissions: records.map((r) => ({ ...r, amount: num(r.amount, 3) })) });
 });
@@ -53,11 +53,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const c = await db.hRCommission.create({
     data: {
       employeeId: data.employeeId,
+      companySlug: data.companySlug,
       amount: num(data.amount, 3).toFixed(3),
       period: data.period,
+      date: data.date ? new Date(data.date) : new Date(),
+      type: data.type,
+      isPaid: data.isPaid,
       status: data.isPaid ? "paid" : data.status,
-      // TODO(P2-Sprint5-D): HRCommission schema only exposes employeeId/amount/period/status —
-      // `companySlug`, `date`, `type`, `description`, `isPaid` are not columns; dropped.
+      // `description` is not a column on HRCommission
     },
   });
   await logAudit({

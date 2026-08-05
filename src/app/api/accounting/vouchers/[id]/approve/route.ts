@@ -38,9 +38,8 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
 
   const updated = await db.paymentVoucher.update({
     where: { id: voucherId },
-    // TODO(P2-Sprint5-A): PaymentVoucher has no `approvedBy` field —
-    // removed. Audit log captures the approver instead.
-    data: { status: "posted" },
+    // PaymentVoucher.approvedBy restored (P3)
+    data: { status: "posted", approvedBy: user.email },
   });
 
   await logAudit({

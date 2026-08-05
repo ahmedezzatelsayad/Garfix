@@ -45,9 +45,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   const productId = sp.get("productId");
   if (productId) where.productId = productId;
-  // TODO(P2-Sprint5-D): StockMovement has no `warehouseId` column — filter dropped.
-  // const warehouseId = sp.get("warehouseId");
-  // if (warehouseId) where.warehouseId = warehouseId;
+  const warehouseId = sp.get("warehouseId");
+  if (warehouseId) where.warehouseId = warehouseId;
   const sourceType = sp.get("sourceType");
   if (sourceType) where.sourceType = sourceType;
 
@@ -95,8 +94,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return {
       id: m.id, companySlug: m.companySlug, productId: m.productId,
       productName: product?.name || "— (orphan)", productCode: product?.code || null,
-      // TODO(P2-Sprint5-D): StockMovement has no `warehouseId` column — return null.
-      warehouseId: null as string | null, warehouseName: "—", warehouseCode: "—",
+      warehouseId: m.warehouseId, warehouseName: "—", warehouseCode: "—",
       qty: num(m.quantity, 3), sourceType: m.sourceType, sourceId: m.sourceId, note: null as string | null, createdBy: null as string | null, createdAt: m.createdAt,
     };
   });

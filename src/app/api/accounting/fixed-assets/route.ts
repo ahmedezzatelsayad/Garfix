@@ -63,8 +63,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: { createdAt: "desc" },
     take: 500,
     include: {
-      // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
-      // `expenseAccount` relations — only scalar `*AccountId: Int?`. Removed.
+      glAccount: true,
+      depreciationAccount: true,
+      expenseAccount: true,
       depreciationEntries: {
         orderBy: { period: "desc" },
         take: 1,
@@ -164,8 +165,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       depreciationAccountId: data.depreciationAccountId ?? null,
       expenseAccountId: data.expenseAccountId ?? null,
     },
-    // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
-    // `expenseAccount` relations — removed include.
+    include: {
+      glAccount: true,
+      depreciationAccount: true,
+      expenseAccount: true,
+    },
   });
 
   await logAudit({

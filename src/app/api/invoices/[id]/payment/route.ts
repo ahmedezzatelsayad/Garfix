@@ -73,8 +73,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (data.idempotencyKey) {
     const idemCompositeKey = `inv-${existing.id}:${data.idempotencyKey}`;
     const ttlCutoff = new Date(Date.now() - IDEMPOTENCY_TTL_HOURS * 3600 * 1000);
-    // TODO(P2-Sprint5-D): IdempotencyKey has no `companySlug`/`endpoint`/composite unique —
-    // look up by the unique `key` column instead.
+    // `key` is @unique on IdempotencyKey — lookup by key is sufficient.
+    // companySlug/endpoint/responseJson are recorded on the row (P3) for traceability.
     const idem = await db.idempotencyKey.findUnique({
       where: { key: idemCompositeKey },
     });
@@ -155,12 +155,13 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
       await db.idempotencyKey.upsert({
         where: { key: idemCompositeKey },
         create: {
-          // TODO(P2-Sprint5-D): IdempotencyKey has no `companySlug`/`endpoint`/`responseJson` columns.
-          // `companySlug` dropped; `endpoint` → `path`; `responseJson` → `responseBody`.
           key: idemCompositeKey,
           method: "PATCH",
           path: `/api/invoices/${existing.id}/payment`,
+          companySlug: existing.companySlug,
+          endpoint: IDEMPOTENCY_ENDPOINT,
           responseBody: JSON.stringify(responseBody),
+          responseJson: JSON.stringify(responseBody),
           statusCode: 200,
           expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 3600 * 1000),
         },

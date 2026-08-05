@@ -60,11 +60,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       issueDate: lc.issueDate,
       expiryDate: lc.expiryDate,
       status: lc.status,
-      // TODO(P2-Sprint5-A): LetterOfCredit has no `utilizationAmount`/
-      // `documentsRequired`/`notes` — only `description`. Legacy `db: any`
-      // hid these missing accesses.
-      utilizationAmount: 0,
-      documentsRequired: [],
+      utilizationAmount: num(lc.utilizationAmount, 3),
+      documentsRequired: parseJsonField<string[]>(lc.documentsRequired, []),
       notes: lc.description ?? '',
       createdAt: lc.createdAt,
       updatedAt: lc.updatedAt,

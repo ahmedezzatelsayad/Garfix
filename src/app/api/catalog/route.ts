@@ -93,8 +93,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // companyId: 0,
       purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : "0",
       sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : "0",
-      // TODO(P2-Sprint5-D): ProductCatalog schema has no `wholesalePrice` column — field dropped.
-      // wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : "0",
+      wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : "0",
     },
   });
   await logAudit({

@@ -97,8 +97,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   });
   if (!existing) return apiError("Cost center not found", 404);
 
-  // TODO(P2-Sprint5-A): JournalEntryLine has no `costCenterId` field — removed
-  // the linked-lines check. The legacy `db: any` hid this missing column.
+  // Block deletion if any journal entry lines reference this cost center
+  const linkedLines = await db.journalEntryLine.count({
+    where: { costCenterId: id },
+  });
+  if (linkedLines > 0) {
+    return apiError(
+      `Cannot delete cost center — ${linkedLines} journal entry lines linked. Reassign them first.`,
+      400,
+    );
+  }
 
   // Check if any children exist
   const children = await db.costCenter.count({

@@ -34,40 +34,34 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     where: { id: commissionId },
   });
   if (!commission) return apiError("Commission not found", 404);
-  // TODO(P2-Sprint5-A): HRCommission has no `companySlug`/`isPaid`/`date`/`type`
-  // columns — only `period` (String) and `status` (draft/paid/cancelled).
-  // The legacy `db: any` hid these missing accesses. Use employee.companySlug
-  // for ownership check and `status === "paid"` instead of `isPaid`.
+  if (commission.companySlug !== data.companySlug) return apiError("Commission does not belong to this company", 403);
+
+  if (commission.isPaid) return apiError("Commission is already paid/posted", 400);
+
+  // Get employee details for the commission entry
   const employee = await db.employee.findUnique({
     where: { id: commission.employeeId },
   });
-  if (employee?.companySlug !== data.companySlug) return apiError("Commission does not belong to this company", 403);
-
-  if (commission.status === "paid") return apiError("Commission is already paid/posted", 400);
 
   // Post the commission as a journal entry using proper CommissionEntry format
   const jeResult = await postCommissionsJE(
     data.companySlug,
     [{
-      // TODO(P2-Sprint5-A): CommissionEntry.salespersonId is `string` (cuid)
-      // — pass commission.employeeId directly. Legacy `db: any` hid the
-      // (incorrect) Number() coercion that would have produced NaN.
       salespersonId: commission.employeeId,
       name: employee?.name || "",
       totalSales: "0",
       commissionRate: "0",
       commissionAmount: commission.amount.toString(),
     }],
-    // TODO(P2-Sprint5-A): HRCommission has no `date` field — use `period`.
-    { from: commission.period, to: commission.period },
+    // HRCommission.date restored (P3); postCommissionsJE expects string range.
+    { from: commission.date.toISOString(), to: commission.date.toISOString() },
     user.email,
   );
 
   // Mark commission as paid
   await db.hRCommission.update({
     where: { id: commissionId },
-    // TODO(P2-Sprint5-A): HRCommission has no `isPaid` field — use `status`.
-    data: { status: "paid" },
+    data: { isPaid: true },
   });
 
   await logAudit({
@@ -80,8 +74,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     details: {
       commissionId,
       amount: num(commission.amount, 3),
-      // TODO(P2-Sprint5-A): HRCommission has no `type` field — empty string.
-      type: "",
+      type: commission.type,
       jeId: jeResult.jeId,
     },
   });

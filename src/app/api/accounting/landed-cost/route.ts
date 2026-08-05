@@ -24,9 +24,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   const allocations = await db.landedCostAllocation.findMany({
     where: { companySlug },
-    // TODO(P2-Sprint5-A): LandedCostAllocation has no `purchaseInvoice` relation
-    // — only scalar `purchaseInvoiceId: String?`. Removed include.
-    include: { lines: true },
+    include: { purchaseInvoice: true, lines: true },
     orderBy: { createdAt: "desc" },
     take: 500,
   });

@@ -65,8 +65,9 @@ export async function trackLetterOfCredit(
         issueDate: lcData.issueDate,
         expiryDate: lcData.expiryDate,
         status: "issued",
-        // TODO(P2-Sprint5-B1): LetterOfCredit has no utilizationAmount/
-        // documentsRequired/notes columns. Using `description` for notes.
+        // utilizationAmount/documentsRequired restored (P3); `notes` still maps to `description` (no `notes` column)
+        utilizationAmount: toNum(0),
+        documentsRequired: lcData.documentsRequired ? JSON.stringify(lcData.documentsRequired) : null,
         description: lcData.notes || null,
       },
     });
@@ -238,10 +239,8 @@ export async function utilizeLC(
       return { ok: false, error: "حسابات المشتريات/الاعتمادات المستندية غير مُهيّأة — يرجى إنشاء حسابات مناسبة" };
     }
 
-    // TODO(P2-Sprint5-B1): LetterOfCredit has no utilizationAmount column —
-    // cannot accumulate utilization across multiple calls. Using current
-    // utilization amount as the total.
-    const totalUtil = toNum(utilizationAmount);
+    // utilizationAmount restored (P3) — accumulate across multiple calls
+    const totalUtil = num(existing.utilizationAmount, 3) + utilAmt;
 
     // Create JE + update LC in a transaction
     const result = await db.$transaction(async (tx) => {
@@ -297,7 +296,8 @@ export async function utilizeLC(
       const lc = await tx.letterOfCredit.update({
         where: { id: String(lcId) },
         data: {
-          // TODO(P2-Sprint5-B1): utilizationAmount not in schema — dropped
+          // utilizationAmount restored (P3)
+          utilizationAmount: toNum(totalUtil),
           status: newStatus,
           description: `${existing.description || ""}\n[استخدام ${new Date().toISOString().slice(0, 10)}]: مبلغ ${toNum(utilAmt)}`,
         },
@@ -465,23 +465,22 @@ export async function allocateLandedCost(
         data: {
           companySlug,
           companyId: company.id,
-          // TODO(P2-Sprint5-B1): LandedCostAllocation has no `lineItems` column —
-          // storing the input lines JSON in `notes` for traceability.
+          // lines relation restored (P3) — no need to stash input JSON in `notes`
           purchaseInvoiceId: String(allocationData.purchaseInvoiceId),
           costType: allocationData.costType,
           totalCost: toNum(totalCost),
           allocationMethod: method,
           amount: toNum(totalCost),
           currency: company.currency || "USD",
-          notes: JSON.stringify(allocationData.lines),
           lines: {
             create: allocationData.lines.map((l) => ({
-              // TODO(P2-Sprint5-B1): LandedCostLine has only costType/amount/
-              // allocationMethod columns — no productId/allocatedAmount/
-              // proportionalWeight. Mapping allocatedCost → amount.
+              // LandedCostLine fields restored (P3): productId/proportionalWeight/allocatedAmount
               costType: allocationData.costType,
               amount: toNum(l.allocatedCost),
               allocationMethod: method,
+              productId: l.productId != null ? String(l.productId) : null,
+              proportionalWeight: toNum(l.baseQuantity ?? 0),
+              allocatedAmount: toNum(l.allocatedCost),
             })),
           },
         },
@@ -585,8 +584,8 @@ export async function allocateLandedCost(
         allocationMethod: result.allocation.allocationMethod,
         lines: result.allocation.lines.map((l) => ({
           id: l.id,
-          // TODO(P2-Sprint5-B1): LandedCostLine has no productId — return null
-          productId: null,
+          // productId restored (P3)
+          productId: l.productId,
           // Map amount → allocatedCost for response compatibility
           allocatedCost: num(l.amount, 3),
         })),
@@ -784,15 +783,17 @@ export async function calculateFxRevaluation(
         toCurrency,
         rate: rate.toFixed(3),
         date: new Date(),
-        // TODO(P2-Sprint5-B1): FxRevaluation has no `period`/`realizedGain`/
-        // `realizedLoss`/`unrealizedGain`/`unrealizedLoss` columns. Storing
-        // period in `notes` and net gain/loss in `totalGainLoss`.
+        // FxRevaluation gain/loss breakdown + period restored (P3)
+        period,
+        realizedGain: toNum(realizedGain),
+        realizedLoss: toNum(realizedLoss),
+        unrealizedGain: toNum(unrealizedGain),
+        unrealizedLoss: toNum(unrealizedLoss),
         revaluationDate: period,
         baseCurrency: fromCurrency,
         targetCurrency: toCurrency,
         exchangeRate: rate.toFixed(3),
         totalGainLoss: (unrealizedGain + realizedGain - unrealizedLoss - realizedLoss).toFixed(3),
-        notes: period,
         status: postImmediately ? "posted" : "draft",
       },
     });
@@ -975,10 +976,13 @@ export async function getTradeFinanceDashboard(companySlug: string) {
     const latestFxReval = await db.fxRevaluation.findFirst({
       where: { companySlug },
       orderBy: { createdAt: "desc" },
-      // TODO(P2-Sprint5-B1): FxRevaluation has no unrealizedGain/realizedGain
-      // columns — only `totalGainLoss`. Selecting that.
+      // gain/loss breakdown restored (P3)
       select: {
         totalGainLoss: true,
+        unrealizedGain: true,
+        unrealizedLoss: true,
+        realizedGain: true,
+        realizedLoss: true,
       },
     });
 
@@ -989,11 +993,11 @@ export async function getTradeFinanceDashboard(companySlug: string) {
       pendingLandedCosts,
       fxRevaluation: latestFxReval
         ? {
-            // TODO(P2-Sprint5-B1): gain/loss breakdown not in schema — return 0
-            unrealizedGain: "0.000",
-            unrealizedLoss: "0.000",
-            realizedGain: "0.000",
-            realizedLoss: "0.000",
+            // gain/loss breakdown restored (P3)
+            unrealizedGain: num(latestFxReval.unrealizedGain, 3).toFixed(3),
+            unrealizedLoss: num(latestFxReval.unrealizedLoss, 3).toFixed(3),
+            realizedGain: num(latestFxReval.realizedGain, 3).toFixed(3),
+            realizedLoss: num(latestFxReval.realizedLoss, 3).toFixed(3),
             totalGainLoss: num(latestFxReval.totalGainLoss, 3).toFixed(3),
           }
         : null,

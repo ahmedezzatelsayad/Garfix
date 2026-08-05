@@ -44,8 +44,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where,
     orderBy: { date: "desc" },
     take: 500,
-    // TODO(P2-Sprint5-A): Quotation has no `client` relation — only scalar
-    // `clientId: String?`. Removed include.
+    // Quotation.client relation restored (P3)
+    include: {
+      client: { select: { id: true, name: true, email: true } },
+    },
   });
 
   return apiOk({
@@ -143,7 +145,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       notes: data.notes || null,
       status: "draft",
     },
-    // TODO(P2-Sprint5-A): Quotation has no `client` relation — removed include.
+    // Quotation.client relation restored (P3)
+    include: {
+      client: { select: { id: true, name: true, email: true } },
+    },
   });
 
   await logAudit({
@@ -180,17 +185,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
 
   const quotation = await db.quotation.findUnique({
     where: { id: data.quotationId },
-    // TODO(P2-Sprint5-A): Quotation has no `client` relation — removed include.
+    // Quotation.client relation restored (P3)
+    include: { client: true },
   });
   if (!quotation) return apiError("Quotation not found", 404);
   if (quotation.companySlug !== data.companySlug) return apiError("Quotation does not belong to this company", 400);
   if (quotation.status !== "accepted") return apiError("Only accepted quotations can be converted to invoices", 400);
-
-  // TODO(P2-Sprint5-A): Quotation has no `client` relation — fetch separately
-  // for invoice client fields.
-  const client = quotation.clientId
-    ? await db.client.findFirst({ where: { id: quotation.clientId, companySlug: data.companySlug } })
-    : null;
 
   // Generate invoice number
   const year = quotation.date.slice(0, 4);
@@ -211,10 +211,11 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
       companySlug: data.companySlug,
       invoiceNumber,
       clientId: quotation.clientId,
-      clientName: client?.name ?? '',
-      clientEmail: client?.email ?? '',
-      clientPhone: client?.phone ?? '',
-      clientAddress: client?.address ?? '',
+      // Quotation.client relation restored (P3)
+      clientName: quotation.client?.name ?? '',
+      clientEmail: quotation.client?.email ?? '',
+      clientPhone: quotation.client?.phone ?? '',
+      clientAddress: quotation.client?.address ?? '',
       issueDate: quotation.date,
       dueDate: quotation.validUntil || quotation.date,
       status: "draft",

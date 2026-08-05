@@ -31,12 +31,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRPerformance has no companySlug column — resolve via employee relation.
-  const existing = await db.hRPerformance.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRPerformance.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Performance review not found", 404);
   }
 
@@ -45,21 +42,15 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
 
   const data: Record<string, unknown> = {};
-  // TODO(P2-Sprint5-D): HRPerformance schema only exposes period/rating/goals/feedback —
-  // kpiScore/attendScore/teamScore/overallScore/strengths/improvements/reviewerNote are not columns.
-  // if (parsed.data.kpiScore !== undefined) data.kpiScore = parsed.data.kpiScore;
-  // if (parsed.data.attendScore !== undefined) data.attendScore = parsed.data.attendScore;
-  // if (parsed.data.teamScore !== undefined) data.teamScore = parsed.data.teamScore;
-  // if (parsed.data.overallScore !== undefined) data.overallScore = parsed.data.overallScore;
+  // HRPerformance only has period/rating/goals/feedback — kpiScore/attendScore/teamScore/overallScore/reviewerNote are not columns.
   if (parsed.data.rating !== undefined) data.rating = num(parsed.data.rating, 3).toFixed(3);
   if (parsed.data.strengths !== undefined) data.goals = parsed.data.strengths || null;
   if (parsed.data.improvements !== undefined) data.feedback = parsed.data.improvements || null;
-  // if (parsed.data.reviewerNote !== undefined) data.reviewerNote = parsed.data.reviewerNote || null;
 
   const performance = await db.hRPerformance.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "update", entity: "performance", entityId: performance.id, companySlug: existing.employee?.companySlug,
+    action: "update", entity: "performance", entityId: performance.id, companySlug: existing.companySlug,
     details: { fields: Object.keys(data) },
   });
   return NextResponse.json({ ok: true, performance });
@@ -71,19 +62,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRPerformance has no companySlug column — resolve via employee relation.
-  const existing = await db.hRPerformance.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRPerformance.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Performance review not found", 404);
   }
 
   await db.hRPerformance.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "delete", entity: "performance", entityId: existing.id, companySlug: existing.employee?.companySlug,
+    action: "delete", entity: "performance", entityId: existing.id, companySlug: existing.companySlug,
   });
   return NextResponse.json({ ok: true });
 });

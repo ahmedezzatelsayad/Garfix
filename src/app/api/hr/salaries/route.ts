@@ -32,19 +32,19 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  // TODO(P2-Sprint5-D): HRSalary has no companySlug column — filter via employee relation.
-  if (companySlug) where.employee = { companySlug };
-  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
+  // companySlug filter (added P3)
+  if (companySlug) where.companySlug = companySlug;
+  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
   const salaries = await db.hRSalary.findMany({ where, orderBy: { month: "desc" }, take: 500 });
   return NextResponse.json({
     salaries: salaries.map((s) => ({
       ...s,
-      // TODO(P2-Sprint5-D): HRSalary schema only exposes `amount` — derive baseSalary/netSalary from it.
-      baseSalary: num(s.amount, 3),
+      // HRSalary now exposes baseSalary/netSalary (added P3); allowances/deductions/bonus still not columns.
+      baseSalary: num(s.baseSalary, 3),
       allowances: 0,
       deductions: 0,
       bonus: 0,
-      netSalary: num(s.amount, 3),
+      netSalary: num(s.netSalary, 3),
     })),
   });
 });
@@ -68,12 +68,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const salary = await db.hRSalary.create({
     data: {
       employeeId: data.employeeId,
+      companySlug: data.companySlug,
       month: data.month,
+      baseSalary: base.toFixed(3),
+      netSalary: net.toFixed(3),
       amount: net.toFixed(3),
       status: data.isPaid ? "paid" : "draft",
       paidDate: data.isPaid ? new Date() : null,
-      // TODO(P2-Sprint5-D): HRSalary schema only exposes employeeId/amount/month/status/paidDate —
-      // `companySlug`, `baseSalary`, `allowances`, `deductions`, `bonus`, `netSalary`, `isPaid`, `notes` are not columns; dropped.
+      // HRSalary exposes baseSalary/netSalary (added P3); allowances/deductions/bonus/notes still not columns.
     },
   });
   await logAudit({

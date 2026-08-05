@@ -105,8 +105,7 @@ export async function PATCH(
     const account = await db.bankAccount.update({
       where: { id },
       data: updateData,
-      // TODO(P2-Sprint5-A): BankAccount has no `glAccount` relation — only
-      // scalar `glAccountId: Int?`. Removed include.
+      include: { glAccount: true },
     });
 
     await logAudit({

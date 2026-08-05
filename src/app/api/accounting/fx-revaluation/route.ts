@@ -37,8 +37,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
-    // TODO(P2-Sprint5-A): FxRevaluation has NO relations — `include` is not
-    // accepted by findMany. Removed.
+    // journalEntry relation restored (P3)
+    include: {
+      journalEntry: { select: { id: true, reference: true, status: true } },
+    },
   });
 
   return NextResponse.json({
@@ -47,17 +49,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       fromCurrency: rv.fromCurrency,
       toCurrency: rv.toCurrency,
       rate: num(rv.rate, 3),
-      // TODO(P2-Sprint5-A): FxRevaluation has no `period`/`realizedGain`/
-      // `realizedLoss`/`unrealizedGain`/`unrealizedLoss`/`journalEntry` —
-      // only `revaluationDate`, `totalGainLoss`, `journalEntryId`.
-      period: rv.revaluationDate,
-      realizedGain: 0,
-      realizedLoss: 0,
-      unrealizedGain: 0,
-      unrealizedLoss: 0,
+      // FxRevaluation period/gain-loss breakdown restored (P3)
+      period: rv.period,
+      realizedGain: num(rv.realizedGain, 3),
+      realizedLoss: num(rv.realizedLoss, 3),
+      unrealizedGain: num(rv.unrealizedGain, 3),
+      unrealizedLoss: num(rv.unrealizedLoss, 3),
       totalGainLoss: num(rv.totalGainLoss, 3),
       status: rv.status,
       journalEntryId: rv.journalEntryId,
+      journalEntry: rv.journalEntry,
       createdAt: rv.createdAt,
       updatedAt: rv.updatedAt,
     })),

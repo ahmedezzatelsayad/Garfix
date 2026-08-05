@@ -81,10 +81,9 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
       name: client.name,
       email: client.email,
       phone: client.phone,
-      // TODO(P2-Sprint5-D): Client schema has no `clientCompany` or `notes` columns — fields dropped.
-      company: null,
+      company: client.clientCompany,
       address: client.address,
-      notes: null,
+      notes: client.notes,
       companySlug: client.companySlug,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,

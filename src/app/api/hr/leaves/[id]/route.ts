@@ -28,12 +28,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRLeaveRequest has no companySlug column — resolve via employee relation.
-  const existing = await db.hRLeaveRequest.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRLeaveRequest.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Leave request not found", 404);
   }
 
@@ -45,9 +42,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (parsed.data.type !== undefined) data.type = parsed.data.type;
   if (parsed.data.startDate !== undefined) data.startDate = new Date(parsed.data.startDate);
   if (parsed.data.endDate !== undefined) data.endDate = new Date(parsed.data.endDate);
-  // TODO(P2-Sprint5-D): HRLeaveRequest has no `days` or `reason` columns — updates dropped.
-  // if (parsed.data.days !== undefined) data.days = parsed.data.days;
-  // if (parsed.data.reason !== undefined) data.reason = parsed.data.reason || null;
+  if (parsed.data.days !== undefined) data.days = parsed.data.days;
+  if (parsed.data.reason !== undefined) data.reason = parsed.data.reason || null;
   // Approve/reject flow: record the approver when status flips to approved/rejected
   if (parsed.data.status !== undefined) {
     data.status = parsed.data.status;
@@ -59,7 +55,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const leave = await db.hRLeaveRequest.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "update", entity: "leave", entityId: leave.id, companySlug: existing.employee?.companySlug,
+    action: "update", entity: "leave", entityId: leave.id, companySlug: existing.companySlug,
     details: { fields: Object.keys(data), newStatus: parsed.data.status ?? null },
   });
   return NextResponse.json({ ok: true, leave });
@@ -71,19 +67,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRLeaveRequest has no companySlug column — resolve via employee relation.
-  const existing = await db.hRLeaveRequest.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRLeaveRequest.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Leave request not found", 404);
   }
 
   await db.hRLeaveRequest.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "delete", entity: "leave", entityId: existing.id, companySlug: existing.employee?.companySlug,
+    action: "delete", entity: "leave", entityId: existing.id, companySlug: existing.companySlug,
   });
   return NextResponse.json({ ok: true });
 });

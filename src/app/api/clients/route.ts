@@ -87,10 +87,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       name: data.name,
       email: data.email || null,
       phone: data.phone || null,
-      // TODO(P2-Sprint5-D): Client schema has no `clientCompany` or `notes` columns — fields dropped.
-      // clientCompany: data.company || null,
+      clientCompany: data.company || null,
       address: data.address || null,
-      // notes: data.notes || null,
+      notes: data.notes || null,
       companySlug: data.companySlug,
     },
   });

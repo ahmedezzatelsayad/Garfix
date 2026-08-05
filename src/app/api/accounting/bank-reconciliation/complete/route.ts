@@ -44,9 +44,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       status: "completed",
       completedBy: user.email,
-      // TODO(P2-Sprint5-A): BankReconciliation has no `completedAt` column —
-      // `updatedAt` is auto-managed by Prisma (@updatedAt) and captures the
-      // completion time. Removed the unknown `completedAt` field.
+      completedAt: new Date(),
     },
   });
 

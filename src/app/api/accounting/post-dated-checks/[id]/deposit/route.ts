@@ -43,9 +43,8 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     where: { id: checkId },
     data: {
       status: "deposited",
-      // TODO(P2-Sprint5-A): PostDatedCheck has no `clearedAt` field — use
-      // `depositedAt` (the schema field for deposit timestamp).
-      depositedAt: new Date(),
+      // PostDatedCheck.clearedAt restored (P3)
+      clearedAt: new Date(),
     },
   });
 

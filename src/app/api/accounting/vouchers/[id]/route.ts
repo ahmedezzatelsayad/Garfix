@@ -104,10 +104,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
     const updated = await db.paymentVoucher.update({
       where: { id: voucherId },
-      // TODO(P2-Sprint5-A): PaymentVoucher has no `approvedBy` column — only
-      // `createdBy`. Legacy `db: any` silently dropped this. Status flip to
-      // "posted" is the durable approval signal.
-      data: { status: "posted" },
+      // PaymentVoucher.approvedBy restored (P3)
+      data: { status: "posted", approvedBy: user.email },
     });
 
     await logAudit({

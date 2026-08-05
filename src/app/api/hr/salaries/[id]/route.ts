@@ -29,12 +29,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRSalary has no companySlug column — resolve via employee relation.
-  const existing = await db.hRSalary.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRSalary.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Salary record not found", 404);
   }
 
@@ -42,9 +39,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
 
-  // TODO(P2-Sprint5-D): HRSalary schema only exposes amount/month/status/paidDate —
-  // baseSalary/allowances/deductions/bonus/netSalary/isPaid/notes are not columns.
-  // Collapse the recalc into the single `amount` field.
+  // HRSalary now exposes baseSalary/netSalary (added P3); allowances/deductions/bonus/notes still not columns.
   const base = parsed.data.baseSalary !== undefined ? num(parsed.data.baseSalary, 3) : num(existing.amount, 3);
   const allowances = parsed.data.allowances !== undefined ? num(parsed.data.allowances, 3) : 0;
   const deductions = parsed.data.deductions !== undefined ? num(parsed.data.deductions, 3) : 0;
@@ -52,6 +47,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const net = base + allowances + bonus - deductions;
 
   const data: Record<string, unknown> = {
+    baseSalary: base.toFixed(3),
+    netSalary: net.toFixed(3),
     amount: net.toFixed(3),
   };
   if (parsed.data.isPaid !== undefined) {
@@ -60,12 +57,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     if (parsed.data.isPaid && existing.status !== "paid") data.paidDate = new Date();
     if (!parsed.data.isPaid) data.paidDate = null;
   }
-  // if (parsed.data.notes !== undefined) data.notes = parsed.data.notes || null;
+  // `notes` is not a column on HRSalary
 
   const salary = await db.hRSalary.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "update", entity: "salary", entityId: salary.id, companySlug: existing.employee?.companySlug,
+    action: "update", entity: "salary", entityId: salary.id, companySlug: existing.companySlug,
     details: { netSalary: net.toFixed(3), fields: Object.keys(data) },
   });
   return NextResponse.json({ ok: true, salary });
@@ -77,19 +74,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRSalary has no companySlug column — resolve via employee relation.
-  const existing = await db.hRSalary.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRSalary.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Salary record not found", 404);
   }
 
   await db.hRSalary.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "delete", entity: "salary", entityId: existing.id, companySlug: existing.employee?.companySlug,
+    action: "delete", entity: "salary", entityId: existing.id, companySlug: existing.companySlug,
   });
   return NextResponse.json({ ok: true });
 });

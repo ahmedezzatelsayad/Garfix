@@ -50,8 +50,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const accounts = await db.bankAccount.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    // TODO(P2-Sprint5-A): BankAccount has no `glAccount` relation — only
-    // scalar `glAccountId: Int?`. Removed include.
+    include: { glAccount: true },
   });
 
   return NextResponse.json({
@@ -105,7 +104,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       glAccountId: data.glAccountId ? String(data.glAccountId) : null,
       balance: "0.000",
     },
-    // TODO(P2-Sprint5-A): BankAccount has no `glAccount` relation — removed include.
+    include: { glAccount: true },
   });
 
   await logAudit({

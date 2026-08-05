@@ -29,12 +29,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRCommission has no companySlug column — resolve via employee relation.
-  const existing = await db.hRCommission.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRCommission.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Commission record not found", 404);
   }
 
@@ -43,19 +40,17 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
 
   const data: Record<string, unknown> = {};
-  // TODO(P2-Sprint5-D): HRCommission schema only exposes employeeId/amount/period/status —
-  // `type`, `description`, `isPaid` are not columns; field updates dropped.
-  // if (parsed.data.type !== undefined) data.type = parsed.data.type;
-  // if (parsed.data.description !== undefined) data.description = parsed.data.description || null;
+  // `description` is not a column on HRCommission
+  if (parsed.data.type !== undefined) data.type = parsed.data.type;
   if (parsed.data.amount !== undefined) data.amount = num(parsed.data.amount, 3).toFixed(3);
-  // if (parsed.data.isPaid !== undefined) data.isPaid = parsed.data.isPaid;
+  if (parsed.data.isPaid !== undefined) data.isPaid = parsed.data.isPaid;
   if (parsed.data.period !== undefined) data.period = parsed.data.period;
   if (parsed.data.status !== undefined) data.status = parsed.data.status;
 
   const commission = await db.hRCommission.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "update", entity: "commission", entityId: commission.id, companySlug: existing.employee?.companySlug,
+    action: "update", entity: "commission", entityId: commission.id, companySlug: existing.companySlug,
     details: { fields: Object.keys(data) },
   });
   return NextResponse.json({ ok: true, commission });
@@ -67,19 +62,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRCommission has no companySlug column — resolve via employee relation.
-  const existing = await db.hRCommission.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRCommission.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Commission record not found", 404);
   }
 
   await db.hRCommission.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "delete", entity: "commission", entityId: existing.id, companySlug: existing.employee?.companySlug,
+    action: "delete", entity: "commission", entityId: existing.id, companySlug: existing.companySlug,
   });
   return NextResponse.json({ ok: true });
 });

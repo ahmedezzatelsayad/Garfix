@@ -45,8 +45,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const costCenters = await db.costCenter.findMany({
     where,
     orderBy: [{ code: "asc" }],
-    // TODO(P2-Sprint5-A): CostCenter has no `parent` relation — only scalar
-    // `parentId: Int?`. Removed include.
+    include: { parent: true },
   });
 
   return NextResponse.json({ costCenters });

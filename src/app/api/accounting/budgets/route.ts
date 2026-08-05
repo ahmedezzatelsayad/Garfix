@@ -59,9 +59,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const budgets = await db.budget.findMany({
     where,
     orderBy: [{ periodName: "asc" }, { accountId: "asc" }],
-    // TODO(P2-Sprint5-A): Budget has no `account`/`costCenter` relations — only
-    // scalar `accountId: Int` / `costCenterId: Int?`. Removed include; account
-    // names must be fetched separately if needed.
+    include: { account: true, costCenter: true },
   });
 
   return NextResponse.json({

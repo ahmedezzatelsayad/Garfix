@@ -45,9 +45,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   });
   const countryCode = company?.country || "KW";
 
-  // Monthly salary = base + allowances
-  // TODO(P2-Sprint5-D): Employee schema has no `allowances` column — treat as 0.
-  const monthlySalary = num(employee.baseSalary, 3);
+  // Monthly salary = base + allowances (allowances added P3)
+  const monthlySalary = num(employee.baseSalary, 3) + num(employee.allowances, 3);
 
   const eligible = isEligibleForGratuity(employee.joinDate, endDate, countryCode);
   if (!eligible) {
@@ -59,8 +58,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
   }
 
-  // TODO(P2-Sprint5-D): Employee schema has no `endDate` column — use request body or today.
-  const effectiveEndDate = endDate || new Date().toISOString().slice(0, 10);
+  // endDate column added P3 — fall back to employee.endDate then today
+  const effectiveEndDate = endDate || employee.endDate?.toISOString().slice(0, 10) || new Date().toISOString().slice(0, 10);
   const result = calculateGratuity({
     joinDate: employee.joinDate,
     endDate: effectiveEndDate,
@@ -78,8 +77,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       endDate: effectiveEndDate,
       monthlySalary: monthlySalary.toFixed(3),
       baseSalary: employee.baseSalary,
-      // TODO(P2-Sprint5-D): `allowances` column missing on Employee — return 0.
-      allowances: 0,
+      allowances: num(employee.allowances, 3),
     },
     gratuity: result,
     countryCode,

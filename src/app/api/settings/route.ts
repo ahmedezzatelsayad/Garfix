@@ -72,8 +72,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     if (existing) {
       await db.platformSettings.update({
         where: { key },
-        // TODO(P2-Sprint5-D): PlatformSettings has no `updatedBy` column — field dropped.
-        data: { value: newValue, valueType, updatedAt: new Date() },
+        data: { value: newValue, valueType, updatedBy: result.user.email, updatedAt: new Date() },
       });
       settingId = existing.id;
     } else {
@@ -95,8 +94,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
         oldValue,
         newValue,
         changedBy: result.user.email,
-        // TODO(P2-Sprint5-D): PlatformSettingsHistory has no `changedByEmail` column — field dropped.
-        // changedByEmail: result.user.email,
+        changedByEmail: result.user.email,
       },
     });
   }

@@ -34,9 +34,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  // TODO(P2-Sprint5-D): HRPerformance has no companySlug column — filter via employee relation.
-  if (companySlug) where.employee = { companySlug };
-  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
+  // companySlug filter (added P3)
+  if (companySlug) where.companySlug = companySlug;
+  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
   const records = await db.hRPerformance.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ performance: records });
 });
@@ -54,12 +54,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const p = await db.hRPerformance.create({
     data: {
-      employeeId: data.employeeId, period: data.period,
+      employeeId: data.employeeId, companySlug: data.companySlug, period: data.period,
       rating: num(data.rating ?? 0, 3).toFixed(3),
       goals: data.strengths || null,
       feedback: data.improvements || null,
-      // TODO(P2-Sprint5-D): HRPerformance schema only exposes employeeId/period/rating/goals/feedback —
-      // `companySlug`, `kpiScore`, `attendScore`, `teamScore`, `overallScore`, `reviewerNote` are not columns; dropped.
+      // HRPerformance only has period/rating/goals/feedback — kpiScore/attendScore/teamScore/overallScore/reviewerNote are not columns.
     },
   });
   await logAudit({

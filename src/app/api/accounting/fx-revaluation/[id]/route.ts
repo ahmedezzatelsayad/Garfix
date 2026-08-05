@@ -35,8 +35,10 @@ export async function GET(
 
     const rv = await db.fxRevaluation.findFirst({
       where: { id, companySlug },
-      // TODO(P2-Sprint5-A): FxRevaluation has no `journalEntry` relation —
-      // only scalar `journalEntryId: Int?`. Removed include.
+      // journalEntry relation restored (P3)
+      include: {
+        journalEntry: { select: { id: true, reference: true, status: true, date: true } },
+      },
     });
 
     if (!rv) return apiError("إعادة تقييم العملة غير موجودة", 404);
@@ -46,18 +48,16 @@ export async function GET(
       fromCurrency: rv.fromCurrency,
       toCurrency: rv.toCurrency,
       rate: num(rv.rate, 3),
-      // TODO(P2-Sprint5-A): FxRevaluation has no `period`/`realizedGain`/
-      // `realizedLoss`/`unrealizedGain`/`unrealizedLoss`/`journalEntry` —
-      // only `revaluationDate`, `totalGainLoss`, `journalEntryId`.
-      // Legacy `db: any` hid these missing accesses.
-      period: rv.revaluationDate,
-      realizedGain: 0,
-      realizedLoss: 0,
-      unrealizedGain: 0,
-      unrealizedLoss: 0,
+      // FxRevaluation period/gain-loss breakdown restored (P3)
+      period: rv.period,
+      realizedGain: num(rv.realizedGain, 3),
+      realizedLoss: num(rv.realizedLoss, 3),
+      unrealizedGain: num(rv.unrealizedGain, 3),
+      unrealizedLoss: num(rv.unrealizedLoss, 3),
       totalGainLoss: num(rv.totalGainLoss, 3),
       status: rv.status,
       journalEntryId: rv.journalEntryId,
+      journalEntry: rv.journalEntry,
       createdAt: rv.createdAt,
       updatedAt: rv.updatedAt,
     });

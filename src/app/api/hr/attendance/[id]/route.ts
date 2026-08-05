@@ -26,13 +26,9 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRAttendance has no companySlug column in schema.prisma —
-  // resolve companySlug via the employee relation instead.
-  const existing = await db.hRAttendance.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRAttendance.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Attendance record not found", 404);
   }
 
@@ -44,13 +40,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (parsed.data.status !== undefined) data.status = parsed.data.status;
   if (parsed.data.checkIn !== undefined) data.checkIn = parsed.data.checkIn || null;
   if (parsed.data.checkOut !== undefined) data.checkOut = parsed.data.checkOut || null;
-  // TODO(P2-Sprint5-D): HRAttendance has no `notes` column — field dropped.
-  // if (parsed.data.notes !== undefined) data.notes = parsed.data.notes || null;
+  if (parsed.data.notes !== undefined) data.notes = parsed.data.notes || null;
 
   const attendance = await db.hRAttendance.update({ where: { id: existing.id }, data });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "update", entity: "attendance", entityId: attendance.id, companySlug: existing.employee?.companySlug,
+    action: "update", entity: "attendance", entityId: attendance.id, companySlug: existing.companySlug,
     details: { fields: Object.keys(data) },
   });
   return NextResponse.json({ ok: true, attendance });
@@ -62,20 +57,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermission(req, "employee_management");
   if ("error" in access) return access.error;
   const user = access.user;
-  // TODO(P2-Sprint5-D): HRAttendance has no companySlug column in schema.prisma —
-  // resolve companySlug via the employee relation instead.
-  const existing = await db.hRAttendance.findUnique({
-    where: { id },
-    include: { employee: { select: { companySlug: true } } },
-  });
-  if (!existing || !assertCompanyAccess(user, existing.employee?.companySlug ?? "")) {
+  // companySlug filter (added P3)
+  const existing = await db.hRAttendance.findUnique({ where: { id } });
+  if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Attendance record not found", 404);
   }
 
   await db.hRAttendance.delete({ where: { id: existing.id } });
   await logAudit({
     userEmail: user.email, userUid: user.uid,
-    action: "delete", entity: "attendance", entityId: existing.id, companySlug: existing.employee?.companySlug,
+    action: "delete", entity: "attendance", entityId: existing.id, companySlug: existing.companySlug,
   });
   return NextResponse.json({ ok: true });
 });

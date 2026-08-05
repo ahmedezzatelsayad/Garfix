@@ -26,8 +26,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const user = access.user;
   const quotation = await db.quotation.findUnique({
     where: { id: quotationId },
-    // TODO(P2-Sprint5-A): Quotation has no `client` relation — only scalar
-    // `clientId: String?`. Removed include.
+    // Quotation.client relation restored (P3)
+    include: {
+      client: { select: { id: true, name: true, email: true, phone: true, address: true } },
+    },
   });
   if (!quotation || !assertCompanyAccess(user, quotation.companySlug)) {
     return apiError("Quotation not found", 404);
@@ -118,7 +120,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const updated = await db.quotation.update({
     where: { id: quotationId },
     data: updateData,
-    // TODO(P2-Sprint5-A): Quotation has no `client` relation — removed include.
+    // Quotation.client relation restored (P3)
+    include: { client: { select: { id: true, name: true } } },
   });
 
   await logAudit({

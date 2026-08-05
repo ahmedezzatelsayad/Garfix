@@ -22,9 +22,7 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
 
   const allocation = await db.landedCostAllocation.findUnique({
     where: { id: allocationId },
-    // TODO(P2-Sprint5-A): LandedCostAllocation has no `purchaseInvoice` relation
-    // — only scalar `purchaseInvoiceId: String?`. Removed include.
-    include: { lines: true },
+    include: { purchaseInvoice: true, lines: true },
   });
   if (!allocation) return apiError("Landed cost allocation not found", 404);
 

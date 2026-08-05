@@ -47,8 +47,9 @@ export async function GET(
     const asset = await db.fixedAsset.findUnique({
       where: { id },
       include: {
-        // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
-        // `expenseAccount` relations — only scalar `*AccountId: Int?`. Removed.
+        glAccount: true,
+        depreciationAccount: true,
+        expenseAccount: true,
         depreciationEntries: {
           orderBy: { period: "desc" },
           take: 12,
@@ -173,8 +174,11 @@ export async function PATCH(
     const asset = await db.fixedAsset.update({
       where: { id },
       data: updateData,
-      // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
-      // `expenseAccount` relations — only scalar `*AccountId: Int?`. Removed.
+      include: {
+        glAccount: true,
+        depreciationAccount: true,
+        expenseAccount: true,
+      },
     });
 
     await logAudit({
