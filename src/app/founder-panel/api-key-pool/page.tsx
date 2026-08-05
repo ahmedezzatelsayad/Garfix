@@ -315,9 +315,41 @@ export default function FounderApiKeyPoolPage() {
 
   const handleBulkRevoke = async () => {
     if (selectedKeyIds.size === 0) return;
-    // TODO: Implement bulk revoke API call
-    setAlert({ type: 'success', message: `تم إلغاء ${selectedKeyIds.size} مفتاح` });
-    setSelectedKeyIds(new Set());
+
+    if (!confirm(`هل أنت متأكد من إلغاء ${selectedKeyIds.size} مفتاح؟`)) return;
+
+    const keyIds = Array.from(selectedKeyIds);
+
+    try {
+      const results = await Promise.allSettled(
+        keyIds.map(async (keyId) => {
+          const response = await fetch(`/api/founder-panel/api-key-pool/${keyId}`, {
+            method: 'DELETE',
+          });
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'فشل الإلغاء');
+          }
+          return keyId;
+        })
+      );
+
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      if (failed === 0) {
+        setAlert({ type: 'success', message: `✅ تم إلغاء ${succeeded} مفتاح بنجاح` });
+      } else if (succeeded === 0) {
+        setAlert({ type: 'error', message: `❌ فشل إلغاء جميع المفاتيح` });
+      } else {
+        setAlert({ type: 'success', message: `⚠️ تم إلغاء ${succeeded} مفتاح، فشل ${failed}` });
+      }
+
+      setSelectedKeyIds(new Set());
+      fetchPoolData();
+    } catch (error) {
+      setAlert({ type: 'error', message: 'خطأ في الاتصال' });
+    }
   };
 
   // ── Render ───────────────────────────────────────────────
