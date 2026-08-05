@@ -424,6 +424,11 @@ export async function setPlatformDefaultAPIKey(
         description: 'Default Google Gemini API key used for new company provisioning',
         category: 'ai',
         // P2-TypedPrisma: schema has no `isPublic` column — removed.
+        // P2-Reconciliation: `valueType` is NOT NULL with default 'string' in DB.
+        // Prisma's typed create requires it explicitly (even though DB would
+        // default it on raw SQL insert). Set to 'string' since the value is
+        // an opaque encrypted blob we treat as a string.
+        valueType: 'string',
         updatedAt: new Date(),
       },
     });

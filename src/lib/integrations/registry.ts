@@ -11,7 +11,7 @@
  *   setIntegrationConfig(type)  → encrypt + upsert credentials
  *   disconnectIntegration(type) → delete the row entirely
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { decryptSecret, encryptSecret } from "@/lib/cryptoVault";
 import { logger } from "@/lib/logger";
 import type { IntegrationProvider } from "./types";

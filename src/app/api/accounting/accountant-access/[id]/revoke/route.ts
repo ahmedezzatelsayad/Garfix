@@ -5,7 +5,7 @@
  * Frontend calls: POST /api/accounting/accountant-access/{id}/revoke?companySlug=X
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";

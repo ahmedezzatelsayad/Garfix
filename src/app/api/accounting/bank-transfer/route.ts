@@ -10,7 +10,7 @@ import { transferBetweenAccounts } from "@/lib/accounting/banking";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 const GetSchema = z.object({
   companySlug: z.string().min(1),

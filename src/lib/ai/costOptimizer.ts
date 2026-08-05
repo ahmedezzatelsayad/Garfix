@@ -21,7 +21,7 @@
  * optimizer remains a pure function of the request context (testable,
  * fast, no side effects).
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { getModelsForCapability, type AICapability } from "./modelRegistry";
 

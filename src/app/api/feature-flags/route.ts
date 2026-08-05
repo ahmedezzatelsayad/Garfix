@@ -15,7 +15,7 @@
  * are returned.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { withErrorHandler, apiError, parseJsonField } from "@/lib/api";
 
