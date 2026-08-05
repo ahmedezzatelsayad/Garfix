@@ -16,10 +16,14 @@ concurrency:
 
 env:
   NODE_ENV: test
-  # NOTE: DATABASE_URL / DATABASE_DIRECT_URL are NOT set here — the committed
-  # `.env` file provides the real Neon PostgreSQL connection string, which
-  # `next start` loads automatically. Setting dummy localhost values here
-  # would override .env and break the smoke test.
+  # P4 FIX: The quick-build smoke test (`/api/health` must return 200) needs a
+  # live PostgreSQL. The old design relied on a committed `.env` file for the
+  # DB connection, but that file was removed for security. Point DATABASE_URL
+  # at the `postgres` service defined in the quick-build job below. Valkey is
+  # intentionally NOT configured — /api/health treats a missing Valkey as
+  # "pg-boss fallback" (non-critical), so no Valkey service is needed here.
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
+  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
   JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
   FOUNDER_EMAIL: "founder@test.com"
@@ -124,6 +128,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [quick-lint, quick-typecheck]
+    # P4 FIX: PostgreSQL service for the /api/health smoke test. Mirrors the
+    # service definition used by the full CI test jobs (ci.yml).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: garfix_test
+          POSTGRES_PASSWORD: garfix_test_pass
+          POSTGRES_DB: garfix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -146,6 +166,9 @@ jobs:
 
       - name: Generate Prisma client
         run: bun run db:generate
+
+      - name: Set up database schema (for smoke test)
+        run: bun run db:push
 
       - name: Build application
         run: |
