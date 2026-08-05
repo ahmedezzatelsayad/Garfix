@@ -485,7 +485,7 @@ export { DEFAULT_CONFIG };
 // Note: MLMatchResult, MLEngineConfig, UserCorrection, LearnedPattern, LearningResult 
 // are already exported as interfaces/types above
 
-export default {
+const mlMatchingEngine = {
   mlMatchProduct,
   recordUserFeedback,
   trainFromHistory,
@@ -495,3 +495,5 @@ export default {
   getMetrics,
   resetMetrics,
 };
+
+export default mlMatchingEngine;

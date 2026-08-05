@@ -455,9 +455,11 @@ export async function getPlatformDefaultAPIKey(): Promise<string | null> {
 
 // ── Export ─────────────────────────────────────────────────
 
-export default {
+const aiProvisioning = {
   provisionAIForNewCompany,
   batchProvisionMissingCompanies,
   setPlatformDefaultAPIKey,
   getPlatformDefaultAPIKey,
 };
+
+export default aiProvisioning;

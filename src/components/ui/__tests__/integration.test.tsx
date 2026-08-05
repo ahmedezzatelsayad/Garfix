@@ -733,7 +733,7 @@ describe('Integration: Accessibility Patterns', () => {
       );
     }
     
-    render(<ModalFlow>());
+    render(<ModalFlow />);
     
     const openButton = screen.getByText('فتح النافذة');
     openButton.focus();

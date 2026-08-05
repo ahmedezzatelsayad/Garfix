@@ -99,7 +99,9 @@ export function preloadReviewQueueModal(): void {
 // EXPORTS
 // ════════════════════════════════════════════════════════════════════════
 
-export default {
+const LazyModals = {
   LazyReviewQueueModal,
   preloadReviewQueueModal,
 };
+
+export default LazyModals;

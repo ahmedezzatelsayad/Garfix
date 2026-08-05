@@ -171,7 +171,7 @@ GarfixCard.displayName = "GarfixCard";
 
 // ── Sub-Components ──────────────────────────────────────────────────────
 
-export interface GarfixCardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
+export type GarfixCardHeaderProps = HTMLAttributes<HTMLDivElement>;
 
 export const GarfixCardHeader = forwardRef<HTMLDivElement, GarfixCardHeaderProps>(
   ({ className, ...props }, ref) => (
@@ -184,7 +184,7 @@ export const GarfixCardHeader = forwardRef<HTMLDivElement, GarfixCardHeaderProps
 );
 GarfixCardHeader.displayName = "GarfixCardHeader";
 
-export interface GarfixCardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
+export type GarfixCardTitleProps = HTMLAttributes<HTMLHeadingElement>;
 
 export const GarfixCardTitle = forwardRef<HTMLHeadingElement, GarfixCardTitleProps>(
   ({ className, ...props }, ref) => (
@@ -197,7 +197,7 @@ export const GarfixCardTitle = forwardRef<HTMLHeadingElement, GarfixCardTitlePro
 );
 GarfixCardTitle.displayName = "GarfixCardTitle";
 
-export interface GarfixCardDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
+export type GarfixCardDescriptionProps = HTMLAttributes<HTMLParagraphElement>;
 
 export const GarfixCardDescription = forwardRef<HTMLParagraphElement, GarfixCardDescriptionProps>(
   ({ className, ...props }, ref) => (
@@ -210,7 +210,7 @@ export const GarfixCardDescription = forwardRef<HTMLParagraphElement, GarfixCard
 );
 GarfixCardDescription.displayName = "GarfixCardDescription";
 
-export interface GarfixCardContentProps extends HTMLAttributes<HTMLDivElement> {}
+export type GarfixCardContentProps = HTMLAttributes<HTMLDivElement>;
 
 export const GarfixCardContent = forwardRef<HTMLDivElement, GarfixCardContentProps>(
   ({ className, ...props }, ref) => (
@@ -219,7 +219,7 @@ export const GarfixCardContent = forwardRef<HTMLDivElement, GarfixCardContentPro
 );
 GarfixCardContent.displayName = "GarfixCardContent";
 
-export interface GarfixCardFooterProps extends HTMLAttributes<HTMLDivElement> {}
+export type GarfixCardFooterProps = HTMLAttributes<HTMLDivElement>;
 
 export const GarfixCardFooter = forwardRef<HTMLDivElement, GarfixCardFooterProps>(
   ({ className, ...props }, ref) => (

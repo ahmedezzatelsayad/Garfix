@@ -191,7 +191,7 @@ export function useAnimation(options: UseAnimationOptions = {}): UseAnimationRet
       });
       return () => cancelAnimationFrame(id);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   
   useEffect(() => {
     return () => clearAnimationTimeout();
@@ -332,7 +332,7 @@ export function useSpring(options: UseSpringOptions): UseSpringReturn {
       start();
     }
     return () => stop();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   
   return {
     value,
@@ -425,7 +425,7 @@ export function useStagger(options: UseStaggerOptions): UseStaggerReturn {
       start();
     }
     return clearAllTimeouts;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   
   return {
     getStyle,
@@ -766,7 +766,7 @@ export function useNumberAnimation(
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   
   const display = `${prefix}${value.toLocaleString(locale, {
     minimumFractionDigits: decimals,
@@ -776,7 +776,7 @@ export function useNumberAnimation(
   return { value, display, start, isAnimating, progress };
 }
 
-export default {
+const useAnimationExports = {
   useAnimation,
   useSpring,
   useStagger,
@@ -788,3 +788,5 @@ export default {
   AnimationProvider,
   useAnimationContext,
 };
+
+export default useAnimationExports;

@@ -514,10 +514,12 @@ function getMockMetrics(): AIMetricsData {
 
 // ── Export All ────────────────────────────────────────────
 
-export default {
+const useAIData = {
   useAIMetrics,
   useAIConfig,
   useAIUsage,
   useAIChat,
   useAITestConnection,
 };
+
+export default useAIData;

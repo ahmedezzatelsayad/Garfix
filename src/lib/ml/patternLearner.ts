@@ -548,10 +548,12 @@ export {
   similarityScore,
 };
 
-export default {
+const patternLearner = {
   extractPatterns,
   extractAliasPatterns,
   learnNormalizationRules,
   extractBrandAssociations,
   learnContextualPatterns,
 };
+
+export default patternLearner;

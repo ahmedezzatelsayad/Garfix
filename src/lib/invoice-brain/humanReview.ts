@@ -274,10 +274,9 @@ export class HumanReviewManager {
       .sort((a, b) => this.getPriorityWeight(b.priority) - this.getPriorityWeight(a.priority))
       .slice(0, limit);
     
-    // Mark as in_progress
+    // Mark as in_progress (and considered assigned to this reviewer)
     for (const item of pendingItems) {
       item.status = "in_progress";
-      item.id; // Mark as assigned to this reviewer
     }
     
     return pendingItems;
