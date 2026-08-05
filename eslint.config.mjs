@@ -6,23 +6,45 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// P0-13 (Engineering Audit): The audit flagged this config as Critical
-// because it disables ~30+ TypeScript and React safety rules. Re-enabling
-// them in this P0 sprint would generate hundreds of errors across the
-// codebase (the code was written assuming these rules are off), violating
-// the "keep changes minimal" and "don't open huge modifications"
-// constraints.
+// ═══════════════════════════════════════════════════════════════════════════
+// Progressive ESLint Rule Enablement — P3
+// ═══════════════════════════════════════════════════════════════════════════
+// History (P0-13, Engineering Audit): the audit flagged this config as
+// Critical because it disabled ~30 TypeScript and React safety rules. The P0
+// remediation sprint deferred re-enabling them so it wouldn't generate
+// hundreds of errors in a single shot. This file implements that deferred
+// work as a PHASED rollout — a batch of rules per sprint — so the codebase
+// can converge without breaking CI.
 //
-// The deferral is documented here so the next auditor knows this was a
-// conscious decision. The audit's other Critical fixes (SSRF, JWT, auth,
-// schema drift, rate-limit, code-split, Account.id validators) ARE applied.
-// The ESLint rule re-enablement is scheduled for the follow-up TS-quality
-// sprint where the offending sites can be fixed one rule at a time
-// (progressive re-enablement, as the audit's own roadmap recommends).
+// CI behavior: `.github/workflows/ci.yml` fails ONLY on ESLint *errors*
+// (warnings never fail the build). Each phase therefore enables its rules at
+// the strongest level that is believed to already be clean; riskier rules
+// start at "warn" and are promoted to "error" in a later phase once their
+// violations are fixed.
+//
+// ── Phase 1 (this commit) ─────────────────────────────────────────────────
+//   error: no-debugger                    — never valid in committed code
+//   warn:  no-unreachable, no-fallthrough, no-case-declarations,
+//          no-useless-escape, no-console, prefer-const
+//          — surface existing debt without failing CI
+//
+// ── Phase 2 (follow-up sprint) ────────────────────────────────────────────
+//   Promote Phase 1 warnings → error once each hits 0 violations. Then
+//   tackle @typescript-eslint/no-unused-vars (with argsIgnorePattern "^_").
+//
+// ── Phase 3 (after that) ──────────────────────────────────────────────────
+//   @typescript-eslint/no-explicit-any, ban-ts-comment, and
+//   react-hooks/exhaustive-deps — each needs a dedicated cleanup pass.
+//
+// The P0 Critical security fixes (SSRF, JWT, auth, schema drift, rate-limit,
+// code-split, Account.id validators) were applied in the P0 sprint and are
+// unaffected by this phased lint rollout.
+// ═══════════════════════════════════════════════════════════════════════════
 
 const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
   rules: {
-    // TypeScript rules
+    // ── TypeScript rules ────────────────────────────────────────────────────
+    // Phase 3 candidates — each needs a dedicated cleanup pass (see header).
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
@@ -30,8 +52,10 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "@typescript-eslint/prefer-as-const": "off",
     "@typescript-eslint/no-unused-disable-directive": "off",
     "@typescript-eslint/no-require-imports": "off",
-    
-    // React rules
+
+    // ── React rules ─────────────────────────────────────────────────────────
+    // exhaustive-deps is a Phase 3 candidate — it needs careful per-component
+    // review to avoid introducing stale-closure regressions.
     "react-hooks/exhaustive-deps": "off",
     "react-hooks/purity": "off",
     "react-hooks/set-state-in-effect": "off",
@@ -44,25 +68,28 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "react/display-name": "off",
     "react/prop-types": "off",
     "react-compiler/react-compiler": "off",
-    
-    // Next.js rules
+
+    // ── Next.js rules ───────────────────────────────────────────────────────
     "@next/next/no-img-element": "off",
     "@next/next/no-html-link-for-pages": "off",
-    
-    // General JavaScript rules
-    "prefer-const": "off",
-    "no-unused-vars": "off",
-    "no-console": "off",
-    "no-debugger": "off",
+
+    // ── General JavaScript rules ────────────────────────────────────────────
+    // Phase 1 (P3): enabled. "error" only for the rule we are confident is
+    // already clean; the rest start at "warn" and are promoted in Phase 2.
+    "no-debugger": "error",           // Phase 1 → error (never valid in prod code)
+    "no-unreachable": "warn",         // Phase 1 → warn
+    "no-fallthrough": "warn",         // Phase 1 → warn
+    "no-case-declarations": "warn",   // Phase 1 → warn
+    "no-useless-escape": "warn",      // Phase 1 → warn
+    "no-console": "warn",             // Phase 1 → warn (prefer src/lib/logger)
+    "prefer-const": "warn",           // Phase 1 → warn
+    // Still deferred to Phase 2/3:
+    "no-unused-vars": "off",          // superseded by @typescript-eslint/no-unused-vars
     "no-empty": "off",
     "no-irregular-whitespace": "off",
-    "no-case-declarations": "off",
-    "no-fallthrough": "off",
     "no-mixed-spaces-and-tabs": "off",
     "no-redeclare": "off",
     "no-undef": "off",
-    "no-unreachable": "off",
-    "no-useless-escape": "off",
   },
 }, {
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
