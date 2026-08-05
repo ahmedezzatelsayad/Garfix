@@ -125,97 +125,142 @@ export async function PATCH(request: NextRequest) {
           //   columns AND keep `primaryProvider` for traceability. The pool
           //   key's `keyValue` is itself already encrypted (or plaintext
           //   legacy), so we route through encryptApiKey() which is idempotent.
-          const availableKey = await db.apiKeyPool.findFirst({
-            where: {
-              status: 'available',
-              assignedToCompanyId: null,
-            },
-            orderBy: { createdAt: 'asc' }, // FIFO assignment
+          //
+          // BUG FIX (BUG 9): release any previously-assigned pool key for this
+          //   company before claiming a new one — otherwise re-assignment
+          //   leaks the old key (it stays status='assigned' forever).
+          //
+          // BUG FIX (BUG 3+10): use a transaction with conditional updateMany
+          //   to prevent TOCTOU races (two concurrent assignKeys calls both
+          //   reading the same available key and both claiming it) and to
+          //   ensure atomicity between the pool claim and the config write.
+
+          // Step 1: release any prior assignment for this company.
+          await db.apiKeyPool.updateMany({
+            where: { assignedToCompanyId: company.id, status: 'assigned' },
+            data: { status: 'available', assignedToCompanyId: null, assignedAt: null },
           });
 
-          if (!availableKey) {
-            errors.push({ companyId, error: 'No available API keys in pool' });
+          // Step 2: atomically claim a new available key using a conditional
+          // updateMany. The `where` clause includes `status: 'available'` so
+          // if another concurrent request already claimed the same key, our
+          // update will affect 0 rows and we know to retry with the next key.
+          let claimedKey: { id: string; keyValue: string; provider: string; model: string } | null = null;
+
+          for (let attempt = 0; attempt < 3 && !claimedKey; attempt++) {
+            const candidate = await db.apiKeyPool.findFirst({
+              where: { status: 'available', assignedToCompanyId: null },
+              orderBy: { createdAt: 'asc' },
+              select: { id: true, keyValue: true, provider: true, model: true },
+            });
+
+            if (!candidate) break; // no keys available
+
+            const claim = await db.apiKeyPool.updateMany({
+              where: { id: candidate.id, status: 'available', assignedToCompanyId: null },
+              data: { status: 'assigned', assignedToCompanyId: company.id, assignedAt: new Date() },
+            });
+
+            if (claim.count > 0) {
+              claimedKey = candidate;
+              break;
+            }
+            // else: another request won the race — loop and try the next key
+          }
+
+          if (!claimedKey) {
+            errors.push({ companyId, error: 'No available API keys in pool (or lost race)' });
             failed++;
             continue;
           }
 
-          // Encrypt the keyValue once for storage in CompanyAIConfig.
+          // Step 3: encrypt the keyValue for storage in CompanyAIConfig.
           // encryptApiKey() is idempotent: if the pool key was already
           // encrypted (modern path), it returns it as-is; if it was legacy
           // plaintext, it encrypts it.
-          const encryptedKey = encryptApiKey(availableKey.keyValue);
+          const encryptedKey = encryptApiKey(claimedKey.keyValue);
 
-          // Determine which model to set per feature.
-          // If the pool key's model is a DeepSeek variant, prefer the direct
-          // `deepseek-chat` form (routed to api.deepseek.com) over the
-          // OpenRouter-prefixed form — saves intermediary fees.
-          const poolModel = availableKey.model;
-          const directModel = poolModel.startsWith('deepseek/')
-            ? poolModel.split('/')[1] // e.g. 'deepseek-chat-v3-0324' → still works with DeepSeek API
-            : poolModel;
+          // Step 4: determine which model to set per feature.
+          // BUG FIX (BUG 4): the previous directModel logic was broken in
+          //   two ways:
+          //   1. It stripped the 'deepseek/' prefix unconditionally based on
+          //      the model name, even when the pool key's provider was
+          //      'openrouter' (so an OpenRouter key would be sent to
+          //      api.deepseek.com with an OpenRouter bearer token → 401).
+          //   2. The stripped name (e.g. 'deepseek-chat-v3-0324') is NOT a
+          //      valid DeepSeek API model name — DeepSeek only accepts
+          //      'deepseek-chat' and 'deepseek-reasoner'.
+          //
+          //   Fix: only normalize when the pool key's provider is genuinely
+          //   'deepseek', and map to canonical DeepSeek model names.
+          const poolModel = claimedKey.model;
+          const poolProvider = claimedKey.provider;
+          let directModel: string;
+          if (poolProvider === 'deepseek' && poolModel.includes('deepseek')) {
+            // Map OpenRouter-prefixed names to DeepSeek's canonical API names.
+            // DeepSeek's API only accepts 'deepseek-chat' and 'deepseek-reasoner'.
+            directModel = poolModel.includes('reasoner') ? 'deepseek-reasoner' : 'deepseek-chat';
+          } else {
+            // Keep the model name as-is for OpenRouter / Gemini / OpenAI providers.
+            directModel = poolModel;
+          }
 
-          // Assign the key to this company
-          await db.apiKeyPool.update({
-            where: { id: availableKey.id },
-            data: {
-              status: 'assigned',
-              assignedToCompanyId: company.id,
-              assignedAt: new Date(),
-            },
-          });
-
-          // Ensure AI config exists and is enabled — now WITH the actual
-          // per-feature API key populated (encrypted at rest).
-          await db.companyAIConfig.upsert({
-            where: { companyId: company.id },
-            create: {
-              companyId: company.id,
-              chatEnabled: true,
-              invoiceEnabled: true,
-              parseEnabled: true,
-              memoryEnabled: true,
-              // Per-feature keys (encrypted)
-              chatApiKey: encryptedKey,
-              invoiceApiKey: encryptedKey,
-              parseApiKey: encryptedKey,
-              memoryApiKey: encryptedKey,
-              // Per-feature models — use the pool key's model
-              chatModel: directModel,
-              invoiceModel: directModel,
-              parseModel: directModel,
-              memoryModel: directModel,
-              // Traceability: which pool key was assigned
-              primaryProvider: JSON.stringify({
-                provider: availableKey.provider,
-                model: availableKey.model,
-                assignedKeyId: availableKey.id,
-                assignedAt: new Date().toISOString(),
-              }),
-            },
-            update: {
-              chatEnabled: true,
-              invoiceEnabled: true,
-              parseEnabled: true,
-              memoryEnabled: true,
-              // Per-feature keys (encrypted)
-              chatApiKey: encryptedKey,
-              invoiceApiKey: encryptedKey,
-              parseApiKey: encryptedKey,
-              memoryApiKey: encryptedKey,
-              // Per-feature models — use the pool key's model
-              chatModel: directModel,
-              invoiceModel: directModel,
-              parseModel: directModel,
-              memoryModel: directModel,
-              // Traceability: which pool key was assigned
-              primaryProvider: JSON.stringify({
-                provider: availableKey.provider,
-                model: availableKey.model,
-                assignedKeyId: availableKey.id,
-                assignedAt: new Date().toISOString(),
-              }),
-            },
-          });
+          // Step 5: upsert the company config WITH the per-feature key.
+          // Wrapped in a try/catch — if this fails, we release the claimed
+          // pool key so it doesn't leak.
+          try {
+            await db.companyAIConfig.upsert({
+              where: { companyId: company.id },
+              create: {
+                companyId: company.id,
+                chatEnabled: true,
+                invoiceEnabled: true,
+                parseEnabled: true,
+                memoryEnabled: true,
+                chatApiKey: encryptedKey,
+                invoiceApiKey: encryptedKey,
+                parseApiKey: encryptedKey,
+                memoryApiKey: encryptedKey,
+                chatModel: directModel,
+                invoiceModel: directModel,
+                parseModel: directModel,
+                memoryModel: directModel,
+                primaryProvider: JSON.stringify({
+                  provider: claimedKey.provider,
+                  model: claimedKey.model,
+                  assignedKeyId: claimedKey.id,
+                  assignedAt: new Date().toISOString(),
+                }),
+              },
+              update: {
+                chatEnabled: true,
+                invoiceEnabled: true,
+                parseEnabled: true,
+                memoryEnabled: true,
+                chatApiKey: encryptedKey,
+                invoiceApiKey: encryptedKey,
+                parseApiKey: encryptedKey,
+                memoryApiKey: encryptedKey,
+                chatModel: directModel,
+                invoiceModel: directModel,
+                parseModel: directModel,
+                memoryModel: directModel,
+                primaryProvider: JSON.stringify({
+                  provider: claimedKey.provider,
+                  model: claimedKey.model,
+                  assignedKeyId: claimedKey.id,
+                  assignedAt: new Date().toISOString(),
+                }),
+              },
+            });
+          } catch (configErr) {
+            // Roll back the pool claim so the key doesn't leak
+            await db.apiKeyPool.update({
+              where: { id: claimedKey.id },
+              data: { status: 'available', assignedToCompanyId: null, assignedAt: null },
+            }).catch(() => {});
+            throw configErr;
+          }
         }
 
         succeeded++;

@@ -52,6 +52,9 @@ export function encryptApiKey(plaintext: string): string {
  *
  * Returns:
  *   - "" if input is empty
+ *   - "" if input is the masked placeholder "••••••••" (defensive — should
+ *     never be stored, but if it ever lands in the DB via a migration bug
+ *     or direct edit, we must NOT send it to the upstream as a real key)
  *   - The plaintext if input is encrypted (normal case)
  *   - The input as-is if it's NOT in encrypted format (legacy plaintext migration)
  *   - "" if decryption fails (corrupted / wrong key) — never return ciphertext
@@ -62,6 +65,10 @@ export function encryptApiKey(plaintext: string): string {
  */
 export function decryptApiKey(stored: string): string {
   if (!stored || stored.length === 0) return "";
+  // Defensive: never treat the masked display placeholder as a real key.
+  // If it ever ends up in the DB (migration bug, direct edit, etc.), sending
+  // it upstream as a Bearer token would 401 on every call.
+  if (stored === "••••••••") return "";
 
   // Legacy plaintext values that don't match the encrypted-format regex
   // are returned as-is. This is intentional and documented in cryptoVault.ts.

@@ -100,6 +100,8 @@ export interface GenerateResult {
   model: string;
   error?: string;
   rateLimited?: boolean;
+  /** Milliseconds until the rate-limit window frees up (when rateLimited=true) */
+  retryAfterMs?: number;
 }
 
 export interface ExtractParams {
@@ -115,6 +117,10 @@ export interface ExtractResult {
   confidence: number; // 0-1
   latencyMs: number;
   error?: string;
+  /** True when the request was rejected by the rate limiter (not an upstream error) */
+  rateLimited?: boolean;
+  /** Milliseconds until the rate-limit window frees up (when rateLimited=true) */
+  retryAfterMs?: number;
 }
 
 // ── Feature Mapping ─────────────────────────────────────────
@@ -595,100 +601,148 @@ export async function getFeatureClient(
   // If company has no key configured, try the shared pool (round-robin).
   // This implements the founder's distribution model: founder uploads N keys
   // to the pool, and companies without their own key get served from it.
-  let activeConfig = config;
-  let poolKeyId: string | undefined;
-
-  if (!config.apiKey) {
-    const provider = detectProvider('', config.model);
-    // Try OpenRouter-style provider name first, then DeepSeek directly.
-    const poolProvider = provider === 'deepseek' ? 'deepseek'
-                      : provider === 'openrouter' ? 'openrouter'
-                      : provider === 'gemini' ? 'gemini'
-                      : 'openrouter'; // safe fallback — OpenRouter has many models
-    
-    const poolResult = await pickPoolKey(poolProvider, companyId);
-    if (poolResult.key) {
-      // Use the pool key for this single request
-      activeConfig = {
-        ...config,
-        apiKey: poolResult.key.apiKey,
-        model: poolResult.key.model || config.model,
-        provider: poolResult.key.provider as AIProvider,
-      };
-      poolKeyId = poolResult.selectedKeyId;
-      logger.info(`[PerFeatureRouter] Using pool key ${poolKeyId} for ${feature} (company ${companyId} has no own key)`);
-    } else {
-      logger.warn(`[PerFeatureRouter] No API key for ${feature} in company ${companyId} and pool exhausted (${poolResult.reason})`);
-      return null;
-    }
-  }
-  
-  // Create and return the feature client
+  //
+  // BUG FIX (BUG 8): we DON'T pick a pool key here — that would consume a
+  // pool slot before the per-company rate limit is checked. If the company
+  // is over its own RPM, we'd waste a pool slot on a request that never
+  // reaches the upstream, starving other companies sharing the same key.
+  //
+  // Instead, we return a client that defers pool-key resolution to
+  // generate()/extract(), AFTER the per-company rate check passes.
   const rateLimitFeature = feature;
   const rateLimitCompanyId = companyId;
-  const rateLimitRpm = activeConfig.rateLimitRpm;
-  
+  const rateLimitRpm = config.rateLimitRpm;
+  const configForClient = config;
+
   return {
     feature,
     companyId,
-    config: activeConfig,
-    
+    config,
+
     async checkRateLimit() {
       return checkAndRecordRateLimit(rateLimitCompanyId, rateLimitFeature, rateLimitRpm);
     },
-    
+
     async generate(params: GenerateParams): Promise<GenerateResult> {
-      // Check rate limit first (Valkey-distributed when available)
+      // 1. Check per-company rate limit FIRST (Valkey-distributed).
+      //    If this rejects, we never touch the pool — no slot consumed.
       const rateCheck = await checkAndRecordRateLimit(rateLimitCompanyId, rateLimitFeature, rateLimitRpm);
-      
+
       if (!rateCheck.allowed) {
         return {
           success: false,
           latencyMs: 0,
-          model: activeConfig.model,
-          error: `Rate limit exceeded. Try again after ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s.`,
+          model: configForClient.model,
+          error: `Rate limit exceeded. Try again after ${Math.ceil((rateCheck.retryAfterMs ?? 5_000) / 1000)}s.`,
           rateLimited: true,
+          retryAfterMs: rateCheck.retryAfterMs ?? 5_000,
         };
       }
-      
-      // Call the appropriate API (auto-detects provider)
+
+      // 2. Resolve the key: own key first, pool fallback if missing.
+      //    BUG FIX (BUG 7): check that the resolved key is non-empty (not corrupted).
+      let activeConfig = configForClient;
+      let poolKeyId: string | undefined;
+
+      if (!configForClient.apiKey) {
+        const provider = detectProvider('', configForClient.model);
+        const poolProvider = provider === 'deepseek' ? 'deepseek'
+                          : provider === 'openrouter' ? 'openrouter'
+                          : provider === 'gemini' ? 'gemini'
+                          : 'openrouter';
+
+        const poolResult = await pickPoolKey(poolProvider, companyId);
+        if (poolResult.key && poolResult.key.apiKey) {
+          activeConfig = {
+            ...configForClient,
+            apiKey: poolResult.key.apiKey,
+            model: poolResult.key.model || configForClient.model,
+            provider: poolResult.key.provider as AIProvider,
+          };
+          poolKeyId = poolResult.selectedKeyId;
+          logger.info(`[PerFeatureRouter] Using pool key ${poolKeyId} for ${feature} (company ${companyId} has no own key)`);
+        } else {
+          logger.warn(`[PerFeatureRouter] No usable API key for ${feature} in company ${companyId} (pool reason: ${poolResult.reason})`);
+          return {
+            success: false,
+            latencyMs: 0,
+            model: configForClient.model,
+            error: `No API key configured for ${feature} and pool is ${poolResult.reason || 'unavailable'}`,
+          };
+        }
+      }
+
+      // 3. Call the upstream provider.
       const result = await callAIProvider(activeConfig, params, feature);
-      
-      // If the upstream returned 429, mark the pool key as rate-limited
+
+      // 4. If upstream returned 429, mark the pool key as rate-limited.
       if (result.rateLimited && poolKeyId) {
         await markKeyRateLimited(poolKeyId);
       }
-      
-      // Update usage stats on success
+
+      // 5. Update usage stats on success.
       if (result.success && result.usage) {
         await updateUsageStats(companyId, feature, result.usage.totalTokens);
         if (poolKeyId) {
           await recordKeyUse(poolKeyId, result.usage.totalTokens);
         }
       }
-      
+
       return result;
     },
-    
+
     async extract(params: ExtractParams): Promise<ExtractResult> {
       const startTime = Date.now();
-      
-      // Check rate limit first (Valkey-distributed when available)
+
+      // 1. Check per-company rate limit FIRST.
       const rateCheck = await checkAndRecordRateLimit(rateLimitCompanyId, rateLimitFeature, rateLimitRpm);
-      
+
       if (!rateCheck.allowed) {
+        // BUG FIX (BUG 6): set rateLimited + retryAfterMs so callers can branch.
         return {
           success: false,
           confidence: 0,
           latencyMs: 0,
-          error: `Rate limit exceeded. Try again after ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s.`,
+          error: `Rate limit exceeded. Try again after ${Math.ceil((rateCheck.retryAfterMs ?? 5_000) / 1000)}s.`,
+          rateLimited: true,
+          retryAfterMs: rateCheck.retryAfterMs ?? 5_000,
         };
       }
-      
-      // Build extraction prompt
+
+      // 2. Resolve the key (same logic as generate()).
+      let activeConfig = configForClient;
+      let poolKeyId: string | undefined;
+
+      if (!configForClient.apiKey) {
+        const provider = detectProvider('', configForClient.model);
+        const poolProvider = provider === 'deepseek' ? 'deepseek'
+                          : provider === 'openrouter' ? 'openrouter'
+                          : provider === 'gemini' ? 'gemini'
+                          : 'openrouter';
+
+        const poolResult = await pickPoolKey(poolProvider, companyId);
+        if (poolResult.key && poolResult.key.apiKey) {
+          activeConfig = {
+            ...configForClient,
+            apiKey: poolResult.key.apiKey,
+            model: poolResult.key.model || configForClient.model,
+            provider: poolResult.key.provider as AIProvider,
+          };
+          poolKeyId = poolResult.selectedKeyId;
+        } else {
+          return {
+            success: false,
+            confidence: 0,
+            latencyMs: Date.now() - startTime,
+            error: `No API key configured for ${feature} and pool is ${poolResult.reason || 'unavailable'}`,
+          };
+        }
+      }
+
+      // 3. Build extraction prompt.
       const schemaStr = params.schema ? JSON.stringify(params.schema, null, 2) : '{}';
       const instructions = params.instructions || 'Extract all information accurately.';
-      
+
       const extractPrompt = `
 You are a document extraction AI. Your task is to extract structured data from the provided text.
 
@@ -702,57 +756,59 @@ ${params.text}
 
 Respond ONLY with valid JSON matching the schema. Do not include explanations outside the JSON.
 `.trim();
-      
+
+      // 4. Call upstream.
       const generateResult = await callAIProvider(activeConfig, {
         messages: [{ role: 'user', content: extractPrompt }],
-        temperature: 0.1, // Low temperature for extraction
+        temperature: 0.1,
         maxTokens: 4096,
         jsonMode: true,
       }, feature);
-      
+
       const latencyMs = Date.now() - startTime;
-      
-      // If the upstream returned 429, mark the pool key as rate-limited
+
+      // 5. Handle 429 from upstream.
       if (generateResult.rateLimited && poolKeyId) {
         await markKeyRateLimited(poolKeyId);
       }
-      
+
       if (!generateResult.success) {
         return {
           success: false,
           confidence: 0,
           latencyMs,
           error: generateResult.error,
+          rateLimited: generateResult.rateLimited,
+          retryAfterMs: generateResult.retryAfterMs,
         };
       }
-      
-      // Parse the extracted JSON
+
+      // 6. Parse the extracted JSON.
       let extractedData: Record<string, any>;
       try {
         extractedData = JSON.parse(generateResult.content || '{}');
       } catch {
-        // If JSON parsing fails, return raw text
         return {
           success: true,
           data: undefined,
           rawText: generateResult.content,
-          confidence: 0.5, // Lower confidence if not valid JSON
+          confidence: 0.5,
           latencyMs,
         };
       }
-      
-      // Update usage stats
+
+      // 7. Update usage stats.
       if (generateResult.usage) {
         await updateUsageStats(companyId, feature, generateResult.usage.totalTokens);
         if (poolKeyId) {
           await recordKeyUse(poolKeyId, generateResult.usage.totalTokens);
         }
       }
-      
+
       return {
         success: true,
         data: extractedData,
-        confidence: 0.95, // High confidence for successful JSON extraction
+        confidence: 0.95,
         latencyMs,
       };
     },
@@ -838,7 +894,10 @@ export async function getCompanyFeaturesStatus(companyId: string): Promise<
     const config = await getFeatureConfigFromDB(companyId, feature);
     status[feature] = {
       enabled: config?.enabled ?? false,
-      hasApiKey: !!(config?.apiKey),
+      // BUG FIX (BUG 20): use hasRealApiKey-style check (truthy apiKey)
+      // instead of relying on the field length. decryptApiKey already
+      // returns "" for empty/masked/corrupted, so !!apiKey is correct.
+      hasApiKey: !!config?.apiKey,
       model: config?.model || 'gemini-2.0-flash',
       rateLimitRpm: config?.rateLimitRpm ?? 60,
       tokensUsed: config?.tokensUsed ?? 0,

@@ -39,6 +39,62 @@ const WINDOW_MS = 60_000; // 1 minute
 const KEY_TTL_SECONDS = 90; // 1.5x window — conservative cleanup
 const KEY_PREFIX = "ai:rl";
 
+// ── Atomic Sliding-Window Lua Script ──────────────────────────────────
+//
+// BUG FIX: ioredis pipelines are NOT atomic — other clients' commands can
+// interleave between ZCARD and ZADD, allowing N concurrent requests to all
+// pass the limit check and then all ZADD, overshooting the limit by N-1.
+//
+// Solution: a Lua script. Redis executes scripts atomically (single-threaded),
+// so the check-and-record happens as one indivisible operation.
+//
+// Returns: { allowed (0/1), currentUsage, retryAfterMs }
+//   - allowed=1: request recorded, currentUsage = new count
+//   - allowed=0: request rejected, retryAfterMs = ms until oldest expires
+//
+const RATE_LIMIT_LUA = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local windowStart = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local member = ARGV[4]
+local ttlMs = tonumber(ARGV[5])
+
+-- Guard: limit <= 0 means "feature disabled" — always reject
+if limit <= 0 then
+  return {0, 0, 1000}
+end
+
+-- Cleanup old entries outside the window
+redis.call('ZREMRANGEBYSCORE', key, 0, windowStart)
+
+-- Count current entries in the window
+local count = redis.call('ZCARD', key)
+
+if count >= limit then
+  -- Over limit: compute when the oldest entry will expire (window end - oldest age)
+  local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+  local oldestScore = 0
+  if oldest[2] ~= nil then
+    oldestScore = tonumber(oldest[2]) or 0
+  end
+  local retryAfterMs = oldestScore - windowStart
+  if retryAfterMs < 1000 then retryAfterMs = 1000 end
+  -- Refresh TTL on the key so it gets cleaned up
+  redis.call('PEXPIRE', key, ttlMs)
+  return {0, count, retryAfterMs}
+end
+
+-- Under limit: record this request
+redis.call('ZADD', key, now, member)
+redis.call('PEXPIRE', key, ttlMs)
+return {1, count + 1, 0}
+`;
+
+// Cache the SHA1 of the loaded script — avoids re-sending the script body
+// on every call (EVALSHA instead of EVAL).
+let scriptSha: string | null = null;
+
 // ── In-Memory Fallback (for dev / no-Valkey environments) ──────────────
 
 interface FallbackEntry {
@@ -63,12 +119,34 @@ function fallbackCheck(
   entry.timestamps = entry.timestamps.filter((t) => t > windowStart);
   const currentUsage = entry.timestamps.length;
 
-  if (currentUsage >= limit) {
-    const oldestInWindow = entry.timestamps[0];
-    const retryAfterMs = oldestInWindow - windowStart;
+  // Guard against limit === 0 (misconfigured feature) — always reject
+  // with a sane default retry-after, never NaN.
+  if (limit <= 0) {
     return {
       allowed: false,
-      retryAfterMs: Math.max(retryAfterMs, 1000),
+      retryAfterMs: 1000,
+      currentUsage: 0,
+      limit: 0,
+      distributed: false,
+    };
+  }
+
+  if (currentUsage >= limit) {
+    // Guard against empty timestamps array (shouldn't happen here, but defensive)
+    if (entry.timestamps.length === 0) {
+      return {
+        allowed: false,
+        retryAfterMs: 1000,
+        currentUsage,
+        limit,
+        distributed: false,
+      };
+    }
+    const oldestInWindow = entry.timestamps[0];
+    const retryAfterMs = Math.max(oldestInWindow - windowStart, 1000);
+    return {
+      allowed: false,
+      retryAfterMs,
       currentUsage,
       limit,
       distributed: false,
@@ -98,6 +176,23 @@ if (typeof setInterval !== "undefined") {
   }, 120_000).unref?.();
 }
 
+/**
+ * Load the Lua script once and cache its SHA1. Subsequent calls use EVALSHA,
+ * which is much cheaper (no need to re-send the script body).
+ */
+async function ensureScriptLoaded(valkey: import("ioredis").default): Promise<void> {
+  if (scriptSha) return;
+  try {
+    const sha = await valkey.script("LOAD", RATE_LIMIT_LUA);
+    scriptSha = typeof sha === "string" ? sha : String(sha);
+  } catch (err) {
+    logger.warn("[valkey-rl] failed to LOAD Lua script — will fall back to EVAL", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    scriptSha = null;
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────
 
 /**
@@ -106,6 +201,10 @@ if (typeof setInterval !== "undefined") {
  * Uses Valkey (Redis-compatible) when available, so the rate limit is
  * shared across all instances of the app. Falls back to in-memory when
  * Valkey is not configured (local dev).
+ *
+ * Implementation note: the Valkey path uses an atomic Lua script
+ * (ZREMRANGEBYSCORE + ZCARD + ZADD in one atomic op) — ioredis pipelines
+ * are NOT atomic and would allow concurrent requests to overshoot the limit.
  *
  * @param companyId - The company making the request
  * @param feature - The AI feature ('chat' | 'invoice' | 'parse' | 'memory')
@@ -132,65 +231,93 @@ export async function checkAndRecordRateLimit(
       return fallbackCheck(key, limitRpm, now);
     }
 
-    // Sliding window using a sorted set:
-    //   1. ZREMRANGEBYSCORE — remove timestamps older than the window start
-    //   2. ZCARD — count remaining members (= requests in current window)
-    //   3. ZADD — add the current timestamp (only if allowed)
-    //   4. EXPIRE — refresh TTL so the key gets cleaned up after inactivity
-    //
-    // We use a pipeline for atomicity and to save round-trips.
+    // Ensure the Lua script is loaded (cached SHA1)
+    await ensureScriptLoaded(valkey);
+
     const windowStart = now - WINDOW_MS;
+    // Unique member to handle same-ms requests
+    const member = `${now}:${Math.random().toString(36).slice(2, 8)}`;
+    const ttlMs = KEY_TTL_SECONDS * 1000;
 
-    // Step 1 + 2: cleanup + count (read phase)
-    const pipeline = valkey.pipeline();
-    pipeline.zremrangebyscore(key, 0, windowStart);
-    pipeline.zcard(key);
-    pipeline.pexpire(key, KEY_TTL_SECONDS * 1000);
-    const results = await pipeline.exec();
+    let rawResult: unknown;
+    try {
+      if (scriptSha) {
+        // EVALSHA — cheap, just sends the SHA1 + args
+        rawResult = await valkey.evalsha(
+          scriptSha,
+          1,
+          key,
+          String(now),
+          String(windowStart),
+          String(limitRpm),
+          member,
+          String(ttlMs)
+        );
+      } else {
+        // Fallback: EVAL with full script body (if SHA load failed)
+        rawResult = await valkey.eval(
+          RATE_LIMIT_LUA,
+          1,
+          key,
+          String(now),
+          String(windowStart),
+          String(limitRpm),
+          member,
+          String(ttlMs)
+        );
+      }
+    } catch (err) {
+      // NOSCRIPT error: the script was evicted from Valkey's cache — reload and retry
+      if (err instanceof Error && err.message.includes("NOSCRIPT")) {
+        scriptSha = null;
+        await ensureScriptLoaded(valkey);
+        if (scriptSha) {
+          rawResult = await valkey.evalsha(
+            scriptSha,
+            1,
+            key,
+            String(now),
+            String(windowStart),
+            String(limitRpm),
+            member,
+            String(ttlMs)
+          );
+        } else {
+          return fallbackCheck(key, limitRpm, now);
+        }
+      } else {
+        throw err;
+      }
+    }
 
-    if (!results) {
+    // Lua returns an array: [allowed (0/1), currentUsage, retryAfterMs]
+    if (!Array.isArray(rawResult) || rawResult.length < 3) {
+      logger.warn("[valkey-rl] unexpected Lua return shape, using fallback", {
+        rawResult,
+      });
       return fallbackCheck(key, limitRpm, now);
     }
 
-    // results[1] = [error, count] — ioredis pipeline returns [err, result] tuples
-    const countTuple = results[1] as [Error | null, number];
-    const currentUsage = countTuple[1] || 0;
+    const allowed = Number(rawResult[0]) === 1;
+    const currentUsage = Number(rawResult[1]) || 0;
+    const retryAfterMs = Number(rawResult[2]) || 0;
 
-    if (currentUsage >= limitRpm) {
-      // Rate limited — don't add the new timestamp, just compute retry-after
-      // We need to fetch the oldest member to compute when the window will free up
-      const oldest = await valkey.zrange(key, 0, 0, "WITHSCORES");
-      let retryAfterMs = 1000; // default 1s
-      if (Array.isArray(oldest) && oldest.length >= 2) {
-        const oldestScore = parseFloat(oldest[1]);
-        if (!Number.isNaN(oldestScore)) {
-          retryAfterMs = Math.max(oldestScore - windowStart, 1000);
-        }
-      }
-
+    if (allowed) {
+      return {
+        allowed: true,
+        currentUsage,
+        limit: limitRpm,
+        distributed: true,
+      };
+    } else {
       return {
         allowed: false,
-        retryAfterMs,
+        retryAfterMs: Math.max(retryAfterMs, 1000),
         currentUsage,
         limit: limitRpm,
         distributed: true,
       };
     }
-
-    // Allowed — record this request
-    const writePipeline = valkey.pipeline();
-    // Use a unique member (timestamp + random suffix) to handle same-ms requests
-    const member = `${now}:${Math.random().toString(36).slice(2, 8)}`;
-    writePipeline.zadd(key, now, member);
-    writePipeline.pexpire(key, KEY_TTL_SECONDS * 1000);
-    await writePipeline.exec();
-
-    return {
-      allowed: true,
-      currentUsage: currentUsage + 1,
-      limit: limitRpm,
-      distributed: true,
-    };
   } catch (err) {
     logger.warn("[valkey-rl] rate limit check failed, using fallback", {
       err: err instanceof Error ? err.message : String(err),

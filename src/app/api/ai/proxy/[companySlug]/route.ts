@@ -64,6 +64,7 @@ import { logAudit } from '@/lib/audit';
 import { rateLimitResponse, LIMITS } from '@/lib/rateLimit';
 import { generateWithFeature } from '@/lib/ai/per-feature-router';
 import { peekRateLimit } from '@/lib/ai/valkey-rate-limiter';
+import { hasRealApiKey } from '@/lib/ai/keyVault';
 import { z } from 'zod';
 
 // ── Schema ──────────────────────────────────────────────────
@@ -198,19 +199,28 @@ export async function POST(
     // 8. Handle rate-limit responses
     if (result.rateLimited) {
       const usage = await peekRateLimit(company.id, feature);
+      // BUG FIX (BUG 2): use result.retryAfterMs (from the rate limiter),
+      //   not result.latencyMs (which is 0 on rate-limit rejection).
+      // BUG FIX (BUG 17): set the standard `Retry-After` HTTP header so
+      //   OpenAI-compatible clients and HTTP retry libraries back off
+      //   correctly (they read the header, not the JSON body field).
+      const retryAfterSeconds = Math.ceil((result.retryAfterMs ?? 60_000) / 1000);
       return NextResponse.json(
         {
           success: false,
           error: result.error || 'Rate limit exceeded',
           feature,
           companySlug,
-          retryAfterSeconds: Math.ceil((result.latencyMs || 60_000) / 1000),
+          retryAfterSeconds,
           usage: {
             currentUsage: usage.currentUsage,
             windowMs: usage.windowMs,
           },
         },
-        { status: 429 }
+        {
+          status: 429,
+          headers: { 'Retry-After': String(retryAfterSeconds) },
+        }
       );
     }
 
@@ -230,11 +240,15 @@ export async function POST(
     }
 
     // 10. Success — return OpenAI-compatible response
+    // BUG FIX (BUG 21): use crypto.randomUUID() for the response ID instead
+    //   of Date.now() — two requests in the same millisecond would produce
+    //   the same ID, and some OpenAI client libraries dedupe by ID.
+    const responseId = `chatcmpl-proxy-${crypto.randomUUID()}`;
     return NextResponse.json({
       success: true,
       data: {
         // OpenAI-style response shape, so drop-in OpenAI clients work
-        id: `chatcmpl-proxy-${Date.now()}`,
+        id: responseId,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         model: result.model,
@@ -307,7 +321,7 @@ export async function GET(
           ? (config[`${feature}Enabled` as keyof typeof config] as boolean)
           : false,
         hasKey: config
-          ? Boolean((config[`${feature}ApiKey` as keyof typeof config] as string)?.length)
+          ? hasRealApiKey(config[`${feature}ApiKey` as keyof typeof config] as string)
           : false,
         model: config
           ? (config[`${feature}Model` as keyof typeof config] as string)

@@ -101,14 +101,26 @@ export async function pickPoolKey(
     }
 
     // Fast path: only one key → use it directly (no round-robin needed)
+    // BUG FIX: previously this branch skipped the cooldown check, so a key
+    // that just 429'd would be picked again immediately, re-429, and burn
+    // requests for the full cooldown minute.
     if (keys.length === 1) {
       const k = keys[0];
+      if (await isKeyInCooldown(k.id)) {
+        return { key: null, reason: "all_rate_limited", distributed: VALKEY_CONFIGURED };
+      }
       const allowed = await consumeKeySlot(k.id, k.rpmLimit);
       if (!allowed) {
         return { key: null, reason: "all_rate_limited", distributed: VALKEY_CONFIGURED };
       }
+      const hydrated = await hydratePoolKey(k);
+      // BUG FIX: skip corrupted keys (decryptApiKey returned "")
+      if (!hydrated.apiKey) {
+        logger.error("[keyPool] pool key has corrupted/unusable keyValue", { keyId: k.id });
+        return { key: null, reason: "db_error", distributed: VALKEY_CONFIGURED };
+      }
       return {
-        key: await hydratePoolKey(k),
+        key: hydrated,
         selectedKeyId: k.id,
         distributed: VALKEY_CONFIGURED,
       };
@@ -123,6 +135,15 @@ export async function pickPoolKey(
       try {
         const idx = await valkey.incr(rrKey);
         startIndex = (idx - 1) % keys.length;
+        // BUG FIX: bound the RR counter so it doesn't grow unboundedly.
+        // Reset to 0 every ~24h. Without this, if the pool's key set changes
+        // (new key added, old one revoked), (idx-1) % keys.length distributes
+        // unevenly for a while and the counter can grow forever.
+        // Only set EXPIRE on the first increment (count === 1) to avoid
+        // resetting the TTL on every call (which would prevent cleanup).
+        if (idx === 1) {
+          await valkey.expire(rrKey, 86400).catch(() => {});
+        }
       } catch (err) {
         logger.warn("[keyPool] Valkey INCR for round-robin failed, using random", {
           err: err instanceof Error ? err.message : String(err),
@@ -143,8 +164,16 @@ export async function pickPoolKey(
 
       const allowed = await consumeKeySlot(k.id, k.rpmLimit);
       if (allowed) {
+        const hydrated = await hydratePoolKey(k);
+        // BUG FIX: skip corrupted keys (decryptApiKey returned "") — try the next one
+        if (!hydrated.apiKey) {
+          logger.error("[keyPool] pool key has corrupted/unusable keyValue", { keyId: k.id });
+          // Release the slot we just consumed so the next request can try the next key
+          await releaseKeySlot(k.id).catch(() => {});
+          continue;
+        }
         return {
-          key: await hydratePoolKey(k),
+          key: hydrated,
           selectedKeyId: k.id,
           distributed: VALKEY_CONFIGURED,
         };
@@ -166,10 +195,13 @@ export async function pickPoolKey(
  * Mark a key as having hit a 429 (rate limit) from the upstream provider.
  * Sets a short cooldown in Valkey so we skip this key for the next minute.
  *
- * Also increments the DB-side `timesUsed` counter for observability.
+ * NOTE: this function does NOT increment `timesUsed` — that's done by
+ * `recordKeyUse()` on successful calls. The 429 path only refreshes
+ * `lastUsedAt` so the founder's dashboard shows when the key was last
+ * attempted, even if the upstream rejected it.
  */
 export async function markKeyRateLimited(keyId: string): Promise<void> {
-  // DB side: increment usage counter
+  // DB side: refresh lastUsedAt (not timesUsed — see note above)
   try {
     await db.apiKeyPool.update({
       where: { id: keyId },
@@ -200,6 +232,11 @@ export async function markKeyRateLimited(keyId: string): Promise<void> {
 /**
  * Record a successful use of a pool key (for observability / billing).
  *
+ * Increments `timesUsed` + `usedToday` and refreshes `lastUsedAt`.
+ * The `tokensUsed` parameter is currently NOT persisted (the ApiKeyPool
+ * schema has no `tokensUsed` column) — it's accepted for forward-
+ * compatibility and logged on error for debugging.
+ *
  * This is best-effort — failures here do NOT block the AI call.
  */
 export async function recordKeyUse(
@@ -219,6 +256,9 @@ export async function recordKeyUse(
     logger.debug("[keyPool] recordKeyUse DB update failed (non-critical)", {
       err: err instanceof Error ? err.message : String(err),
       keyId,
+      // tokensUsed is logged here for debugging — it's not persisted yet
+      // (ApiKeyPool schema has no tokensUsed column). Forward-compat: when
+      // we add the column, this log line will help audit the gap.
       tokensUsed,
     });
   }
@@ -232,6 +272,13 @@ export async function recordKeyUse(
  * Uses Valkey INCR with EXPIRE for distributed counting.
  * Falls back to "always allow" if Valkey is unavailable — the upstream
  * provider's own 429 is the backstop in that case.
+ *
+ * BUG FIX: previously, INCR ran unconditionally BEFORE the limit check.
+ * If 1000 concurrent requests hit a key with rpmLimit=60, all 1000 would
+ * increment (to 1000), only the first 60 would be allowed, but the counter
+ * would stay at 1000 — blocking the key for the rest of the minute even
+ * after allowed requests completed. Now we DECR on reject so rejected
+ * requests don't consume budget.
  */
 async function consumeKeySlot(
   keyId: string,
@@ -256,13 +303,44 @@ async function consumeKeySlot(
     const countTuple = results[0] as [Error | null, number];
     const currentCount = countTuple[1] || 0;
 
-    return currentCount <= rpmLimit;
+    if (currentCount > rpmLimit) {
+      // BUG FIX: this request was rejected, so don't consume the slot.
+      // DECR back so the next allowed request isn't blocked by rejected ones.
+      // Best-effort — if DECR fails, the slot will free when the minute
+      // bucket expires (90s TTL).
+      await valkey.decr(usageKey).catch(() => {});
+      return false;
+    }
+    return true;
   } catch (err) {
     logger.warn("[keyPool] consumeKeySlot Valkey check failed — allowing", {
       err: err instanceof Error ? err.message : String(err),
       keyId,
     });
     return true; // fail-open: let upstream enforce
+  }
+}
+
+/**
+ * Release a rate-limit slot for a key (e.g. when the picked key turns out
+ * to be corrupted and we want to try the next one without consuming budget).
+ *
+ * Best-effort — if DECR fails, the slot will free when the minute bucket
+ * expires (90s TTL).
+ */
+async function releaseKeySlot(keyId: string): Promise<void> {
+  if (!VALKEY_CONFIGURED) return;
+  const valkey = await getValkeyClient();
+  if (!valkey) return;
+
+  const now = Date.now();
+  const minuteBucket = Math.floor(now / MINUTE_MS);
+  const usageKey = `${USAGE_PREFIX}:${keyId}:${minuteBucket}`;
+
+  try {
+    await valkey.decr(usageKey);
+  } catch {
+    // Non-critical — see comment above
   }
 }
 

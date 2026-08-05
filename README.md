@@ -22,6 +22,7 @@
 - [Architecture Overview](#architecture-overview--نظرة-عامة-على-البنية)
 - [AI Fabric — 20-Phase Cascade](#ai-fabric--20-phase-cascade)
 - [Invoice Brain](#invoice-brain--محرك-استخراج-الفواتير)
+- [Founder Key Distribution Model](#founder-key-distribution-model--نموذج-توزيع-المفاتيح)
 - [E-Invoicing — MENA Compliance](#e-invoicing--مطابقة-فوترة-mena)
 - [Accounting Engine](#accounting-engine--محرك-المحاسبة)
 - [Enterprise RBAC](#enterprise-rbac--نظام-الصلاحيات)
@@ -74,6 +75,11 @@
 | **Arabic-first** | واجهة عربية RTL كاملة + تحويل المبالغ إلى نص عربي + تقويم هجري + MENA country configs |
 | **OpenAPI/Swagger** | 229+ endpoint موثقة في `src/lib/openapi/openapi.yaml` مع interactive viewer على `/api-docs` |
 | **PWA Support** | Service worker + manifest + offline capability + أيقونات maskable |
+| **Founder Key Distribution** | المؤسس يرفع مفتاح DeepSeek واحد → يتوزع على N شركة عبر `ApiKeyPool` + Valkey round-robin + per-company proxy URL |
+| **Per-Client Proxy** | كل شركة ليه endpoint خاص: `POST /api/ai/proxy/{companySlug}?feature=chat` — المفتاح الحقيقي مش بيتعرض للعميل أبداً |
+| **Valkey-Distributed Rate Limiting** | Atomic Lua script (ZADD+ZCARD+ZREMRANGEBYSCORE) عبر كل instances — مش in-memory Map محدود بـ instance واحد |
+| **AES-256 AI Key Encryption** | كل مفاتيح AI في `CompanyAIConfig` مشفّرة at rest عبر `cryptoVault.ts` + graceful migration للـ legacy plaintext |
+| **Direct DeepSeek Path** | توجيه مباشر لـ `api.deepseek.com` بدون وسيط OpenRouter — توفير في الرسوم + RPM أعلى |
 | **الأمان** | SSRF protection · CSRF double-submit · AES-256 crypto vault · MFA/OTP · password policy · tamper-evidence audit chain |
 
 </div>
@@ -352,6 +358,147 @@ Pattern-first extraction engine that achieves **zero AI cost on recurring invoic
 | Normalization | `normalize.ts` | Field normalization (dates, amounts, tax IDs) |
 | AI fallback | `aiFallback.ts` | Last-resort LLM extraction |
 | Verification | `verifyExtraction.ts` | Sanity-check extracted fields |
+
+---
+
+## Founder Key Distribution Model — نموذج توزيع المفاتيح
+
+The founder's vision for AI key distribution: **one DeepSeek account serves N companies**, with Valkey coordinating rate-limiting and round-robin across all instances. Each client gets a per-company proxy URL that hides the real API key.
+
+### Architecture
+
+```
+Founder uploads 1 DeepSeek API key
+         │
+         ▼
+   ApiKeyPool (DB table)
+         │
+         │  bulk-ai-config assignKeys
+         ▼
+   CompanyAIConfig.{chatApiKey, invoiceApiKey, parseApiKey, memoryApiKey}
+   (encrypted at rest via AES-256-GCM)
+         │
+         │  Client calls: POST /api/ai/proxy/{companySlug}?feature=chat
+         ▼
+   per-feature-router.ts
+         │
+         ├─ 1. Per-company rate limit check (Valkey Lua script — atomic)
+         │     └─ If rejected → 429 + Retry-After header
+         │
+         ├─ 2. Key resolution
+         │     ├─ Company's own key (decrypted from CompanyAIConfig)
+         │     └─ Pool fallback (round-robin via Valkey INCR)
+         │
+         ├─ 3. Upstream call (direct DeepSeek / Gemini / OpenAI / OpenRouter)
+         │     └─ On 429 → markKeyRateLimited → 60s cooldown in Valkey
+         │
+         └─ 4. Usage tracking (DB + pool key stats)
+```
+
+### Key Files
+
+| File | Role |
+|------|------|
+| `src/lib/ai/keyVault.ts` | AES-256-GCM encryption for the 4 per-feature API key columns. Idempotent (encrypting an already-encrypted value returns it unchanged). Graceful legacy plaintext migration. Defensive: never returns the masked placeholder `"••••••••"` as a real key. |
+| `src/lib/ai/valkey-rate-limiter.ts` | Atomic sliding-window rate limiter using a Lua script (ZADD+ZCARD+ZREMRANGEBYSCORE in one atomic op). Distributed across all instances. Falls back to in-memory when Valkey is not configured. |
+| `src/lib/ai/key-pool.ts` | Round-robin key distribution across `ApiKeyPool` via Valkey INCR. Per-key RPM enforcement. Cooldown mechanism (60s) when a key 429s. DECR on reject so rejected requests don't consume budget. |
+| `src/lib/ai/per-feature-router.ts` | Resolves the key (own key first, pool fallback if missing), enforces per-company rate limit, calls the upstream provider, tracks usage. Direct DeepSeek path bypasses OpenRouter. |
+| `src/app/api/ai/proxy/[companySlug]/route.ts` | **Per-client proxy endpoint** — the "وصلة" given to each client. Hides the real API key. OpenAI-compatible response shape. Full RBAC + audit logging. |
+
+### Per-Client Proxy Endpoint
+
+Each company gets a unique URL based on their `companySlug`:
+
+```bash
+# Chat completion (OpenAI-compatible)
+curl -X POST https://your-app/api/ai/proxy/acme-corp?feature=chat \
+  -H "Authorization: Bearer <JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "مرحبا"}
+    ],
+    "temperature": 0.7,
+    "maxTokens": 2048
+  }'
+
+# Invoice extraction
+curl -X POST https://your-app/api/ai/proxy/acme-corp?feature=invoice \
+  -H "Authorization: Bearer <JWT>" \
+  -d '{"messages": [{"role": "user", "content": "Invoice #001 - Total: $1,250"}]}'
+
+# Status check
+curl https://your-app/api/ai/proxy/acme-corp \
+  -H "Authorization: Bearer <JWT>"
+```
+
+**Response shape (OpenAI-compatible):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "chatcmpl-proxy-<uuid>",
+    "object": "chat.completion",
+    "model": "deepseek-chat",
+    "choices": [
+      {
+        "index": 0,
+        "message": {"role": "assistant", "content": "مرحبا بك!"},
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {"prompt_tokens": 5, "completion_tokens": 8, "total_tokens": 13}
+  },
+  "feature": "chat",
+  "companySlug": "acme-corp",
+  "latencyMs": 234
+}
+```
+
+**Rate-limited response (HTTP 429 + Retry-After header):**
+
+```json
+{
+  "success": false,
+  "error": "Rate limit exceeded. Try again after 45s.",
+  "feature": "chat",
+  "companySlug": "acme-corp",
+  "retryAfterSeconds": 45,
+  "usage": {"currentUsage": 60, "windowMs": 60000}
+}
+```
+
+### Founder Bulk Assignment
+
+The founder uploads API keys to the `ApiKeyPool` via the admin panel, then runs bulk assignment:
+
+```bash
+# Assign available pool keys to multiple companies at once
+curl -X PATCH https://your-app/api/founder-panel/companies/bulk-ai-config \
+  -H "Authorization: Bearer <founder-JWT>" \
+  -d '{
+    "companyIds": ["company_1", "company_2", "company_3"],
+    "action": "assignKeys"
+  }'
+```
+
+The `assignKeys` action:
+1. Releases any prior assignment for the company (prevents key leakage)
+2. Atomically claims a new available key (conditional `updateMany` — TOCTOU-safe)
+3. Encrypts the keyValue via `encryptApiKey()` (idempotent)
+4. Writes the encrypted key into all 4 per-feature columns (`chatApiKey`, `invoiceApiKey`, `parseApiKey`, `memoryApiKey`)
+5. Normalizes the model name (maps `deepseek/deepseek-chat-v3-0324` → `deepseek-chat` for direct DeepSeek API)
+6. Rolls back the claim if the config write fails (no key leakage)
+
+### Security
+
+- **API keys never exposed to clients** — only the proxy URL is given
+- **AES-256-GCM encryption at rest** via `cryptoVault.ts`
+- **Defensive decryption** — corrupted/tampered keys return `""` instead of leaking ciphertext
+- **IDOR protection** — founder role verified for every `companySlug` access
+- **Full audit trail** — every proxy call (success + failure + rate-limited) is logged
+- **Atomic rate limiting** — Lua script prevents TOCTOU races across instances
 
 ---
 

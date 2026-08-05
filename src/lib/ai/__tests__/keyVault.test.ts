@@ -87,6 +87,13 @@ describe("keyVault — decryptApiKey", () => {
     const decrypted = decryptApiKey(tampered);
     expect(decrypted).toBe("");
   });
+
+  it("returns empty for masked placeholder (BUG 11 fix)", () => {
+    // The masked display placeholder "••••••••" should NEVER be returned as
+    // a real key — if it ever lands in the DB (migration bug, direct edit),
+    // sending it upstream as a Bearer token would 401 on every call.
+    expect(decryptApiKey("••••••••")).toBe("");
+  });
 });
 
 describe("keyVault — maskApiKeyForDisplay", () => {

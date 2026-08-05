@@ -257,6 +257,37 @@ export async function GET(request: NextRequest) {
       });
       
       if (!company) return apiError('Company not found', 404);
+      
+      // BUG FIX (BUG 1 — IDOR): previously, any authenticated user could
+      // pass any companySlug and read that company's AI config (masked keys,
+      // model names, RPMs, usage stats). Now we verify the caller has a
+      // founder role in the requested company before returning the config.
+      const membership = await (db as unknown as {
+        companyMember: {
+          findFirst: (args: {
+            where: { userId?: string; companyId?: string; role?: string };
+          }) => Promise<{ role: string } | null>;
+        };
+      }).companyMember.findFirst({
+        where: {
+          userId: auth.user.uid,
+          companyId: company.id,
+          role: 'founder',
+        },
+      });
+      
+      if (!membership) {
+        // Audit the access attempt
+        await logAudit({
+          userEmail: auth.user.email,
+          userUid: auth.user.uid,
+          action: 'ai_config_access_denied',
+          entity: 'company',
+          details: { companySlug, reason: 'no_founder_membership' },
+        });
+        return apiError('Access denied — founder role required for this company', 403);
+      }
+      
       companyId = company.id;
     } else {
       // Use user's primary company
@@ -508,6 +539,28 @@ export async function POST(request: NextRequest) {
     }
     
     const { feature, apiKey, model } = validated.data;
+    
+    // BUG FIX (BUG 16): previously, any authenticated user (including
+    // low-privilege employees) could submit arbitrary API key strings and
+    // have the server make outbound HTTP calls to Google's Gemini API with
+    // them — turning the server into an open relay for testing stolen/leaked
+    // API keys. Now we require a founder role, same as the PUT handler.
+    const membership = await (db as unknown as {
+      companyMember: {
+        findFirst: (args: {
+          where: { userId?: string; role?: string };
+        }) => Promise<{ companyId: string } | null>;
+      };
+    }).companyMember.findFirst({
+      where: {
+        userId: auth.user.uid,
+        role: 'founder',
+      },
+    });
+    
+    if (!membership) {
+      return apiError('Only founders can test API connections', 403);
+    }
     
     // Test the connection
     const result = await testGeminiConnection(
