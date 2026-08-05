@@ -1,19 +1,52 @@
+<div dir="rtl">
+
 # GarfiX EOS — نظام ERP/فواتير متعدد المستأجرين مع طبقة ذكاء اصطناعي
 
-> Enterprise-grade multi-tenant ERP with 16-phase AI cost optimization cascade — Arabic-first, MENA-focused.
+> Enterprise-grade multi-tenant SaaS ERP/Invoicing platform with a 20-phase AI cost-optimization cascade — Arabic-first, MENA-focused, production-hardened.
 
-**الإصدار:** 12.1.0 | **المؤلف:** ahmedezzatelsayad | **الترخيص:** MIT
+**الإصدار:** 12.1.0 · **المؤلف:** `ahmedezzatelsayad` · **الترخيص:** MIT
 
-## CI Status
+نظام تشغيل مؤسسي متكامل (Enterprise Operating System) لإدارة الشركات متعددة المستأجرين، يجمع بين قوة ERP المالي، الفوترة الإلكترونية المتوافقة مع دول الشرق الأوسط، وطبقة ذكاء اصطناعي مُحسَّنة التكلفة عبر شلال من 20 مرحلة (Cache → Pattern → Rule → Memory → Budget → AI). مصمم من الأساس للواجهة العربية مع دعم RTL كامل، ويغطي متطلبات الفوترة الإلكترونية في 6 دول من منطقة MENA.
+
+</div>
+
+---
+
+## Table of Contents / فهرس المحتويات
+
+- [CI/CD Status](#cicd-status)
+- [Key Features](#key-features--أبرز-الميزات)
+- [Tech Stack](#tech-stack--حزمة-التقنيات)
+- [Quick Start](#quick-start--التشغيل-السريع)
+- [Project Structure](#project-structure--هيكل-المشروع)
+- [Architecture Overview](#architecture-overview--نظرة-عامة-على-البنية)
+- [AI Fabric — 20-Phase Cascade](#ai-fabric--20-phase-cascade)
+- [Invoice Brain](#invoice-brain--محرك-استخراج-الفواتير)
+- [E-Invoicing — MENA Compliance](#e-invoicing--مطابقة-فوترة-mena)
+- [Accounting Engine](#accounting-engine--محرك-المحاسبة)
+- [Enterprise RBAC](#enterprise-rbac--نظام-الصلاحيات)
+- [Multi-Tier Queue](#multi-tier-queue-architecture--معمارية-الطابور-متعدد-الطبقات)
+- [Webhook System](#webhook-system--نظام-الـ-webhooks)
+- [Security](#security--الأمان)
+- [Testing](#testing--الاختبارات)
+- [Environment Variables](#environment-variables--متغيرات-البيئة)
+- [Deployment](#deployment--النشر)
+- [Documentation](#documentation--التوثيق)
+- [License](#license--الترخيص)
+
+---
+
+## CI/CD Status
 
 | Pipeline | Scope | Type | Badge |
 |----------|-------|------|-------|
-| **GarfiX CI v12** | Lint + TypeCheck + Build + Unit/Integration Tests | Functional Gate | ![CI](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/ci.yml/badge.svg?branch=main) |
-| **Security Scan** | Dependency Audit + CodeQL + Secret Scan + License + Container Scan | Security Gate | ![Security](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/security.yml/badge.svg?branch=main) |
-| **Performance** | Bundle Size + Load Test (push-time) | Functional Gate | ![Performance](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/performance.yml/badge.svg?branch=main) |
-| **Lighthouse (Nightly)** | Lighthouse CI + Budget Enforcement | Performance Gate (advisory) | ![Lighthouse](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/performance-nightly.yml/badge.svg) |
-| **CD** | Docker build + push + smoke test | Deploy Gate | ![CD](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/cd.yml/badge.svg?branch=main) |
-| **PR Checks** | Fast checks on pull requests | Functional Gate | ![PR Checks](https://github.com/ahmedezzatelsayad/GarfiX/actions/workflows/pr-checks.yml/badge.svg) |
+| **GarfiX CI v12.2** | Lint + TypeCheck + Build + Unit/Integration Tests | Functional Gate | ![CI](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/ci.yml/badge.svg?branch=main) |
+| **Security Scan** | Dependency Audit + CodeQL + Secret Scan + License + Container Scan | Security Gate | ![Security](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml/badge.svg?branch=main) |
+| **Performance** | Bundle Size + Load Test (push-time) | Functional Gate | ![Performance](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml/badge.svg?branch=main) |
+| **Lighthouse (Nightly)** | Lighthouse CI + Budget Enforcement | Performance Gate (advisory) | ![Lighthouse](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance-nightly.yml/badge.svg) |
+| **CD** | Docker build + push + smoke test | Deploy Gate | ![CD](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/cd.yml/badge.svg?branch=main) |
+| **PR Checks** | Fast checks on pull requests | Functional Gate | ![PR Checks](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/pr-checks.yml/badge.svg) |
+| **Founder Deploy** | Full CI → Staging → Founder notification | Manual Dispatch | ![Founder Deploy](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/founder-deploy.yml/badge.svg) |
 
 **Gate classification:**
 - **Functional Gate** — must pass to merge; tests correctness.
@@ -21,116 +54,357 @@
 - **Deploy Gate** — must pass to release; tests deployability.
 - **Performance Gate (advisory)** — does NOT block merge; trend tracking only.
 
-## Tech Stack
+---
+
+## Key Features / أبرز الميزات
+
+<div dir="rtl">
+
+| الفئة | الميزة |
+|------|--------|
+| **متعدد المستأجرين** | عزل كامل بين الشركات عبر `companySlug` routing + `tenantScope` على كل استعلام Prisma + IDOR protection على 54/56 handler |
+| **ذكاء اصطناعي مُحسَّن** | شلال 20 مرحلة (16 أساسية + 4 متقدمة) يقلل تكلفة LLM عبر Cache → Pattern → Rule → Memory قبل أي استدعاء AI |
+| **Invoice Brain** | استخراج pattern-first يحقق تكلفة AI صفرية على الفواتير المتكررة + learning engine يروّج القواعد تلقائيًا |
+| **Digital Twin & Profit Engine** | محاكاة توأم رقمي للشركة + محرك ربح يومي يربط هامش الربح بسلوك الشلال (normal → conservative → critical) |
+| **Enterprise RBAC** | PermissionScope (own/team/company/platform) × PermissionLevel (none→admin) + قيود زمنية + audit trail كامل |
+| **Webhook System** | Tenant-scoped outgoing webhooks مع HMAC-SHA256 signing + exponential backoff retry + SSRF protection |
+| **طابور ثلاثي الطبقات** | BullMQ (Valkey) ← pg-boss (PostgreSQL) ← In-process (dev) — المهام تنجو من الأعطال في كل الطبقات |
+| **الفوترة الإلكترونية** | 6 دول: ZATCA (السعودية) · UAE FTA (الإمارات) · Egypt ETA (مصر) · Kuwait (الكويت) · Bahrain NBR (البحرين) · Oman (عُمان) |
+| **محاسبة كاملة** | 18 وحدة محاسبية: دفاتر يومية، AR/AP، بنوك، أصول ثابتة، رواتب/WPS، تمويل تجاري، ميزانيات، امتثال ضريبي، مراكز تكلفة |
+| **Arabic-first** | واجهة عربية RTL كاملة + تحويل المبالغ إلى نص عربي + تقويم هجري + MENA country configs |
+| **OpenAPI/Swagger** | 229+ endpoint موثقة في `src/lib/openapi/openapi.yaml` مع interactive viewer على `/api-docs` |
+| **PWA Support** | Service worker + manifest + offline capability + أيقونات maskable |
+| **الأمان** | SSRF protection · CSRF double-submit · AES-256 crypto vault · MFA/OTP · password policy · tamper-evidence audit chain |
+
+</div>
+
+---
+
+## Tech Stack / حزمة التقنيات
 
 | التقنية | الإصدار | الدور |
 |---------|---------|-------|
-| Next.js | 16 | App Router + Server Actions |
-| Bun | — | Runtime + Package Manager |
-| TypeScript | — | 99% coverage |
-| Prisma | — | ORM (SQLite dev / PostgreSQL prod) |
-| Tailwind CSS | 4 | Styling + Responsive Design |
-| Valkey | 8.1 | Cache + Queue backend |
-| BullMQ | — | Job processing (primary queue) |
-| pg-boss | — | PostgreSQL-backed job queue (secondary fallback) |
-| shadcn/ui | — | Component library |
+| **Next.js** | 16.1+ | App Router + Server Actions + Middleware |
+| **Bun** | 1.3.14 | Runtime + Package Manager + Test runner |
+| **TypeScript** | 5.x | ~99% type coverage (zero `ignoreBuildErrors`) |
+| **React** | 19.x | UI library |
+| **Prisma** | 6.11+ | ORM (PostgreSQL — all environments) |
+| **PostgreSQL** | 17 | Primary database (unified across dev/prod) |
+| **Valkey** | 8.1 | Cache + BullMQ backend (Redis-compatible, BSD-3) |
+| **BullMQ** | 5.80+ | Primary job queue (production-grade) |
+| **pg-boss** | 12.26+ | PostgreSQL-backed fallback queue |
+| **Tailwind CSS** | 4.x | Styling + responsive design (sm/md/lg) |
+| **shadcn/ui** | — | Component library (56 components) |
+| **Radix UI** | — | Accessible primitives |
+| **React Query** | 5.82+ | Server state management |
+| **Zod** | 4.x | Schema validation |
+| **Tesseract.js** | 7.x | OCR for invoice image extraction |
+| **OpenTelemetry** | 0.221+ | Tracing + metrics |
+| **Playwright** | 1.61+ | E2E testing |
+| **Vitest** | 4.x | Unit testing (alongside Bun test) |
 
-## Quick Start
+---
+
+## Quick Start / التشغيل السريع
+
+### Prerequisites / المتطلبات المسبقة
+
+- **Bun** ≥ 1.3.14 — [installation guide](https://bun.sh/docs/installation)
+- **PostgreSQL** ≥ 17 (or use the provided `docker-compose.yml`)
+- **Valkey** ≥ 8.1 (or use the provided `docker-compose.yml`)
+
+### Installation / التثبيت
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/ahmedezzatelsayad/Garfix.git
 cd Garfix
-cp .env.example .env.local
+
+# 2. Install dependencies
 bun install
+
+# 3. Configure environment
+cp .env.example .env.local
+# Edit .env.local with your DATABASE_URL, JWT_SECRET, VALKEY_URL, etc.
+
+# 4. Set up the database
+bun run db:generate      # Generate Prisma client
+bun run db:migrate       # Apply migrations
+bun run seed             # Seed with 10 demo companies (or 25,000 for scale tests)
+
+# 5. Start the development server
 bun run dev
 ```
 
-## Project Structure
+The app will be available at `http://localhost:3000`.
+
+### Docker Quick Start / التشغيل عبر Docker
+
+```bash
+# 1. Copy and configure environment
+cp .env.example .env
+# Edit .env with strong secrets (DB_PASS, VALKEY_PASSWORD, JWT_SECRET, ...)
+
+# 2. Build and run the full stack (app + postgres + valkey)
+docker compose up -d --build
+
+# 3. Apply migrations inside the container
+docker compose exec app bun run db:deploy
+
+# 4. Visit the app
+open http://localhost:${APP_PORT:-3000}
+```
+
+### Available Scripts / الأوامر المتاحة
+
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start dev server on port 3000 |
+| `bun run build` | Production build (runs `prisma generate` first) |
+| `bun run start` | Start production server |
+| `bun run lint` | ESLint check |
+| `bun test` | Run unit/integration tests |
+| `bun run test:e2e` | Run Playwright E2E tests |
+| `bun run db:migrate` | Create and apply a new Prisma migration |
+| `bun run db:deploy` | Apply pending migrations (production) |
+| `bun run db:push` | Push schema changes without migration (dev only) |
+| `bun run seed` | Seed the database with demo data |
+| `bun run openapi:generate` | Regenerate OpenAPI spec from route handlers |
+| `bun run verify:env` | Validate `.env` for required + non-placeholder secrets |
+
+---
+
+## Project Structure / هيكل المشروع
 
 ```
 Garfix/
-├── prisma/                  # Schema (72+ models) + Migrations
-├── e2e/                     # Playwright specs (6 files)
-├── scripts/                 # Seed, bench, CLI tools (~30 scripts)
-├── docs/                    # Roadmaps, audit reports, API spec
-│   └── api/openapi.yaml     # OpenAPI/Swagger specification
+├── prisma/                          # Schema (102 models) + 17 migrations + seed.ts
+│   └── schema.prisma                # 2,826-line PostgreSQL schema
+├── e2e/                             # 12 Playwright E2E specs
+├── scripts/                         # 82 scripts: seed, bench, CLI tools, reports
+├── docs/                            # 22 docs + 14 ADRs + security audit
+│   ├── ARCHITECTURE-v12.1.md
+│   ├── ROADMAP.md
+│   ├── CONSOLIDATED_STATUS.md
+│   ├── adr/                         # 14 Architecture Decision Records
+│   ├── api/openapi.yaml             # OpenAPI/Swagger spec (legacy path)
+│   └── security/idor-audit.md
 ├── src/
-│   ├── app/api/             # Route handlers (177+ endpoints)
-│   ├── modules/             # 20+ domain UI modules
+│   ├── app/
+│   │   ├── api/                     # 229 route handlers across 30+ domains
+│   │   ├── (dashboard)/             # Authenticated app pages
+│   │   └── (public)/                # Landing, login, register
+│   ├── modules/                     # 21 UI domain modules
+│   │   ├── accounting/              # 16 view components (GL, AR/AP, Banking, ...)
+│   │   ├── admin/                   # Platform admin panel (15 tabs)
+│   │   ├── ai-agents/               # AI agents UI
+│   │   ├── invoices/                # Invoice management
+│   │   ├── dashboard/               # Mission control dashboard
+│   │   ├── hr/                      # Employees, payroll, attendance
+│   │   ├── inventory/               # Warehouses, stock movements
+│   │   ├── saas/                    # SaaS control panel
+│   │   └── ...                      # (catalog, clients, purchases, reports, ...)
 │   ├── lib/
-│   │   ├── ai-fabric/       # 16-phase AI cascade engine (20 files)
-│   │   ├── invoice-brain/   # Pattern-first extraction (13 files)
-│   │   ├── founder-validation/ # 1628+ test suite (11 sections)
-│   │   ├── e-invoicing/     # MENA e-invoicing (6 countries)
-│   │   ├── accounting/      # Full accounting engine (16 modules)
-│   │   ├── billing/         # Subscription engine + pricing
-│   │   ├── workers/         # BullMQ + pg-boss background jobs
-│   │   ├── ai/              # Router, cost tracker, registry (6 files)
-│   │   ├── integrations/    # Myfatoorah, Paymob, WhatsApp, Meta Ads
-│   │   ├── auth.ts, db.ts, valkey.ts, rateLimit.ts, ...
-│   │   ├── rbac.ts          # Enterprise-grade RBAC with granular permissions
-│   │   ├── webhooks.ts      # Tenant-scoped webhook delivery system
-│   │   ├── queue-pgboss.ts  # PostgreSQL-backed fallback queue
-│   │   ├── ssrf.ts          # SSRF protection for outbound URLs
-│   │   └── automation/      # Rule engine
-│   ├── hooks/               # React Query hooks (11 domain scopes)
-│   ├── components/          # UI + GarfiX custom components (50+)
-│   └── middleware.ts         # Auth + rate limit + CSRF
-└── docker-compose.yml
+│   │   ├── ai-fabric/               # 22 files — 20-phase AI cascade
+│   │   ├── invoice-brain/           # 21 files — pattern-first extraction
+│   │   ├── founder-validation/      # 1,628 tests — CTO-level pressure suite
+│   │   ├── e-invoicing/             # 11 files — 6-country MENA compliance
+│   │   ├── accounting/              # 18 files — full accounting engine
+│   │   ├── billing/                 # Subscription + pricing engine
+│   │   ├── workers/                 # BullMQ + pg-boss background jobs
+│   │   ├── ai/                      # 14 files — router, cost tracker, registry
+│   │   ├── integrations/            # Myfatoorah, Paymob, WhatsApp, Meta Ads
+│   │   ├── openapi/                 # Spec generation + SDK client
+│   │   ├── ml/                      # ML-augmented product matching
+│   │   ├── automation/              # Rule engine
+│   │   ├── circuit-breaker/         # Half-open state management
+│   │   ├── telemetry/               # Tracing + audit event bus
+│   │   ├── rbac.ts                  # Enterprise RBAC engine
+│   │   ├── webhooks.ts              # Tenant-scoped webhook delivery
+│   │   ├── ssrf.ts                  # SSRF + DNS-rebinding protection
+│   │   ├── cryptoVault.ts           # AES-256 encryption
+│   │   ├── tenantScope.ts           # Multi-tenant Prisma scoping
+│   │   ├── queue-pgboss.ts          # PostgreSQL-backed fallback queue
+│   │   └── auth.ts, db.ts, valkey.ts, rateLimit.ts, ...
+│   ├── hooks/queries/               # 16 React Query hook files
+│   ├── components/
+│   │   ├── ui/                      # 56 shadcn/ui primitives
+│   │   └── garfix-ds/               # 11 design-system subdirectories
+│   └── middleware.ts                # Auth + rate limit + CSRF + tenant routing
+├── public/                          # Static assets + PWA manifest + icons
+├── Dockerfile                       # 3-stage production build (Bun build → Node run)
+├── docker-compose.yml               # app + postgres + valkey stack
+├── Caddyfile                        # Production reverse proxy
+├── vercel.json                      # Vercel deployment config
+├── playwright.config.ts             # E2E test config
+└── package.json
 ```
 
-## Key Features
+---
 
-- **Multi-tenant isolation** — عزل كامل بين الشركات مع slug-based routing و tenantScope
-- **AI Fabric 16-phase cascade** — Cache → Pattern → Rule → Memory → Budget Gate → AI — تكلفة صفر على الأشكال المتكررة
-- **Invoice Brain** — Pattern-first extraction: صفر تكلفة AI على الأشكال المتكررة مع learning engine
-- **Enterprise RBAC** — نظام صلاحيات متدرج: PermissionScope (own/team/company/platform) + PermissionLevel (none→admin) + hierarchy + time-based restrictions + audit trail
-- **Webhook System** — Tenant-scoped outgoing webhooks مع HMAC-SHA256 signing + exponential backoff retry + delivery tracking + SSRF protection
-- **Multi-tier Queue** — 3-tier fallback: BullMQ (Valkey) → pg-boss (PostgreSQL) → In-process (dev) — jobs survive crashes in all tiers
-- **E-Invoicing MENA** — 6 دول: ZATCA (Saudi), UAE FTA, Egypt ETA, Kuwait, Bahrain NBR, Oman Tax — مع validation و retention
-- **IDOR Protection** — 54 من 56 handlers محمية + transaction-safe journal entries
-- **Security Pipeline** — CodeQL + TruffleHog + Gitleaks + SSRF protection + audit remediation
-- **Structured Logger** — Pino-compatible: `logger.info(msg, meta)` مع redaction + level filtering
-- **Responsive Design** — Tailwind sm/md/lg breakpoints عبر كل modules + mobile-first
-- **Enterprise Seeder** — 10 إلى 25,000 شركة ببيانات واقعية مع seed-based determinism
-- **MENA Expansion** — 20+ دولة + صفحات footer عربية كاملة + Hijri date support
-- **Valkey + BullMQ + pg-boss** — 3-tier queue: Valkey/BullMQ (primary) → pg-boss (secondary) → in-process (dev)
-- **Arabic-first** — واجهة عربية مع RTL كامل + Arabic amount text conversion
-- **OpenAPI/Swagger** — 177+ endpoints documented in `docs/api/openapi.yaml` مع interactive viewer at `/api-docs`
-- **Landing Page** — صفحة رئيسية تسويقية `EnhancedLandingPage.tsx` مع sections متعددة
-- **PWA Support** — Service worker + manifest + offline capability
-- **Full Accounting** — 16 modules: journals, AR/AP, banking, fixed assets, payroll/WPS, trade finance, consolidation, budgets, tax compliance, cost centers
-
-## Architecture
+## Architecture Overview / نظرة عامة على البنية
 
 ```
-Routes → Middleware (auth + rate limit + CSRF) → Modules → lib/ai-fabric (cascade) → Providers
-                │                                          │
-                ▼                                          ▼
-         Rate Limiter (7 limits)                    16-Phase Cascade
-         RBAC Permission Check                           │
-         SSRF Validation                    ┌────────────┘
-         Tenant Scoping                    ▼
-                                   Cache → Pattern → Rule → Memory → Budget Gate → AI
+                         ┌─────────────────────────────────────────┐
+                         │              Client (RTL Arabic)         │
+                         └───────────────────┬─────────────────────┘
+                                             │ HTTPS
+                         ┌───────────────────▼─────────────────────┐
+                         │            Caddy / Vercel               │
+                         └───────────────────┬─────────────────────┘
+                                             │
+                ┌────────────────────────────▼────────────────────────────┐
+                │  Middleware (auth + rate limit + CSRF + tenant routing) │
+                └────────────────────────────┬────────────────────────────┘
+                                             │
+                ┌────────────────────────────▼────────────────────────────┐
+                │  Next.js App Router (229 route handlers + Server Actions)│
+                └─────┬───────────────────────┬──────────────────┬───────┘
+                      │                       │                  │
+            ┌─────────▼────────┐   ┌──────────▼─────────┐  ┌────▼──────────┐
+            │   Modules (21)   │   │   lib/ai-fabric    │  │  lib/workers  │
+            │   + Components   │   │   20-phase cascade │  │  BullMQ/pg-boss│
+            └─────────┬────────┘   └──────────┬─────────┘  └────┬──────────┘
+                      │                       │                  │
+                ┌─────▼───────────────────────▼──────────────────▼─────┐
+                │                Prisma Client (typed)                 │
+                └─────┬──────────────────────────────────┬────────────┘
+                      │                                  │
+            ┌─────────▼──────────┐            ┌──────────▼──────────┐
+            │   PostgreSQL 17    │            │     Valkey 8.1      │
+            │   (102 models)     │            │   (cache + queue)   │
+            └────────────────────┘            └─────────────────────┘
 ```
 
-## Queue Architecture (3-tier)
+---
+
+## AI Fabric — 20-Phase Cascade
+
+The heart of GarfiX's cost optimization. Each incoming AI request traverses up to 20 phases; only the requests that cannot be resolved by cheaper mechanisms reach the actual LLM call. This typically reduces AI API spend by 70–95% on production workloads dominated by recurring invoice patterns.
+
+### Core Phases (1–16)
+
+| # | Phase | File | Purpose |
+|---|-------|------|---------|
+| 1 | Cache Lookup | `gateway.ts` | Check response cache for an exact-match hit (zero cost) |
+| 2 | Pattern Match | `learning-engine.ts` | Match against promoted patterns from past requests |
+| 3 | Rule Evaluation | `cost-optimizer.ts` | Apply compiled deterministic rules |
+| 4 | Memory Retrieval | `learning-engine.ts` | Retrieve relevant AI memory entries |
+| 5 | Budget Gate | `budget-engine.ts` | Enforce per-tenant daily/monthly AI budget |
+| 6 | Provider Selection | `provider-optimizer.ts` | Pick cheapest capable provider |
+| 7 | Cost Estimation | `cost-per-invoice.ts` | Predict cost before invoking |
+| 8 | Worker Prediction | `worker-prediction.ts` | Forecast demand & pre-scale workers |
+| 9 | AI Task Compilation | `ai-compiler.ts` | Compile task to optimized execution plan |
+| 10 | AI Call | `gateway.ts` | Execute the actual LLM call |
+| 11 | Response Cache | `gateway.ts` | Store response for future cache hits |
+| 12 | Learning Save | `learning-engine.ts` | Persist pattern candidates for promotion |
+| 13 | Usage Logging | `ai-economy-engine.ts` | Log usage with cost + latency |
+| 14 | Budget Update | `budget-engine.ts` | Decrement remaining budget |
+| 15 | Cost Tracking | `cost-per-invoice.ts` | Aggregate cost per invoice/provider/tenant |
+| 16 | Provider Scoring | `provider-optimizer.ts` | Score provider on quality + cost + latency |
+
+### Advanced Phases (17–20)
+
+| # | Phase | File | Purpose |
+|---|-------|------|---------|
+| 17 | Cross-Company Intel | `cross-company-intelligence.ts` | Share anonymized patterns across tenants (accelerates cold-start learning) |
+| 18 | AI Scoring | `ai-score.ts` | Score response confidence + completeness |
+| 19 | Profit Check | `profit-engine.ts` | Compute daily profit snapshot: revenue − infra − AI − workers |
+| 20 | Digital Twin Sim | `digital-twin.ts` | Simulate company "digital twin" (15-min TTL) to inform provider choice |
+
+### Economy Strategies
+
+The `ai-economy-engine.ts` adjusts cascade behavior based on per-tenant profit margin:
+
+| Strategy | Trigger | Behavior |
+|----------|---------|----------|
+| `normal` | Margin > 50% | Full cascade, all providers available |
+| `conservative` | Margin 10–30% | Restrict to cheapest-tier providers, prefer cache/rules |
+| `critical` | Margin < 10% | Hard stop on AI calls — cache/rules only |
 
 ```
-enqueue(job)
-    │
-    ├─ Valkey/BullMQ available? ──► BullMQ queue (production-grade)
-    │                                  │ persistent, retries, rate-limits, distributed
-    │
-    ├─ DATABASE_URL available? ──► pg-boss (PostgreSQL-backed)
-    │                                  │ persistent, retries, dead-letter queues, advisory locks
-    │                                  │ uses SAME DATABASE_URL as Prisma — no extra infra
-    │
-    └─ Dev/Sandbox ──► In-process runner
-                          │ NOT production-safe, but works for local dev
+┌─────────┐    ┌─────────┐    ┌──────┐    ┌────────┐    ┌──────┐    ┌─────┐
+│  Cache  │ →  │ Pattern │ →  │ Rule │ →  │ Memory │ →  │Budget│ →  │ AI  │
+└─────────┘    └─────────┘    └──────┘    └────────┘    └──────┘    └─────┘
+   $0            $0            $0           $0           gate         $$$
 ```
 
-## RBAC Architecture
+---
+
+## Invoice Brain — محرك استخراج الفواتير
+
+Pattern-first extraction engine that achieves **zero AI cost on recurring invoice formats**. Located in `src/lib/invoice-brain/` (21 source files).
+
+| Module | File | Responsibility |
+|--------|------|----------------|
+| Extraction orchestrator | `extractInvoice.ts` | Top-level entry: tries pattern → OCR → AI fallback |
+| Pattern store | `patternStore.ts` | CRUD for `InvoiceBrainTemplate` records |
+| Pattern parser | `patternParser.ts` | Parse invoice against a stored template |
+| Pattern confidence | `patternConfidence.ts` | Score match confidence (0.0–1.0) |
+| Pattern versioning | `patternVersioning.ts` | Handle template drift via version bumps |
+| Fingerprinting | `fingerprint.ts` + `fingerprintCache.ts` | Identify recurring invoice layouts |
+| Header mapping | `headerMapStore.ts` | Map vendor-specific headers → canonical fields |
+| Drift detection | `driftDetection.ts` | Detect when vendor changes template |
+| Human review | `humanReview.ts` | Queue low-confidence extractions for review |
+| OCR adapter | `ocrAdapter.ts` | Tesseract.js wrapper (multi-language) |
+| Excel parser | `excelParser.ts` | Parse .xlsx invoices |
+| Smart split | `smartSplit.ts` | Split composite line items |
+| Normalization | `normalize.ts` | Field normalization (dates, amounts, tax IDs) |
+| AI fallback | `aiFallback.ts` | Last-resort LLM extraction |
+| Verification | `verifyExtraction.ts` | Sanity-check extracted fields |
+
+---
+
+## E-Invoicing — مطابقة فوترة MENA
+
+Six-country MENA e-invoicing compliance with validation, certificate management, and retention policies. Located in `src/lib/e-invoicing/` (11 source files + 7 test files).
+
+| الدولة | الملف | المعيار |
+|--------|-------|---------|
+| 🇸🇦 السعودية (ZATCA) | `zatca.ts` + `zatca-validation.ts` + `zatca-certs.ts` + `zatca-tlv.ts` | Phase 2 e-invoicing (Fatoorah) |
+| 🇦🇪 الإمارات (FTA) | `uae-fta.ts` + `uae-fta-validation.ts` | UAE VAT e-invoicing |
+| 🇪🇬 مصر (ETA) | `egypt-eta.ts` + `egypt-eta-validation.ts` | Egyptian Tax Authority |
+| 🇰🇼 الكويت | `kuwait.ts` + `kuwait-validation.ts` | Kuwait Decree 10/2026 |
+| 🇧🇭 البحرين (NBR) | `bahrain-nbr.ts` | Bahrain National Bureau for Revenue |
+| 🇴🇲 عُمان | `oman-tax.ts` | Oman Tax Authority |
+| **التوجيه** | `router.ts` | Unified routing per country |
+| **الأرشفة** | `retention.ts` | Retention policies per jurisdiction |
+| **إعادة المحاولة** | `retry.ts` | Exponential backoff for authority APIs |
+
+---
+
+## Accounting Engine — محرك المحاسبة
+
+Full double-entry accounting engine in `src/lib/accounting/` (18 source files + 19 test files), exposed through 50+ API routes and 16 UI views.
+
+| Module | File | UI View |
+|--------|------|---------|
+| General Ledger | `auto-journal.ts` | `GeneralLedgerView.tsx` |
+| Journals & Vouchers | `vouchers.ts` | `VouchersDetailView.tsx` |
+| AR / AP | `ar-ap.ts` | `ArApView.tsx` |
+| Banking & Reconciliation | `banking.ts` | `BankingView.tsx` |
+| Fixed Assets & Depreciation | `fixed-assets.ts` | `FixedAssetsView.tsx` |
+| Payroll & WPS | `payroll-wps.ts` | `PayrollWpsView.tsx` |
+| Trade Finance (LCs) | `trade-finance.ts` | `TradeFinanceView.tsx` |
+| Multi-Company Consolidation | `consolidation.ts` | `MultiCompanyView.tsx` |
+| Budgets | `period-close.ts` | `BudgetsView.tsx` |
+| Tax Compliance | `tax-compliance.ts` | `TaxComplianceView.tsx` |
+| Cost Centers | `balance-engine.ts` | — |
+| Inventory Costing | `inventory-costing.ts` | `InventoryCostingView.tsx` |
+| Local Payment Rails | `local-payment-rails.ts` | `PaymentRailsView.tsx` |
+| Partner Capital | `partner-capital.ts` | — |
+| Commissions | `commissions.ts` | — |
+| Accountant Collaboration | `accountant-collab.ts` | `AccountantCollabView.tsx` |
+| Financial Dashboard | `financial-dashboard.ts` | `AccountingView.tsx` |
+| Recurring Entries | — | `RecurringEntriesView.tsx` |
+| Fiscal Year Close | — | `FiscalYearCloseView.tsx` |
+| Arabic Amount Text | `arabic-amount-text.ts` | — (utility) |
+
+---
+
+## Enterprise RBAC — نظام الصلاحيات
+
+Granular role-based access control with multi-dimensional permission scoping. See `ADR-004-rbac-system.md` for the full decision record.
 
 ```
 User ──► Role (OWNER / ADMIN / MANAGER / ACCOUNTANT / EMPLOYEE / VIEWER)
@@ -151,20 +425,37 @@ User ──► Role (OWNER / ADMIN / MANAGER / ACCOUNTANT / EMPLOYEE / VIEWER)
          Audit trail (every permission check logged)
 ```
 
-## E-Invoicing Coverage
+---
 
-| الدولة | الملف | المعيار |
-|--------|-------|---------|
-| السعودية (ZATCA) | `zatca.ts` + `zatca-validation.ts` + `zatca-certs.ts` | Phase 2 e-invoicing |
-| الإمارات (FTA) | `uae-fta.ts` + `uae-fta-validation.ts` | UAE VAT e-invoicing |
-| مصر (ETA) | `egypt-eta.ts` + `egypt-eta-validation.ts` | Egyptian Tax Authority |
-| الكويت | `kuwait.ts` + `kuwait-validation.ts` | Kuwait Decree 10/2026 |
-| البحرين (NBR) | `bahrain-nbr.ts` | Bahrain National Bureau for Revenue |
-| عمان | `oman-tax.ts` | Oman Tax Authority |
-| التوجيه | `router.ts` | Unified routing per country |
-| الأرشفة | `retention.ts` | Retention policies per jurisdiction |
+## Multi-Tier Queue Architecture — معمارية الطابور متعدد الطبقات
 
-## Webhook System
+Jobs survive crashes at every tier. See `ADR-001-queue-architecture.md`.
+
+```
+enqueue(job)
+    │
+    ├─ Valkey/BullMQ available? ──► BullMQ queue (production-grade)
+    │                                  │ persistent, retries, rate-limits, distributed
+    │
+    ├─ DATABASE_URL available? ──► pg-boss (PostgreSQL-backed)
+    │                                  │ persistent, retries, dead-letter queues, advisory locks
+    │                                  │ uses SAME DATABASE_URL as Prisma — no extra infra
+    │
+    └─ Dev/Sandbox ──► In-process runner
+                          │ NOT production-safe, but works for local dev
+```
+
+| Tier | Backend | Use Case |
+|------|---------|----------|
+| 1 | **BullMQ + Valkey** | Production primary — high throughput, distributed |
+| 2 | **pg-boss + PostgreSQL** | Production fallback — same DB as Prisma, no extra infra |
+| 3 | **In-process** | Local dev only — fast iteration, not crash-safe |
+
+---
+
+## Webhook System — نظام الـ Webhooks
+
+Tenant-scoped outgoing webhooks with HMAC-SHA256 signing, exponential backoff retry, and SSRF protection at both registration and fetch time. See `ADR-005-webhook-system.md`.
 
 ```
 Event occurs (invoice.created, payment.received, ...)
@@ -186,23 +477,40 @@ processPendingDeliveries() ──► HMAC-SHA256 sign payload
     └─ Fail ──► Exponential backoff retry (5s → 25s → 125s) → Dead letter
 ```
 
-## Test Stats
+---
 
-- **1855+** ملف اختبار عبر المشروع
-- **1800+** حالة اختبار
-- Founder Validation Suite مع 11 قسم + 180+ deep tests
-- Accounting module: 16 test files
-- E-invoicing: 7 test files (كل دولة)
-- RBAC: comprehensive permission tests
-- Webhook: delivery + SSRF protection tests
-- Queue: pg-boss + BullMQ integration tests
-- Responsive design: validation tests
-- Decimal migration: type safety tests
-- 6 ملفات E2E (Playwright)
+## Security — الأمان
 
-## Founder Validation Suite
+| الميزة | الوصف |
+|--------|-------|
+| **SSRF Protection** | `ssrf.ts` — blocks internal IPs, private ranges, cloud metadata endpoints (169.254.169.254), DNS-rebinding protection |
+| **CSRF Protection** | Double-submit cookie pattern in middleware |
+| **Crypto Vault** | `cryptoVault.ts` — AES-256 encryption for secrets, webhook secrets, payment credentials |
+| **IDOR Protection** | `tenantScope.ts` + `requirePermissionForCompany()` — 54 of 56 handlers hardened |
+| **Rate Limiting** | 7 custom rate limits per endpoint type (auth, AI, write, etc.) |
+| **MFA** | `mfa.ts` — TOTP-based 2-factor authentication |
+| **Audit Trail** | Every permission check, data mutation, and webhook delivery logged + tamper-evidence chain |
+| **Password Policy** | `passwordPolicy.ts` — length, complexity, breach-dictionary check |
+| **Session Registry** | `SessionRegistry` model — enforce max concurrent sessions per user (default 5) |
+| **JWT Rotation** | Separate access + refresh secrets, configurable TTLs |
+| **Non-root Container** | Docker `runner` stage runs as UID 1001, read-only root FS, tmpfs `/tmp` |
 
-مجموعة اختبار ضغط CTO-level تضمن جاهزية النظام للإنتاج — 11 قسم تغطي كل جانب:
+---
+
+## Testing — الاختبارات
+
+| Category | Count | Location |
+|----------|-------|----------|
+| **Unit/Integration tests** | 1,740 files | `src/**/__tests__/` (1,716) + `__tests__/` (1) |
+| **Founder Validation Suite** | 1,628 tests | `src/lib/founder-validation/__tests__/` (1,421 in `deep/`) |
+| **AI Fabric tests** | 14 files | `src/lib/ai-fabric/__tests__/` |
+| **Accounting tests** | 19 files | `src/lib/accounting/__tests__/` |
+| **E-invoicing tests** | 7 files | `src/lib/e-invoicing/__tests__/` (one per country) |
+| **Playwright E2E** | 12 specs | `e2e/` (auth, invoices, clients, accounting, dashboard, settings, ai-agents, automation, e-invoicing, observability, company-management, api-health) |
+
+### Founder Validation Suite
+
+CTO-level pressure suite ensuring production readiness — 11 sections covering every aspect:
 
 | # | القسم | الوصف |
 |---|-------|-------|
@@ -225,38 +533,200 @@ bun run scripts/founder-validation-suite.ts
 POST /api/founder-validation
 ```
 
-## API Documentation
+---
 
-The full OpenAPI/Swagger specification is available at:
+## Environment Variables — متغيرات البيئة
 
-- **Spec file**: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
-- **Interactive viewer**: `/api-docs` page (visit at `http://localhost:3000/api-docs`)
+All required variables are documented in `.env.example`. The `bun run verify:env` script enforces non-placeholder values for production secrets.
 
-The OpenAPI spec covers 177+ endpoints across 16+ tags:
-Auth, Invoices, Clients, Catalog, Inventory, Accounting, HR, AI, Dashboard,
-Settings, Automation, Webhooks, SaaS, Reports, Health, Companies, Permissions, Product Matching, Founder Validation
+### Required (production-fatal if missing)
 
-Key documentation features:
-- JWT Bearer authentication via HttpOnly cookies
-- Multi-tenant scoping (`companySlug` query param or `X-Company-Slug` header)
-- Arabic field names and descriptions (RTL support)
-- Kuwait Decree 10/2026 e-invoicing compliance fields
-- RBAC permission-based access control documented per endpoint
-- Error response schemas with codes
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string (pooled, with `pgbouncer` or equivalent) |
+| `DATABASE_DIRECT_URL` | Direct PostgreSQL connection (for Prisma migrations) |
+| `JWT_SECRET` | Access token signing secret (≥32 chars, high-entropy) |
+| `JWT_REFRESH_SECRET` | Refresh token secret (must differ from `JWT_SECRET`) |
+| `PAYMENTS_ENC_KEY` | AES-256 encryption key for payments/secrets |
+| `VAULT_ENCRYPTION_KEY` | Encryption for sensitive `PlatformSettings` |
+| `FOUNDER_EMAIL` | Founder account email |
+| `VALKEY_URL` | Valkey/Redis URL (BullMQ + rate limit + token blacklist) |
+| `DB_PASS` | PostgreSQL password (used by docker-compose) |
+| `VALKEY_PASSWORD` | Valkey password (used by docker-compose) |
 
-## Security
+### Optional
 
-| الميزة | الوصف |
-|--------|-------|
-| **SSRF Protection** | `ssrf.ts` — block internal IPs, private ranges, cloud metadata endpoints |
-| **CSRF Protection** | Double-submit cookie pattern in middleware |
-| **Crypto Vault** | AES-256 encryption for secrets + webhook secrets |
-| **IDOR Protection** | `tenantScope.ts` + `requirePermissionForCompany()` — 54/56 handlers |
-| **Rate Limiting** | 7 custom rate limits per endpoint type |
-| **MFA** | `mfa.ts` — TOTP-based 2-factor authentication |
-| **Audit Trail** | Every permission check, data mutation, and webhook delivery logged |
-| **Password Policy** | `passwordPolicy.ts` — length, complexity, breach-dictionary check |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DATABASE_POOL_SIZE` | 20 | Prisma connection pool size |
+| `JWT_ACCESS_TTL_SECONDS` | 1800 (30 min) | Access token TTL |
+| `JWT_REFRESH_TTL_SECONDS` | 2592000 (30 days) | Refresh token TTL |
+| `BCRYPT_ROUNDS` | 12 | bcrypt cost factor (≥12 per OWASP 2025) |
+| `MAX_SESSIONS_PER_USER` | 5 | Concurrent session limit |
+| `SESSION_REGISTRY_ENFORCED` | false | Toggle session registry enforcement (SEC-H4 rollout) |
+| `COOKIE_SAMESITE` | lax | `lax` / `strict` / `none` |
+| `COOKIE_SECURE` | false | Set `true` in production behind HTTPS |
+| `MAX_JSON_BODY_BYTES` | 1048576 (1 MiB) | Max JSON request body size |
+| `APP_URL` | — | Public app URL (for email links, CORS) |
+| `TRUSTED_PROXIES` | — | Comma-separated trusted proxy CIDRs |
 
-## License
+### AI Providers (optional — at least one recommended)
 
-MIT — ahmedezzatelsayad · [github.com/ahmedezzatelsayad/Garfix](https://github.com/ahmedezzatelsayad/Garfix)
+| Variable | Notes |
+|----------|-------|
+| `GEMINI_API_KEY` | Single Gemini key |
+| `GEMINI_API_KEYS` | Comma-separated multi-key (5 keys × 15 RPM = 75 RPM total) |
+| `GEMINI_MODEL` | Default Gemini model |
+| `OPENROUTER_API_KEY` | OpenRouter (multi-model access) |
+| `OPENAI_API_KEY` | OpenAI |
+| `ANTHROPIC_API_KEY` | Anthropic Claude |
+| `DEEPSEEK_API_KEY` | DeepSeek |
+
+### Integrations (optional)
+
+| Variable | Purpose |
+|----------|---------|
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | Email delivery |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | WhatsApp Business API |
+| `WHATSAPP_ALLOWED_SENDERS` | Comma-separated allowlist |
+
+---
+
+## Deployment — النشر
+
+### Production Stack (docker-compose)
+
+The provided `docker-compose.yml` deploys three isolated services on a private `garfix-net` network:
+
+| Service | Image | Purpose | Notes |
+|---------|-------|---------|-------|
+| `valkey` | `valkey/valkey:8.1` | Cache + BullMQ backend | AOF persistence, 256 MB LRU, no host port |
+| `postgres` | `postgres:17-alpine` | Primary database | Healthcheck via `pg_isready`, no host port |
+| `app` | Built from `Dockerfile` | Next.js production server | Port `${APP_PORT:-3000}:3000`, read-only FS, UID 1001 |
+
+```bash
+# Full deployment
+cp .env.example .env
+# Edit .env with strong production secrets
+docker compose up -d --build
+docker compose exec app bun run db:deploy
+docker compose exec app bun run seed  # optional: demo data
+```
+
+### Dockerfile — 3-Stage Build
+
+1. **`deps`** (`oven/bun:1.3.14`) — `bun install --frozen-lockfile` + `prisma generate`
+2. **`builder`** (`oven/bun:1.3.14`) — copies source, runs `db:generate` + `build`
+3. **`runner`** (`node:22-alpine`) — production runtime, non-root, read-only FS, HEALTHCHECK via Node 22 built-in `fetch`
+
+### Vercel Deployment
+
+`vercel.json` is preconfigured with:
+- `bun install` + `bun run build` build pipeline
+- Function `maxDuration`: 60s for general API, 120s for AI endpoints
+- Region pinning recommended for low-latency AI calls
+
+### Reverse Proxy (Caddy)
+
+`Caddyfile` (production) and `Caddyfile.dev` (local) are provided for automatic HTTPS via Let's Encrypt.
+
+### CI/CD Pipeline
+
+7 GitHub Actions workflows orchestrate the full delivery:
+
+```
+PR opened  ─►  pr-checks.yml (lint + typecheck + build)
+                │
+push to main ─► ci.yml (full test suite) + security.yml + performance.yml
+                │
+                ▼
+            cd.yml (Docker build + push + staging deploy + smoke test + prod deploy)
+                │
+release published ─► cd.yml (production release)
+                │
+manual dispatch  ─► founder-deploy.yml (full CI + staging + founder notification)
+                │
+nightly schedule ─► performance-nightly.yml (Lighthouse + budget enforcement)
+```
+
+---
+
+## Documentation — التوثيق
+
+### Architecture & Decisions
+
+| Document | Description |
+|----------|-------------|
+| [`docs/ARCHITECTURE-v12.1.md`](docs/ARCHITECTURE-v12.1.md) | Full architecture overview |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Product roadmap & priorities |
+| [`docs/CONSOLIDATED_STATUS.md`](docs/CONSOLIDATED_STATUS.md) | Current development state (v15) |
+| [`docs/Decision-Log.md`](docs/Decision-Log.md) | Historical decision log |
+| [`docs/Feature-Freeze-and-Milestones.md`](docs/Feature-Freeze-and-Milestones.md) | Feature freeze gates |
+
+### Architecture Decision Records (14 ADRs)
+
+| ADR | Title |
+|-----|-------|
+| [`001-pg-boss-queue.md`](docs/adr/001-pg-boss-queue.md) | Use pg-boss as Production Queue Fallback |
+| [`002-decimal-monetary-fields.md`](docs/adr/002-decimal-monetary-fields.md) | Migrate Monetary Fields to Decimal |
+| [`003-arabic-first-rtl.md`](docs/adr/003-arabic-first-rtl.md) | Arabic-first with RTL Layout |
+| [`004-multi-tenant-shared-db.md`](docs/adr/004-multi-tenant-shared-db.md) | Multi-tenant Shared Database with `companySlug` Isolation |
+| [`005-ai-fabric-cascade.md`](docs/adr/005-ai-fabric-cascade.md) | 16-Phase AI Cost Optimization Cascade |
+| [`006-e-invoicing-mena.md`](docs/adr/006-e-invoicing-mena.md) | MENA Region E-Invoicing Standards |
+| [`007-nextjs-spa.md`](docs/adr/007-nextjs-spa.md) | Single-Page Application Architecture |
+| [`008-bullmq-valkey.md`](docs/adr/008-bullmq-valkey.md) | Use BullMQ with Valkey for Production Queues |
+| [`ADR-001-queue-architecture.md`](docs/adr/ADR-001-queue-architecture.md) | Multi-tier Queue Architecture |
+| [`ADR-002-decimal-migration.md`](docs/adr/ADR-002-decimal-migration.md) | Financial Fields Decimal Migration |
+| [`ADR-003-responsive-design.md`](docs/adr/ADR-003-responsive-design.md) | Responsive Design Strategy |
+| [`ADR-004-rbac-system.md`](docs/adr/ADR-004-rbac-system.md) | Enterprise RBAC System |
+| [`ADR-005-webhook-system.md`](docs/adr/ADR-005-webhook-system.md) | Tenant-scoped Webhook Delivery System |
+| [`ADR-006-einvoicing-mena.md`](docs/adr/ADR-006-einvoicing-mena.md) | MENA E-Invoicing Compliance |
+
+### Audit & Remediation Reports
+
+`docs/` contains 22 reports covering IDOR audits, mobile responsiveness, logger fixes, remediation tracking (v1.2 → v4), benchmark governance, golden validation roadmap, and data qualification framework.
+
+### API Documentation
+
+- **Spec file**: `src/lib/openapi/openapi.yaml` (regeneratable via `bun run openapi:generate`)
+- **Interactive viewer**: visit `/api-docs` in the running app
+- **Coverage**: 229+ endpoints across 18+ tags (Auth, Invoices, Clients, Catalog, Inventory, Accounting, HR, AI, Dashboard, Settings, Automation, Webhooks, SaaS, Reports, Health, Companies, Permissions, Founder Validation)
+- **Features**: JWT Bearer auth via HttpOnly cookies, multi-tenant scoping (`companySlug` query param or `X-Company-Slug` header), Arabic field names with RTL support, RBAC permission tags per endpoint, error response schemas
+
+---
+
+## License — الترخيص
+
+MIT — © `ahmedezzatelsayad` · [github.com/ahmedezzatelsayad/Garfix](https://github.com/ahmedezzatelsayad/Garfix)
+
+---
+
+<div dir="rtl">
+
+## المساهمة
+
+هذا المشروع مفتوح للمساهمات. يُرجى اتباع الخطوات التالية:
+
+1. Fork المستودع
+2. إنشاء فرع للميزة الجديدة: `git checkout -b feature/amazing-feature`
+3. تنفيذ التغييرات مع الالتزام بمعايير الكود (تشغيل `bun run lint`)
+4. إضافة اختبارات للميزات الجديدة
+5. التأكد من نجاح جميع الاختبارات: `bun test`
+6. فتح Pull Request مع وصف واضح للتغييرات
+
+### معايير الكود
+
+- TypeScript صارم — لا يُسمح بـ `any` بدون مبرر قوي
+- ESLint — 0 errors, 0 warnings
+- الاختبارات مطلوبة لكل PR جديد
+- الالتزام بنمط الـ commit: `<type>(<scope>): <description>` (مثل: `feat(ai-fabric): add provider scoring`)
+
+</div>
+
+---
+
+<div align="center">
+
+**GarfiX EOS** — Built with care for the MENA region · Arabic-first · Production-ready
+
+</div>
