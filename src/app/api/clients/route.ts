@@ -8,6 +8,7 @@ import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
@@ -70,6 +71,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-E: Rate limit POST /api/clients — 30/min/IP (API_WRITE).
+  //   Creating clients is a high-frequency write that an attacker could
+  //   abuse to flood the DB or as a side-channel for tenant enumeration
+  //   (valid companySlug vs. 403). The limit sits BEFORE body parsing
+  //   so malformed payloads still count against the budget.
+  const rl = await rateLimitResponse(req, "post:clients", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) {

@@ -8,6 +8,7 @@ import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { calcInvoiceTotals, num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
@@ -123,6 +124,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-E: Rate limit POST /api/invoices — 30/min/IP (API_WRITE).
+  //   Invoice creation triggers inventory sync + audit log + Kuwait
+  //   compliance validation per call; an unthrottled attacker could
+  //   amplify DB load and burn AI budget via the OCR/smart-parse hook
+  //   downstream. Limit sits BEFORE body parsing to count malformed
+  //   payloads against the budget too.
+  const rl = await rateLimitResponse(req, "post:invoices", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -94,6 +95,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-E: Rate limit POST /api/inventory/items — 30/min/IP (API_WRITE).
+  //   Each adjust creates a StockMovement + audit log row; unthrottled
+  //   calls can flood the movements table and skew reorder analytics.
+  const rl = await rateLimitResponse(req, "post:inventory-items", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = AdjustSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

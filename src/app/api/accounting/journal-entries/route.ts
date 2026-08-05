@@ -11,6 +11,7 @@ import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -68,6 +69,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-E: Rate limit POST /api/accounting/journal-entries — 30/min/IP (API_WRITE).
+  //   JE creation touches the books directly; unthrottled writes can corrupt
+  //   trial balance / financial statements and exhaust DB write capacity.
+  const rl = await rateLimitResponse(req, "post:journal-entries", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
