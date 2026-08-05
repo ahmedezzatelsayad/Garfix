@@ -21,7 +21,7 @@
  *   getLearningStatus(companySlug) → LearningStatus
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { fabricHash } from "./types";
 

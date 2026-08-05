@@ -6,7 +6,7 @@
  * - Get audit log of all closes/reopens
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasPermission } from "@/lib/auth";
 import { assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { apiError, withErrorHandler } from "@/lib/api";

@@ -7,7 +7,7 @@
  * Permission: settings_access (admin/founder implicitly pass)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";

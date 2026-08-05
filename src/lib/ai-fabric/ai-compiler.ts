@@ -25,7 +25,7 @@
  *   getCompilationCandidates(companySlug, days?) → CompilationAssessment[]
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { fabricHash } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────

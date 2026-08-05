@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "@/lib/api";
 import { logAudit } from "@/lib/audit";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { z } from "zod";
 
 type RouteContext = { params: Promise<{ id: string }> };

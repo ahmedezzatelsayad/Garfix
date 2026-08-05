@@ -21,7 +21,7 @@
  *   TTL. All newly-issued tokens include a JTI and are rotation-protected.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import {
   verifyRefreshTokenWithBlacklist,
   issueSession,

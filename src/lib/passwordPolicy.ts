@@ -4,7 +4,7 @@
  * Enforces minimum password requirements and manages session concurrency.
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "./logger";
 
 export interface PasswordValidationResult {

@@ -15,7 +15,7 @@
  * Body: { email, password }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { verifyPasswordAndMaybeRehash, issueSession, type SessionUser } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { buildUserProfile } from "@/lib/auth";

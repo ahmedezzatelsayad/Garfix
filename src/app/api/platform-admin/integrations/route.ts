@@ -8,7 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireFounder } from "@/lib/middleware";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logAdminAction } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import "@/lib/integrations"; // side-effect: registers providers

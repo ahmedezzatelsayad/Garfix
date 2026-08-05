@@ -3,7 +3,7 @@
  * Increments tokenVersion (invalidates all outstanding refresh tokens) and clears cookies.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, clearSession, revokeAccessSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { withErrorHandler } from "@/lib/api";

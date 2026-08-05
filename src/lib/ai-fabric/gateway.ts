@@ -20,7 +20,7 @@
  * - Actual counts from invoice-brain data, not theoretical percentages
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { fabricHash, type GatewayRequest, type GatewayResult, type CascadeStage, type AIRequestType } from "./types";
 import { checkBudgetGate, getBudgetStatus } from "./budget-engine";
