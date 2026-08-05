@@ -125,7 +125,7 @@ export async function PATCH(request: NextRequest) {
           await db.apiKeyPool.update({
             where: { id: availableKey.id },
             data: {
-              status: 'in_use',
+              status: 'assigned',
               assignedToCompanyId: company.id,
               assignedAt: new Date(),
             },
@@ -169,7 +169,7 @@ export async function PATCH(request: NextRequest) {
           companyId, 
           error: error instanceof Error ? error.message : 'Unknown error' 
         });
-        logger.error(`[BulkAIConfig] Error processing company ${companyId}:`, error);
+        logger.error(`[BulkAIConfig] Error processing company ${companyId}`, { err: error instanceof Error ? error.message : String(error) });
       }
     }
 
