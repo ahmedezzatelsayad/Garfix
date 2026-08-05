@@ -14,6 +14,7 @@ import { resolveAuth, hasPermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── Helper: Calculate next run date ─────────────────────────────────────────
 
@@ -50,6 +51,10 @@ function calculateNextRunDate(
 // ─── POST: Process all due entries ───────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-recurring-process-due — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-recurring-process-due", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // Authentication - require finance_access permission
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {

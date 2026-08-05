@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { verifyPayment } from "@/lib/accounting/local-payment-rails";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const VerifyPaymentSchema = z.object({
   companySlug: z.string().min(1),
@@ -15,6 +16,10 @@ const VerifyPaymentSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-verify-payment — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-verify-payment", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = VerifyPaymentSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "مدخلات غير صالحة", 400);

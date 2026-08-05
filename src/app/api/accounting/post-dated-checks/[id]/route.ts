@@ -10,6 +10,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -51,6 +52,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 // ── PATCH: Update post-dated check (status changes) ──────────────────────────────────
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/accounting-post-dated-checks-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-post-dated-checks-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const body = await parseJsonBody(req);
   const parsed = PatchSchema.safeParse(body);

@@ -17,6 +17,7 @@ import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET — fetch progress ───────────────────────────────────────────────────
 
@@ -69,6 +70,10 @@ const UpdateSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/onboarding — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:onboarding", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;

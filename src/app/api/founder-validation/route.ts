@@ -31,6 +31,7 @@ import {
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 // Mirrors the dedicated sub-routes so callers can use either URL shape.
 // ---------------------------------------------------------------------------
 export const POST = withErrorHandler(async (request: NextRequest) => {
+  // P5-H2: Rate limit POST /api/founder-validation — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:founder-validation", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // SEC-C12 (Cycle 4): close missing-auth — POST dispatches seed/report/ai-test
   // actions. Seed with count=25000 → memory exhaustion. ai-test → OpenRouter spend.
   const authResult = await requireFounder(request);

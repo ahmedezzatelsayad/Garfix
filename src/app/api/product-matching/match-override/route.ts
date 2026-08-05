@@ -29,6 +29,7 @@ import { recordMatchOverride } from "@/lib/productMatcher";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const OverrideSchema = z.object({
   companySlug: z.string().min(1),
@@ -41,6 +42,10 @@ const OverrideSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/product-matching-match-override — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:product-matching-match-override", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = OverrideSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid", 400);

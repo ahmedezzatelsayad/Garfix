@@ -12,10 +12,15 @@ import { generateFounderReport } from "@/lib/founder-validation";
 import { getCache } from "../seed/route";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
+  // P5-H2: Rate limit POST /api/founder-validation-report — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:founder-validation-report", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // SEC-C14 (Cycle 4): close missing-auth — exposes platform metrics shape and
   // bypasses the intended founder-only gating.
   const authResult = await requireFounder(request);

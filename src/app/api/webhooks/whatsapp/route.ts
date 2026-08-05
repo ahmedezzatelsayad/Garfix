@@ -29,6 +29,7 @@ import { dbTyped as db } from "@/lib/db";
 import { decryptSecret, hashToken, safeCompare, tryDecryptSecret } from "@/lib/cryptoVault";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // M4 FIX: Cache decrypted app secrets (TTL: 5 min) to avoid decrypting on every request
 const secretCache = new Map<string, { secret: string; expiresAt: number }>();
@@ -205,6 +206,10 @@ function extractMessages(body: unknown): Array<{
 }
 
 export async function POST(req: NextRequest) {
+  // P5-H2: Rate limit POST /api/webhooks-whatsapp — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:webhooks-whatsapp", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   try {
     // Read raw body for signature verification
     const rawBody = await req.text();

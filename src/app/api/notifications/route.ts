@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
@@ -25,6 +26,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/notifications — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:notifications", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;

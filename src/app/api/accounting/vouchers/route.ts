@@ -13,6 +13,7 @@ import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,10 @@ const CreateVoucherSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-vouchers — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-vouchers", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateVoucherSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

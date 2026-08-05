@@ -11,10 +11,15 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler } from "@/lib/api";
 import { preventPostingToClosedPeriod } from "@/lib/accounting/period-close";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/accounting-journal-entries-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-journal-entries-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const existing = await db.journalEntry.findUnique({
     where: { id },

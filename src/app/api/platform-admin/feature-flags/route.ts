@@ -10,6 +10,7 @@ import { requireFounder } from "@/lib/middleware";
 import { logAdminAction } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateSchema = z.object({
   key: z
@@ -46,6 +47,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/platform-admin-feature-flags — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:platform-admin-feature-flags", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const founderAccess = await requireFounder(req);
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;

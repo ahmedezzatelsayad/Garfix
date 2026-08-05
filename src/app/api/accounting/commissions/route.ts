@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { calculateSalesCommissions, postCommissionsJE } from "@/lib/accounting/commissions";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,10 @@ const PostCommissionsSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-commissions — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-commissions", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = PostCommissionsSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

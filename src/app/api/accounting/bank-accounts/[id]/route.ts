@@ -13,6 +13,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const UpdateSchema = z.object({
   companySlug: z.string().min(1),
@@ -66,6 +67,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // P5-H2: Rate limit PATCH /api/accounting-bank-accounts-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-bank-accounts-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     const { id } = await params;
     const body = await parseJsonBody(req);
@@ -129,6 +134,10 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // P5-H2: Rate limit DELETE /api/accounting-bank-accounts-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-bank-accounts-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     const { id } = await params;
 

@@ -11,6 +11,7 @@ import { num } from "@/lib/money";
 import { generateVATReturn, calculateZakat } from "@/lib/accounting/tax-compliance";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: List tax filings ────────────────────────────────────────────────────────
 
@@ -64,6 +65,10 @@ const ActionSchema = z.discriminatedUnion("action", [
 ]);
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-tax-filing — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-tax-filing", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = ActionSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input: must specify action as 'vat' or 'zakat'", 400);

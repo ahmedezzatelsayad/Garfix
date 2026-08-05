@@ -23,6 +23,7 @@ import { requireFounder } from '@/lib/middleware';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Schema ──────────────────────────────────────────────────
 
@@ -34,6 +35,10 @@ const BulkAIConfigSchema = z.object({
 // ── Handler ─────────────────────────────────────────────────
 
 export async function PATCH(request: NextRequest) {
+  // P5-H2: Rate limit PATCH /api/founder-panel-companies-bulk-ai-config — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "patch:founder-panel-companies-bulk-ai-config", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     // P0-03: Require founder authorization (not just any authenticated user).
     const founderAccess = await requireFounder(request);

@@ -22,6 +22,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const PaymentSchema = z.object({
   amount: z.union([z.number(), z.string()]),
@@ -39,6 +40,10 @@ const IDEMPOTENCY_ENDPOINT = "invoice-payment";
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/invoices-id-payment — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:invoices-id-payment", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const invoiceId = parseInt(id, 10);
   if (!Number.isInteger(invoiceId) || invoiceId <= 0) return apiError("Invalid invoice id", 400);

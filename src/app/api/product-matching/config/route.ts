@@ -25,6 +25,7 @@ import {
   type SignalFlags,
 } from "@/lib/productMatcher";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,10 @@ const ConfigUpdateSchema = z.object({
 });
 
 export const PUT = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PUT /api/product-matching-config — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "put:product-matching-config", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = ConfigUpdateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid", 400);

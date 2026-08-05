@@ -20,6 +20,7 @@ import { getProvider } from "@/lib/integrations";
 import { INTEGRATION_INFO } from "@/lib/integrations";
 import { logAdminAction } from "@/lib/audit";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── Schema ──────────────────────────────────────────────────────────────
 
@@ -302,6 +303,10 @@ async function testGeneric(type: string) {
 // ─── POST Handler ─────────────────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/platform-admin-integrations-test — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:platform-admin-integrations-test", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
   const user = authResult.user;

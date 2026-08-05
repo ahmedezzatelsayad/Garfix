@@ -15,6 +15,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── Validation Schemas ──────────────────────────────────────────────────────
 
@@ -138,6 +139,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ─── POST: Create new recurring entry ─────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-recurring — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-recurring", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateRecurringSchema.safeParse(body);
   

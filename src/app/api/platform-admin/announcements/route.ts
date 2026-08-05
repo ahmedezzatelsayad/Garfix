@@ -9,6 +9,7 @@ import { isFounderEmail } from "@/lib/founder";
 import { logAdminAction } from "@/lib/audit";
 import { withErrorHandler, parseJsonBody, parseJsonField, apiError } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateSchema = z.object({
   title: z.string().min(1),
@@ -72,6 +73,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/platform-admin-announcements — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:platform-admin-announcements", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isFounderEmail(result.user.email)) {

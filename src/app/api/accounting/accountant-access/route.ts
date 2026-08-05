@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { createExternalAccountantAccess, type AccountantAccessLevel } from "@/lib/accounting/accountant-collab";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,10 @@ const GrantSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-accountant-access — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-accountant-access", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = GrantSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
@@ -110,6 +115,10 @@ const RevokeSchema = z.object({
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit DELETE /api/accounting-accountant-access — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-accountant-access", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = RevokeSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

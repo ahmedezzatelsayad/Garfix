@@ -8,6 +8,7 @@ import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler, parseJsonBody, apiError } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateSchema = z.object({
   subject: z.string().min(1),
@@ -29,6 +30,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/platform-admin-tickets — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:platform-admin-tickets", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await parseJsonBody(req);

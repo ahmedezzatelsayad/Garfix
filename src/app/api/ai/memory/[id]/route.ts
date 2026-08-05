@@ -10,10 +10,15 @@ import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/ai-memory-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:ai-memory-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

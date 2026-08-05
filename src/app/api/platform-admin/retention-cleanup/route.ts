@@ -14,6 +14,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { getRetentionPeriodForCompany, KUWAIT_RETENTION_YEARS } from "@/lib/e-invoicing/retention";
 import { isKuwait } from "@/lib/gulfConfig";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const RequestSchema = z.object({
   confirmYears: z.number().int().min(1).max(30).optional(),
@@ -116,6 +117,10 @@ async function cleanupWithPerCompanyRetention(
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/platform-admin-retention-cleanup — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:platform-admin-retention-cleanup", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const founderResult = await requireFounder(req);
   if (founderResult instanceof NextResponse) return founderResult;
   const user = founderResult.user;

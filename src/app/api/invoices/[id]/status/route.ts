@@ -12,6 +12,7 @@ import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const StatusSchema = z.object({
   // SECURITY: `paid` and `partial` are intentionally excluded here. Those
@@ -27,6 +28,10 @@ const StatusSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/invoices-id-status — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:invoices-id-status", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "edit_invoice");

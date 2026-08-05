@@ -8,10 +8,15 @@ import { requirePermission, requirePermissionForCompany } from "@/lib/middleware
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/accounting-accounts-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-accounts-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "finance_access");

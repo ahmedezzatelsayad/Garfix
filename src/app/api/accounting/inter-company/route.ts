@@ -11,6 +11,7 @@ import { createInterCompanySettlement } from "@/lib/accounting/consolidation";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: List inter-company transactions ────────────────────────────────────────
 
@@ -52,6 +53,10 @@ const SettlementSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-inter-company — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-inter-company", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = SettlementSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

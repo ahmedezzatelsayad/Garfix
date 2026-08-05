@@ -13,6 +13,7 @@ import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,10 @@ const CreateQuotationSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-quotations — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-quotations", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateQuotationSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
@@ -168,6 +173,10 @@ const ConvertSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/accounting-quotations — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-quotations", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const sp = req.nextUrl.searchParams;
   const action = sp.get("action");
 

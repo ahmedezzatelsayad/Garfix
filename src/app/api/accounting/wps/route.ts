@@ -12,6 +12,7 @@ import { generateWpsFile } from "@/lib/accounting/payroll-wps";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const GenerateSchema = z.object({
   companySlug: z.string().min(1),
@@ -60,6 +61,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-wps — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-wps", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = GenerateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

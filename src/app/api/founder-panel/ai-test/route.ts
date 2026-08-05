@@ -22,6 +22,7 @@ import { resolveAuth } from '@/lib/auth';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -256,6 +257,10 @@ const DEFAULT_MODELS: Record<AIProvider, string> = {
 // ── API Route Handler ───────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  // P5-H2: Rate limit POST /api/founder-panel-ai-test — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:founder-panel-ai-test", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);

@@ -10,6 +10,7 @@ import { registerWebhook } from "@/lib/webhooks";
 import { logAudit } from "@/lib/audit";
 import { dbTyped as db } from "@/lib/db";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: List endpoints ──────────────────────────────────────────────────────
 
@@ -53,6 +54,10 @@ const RegisterEndpointSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/webhooks-endpoints — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:webhooks-endpoints", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

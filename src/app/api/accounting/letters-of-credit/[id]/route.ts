@@ -11,6 +11,7 @@ import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { amendLC, utilizeLC, cancelLC } from "@/lib/accounting/trade-finance";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const AmendLCSchema = z.object({
   companySlug: z.string().min(1),
@@ -71,6 +72,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // P5-H2: Rate limit PATCH /api/accounting-letters-of-credit-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-letters-of-credit-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     const { id } = await params;
     if (!id) return apiError("معرف الاعتماد المستندي غير صالح", 400);

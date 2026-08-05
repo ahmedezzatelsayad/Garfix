@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { apiError, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateUserSchema = z.object({
   email: z.string().email(),
@@ -61,6 +62,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/saas-users — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:saas-users", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (result.user.role !== "admin" && !isFounderEmail(result.user.email)) {

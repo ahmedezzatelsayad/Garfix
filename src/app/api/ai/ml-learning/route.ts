@@ -32,6 +32,7 @@ import {
   getConfig,
 } from "@/lib/ml/mlMatchingEngine";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -73,6 +74,10 @@ type MLRequest =
 // ─── Main Handler ────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  // P5-H2: Rate limit POST /api/ai-ml-learning — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:ai-ml-learning", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const startTime = Date.now();
   
   try {
@@ -403,6 +408,10 @@ function handleConfig(body: StatsRequest & { config?: Partial<Parameters<typeof 
  * This can be called via a cron job or startup script.
  */
 export async function PUT(request: NextRequest) {
+  // P5-H2: Rate limit PUT /api/ai-ml-learning — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "put:ai-ml-learning", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   try {
     const authResult = await resolveAuth(request);
     // Allow initialization without auth for system calls

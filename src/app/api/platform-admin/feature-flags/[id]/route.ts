@@ -10,6 +10,7 @@ import { requireFounder } from "@/lib/middleware";
 import { logAdminAction } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -27,6 +28,10 @@ const UpdateSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/platform-admin-feature-flags-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:platform-admin-feature-flags-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const founderAccess = await requireFounder(req);
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;
@@ -97,6 +102,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/platform-admin-feature-flags-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:platform-admin-feature-flags-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const founderAccess = await requireFounder(req);
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;

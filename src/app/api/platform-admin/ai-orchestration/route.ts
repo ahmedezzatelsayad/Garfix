@@ -16,6 +16,7 @@ import { withErrorHandler } from "@/lib/api";
 import { getRegistry } from "@/lib/ai/modelRegistry";
 import { getRoutingMatrix } from "@/lib/ai/smartRouter";
 import { getOptimizerStats, getEstimatedSavings } from "@/lib/ai/costOptimizer";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const authResult = await requireFounder(req);
@@ -106,6 +107,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
 /** PATCH — toggle a model's isEnabled flag (founder can disable a misbehaving model). */
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/platform-admin-ai-orchestration — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:platform-admin-ai-orchestration", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
 

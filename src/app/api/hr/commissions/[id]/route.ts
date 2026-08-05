@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -24,6 +25,10 @@ const UpdateSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/hr-commissions-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:hr-commissions-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "employee_management");
@@ -57,6 +62,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/hr-commissions-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:hr-commissions-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "employee_management");

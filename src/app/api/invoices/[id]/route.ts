@@ -16,6 +16,7 @@ import { applyKuwaitCompliance, formatKuwaitErrorsForResponse } from "@/lib/e-in
 import { checkInvoiceRetention } from "@/lib/e-invoicing/retention";
 import { isKuwait } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const UpdateSchema = z.object({
   invoiceNumber: z.string().min(1).optional(),
@@ -84,6 +85,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/invoices-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:invoices-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
   const access = await requirePermission(req, "edit_invoice");
@@ -201,6 +206,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/invoices-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:invoices-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
   const access = await requirePermission(req, "delete_invoice");

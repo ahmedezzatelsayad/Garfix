@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { consolidateGroup } from "@/lib/accounting/consolidation";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: Consolidated reports ───────────────────────────────────────────────────
 
@@ -43,6 +44,10 @@ const ConsolidateSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-consolidation — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-consolidation", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = ConsolidateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

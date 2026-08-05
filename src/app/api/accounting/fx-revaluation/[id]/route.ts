@@ -11,6 +11,7 @@ import { num, toNum } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { calculateFxRevaluation } from "@/lib/accounting/trade-finance";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const PatchFxRevSchema = z.object({
   companySlug: z.string().min(1),
@@ -68,6 +69,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // P5-H2: Rate limit PATCH /api/accounting-fx-revaluation-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-fx-revaluation-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     const { id } = await params;
     if (!id) return apiError("معرف إعادة التقييم غير صالح", 400);

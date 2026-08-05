@@ -12,6 +12,7 @@ import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,10 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/inventory-warehouses-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:inventory-warehouses-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "settings_access");
@@ -69,6 +74,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/inventory-warehouses-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:inventory-warehouses-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "settings_access");

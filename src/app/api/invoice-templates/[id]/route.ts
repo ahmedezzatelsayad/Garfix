@@ -10,6 +10,7 @@ import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const UpdateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -29,6 +30,10 @@ const UpdateSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/invoice-templates-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:invoice-templates-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "settings_access");
@@ -62,6 +67,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/invoice-templates-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:invoice-templates-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "settings_access");

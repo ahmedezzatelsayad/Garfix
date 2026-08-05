@@ -13,6 +13,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { syncInventoryOnPurchase } from "@/lib/inventorySync";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const ItemSchema = z.object({
   description: z.string().default(""),
@@ -59,6 +60,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/purchases — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:purchases", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

@@ -25,6 +25,7 @@ import { logger } from "@/lib/logger";
 import { getCountryPricing, getCountryCurrency } from "@/lib/billing/pricing";
 import { initiatePaymobPayment } from "@/lib/integrations/paymob";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const InitiateSchema = z.object({
   planKey: z.string().min(1),
@@ -60,6 +61,10 @@ async function callMyFatoorah(
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/saas-payments-initiate — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:saas-payments-initiate", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await resolveAuth(req);
   if (!authResult.ok || !authResult.user) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });

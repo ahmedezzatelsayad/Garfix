@@ -13,6 +13,7 @@ import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { z } from "zod";
 import { dbTyped as db } from "@/lib/db";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,10 @@ const PostJESchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-profit-distribution-id-post-as-journal-entry — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-profit-distribution-id-post-as-journal-entry", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id: periodId } = await params;
 
   const body = await parseJsonBody(req);

@@ -10,6 +10,7 @@ import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "
 import { logAudit } from "@/lib/audit";
 import { dbTyped as db } from "@/lib/db";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -46,6 +47,10 @@ const UpdateEndpointSchema = z.object({
 });
 
 export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
+  // P5-H2: Rate limit PUT /api/webhooks-endpoints-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "put:webhooks-endpoints-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -96,6 +101,10 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
 // ── DELETE: Delete endpoint ──────────────────────────────────────────────────
 
 export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
+  // P5-H2: Rate limit DELETE /api/webhooks-endpoints-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:webhooks-endpoints-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

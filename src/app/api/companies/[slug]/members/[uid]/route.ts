@@ -13,6 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { isFounderEmail } from "@/lib/founder";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ slug: string; uid: string }> };
 
@@ -32,6 +33,10 @@ function readPerms(raw: string | null | undefined): Record<string, number> {
 }
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/companies-slug-members-uid — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:companies-slug-members-uid", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { slug, uid } = await params;
   const access = await requirePermissionForCompany(req, "settings_access", slug);
   if ("error" in access) return access.error;
@@ -122,6 +127,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/companies-slug-members-uid — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:companies-slug-members-uid", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { slug, uid } = await params;
   const access = await requirePermissionForCompany(req, "settings_access", slug);
   if ("error" in access) return access.error;

@@ -14,6 +14,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── Validation Schema ───────────────────────────────────────────────────────
 
@@ -75,6 +76,10 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
 // ─── PUT: Update recurring entry ─────────────────────────────────────────────
 
 export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
+  // P5-H2: Rate limit PUT /api/accounting-recurring-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "put:accounting-recurring-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await ctx.params;
   const body = await parseJsonBody(req);
   const parsed = UpdateRecurringSchema.safeParse(body);
@@ -160,6 +165,10 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
 // ─── DELETE: Deactivate recurring entry ──────────────────────────────────────
 
 export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
+  // P5-H2: Rate limit DELETE /api/accounting-recurring-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-recurring-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await ctx.params;
   
   const existing = await db.recurringJournalEntry.findUnique({ where: { id } });

@@ -12,10 +12,15 @@ import { callOpenRouter } from "@/lib/founder-validation";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
+  // P5-H2: Rate limit POST /api/founder-validation-ai-test — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:founder-validation-ai-test", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // SEC-C15 (Cycle 4): close missing-auth — unauthenticated callers could drain
   // the platform's OPENROUTER_API_KEY quota on demand.
   const authResult = await requireFounder(request);

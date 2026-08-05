@@ -10,6 +10,7 @@ import { postCommissionsJE } from "@/lib/accounting/commissions";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -18,6 +19,10 @@ const PostJESchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-commissions-id-post-as-journal-entry — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-commissions-id-post-as-journal-entry", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const commissionId = id;
 

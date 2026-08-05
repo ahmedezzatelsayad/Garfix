@@ -13,6 +13,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { DEFAULT_PLANS } from "@/lib/plans";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateSchema = z.object({
   name: z.string().min(1, "اسم الشركة مطلوب"),
@@ -95,6 +96,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/companies — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:companies", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // Authorization: enforce settings_access for creating ADDITIONAL companies,
   // but allow any authenticated user to create their FIRST company (onboarding).
   // Without this exception, fresh `employee` users could never complete the

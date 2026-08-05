@@ -11,10 +11,15 @@ import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { closeFiscalPeriod } from "@/lib/accounting/period-close";
 import { apiError, withErrorHandler, apiOk } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-fiscal-periods-id-close — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-fiscal-periods-id-close", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const companySlug = req.nextUrl.searchParams.get("companySlug");
   if (!companySlug) return apiError("companySlug مطلوب", 400);

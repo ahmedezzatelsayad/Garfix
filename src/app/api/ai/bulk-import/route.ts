@@ -24,6 +24,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { syncInventoryOnSale } from "@/lib/inventorySync";
 import { checkTrialExpiry, checkInvoiceQuota } from "@/lib/usageMeter";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const ItemSchema = z.object({
   name: z.string().min(1),
@@ -50,6 +51,10 @@ const RequestSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/ai-bulk-import — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:ai-bulk-import", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = RequestSchema.safeParse(body);
   if (!parsed.success) {

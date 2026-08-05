@@ -10,6 +10,7 @@ import { isFounderEmail } from "@/lib/founder";
 import { logAdminAction } from "@/lib/audit";
 import { withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { DEFAULT_PLANS } from "@/lib/plans";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const PUBLIC_SETTINGS = new Set([
   "plans.catalog",
@@ -51,6 +52,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/settings — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:settings", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isFounderEmail(result.user.email)) {

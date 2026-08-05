@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { cancelVoucher } from "@/lib/accounting/vouchers";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -18,6 +19,10 @@ const CancelSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-vouchers-id-cancel — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-vouchers-id-cancel", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id: voucherId } = await params;
 
   const body = await parseJsonBody(req);

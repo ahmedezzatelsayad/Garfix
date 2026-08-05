@@ -12,6 +12,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { scheduleInstallments } from "@/lib/accounting/ar-ap";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ── POST: Create installment schedule ──────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-installments — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-installments", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

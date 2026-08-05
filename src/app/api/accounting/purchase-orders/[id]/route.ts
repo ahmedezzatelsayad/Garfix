@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -57,6 +58,10 @@ const PatchPOSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/accounting-purchase-orders-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-purchase-orders-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id: poId } = await params;
 
   const body = await parseJsonBody(req);

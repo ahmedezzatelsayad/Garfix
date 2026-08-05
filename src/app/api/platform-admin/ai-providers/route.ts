@@ -16,6 +16,7 @@ import { logAdminAction } from "@/lib/audit";
 import { withErrorHandler, parseJsonBody, apiError } from "@/lib/api";
 import { validateBaseUrl } from "@/lib/ssrf";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const authResult = await requireFounder(req);
@@ -61,6 +62,10 @@ const UpdateSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/platform-admin-ai-providers — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:platform-admin-ai-providers", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
   const user = authResult.user;

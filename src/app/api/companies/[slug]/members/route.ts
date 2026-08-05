@@ -15,6 +15,7 @@ import { isFounderEmail } from "@/lib/founder";
 import { randomUUID, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -66,6 +67,10 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/companies-slug-members — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:companies-slug-members", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { slug } = await params;
   const access = await requirePermissionForCompany(req, "settings_access", slug);
   if ("error" in access) return access.error;

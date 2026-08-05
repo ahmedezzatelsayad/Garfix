@@ -12,6 +12,7 @@ import { numberToArabicText, type SupportedCurrency } from "@/lib/accounting/ara
 import { num } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -80,6 +81,10 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/accounting-vouchers-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-vouchers-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // Note (P2): PaymentVoucher.id is String cuid — pass `id` directly
   // (no parseInt). Legacy `db: any` hid the type mismatch.
   const { id: voucherId } = await params;

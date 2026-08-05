@@ -8,6 +8,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -18,6 +19,10 @@ const MatchSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-bank-reconciliation-id-match — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-bank-reconciliation-id-match", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const reconId = id;
 

@@ -16,6 +16,7 @@ import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logger } from "@/lib/logger";
 import { withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const result = await resolveAuth(req);
@@ -29,6 +30,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/backups — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:backups", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isFounderEmail(result.user.email)) {

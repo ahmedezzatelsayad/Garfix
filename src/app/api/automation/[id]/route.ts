@@ -11,6 +11,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -38,6 +39,10 @@ async function loadRule(id: string, companySlug?: string) {
 
 // ─── PATCH ─────────────────────────────────────────────────────────────────
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/automation-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:automation-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const ruleId = id;
   if (!ruleId) return apiError("Invalid rule id", 400);
@@ -99,6 +104,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 
 // ─── DELETE ────────────────────────────────────────────────────────────────
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/automation-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:automation-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const ruleId = id;
   if (!ruleId) return apiError("Invalid rule id", 400);

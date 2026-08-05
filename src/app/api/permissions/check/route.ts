@@ -9,8 +9,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk } from "@/lib/api";
 import { checkPermission, PermissionScope, getEffectivePermissions, validatePermissionChange } from "@/lib/rbac";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/permissions-check — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:permissions-check", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

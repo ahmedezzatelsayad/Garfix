@@ -23,6 +23,7 @@ import {
   PermissionLevel,
 } from "@/lib/rbac";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: List all roles ──────────────────────────────────────────────────────
 
@@ -77,6 +78,10 @@ const CreateRoleSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/permissions-roles — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:permissions-roles", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -146,6 +151,10 @@ const UpdateRoleSchema = z.object({
 });
 
 export const PUT = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PUT /api/permissions-roles — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "put:permissions-roles", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -186,6 +195,10 @@ const DeleteRoleSchema = z.object({
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit DELETE /api/permissions-roles — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:permissions-roles", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

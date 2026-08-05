@@ -10,6 +10,7 @@ import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ uid: string }> };
 
@@ -22,6 +23,10 @@ const UpdateSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/saas-users-uid — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:saas-users-uid", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { uid } = await params;
   // P3.2 (Cycle 5): omit passwordHash — PATCH only reads identity + role +
   // companies fields (never authenticates the user).
@@ -155,6 +160,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 });
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/saas-users-uid — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:saas-users-uid", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const founderAccess = await requireFounder(req);
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;

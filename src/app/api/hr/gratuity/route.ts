@@ -13,6 +13,7 @@ import { calculateGratuity, isEligibleForGratuity } from "@/lib/gratuity";
 import { num } from "@/lib/money";
 import { withErrorHandler, apiError, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const Schema = z.object({
   companySlug: z.string().min(1),
@@ -21,6 +22,10 @@ const Schema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/hr-gratuity — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:hr-gratuity", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = Schema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

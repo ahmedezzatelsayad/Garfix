@@ -9,6 +9,7 @@ import { withErrorHandler, apiError, parseJsonBody } from "@/lib/api";
 import { runInventoryValuation, calculateCOGS, type CostingMethod } from "@/lib/accounting/inventory-costing";
 import { num } from "@/lib/money";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: Inventory valuation report ────────────────────────────────────────────
 
@@ -37,6 +38,10 @@ const CalculateCOGSSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-inventory-valuation — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-inventory-valuation", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CalculateCOGSSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

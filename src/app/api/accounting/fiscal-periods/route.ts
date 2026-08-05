@@ -14,6 +14,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { closeFiscalPeriod, reopenFiscalPeriod } from "@/lib/accounting/period-close";
 import { resolveCompanyId } from "@/lib/company-resolver";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ── POST: Create fiscal period ──────────────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-fiscal-periods — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-fiscal-periods", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
@@ -135,6 +140,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 // ── PATCH /close: Close a fiscal period ──────────────────────────────────────────────
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/accounting-fiscal-periods — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-fiscal-periods", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const action = req.nextUrl.searchParams.get("action");
 

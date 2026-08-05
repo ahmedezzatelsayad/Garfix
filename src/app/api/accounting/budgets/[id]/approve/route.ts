@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -17,6 +18,10 @@ const ApproveSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-budgets-id-approve — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-budgets-id-approve", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const budgetId = id;
 

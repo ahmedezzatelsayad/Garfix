@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, getQuery } from "@/lib/api";
 import { dbTyped as db } from "@/lib/db";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── GET: Delivery history ────────────────────────────────────────────────────
 
@@ -64,6 +65,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 // ── POST: Retry failed delivery ─────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/webhooks-deliveries — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:webhooks-deliveries", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

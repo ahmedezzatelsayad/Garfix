@@ -17,6 +17,7 @@ import {
 } from "@/lib/founder-validation";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ export function getCache() {
 }
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
+  // P5-H2: Rate limit POST /api/founder-validation-seed — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:founder-validation-seed", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   // SEC-C13 (Cycle 4): close missing-auth — unauthenticated caller could seed
   // up to 25,000 synthetic companies into the in-process cache, exhausting Node memory.
   const authResult = await requireFounder(request);

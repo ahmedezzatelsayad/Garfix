@@ -8,6 +8,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,10 @@ const PatchSchema = z.object({
 // ── PATCH: Update cost center ────────────────────────────────────────────────────
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit PATCH /api/accounting-cost-centers-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-cost-centers-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const body = await parseJsonBody(req);
   const parsed = PatchSchema.safeParse(body);
@@ -84,6 +89,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 // ── DELETE: Delete cost center ────────────────────────────────────────────────────
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit DELETE /api/accounting-cost-centers-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-cost-centers-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   const companySlug = req.nextUrl.searchParams.get("companySlug");
   if (!companySlug) return apiError("companySlug مطلوب", 400);

@@ -13,6 +13,7 @@ import { getCountryConfig } from "@/lib/gulfConfig";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const PayrollSchema = z.object({
   companySlug: z.string().min(1),
@@ -95,6 +96,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-payroll — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-payroll", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const body = await parseJsonBody(req);
   const parsed = PayrollSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

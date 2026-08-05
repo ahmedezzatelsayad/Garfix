@@ -10,6 +10,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -19,6 +20,10 @@ const RevokeSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-accountant-access-id-revoke — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-accountant-access-id-revoke", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // The id parameter is the role identifier; we also accept accountantEmail in body
   const body = await parseJsonBody(req);

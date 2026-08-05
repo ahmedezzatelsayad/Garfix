@@ -9,10 +9,15 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
+  // P5-H2: Rate limit POST /api/accounting-journal-entries-id-reverse — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-journal-entries-id-reverse", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await params;
   // SEC FIX: require companySlug to prevent IDOR
   const companySlug = req.nextUrl.searchParams.get("companySlug");

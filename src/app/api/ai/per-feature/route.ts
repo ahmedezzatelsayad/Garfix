@@ -30,6 +30,7 @@ import {
 } from '@/lib/ai/per-feature-router';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Helper Functions ────────────────────────────────────────
 
@@ -84,6 +85,10 @@ async function getCompanyId(request: NextRequest): Promise<{ companyId: string; 
  * Main entry point for per-feature AI requests
  */
 export async function POST(request: NextRequest) {
+  // P5-H2: Rate limit POST /api/ai-per-feature — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:ai-per-feature", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     // Authenticate and get company
     const { companyId, error } = await getCompanyId(request);

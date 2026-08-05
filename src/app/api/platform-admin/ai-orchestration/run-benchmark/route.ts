@@ -18,6 +18,7 @@ import { withErrorHandler } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getRegistry, recordBenchmarkResult, type AICapability } from "@/lib/ai/modelRegistry";
 import { getAiProviders, callSingleProvider, type AiProviderConfig } from "@/lib/aiProvider";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // Benchmark hits the DB (modelRegistry / recordBenchmarkResult → Prisma) and the
 // Node-only AI provider client. Pin to Node.js runtime so Turbopack does not
@@ -89,6 +90,10 @@ const CASES: BenchmarkCase[] = [
 ];
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/platform-admin-ai-orchestration-run-benchmark — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:platform-admin-ai-orchestration-run-benchmark", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
 

@@ -15,6 +15,7 @@ import "@/lib/integrations"; // side-effect: registers providers
 import { INTEGRATION_INFO, getProvider } from "@/lib/integrations";
 import { setIntegrationConfig, disconnectIntegration } from "@/lib/integrations/registry";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET: list integrations + status ──────────────────────────────────────
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -58,6 +59,10 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/platform-admin-integrations — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:platform-admin-integrations", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
   const user = authResult.user;

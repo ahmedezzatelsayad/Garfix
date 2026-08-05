@@ -9,11 +9,16 @@ import { dbTyped as db } from '@/lib/db';
 import { requireFounder } from '@/lib/middleware';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // P5-H2: Rate limit DELETE /api/founder-panel-api-key-pool-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "delete:founder-panel-api-key-pool-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     // P0-03: Require founder authorization (not just any authenticated user).
     const founderAccess = await requireFounder(request);

@@ -14,6 +14,7 @@ import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 import { resolveCompanyId } from "@/lib/company-resolver";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,10 @@ const CreateOBSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/accounting-opening-balances — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-opening-balances", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const sp = req.nextUrl.searchParams;
   const action = sp.get("action");
 

@@ -32,6 +32,7 @@ import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/audit';
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -360,6 +361,10 @@ export async function GET(request: NextRequest) {
  * Only founders can modify this
  */
 export async function PUT(request: NextRequest) {
+  // P5-H2: Rate limit PUT /api/founder-panel-ai-config — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "put:founder-panel-ai-config", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);
@@ -479,6 +484,10 @@ export async function PUT(request: NextRequest) {
  * Test an API connection for a specific feature before saving
  */
 export async function POST(request: NextRequest) {
+  // P5-H2: Rate limit POST /api/founder-panel-ai-config — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(request, "post:founder-panel-ai-config", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   return withErrorHandler(async () => {
     // Authenticate
     const auth = await resolveAuth(request);

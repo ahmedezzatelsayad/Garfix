@@ -14,6 +14,7 @@ import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler, parseJsonBody, apiError, parseJsonField } from "@/lib/api";
 import { z } from "zod";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const authResult = await requireFounder(req);
@@ -46,6 +47,10 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit PATCH /api/platform-admin-landing-content — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:platform-admin-landing-content", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
   const user = authResult.user;

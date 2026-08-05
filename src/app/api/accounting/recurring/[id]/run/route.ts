@@ -11,6 +11,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -51,6 +52,10 @@ function calculateNextRunDate(
 // ─── POST: Manual trigger ────────────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
+  // P5-H2: Rate limit POST /api/accounting-recurring-id-run — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:accounting-recurring-id-run", LIMITS.API_WRITE);
+  if (rl) return rl;
+
   const { id } = await ctx.params;
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
