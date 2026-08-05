@@ -3,7 +3,7 @@
  * POST — approve a budget
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -18,7 +18,7 @@ const ApproveSchema = z.object({
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const budgetId = parseInt(id);
+  const budgetId = id;
 
   const body = await parseJsonBody(req);
   const parsed = ApproveSchema.safeParse(body);

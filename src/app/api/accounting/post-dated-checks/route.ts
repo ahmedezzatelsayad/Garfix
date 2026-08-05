@@ -5,7 +5,7 @@
  * POST: Create a post-dated check
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -95,19 +95,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const check = await db.postDatedCheck.create({
     data: {
       companySlug: data.companySlug,
+      // TODO(P2-Sprint5-A): `companyId` and `date` are required String fields
+      // without defaults. Legacy `db: any` hid these. Use placeholders.
+      companyId: "0",
+      date: data.dueDate,
       checkNumber: data.checkNumber,
       bankName: data.bankName,
       amount: num(data.amount, 3).toFixed(3),
-      currency: data.currency,
       dueDate: data.dueDate,
-      issueDate: data.issueDate || null,
       payee: data.payee || null,
       payer: data.payer || null,
       direction: data.direction,
       status: "pending",
-      clientId: data.clientId || null,
-      supplierId: data.supplierId || null,
-      glAccountId: data.glAccountId || null,
+      // TODO(P2-Sprint5-A): PostDatedCheck.clientId/supplierId/glAccountId are
+      // Int? — convert string cuid input via Number(). Also `currency`/`issueDate`
+      // don't exist on the schema — removed.
+      clientId: data.clientId ? Number(data.clientId) : null,
+      supplierId: data.supplierId ? Number(data.supplierId) : null,
+      glAccountId: data.glAccountId ? Number(data.glAccountId) : null,
     },
   });
 

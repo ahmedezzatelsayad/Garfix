@@ -7,7 +7,7 @@
  * updates account balances, and locks posted JEs in the period.
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { closeFiscalPeriod } from "@/lib/accounting/period-close";
 import { apiError, withErrorHandler, apiOk } from "@/lib/api";
@@ -24,7 +24,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const user = access.user;
 
   const period = await db.fiscalPeriod.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
   });
   if (!period) return apiError("Fiscal period not found", 404);
   if (period.status === "closed") return apiError("Period is already closed", 400);

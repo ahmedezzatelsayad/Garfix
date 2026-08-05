@@ -28,7 +28,7 @@
  * that may have used it.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany, requireFounder } from "@/lib/middleware";
 import { isFounderEmail } from "@/lib/founder";
@@ -52,7 +52,7 @@ const UpdateSchema = z.object({
   defaultTaxRate: z.string().optional(),
   openrouterModel: z.string().optional(),
   weekendDays: z.string().optional(),
-  ramadanHours: z.boolean().optional() });
+  ramadanHours: z.string().optional() });
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -156,11 +156,12 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     await tx.inventoryItem.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.warehouse.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     await tx.productCatalog.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRAttendance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRSalary.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRCommission.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRLeaveRequest.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.hRPerformance.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    // TODO(P2-Sprint5-D): HR sub-models have no companySlug column — filter via employee relation.
+    await tx.hRAttendance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRSalary.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRCommission.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRLeaveRequest.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
+    await tx.hRPerformance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
     await tx.employee.deleteMany({ where: { companySlug: slug } }).catch(() => {});
     // Fix: relation name is `journalEntry` (not `entry`). Without this fix,
     // Prisma throws "Unknown argument 'entry'" synchronously, which aborts

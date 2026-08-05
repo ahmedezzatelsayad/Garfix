@@ -89,12 +89,9 @@ const nextConfig: NextConfig = {
   },
   // turbopack disabled temporarily - use webpack for compatibility
   // turbopack: { root: __dirname },
-  // All 274 TS errors resolved (commit cbc244d) — type checking re-enabled.
+  // Type checking is enabled by default (Next.js default behavior).
   // If new type errors are introduced, `next build` will fail loudly instead
   // of silently shipping broken types to production.
-  typescript: {
-    ignoreBuildErrors: false,
-  },
 };
 
 export default nextConfig;

@@ -42,7 +42,7 @@ import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun
 // We deliberately do NOT call mock.module("@/lib/db", …) here — that would
 // replace the db export globally and break productMatcher.test.ts (whose
 // dbMock supplies the productAlias fixture data its tests depend on).
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { invalidateKillSwitchCache } from "@/lib/productMatcher";
 
 // Import the sync entrypoints AFTER the db import is resolved.

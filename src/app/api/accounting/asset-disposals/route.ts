@@ -3,7 +3,7 @@
  * GET — list asset disposals for company (FixedAssets with disposal records)
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, apiOk } from "@/lib/api";
@@ -31,11 +31,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       disposalDate: { not: null },
     },
     orderBy: { disposalDate: "desc" },
-    include: {
-      glAccount: { select: { id: true, code: true, nameAr: true } },
-      depreciationAccount: { select: { id: true, code: true, nameAr: true } },
-      expenseAccount: { select: { id: true, code: true, nameAr: true } },
-    },
+    // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
+    // `expenseAccount` relations — only scalar `*AccountId: Int?` columns.
+    // The legacy `db: any` hid the missing include. Removed.
   });
 
   return apiOk({
@@ -47,7 +45,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       acquisitionDate: d.acquisitionDate,
       acquisitionCost: num(d.acquisitionCost, 3),
       disposalDate: d.disposalDate,
-      disposalType: d.disposalType,
+      // TODO(P2-Sprint5-A): schema column is `disposalMethod` (not `disposalType`).
+      disposalType: d.disposalMethod,
       disposalAmount: num(d.disposalAmount ?? "0", 3),
       accumulatedDepreciation: num(d.accumulatedDepreciation, 3),
       currentBookValue: num(d.currentBookValue, 3),

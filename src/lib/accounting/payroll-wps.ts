@@ -5,7 +5,7 @@
  * Phase 4 of the GarfiX ERP accounting module.
  * All monetary values as String (no Float), using num() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { num, addNums, subNums, mulNums } from "@/lib/money";
 import { getCountryConfig, getCurrencyDecimalPlaces } from "@/lib/gulfConfig";
@@ -16,26 +16,25 @@ import { calculateGratuity } from "@/lib/gratuity";
 // ────────────────────────────────────────────────────────────────────────────
 
 interface EmployeeForPayroll {
-  id: number;
+  // P2-Sprint5-B2: Employee.id is String cuid (was number); baseSalary is String
+  // column (was Prisma.Decimal). Removed allowances/endDate/nationality/
+  // residenceExpiry/passportNumber (not in Employee schema). civilId/bankAccount
+  // kept optional — WPS generators fall back to "UNKNOWN"/"" when absent.
+  id: string;
   name: string;
   nameEn: string | null;
   phone: string | null;
   email: string | null;
   position: string | null;
   department: string | null;
-  baseSalary: Prisma.Decimal;
-  allowances: Prisma.Decimal;
+  baseSalary: string;
   currency: string;
   joinDate: string | null;
-  endDate: string | null;
   isActive: boolean;
   notes: string | null;
-  civilId: string | null;
-  nationality: string | null;
-  residenceExpiry: string | null;
-  passportNumber: string | null;
-  bankAccount: string | null;
   companySlug: string;
+  civilId?: string | null;
+  bankAccount?: string | null;
 }
 
 interface SalaryForPayroll {
@@ -200,7 +199,8 @@ export interface NetSalaryResult {
  *   + overtime/bonus
  */
 export async function calculateNetSalary(
-  employeeId: number,
+  // P2-Sprint5-B2: Employee.id is String cuid — accept string.
+  employeeId: string,
   country: string,
   month: string,
 ): Promise<NetSalaryResult> {
@@ -214,7 +214,8 @@ export async function calculateNetSalary(
   const decimals = config?.currencyDecimalPlaces ?? 3;
 
   const basicSalary = num(employee.baseSalary, decimals);
-  const totalAllowances = num(employee.allowances, decimals);
+  // P2-Sprint5-B2: Employee schema has no `allowances` column — treat as 0.
+  const totalAllowances = 0;
 
   // Split allowances: housing (40%), transport (15%), other (45%) — typical Gulf split
   const housingAllowance = num(totalAllowances * 0.4, decimals);
@@ -222,26 +223,27 @@ export async function calculateNetSalary(
   const otherAllowances = num(totalAllowances - housingAllowance - transportAllowance, decimals);
 
   // Get salary record for the month
+  // P2-Sprint5-B2: HRSalary has no `companySlug` column — filter via Employee relation.
   const salaryRecord = await db.hRSalary.findFirst({
-    where: { employeeId, month, companySlug: employee.companySlug },
+    where: { employeeId, month, employee: { companySlug: employee.companySlug } },
   });
 
   // Get unpaid commissions for the month
+  // P2-Sprint5-B2: HRCommission has no `companySlug`/`date`/`isPaid` columns —
+  // filter via Employee relation; use `period` (== month) and `status: "draft"`.
   const commissions = await db.hRCommission.findMany({
     where: {
       employeeId,
-      companySlug: employee.companySlug,
-      date: { startsWith: `${month}` },
-      isPaid: false,
+      employee: { companySlug: employee.companySlug },
+      period: month,
+      status: "draft",
     },
   });
 
   // Overtime and bonus
   let overtime = 0;
   let bonus = 0;
-  if (salaryRecord) {
-    bonus = num(salaryRecord.bonus, decimals);
-  }
+  // P2-Sprint5-B2: HRSalary has no `bonus` column — bonus stays 0 (commissions added below).
   for (const comm of commissions) {
     bonus += num(comm.amount, decimals);
   }
@@ -250,7 +252,8 @@ export async function calculateNetSalary(
 
   // Social insurance
   const socialInsurance = calculateSocialInsurance(
-    { baseSalary: employee.baseSalary.toString(), allowances: employee.allowances.toString() },
+    // P2-Sprint5-B2: Employee has no `allowances` — pass "0".
+    { baseSalary: employee.baseSalary.toString(), allowances: "0" },
     country,
   );
 
@@ -258,10 +261,8 @@ export async function calculateNetSalary(
   let leaveDeductions = 0;
 
   // Salary advances (from existing deductions)
+  // P2-Sprint5-B2: HRSalary has no `deductions` column — advances stays 0.
   let advances = 0;
-  if (salaryRecord) {
-    advances = num(salaryRecord.deductions, decimals);
-  }
 
   const totalDeductions = num(
     num(socialInsurance.employeePortion, decimals) + leaveDeductions + advances,
@@ -379,14 +380,14 @@ export async function generateWpsFile(
   }
 
   // Create or update WpsFile record
-  const existingFile = await db.wpsFile.findUnique({
-    where: {
-      companySlug_country_month: { companySlug, country, month },
-    },
+  // P2-Sprint5-B2: Prisma client accessor is `wPSFile` (not `wpsFile`).
+  // WPSFile has no @@unique on (companySlug,country,month) — use findFirst.
+  const existingFile = await db.wPSFile.findFirst({
+    where: { companySlug, country, month },
   });
 
   if (existingFile) {
-    await db.wpsFile.update({
+    await db.wPSFile.update({
       where: { id: existingFile.id },
       data: {
         fileName,
@@ -397,7 +398,7 @@ export async function generateWpsFile(
       },
     });
   } else {
-    await db.wpsFile.create({
+    await db.wPSFile.create({
       data: {
         companySlug,
         country,
@@ -407,6 +408,8 @@ export async function generateWpsFile(
         totalEmployees: employees.length,
         totalAmount: num(totalAmount, decimals).toFixed(decimals),
         status: "draft",
+        // P2-Sprint5-B2: WPSFile.updatedAt has no @default/@updatedAt — provide explicitly.
+        updatedAt: new Date(),
       },
     });
   }

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { getOrCreateRuntime, scaleWorkers, getActiveWorkerCounts, __setResourcePctForTesting } from "@/lib/ai-fabric/worker-scaler";
 import { scheduleNextJob, getAllocationMap, requestSlot, __resetActiveSlugs } from "@/lib/ai-fabric/scheduler";
 import { recordSpend, getBudgetStatus, checkBudgetGate, forecastMonthlySpend, __resetAlertTracking } from "@/lib/ai-fabric/budget-engine";

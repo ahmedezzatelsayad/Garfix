@@ -4,7 +4,7 @@
  * PATCH — update asset, or dispose asset
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -45,11 +45,10 @@ export async function GET(
     if ("error" in access) return access.error;
     const user = access.user;
     const asset = await db.fixedAsset.findUnique({
-      where: { id: parseInt(id, 10) },
+      where: { id },
       include: {
-        glAccount: { select: { id: true, code: true, nameAr: true } },
-        depreciationAccount: { select: { id: true, code: true, nameAr: true } },
-        expenseAccount: { select: { id: true, code: true, nameAr: true } },
+        // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
+        // `expenseAccount` relations — only scalar `*AccountId: Int?`. Removed.
         depreciationEntries: {
           orderBy: { period: "desc" },
           take: 12,
@@ -83,7 +82,10 @@ export async function PATCH(
 ) {
   return withErrorHandler(async () => {
     const { id } = await params;
-    const assetId = parseInt(id, 10);
+    // TODO(P2-Sprint5-A): FixedAsset.id is String cuid — pass directly.
+    // disposeAsset() expects `assetId: string` (migrated in lib). Legacy
+    // `db: any` + Number() produced NaN for cuids.
+    const assetId = id;
     const body = await parseJsonBody(req) as Record<string, unknown> | null;
 
     // Check if this is a dispose action
@@ -139,7 +141,7 @@ export async function PATCH(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    const existing = await db.fixedAsset.findFirst({ where: { id: assetId, companySlug: data.companySlug } });
+    const existing = await db.fixedAsset.findFirst({ where: { id, companySlug: data.companySlug } });
     if (!existing) return apiError("Fixed asset not found", 404);
 
     // Validate GL accounts if updating
@@ -148,11 +150,13 @@ export async function PATCH(
       if (!gl) return apiError("GL account does not belong to this company", 400);
     }
     if (data.depreciationAccountId) {
-      const dep = await db.account.findFirst({ where: { id: data.depreciationAccountId, companySlug: data.companySlug } });
+      // TODO(P2-Sprint5-A): Account.id is String cuid — convert number input.
+      const dep = await db.account.findFirst({ where: { id: String(data.depreciationAccountId), companySlug: data.companySlug } });
       if (!dep) return apiError("Depreciation account does not belong to this company", 400);
     }
     if (data.expenseAccountId) {
-      const exp = await db.account.findFirst({ where: { id: data.expenseAccountId, companySlug: data.companySlug } });
+      // TODO(P2-Sprint5-A): Account.id is String cuid — convert number input.
+      const exp = await db.account.findFirst({ where: { id: String(data.expenseAccountId), companySlug: data.companySlug } });
       if (!exp) return apiError("Expense account does not belong to this company", 400);
     }
 
@@ -167,13 +171,10 @@ export async function PATCH(
     if (data.expenseAccountId !== undefined) updateData.expenseAccountId = data.expenseAccountId || null;
 
     const asset = await db.fixedAsset.update({
-      where: { id: assetId },
+      where: { id },
       data: updateData,
-      include: {
-        glAccount: { select: { id: true, code: true, nameAr: true } },
-        depreciationAccount: { select: { id: true, code: true, nameAr: true } },
-        expenseAccount: { select: { id: true, code: true, nameAr: true } },
-      },
+      // TODO(P2-Sprint5-A): FixedAsset has no `glAccount`/`depreciationAccount`/
+      // `expenseAccount` relations — only scalar `*AccountId: Int?`. Removed.
     });
 
     await logAudit({

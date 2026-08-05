@@ -26,7 +26,7 @@ import {
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -126,7 +126,7 @@ export interface OmanTaxLineItemPayload {
 
 export interface OmanTaxSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: "pending" | "submitted" | "approved" | "rejected";
   omanTaxSubmissionId?: string;
   error?: string;
@@ -599,6 +599,9 @@ export async function submitOmanTaxInvoice(
         rawXml: JSON.stringify(payload),
         companySlug: payload.sellerNameAr, // Temporary — should use actual companySlug
         invoiceId: 0, // Placeholder — should link to actual invoice
+        invoiceNumber: payload.invoiceNumber,
+        authority: OMAN_TAX_AUTHORITY,
+        status: "pending",
       },
     });
 

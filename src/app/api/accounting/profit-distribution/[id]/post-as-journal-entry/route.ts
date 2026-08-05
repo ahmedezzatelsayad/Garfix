@@ -12,7 +12,7 @@ import { calculateProfitDistribution, postProfitDistributionJE } from "@/lib/acc
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -21,8 +21,7 @@ const PostJESchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const periodId = parseInt(id);
+  const { id: periodId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = PostJESchema.safeParse(body);
@@ -40,7 +39,13 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if (!period) return apiError("Fiscal period not found", 404);
 
   // Calculate profit distribution for this period
-  const distribution = await calculateProfitDistribution(data.companySlug, period.startDate, period.endDate);
+  // TODO(P2-Sprint5-A): calculateProfitDistribution expects string dates;
+  // FiscalPeriod.startDate/endDate are DateTime — convert via toISOString.
+  const distribution = await calculateProfitDistribution(
+    data.companySlug,
+    new Date(period.startDate).toISOString(),
+    new Date(period.endDate).toISOString(),
+  );
 
   if (distribution.partners.length === 0) {
     return apiError("No partner capital accounts found for profit distribution", 400);

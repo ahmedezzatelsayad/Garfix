@@ -4,7 +4,7 @@
  * POST: Create LC
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -60,9 +60,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       issueDate: lc.issueDate,
       expiryDate: lc.expiryDate,
       status: lc.status,
-      utilizationAmount: num(lc.utilizationAmount, 3),
-      documentsRequired: parseJsonField<string[]>(lc.documentsRequired, []),
-      notes: lc.notes,
+      // TODO(P2-Sprint5-A): LetterOfCredit has no `utilizationAmount`/
+      // `documentsRequired`/`notes` — only `description`. Legacy `db: any`
+      // hid these missing accesses.
+      utilizationAmount: 0,
+      documentsRequired: [],
+      notes: lc.description ?? '',
       createdAt: lc.createdAt,
       updatedAt: lc.updatedAt,
     })),

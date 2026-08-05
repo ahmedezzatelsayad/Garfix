@@ -14,7 +14,7 @@
  * Returns: { created: Invoice[], errors: Array<{ order, error }> }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { calcInvoiceTotals, num } from "@/lib/money";
@@ -91,9 +91,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Optional: fetch AR + Sales accounts for journal entries
-  let arAccount: { id: number } | null = null;
-  let salesAccount: { id: number } | null = null;
-  let taxAccount: { id: number } | null = null;
+  let arAccount: { id: string } | null = null;
+  let salesAccount: { id: string } | null = null;
+  let taxAccount: { id: string } | null = null;
   if (createJournalEntries) {
     const accounts = await db.account.findMany({
       where: { companySlug, isActive: true },
@@ -128,7 +128,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const totals = calcInvoiceTotals(items, taxRate, num(order.shipping), num(order.discount));
 
       // Find or skip client matching (we don't create clients automatically — user can do it later)
-      let clientId: number | null = null;
+      let clientId: string | null = null;
       if (order.clientPhone || order.clientEmail) {
         const existingClient = await db.client.findFirst({
           where: {
@@ -180,6 +180,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           const je = await tx.journalEntry.create({
             data: {
               companySlug,
+              companyId: company.id,
+              number: `JE-${invoiceNumber}`,
               date: issueDate,
               description: `فاتورة مبيعات ${invoiceNumber} — ${order.clientName}`,
               reference: invoiceNumber,

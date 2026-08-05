@@ -3,7 +3,7 @@
  * POST — add a reply to a ticket (owner or admin/founder)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
@@ -29,9 +29,12 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   // with userEmail filter for non-founders closes the 404-vs-403 existence leak
   // (a non-founder gets 404 for any ticket not their own, including valid tickets
   // owned by others — no existence oracle).
+  // SupportTicket.id is String @id @default(cuid()) — the previous code
+  // wrapped it in parseInt() which would have produced NaN for any cuid input
+  // (and was masked by `db: any`).
   const existing = isFounder
-    ? await db.supportTicket.findUnique({ where: { id: parseInt(id) } })
-    : await db.supportTicket.findFirst({ where: { id: parseInt(id), userEmail: user.email } });
+    ? await db.supportTicket.findUnique({ where: { id } })
+    : await db.supportTicket.findFirst({ where: { id, userEmail: user.email } });
   if (!existing) return apiError("Ticket not found", 404);
 
   // Owners can reply to their own tickets; only the founder can reply to any
@@ -49,8 +52,22 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if (isFounder) senderRole = "founder";
 
   // Create reply + refresh ticket's updatedAt in one transaction
+  // NOTE: `ticketReply` is not in prisma schema.prisma — the table is created
+  // by an unrelated migration and was previously accessed via `db: any`. We
+  // cast the transaction client through `unknown` to keep the runtime call
+  // intact without re-introducing `any`.
   const reply = await db.$transaction(async (tx) => {
-    const r = await tx.ticketReply.create({
+    const r = await (tx as unknown as {
+      ticketReply: {
+        create: (args: {
+          data: {
+            ticketId: string;
+            authorEmail: string;
+            body: string;
+          };
+        }) => Promise<{ id: string } & Record<string, unknown>>;
+      };
+    }).ticketReply.create({
       data: {
         ticketId: existing.id,
         authorEmail: user.email,

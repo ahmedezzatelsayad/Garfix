@@ -3,7 +3,7 @@
  * GET / PATCH / DELETE — single fiscal period
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -32,7 +32,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   if ("error" in access) return access.error;
 
   const period = await db.fiscalPeriod.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
   });
   if (!period) return apiError("Fiscal period not found", 404);
 
@@ -53,7 +53,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const user = access.user;
 
   const existing = await db.fiscalPeriod.findFirst({
-    where: { id: parseInt(id), companySlug: data.companySlug },
+    where: { id, companySlug: data.companySlug },
   });
   if (!existing) return apiError("Fiscal period not found", 404);
 
@@ -77,7 +77,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     const overlapping = await db.fiscalPeriod.findFirst({
       where: {
         companySlug: data.companySlug,
-        id: { not: parseInt(id) },
+        id: { not: id },
         OR: [{ startDate: { lte: newEnd }, endDate: { gte: newStart } }],
       },
     });
@@ -87,7 +87,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   }
 
   const period = await db.fiscalPeriod.update({
-    where: { id: parseInt(id) },
+    where: { id },
     data: updateData,
   });
 
@@ -116,7 +116,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const user = access.user;
 
   const existing = await db.fiscalPeriod.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
   });
   if (!existing) return apiError("Fiscal period not found", 404);
 
@@ -125,14 +125,14 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     return apiError("Cannot delete a closed fiscal period. Reopen it first.", 400);
   }
 
-  await db.fiscalPeriod.delete({ where: { id: parseInt(id) } });
+  await db.fiscalPeriod.delete({ where: { id } });
 
   await logAudit({
     userEmail: user.email,
     userUid: user.uid,
     action: "delete",
     entity: "fiscal_period",
-    entityId: parseInt(id),
+    entityId: id,
     companySlug,
     details: { name: existing.name, periodType: existing.periodType },
   });

@@ -3,7 +3,7 @@
  * POST — match a reconciliation item
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -19,7 +19,7 @@ const MatchSchema = z.object({
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const reconId = parseInt(id, 10);
+  const reconId = id;
 
   const body = await parseJsonBody(req);
   const parsed = MatchSchema.safeParse(body);

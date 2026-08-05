@@ -3,7 +3,7 @@
  * GET / POST — platform-wide announcements (founder only for write)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAdminAction } from "@/lib/audit";
@@ -44,10 +44,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     take: 100,
   });
   // For tenants, also filter by targetPlans (empty targetPlans = all plans)
+  // NOTE: Announcement schema has no `targetPlans` column — the closest is
+  // `targetSlug` (String?, null = all tenants). The previous `db: any` masked
+  // reads of the non-existent `targetPlans` field, returning `undefined` for
+  // every row. We parse `targetSlug` as JSON to preserve the API contract.
   const filtered = isFounder
     ? announcements
     : announcements.filter((a) => {
-        const targetPlans = parseJsonField<string[]>(a.targetPlans, []);
+        const targetPlans = parseJsonField<string[]>(a.targetSlug, []);
         if (targetPlans.length === 0) return true;
         // User's plan comes from their companies — pick the highest plan any of
         // their companies is on. We don't have company records here, but we can
@@ -62,7 +66,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json({
     announcements: filtered.map((a) => ({
       ...a,
-      targetPlans: parseJsonField(a.targetPlans, []),
+      targetPlans: parseJsonField<string[]>(a.targetSlug, []),
     })),
   });
 });
@@ -79,9 +83,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const data = parsed.data;
   const a = await db.announcement.create({
     data: {
-      companySlug: "platform",
+      // No `companySlug` column on Announcement — removed.
+      // `targetPlans` is persisted in `targetSlug` (JSON-encoded) to preserve
+      // the API contract since the schema has no dedicated targetPlans column.
       title: data.title, body: data.body, type: data.type,
-      targetPlans: JSON.stringify(data.targetPlans),
+      targetSlug: data.targetPlans.length > 0 ? JSON.stringify(data.targetPlans) : null,
       startsAt: data.startsAt ? new Date(data.startsAt) : new Date(),
       endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
       isActive: data.isActive, 

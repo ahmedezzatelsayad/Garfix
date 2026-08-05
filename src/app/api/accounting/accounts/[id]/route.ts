@@ -3,7 +3,7 @@
  * DELETE — delete an account (must not have journal lines referencing it)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -17,7 +17,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const access = await requirePermission(req, "finance_access");
   if ("error" in access) return access.error;
   const user = access.user;
-  const existing = await db.account.findUnique({ where: { id: parseInt(id) } });
+  const existing = await db.account.findUnique({ where: { id } });
   if (!existing || !assertCompanyAccess(user, existing.companySlug)) {
     return apiError("Account not found", 404);
   }

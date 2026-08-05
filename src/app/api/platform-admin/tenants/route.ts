@@ -7,7 +7,7 @@
  * New: 4 queries total (companies + invoice counts + client counts + revenue sums)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler } from "@/lib/api";
@@ -87,7 +87,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       plan: c.plan,
       subscriptionStatus: c.subscriptionStatus,
       trialEndsAt: c.trialEndsAt,
-      stripeCustomerId: c.stripeCustomerId,
+      // Company schema has no `stripeCustomerId` column — the previous
+      // `c.stripeCustomerId` was masked by `db: any` and returned `undefined`
+      // (which JSON-serializes as the field being absent). We omit the key
+      // entirely to preserve that behaviour.
       createdAt: c.createdAt,
       stats: {
         invoices: invoiceCount,

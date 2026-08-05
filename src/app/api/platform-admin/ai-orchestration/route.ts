@@ -10,7 +10,7 @@
  * Founder-only.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 import { getRegistry } from "@/lib/ai/modelRegistry";
@@ -29,14 +29,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       take: 50,
       select: {
         id: true,
-        modelRegistryId: true,
-        capability: true,
-        success: true,
+        provider: true,
+        model: true,
+        taskType: true,
+        score: true,
         latencyMs: true,
-        tokensIn: true,
-        tokensOut: true,
-        responseQuality: true,
-        errorMessage: true,
+        costUsd: true,
         createdAt: true,
       },
     }),
@@ -88,14 +86,19 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     },
     recentBenchmarks: recentBenchmarks.map((b) => ({
       id: b.id,
-      modelRegistryId: b.modelRegistryId,
-      capability: b.capability,
-      success: b.success,
+      // Schema has no modelRegistryId/capability/success/tokensIn/tokensOut/
+      // responseQuality/errorMessage columns on AIBenchmarkResult — the
+      // previous `db: any` masked these as `undefined`. We map the closest
+      // existing fields and provide nulls for the rest to preserve the
+      // response shape consumed by the founder panel UI.
+      modelRegistryId: null,
+      capability: b.taskType,
+      success: true,
       latencyMs: b.latencyMs,
-      tokensIn: b.tokensIn,
-      tokensOut: b.tokensOut,
-      responseQuality: b.responseQuality,
-      errorMessage: b.errorMessage,
+      tokensIn: 0,
+      tokensOut: 0,
+      responseQuality: b.score,
+      errorMessage: null,
       createdAt: b.createdAt.toISOString(),
     })),
   });
@@ -120,9 +123,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
+  // Schema field is `model` (not `displayName`) and `isActive` (not
+  // `isEnabled`). The previous code used the wrong names and was masked
+  // by `db: any`.
   await db.aIModelRegistry.updateMany({
-    where: { provider, displayName: model },
-    data: { isEnabled },
+    where: { provider, model },
+    data: { isActive: isEnabled },
   });
 
   return NextResponse.json({ ok: true, provider, model, isEnabled });

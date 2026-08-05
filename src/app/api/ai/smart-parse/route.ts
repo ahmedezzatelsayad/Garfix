@@ -15,7 +15,7 @@
  * Returns: { orders: ParsedOrder[], meta: { processingMs, model, ... } }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
@@ -373,7 +373,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             name: p.name,
             sellingPrice: p.sellingPrice ?? "0",
             sku: `AUTO-${Date.now().toString().slice(-6)}`,
-            companyId: 0,
           })),
         });
         logger.info("[smart-parse] auto-added products to catalog", { count: newProducts.length, companySlug });
@@ -383,13 +382,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug ?? "",
-        endpoint: "smart-parse",
+        requestType: "smart-parse",
         provider: provider || "unknown",
-        ordersCount: orders.length,
-        itemsCount,
-        inputTokens: usage.prompt_tokens || 0,
-        outputTokens: usage.completion_tokens || 0,
-        totalTokens: usage.total_tokens || 0,
+        tokensUsed: usage.total_tokens || 0,
         success: true,
       },
     });
@@ -438,10 +433,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug ?? "",
-        endpoint: "smart-parse",
+        requestType: "smart-parse",
         provider: "z-ai",
-        ordersCount: 0,
-        itemsCount: 0,
         success: false,
       },
     }).catch(() => {});

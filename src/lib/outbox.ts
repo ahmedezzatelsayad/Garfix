@@ -64,7 +64,7 @@
  */
 
 import type { PrismaClient, Prisma } from "@prisma/client";
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { enqueue, QUEUE_NAMES } from "./queues";
 

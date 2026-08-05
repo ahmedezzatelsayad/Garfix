@@ -15,7 +15,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { enqueue, QUEUE_NAMES } from "./queues";
 import { encryptSecret, decryptSecret } from "./cryptoVault";

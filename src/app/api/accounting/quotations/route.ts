@@ -5,7 +5,7 @@
  * PATCH /convert — Convert accepted quotation to invoice
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -44,9 +44,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where,
     orderBy: { date: "desc" },
     take: 500,
-    include: {
-      client: { select: { id: true, name: true, email: true } },
-    },
+    // TODO(P2-Sprint5-A): Quotation has no `client` relation — only scalar
+    // `clientId: String?`. Removed include.
   });
 
   return apiOk({
@@ -124,6 +123,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const quotation = await db.quotation.create({
     data: {
       companySlug: data.companySlug,
+      // TODO(P2-Sprint5-A): `number` is a required String field without a
+      // default. Legacy `db: any` hid this missing field. Use quotationNumber.
+      number: quotationNumber,
       quotationNumber,
       clientId: data.clientId,
       date: data.date,
@@ -141,9 +143,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       notes: data.notes || null,
       status: "draft",
     },
-    include: {
-      client: { select: { id: true, name: true, email: true } },
-    },
+    // TODO(P2-Sprint5-A): Quotation has no `client` relation — removed include.
   });
 
   await logAudit({
@@ -159,7 +159,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
 const ConvertSchema = z.object({
   companySlug: z.string().min(1),
-  quotationId: z.number().int(),
+  quotationId: entityId,
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest) => {
@@ -180,11 +180,17 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
 
   const quotation = await db.quotation.findUnique({
     where: { id: data.quotationId },
-    include: { client: true },
+    // TODO(P2-Sprint5-A): Quotation has no `client` relation — removed include.
   });
   if (!quotation) return apiError("Quotation not found", 404);
   if (quotation.companySlug !== data.companySlug) return apiError("Quotation does not belong to this company", 400);
   if (quotation.status !== "accepted") return apiError("Only accepted quotations can be converted to invoices", 400);
+
+  // TODO(P2-Sprint5-A): Quotation has no `client` relation — fetch separately
+  // for invoice client fields.
+  const client = quotation.clientId
+    ? await db.client.findFirst({ where: { id: quotation.clientId, companySlug: data.companySlug } })
+    : null;
 
   // Generate invoice number
   const year = quotation.date.slice(0, 4);
@@ -205,10 +211,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
       companySlug: data.companySlug,
       invoiceNumber,
       clientId: quotation.clientId,
-      clientName: quotation.client?.name ?? '',
-      clientEmail: quotation.client?.email ?? '',
-      clientPhone: quotation.client?.phone ?? '',
-      clientAddress: quotation.client?.address ?? '',
+      clientName: client?.name ?? '',
+      clientEmail: client?.email ?? '',
+      clientPhone: client?.phone ?? '',
+      clientAddress: client?.address ?? '',
       issueDate: quotation.date,
       dueDate: quotation.validUntil || quotation.date,
       status: "draft",

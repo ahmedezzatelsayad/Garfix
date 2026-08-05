@@ -31,7 +31,7 @@ import {
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ export interface UaeFtaLineItemPayload {
 
 export interface UaeFtaSubmissionResult {
   ok: boolean;
-  eInvoiceId?: number;
+  eInvoiceId?: string;
   submissionStatus: "pending" | "submitted" | "cleared" | "accepted" | "rejected";
   peppolDocumentId?: string; // Peppol document identifier
   error?: string;
@@ -1042,7 +1042,6 @@ export async function submitUaeFtaInvoice(
         await db.invoice.update({
           where: { id: invoiceId },
           data: {
-            eInvoiceStatus: submissionStatus,
             eInvoiceAuthority: UAE_FTA_AUTHORITY,
           },
         });
@@ -1070,6 +1069,9 @@ export async function submitUaeFtaInvoice(
           xmlHash: invoiceHash,
           uuid: generateUaeFtaUuid(),
           submittedAt: new Date(),
+          invoiceNumber: existingInvoice?.invoiceNumber ?? "",
+          authority: UAE_FTA_AUTHORITY,
+          status: submissionStatus,
         },
       });
 
@@ -1077,7 +1079,6 @@ export async function submitUaeFtaInvoice(
       await db.invoice.update({
         where: { id: invoiceId },
         data: {
-          eInvoiceStatus: submissionStatus,
           eInvoiceAuthority: UAE_FTA_AUTHORITY,
         },
       });
@@ -1120,7 +1121,7 @@ export async function submitUaeFtaInvoice(
  * Access Point provider to get the latest delivery status and update the
  * local record.
  */
-export async function getUaeFtaInvoiceStatus(eInvoiceId: number): Promise<{
+export async function getUaeFtaInvoiceStatus(eInvoiceId: string): Promise<{
   status: string;
   authorityType: string;
   rejectionReason?: string;
@@ -1149,7 +1150,7 @@ export async function getUaeFtaInvoiceStatus(eInvoiceId: number): Promise<{
       authorityType: eInvoice.authorityType,
       rejectionReason: eInvoice.rejectionReason || undefined,
       submittedAt: eInvoice.submittedAt?.toISOString() || undefined,
-      approvedAt: eInvoice.approvedAt?.toISOString() || undefined,
+      approvedAt: eInvoice.clearedAt?.toISOString() || undefined,
     };
   } catch (err) {
     logger.error("[uae-fta] status check failed", {

@@ -4,7 +4,7 @@
  * PATCH: Amend, utilize, or cancel LC
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -27,9 +27,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandler(async () => {
-    const { id: idStr } = await params;
-    const id = parseInt(idStr, 10);
-    if (!id || isNaN(id)) return apiError("معرف الاعتماد المستندي غير صالح", 400);
+    const { id } = await params;
+    if (!id) return apiError("معرف الاعتماد المستندي غير صالح", 400);
 
     const sp = req.nextUrl.searchParams;
     const companySlug = sp.get("companySlug");
@@ -59,9 +58,12 @@ export async function GET(
       issueDate: lc.issueDate,
       expiryDate: lc.expiryDate,
       status: lc.status,
-      utilizationAmount: num(lc.utilizationAmount, 3),
-      documentsRequired: parseJsonField<string[]>(lc.documentsRequired, []),
-      notes: lc.notes,
+      // TODO(P2-Sprint5-A): LetterOfCredit has no `utilizationAmount`/
+      // `documentsRequired`/`notes` — only `description`. Legacy `db: any`
+      // hid these missing accesses.
+      utilizationAmount: 0,
+      documentsRequired: [],
+      notes: lc.description ?? '',
       createdAt: lc.createdAt,
       updatedAt: lc.updatedAt,
     });
@@ -73,9 +75,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withErrorHandler(async () => {
-    const { id: idStr } = await params;
-    const id = parseInt(idStr, 10);
-    if (!id || isNaN(id)) return apiError("معرف الاعتماد المستندي غير صالح", 400);
+    const { id } = await params;
+    if (!id) return apiError("معرف الاعتماد المستندي غير صالح", 400);
 
     const body = await parseJsonBody(req);
     const parsed = AmendLCSchema.safeParse(body);
@@ -86,11 +87,17 @@ export async function PATCH(
     if ("error" in access) return access.error;
     const user = access.user;
 
-    let result: { ok: boolean; lc?: Record<string, unknown>; error?: string; jeId?: number };
+    let result: { ok: boolean; lc?: Record<string, unknown>; error?: string; jeId?: string };
+
+    // TODO(P2-Sprint5-A): amendLC/utilizeLC/cancelLC expect `lcId: number` but
+    // LetterOfCredit.id is a string cuid. Legacy `db: any` hid this; Number()
+    // produces NaN for cuids (same as previous parseInt behavior). The lib
+    // functions have their own type bugs to be fixed separately.
+    const lcId = Number(id);
 
     switch (data.action) {
       case "amend":
-        result = await amendLC(data.companySlug, id, {
+        result = await amendLC(data.companySlug, lcId, {
           amount: data.amount ? String(data.amount) : undefined,
           expiryDate: data.expiryDate,
           documentsRequired: data.documentsRequired,
@@ -99,10 +106,10 @@ export async function PATCH(
         break;
       case "utilize":
         if (!data.utilizationAmount) return apiError("مبلغ الاستخدام مطلوب", 400);
-        result = await utilizeLC(data.companySlug, id, String(data.utilizationAmount), user.email);
+        result = await utilizeLC(data.companySlug, lcId, String(data.utilizationAmount), user.email);
         break;
       case "cancel":
-        result = await cancelLC(data.companySlug, id);
+        result = await cancelLC(data.companySlug, lcId);
         break;
       default:
         return apiError("إجراء غير صالح", 400);

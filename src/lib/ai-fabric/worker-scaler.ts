@@ -17,7 +17,7 @@
  *   getActiveWorkerCounts()              → Record<string, number>
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { TIER_WORKER_LIMITS, planToTier, type SLATier, type RuntimeStatus } from "./types";
 
@@ -59,11 +59,11 @@ const idleCounters = new Map<string, number>();
  * Initialises workerPoolSize to the tier default if creating new.
  */
 export async function getOrCreateRuntime(
-  companyId: number,
+  companyId: string,
   plan: string,
 ): Promise<{
   id: number;
-  companyId: number;
+  companyId: string;
   workerPoolSize: number;
   status: RuntimeStatus;
 }> {
@@ -121,12 +121,22 @@ export async function scaleWorkers(): Promise<void> {
   // 2. Fetch all active runtimes with their company's plan
   const runtimes = await db.companyRuntime.findMany({
     where: { status: "active" },
-    include: { company: { select: { id: true, slug: true, plan: true } } },
   });
 
+  const companyIds = runtimes.map((r) => r.companyId);
+  const companies = companyIds.length
+    ? await db.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, slug: true, plan: true },
+      })
+    : [];
+  const companyByCompanyId = new Map(companies.map((c) => [c.id, c]));
+
   for (const rt of runtimes) {
-    const slug = rt.company.slug ?? "";
-    const tier = planToTier(rt.company.plan);
+    const company = companyByCompanyId.get(rt.companyId);
+    const slug = company?.slug ?? "";
+    if (!slug) continue;
+    const tier = planToTier(company?.plan ?? "trial");
     const ceiling = TIER_WORKER_LIMITS[tier] as number;
     const queueName = `${AI_QUEUE_PREFIX}${slug}`;
     const queueLength = await getQueueLength(queueName);
@@ -190,12 +200,20 @@ export async function scaleWorkers(): Promise<void> {
 export async function getActiveWorkerCounts(): Promise<Record<string, number>> {
   const runtimes = await db.companyRuntime.findMany({
     where: { status: "active" },
-    include: { company: { select: { slug: true } } },
   });
+
+  const companyIds = runtimes.map((r) => r.companyId);
+  const companies = companyIds.length
+    ? await db.company.findMany({
+        where: { id: { in: companyIds } },
+        select: { id: true, slug: true },
+      })
+    : [];
+  const slugByCompanyId = new Map(companies.map((c) => [c.id, c.slug]));
 
   const map: Record<string, number> = {};
   for (const rt of runtimes) {
-    const slug = rt.company.slug;
+    const slug = slugByCompanyId.get(rt.companyId);
     if (slug) map[slug] = rt.workerPoolSize;
   }
   return map;

@@ -4,7 +4,7 @@
  * POST   — create a new company (founder only — auto-assigned; others: auto-assigned to creator)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
@@ -155,6 +155,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       plan: "trial",
       subscriptionStatus: "active",
       trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      // P2-Sprint5-D: Company schema requires `currencyDecimalPlaces` (Int, no default).
+      currencyDecimalPlaces: 2,
     },
   });
 
@@ -279,7 +281,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         displayName: updatedUser.displayName || "",
         role: updatedUser.role,
         companies: newCompanies,
-        permissions: (updatedUser.permissions as Record<string, number>) ?? {},
+        permissions: (JSON.parse(updatedUser.permissions || "{}") as Record<string, number>) ?? {},
         emailVerified: updatedUser.emailVerified,
         tokenVersion: updatedUser.tokenVersion,
       }, req);

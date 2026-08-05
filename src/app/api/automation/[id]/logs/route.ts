@@ -5,7 +5,7 @@
  * Query: ?limit=50&status=success
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { apiError, withErrorHandler } from "@/lib/api";
 
@@ -13,8 +13,8 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const ruleId = parseInt(id, 10);
-  if (Number.isNaN(ruleId)) return apiError("Invalid rule id", 400);
+  const ruleId = id;
+  if (!ruleId) return apiError("Invalid rule id", 400);
 
   const rule = await db.automationRule.findUnique({
     where: { id: ruleId },
@@ -53,9 +53,9 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
       id: l.id,
       ruleId: l.ruleId,
       status: l.status,
-      triggerData: safeParse(l.triggerData, null),
+      triggerData: safeParse(l.result, null),
       error: l.error,
-      durationMs: l.durationMs,
+      durationMs: l.completedAt ? l.completedAt.getTime() - l.triggeredAt.getTime() : null,
       createdAt: l.createdAt,
     })),
   });

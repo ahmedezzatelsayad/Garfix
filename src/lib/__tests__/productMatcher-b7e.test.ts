@@ -47,7 +47,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { invalidateKillSwitchCache, matchProduct } from "@/lib/productMatcher";
 import type { MatchInput } from "@/lib/productMatcher";
 

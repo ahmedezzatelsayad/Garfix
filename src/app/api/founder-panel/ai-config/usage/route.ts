@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from '@/lib/auth';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -37,16 +37,36 @@ export async function GET(request: NextRequest) {
     if (companySlug) {
       const company = await db.company.findUnique({
         where: { slug: companySlug },
-        include: { members: { where: { userId: auth.user.uid } } },
       });
       
-      if (!company || company.members.length === 0) {
-        return apiError('Company not found or access denied', 404);
-      }
+      if (!company) return apiError('Company not found', 404);
+      
+      // Verify membership via the legacy `companyMember` table (not in prisma
+      // schema.prisma — accessed through a typed cast, see GET handler in
+      // /api/founder-panel/ai-config/route.ts for the same pattern).
+      const membership = await (db as unknown as {
+        companyMember: {
+          findFirst: (args: {
+            where: { userId?: string; companyId?: string };
+          }) => Promise<{ companyId: string } | null>;
+        };
+      }).companyMember.findFirst({
+        where: { userId: auth.user.uid, companyId: company.id },
+      });
+      if (!membership) return apiError('Company not found or access denied', 404);
       
       companyId = company.id;
     } else {
-      const membership = await db.companyMember.findFirst({
+      // NOTE: `companyMember` is not in prisma schema.prisma — cast through
+      // `unknown` to preserve runtime behavior without re-introducing `any`.
+      const membership = await (db as unknown as {
+        companyMember: {
+          findFirst: (args: {
+            where: { userId?: string };
+            include?: { company?: boolean };
+          }) => Promise<{ companyId: string; company?: unknown } | null>;
+        };
+      }).companyMember.findFirst({
         where: { userId: auth.user.uid },
         include: { company: true },
       });
@@ -77,7 +97,7 @@ export async function GET(request: NextRequest) {
     // Calculate usage percentage
     const usagePercent = Math.min(
       100,
-      Math.round((config.tokensUsedThisMonth / monthlyQuota) * 100)
+      Math.round((Number(config.tokensUsedThisMonth) / monthlyQuota) * 100)
     );
     
     // Get daily usage for the chart (simulated based on current totals)
@@ -99,7 +119,7 @@ export async function GET(request: NextRequest) {
       // day index so the chart still varies day-to-day but is stable across
       // requests. This is clearly a placeholder until real per-day counters
       // are persisted (tracked as P3 follow-up).
-      const baseUsage = Math.floor(config.tokensUsedThisMonth / Math.max(1, days));
+      const baseUsage = Math.floor(Number(config.tokensUsedThisMonth) / Math.max(1, days));
       // Deterministic sine-based variance in [0.3, 1.0] — no Math.random.
       const varianceFactor = 0.3 + (0.5 + 0.5 * Math.sin(i * 1.7)) * 0.7;
       const variance = Math.floor(baseUsage * varianceFactor);
@@ -113,7 +133,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Calculate cost estimate
-    const estimatedCostUSD = (config.tokensUsedThisMonth / 1000000) * 
+    const estimatedCostUSD = (Number(config.tokensUsedThisMonth) / 1000000) * 
       (primaryProvider.provider?.includes('gemini') ? 0.25 : 2.5);
     
     return NextResponse.json({
@@ -124,7 +144,7 @@ export async function GET(request: NextRequest) {
           totalRequests: config.requestsThisMonth,
           monthlyQuota,
           usagePercent,
-          remainingTokens: Math.max(0, monthlyQuota - config.tokensUsedThisMonth),
+          remainingTokens: Math.max(0, monthlyQuota - Number(config.tokensUsedThisMonth)),
           estimatedCostUSD: Math.round(estimatedCostUSD * 100) / 100,
           lastResetAt: config.lastResetAt,
         },
@@ -134,10 +154,10 @@ export async function GET(request: NextRequest) {
           enabled: primaryProvider.enabled !== false,
         },
         features: {
-          chat: config.enableChat,
-          smartParse: config.enableSmartParse,
-          invoiceExtraction: config.enableInvoiceExtraction,
-          memory: config.enableMemory,
+          chat: config.chatEnabled,
+          smartParse: config.parseEnabled,
+          invoiceExtraction: config.invoiceEnabled,
+          memory: config.memoryEnabled,
         },
         dailyUsage,
         alerts: {

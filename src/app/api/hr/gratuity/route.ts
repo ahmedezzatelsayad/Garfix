@@ -6,7 +6,7 @@
  * Returns: GratuityResult with breakdown
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { calculateGratuity, isEligibleForGratuity } from "@/lib/gratuity";
@@ -16,7 +16,7 @@ import { z } from "zod";
 
 const Schema = z.object({
   companySlug: z.string().min(1),
-  employeeId: z.number().int(),
+  employeeId: z.string().min(1),
   endDate: z.string().optional(),
 });
 
@@ -37,6 +37,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("تاريخ الالتحاق غير محدد لهذا الموظف", 400);
   }
 
+
   // Get company country for labor law selection
   const company = await db.company.findUnique({
     where: { slug: employee.companySlug },
@@ -45,7 +46,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const countryCode = company?.country || "KW";
 
   // Monthly salary = base + allowances
-  const monthlySalary = num(employee.baseSalary, 3) + num(employee.allowances, 3);
+  // TODO(P2-Sprint5-D): Employee schema has no `allowances` column — treat as 0.
+  const monthlySalary = num(employee.baseSalary, 3);
 
   const eligible = isEligibleForGratuity(employee.joinDate, endDate, countryCode);
   if (!eligible) {
@@ -57,9 +59,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
   }
 
+  // TODO(P2-Sprint5-D): Employee schema has no `endDate` column — use request body or today.
+  const effectiveEndDate = endDate || new Date().toISOString().slice(0, 10);
   const result = calculateGratuity({
     joinDate: employee.joinDate,
-    endDate: endDate || employee.endDate,
+    endDate: effectiveEndDate,
     monthlySalary,
     countryCode,
   });
@@ -71,10 +75,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       id: employee.id,
       name: employee.name,
       joinDate: employee.joinDate,
-      endDate: endDate || employee.endDate || new Date().toISOString().slice(0, 10),
+      endDate: effectiveEndDate,
       monthlySalary: monthlySalary.toFixed(3),
       baseSalary: employee.baseSalary,
-      allowances: employee.allowances,
+      // TODO(P2-Sprint5-D): `allowances` column missing on Employee — return 0.
+      allowances: 0,
     },
     gratuity: result,
     countryCode,

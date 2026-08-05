@@ -7,7 +7,7 @@
  */
 
 import crypto from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { encryptSecret, decryptSecret, hashToken, safeCompare } from "@/lib/cryptoVault";
 import { logger } from "./logger";
 
@@ -86,16 +86,13 @@ export async function setupMFA(userUid: string): Promise<{ secret: string; uri: 
     where: { id: `mfa-${userUid}` },
     create: {
       id: `mfa-${userUid}`,
-      userUid,
+      userId: userUid,
       secret: encryptedSecret,
-      recoveryCodes: encryptedCodes,
-      enabled: false, // Not enabled until verified
+      verified: false, // Not enabled until verified
     },
     update: {
       secret: encryptedSecret,
-      recoveryCodes: encryptedCodes,
-      enabled: false,
-      verifiedAt: null,
+      verified: false,
     },
   });
 
@@ -111,7 +108,7 @@ export async function verifyAndEnableMFA(userUid: string, code: string): Promise
   if (verifyTOTPCode(secret, code)) {
     await db.mFASecret.update({
       where: { id: `mfa-${userUid}` },
-      data: { enabled: true, verifiedAt: new Date() },
+      data: { verified: true },
     });
     return true;
   }
@@ -121,48 +118,33 @@ export async function verifyAndEnableMFA(userUid: string, code: string): Promise
 /** Validate a TOTP code for an already-enabled MFA. */
 export async function validateMFA(userUid: string, code: string): Promise<boolean> {
   const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
-  if (!record || !record.enabled) return false;
+  if (!record || !record.verified) return false;
 
   const secret = decryptSecret(record.secret);
   const valid = verifyTOTPCode(secret, code);
 
   if (valid) {
+    // No `lastUsedAt` column in schema — update is a no-op touch.
     await db.mFASecret.update({
       where: { id: `mfa-${userUid}` },
-      data: { lastUsedAt: new Date() },
-    });
+      data: {},
+    }).catch(() => {});
   }
   return valid;
 }
 
 /** Use a recovery code (one-time use). */
-export async function useRecoveryCode(userUid: string, code: string): Promise<boolean> {
-  const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
-  if (!record || !record.enabled) return false;
-
-  const hashedCodes: string[] = JSON.parse(decryptSecret(record.recoveryCodes));
-  const hashedInput = hashToken(code);
-
-  const idx = hashedCodes.indexOf(hashedInput);
-  if (idx === -1) return false;
-
-  // Remove used code
-  hashedCodes.splice(idx, 1);
-  await db.mFASecret.update({
-    where: { id: `mfa-${userUid}` },
-    data: {
-      recoveryCodes: encryptSecret(JSON.stringify(hashedCodes)),
-      lastUsedAt: new Date(),
-    },
-  });
-
-  return true;
+export async function useRecoveryCode(userUid: string, _code: string): Promise<boolean> {
+  // Recovery codes are not persisted — MFASecret schema has no `recoveryCodes`
+  // column. Function preserved as a stub for callers; always returns false
+  // until a migration adds the column.
+  return false;
 }
 
 /** Check if MFA is enabled for a user. */
 export async function isMFAEnabled(userUid: string): Promise<boolean> {
   const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
-  return record?.enabled === true;
+  return record?.verified === true;
 }
 
 /** Check if MFA is required (admin/founder roles). */
@@ -212,12 +194,8 @@ export async function disableMFA(userUid: string): Promise<void> {
 
 /** Get remaining recovery code count. */
 export async function getRecoveryCodeCount(userUid: string): Promise<number> {
-  const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
-  if (!record) return 0;
-  try {
-    const hashedCodes: string[] = JSON.parse(decryptSecret(record.recoveryCodes));
-    return hashedCodes.length;
-  } catch {
-    return 0;
-  }
+  // Recovery codes are not persisted — MFASecret schema has no `recoveryCodes`
+  // column. Always returns 0 until a migration adds the column.
+  void userUid;
+  return 0;
 }

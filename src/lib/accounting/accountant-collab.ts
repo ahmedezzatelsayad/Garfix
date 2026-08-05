@@ -8,7 +8,7 @@
  *  - Accounting audit trail queries
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num } from "@/lib/money";
 import { logger } from "@/lib/logger";
 
@@ -57,18 +57,18 @@ export async function createExternalAccountantAccess(
   for (const permKey of permissions) {
     await db.rolePermission.upsert({
       where: {
-        role_permissionKey_companySlug: {
+        role_permissionKey: {
           role: roleName,
           permissionKey: permKey,
-          companySlug,
         },
       },
-      update: { value: 1 },
+      update: { permissions: permKey },
       create: {
         role: roleName,
         permissionKey: permKey,
         companySlug,
-        value: 1,
+        permissions: permKey,
+        isActive: true,
       },
     });
   }
@@ -160,7 +160,7 @@ async function generateTrialBalanceData(
     where: { companySlug, isActive: true },
     include: {
       journalEntryLines: {
-        include: { entry: { select: { status: true, date: true } } },
+        include: { journalEntry: { select: { status: true, date: true } } },
       },
     },
     orderBy: { code: "asc" },
@@ -174,9 +174,9 @@ async function generateTrialBalanceData(
     let totalDebit = 0;
     let totalCredit = 0;
     for (const line of acc.journalEntryLines) {
-      if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
-      if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
-      const multiplier = line.entry.status === "reversed" ? -1 : 1;
+      if (line.journalEntry.status !== "posted" && line.journalEntry.status !== "reversed") continue;
+      if (line.journalEntry.date < new Date(periodFrom) || line.journalEntry.date > new Date(periodTo)) continue;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
       totalDebit += num(line.debit, 3) * multiplier;
       totalCredit += num(line.credit, 3) * multiplier;
     }
@@ -225,21 +225,21 @@ async function generateGeneralLedgerData(
     const lines = await db.journalEntryLine.findMany({
       where: {
         accountId: acc.id,
-        entry: {
+        journalEntry: {
           companySlug,
           status: { in: ["posted", "reversed"] },
-          date: { gte: periodFrom, lte: periodTo },
+          date: { gte: new Date(periodFrom), lte: new Date(periodTo) },
         },
       },
-      include: { entry: { select: { date: true, description: true, reference: true, status: true } } },
-      orderBy: { entry: { date: "asc" } },
+      include: { journalEntry: { select: { date: true, description: true, reference: true, status: true } } },
+      orderBy: { journalEntry: { date: "asc" } },
     });
 
     let runningBalance = 0;
     const isDebitNormal = acc.type === "asset" || acc.type === "expense";
 
     for (const line of lines) {
-      const multiplier = line.entry.status === "reversed" ? -1 : 1;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
       const debit = num(line.debit, 3) * multiplier;
       const credit = num(line.credit, 3) * multiplier;
       runningBalance += isDebitNormal ? debit - credit : credit - debit;
@@ -247,9 +247,9 @@ async function generateGeneralLedgerData(
       ledgerEntries.push({
         "رمز الحساب": acc.code,
         "اسم الحساب": acc.nameAr,
-        "التاريخ": line.entry.date,
-        "المرجع": line.entry.reference || "",
-        "البيان": line.entry.description || "",
+        "التاريخ": line.journalEntry.date,
+        "المرجع": line.journalEntry.reference || "",
+        "البيان": line.journalEntry.description || "",
         "مدين": debit.toFixed(3),
         "دائن": credit.toFixed(3),
         "الرصيد": num(runningBalance, 3).toFixed(3),
@@ -323,21 +323,29 @@ export async function logAccountingChange(
   userEmail: string,
   action: string,
   entity: string,
-  entityId: number | null | undefined,
+  entityId: string | number | null | undefined,
   beforeState: Record<string, unknown> | null,
   afterState: Record<string, unknown> | null,
   reason: string | null,
 ): Promise<{ id: number; companySlug: string; userEmail: string; action: string; entity: string; entityId: string | null; createdAt: Date }> {
+  // AccountingAuditLog has a single `details` JSON column. Pack
+  // userEmail/beforeState/afterState/reason into it so the audit trail
+  // can still surface them when reading back.
+  const details = JSON.stringify({
+    userEmail,
+    beforeState,
+    afterState,
+    reason,
+  });
+
   const entry = await db.accountingAuditLog.create({
     data: {
       companySlug,
-      userEmail,
       action,
       entity,
       entityId: entityId != null ? String(entityId) : null,
-      beforeState: beforeState ? JSON.stringify(beforeState) : null,
-      afterState: afterState ? JSON.stringify(afterState) : null,
-      reason,
+      performedBy: userEmail,
+      details,
     },
   });
 
@@ -346,7 +354,7 @@ export async function logAccountingChange(
   return {
     id: entry.id,
     companySlug: entry.companySlug,
-    userEmail: entry.userEmail,
+    userEmail,
     action: entry.action,
     entity: entry.entity,
     entityId: entry.entityId,
@@ -384,16 +392,25 @@ export async function getAccountingAuditTrail(
     take: 500,
   });
 
-  return logs.map((log) => ({
-    id: log.id,
-    companySlug: log.companySlug,
-    userEmail: log.userEmail,
-    action: log.action,
-    entity: log.entity,
-    entityId: log.entityId,
-    beforeState: log.beforeState ? JSON.parse(log.beforeState) : null,
-    afterState: log.afterState ? JSON.parse(log.afterState) : null,
-    reason: log.reason,
-    createdAt: log.createdAt,
-  }));
+  return logs.map((log) => {
+    // Unpack the packed details JSON. Older rows may not have all fields.
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = log.details ? (JSON.parse(log.details) as Record<string, unknown>) : {};
+    } catch {
+      parsed = {};
+    }
+    return {
+      id: log.id,
+      companySlug: log.companySlug,
+      userEmail: (parsed.userEmail as string | undefined) ?? log.performedBy ?? null,
+      action: log.action,
+      entity: log.entity,
+      entityId: log.entityId,
+      beforeState: (parsed.beforeState as Record<string, unknown> | null | undefined) ?? null,
+      afterState: (parsed.afterState as Record<string, unknown> | null | undefined) ?? null,
+      reason: (parsed.reason as string | null | undefined) ?? null,
+      createdAt: log.createdAt,
+    };
+  });
 }

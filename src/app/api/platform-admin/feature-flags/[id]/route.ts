@@ -5,7 +5,7 @@
  * DELETE — delete a flag (founder only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { logAdminAction } from "@/lib/audit";
 import { z } from "zod";
@@ -32,10 +32,13 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const founder = founderAccess.user;
 
   const { id: idStr } = await params;
-  const id = Number(idStr);
-  if (!Number.isInteger(id) || id < 1) {
+  // FeatureFlag.id is a String @id @default(cuid()) — the previous code
+  // wrapped it in Number() which would have produced NaN for any cuid input
+  // (and was masked by `db: any`). Use the raw string.
+  if (!idStr) {
     return apiError("Invalid id", 400);
   }
+  const id = idStr;
 
   const existing = await db.featureFlag.findUnique({ where: { id } });
   if (!existing) return apiError("Feature flag not found", 404);
@@ -99,10 +102,13 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const founder = founderAccess.user;
 
   const { id: idStr } = await params;
-  const id = Number(idStr);
-  if (!Number.isInteger(id) || id < 1) {
+  // FeatureFlag.id is a String @id @default(cuid()) — the previous code
+  // wrapped it in Number() which would have produced NaN for any cuid input
+  // (and was masked by `db: any`). Use the raw string.
+  if (!idStr) {
     return apiError("Invalid id", 400);
   }
+  const id = idStr;
 
   const existing = await db.featureFlag.findUnique({ where: { id } });
   if (!existing) return apiError("Feature flag not found", 404);

@@ -4,7 +4,7 @@
  * POST — generate WPS file
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -40,7 +40,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const country = sp.get("country");
   if (country) where.country = country;
 
-  const wpsFiles = await db.wpsFile.findMany({
+  // TODO(P2-Sprint5-A): Prisma accessor for model `WPSFile` is `db.wPSFile`
+  // (Prisma only lowercases the first letter of the model name). The previous
+  // `db.wpsFile` only worked under `db: any`.
+  const wpsFiles = await db.wPSFile.findMany({
     where,
     orderBy: { createdAt: "desc" },
     take: 100,

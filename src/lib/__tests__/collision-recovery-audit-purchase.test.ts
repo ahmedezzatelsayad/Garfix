@@ -59,7 +59,7 @@
  */
 import { describe, it, expect, mock, beforeAll, afterAll, beforeEach } from "bun:test";
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { invalidateKillSwitchCache } from "@/lib/productMatcher";
 import { syncInventoryOnPurchase } from "@/lib/inventorySync";
 

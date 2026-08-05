@@ -15,7 +15,7 @@
  * 4. Support batch training from historical data
  */
 
-import { db } from "../db";
+import { dbTyped as db } from "../db";
 import { logger } from "../logger";
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -680,14 +680,17 @@ async function persistPattern(pattern: LearnedPattern): Promise<void> {
         inputText: pattern.inputPattern,
         matchedProductId: pattern.targetProductId,
         matchTier: "auto-match", // Learned patterns are treated as auto-matches
+        tier: "auto-match",
         confidence: pattern.confidence,
         action: "user-confirmed",
         resolvedBy: "user",
         matchedAlias: pattern.targetProductName,
+        isUndone: false,
       },
       update: {
         matchedProductId: pattern.targetProductId,
         matchTier: "auto-match",
+        tier: "auto-match",
         confidence: pattern.confidence,
         action: pattern.confirmCount > pattern.rejectCount ? "user-confirmed" : "user-overridden",
         matchedAlias: pattern.targetProductName,

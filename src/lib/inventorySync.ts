@@ -9,7 +9,7 @@
  * - [REVIEW-QUEUE] + [OVERSELL] warnings surfaced to callers
  */
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { num } from "./money";
 import { logger } from "./logger";
 import { matchProduct } from "./productMatcher";
@@ -25,8 +25,8 @@ export function isReviewQueueWarning(w: string): boolean {
 }
 
 export async function recordStockMovement(
-  tx: any, companySlug: string, productId: number | null, warehouseId: number,
-  signedQty: number, sourceType: string, sourceId: number | null,
+  tx: any, companySlug: string, productId: string | number | null, warehouseId: string | number,
+  signedQty: number, sourceType: string, sourceId: string | number | null,
   note?: string, createdBy: string = "system",
 ): Promise<void> {
   try {
@@ -123,11 +123,14 @@ export async function syncInventoryOnSale(
 }
 
 export async function syncInventoryOnPurchase(
-  tx: any, companySlug: string, items: InventoryLineItem[], purchaseInvoiceId: number,
+  tx: any, companySlug: string, items: InventoryLineItem[], purchaseInvoiceId: string | number,
 ): Promise<InventorySyncResult> {
   const warnings: string[] = [];
   let productsCreated = 0;
   let inventoryUpdated = 0;
+  // P2-Sprint5-D: PurchaseInvoice.id is a String (cuid) but matchProduct/ProductMatchAudit.invoiceId
+  // expect a number — coerce to 0 for non-numeric IDs so audit fields don't error.
+  const numericInvoiceId = typeof purchaseInvoiceId === "number" ? purchaseInvoiceId : 0;
 
   const warehouse = await tx.warehouse.findFirst({ where: { companySlug, isActive: true }, orderBy: { id: "asc" } });
   if (!warehouse) {
@@ -140,7 +143,7 @@ export async function syncInventoryOnPurchase(
     const qty = num(item.qty, 3);
     if (qty <= 0) continue;
 
-    const match = await matchProduct({ description: item.description, qty, price: item.price, companySlug, invoiceId: purchaseInvoiceId, lineItemIndex: idx }, tx);
+    const match = await matchProduct({ description: item.description, qty, price: item.price, companySlug, invoiceId: numericInvoiceId, lineItemIndex: idx }, tx);
 
     let product;
     if (match.productId) product = await tx.productCatalog.findUnique({ where: { id: match.productId } });
@@ -152,12 +155,12 @@ export async function syncInventoryOnPurchase(
         await tx.productAlias.create({ data: { productCatalogId: product.id, companySlug, alias: item.description, language: "unspecified", source: "auto", confidence: 0.5, isVerified: false, createdBy: "inventory-sync-purchase" } });
       } catch (createErr: any) {
         logger.warn("[inventory-sync-purchase] collision", { companySlug, description: item.description, err: createErr?.message });
-        const reMatch = await matchProduct({ description: item.description, qty, price: item.price, companySlug, invoiceId: purchaseInvoiceId, lineItemIndex: idx }, tx);
+        const reMatch = await matchProduct({ description: item.description, qty, price: item.price, companySlug, invoiceId: numericInvoiceId, lineItemIndex: idx }, tx);
         if (reMatch.productId) product = await tx.productCatalog.findUnique({ where: { id: reMatch.productId } });
         if (!product) {
           warnings.push(`[REVIEW-QUEUE] Purchase invoice #${purchaseInvoiceId} line ${idx}: product "${item.description}" orphaned`);
           try {
-            await tx.productMatchAudit.create({ data: { companySlug, inputText: item.description, matchedProductId: null, matchedAlias: null, confidence: 0, tier: "collision-recovery-failed", action: "collision-recovery-skipped", invoiceId: purchaseInvoiceId, createdBy: "inventory-sync-purchase-collision-fallback" } });
+            await tx.productMatchAudit.create({ data: { companySlug, inputText: item.description, matchedProductId: null, matchedAlias: null, confidence: 0, tier: "collision-recovery-failed", action: "collision-recovery-skipped", invoiceId: numericInvoiceId, createdBy: "inventory-sync-purchase-collision-fallback" } });
             await recordStockMovement(tx, companySlug, null, warehouse.id, 0, "collision-recovery", purchaseInvoiceId, `orphan purchase item: "${item.description}" qty ${qty}`);
           } catch (auditErr) { logger.error("[inventory-sync-purchase] audit failed", { err: auditErr instanceof Error ? auditErr.message : String(auditErr) }); }
           continue;

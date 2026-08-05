@@ -4,7 +4,7 @@
  * POST — Create purchase order
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -120,6 +120,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const purchaseOrder = await db.purchaseOrder.create({
     data: {
       companySlug: data.companySlug,
+      // TODO(P2-Sprint5-A): `number` is a required String field without a
+      // default. Legacy `db: any` hid this missing field. Use poNumber value.
+      number: poNumber,
       poNumber,
       supplierId: data.supplierId,
       date: data.date,

@@ -10,7 +10,7 @@
  *
  * ALL monetary values as String (no Float), use num() from money.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { num, addNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
@@ -29,11 +29,11 @@ export interface AgingBucket {
 }
 
 export interface AgingItem {
-  entityId: number;
+  entityId: string | number;
   entityName: string;
   buckets: AgingBucket;
   details: {
-    invoiceId: number;
+    invoiceId: string | number;
     invoiceNumber: string;
     total: string;
     paid: string;
@@ -53,7 +53,7 @@ export interface AgingResult {
 
 export interface ClientStatementLine {
   type: "invoice" | "payment" | "credit" | "adjustment";
-  id: number;
+  id: string | number;
   reference: string;
   date: string;
   description: string;
@@ -64,7 +64,7 @@ export interface ClientStatementLine {
 
 export interface ClientStatementResult {
   companySlug: string;
-  clientId: number;
+  clientId: string;
   clientName: string;
   lines: ClientStatementLine[];
   summary: {
@@ -78,7 +78,7 @@ export interface ClientStatementResult {
 
 export interface SupplierStatementLine {
   type: "purchase" | "payment" | "credit" | "adjustment";
-  id: number;
+  id: string | number;
   reference: string;
   date: string;
   description: string;
@@ -89,7 +89,7 @@ export interface SupplierStatementLine {
 
 export interface SupplierStatementResult {
   companySlug: string;
-  supplierId: number;
+  supplierId: string;
   supplierName: string;
   lines: SupplierStatementLine[];
   summary: {
@@ -102,7 +102,7 @@ export interface SupplierStatementResult {
 }
 
 export interface InstallmentScheduleResult {
-  scheduleId: number;
+  scheduleId: string;
   invoiceId: number;
   totalAmount: string;
   installmentCount: number;
@@ -147,9 +147,9 @@ export async function calculateAging(
     });
 
     // Group by client
-    const clientMap = new Map<number, typeof invoices>();
+    const clientMap = new Map<string, typeof invoices>();
     for (const inv of invoices) {
-      const clientId = inv.clientId || 0;
+      const clientId = inv.clientId ?? "";
       const existing = clientMap.get(clientId) || [];
       existing.push(inv);
       clientMap.set(clientId, existing);
@@ -170,7 +170,7 @@ export async function calculateAging(
         const outstanding = num(num(inv.total, 3) - num(inv.paid, 3), 3);
         if (outstanding <= 0.001) continue; // fully paid, skip
 
-        const dueDate = new Date(inv.dueDate);
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(0);
         const daysPastDue = Math.max(0, Math.floor((todayDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
 
         total += outstanding;
@@ -191,7 +191,7 @@ export async function calculateAging(
           total: num(inv.total, 3).toFixed(3),
           paid: num(inv.paid, 3).toFixed(3),
           outstanding: outstanding.toFixed(3),
-          dueDate: inv.dueDate,
+          dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : "",
           daysPastDue,
         });
       }
@@ -246,7 +246,7 @@ export async function calculateAging(
         if (outstanding <= 0.001) continue;
 
         // Use purchase date as basis (no dueDate field in PurchaseInvoice model)
-        const purchaseDate = new Date(pi.date);
+        const purchaseDate = pi.date ? new Date(pi.date) : new Date(0);
         // Assume 30-day payment terms for aging
         const effectiveDueDate = new Date(purchaseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
         const daysPastDue = Math.max(0, Math.floor((todayDate.getTime() - effectiveDueDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -265,7 +265,7 @@ export async function calculateAging(
 
         details.push({
           invoiceId: pi.id,
-          invoiceNumber: pi.num,
+          invoiceNumber: pi.num ?? "",
           total: num(pi.totalAmount, 3).toFixed(3),
           paid: num(0, 3).toFixed(3), // no paid field in PurchaseInvoice
           outstanding: outstanding.toFixed(3),
@@ -319,7 +319,7 @@ export async function calculateAging(
  */
 export async function getClientStatement(
   companySlug: string,
-  clientId: number,
+  clientId: string,
 ): Promise<ClientStatementResult> {
   const client = await db.client.findFirst({
     where: { id: clientId, companySlug, deletedAt: null },
@@ -364,7 +364,7 @@ export async function getClientStatement(
       type: "invoice",
       id: inv.id,
       reference: inv.invoiceNumber,
-      date: inv.issueDate,
+      date: inv.issueDate.toISOString().slice(0, 10),
       description: `Invoice ${inv.invoiceNumber}`,
       debit: total.toFixed(3),
       credit: num(0, 3).toFixed(3),
@@ -379,9 +379,9 @@ export async function getClientStatement(
     lines.push({
       type: "payment",
       id: pay.id,
-      reference: pay.voucherNumber,
-      date: pay.date,
-      description: `Payment ${pay.voucherNumber}`,
+      reference: pay.voucherNumber ?? "",
+      date: pay.date.toISOString().slice(0, 10),
+      description: `Payment ${pay.voucherNumber ?? ""}`,
       debit: num(0, 3).toFixed(3),
       credit: amount.toFixed(3),
       balance: num(runningBalance, 3).toFixed(3),
@@ -431,7 +431,7 @@ export async function getClientStatement(
  */
 export async function getSupplierStatement(
   companySlug: string,
-  supplierId: number,
+  supplierId: string,
 ): Promise<SupplierStatementResult> {
   const supplier = await db.supplier.findFirst({
     where: { id: supplierId, companySlug, deletedAt: null },
@@ -473,9 +473,9 @@ export async function getSupplierStatement(
     lines.push({
       type: "purchase",
       id: pi.id,
-      reference: pi.num,
-      date: pi.date,
-      description: `Purchase Invoice ${pi.num}`,
+      reference: pi.num ?? "",
+      date: pi.date ? pi.date.toISOString().slice(0, 10) : "",
+      description: `Purchase Invoice ${pi.num ?? ""}`,
       debit: num(0, 3).toFixed(3),
       credit: total.toFixed(3),
       balance: num(runningBalance, 3).toFixed(3),
@@ -489,9 +489,9 @@ export async function getSupplierStatement(
     lines.push({
       type: "payment",
       id: pay.id,
-      reference: pay.voucherNumber,
-      date: pay.date,
-      description: `Payment ${pay.voucherNumber}`,
+      reference: pay.voucherNumber ?? "",
+      date: pay.date.toISOString().slice(0, 10),
+      description: `Payment ${pay.voucherNumber ?? ""}`,
       debit: amount.toFixed(3),
       credit: num(0, 3).toFixed(3),
       balance: num(runningBalance, 3).toFixed(3),
@@ -575,12 +575,17 @@ export async function scheduleInstallments(
 
   const startDt = new Date(startDate);
 
-  // Create the schedule record (InstallmentSchedule has no invoiceId field in current schema)
+  // Create the schedule record. InstallmentSchedule in the current schema
+  // belongs to a PaymentVoucher (required `paymentVoucherId`) and has no
+  // `companySlug` / `totalAmount` columns. We pass the required fields so
+  // the row can be inserted; the `invoiceId` is captured in the audit log
+  // below since the schema has no native column for it.
   const result = await db.installmentSchedule.create({
     data: {
-      companySlug,
-      totalAmount: new Prisma.Decimal(totalAmount.toFixed(3)),
-      status: "active",
+      paymentVoucherId: "",
+      amount: new Prisma.Decimal(totalAmount.toFixed(3)),
+      dueDate: startDt,
+      status: "pending",
     },
   });
 

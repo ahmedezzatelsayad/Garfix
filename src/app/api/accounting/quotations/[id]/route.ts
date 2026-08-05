@@ -5,7 +5,7 @@
  * DELETE — Delete a draft quotation
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -18,8 +18,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 // ─── GET ─────────────────────────────────────────────────────────────────
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const quotationId = parseInt(id);
+  const { id: quotationId } = await params;
 
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "finance_access");
@@ -27,9 +26,8 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const user = access.user;
   const quotation = await db.quotation.findUnique({
     where: { id: quotationId },
-    include: {
-      client: { select: { id: true, name: true, email: true, phone: true, address: true } },
-    },
+    // TODO(P2-Sprint5-A): Quotation has no `client` relation — only scalar
+    // `clientId: String?`. Removed include.
   });
   if (!quotation || !assertCompanyAccess(user, quotation.companySlug)) {
     return apiError("Quotation not found", 404);
@@ -62,8 +60,7 @@ const PatchQuotationSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const quotationId = parseInt(id);
+  const { id: quotationId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = PatchQuotationSchema.safeParse(body);
@@ -121,7 +118,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const updated = await db.quotation.update({
     where: { id: quotationId },
     data: updateData,
-    include: { client: { select: { id: true, name: true } } },
+    // TODO(P2-Sprint5-A): Quotation has no `client` relation — removed include.
   });
 
   await logAudit({
@@ -136,8 +133,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 // ─── DELETE ────────────────────────────────────────────────────────────
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const quotationId = parseInt(id);
+  const { id: quotationId } = await params;
 
   // IDOR mitigation: 404 on wrong-tenant
   const access = await requirePermission(req, "finance_access");

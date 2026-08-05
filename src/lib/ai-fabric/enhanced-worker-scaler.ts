@@ -12,7 +12,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { TIER_WORKER_LIMITS, planToTier, type SLATier } from "./types";
 import { getAdvancedLoadBalancer, type PoolMetrics } from "@/lib/ai/advanced-loadbalancer";
@@ -103,12 +103,17 @@ export class EnhancedWorkerScaler {
     // 3. Fetch all active runtimes
     const runtimes = await db.companyRuntime.findMany({
       where: { status: "active" },
-      include: { 
-        company: { 
-          select: { id: true, slug: true, plan: true } 
-        } 
-      },
     });
+
+    // Fetch related companies (slug, plan) by companyId
+    const companyIds = runtimes.map((r) => r.companyId);
+    const companies = companyIds.length
+      ? await db.company.findMany({
+          where: { id: { in: companyIds } },
+          select: { id: true, slug: true, plan: true },
+        })
+      : [];
+    const companyByCompanyId = new Map(companies.map((c) => [c.id, c]));
 
     // 4. Calculate pool-aware capacity factor
     const poolHealthFactor = this.calculatePoolHealthFactor(poolMetrics);
@@ -124,9 +129,11 @@ export class EnhancedWorkerScaler {
 
     // 5. Process each company
     for (const rt of runtimes) {
+      const company = companyByCompanyId.get(rt.companyId);
       const decision = await this.evaluateCompany(
-        rt, 
-        poolMetrics, 
+        rt,
+        company,
+        poolMetrics,
         poolHealthFactor,
         effectiveMaxRPM,
         resourcePressure
@@ -149,13 +156,22 @@ export class EnhancedWorkerScaler {
   async getActiveWorkerCounts(): Promise<Record<string, number>> {
     const runtimes = await db.companyRuntime.findMany({
       where: { status: "active" },
-      include: { company: { select: { slug: true } } },
     });
+
+    const companyIds = runtimes.map((r) => r.companyId);
+    const companies = companyIds.length
+      ? await db.company.findMany({
+          where: { id: { in: companyIds } },
+          select: { id: true, slug: true },
+        })
+      : [];
+    const slugByCompanyId = new Map(companies.map((c) => [c.id, c.slug]));
 
     const map: Record<string, number> = {};
     for (const rt of runtimes) {
-      if (rt.company.slug) {
-        map[rt.company.slug] = rt.workerPoolSize;
+      const slug = slugByCompanyId.get(rt.companyId);
+      if (slug) {
+        map[slug] = rt.workerPoolSize;
       }
     }
     return map;
@@ -198,14 +214,15 @@ export class EnhancedWorkerScaler {
   // ── Private Methods ──────────────────────────────────────
 
   private async evaluateCompany(
-    rt: any,
+    rt: { id: number; companyId: string; workerPoolSize: number },
+    company: { slug: string; plan: string } | undefined,
     poolMetrics: PoolMetrics | null,
     poolHealthFactor: number,
     effectiveMaxRPM: number,
     resourcePressure: number
   ): Promise<ScaleDecision> {
-    const slug = rt.company.slug || "";
-    const tier = planToTier(rt.company.plan);
+    const slug = company?.slug || "";
+    const tier = planToTier(company?.plan || "trial");
     const ceiling = TIER_WORKER_LIMITS[tier] as number;
     const queueName = `${AI_QUEUE_PREFIX}${slug}`;
     

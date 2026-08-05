@@ -3,7 +3,7 @@
  * GET / POST — support tickets (founder sees all; users see their own)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler, parseJsonBody, apiError } from "@/lib/api";
@@ -38,6 +38,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const ticket = await db.supportTicket.create({
     data: {
       userEmail: result.user.email,
+      // SupportTicket requires `companySlug` (no default) — set a sensible
+      // platform-level value since this route is the platform-wide ticket
+      // creator. The previous code omitted this column and would have
+      // thrown at runtime (masked by `db: any`).
+      companySlug: "platform",
       subject: data.subject,
       body: data.body,
       priority: data.priority,

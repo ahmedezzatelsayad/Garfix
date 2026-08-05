@@ -7,7 +7,7 @@
  * P0-2: Posted entries cannot be set via creation (use /reverse/ for reversal).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -117,7 +117,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
-        companySlug: data.companySlug, date: data.date, description: data.description || null,
+        companySlug: data.companySlug,
+        // TODO(P2-Sprint5-A): `number` and `companyId` are required String
+        // fields without defaults. Legacy `db: any` hid these missing fields.
+        // Generate a unique number from timestamp; companyId "0" placeholder.
+        number: `JE-${Date.now()}`,
+        companyId: "0",
+        date: data.date, description: data.description || null,
         reference: data.reference || null, status: data.status, createdBy: user.email,
         lines: {
           create: data.lines.map((l) => ({

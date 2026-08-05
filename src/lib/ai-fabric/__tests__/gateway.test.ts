@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { executeCascade, storeAIMemory, cacheStore, type GatewayRequest } from "@/lib/ai-fabric/gateway";
 import { calculateSavedCost, getCascadeBreakdown } from "@/lib/ai-fabric/cost-optimizer";
 import { getProviderRouting, seedProviderConfigs } from "@/lib/ai-fabric/provider-optimizer";

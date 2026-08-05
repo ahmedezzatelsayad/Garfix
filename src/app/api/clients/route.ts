@@ -4,7 +4,7 @@
  * POST — create a client
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -47,16 +47,23 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where.companySlug = { in: user.companies };
   }
   if (search) {
+    // TODO(P2-Sprint5-D): Client schema has no `company` column — removed from search filter.
     where.OR = [
       { name: { contains: search } },
       { email: { contains: search } },
       { phone: { contains: search } },
-      { company: { contains: search } },
     ];
   }
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
-  const allClients = await db.client.findMany({ where, ...pagination });
+  // Client.id is a String (cuid) — override cursor to use the string id.
+  const allClients: any[] = await db.client.findMany({
+    where,
+    take: pagination.take,
+    skip: pagination.skip,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: pagination.orderBy,
+  });
 
   const { items: clients, nextCursor } = buildCursorResponse(allClients, limit);
   return NextResponse.json({ clients, nextCursor });
@@ -80,9 +87,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       name: data.name,
       email: data.email || null,
       phone: data.phone || null,
-      clientCompany: data.company || null,
+      // TODO(P2-Sprint5-D): Client schema has no `clientCompany` or `notes` columns — fields dropped.
+      // clientCompany: data.company || null,
       address: data.address || null,
-      notes: data.notes || null,
+      // notes: data.notes || null,
       companySlug: data.companySlug,
     },
   });

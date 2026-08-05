@@ -7,7 +7,7 @@
  * ArApView's "Accounts Payable" tab kept 404-ing on every load.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { hasPermission } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
@@ -45,7 +45,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
-  const allSuppliers = await db.supplier.findMany({ where, ...pagination });
+  // Supplier.id is a String (cuid) — override cursor to use the string id.
+  const allSuppliers: any[] = await db.supplier.findMany({
+    where,
+    take: pagination.take,
+    skip: pagination.skip,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: pagination.orderBy,
+  });
 
   const { items: suppliers, nextCursor } = buildCursorResponse(allSuppliers, limit);
   return NextResponse.json({ suppliers, nextCursor });

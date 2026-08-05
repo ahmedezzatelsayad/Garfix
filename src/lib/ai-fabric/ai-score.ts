@@ -19,7 +19,7 @@
  *   getAllScores()                    → AIScoreSnapshot[] (today, all companies)
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -117,13 +117,15 @@ export async function computeAndSaveScore(companySlug: string): Promise<AIScoreR
       score,
       cacheHitPct,
       ruleHitPct,
-      breakdown: JSON.stringify({ aiCallPct, avgCostPerRequest }),
+      aiCallPct,
+      avgCostPerRequest,
     },
     update: {
       score,
       cacheHitPct,
       ruleHitPct,
-      breakdown: JSON.stringify({ aiCallPct, avgCostPerRequest }),
+      aiCallPct,
+      avgCostPerRequest,
     },
   });
 
@@ -175,8 +177,8 @@ export async function getLatestScore(
     score: Number(snapshot.score),
     cacheHitPct: Number(snapshot.cacheHitPct),
     ruleHitPct: Number(snapshot.ruleHitPct),
-    aiCallPct: snapshot.breakdown ? (JSON.parse(snapshot.breakdown) as { aiCallPct: number }).aiCallPct : 0,
-    avgCostPerRequest: snapshot.breakdown ? (JSON.parse(snapshot.breakdown) as { avgCostPerRequest: number }).avgCostPerRequest : 0,
+    aiCallPct: Number(snapshot.aiCallPct),
+    avgCostPerRequest: Number(snapshot.avgCostPerRequest),
   };
 }
 
@@ -194,15 +196,14 @@ export async function getAllScores(): Promise<AIScoreResult[]> {
   });
 
   return snapshots.map((s) => {
-    const breakdown = s.breakdown ? (JSON.parse(s.breakdown) as { aiCallPct: number; avgCostPerRequest: number }) : { aiCallPct: 0, avgCostPerRequest: 0 };
     return {
       companySlug: s.companySlug,
       period: s.period,
       score: Number(s.score),
       cacheHitPct: Number(s.cacheHitPct),
       ruleHitPct: Number(s.ruleHitPct),
-      aiCallPct: breakdown.aiCallPct,
-      avgCostPerRequest: breakdown.avgCostPerRequest,
+      aiCallPct: Number(s.aiCallPct),
+      avgCostPerRequest: Number(s.avgCostPerRequest),
       alerted: Number(s.score) < SCORE_ALERT_THRESHOLD,
     };
   });

@@ -3,7 +3,7 @@
  * PATCH / DELETE — single cost center
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -34,14 +34,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const user = access.user;
 
   const existing = await db.costCenter.findFirst({
-    where: { id: parseInt(id), companySlug: data.companySlug },
+    where: { id, companySlug: data.companySlug },
   });
   if (!existing) return apiError("Cost center not found", 404);
 
   // Check for duplicate code if changing
   if (data.code && data.code !== existing.code) {
     const duplicate = await db.costCenter.findFirst({
-      where: { companySlug: data.companySlug, code: data.code, id: { not: parseInt(id) } },
+      where: { companySlug: data.companySlug, code: data.code, id: { not: id } },
     });
     if (duplicate) return apiError(`Cost center code "${data.code}" already exists`, 400);
   }
@@ -49,11 +49,11 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   // Validate parent belongs to same company
   if (data.parentId) {
     const parent = await db.costCenter.findFirst({
-      where: { id: data.parentId, companySlug: data.companySlug },
+      where: { id: String(data.parentId), companySlug: data.companySlug },
     });
     if (!parent) return apiError("Parent cost center not found or belongs to a different company", 400);
     // Prevent self-reference
-    if (data.parentId === parseInt(id)) return apiError("Cost center cannot be its own parent", 400);
+    if (String(data.parentId) === id) return apiError("Cost center cannot be its own parent", 400);
   }
 
   const updateData: Record<string, unknown> = {};
@@ -64,7 +64,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
   const costCenter = await db.costCenter.update({
-    where: { id: parseInt(id) },
+    where: { id },
     data: updateData,
   });
 
@@ -93,24 +93,16 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const user = access.user;
 
   const existing = await db.costCenter.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
   });
   if (!existing) return apiError("Cost center not found", 404);
 
-  // Check if any journal lines reference this cost center
-  const linkedLines = await db.journalEntryLine.count({
-    where: { costCenterId: parseInt(id) },
-  });
-  if (linkedLines > 0) {
-    return apiError(
-      `Cannot delete cost center — ${linkedLines} journal entry lines reference it. Deactivate it instead.`,
-      400,
-    );
-  }
+  // TODO(P2-Sprint5-A): JournalEntryLine has no `costCenterId` field — removed
+  // the linked-lines check. The legacy `db: any` hid this missing column.
 
   // Check if any children exist
   const children = await db.costCenter.count({
-    where: { parentId: parseInt(id) },
+    where: { parentId: Number(id) },
   });
   if (children > 0) {
     return apiError(
@@ -119,14 +111,14 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
     );
   }
 
-  await db.costCenter.delete({ where: { id: parseInt(id) } });
+  await db.costCenter.delete({ where: { id } });
 
   await logAudit({
     userEmail: user.email,
     userUid: user.uid,
     action: "delete",
     entity: "cost_center",
-    entityId: parseInt(id),
+    entityId: id,
     companySlug,
     details: { code: existing.code, nameAr: existing.nameAr },
   });

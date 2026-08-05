@@ -23,7 +23,7 @@
  * Permission: settings_access (admin/manager — catalog-shaping decision).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { recordMatchOverride } from "@/lib/productMatcher";
 import { logAudit } from "@/lib/audit";
@@ -33,10 +33,10 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 const OverrideSchema = z.object({
   companySlug: z.string().min(1),
   inputText: z.string().min(1),
-  fromProductId: z.number().int().nullable().optional(),
-  toProductId: z.number().int(),
+  fromProductId: z.string().nullable().optional(),
+  toProductId: z.string(),
   chosenAlias: z.string().optional(),
-  auditId: z.number().int().optional(),
+  auditId: z.string().optional(),
   reason: z.string().max(500).optional(),
 });
 
@@ -60,10 +60,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const { overrideId } = await recordMatchOverride({
     companySlug,
     inputText,
-    fromProductId: fromProductId ?? null,
-    toProductId,
+    fromProductId: fromProductId != null ? Number(fromProductId) : null,
+    toProductId: Number(toProductId),
     chosenAlias,
-    auditId,
+    auditId: undefined,
     reason,
     overriddenBy: user.email,
   });

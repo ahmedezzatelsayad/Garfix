@@ -293,7 +293,7 @@ mock.module("next/server", () => {
 // share the same object reference. Monkey-patching db.invoice etc. in
 // beforeAll makes the route handlers see our mocks.
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { GET as listGET, POST as invoicesPOST } from "@/app/api/invoices/route";
 import {
   GET as singleGET,

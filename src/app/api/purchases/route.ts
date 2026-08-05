@@ -4,7 +4,7 @@
  * POST — create purchase invoice
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -73,13 +73,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const purchase = await db.purchaseInvoice.create({
     data: {
       companySlug: data.companySlug,
+      invoiceNumber: data.num,
       num: data.num,
-      date: data.date,
+      date: new Date(data.date),
       supplier: data.supplier,
       items: JSON.stringify(data.items),
       sourceInvoiceIds: JSON.stringify(data.sourceInvoiceIds),
       totalQty,
       notes: data.notes || null,
+      // P2-Sprint5-D: PurchaseInvoice schema requires P2-Reconciliation columns (no defaults):
+      lineItems: JSON.stringify(data.items),
+      subtotal: totalQty.toFixed(3),
+      taxRate: "0",
+      taxAmount: "0",
+      paid: "0",
     },
   });
 

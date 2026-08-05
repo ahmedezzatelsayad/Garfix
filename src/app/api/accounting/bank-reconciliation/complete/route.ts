@@ -3,16 +3,17 @@
  * POST — complete a reconciliation
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityId } from "@/lib/validation";
 
 const CompleteSchema = z.object({
   companySlug: z.string().min(1),
-  reconciliationId: z.number().int(),
+  reconciliationId: entityId,
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
@@ -43,7 +44,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       status: "completed",
       completedBy: user.email,
-      completedAt: new Date(),
+      // TODO(P2-Sprint5-A): BankReconciliation has no `completedAt` column —
+      // `updatedAt` is auto-managed by Prisma (@updatedAt) and captures the
+      // completion time. Removed the unknown `completedAt` field.
     },
   });
 

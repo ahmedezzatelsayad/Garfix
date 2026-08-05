@@ -3,7 +3,7 @@
  * Returns trial balance: for each account, sum of debits and credits from posted journal entries.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { withErrorHandler } from "@/lib/api";
@@ -20,7 +20,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where: { companySlug, isActive: true },
     include: {
       journalEntryLines: {
-        include: { entry: { select: { status: true } } },
+        // TODO(P2-Sprint5-A): JournalEntryLine has `journalEntry` relation,
+        // not `entry`. Renamed.
+        include: { journalEntry: { select: { status: true } } },
       },
     },
     orderBy: { code: "asc" },
@@ -30,9 +32,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     let totalDebit = 0;
     let totalCredit = 0;
     for (const line of acc.journalEntryLines) {
-      if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
+      if (line.journalEntry.status !== "posted" && line.journalEntry.status !== "reversed") continue;
       // For reversed entries, swap the effect
-      const multiplier = line.entry.status === "reversed" ? -1 : 1;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
       totalDebit += num(line.debit, 3) * multiplier;
       totalCredit += num(line.credit, 3) * multiplier;
     }

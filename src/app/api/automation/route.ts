@@ -6,7 +6,7 @@
  * Query: ?companySlug=acme
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -75,11 +75,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       companySlug,
       name,
-      type: trigger,
+      triggerType: trigger,
       trigger,
       condition: JSON.stringify(condition || {}),
       actions: JSON.stringify(actions),
       isActive: isActive ?? true,
+      runCount: 0,
     },
   });
 

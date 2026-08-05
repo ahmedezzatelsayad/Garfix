@@ -7,7 +7,7 @@
  *  - postProfitDistributionJE: Create JE (Debit Retained Earnings / Income Summary, Credit each partner's capital)
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num } from "@/lib/money";
 import { logger } from "@/lib/logger";
 import { logAccountingChange } from "@/lib/accounting/accountant-collab";
@@ -15,7 +15,7 @@ import { logAccountingChange } from "@/lib/accounting/accountant-collab";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PartnerDistribution {
-  partnerAccountId: number;
+  partnerAccountId: string;
   partnerName: string;
   accountCode: string;
   ownershipPercent: string;
@@ -43,7 +43,7 @@ export async function calculateProfitDistribution(
     where: { companySlug, type: "revenue", isActive: true },
     include: {
       journalEntryLines: {
-        include: { entry: { select: { status: true, date: true } } },
+        include: { journalEntry: { select: { status: true, date: true } } },
       },
     },
   });
@@ -52,7 +52,7 @@ export async function calculateProfitDistribution(
     where: { companySlug, type: "expense", isActive: true },
     include: {
       journalEntryLines: {
-        include: { entry: { select: { status: true, date: true } } },
+        include: { journalEntry: { select: { status: true, date: true } } },
       },
     },
   });
@@ -62,7 +62,7 @@ export async function calculateProfitDistribution(
     where: { companySlug, type: "contra_revenue", isActive: true },
     include: {
       journalEntryLines: {
-        include: { entry: { select: { status: true, date: true } } },
+        include: { journalEntry: { select: { status: true, date: true } } },
       },
     },
   });
@@ -73,9 +73,9 @@ export async function calculateProfitDistribution(
 
   for (const acc of revenueAccounts) {
     for (const line of acc.journalEntryLines) {
-      if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
-      if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
-      const multiplier = line.entry.status === "reversed" ? -1 : 1;
+      if (line.journalEntry.status !== "posted" && line.journalEntry.status !== "reversed") continue;
+      if (line.journalEntry.date < new Date(periodFrom) || line.journalEntry.date > new Date(periodTo)) continue;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
       // Revenue accounts: credit increases balance
       totalRevenue += num(line.credit, 3) * multiplier;
       totalRevenue -= num(line.debit, 3) * multiplier;
@@ -84,9 +84,9 @@ export async function calculateProfitDistribution(
 
   for (const acc of expenseAccounts) {
     for (const line of acc.journalEntryLines) {
-      if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
-      if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
-      const multiplier = line.entry.status === "reversed" ? -1 : 1;
+      if (line.journalEntry.status !== "posted" && line.journalEntry.status !== "reversed") continue;
+      if (line.journalEntry.date < new Date(periodFrom) || line.journalEntry.date > new Date(periodTo)) continue;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
       // Expense accounts: debit increases balance
       totalExpenses += num(line.debit, 3) * multiplier;
       totalExpenses -= num(line.credit, 3) * multiplier;
@@ -95,9 +95,9 @@ export async function calculateProfitDistribution(
 
   for (const acc of contraRevenueAccounts) {
     for (const line of acc.journalEntryLines) {
-      if (line.entry.status !== "posted" && line.entry.status !== "reversed") continue;
-      if (line.entry.date < periodFrom || line.entry.date > periodTo) continue;
-      const multiplier = line.entry.status === "reversed" ? -1 : 1;
+      if (line.journalEntry.status !== "posted" && line.journalEntry.status !== "reversed") continue;
+      if (line.journalEntry.date < new Date(periodFrom) || line.journalEntry.date > new Date(periodTo)) continue;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
       // Contra revenue: debit increases (reduases net revenue)
       totalContraRevenue += num(line.debit, 3) * multiplier;
       totalContraRevenue -= num(line.credit, 3) * multiplier;
@@ -126,14 +126,15 @@ export async function calculateProfitDistribution(
   let totalOwnership = 0;
 
   // First pass: extract ownership percentages
-  const ownershipMap = new Map<number, number>();
+  const ownershipMap = new Map<string, number>();
   for (const acc of partnerAccounts) {
     // Try to extract percentage from nameEn or description
     // Default: equal share
     let ownership = 0;
 
     // Check if this is a "capital" or "شريك" account (not retained earnings)
-    const isCapitalAccount = acc.nameAr.includes("شريك") || acc.nameAr.includes("رأس مال") ||
+    const nameAr = acc.nameAr || "";
+    const isCapitalAccount = nameAr.includes("شريك") || nameAr.includes("رأس مال") ||
       (acc.nameEn && (acc.nameEn.toLowerCase().includes("capital") || acc.nameEn.toLowerCase().includes("partner")));
 
     if (!isCapitalAccount && partnerAccounts.length > 0) {
@@ -177,7 +178,7 @@ export async function calculateProfitDistribution(
 
     partners.push({
       partnerAccountId: acc.id,
-      partnerName: acc.nameAr,
+      partnerName: acc.nameAr || acc.nameEn || acc.name,
       accountCode: acc.code,
       ownershipPercent: num(percent, 2).toFixed(2),
       profitShare: profitShare.toFixed(3),
@@ -204,7 +205,7 @@ export async function postProfitDistributionJE(
   companySlug: string,
   distribution: ProfitDistributionResult,
   createdBy: string,
-): Promise<{ jeId: number; lines: Array<{ accountId: number; accountCode: string; accountNameAr: string; debit: string; credit: string }> }> {
+): Promise<{ jeId: string; lines: Array<{ accountId: string; accountCode: string; accountNameAr: string | null; debit: string; credit: string }> }> {
   if (distribution.partners.length === 0) throw new Error("No partners to distribute profit to");
   if (num(distribution.netProfit, 3) <= 0) throw new Error("Net profit must be positive to distribute");
 
@@ -238,12 +239,16 @@ export async function postProfitDistributionJE(
 
   if (!equityAccount) throw new Error("No retained earnings / equity account found for profit distribution");
 
+  // Look up company for required companyId FK on JournalEntry.create
+  const company = await db.company.findUnique({ where: { slug: companySlug }, select: { id: true } });
+  if (!company) throw new Error(`Company not found for slug: ${companySlug}`);
+
   // Build JE lines:
   // Debit: Retained Earnings / Income Summary (total profit)
   // Credit: Each partner's capital account (their share)
   const totalProfit = num(distribution.netProfit, 3);
 
-  const linesData: Array<{ accountId: number; debit: string; credit: string; description: string }> = [
+  const linesData: Array<{ accountId: string; debit: string; credit: string; description: string }> = [
     // Debit: Retained Earnings
     {
       accountId: equityAccount.id,
@@ -267,8 +272,10 @@ export async function postProfitDistributionJE(
   const result = await db.$transaction(async (tx) => {
     const je = await tx.journalEntry.create({
       data: {
+        number: `JE-PROFDIST-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        companyId: company.id,
         companySlug,
-        date: distribution.periodTo,
+        date: new Date(distribution.periodTo),
         description: `توزيع أرباح ${distribution.periodFrom} - ${distribution.periodTo}`,
         reference: `PROFIT-DIST-${distribution.periodFrom}-${distribution.periodTo}`,
         status: "posted",

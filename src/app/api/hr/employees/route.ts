@@ -4,7 +4,7 @@
  * POST — create employee
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -26,6 +26,7 @@ const CreateSchema = z.object({
   joinDate: z.string().optional(),
   isActive: z.boolean().default(true),
   notes: z.string().optional(),
+  code: z.string().optional(),
 });
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -47,7 +48,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
-  const allEmployees: any[] = await db.employee.findMany({ where, ...pagination });
+  // Employee.id is a String (cuid) — override cursor to use the string id.
+  const allEmployees: any[] = await db.employee.findMany({
+    where,
+    take: pagination.take,
+    skip: pagination.skip,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: pagination.orderBy,
+  });
 
   const { items, nextCursor } = buildCursorResponse(allEmployees, limit);
   const employees: any[] = items;
@@ -72,9 +80,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
   const user = access.user;
 
+  // P2-Sprint5-D: Employee schema requires `companyId` (FK to Company.id) and `code` (unique).
+  // Look up the company by slug to obtain its id; auto-generate a code if not provided.
+  const company = await db.company.findUnique({ where: { slug: data.companySlug } });
+  if (!company) return apiError("Company not found", 404);
+
   const employee = await db.employee.create({
     data: {
       companySlug: data.companySlug,
+      companyId: company.id,
+      code: data.code || crypto.randomUUID(),
       name: data.name,
       nameEn: data.nameEn || null,
       phone: data.phone || null,

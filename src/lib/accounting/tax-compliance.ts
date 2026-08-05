@@ -7,7 +7,7 @@
  * ALL monetary values as String — use num()/toNum()/addNums()/mulNums() from money.ts.
  * ALL country-specific calculations use getCountryConfig from gulfConfig.ts.
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, mulNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import {
@@ -27,7 +27,8 @@ export interface VATReturnResult {
   vatOnPurchases: string;
   vatDue: string;
   countryConfig: CountryConfig | null;
-  filingId?: number;
+  // P2-Sprint5-B2: TaxFiling.id is String cuid (was number).
+  filingId?: string;
 }
 
 export interface ZakatResult {
@@ -85,6 +86,10 @@ export async function generateVATReturn(
     throw new Error(`VAT is not applicable in ${countryConfig.nameEn} (${country})`);
   }
 
+  // P2-Sprint5-B2: TaxFiling requires companyId — fetch company.
+  const company = await db.company.findUnique({ where: { slug: companySlug } });
+  if (!company) throw new Error("Company not found");
+
   const vatRate = countryConfig.vatRate;
 
   // Get all sales invoices in the period
@@ -127,15 +132,21 @@ export async function generateVATReturn(
   const vatDue = vatOnSales - vatOnPurchases;
 
   // Create TaxFiling record
+  // P2-Sprint5-B2: TaxFiling requires period/authority/companyId/outputVat/inputVat.
   const filing = await db.taxFiling.create({
     data: {
       companySlug,
+      companyId: company.id,
+      period: `${periodFrom}_${periodTo}`,
+      authority: country,
       country,
       taxType: "vat",
       periodFrom,
       periodTo,
       totalSales: totalSales.toFixed(3),
       totalPurchases: totalPurchases.toFixed(3),
+      outputVat: vatOnSales.toFixed(3),
+      inputVat: vatOnPurchases.toFixed(3),
       vatDue: vatDue.toFixed(3),
       status: "draft",
     },
@@ -195,10 +206,11 @@ export async function calculateZakat(
     include: { lines: true },
   });
 
-  const balanceMap = new Map<number, number>();
+  // P2-Sprint5-B2: Account.id is String cuid — balanceMap keyed by string.
+  const balanceMap = new Map<string, number>();
   for (const entry of entries) {
     for (const line of entry.lines) {
-      const aid = line.accountId ?? 0;
+      const aid = line.accountId ?? "";
       const current = balanceMap.get(aid) || 0;
       balanceMap.set(aid, current + num(line.debit, 3) - num(line.credit, 3));
     }
@@ -238,15 +250,22 @@ export async function calculateZakat(
   const zakatAmount = zakatBase * zakatRate;
 
   // Create a zakat tax filing record
+  // P2-Sprint5-B2: TaxFiling requires period/authority/companyId/outputVat/inputVat.
+  const zakatYear = new Date().getFullYear().toString();
   const filing = await db.taxFiling.create({
     data: {
       companySlug,
+      companyId: company.id,
+      period: zakatYear,
+      authority: "SA",
       country: "SA",
       taxType: "zakat",
-      periodFrom: new Date().getFullYear().toString() + "-01-01",
-      periodTo: new Date().getFullYear().toString() + "-12-31",
+      periodFrom: zakatYear + "-01-01",
+      periodTo: zakatYear + "-12-31",
       totalSales: "0.000",
       totalPurchases: "0.000",
+      outputVat: "0.000",
+      inputVat: "0.000",
       vatDue: zakatAmount.toFixed(3), // Using vatDue field for zakat amount
       status: "draft",
     },

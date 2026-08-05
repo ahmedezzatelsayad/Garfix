@@ -5,7 +5,7 @@
  * PATCH — save PDF template settings for a company
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -121,9 +121,16 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
     settings = await db.invoiceTemplateSettings.create({
       data: {
         companySlug: data.companySlug,
-        name: data.templateId,
+        // TODO(P2-Sprint5-D): InvoiceTemplateSettings has no `name` column — field dropped.
+        // name: data.templateId,
         primaryColor: data.primaryColor,
         fontFamily: data.fontFamily,
+        fontSize: data.fontSize,
+        logoPosition: data.logoPosition,
+        showPaymentInfo: data.showPaymentInfo,
+        showStamp: data.showStamp,
+        showLogo: true,
+        showPaymentTerms: true,
       },
     });
   }

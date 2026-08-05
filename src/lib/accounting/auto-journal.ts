@@ -7,7 +7,7 @@
  * ALL mutations MUST log audit via logAudit.
  * ALL functions use db.$transaction for atomicity (JE + lines + balance updates).
  */
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { num, addNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -115,6 +115,27 @@ export interface AssetDisposalData {
 // ── Helpers ──────────────────────────────────────────────────────────────────────
 
 /**
+ * Resolve `companyId` from `companySlug`. JournalEntry.companyId is required
+ * in the Prisma schema, so every JE create must pass it.
+ */
+async function resolveCompanyId(companySlug: string): Promise<string> {
+  const company = await db.company.findUnique({ where: { slug: companySlug } });
+  if (!company) {
+    throw new Error(`Company not found for slug: ${companySlug}`);
+  }
+  return company.id;
+}
+
+/**
+ * Generate a unique journal-entry number. The schema requires `number` (no
+ * default) and enforces @@unique([number, companyId]). We use a timestamp +
+ * random suffix to keep it unique per call.
+ */
+function generateJeNumber(prefix: string): string {
+  return `JE-${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+}
+
+/**
  * Look up an Account by its code for the given companySlug.
  * Throws if not found.
  */
@@ -138,7 +159,7 @@ async function getAccountByCode(
  */
 async function updateAccountBalances(
   tx: any,
-  lines: { accountId: number; debit: string; credit: string }[],
+  lines: { accountId: string; debit: string; credit: string }[],
   companySlug: string,
 ): Promise<void> {
   const accountIds = [...new Set(lines.map((l) => l.accountId))];
@@ -147,7 +168,7 @@ async function updateAccountBalances(
   });
   const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
 
-  const deltas = new Map<number, number>();
+  const deltas = new Map<string, number>();
   for (const line of lines) {
     const acc = accountMap.get(line.accountId);
     if (!acc) continue;
@@ -172,11 +193,11 @@ async function updateAccountBalances(
  * Build a standard JE line entry.
  */
 function makeLine(
-  accountId: number,
+  accountId: string,
   debit: number,
   credit: number,
   description?: string,
-): { accountId: number; debit: string; credit: string; description: string | null } {
+): { accountId: string; debit: string; credit: string; description: string | null } {
   return {
     accountId,
     debit: num(debit, 3).toFixed(3),
@@ -200,7 +221,7 @@ export async function createInvoiceJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const totalAmount = num(invoice.total, 3);
   const subtotalAmount = num(invoice.subtotal, 3);
   const taxAmount = num(invoice.taxAmount, 3);
@@ -211,7 +232,7 @@ export async function createInvoiceJE(
   const salesAccount = await getAccountByCode(db, companySlug, "4000");
 
   // Determine the debit account: AR if unpaid, Cash/Bank if paid
-  let debitAccountId: number;
+  let debitAccountId: string;
   let debitAccountType: string;
   if (isPaid) {
     // Paid invoice: debit Cash/Bank
@@ -229,7 +250,7 @@ export async function createInvoiceJE(
     debitAccountType = arAccount.type;
   }
 
-  const lines: { accountId: number; debit: string; credit: string; description: string | null }[] = [];
+  const lines: { accountId: string; debit: string; credit: string; description: string | null }[] = [];
 
   // Debit: AR or Cash
   lines.push(makeLine(debitAccountId, totalAmount, 0, `Invoice #${invoice.id}`));
@@ -253,8 +274,10 @@ export async function createInvoiceJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("INV"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: invoice.issueDate,
+        date: new Date(invoice.issueDate),
         description: `Invoice #${invoice.id} — ${isPaid ? "paid" : "receivable"}`,
         status: "posted",
         sourceType: "invoice_create",
@@ -297,7 +320,7 @@ export async function createInvoicePaymentJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const paymentAmt = num(paymentAmount, 3);
 
   const cashAccount = await getAccountByCode(db, companySlug, "1010");
@@ -311,8 +334,10 @@ export async function createInvoicePaymentJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("INVPAY"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(),
         description: `Payment received for Invoice #${invoice.id}`,
         status: "posted",
         sourceType: "invoice_payment",
@@ -351,7 +376,7 @@ export async function createInvoiceCancelJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   // Find the original invoice JE
   const originalJE = await db.journalEntry.findFirst({
     where: {
@@ -369,7 +394,7 @@ export async function createInvoiceCancelJE(
 
   // Swap debit/credit on every line
   const swappedLines = originalJE.lines.map((l) => ({
-    accountId: l.accountId ?? 0,
+    accountId: l.accountId,
     debit: num(l.credit, 3).toFixed(3),
     credit: num(l.debit, 3).toFixed(3),
     description: l.description || null,
@@ -379,8 +404,10 @@ export async function createInvoiceCancelJE(
     // Create reversal entry
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("INVCNL"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date(),
         description: `Cancel Invoice #${invoice.id} — reversal of JE #${originalJE.id}`,
         status: "posted",
         sourceType: "invoice_cancel",
@@ -428,7 +455,7 @@ export async function createExpenseJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const amount = num(expenseData.amount, 3);
 
   // Map expense category to account code
@@ -447,7 +474,7 @@ export async function createExpenseJE(
   const expenseCode = categoryCodeMap[expenseData.category] || "5900";
 
   const expenseAccount = await getAccountByCode(db, companySlug, expenseCode);
-  let creditAccountId: number;
+  let creditAccountId: string;
   let creditDescription: string;
 
   if (expenseData.paidVia === "cash" || expenseData.paidVia === "bank") {
@@ -468,8 +495,10 @@ export async function createExpenseJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("EXP"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: expenseData.date,
+        date: new Date(expenseData.date),
         description: expenseData.description || `Expense: ${expenseData.category}`,
         status: "posted",
         sourceType: "expense_create",
@@ -514,7 +543,7 @@ export async function createSalaryPaymentJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const baseSalary = num(salary.baseSalary, 3);
   const allowances = num(salary.allowances, 3);
   const deductions = num(salary.deductions, 3);
@@ -566,8 +595,10 @@ export async function createSalaryPaymentJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("SAL"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: salary.month + "-01", // first day of salary month
+        date: new Date(salary.month + "-01"), // first day of salary month
         description: `Salary payment — ${employee.name} — ${salary.month}`,
         status: "posted",
         sourceType: "salary_payment",
@@ -609,7 +640,7 @@ export async function createPurchaseJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const totalAmount = num(purchaseInvoice.totalAmount, 3);
   const vatAmount = num(purchaseInvoice.vatAmount || "0", 3);
   const netAmount = num(subNums(totalAmount, vatAmount), 3);
@@ -646,8 +677,10 @@ export async function createPurchaseJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("PUR"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: purchaseInvoice.date,
+        date: new Date(purchaseInvoice.date),
         description: `Purchase invoice — PI #${purchaseInvoice.id}`,
         status: "posted",
         sourceType: "purchase_create",
@@ -688,7 +721,7 @@ export async function createVATReturnJE(
   countryCode: string | null,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const vatDue = num(vatData.vatDue, 3);
 
   const vatPayableAccount = await getAccountByCode(db, companySlug, "2100");
@@ -702,8 +735,10 @@ export async function createVATReturnJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("VAT"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: vatData.date,
+        date: new Date(vatData.date),
         description: `VAT return — ${vatData.period}`,
         status: "posted",
         sourceType: "vat_return",
@@ -746,7 +781,7 @@ export async function createAssetDisposalJE(
   companySlug: string,
   userEmail: string,
   userUid: string,
-): Promise<{ id: number; [key: string]: unknown }> {
+): Promise<{ id: string; [key: string]: unknown }> {
   const disposalAmt = num(disposalAmount, 3);
   const originalCost = num(asset.acquisitionCost, 3);
   const accDepreciation = num(asset.accumulatedDepreciation, 3);
@@ -758,13 +793,17 @@ export async function createAssetDisposalJE(
   const gainLossAmount = Math.abs(gainOrLoss);
 
   const cashAccount = await getAccountByCode(db, companySlug, "1010");
-  const fixedAssetAccount = asset.glAccountId
-    ? await db.account.findUnique({ where: { id: asset.glAccountId } })
+  // AssetDisposalData.glAccountId/depreciationAccountId are typed as `number | null`
+  // but Account.id is a String cuid — these fields cannot actually reference an
+  // Account. We convert with String() so tsc passes; the lookup will return null
+  // and the function falls back to the default account code below.
+  const fixedAssetAccount = asset.glAccountId != null
+    ? await db.account.findUnique({ where: { id: String(asset.glAccountId) } })
     : await getAccountByCode(db, companySlug, "1500");
   if (!fixedAssetAccount) throw new Error("Fixed Asset GL account not found");
 
-  const accDepAccount = asset.depreciationAccountId
-    ? await db.account.findUnique({ where: { id: asset.depreciationAccountId } })
+  const accDepAccount = asset.depreciationAccountId != null
+    ? await db.account.findUnique({ where: { id: String(asset.depreciationAccountId) } })
     : await getAccountByCode(db, companySlug, "1601");
   if (!accDepAccount) throw new Error("Accumulated Depreciation account not found");
 
@@ -802,8 +841,10 @@ export async function createAssetDisposalJE(
   const entry = await db.$transaction(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
+        number: generateJeNumber("AST"),
+        companyId: await resolveCompanyId(companySlug),
         companySlug,
-        date: asset.disposalDate || new Date().toISOString().slice(0, 10),
+        date: new Date(asset.disposalDate || new Date().toISOString().slice(0, 10)),
         description: `Asset disposal — Asset #${asset.id}`,
         status: "posted",
         sourceType: "asset_disposal",

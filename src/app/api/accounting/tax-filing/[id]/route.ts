@@ -4,7 +4,7 @@
  * PATCH — Update filing (submit, approve, reject)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -16,8 +16,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 // ── GET: Single filing ──────────────────────────────────────────────────────────
 
 export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
-  const { id } = await ctx.params;
-  const filingId = parseInt(id, 10);
+  const { id: filingId } = await ctx.params;
   if (!filingId) return apiError("Invalid filing ID", 400);
 
   const filing = await db.taxFiling.findUnique({
@@ -47,8 +46,7 @@ const PatchSchema = z.object({
 });
 
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
-  const { id } = await ctx.params;
-  const filingId = parseInt(id, 10);
+  const { id: filingId } = await ctx.params;
   if (!filingId) return apiError("Invalid filing ID", 400);
 
   const body = await parseJsonBody(req);

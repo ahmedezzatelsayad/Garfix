@@ -35,7 +35,7 @@
  *     `maxAttempts` (3) with backoff before landing in dead-letter.
  */
 
-import { db } from "../db";
+import { dbTyped as db } from "../db";
 import { logger } from "../logger";
 import { registerWorker, QUEUE_NAMES, recoverPendingJobs } from "../queues";
 import { resolveAmbiguousMatch, getAIResolutionAction } from "../aiProductResolver";
@@ -76,16 +76,15 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
 
   // 1. Load the candidate product.
   const candidateProduct = await db.productCatalog.findUnique({
-    where: { id: candidateProductId },
+    where: { id: String(candidateProductId) },
   });
   if (!candidateProduct) {
     // The candidate product was deleted between enqueue and execution.
     // Mark the audit as permanently unresolved with a clear lastError.
     await db.productMatchAudit.update({
-      where: { id: auditId },
+      where: { id: String(auditId) },
       data: {
         action: "ai-queued-for-review",
-        aiReasoning: "Candidate product no longer exists — admin must review manually.",
         resolvedBy: null,
       },
     }).catch((err: unknown) => {
@@ -114,10 +113,9 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
     // point retrying permanent AI failures (bad model name, quota exhausted).
     logger.warn("[ai-worker] AI call returned null — leaving audit for manual review", { auditId, companySlug });
     await db.productMatchAudit.update({
-      where: { id: auditId },
+      where: { id: String(auditId) },
       data: {
         action: "ai-queued-for-review",
-        aiReasoning: "AI resolver call failed — manual review required.",
         resolvedBy: null,
       },
     }).catch((err: unknown) => {
@@ -132,16 +130,14 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
 
   // 4. Update the audit entry with the AI decision.
   await db.productMatchAudit.update({
-    where: { id: auditId },
+    where: { id: String(auditId) },
     data: {
       resolvedBy: "ai",
-      aiReasoning: aiResult.reasoning_ar,
-      aiModel,
       confidence: aiResult.confidence,
       tier,
       action,
       matchedAlias: candidateAlias,
-      matchedProductId: tier === "auto-match" ? candidateProductId : null,
+      matchedProductId: tier === "auto-match" ? String(candidateProductId) : null,
     },
   });
 
@@ -154,7 +150,7 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
   if (action === "ai-auto-matched") {
     try {
       await db.productAlias.upsert({
-        where: { companySlug_alias: { companySlug, alias: newProductName.trim() } },
+        where: { alias_companySlug_language: { alias: newProductName.trim(), companySlug, language: "ar" } },
         update: {
           productCatalogId: candidateProductId,
           source: "ai",
@@ -162,9 +158,11 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
           isVerified: true,
         },
         create: {
+          productId: String(candidateProductId),
           productCatalogId: candidateProductId,
           companySlug,
           alias: newProductName.trim(),
+          language: "ar",
           source: "ai",
           confidence: aiResult.confidence,
           isVerified: true,

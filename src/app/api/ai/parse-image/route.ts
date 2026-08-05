@@ -9,7 +9,7 @@
  * Returns: { orders: ParsedOrder[], meta: { processingMs, model, ... } }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
@@ -273,7 +273,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       if (newProducts.length > 0) {
         await db.productCatalog.createMany({
           data: newProducts.map((p) => ({
-            companySlug, name: p.name, sellingPrice: p.sellingPrice ?? "0", sku: `AUTO-${Date.now().toString().slice(-6)}`, companyId: 0,
+            companySlug, name: p.name, sellingPrice: p.sellingPrice ?? "0", sku: `AUTO-${Date.now().toString().slice(-6)}`,
           })),
         });
         logger.info("[parse-image] auto-added products", { count: newProducts.length, companySlug });
@@ -283,13 +283,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug ?? "",
-        endpoint: "parse-image",
+        requestType: "parse-image",
         provider: "z-ai",
-        ordersCount: orders.length,
-        itemsCount,
-        inputTokens: usage.prompt_tokens || 0,
-        outputTokens: usage.completion_tokens || 0,
-        totalTokens: usage.total_tokens || 0,
+        tokensUsed: usage.total_tokens || 0,
         success: true,
       },
     });
@@ -337,11 +333,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.aIProcessingLog.create({
       data: {
         companySlug: companySlug ?? "",
-        endpoint: "parse-image",
+        requestType: "parse-image",
         provider: "z-ai",
-        ordersCount: 0,
-        itemsCount: 0,
-        processingMs,
+        latencyMs: processingMs,
         success: false,
       },
     }).catch(() => {});

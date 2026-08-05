@@ -3,7 +3,7 @@
  * GET / POST — leave requests
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -12,7 +12,7 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 
 const CreateSchema = z.object({
   companySlug: z.string().min(1),
-  employeeId: z.number().int(),
+  employeeId: z.string().min(1),
   type: z.enum(["annual", "sick", "unpaid", "maternity", "other"]).default("annual"),
   startDate: z.string().min(1),
   endDate: z.string().min(1),
@@ -30,8 +30,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const where: Record<string, unknown> = {};
-  if (companySlug) where.companySlug = companySlug;
-  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
+  // TODO(P2-Sprint5-D): HRLeaveRequest has no companySlug column — filter via employee relation.
+  if (companySlug) where.employee = { companySlug };
+  else if (!hasUnrestrictedScope(result.user)) where.employee = { companySlug: { in: result.user.companies } };
   const records = await db.hRLeaveRequest.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
   return NextResponse.json({ leaves: records });
 });
@@ -49,9 +50,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const l = await db.hRLeaveRequest.create({
     data: {
-      companySlug: data.companySlug, employeeId: data.employeeId, type: data.type,
-      startDate: data.startDate, endDate: data.endDate, days: data.days,
-      reason: data.reason || null, status: data.status, approvedBy: user.email,
+      employeeId: data.employeeId, type: data.type,
+      startDate: new Date(data.startDate), endDate: new Date(data.endDate),
+      status: data.status, approvedBy: user.email,
+      // TODO(P2-Sprint5-D): HRLeaveRequest schema has no `companySlug`, `days`, or `reason` columns — dropped.
     },
   });
   await logAudit({

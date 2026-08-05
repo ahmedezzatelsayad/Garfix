@@ -10,7 +10,7 @@
  */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import type { InvoiceField } from "./schema";
 
@@ -98,64 +98,69 @@ export class JsonFilePatternStore implements PatternStore {
 
 export class PrismaPatternStore implements PatternStore {
   async get(fingerprint: string): Promise<InvoiceTemplate | null> {
-    const row = await db.invoiceBrainTemplate.findUnique({ where: { fingerprint } });
+    // InvoiceBrainTemplate schema uses (companySlug, templateName) as the unique
+    // key and `columnMap` (JSON) for the stored fields. We look up by
+    // `templateName` (= fingerprint) across any company.
+    const row = await db.invoiceBrainTemplate.findFirst({
+      where: { templateName: fingerprint },
+    });
     if (!row) return null;
     return {
-      fingerprint: row.fingerprint,
-      fields: typeof row.fields === "string" ? JSON.parse(row.fields) : row.fields,
-      sampleCount: row.sampleCount,
+      fingerprint: row.templateName,
+      fields: row.columnMap ? JSON.parse(row.columnMap) : [],
+      sampleCount: 0, // no `sampleCount` column in schema
       createdAt: row.createdAt.toISOString(),
-      lastUsedAt: row.lastUsedAt?.toISOString() ?? new Date().toISOString(),
+      lastUsedAt: row.updatedAt.toISOString(),
     };
   }
 
   async save(template: InvoiceTemplate, companySlug?: string): Promise<void> {
-    const now = new Date();
-    // FIX: Use actual companySlug instead of fingerprint!
     const slug = companySlug || template.companySlug || "default";
-    
-    await db.invoiceBrainTemplate.upsert({
-      where: { fingerprint: template.fingerprint },
-      create: {
-        fingerprint: template.fingerprint,
-        fields: JSON.stringify(template.fields),
-        sampleCount: template.sampleCount,
-        companySlug: slug, // ✅ FIXED: Now stores real companySlug
-        lastUsedAt: now,
-      },
-      update: {
-        fields: JSON.stringify(template.fields),
-        sampleCount: template.sampleCount,
-        companySlug: slug, // Also update on template refresh
-        lastUsedAt: now,
-      },
+    const existing = await db.invoiceBrainTemplate.findFirst({
+      where: { templateName: template.fingerprint, companySlug: slug },
     });
+    const columnMap = JSON.stringify(template.fields);
+    if (existing) {
+      await db.invoiceBrainTemplate.update({
+        where: { id: existing.id },
+        data: { columnMap },
+      });
+    } else {
+      await db.invoiceBrainTemplate.create({
+        data: {
+          templateName: template.fingerprint,
+          companySlug: slug,
+          columnMap,
+          delimiter: ",",
+        },
+      });
+    }
   }
 
   async touch(fingerprint: string): Promise<void> {
-    // Atomic increment to avoid lost updates under concurrency
+    // No `sampleCount` / `lastUsedAt` columns in schema — touch is effectively
+    // a no-op (updatedAt auto-updates via empty update).
     try {
+      const row = await db.invoiceBrainTemplate.findFirst({
+        where: { templateName: fingerprint },
+      });
+      if (!row) return;
       await db.invoiceBrainTemplate.update({
-        where: { fingerprint },
-        data: {
-          sampleCount: { increment: 1 },
-          lastUsedAt: new Date(),
-        },
+        where: { id: row.id },
+        data: {},
       });
     } catch (err) {
-      // fingerprint not found → nothing to touch (can happen if template was pruned)
       logger.debug("[brain] touch missed", { fingerprint, err: (err as Error).message });
     }
   }
 
   async stats(): Promise<{ totalTemplates: number; totalHits: number }> {
     const agg = await db.invoiceBrainTemplate.aggregate({
-      _count: { fingerprint: true },
-      _sum: { sampleCount: true },
+      _count: { id: true },
     });
     return {
-      totalTemplates: agg._count.fingerprint,
-      totalHits: agg._sum.sampleCount ?? 0,
+      totalTemplates: agg._count.id ?? 0,
+      totalHits: 0, // no `sampleCount` column in schema
     };
   }
 }

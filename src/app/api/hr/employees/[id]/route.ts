@@ -3,7 +3,7 @@
  * GET / PATCH / DELETE
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, type AuthPayload } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
@@ -27,7 +27,7 @@ const UpdateSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-async function loadForUser(id: number, user: AuthPayload) {
+async function loadForUser(id: string, user: AuthPayload) {
   const e = await db.employee.findUnique({ where: { id } });
   if (!e) return null;
   if (!assertCompanyAccess(user, e.companySlug)) return null;
@@ -38,7 +38,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const e = await loadForUser(parseInt(id), result.user);
+  const e = await loadForUser(id, result.user);
   if (!e) return apiError("Employee not found", 404);
   return NextResponse.json({ employee: { ...e, baseSalary: num(e.baseSalary, 3) } });
 });
@@ -47,7 +47,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadForUser(parseInt(id), result.user);
+  const existing = await loadForUser(id, result.user);
   if (!existing) return apiError("Employee not found", 404);
 
   // Enforce permission + company access
@@ -72,7 +72,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const existing = await loadForUser(parseInt(id), result.user);
+  const existing = await loadForUser(id, result.user);
   if (!existing) return apiError("Employee not found", 404);
 
   // Enforce permission + company access

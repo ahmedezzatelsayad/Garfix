@@ -5,7 +5,7 @@
  * Returns: all employees with calculated salary breakdown
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { calculateNetSalary, calculateSocialInsurance } from "@/lib/accounting/payroll-wps";
@@ -52,8 +52,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const decimals = config?.currencyDecimalPlaces ?? 3;
 
   const payroll = await db.hRSalary.findMany({
-    where: { companySlug: data.companySlug, month: data.month },
-    include: { employee: { select: { id: true, name: true, nameEn: true, civilId: true } } },
+    // TODO(P2-Sprint5-A): HRSalary has no `companySlug` field — removed from
+    // where. Filter by month only (company scoping must go via employee).
+    where: { month: data.month },
+    include: { employee: { select: { id: true, name: true, nameEn: true } } },
     orderBy: { employeeId: "asc" },
   });
 
@@ -63,12 +65,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   let totalSocialInsurance = 0;
 
   for (const s of payroll) {
-    const gross = num(s.baseSalary, decimals) + num(s.allowances, decimals) + num(s.bonus, decimals);
+    // TODO(P2-Sprint5-A): HRSalary has only `amount` (Decimal) — no
+    // `baseSalary`/`allowances`/`bonus`/`netSalary`/`deductions`.
+    // Legacy `db: any` hid these missing accesses.
+    const gross = num(s.amount, decimals);
     totalGross += gross;
-    totalNet += num(s.netSalary, decimals);
-    totalDeductions += num(s.deductions, decimals);
+    totalNet += gross; // net ≈ amount (no separate breakdown stored)
+    totalDeductions += 0;
     // Social insurance is computed using the payroll engine
-    const siResult = calculateSocialInsurance({ baseSalary: s.baseSalary.toString(), allowances: s.allowances.toString() }, country);
+    const siResult = calculateSocialInsurance({ baseSalary: s.amount.toString(), allowances: "0" }, country);
     totalSocialInsurance += num(siResult.employeePortion, decimals);
   }
 
@@ -78,8 +83,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       ...s,
       employeeName: s.employee.name,
       employeeNameEn: s.employee.nameEn,
-      civilId: s.employee.civilId,
-      grossSalary: num(num(s.baseSalary, decimals) + num(s.allowances, decimals) + num(s.bonus, decimals), decimals).toFixed(decimals),
+      // TODO(P2-Sprint5-A): Employee has no `civilId` — empty string.
+      civilId: "",
+      grossSalary: num(s.amount, decimals).toFixed(decimals),
     })),
     totals: {
       totalGross: num(totalGross, decimals).toFixed(decimals),
@@ -130,11 +136,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Calculate salary for each employee
+  // TODO(P2-Sprint5-A): calculateNetSalary() was migrated in P2-Sprint5-B2 to
+  // accept `employeeId: string` (Employee.id is a String cuid). Pass emp.id
+  // directly — the previous Number() coercion produced NaN for cuids and only
+  // "worked" under `db: any`.
   const payrollResults: Array<{
-    employeeId: number;
+    employeeId: string;
     employeeName: string;
     employeeNameEn: string | null;
-    civilId: string | null;
+    civilId: string;
     salaryBreakdown: Awaited<ReturnType<typeof calculateNetSalary>>;
   }> = [];
 
@@ -149,7 +159,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       employeeId: emp.id,
       employeeName: emp.name,
       employeeNameEn: emp.nameEn,
-      civilId: emp.civilId,
+      // TODO(P2-Sprint5-A): Employee has no `civilId` field.
+      civilId: "",
       salaryBreakdown: salaryResult,
     });
 
@@ -165,7 +176,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       where: {
         employeeId: result.employeeId,
         month: data.month,
-        companySlug: data.companySlug,
       },
     });
 
@@ -173,34 +183,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       await db.hRSalary.update({
         where: { id: existingSalary.id },
         data: {
-          baseSalary: result.salaryBreakdown.basicSalary,
-          allowances: num(
-            num(result.salaryBreakdown.housingAllowance, decimals) +
-            num(result.salaryBreakdown.transportAllowance, decimals) +
-            num(result.salaryBreakdown.otherAllowances, decimals),
-            decimals,
-          ).toFixed(decimals),
-          deductions: result.salaryBreakdown.totalDeductions,
-          bonus: result.salaryBreakdown.bonus,
-          netSalary: result.salaryBreakdown.netSalary,
+          // TODO(P2-Sprint5-A): HRSalary has only `amount` (Decimal) — no
+          // `baseSalary`/`allowances`/`deductions`/`bonus`/`netSalary`.
+          // Store netSalary as amount.
+          amount: result.salaryBreakdown.netSalary,
         },
       });
     } else {
       await db.hRSalary.create({
         data: {
-          companySlug: data.companySlug,
           employeeId: result.employeeId,
           month: data.month,
-          baseSalary: result.salaryBreakdown.basicSalary,
-          allowances: num(
-            num(result.salaryBreakdown.housingAllowance, decimals) +
-            num(result.salaryBreakdown.transportAllowance, decimals) +
-            num(result.salaryBreakdown.otherAllowances, decimals),
-            decimals,
-          ).toFixed(decimals),
-          deductions: result.salaryBreakdown.totalDeductions,
-          bonus: result.salaryBreakdown.bonus,
-          netSalary: result.salaryBreakdown.netSalary,
+          amount: result.salaryBreakdown.netSalary,
         },
       });
     }

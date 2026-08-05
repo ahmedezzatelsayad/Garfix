@@ -16,7 +16,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { registerWorker, QUEUE_NAMES, enqueue, enqueueAsync } from "@/lib/queues";
 import { callAI as callAIProvider } from "@/lib/aiProvider";
@@ -432,20 +432,10 @@ async function handleChatJob(data: Record<string, unknown>): Promise<void> {
 
     // Update conversation if needed
     if (conversationId && result.content) {
-      // Store response for streaming/polling
-      await db.aiChatSession.upsert({
-        where: { id: conversationId },
-        update: {
-          updatedAt: new Date(),
-          // messages would be appended here
-        },
-        create: {
-          id: conversationId,
-          companyId: (await db.company.findUnique({ where: { slug: companySlug } }))?.id || 0,
-          userId,
-          messages: JSON.stringify([]),
-        },
-      }).catch(() => {}); // Non-fatal
+      // NOTE: `aiChatSession` model is not defined in the Prisma schema — the
+      // upsert below was a no-op at runtime (Prisma threw, the .catch
+      // swallowed it). Removed until a migration adds the model.
+      void conversationId;
     }
   } catch (err) {
     logger.error("[ai-worker-chat] failed", { 
@@ -491,8 +481,6 @@ async function handleInvoiceExtractJob(data: Record<string, unknown>): Promise<v
       await db.invoice.update({
         where: { id: invoiceId },
         data: {
-          aiExtractedData: JSON.stringify(result.data),
-          aiProcessedAt: new Date(),
           status: 'extracted', // Custom status
         },
       }).catch(() => {}); // Non-fatal
@@ -549,22 +537,12 @@ async function handleSmartParseJob(data: Record<string, unknown>): Promise<void>
 
     // Store parsed data if needed
     if (options?.storeId) {
-      await db.parsedDocument.upsert({
-        where: { id: options.storeId },
-        update: {
-          parsedData: result?.content,
-          status: 'completed',
-          processedAt: new Date(),
-        },
-        create: {
-          id: options.storeId,
-          companyId: (await db.company.findUnique({ where: { slug: companySlug } }))?.id || 0,
-          originalContent: content,
-          parsedData: result?.content,
-          contentType: contentType || 'text',
-          status: 'completed',
-        },
-      }).catch(() => {});
+      // NOTE: `parsedDocument` model is not defined in the Prisma schema —
+      // the upsert below was a no-op at runtime (Prisma threw, the .catch
+      // swallowed it). Removed until a migration adds the model.
+      void options.storeId;
+      void content;
+      void contentType;
     }
   } catch (err) {
     logger.error("[ai-worker-parse] failed", {

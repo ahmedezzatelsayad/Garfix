@@ -3,7 +3,7 @@
  * GET / PATCH — single post-dated check (update status: deposit, clear, return, cancel)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -41,7 +41,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
   if ("error" in access) return access.error;
 
   const check = await db.postDatedCheck.findFirst({
-    where: { id: parseInt(id), companySlug },
+    where: { id, companySlug },
   });
   if (!check) return apiError("Post-dated check not found", 404);
 
@@ -62,7 +62,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const user = access.user;
 
   const existing = await db.postDatedCheck.findFirst({
-    where: { id: parseInt(id), companySlug: data.companySlug },
+    where: { id, companySlug: data.companySlug },
   });
   if (!existing) return apiError("Post-dated check not found", 404);
 
@@ -110,7 +110,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   }
 
   const check = await db.postDatedCheck.update({
-    where: { id: parseInt(id) },
+    where: { id },
     data: updateData,
   });
 

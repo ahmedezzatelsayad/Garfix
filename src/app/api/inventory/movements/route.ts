@@ -17,7 +17,7 @@
  *   limit         — max results (default 100, max 500)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, requireFounder } from "@/lib/middleware";
 import { apiError, withErrorHandler } from "@/lib/api";
 import { num } from "@/lib/money";
@@ -45,8 +45,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   const productId = sp.get("productId");
   if (productId) where.productId = productId;
-  const warehouseId = sp.get("warehouseId");
-  if (warehouseId) where.warehouseId = warehouseId;
+  // TODO(P2-Sprint5-D): StockMovement has no `warehouseId` column — filter dropped.
+  // const warehouseId = sp.get("warehouseId");
+  // if (warehouseId) where.warehouseId = warehouseId;
   const sourceType = sp.get("sourceType");
   if (sourceType) where.sourceType = sourceType;
 
@@ -94,8 +95,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return {
       id: m.id, companySlug: m.companySlug, productId: m.productId,
       productName: product?.name || "— (orphan)", productCode: product?.code || null,
-      warehouseId: m.warehouseId, warehouseName: "—", warehouseCode: "—",
-      qty: m.qty, sourceType: m.sourceType, sourceId: null as string | null, note: null as string | null, createdBy: null as string | null, createdAt: m.createdAt,
+      // TODO(P2-Sprint5-D): StockMovement has no `warehouseId` column — return null.
+      warehouseId: null as string | null, warehouseName: "—", warehouseCode: "—",
+      qty: num(m.quantity, 3), sourceType: m.sourceType, sourceId: m.sourceId, note: null as string | null, createdBy: null as string | null, createdAt: m.createdAt,
     };
   });
 

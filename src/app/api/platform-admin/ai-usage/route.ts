@@ -17,7 +17,7 @@
  * Founder-only.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 
@@ -52,22 +52,40 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (authResult instanceof NextResponse) return authResult;
 
   // ── Overall totals ──────────────────────────────────────────────────────
-  const all = await db.aIUsageLog.findMany({
+  // AIUsageLog schema has: id, companySlug, provider, model, tokensIn,
+  // tokensOut, costUsd, requestType, createdAt. The previous `db: any` masked
+  // selects on non-existent columns (endpoint, totalTokens, estimatedCost,
+  // processingMs, success, errorMessage) which all silently returned
+  // `undefined`. We project the closest existing fields and provide sensible
+  // defaults so the downstream response shape stays intact.
+  const rawLogs = await db.aIUsageLog.findMany({
     select: {
       id: true,
       companySlug: true,
       provider: true,
-      endpoint: true,
+      model: true,
       tokensIn: true,
       tokensOut: true,
-      totalTokens: true,
-      estimatedCost: true,
-      processingMs: true,
-      success: true,
-      errorMessage: true,
+      costUsd: true,
+      requestType: true,
       createdAt: true,
     },
   });
+
+  const all = rawLogs.map((r) => ({
+    id: r.id,
+    companySlug: r.companySlug,
+    provider: r.provider,
+    endpoint: r.requestType || "unknown",
+    tokensIn: r.tokensIn,
+    tokensOut: r.tokensOut,
+    totalTokens: r.tokensIn + r.tokensOut,
+    estimatedCost: Number(r.costUsd ?? 0),
+    processingMs: null as number | null,
+    success: true,
+    errorMessage: null as string | null,
+    createdAt: r.createdAt,
+  }));
 
   const totalCalls = all.length;
   const totalCost = all.reduce((s, r) => s + Number(r.estimatedCost || 0), 0);

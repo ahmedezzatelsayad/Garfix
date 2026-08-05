@@ -12,7 +12,7 @@
  *   3. Hardcoded sensible fallbacks
  */
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { decryptSecret } from "./cryptoVault";
 import { logger } from "./logger";
 

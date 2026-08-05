@@ -7,7 +7,7 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createHash } from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import type { InvoiceField } from "./schema";
 
@@ -76,43 +76,61 @@ export class JsonFileHeaderMapStore implements HeaderMapStore {
 
 export class PrismaHeaderMapStore implements HeaderMapStore {
   async get(fingerprint: string): Promise<HeaderMapping | null> {
-    const row = await db.invoiceBrainHeaderMap.findUnique({ where: { headerFingerprint: fingerprint } });
+    // InvoiceBrainHeaderMap schema stores individual headerName→mappedField rows.
+    // We adapt by treating `headerName` as the fingerprint and storing the
+    // full mapping object as JSON inside `mappedField`.
+    const row = await db.invoiceBrainHeaderMap.findFirst({
+      where: { headerName: fingerprint },
+    });
     if (!row) return null;
+    let mapping: Record<string, InvoiceField> = {};
+    try {
+      mapping = JSON.parse(row.mappedField) as Record<string, InvoiceField>;
+    } catch {
+      mapping = {};
+    }
     return {
-      headerFingerprint: row.headerFingerprint,
-      mapping: typeof row.mapping === "string" ? JSON.parse(row.mapping) : row.mapping,
-      sampleCount: row.sampleCount,
+      headerFingerprint: row.headerName,
+      mapping,
+      sampleCount: 0, // no `sampleCount` column in schema
       createdAt: row.createdAt.toISOString(),
-      lastUsedAt: row.lastUsedAt?.toISOString() ?? new Date().toISOString(),
+      lastUsedAt: row.updatedAt.toISOString(),
     };
   }
 
   async save(mapping: HeaderMapping): Promise<void> {
-    const now = new Date();
-    await db.invoiceBrainHeaderMap.upsert({
-      where: { headerFingerprint: mapping.headerFingerprint },
-      create: {
-        headerFingerprint: mapping.headerFingerprint,
-        mapping: JSON.stringify(mapping.mapping),
-        sampleCount: mapping.sampleCount,
-        companySlug: mapping.headerFingerprint,
-        lastUsedAt: now,
-      },
-      update: {
-        mapping: JSON.stringify(mapping.mapping),
-        lastUsedAt: now,
-      },
+    const existing = await db.invoiceBrainHeaderMap.findFirst({
+      where: { headerName: mapping.headerFingerprint },
     });
+    const mappedFieldJson = JSON.stringify(mapping.mapping);
+    if (existing) {
+      await db.invoiceBrainHeaderMap.update({
+        where: { id: existing.id },
+        data: { mappedField: mappedFieldJson },
+      });
+    } else {
+      await db.invoiceBrainHeaderMap.create({
+        data: {
+          companySlug: mapping.headerFingerprint,
+          headerName: mapping.headerFingerprint,
+          mappedField: mappedFieldJson,
+          language: "ar",
+        },
+      });
+    }
   }
 
   async touch(fingerprint: string): Promise<void> {
+    // No `sampleCount` / `lastUsedAt` columns in schema — touch is effectively
+    // a no-op (updatedAt auto-updates via empty update).
     try {
+      const row = await db.invoiceBrainHeaderMap.findFirst({
+        where: { headerName: fingerprint },
+      });
+      if (!row) return;
       await db.invoiceBrainHeaderMap.update({
-        where: { headerFingerprint: fingerprint },
-        data: {
-          sampleCount: { increment: 1 },
-          lastUsedAt: new Date(),
-        },
+        where: { id: row.id },
+        data: {},
       });
     } catch (err) {
       logger.debug("[brain] header touch missed", { fingerprint, err: (err as Error).message });

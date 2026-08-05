@@ -9,7 +9,7 @@
  * Security: Requires internal API key or admin authentication.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasPermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -194,7 +194,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         where: { id: recurring.id },
         data: {
           lastRunDate: entryDate,
-          nextRunDate: isActive ? nextRunDate : null,
+          // TODO(P2-Sprint5-A): `nextRunDate` is DateTime (non-nullable). Always
+          // set to the computed value — when isActive=false, the schedule is
+          // disabled and nextRunDate is informational only.
+          nextRunDate,
           totalPosted: { increment: 1 },
           isActive,
         },

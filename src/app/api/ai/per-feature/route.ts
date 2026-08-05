@@ -21,7 +21,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAuth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { dbTyped as db } from "@/lib/db";
 import {
   generateWithFeature,
   extractWithFeature,
@@ -43,28 +43,37 @@ async function getCompanyId(request: NextRequest): Promise<{ companyId: string; 
     return { companyId: '', error: apiError('Unauthorized', 401) };
   }
   
-  // Get user's company membership
-  const membership = await db.companyMember.findFirst({
-    where: {
-      uid: auth.user.uid,
-    },
-    select: {
-      companyId: true,
-      company: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-        },
-      },
-    },
+  // Get user's company membership via AppUser.companies (JSON array of slugs)
+  const appUser = await db.appUser.findUnique({
+    where: { uid: auth.user.uid },
+    select: { companies: true },
   });
-  
-  if (!membership) {
+
+  if (!appUser) {
+    return { companyId: '', error: apiError('No company found for this user', 404) };
+  }
+
+  let slugs: string[] = [];
+  try {
+    slugs = JSON.parse(appUser.companies || '[]');
+  } catch {
+    slugs = [];
+  }
+  const slug = slugs[0];
+  if (!slug) {
+    return { companyId: '', error: apiError('No company found for this user', 404) };
+  }
+
+  const company = await db.company.findUnique({
+    where: { slug },
+    select: { id: true, slug: true, name: true },
+  });
+
+  if (!company) {
     return { companyId: '', error: apiError('No company found for this user', 404) };
   }
   
-  return { companyId: membership.companyId };
+  return { companyId: company.id };
 }
 
 // ── API Route Handler ───────────────────────────────────────

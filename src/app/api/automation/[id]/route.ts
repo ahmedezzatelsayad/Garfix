@@ -6,7 +6,7 @@
  * Permission: settings_access + company access (must match the rule's companySlug)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -29,7 +29,7 @@ const UpdateSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-async function loadRule(id: number, companySlug?: string) {
+async function loadRule(id: string, companySlug?: string) {
   if (companySlug) {
     return db.automationRule.findFirst({ where: { id, companySlug } });
   }
@@ -39,8 +39,8 @@ async function loadRule(id: number, companySlug?: string) {
 // ─── PATCH ─────────────────────────────────────────────────────────────────
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const ruleId = parseInt(id, 10);
-  if (Number.isNaN(ruleId)) return apiError("Invalid rule id", 400);
+  const ruleId = id;
+  if (!ruleId) return apiError("Invalid rule id", 400);
 
   // SEC FIX: require companySlug to prevent IDOR
   const companySlug = req.nextUrl.searchParams.get("companySlug");
@@ -100,8 +100,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
 // ─── DELETE ────────────────────────────────────────────────────────────────
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   const { id } = await params;
-  const ruleId = parseInt(id, 10);
-  if (Number.isNaN(ruleId)) return apiError("Invalid rule id", 400);
+  const ruleId = id;
+  if (!ruleId) return apiError("Invalid rule id", 400);
 
   // SEC FIX: require companySlug to prevent IDOR
   const companySlug = req.nextUrl.searchParams.get("companySlug");

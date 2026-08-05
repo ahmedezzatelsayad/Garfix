@@ -16,7 +16,7 @@
  *   const result = await callAI({ messages, companySlug });
  */
 
-import { db } from "./db";
+import { dbTyped as db } from "./db";
 import { decryptSecret, encryptSecret } from "./cryptoVault";
 import { logger } from "./logger";
 import { z } from "zod";
@@ -549,15 +549,18 @@ export async function setProviderApiKey(providerType: ProviderType, apiKey: stri
   const key = `ai.provider.${providerType}.apiKey`;
 
   const existing = await db.platformSettings.findUnique({ where: { key } });
+  let settingId: number;
   if (existing) {
     await db.platformSettings.update({ where: { key }, data: { value: JSON.stringify(encrypted), updatedAt: new Date() } });
+    settingId = existing.id;
   } else {
-    await db.platformSettings.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(encrypted) } });
+    const created = await db.platformSettings.create({ data: { key, category: "ai", valueType: "string", value: JSON.stringify(encrypted) } });
+    settingId = created.id;
   }
 
   // Log to history
   await db.platformSettingsHistory.create({
-    data: { settingKey: key, newValue: "[encrypted]", changedBy: "system" },
+    data: { settingId, settingKey: key, newValue: "[encrypted]", changedBy: "system" },
   });
 
   invalidateAiProviderCache();

@@ -3,7 +3,7 @@
  * POST — convert a quotation to an invoice
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -17,8 +17,7 @@ const ConvertSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
-  const { id } = await params;
-  const quotationId = parseInt(id);
+  const { id: quotationId } = await params;
 
   const body = await parseJsonBody(req);
   const parsed = ConvertSchema.safeParse(body);
