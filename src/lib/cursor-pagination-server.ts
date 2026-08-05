@@ -76,6 +76,15 @@ export function buildCursorResponse<T extends { id: number }>(
  * Build Prisma query parameters for cursor-based pagination.
  * Returns { take, skip, cursor, orderBy } ready to spread into findMany.
  *
+ * P5-F (Tie-breaker): When `orderField` is NOT "id", we add `id` as a
+ *   secondary sort in the same direction. This makes ordering deterministic
+ *   even when multiple rows share the same `orderField` value (e.g. many
+ *   invoices created at the same `createdAt` timestamp during a bulk import).
+ *   Without this tie-breaker, cursor pagination can SKIP or DUPLICATE rows
+ *   across pages because the DB is free to return tied rows in any order,
+ *   and the cursor (which encodes only `id`) cannot reliably identify the
+ *   "last seen" position.
+ *
  * Usage:
  *   const pagination = buildCursorPrismaQuery(cursor, limit);
  *   const items = await db.invoice.findMany({ where, ...pagination });
@@ -89,10 +98,19 @@ export function buildCursorPrismaQuery(
   const cursorId = cursor ? parseInt(cursor, 10) : undefined;
   const cursorObj = cursorId && !isNaN(cursorId) ? { id: cursorId } : undefined;
 
+  // P5-F: Add `id` as a deterministic tie-breaker when the primary sort
+  // is on a non-unique field. When `orderField === "id"` already, the
+  // tie-breaker is redundant and we keep the simpler single-field shape
+  // (avoids changing the wire format Prisma sees for the common case).
+  const orderBy =
+    orderField === "id"
+      ? { id: orderDirection }
+      : [{ [orderField]: orderDirection }, { id: orderDirection }];
+
   return {
     take: limit + 1, // Fetch one extra to check if there's a next page
     skip: cursor ? 1 : 0,
     cursor: cursorObj,
-    orderBy: { [orderField]: orderDirection },
+    orderBy,
   };
 }
