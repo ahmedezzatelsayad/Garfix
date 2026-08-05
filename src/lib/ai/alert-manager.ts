@@ -14,6 +14,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from "@/lib/logger";
 
 // ============== Types & Interfaces ==============
 
@@ -581,7 +582,7 @@ export class AIAlertManager extends EventEmitter {
           }
         }
       } catch (error) {
-        console.error(`Error evaluating rule ${ruleId}:`, error);
+        logger.error("[alert-manager] Error evaluating rule", { ruleId, err: error instanceof Error ? error.message : String(error) });
       }
     }
 
@@ -613,7 +614,7 @@ export class AIAlertManager extends EventEmitter {
 
       // Check rate limiting
       if (!this.checkRateLimit(channel, config)) {
-        console.warn(`Rate limit exceeded for channel: ${channel}`);
+        logger.warn("[alert-manager] Rate limit exceeded for channel", { channel });
         continue;
       }
 
@@ -632,7 +633,7 @@ export class AIAlertManager extends EventEmitter {
         
         this.emit('notification-sent', { alertId: alert.id, channel });
       } catch (error) {
-        console.error(`Failed to send notification via ${channel}:`, error);
+        logger.error("[alert-manager] Failed to send notification", { channel, err: error instanceof Error ? error.message : String(error) });
         this.emit('notification-failed', { alertId: alert.id, channel, error });
       }
     }
@@ -694,9 +695,9 @@ export class AIAlertManager extends EventEmitter {
     }
 
     // In production, integrate with nodemailer or similar
-    console.log(`[EMAIL] Would send to ${config.emailConfig.adminEmails.join(', ')}`);
-    console.log(`  Subject: [GarfiX AI Alert] [${payload.alert.severity.toUpperCase()}] ${payload.alert.ruleName}`);
-    console.log(`  Body: ${payload.alert.message}`);
+    logger.info("[alert-manager][EMAIL] Would send", { recipients: config.emailConfig.adminEmails });
+    logger.info("[alert-manager][EMAIL] Subject", { severity: payload.alert.severity, ruleName: payload.alert.ruleName });
+    logger.info("[alert-manager][EMAIL] Body", { message: payload.alert.message });
 
     // Placeholder for actual email implementation
     // const transporter = nodemailer.createTransport({

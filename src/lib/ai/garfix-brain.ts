@@ -14,6 +14,7 @@
  */
 
 import { GeminiLoadBalancer, getGeminiLoadBalancer } from './gemini-loadbalancer';
+import { logger } from "@/lib/logger";
 import {
   AIMessage,
   AIChatSession,
@@ -168,7 +169,7 @@ export class GarfixBrain {
     // Initialize memory
     this.memory = this.initializeMemory();
     
-    console.log(`🧠 [GarfiX Brain] Initialized - v${this.config.version}`);
+    logger.info("[GarfiX Brain] Initialized", { version: this.config.version });
   }
 
   /**
@@ -521,7 +522,7 @@ export class GarfixBrain {
     }
 
     this.memory.longTerm.learnedPatterns.push({ pattern, response });
-    console.log(`📚 [GarfiX Brain] Learned new pattern: "${pattern.substring(0, 50)}..."`);
+    logger.info("[GarfiX Brain] Learned new pattern", { pattern: pattern.substring(0, 50) });
   }
 
   /**
@@ -775,7 +776,7 @@ export class GarfixBrain {
   reset(): void {
     this.memory = this.initializeMemory();
     this.sessions.clear();
-    console.log('🔄 [GarfiX Brain] Reset complete');
+    logger.info("[GarfiX Brain] Reset complete");
   }
 }
 

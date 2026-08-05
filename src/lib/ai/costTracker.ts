@@ -13,6 +13,7 @@
  * runtime, provider-optimizer.ts which is imported from many call sites).
  */
 import { dbTyped as db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import {
   COST_PER_1K_TOKENS,
   getCostRates,
@@ -66,7 +67,12 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<void> {
     });
   } catch (err) {
     // Non-critical — log but never throw
-    console.error("[costTracker] failed to log:", err);
+    logger.error("[costTracker] failed to log AI usage", {
+      provider: params.provider,
+      model: params.model,
+      endpoint: params.endpoint,
+      err: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

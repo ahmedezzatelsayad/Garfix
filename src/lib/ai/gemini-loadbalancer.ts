@@ -14,6 +14,7 @@
  */
 
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { logger } from "@/lib/logger";
 import { 
   AIProviderConfig, 
   KeyPoolStatus, 
@@ -94,7 +95,7 @@ class GeminiKeyPool {
     
     this.keys.set(fullConfig.id, { ...fullConfig, genAI } as any);
     
-    console.log(`✅ [GarfiX AI] Added key "${fullConfig.id}" to pool (Total: ${this.keys.size})`);
+    logger.info("[GarfiX AI] Added key to pool", { keyId: fullConfig.id, total: this.keys.size });
   }
 
   /**
@@ -111,7 +112,7 @@ class GeminiKeyPool {
     const healthyKeys = Array.from(this.keys.values()).filter(k => k.enabled && k._isHealthy !== false);
     
     if (healthyKeys.length === 0) {
-      console.error('❌ [GarfiX AI] No healthy keys available');
+      logger.error("[GarfiX AI] No healthy keys available");
       return null;
     }
 
@@ -166,7 +167,7 @@ class GeminiKeyPool {
     if (key) {
       key._isHealthy = false;
       key._lastError = error;
-      console.warn(`⚠️ [GarfiX AI] Key "${keyId}" marked unhealthy: ${error}`);
+      logger.warn("[GarfiX AI] Key marked unhealthy", { keyId, err: error });
     }
   }
 
@@ -297,7 +298,7 @@ export class GeminiLoadBalancer {
       });
     });
 
-    console.log(`🚀 [GarfiX AI] Initialized with ${keys.length} keys (Total RPM: ${this.getMaxRPM()})`);
+    logger.info("[GarfiX AI] Initialized", { keyCount: keys.length, totalRpm: this.getMaxRPM() });
   }
 
   /**
@@ -350,7 +351,7 @@ export class GeminiLoadBalancer {
 
       } catch (error) {
         lastError = error as Error;
-        console.error(`❌ [GarfiX AI] Key "${keyConfig.id}" failed:`, error);
+        logger.error("[GarfiX AI] Key failed", { keyId: keyConfig.id, err: error instanceof Error ? error.message : String(error) });
         
         // Mark key as unhealthy and try next
         this.keyPool.markUnhealthy(keyConfig.id, (error as Error).message);
@@ -588,7 +589,7 @@ export class GeminiLoadBalancer {
       // Attempt to recover unhealthy keys
       this.keyPool.getStatus().keys.forEach(key => {
         if (!key.healthy) {
-          console.log(`🔄 [GarfiX AI] Attempting to recover key "${key.id}"`);
+          logger.info("[GarfiX AI] Attempting key recovery", { keyId: key.id });
           this.keyPool.markHealthy(key.id);
         }
       });

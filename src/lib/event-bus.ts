@@ -10,6 +10,8 @@
  * Events are async by default — handlers run in parallel, errors are caught individually.
  */
 
+import { logger } from "./logger";
+
 export type EventHandler<T> = (payload: T) => Promise<void> | void;
 
 export interface EventSubscription {
@@ -78,7 +80,11 @@ export class EventBus {
         try {
           await sub.handler(payload);
         } catch (error) {
-          console.error(`[event-bus] Handler for "${eventType}" failed (priority ${sub.priority}):`, error);
+          logger.error("[event-bus] Handler failed", {
+            eventType,
+            priority: sub.priority,
+            err: error instanceof Error ? error.message : String(error),
+          });
           this.deadLetterQueue.push({
             eventType,
             payload,
@@ -91,7 +97,7 @@ export class EventBus {
 
     const failures = results.filter(r => r.status === "rejected").length;
     if (failures > 0) {
-      console.warn(`[event-bus] ${failures}/${subs.length} handlers failed for event "${eventType}"`);
+      logger.warn("[event-bus] Some handlers failed", { eventType, failures, total: subs.length });
     }
   }
 
@@ -143,9 +149,12 @@ function endSpan(span: Span, status?: "ok" | "error"): void {
   span.endTime = Date.now();
   span.status = status || span.status;
   const duration = span.endTime - span.startTime;
-  console.log(
-    `[event-bus] span: ${span.name} | ${span.status} | ${duration}ms | attrs: ${JSON.stringify(span.attributes)}`,
-  );
+  logger.debug("[event-bus] span", {
+    name: span.name,
+    status: span.status,
+    durationMs: duration,
+    attrs: span.attributes,
+  });
 }
 
 function logEvent(
@@ -153,9 +162,7 @@ function logEvent(
   message: string,
   attributes?: Record<string, unknown>,
 ): void {
-  console.log(
-    `[event-bus:${level}] ${message} | ${JSON.stringify(attributes || {})}`,
-  );
+  logger[level](`[event-bus] ${message}`, attributes || {});
 }
 
 // Helper to emit events with telemetry

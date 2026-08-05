@@ -15,6 +15,7 @@
 
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { AIProviderConfig, KeyPoolStatus } from './types';
+import { logger } from "@/lib/logger";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ export class AdvancedGeminiLoadBalancer {
       weight,
     });
 
-    console.log(`🔑 [AdvancedLB] Key added: ${config.name || config.id} (weight: ${weight})`);
+    logger.info("[AdvancedLB] Key added", { keyId: config.id, name: config.name, weight });
   }
 
   /**
@@ -164,7 +165,7 @@ export class AdvancedGeminiLoadBalancer {
     const healthyKeys = this.getHealthyKeys();
     
     if (healthyKeys.length === 0) {
-      console.error('❌ [AdvancedLB] No healthy keys available!');
+      logger.error("[AdvancedLB] No healthy keys available");
       return null;
     }
 
@@ -233,7 +234,7 @@ export class AdvancedGeminiLoadBalancer {
     if (health.circuitState === 'half-open') {
       health.circuitState = 'closed';
       this.onKeyRecovery?.(keyId);
-      console.log(`✅ [AdvancedLB] Key recovered: ${keyId}`);
+      logger.info("[AdvancedLB] Key recovered", { keyId });
     }
   }
 
@@ -270,7 +271,7 @@ export class AdvancedGeminiLoadBalancer {
     this.onKeyFailure?.(keyId, error);
 
     // Automatic failover - get next healthy key
-    console.warn(`⚠️ [AdvancedLB] Key failed: ${keyId} (${health.consecutiveFailures} consecutive failures)`);
+    logger.warn("[AdvancedLB] Key failed", { keyId, consecutiveFailures: health.consecutiveFailures });
     
     return this.getNextKey(); // Return alternative key
   }
@@ -325,7 +326,7 @@ export class AdvancedGeminiLoadBalancer {
   startHealthChecks(): void {
     if (this.healthCheckTimer) return; // Already running
 
-    console.log(`🏥 [AdvancedLB] Starting health checks (interval: ${HEALTH_CHECK_INTERVAL}ms)`);
+    logger.info("[AdvancedLB] Starting health checks", { intervalMs: HEALTH_CHECK_INTERVAL });
 
     this.healthCheckTimer = setInterval(async () => {
       await this.runHealthChecks();
@@ -342,7 +343,7 @@ export class AdvancedGeminiLoadBalancer {
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
       this.healthCheckTimer = undefined;
-      console.log('🏥 [AdvancedLB] Health checks stopped');
+      logger.info("[AdvancedLB] Health checks stopped");
     }
   }
 
@@ -354,7 +355,7 @@ export class AdvancedGeminiLoadBalancer {
       keyData.health.requestsToday = 0;
       keyData.health.tokensToday = 0;
     }
-    console.log('📊 [AdvancedLB] Daily quotas reset');
+    logger.info("[AdvancedLB] Daily quotas reset");
   }
 
   // ── Private Methods ──────────────────────────────────────
@@ -446,7 +447,7 @@ export class AdvancedGeminiLoadBalancer {
     keyData.health.circuitOpenUntil = new Date(Date.now() + CIRCUIT_RESET_TIMEOUT);
     keyData.health.isHealthy = false;
 
-    console.error(`🔌 [AdvancedLB] Circuit OPENED for key: ${keyId}`);
+    logger.error("[AdvancedLB] Circuit OPENED", { keyId });
 
     // Schedule half-open state
     setTimeout(() => {
@@ -464,7 +465,7 @@ export class AdvancedGeminiLoadBalancer {
     const keyData = this.keys.get(keyId);
     if (!keyData || keyData.health.circuitState !== 'open') return;
 
-    console.log(`🔄 [AdvancedLB] Circuit HALF-OPEN for key: ${keyId} - testing...`);
+    logger.info("[AdvancedLB] Circuit HALF-OPEN", { keyId });
     keyData.health.circuitState = 'half-open';
     keyData.health.isHealthy = true; // Allow limited traffic
   }
@@ -481,7 +482,7 @@ export class AdvancedGeminiLoadBalancer {
   }
 
   private async runHealthChecks(): Promise<void> {
-    console.log(`🏥 [AdvancedLB] Running health checks for ${this.keys.size} keys...`);
+    logger.info("[AdvancedLB] Running health checks", { keyCount: this.keys.size });
 
     for (const [keyId, keyData] of this.keys) {
       await this.checkSingleKeyHealth(keyId, keyData);
@@ -489,7 +490,7 @@ export class AdvancedGeminiLoadBalancer {
 
     // Log summary
     const metrics = this.getMetrics();
-    console.log(`🏥 [AdvancedLB] Health check complete: ${metrics.healthyKeys}/${metrics.totalKeys} healthy, ${metrics.utilizationPct}% utilized`);
+    logger.info("[AdvancedLB] Health check complete", { healthyKeys: metrics.healthyKeys, totalKeys: metrics.totalKeys, utilizationPct: metrics.utilizationPct });
   }
 
   private async checkSingleKeyHealth(keyId: string, keyData: AIProviderConfig & { genAI: GoogleGenerativeAI; health: KeyHealthStatus }): Promise<void> {
@@ -510,7 +511,7 @@ export class AdvancedGeminiLoadBalancer {
 
       // Success - ensure healthy
       if (!keyData.health.isHealthy) {
-        console.log(`✅ [AdvancedLB] Key recovered: ${keyId}`);
+        logger.info("[AdvancedLB] Key recovered", { keyId });
         this.onKeyRecovery?.(keyId);
       }
       
@@ -526,8 +527,8 @@ export class AdvancedGeminiLoadBalancer {
 
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      console.warn(`⚠️ [AdvancedLB] Health check failed for ${keyId}: ${error}`);
-      
+      logger.warn("[AdvancedLB] Health check failed", { keyId, err: error });
+
       keyData.health.lastError = error;
       keyData.health.lastCheckTime = new Date();
       keyData.health.consecutiveFailures++;
@@ -549,14 +550,14 @@ export function getAdvancedLoadBalancer(): AdvancedGeminiLoadBalancer {
     advancedLoadBalancer = new AdvancedGeminiLoadBalancer({
       strategy: 'weighted',
       onKeyFailure: (keyId, error) => {
-        console.error(`🚨 [AdvancedLB] ALERT: Key ${keyId} failed - ${error}`);
+        logger.error("[AdvancedLB] ALERT: Key failed", { keyId, err: error });
         // Could send to alerting system, Slack, etc.
       },
       onKeyRecovery: (keyId) => {
-        console.log(`🎉 [AdvancedLB] GOOD NEWS: Key ${keyId} recovered!`);
+        logger.info("[AdvancedLB] Key recovered", { keyId });
       },
       onPoolDegraded: (metrics) => {
-        console.warn(`⚠️ [AdvancedLB] POOL DEGRADED: Only ${metrics.healthyKeys}/${metrics.totalKeys} keys healthy`);
+        logger.warn("[AdvancedLB] POOL DEGRADED", { healthyKeys: metrics.healthyKeys, totalKeys: metrics.totalKeys });
         // Could trigger auto-scale-up or alert admin
       },
     });
@@ -589,7 +590,7 @@ export function initAdvancedLoadBalancer(keys: Array<{
   // Start health checks
   lb.startHealthChecks();
 
-  console.log(`🚀 [AdvancedLB] Initialized with ${keys.length} keys`);
+  logger.info("[AdvancedLB] Initialized", { keyCount: keys.length });
   
   return lb;
 }
