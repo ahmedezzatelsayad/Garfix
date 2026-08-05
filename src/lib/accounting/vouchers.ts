@@ -8,7 +8,7 @@
  *  - Cancel voucher: reverse JE, mark voucher as cancelled, log AccountingAuditLog with reason
  */
 
-import { dbTyped as db } from "@/lib/db";
+import { dbTyped as db, type DbTx } from "@/lib/db";
 import { num } from "@/lib/money";
 import { logger } from "@/lib/logger";
 import { numberToArabicText, type SupportedCurrency } from "@/lib/accounting/arabic-amount-text";
@@ -423,7 +423,7 @@ export async function cancelVoucher(
 
 // ─── Helper: Find default accounts ────────────────────────────────────────────
 
-async function findDefaultCashAccount(tx: any, companySlug: string): Promise<string> {
+async function findDefaultCashAccount(tx: DbTx, companySlug: string): Promise<string> {
   // Find the first asset account with code starting with "1" (cash/bank range)
   const cashAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", isActive: true },
@@ -433,7 +433,7 @@ async function findDefaultCashAccount(tx: any, companySlug: string): Promise<str
   return cashAccount.id;
 }
 
-async function findDefaultRevenueAccount(tx: any, companySlug: string): Promise<string> {
+async function findDefaultRevenueAccount(tx: DbTx, companySlug: string): Promise<string> {
   const revenueAccount = await tx.account.findFirst({
     where: { companySlug, type: "revenue", isActive: true },
     orderBy: { code: "asc" },
@@ -442,7 +442,7 @@ async function findDefaultRevenueAccount(tx: any, companySlug: string): Promise<
   return revenueAccount.id;
 }
 
-async function findDefaultExpenseAccount(tx: any, companySlug: string): Promise<string> {
+async function findDefaultExpenseAccount(tx: DbTx, companySlug: string): Promise<string> {
   const expenseAccount = await tx.account.findFirst({
     where: { companySlug, type: "expense", isActive: true },
     orderBy: { code: "asc" },
@@ -451,7 +451,7 @@ async function findDefaultExpenseAccount(tx: any, companySlug: string): Promise<
   return expenseAccount.id;
 }
 
-async function findClientARAccount(tx: any, companySlug: string, clientId: string | number): Promise<string> {
+async function findClientARAccount(tx: DbTx, companySlug: string, clientId: string | number): Promise<string> {
   // Find AR (Accounts Receivable) account — typically code 1200 or similar
   const arAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", code: { startsWith: "12" }, isActive: true },
@@ -464,7 +464,7 @@ async function findClientARAccount(tx: any, companySlug: string, clientId: strin
   return arAccount.id;
 }
 
-async function findSupplierAPAccount(tx: any, companySlug: string, supplierId: string | number): Promise<string> {
+async function findSupplierAPAccount(tx: DbTx, companySlug: string, supplierId: string | number): Promise<string> {
   // Find AP (Accounts Payable) account — typically code 2100 or similar
   const apAccount = await tx.account.findFirst({
     where: { companySlug, type: "liability", code: { startsWith: "21" }, isActive: true },

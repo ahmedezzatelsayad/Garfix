@@ -221,15 +221,15 @@ export async function provisionAIForNewCompany(
       setupUrl: `/founder-panel/ai-settings?company=${companySlug}`,
     };
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(`❌ Failed to provision AI for company ${companyId}`, {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
     
     return {
       success: false,
-      message: `Failed to provision AI: ${error.message}`,
+      message: `Failed to provision AI: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -382,7 +382,7 @@ export async function batchProvisionMissingCompanies(
     
     logger.info(`Batch AI provisioning complete`, result);
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Batch provisioning failed', { error });
   }
   
@@ -437,9 +437,9 @@ export async function setPlatformDefaultAPIKey(
     
     return { success: true, message: 'Platform default API key updated successfully' };
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Failed to set platform default API key', { error });
-    return { success: false, message: error.message || 'Operation failed' };
+    return { success: false, message: error instanceof Error ? error.message : String(error) || 'Operation failed' };
   }
 }
 

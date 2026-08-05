@@ -114,8 +114,8 @@ export class GeminiService {
       
       const data = await response.json();
       return this.parseResponse(data, startTime);
-    } catch (error: any) {
-      throw new Error(`Gemini chat failed: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Gemini chat failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -144,8 +144,8 @@ export class GeminiService {
       
       const data = await response.json();
       return this.parseResponse(data, startTime);
-    } catch (error: any) {
-      throw new Error(`Gemini chatWithHistory failed: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Gemini chatWithHistory failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -219,8 +219,8 @@ export class GeminiService {
         finishReason: 'STOP',
         latencyMs: Date.now() - startTime,
       };
-    } catch (error: any) {
-      throw new Error(`Gemini streamChat failed: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Gemini streamChat failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -260,12 +260,12 @@ export class GeminiService {
         latencyMs: Date.now() - startTime,
         model: result.model,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         latencyMs: Date.now() - startTime,
         model: this.config.model,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

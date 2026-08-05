@@ -7,7 +7,7 @@
  * ALL mutations MUST log audit via logAudit.
  * ALL functions use db.$transaction for atomicity (JE + lines + balance updates).
  */
-import { dbTyped as db } from "@/lib/db";
+import { dbTyped as db, type DbTx } from "@/lib/db";
 import { num, addNums, subNums, toNum } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -140,11 +140,11 @@ function generateJeNumber(prefix: string): string {
  * Throws if not found.
  */
 async function getAccountByCode(
-  tx: any,
+  tx: DbTx,
   companySlug: string,
   code: string,
-): Promise<{ id: any; type: string; balance: string }> {
-  const acc: any = await tx.account.findFirst({
+): Promise<{ id: string; type: string; balance: string }> {
+  const acc = await tx.account.findFirst({
     where: { companySlug, code },
   });
   if (!acc) {
@@ -158,7 +158,7 @@ async function getAccountByCode(
  * Uses the isDebitNormal check exactly like the existing journal-entries POST route.
  */
 async function updateAccountBalances(
-  tx: any,
+  tx: DbTx,
   lines: { accountId: string; debit: string; credit: string }[],
   companySlug: string,
 ): Promise<void> {
@@ -166,7 +166,7 @@ async function updateAccountBalances(
   const accounts = await tx.account.findMany({
     where: { id: { in: accountIds }, companySlug },
   });
-  const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+  const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
   const deltas = new Map<string, number>();
   for (const line of lines) {

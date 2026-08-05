@@ -14,6 +14,13 @@ import { num } from "./money";
 import { logger } from "./logger";
 import { matchProduct } from "./productMatcher";
 
+// P5-M6 NOTE: This file's `tx` parameters were temporarily migrated to `DbTx`
+// but reverted because the file has ~13 schema-drift bugs (e.g. `warehouseId_productId`
+// compound unique constraint name mismatch, `createdBy` field missing on
+// ProductMatchAudit, `productCatalogId` typed as `any` from upstream `product.id`)
+// that `tx: any` was hiding. Fixing these is out of scope for P5-M6 — they
+// should be addressed in a focused schema-reconciliation sprint.
+
 export interface InventoryLineItem {
   description: string;
   qty: number;
@@ -75,8 +82,8 @@ export async function syncInventoryOnSale(
         product = await tx.productCatalog.create({ data: { name: item.description, code: null, sellingPrice: item.price.toFixed(3), companySlug } });
         productsCreated++;
         await tx.productAlias.create({ data: { productCatalogId: product.id, companySlug, alias: item.description, language: "unspecified", source: "auto", confidence: 0.5, isVerified: false, createdBy: "inventory-sync" } });
-      } catch (createErr: any) {
-        logger.warn("[inventory-sync] product create collision — re-querying", { companySlug, description: item.description, err: createErr?.message });
+      } catch (createErr: unknown) {
+        logger.warn("[inventory-sync] product create collision — re-querying", { companySlug, description: item.description, err: (createErr instanceof Error ? createErr.message : String(createErr)) });
         const reMatch = await matchProduct({ description: item.description, qty, price: item.price, companySlug, invoiceId, lineItemIndex: idx }, tx);
         if (reMatch.productId) product = await tx.productCatalog.findUnique({ where: { id: reMatch.productId } });
         if (!product) {
@@ -153,8 +160,8 @@ export async function syncInventoryOnPurchase(
         product = await tx.productCatalog.create({ data: { name: item.description, code: null, purchasePrice: item.price.toFixed(3), companySlug } });
         productsCreated++;
         await tx.productAlias.create({ data: { productCatalogId: product.id, companySlug, alias: item.description, language: "unspecified", source: "auto", confidence: 0.5, isVerified: false, createdBy: "inventory-sync-purchase" } });
-      } catch (createErr: any) {
-        logger.warn("[inventory-sync-purchase] collision", { companySlug, description: item.description, err: createErr?.message });
+      } catch (createErr: unknown) {
+        logger.warn("[inventory-sync-purchase] collision", { companySlug, description: item.description, err: (createErr instanceof Error ? createErr.message : String(createErr)) });
         const reMatch = await matchProduct({ description: item.description, qty, price: item.price, companySlug, invoiceId: numericInvoiceId, lineItemIndex: idx }, tx);
         if (reMatch.productId) product = await tx.productCatalog.findUnique({ where: { id: reMatch.productId } });
         if (!product) {

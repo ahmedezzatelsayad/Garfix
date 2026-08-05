@@ -133,6 +133,23 @@ export const db: any = globalForPrisma.prisma ?? extendedPrisma;
  */
 export const dbTyped = globalForPrisma.prisma ?? extendedPrisma;
 
+/**
+ * P5-M6: Type alias for the transaction client parameter that
+ * `dbTyped.$transaction(async (tx) => { ... })` passes to its callback.
+ *
+ * This is NOT `Prisma.TransactionClient` — that's the BASE client's
+ * transaction type. Because `dbTyped` is the EXTENDED client (via
+ * $extends for soft-delete), the tx parameter inside `$transaction`
+ * has a different (richer) type that includes the extension's query
+ * hooks. Using `Prisma.TransactionClient` directly causes type errors
+ * at every call site.
+ *
+ * This alias extracts the actual tx parameter type from the typed
+ * $transaction signature, so library functions that accept `tx` can
+ * be properly typed without resorting to `any`.
+ */
+export type DbTx = Parameters<Parameters<typeof dbTyped.$transaction>[0]>[0];
+
 function appendPoolParams(url: string, poolSize: number): string {
   if (url.includes('connection_limit=')) return url;
   const sep = url.includes('?') ? '&' : '?';

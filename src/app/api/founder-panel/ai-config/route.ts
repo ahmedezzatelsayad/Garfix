@@ -207,12 +207,12 @@ async function testGeminiConnection(
       latencyMs,
       model: data?.modelVersion || model,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       latencyMs: Date.now() - startTime,
       model,
-      error: error.message || 'Connection failed',
+      error: error instanceof Error ? error.message : String(error) || 'Connection failed',
     };
   }
 }

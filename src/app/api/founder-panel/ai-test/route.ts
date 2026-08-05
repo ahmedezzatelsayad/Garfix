@@ -91,13 +91,13 @@ async function testGemini(
       provider: 'gemini',
       reply: data?.candidates?.[0]?.content?.parts?.[0]?.text,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       latencyMs: Date.now() - startTime,
       model,
       provider: 'gemini',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
@@ -154,13 +154,13 @@ async function testOpenAI(
         totalTokens: data.usage.total_tokens,
       } : undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       latencyMs: Date.now() - startTime,
       model,
       provider: 'openai',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
@@ -220,13 +220,13 @@ async function testOpenRouter(
         cost: data.usage.cost || data.usage.total_cost,
       } : undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       latencyMs: Date.now() - startTime,
       model,
       provider: 'openrouter',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
