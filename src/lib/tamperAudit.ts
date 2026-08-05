@@ -14,14 +14,14 @@
  */
 
 import crypto from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "./logger";
 
 export interface ChainEntry {
-  entryId: string;
-  contentHash: string;
-  prevHash: string;
-  chainOrder: number;
+  entryId: string | null;
+  contentHash: string | null;
+  prevHash: string | null;
+  chainOrder: number | null;
   companySlug?: string | null;
 }
 
@@ -107,8 +107,11 @@ export async function appendToChain(params: {
         orderBy: { chainOrder: "desc" },
       });
 
-      const prevHash = lastEntry ? lastEntry.contentHash : "GENESIS";
-      const chainOrder = lastEntry ? lastEntry.chainOrder + 1 : 0;
+      // P2-TypedPrisma: schema declares contentHash/chainOrder as nullable (String?/Int?).
+      // For the prev-link computation we treat a null contentHash as the genesis anchor,
+      // and a null chainOrder as -1 so the next entry is order 0.
+      const prevHash = lastEntry?.contentHash ?? "GENESIS";
+      const chainOrder = (lastEntry?.chainOrder ?? -1) + 1;
 
       await tx.tamperEvidenceChain.create({
         data: {
@@ -118,6 +121,9 @@ export async function appendToChain(params: {
           // required ones, causing every chain append to throw.
           entityType: params.entityType ?? "audit_log",
           entityId: params.entryId,
+          // P2-TypedPrisma: computeHash signature requires `string`; prevHash is
+          // always a non-null string here (either "GENESIS" or lastEntry.contentHash
+          // which we coalesced above).
           hash: computeHash(contentHash, prevHash),
           previousHash: prevHash === "GENESIS" ? null : prevHash,
           entryId: params.entryId,
@@ -163,7 +169,11 @@ export async function verifyChain(companySlug?: string): Promise<{
     // the AuditLog row and recompute the content HMAC) is a future
     // enhancement tracked separately (would require an extra query per chain
     // entry — expensive at scale).
-    if (entry.prevHash !== prevHash) {
+    // P2-TypedPrisma: prevHash/contentHash/entryId/chainOrder are nullable in schema.
+    // A null prevHash on a non-genesis row is itself evidence of tampering or
+    // legacy data — treat as a chain break.
+    const entryPrev = entry.prevHash ?? "";
+    if (entryPrev !== prevHash) {
       await db.tamperEvidenceChain.update({
         where: { id: entry.id },
         data: { isValid: false, verifiedAt: new Date() },
@@ -172,13 +182,31 @@ export async function verifyChain(companySlug?: string): Promise<{
         valid: false,
         totalEntries: entries.length,
         breakAt: {
-          entryId: entry.entryId,
-          chainOrder: entry.chainOrder,
-          reason: `prevHash mismatch: expected ${prevHash.substring(0, 12)}... got ${entry.prevHash.substring(0, 12)}...`,
+          entryId: entry.entryId ?? entry.id,
+          chainOrder: entry.chainOrder ?? 0,
+          reason: `prevHash mismatch: expected ${prevHash.substring(0, 12)}... got ${entryPrev.substring(0, 12)}...`,
         },
       };
     }
 
+    // Advance the chain pointer — if contentHash is null we cannot continue
+    // verification (the next entry's prevHash should equal this contentHash,
+    // but null has no string representation). Treat as a chain break.
+    if (entry.contentHash == null) {
+      await db.tamperEvidenceChain.update({
+        where: { id: entry.id },
+        data: { isValid: false, verifiedAt: new Date() },
+      });
+      return {
+        valid: false,
+        totalEntries: entries.length,
+        breakAt: {
+          entryId: entry.entryId ?? entry.id,
+          chainOrder: entry.chainOrder ?? 0,
+          reason: `contentHash is null at chainOrder=${entry.chainOrder ?? -1}`,
+        },
+      };
+    }
     prevHash = entry.contentHash;
   }
 

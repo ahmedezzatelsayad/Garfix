@@ -9,7 +9,7 @@
  */
 
 import crypto from "node:crypto";
-import { db } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { logger } from "./logger";
 import { encryptSecret, decryptSecret } from "./cryptoVault";
 import { validateBaseUrl, fetchSafe } from "./ssrf";
@@ -75,9 +75,13 @@ export async function dispatchWebhook(payload: WebhookPayload): Promise<number> 
         continue;
       }
 
+      // P2-TypedPrisma: schema requires `event` (NOT NULL) — the previous code
+      // only set `eventType` (the optional library-only field), so every
+      // delivery create would throw at runtime.
       await db.webhookDelivery.create({
         data: {
           endpointId: ep.id,
+          event: payload.event,
           eventType: payload.event,
           payload: JSON.stringify(payload),
           status: "pending",
@@ -128,7 +132,11 @@ export async function processPendingDeliveries(): Promise<{
         continue;
       }
 
-      const secret = decryptSecret(endpoint.secret);
+      // P2-TypedPrisma: decryptSecret requires a non-null string. schema marks
+      // endpoint.secret as NOT NULL, but typed Prisma still surfaces the type
+      // post-optional-chain as string (not string|null) — coalesce defensively
+      // in case of future schema softening.
+      const secret = decryptSecret(endpoint.secret ?? "");
       const payload = JSON.parse(delivery.payload);
       const signature = crypto
         .createHmac("sha256", secret)
@@ -158,7 +166,10 @@ export async function processPendingDeliveries(): Promise<{
         headers: {
           "Content-Type": "application/json",
           "X-Garfix-Signature": `sha256=${signature}`,
-          "X-Garfix-Event": delivery.eventType,
+          // P2-TypedPrisma: eventType is `string | null` in schema. Coalesce
+          // to the required `event` field (always non-null) for the header —
+          // they always carry the same value because we set both at create time.
+          "X-Garfix-Event": delivery.event ?? delivery.eventType ?? "",
           "X-Garfix-Delivery": String(delivery.id),
         },
         body: JSON.stringify(payload),

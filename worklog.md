@@ -2090,3 +2090,34 @@ useEffect(() => { reportWebVitals(); }, []);
 - **Best Practice**: First Load JS should stay under 130 KB per route (Lighthouse threshold). Investigate via `bun scripts/bundle-analysis.mjs` and split large chunks further.
 - **Exact Fix**: Run `bun scripts/bundle-analysis.mjs` to identify which imports dominate each 388 KB chunk; consider splitting recharts-dependent views into separate dynamic imports or migrating to a lighter chart lib (e.g. `visx`).
 
+
+---
+Task ID: P2-Sprint-1+2
+Agent: Super Z (main)
+Task: P2 Typed Prisma — migrate security-critical lib files from `db: any` to `dbTyped`, fix hidden production bugs.
+
+Work Log:
+- Verified lint baseline: 0 errors / 0 warnings (commit 9534cd2 was already clean).
+- Dry-run: switched `db: any` → typed in db.ts; ran `tsc --noEmit` to inventory hidden errors. Found 194 files affected, 1753 lines of TS errors — far larger scope than the original "80+" estimate.
+- Reverted dry-run; took a graduated approach: migrate only files where the typed client surfaces REAL production bugs that can be fixed without schema reconciliation.
+- Migrated 5 lib files (security/critical-path):
+  1. src/lib/auth.ts — clean (no hidden bugs)
+  2. src/lib/observatory.ts — clean (no hidden bugs)
+  3. src/lib/tamperAudit.ts — fixed 7 errors (ChainEntry nullable fields, null-safe chain verification, NPE on entry.prevHash.substring)
+  4. src/lib/webhooks.ts — fixed 3 errors (missing required `event` field on WebhookDelivery.create, null coalesce on eventType header, decryptSecret null safety)
+  5. src/lib/services/ai-provisioning.ts — fixed 5 errors (db.platformSetting → db.platformSettings, db.user → db.appUser, `id` → `uid` lookup, enableChat/enableSmartParse/enableInvoiceExtraction/enableMemory → chatEnabled/parseEnabled/invoiceEnabled/memoryEnabled, removed nonexistent `isPublic` column)
+- Deferred migrations (require schema reconciliation first, out of scope for this session):
+  - src/lib/productMatcher.ts (7 columns missing from schema: isUndone, matchedAlias, tier, action, chosenAlias, auditId, fromProductId)
+  - src/lib/billing/subscription-engine.ts (12+ missing columns: status, amount, currency, provider, paymentMethod, billingPeriod, retryCount, maxRetries, downgradePlan, nextChargeDate, currentBillingCycleEnd)
+  - src/lib/automation/engine.ts (trigger field, actions vs action singular, userEmail on SupportTicket)
+  - src/lib/invoice-brain/{patternStore,headerMapStore}.ts (fingerprint, mapping, fields, sampleCount, lastUsedAt columns missing)
+  - src/lib/accounting/{banking,vouchers,auto-journal,balance-engine,ar-ap,commissions}.ts (massive id-string-vs-number drift + missing columns)
+  - 189 remaining files (mostly API routes) — same drift pattern
+- Added 18 regression tests in src/lib/__tests__/p2-typed-prisma.test.ts documenting each bug fixed.
+
+Stage Summary:
+- Files migrated: 5 (auth, observatory, tamperAudit, webhooks, ai-provisioning)
+- Production bugs fixed: 15 (NPEs in tamper-audit chain verification, runtime-throws on every webhook delivery create, silent feature-disable in AI provisioning, unguarded admin API key update)
+- Verification gate: tsc 0 errors, lint 0/0, 178 tests pass / 0 fail (was 160, +18 P2 regression), build green
+- Remaining: 189 files deferred — schema reconciliation sprint is prerequisite (need to align prisma/schema.prisma with actual DB tables before typed migration can complete)
+- No new bugs introduced (every change verified by tsc + tests + build)
