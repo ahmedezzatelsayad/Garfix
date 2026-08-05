@@ -652,7 +652,7 @@ export const triggerGarfixToast = (options: QuickToastOptions): void => {
 // DEFAULT EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export default {
+const GarfixNotifications = {
   GarfixToast,
   GarfixBanner,
   GarfixConfirmDialog,
@@ -661,3 +661,5 @@ export default {
   useGarfixToastContext,
   triggerGarfixToast,
 };
+
+export default GarfixNotifications;

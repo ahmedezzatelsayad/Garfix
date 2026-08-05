@@ -170,7 +170,6 @@ function ipv4ToUint32(s: string): number | null {
   if (!m) return null;
   const parts = [m[1], m[2], m[3], m[4]].map(Number);
   if (parts.some((p) => p < 0 || p > 255 || !Number.isFinite(p))) return null;
-  // eslint-disable-next-line no-bitwise
   return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
 }
 
@@ -178,7 +177,6 @@ function ipv4ToUint32(s: string): number | null {
 function isPrivateIPv4(ip: string): boolean {
   const n = ipv4ToUint32(ip);
   if (n === null) return false; // not an IPv4 → don't claim it's private
-  // eslint-disable-next-line no-bitwise
   return PRIVATE_IPV4_PREFIXES.some(({ first, mask }) => (n & mask) >>> 0 === first);
 }
 

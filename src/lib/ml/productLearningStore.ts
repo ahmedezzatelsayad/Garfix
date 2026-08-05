@@ -713,7 +713,7 @@ export {
   calculatePatternScore,
 };
 
-export default {
+const productLearningStore = {
   recordCorrection,
   predictFromPatterns,
   batchTrain,
@@ -721,3 +721,5 @@ export default {
   loadPatternsToCache,
   clearCache,
 };
+
+export default productLearningStore;

@@ -761,7 +761,7 @@ export const KEYFRAMES_CSS = `
   }
 `;
 
-export default {
+const animations = {
   DURATIONS,
   EASING,
   SPRINGS,
@@ -777,3 +777,5 @@ export default {
   injectKeyframes,
   KEYFRAMES_CSS,
 };
+
+export default animations;

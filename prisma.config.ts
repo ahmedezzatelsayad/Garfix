@@ -6,4 +6,5 @@
  */
 
 // Empty config - Prisma 6 uses schema.prisma for most settings
-export default {};
+const prismaConfig = {};
+export default prismaConfig;
