@@ -1,6 +1,6 @@
 {
   "meta": {
-    "timestamp": "2026-08-06T20:24:12.296Z",
+    "timestamp": "2026-08-06T20:41:09.722Z",
     "testType": "self-contained-sandbox",
     "totalCases": 28,
     "totalPassed": 28,
@@ -28,7 +28,7 @@
       "name": "SA valid_signed",
       "country": "SA",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-SA-valid",
+      "externalUuid": "run-1786048869434-SA-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -50,7 +50,7 @@
       "name": "SA unsigned",
       "country": "SA",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-SA-unsigned",
+      "externalUuid": "run-1786048869434-SA-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -72,7 +72,7 @@
       "name": "SA invalid_signed",
       "country": "SA",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-SA-invalid",
+      "externalUuid": "run-1786048869434-SA-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -94,7 +94,7 @@
       "name": "SA duplicate",
       "country": "SA",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-SA-valid",
+      "externalUuid": "run-1786048869434-SA-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -116,7 +116,7 @@
       "name": "EG valid_signed",
       "country": "EG",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-EG-valid",
+      "externalUuid": "run-1786048869434-EG-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -138,7 +138,7 @@
       "name": "EG unsigned",
       "country": "EG",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-EG-unsigned",
+      "externalUuid": "run-1786048869434-EG-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -160,7 +160,7 @@
       "name": "EG invalid_signed",
       "country": "EG",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-EG-invalid",
+      "externalUuid": "run-1786048869434-EG-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -182,7 +182,7 @@
       "name": "EG duplicate",
       "country": "EG",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-EG-valid",
+      "externalUuid": "run-1786048869434-EG-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -204,7 +204,7 @@
       "name": "AE valid_signed",
       "country": "AE",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-AE-valid",
+      "externalUuid": "run-1786048869434-AE-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -226,7 +226,7 @@
       "name": "AE unsigned",
       "country": "AE",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-AE-unsigned",
+      "externalUuid": "run-1786048869434-AE-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -248,7 +248,7 @@
       "name": "AE invalid_signed",
       "country": "AE",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-AE-invalid",
+      "externalUuid": "run-1786048869434-AE-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -270,7 +270,7 @@
       "name": "AE duplicate",
       "country": "AE",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-AE-valid",
+      "externalUuid": "run-1786048869434-AE-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -292,7 +292,7 @@
       "name": "KW valid_signed",
       "country": "KW",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-KW-valid",
+      "externalUuid": "run-1786048869434-KW-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -314,7 +314,7 @@
       "name": "KW unsigned",
       "country": "KW",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-KW-unsigned",
+      "externalUuid": "run-1786048869434-KW-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -336,7 +336,7 @@
       "name": "KW invalid_signed",
       "country": "KW",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-KW-invalid",
+      "externalUuid": "run-1786048869434-KW-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -358,7 +358,7 @@
       "name": "KW duplicate",
       "country": "KW",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-KW-valid",
+      "externalUuid": "run-1786048869434-KW-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -380,7 +380,7 @@
       "name": "BH valid_signed",
       "country": "BH",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-BH-valid",
+      "externalUuid": "run-1786048869434-BH-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -402,7 +402,7 @@
       "name": "BH unsigned",
       "country": "BH",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-BH-unsigned",
+      "externalUuid": "run-1786048869434-BH-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -424,7 +424,7 @@
       "name": "BH invalid_signed",
       "country": "BH",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-BH-invalid",
+      "externalUuid": "run-1786048869434-BH-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -446,7 +446,7 @@
       "name": "BH duplicate",
       "country": "BH",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-BH-valid",
+      "externalUuid": "run-1786048869434-BH-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -468,7 +468,7 @@
       "name": "OM valid_signed",
       "country": "OM",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-OM-valid",
+      "externalUuid": "run-1786048869434-OM-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -490,7 +490,7 @@
       "name": "OM unsigned",
       "country": "OM",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-OM-unsigned",
+      "externalUuid": "run-1786048869434-OM-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -512,7 +512,7 @@
       "name": "OM invalid_signed",
       "country": "OM",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-OM-invalid",
+      "externalUuid": "run-1786048869434-OM-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -534,7 +534,7 @@
       "name": "OM duplicate",
       "country": "OM",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-OM-valid",
+      "externalUuid": "run-1786048869434-OM-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -556,7 +556,7 @@
       "name": "QA valid_signed",
       "country": "QA",
       "case": "valid_signed",
-      "externalUuid": "run-1786047852009-QA-valid",
+      "externalUuid": "run-1786048869434-QA-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -578,7 +578,7 @@
       "name": "QA unsigned",
       "country": "QA",
       "case": "unsigned",
-      "externalUuid": "run-1786047852009-QA-unsigned",
+      "externalUuid": "run-1786048869434-QA-unsigned",
       "expected": {
         "status": 200,
         "signatureValid": null,
@@ -600,7 +600,7 @@
       "name": "QA invalid_signed",
       "country": "QA",
       "case": "invalid_signed",
-      "externalUuid": "run-1786047852009-QA-invalid",
+      "externalUuid": "run-1786048869434-QA-invalid",
       "expected": {
         "status": 200,
         "signatureValid": false,
@@ -622,7 +622,7 @@
       "name": "QA duplicate",
       "country": "QA",
       "case": "duplicate",
-      "externalUuid": "run-1786047852009-QA-valid",
+      "externalUuid": "run-1786048869434-QA-valid",
       "expected": {
         "status": 200,
         "signatureValid": true,
@@ -646,190 +646,190 @@
       "id": "rec_0001",
       "authority": "zatca",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-SA-valid",
+      "externalUuid": "run-1786048869434-SA-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.010Z"
+      "receivedAt": "2026-08-06T20:41:09.434Z"
     },
     {
       "id": "rec_0002",
       "authority": "zatca",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-SA-unsigned",
+      "externalUuid": "run-1786048869434-SA-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.019Z"
+      "receivedAt": "2026-08-06T20:41:09.445Z"
     },
     {
       "id": "rec_0003",
       "authority": "zatca",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-SA-invalid",
+      "externalUuid": "run-1786048869434-SA-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.030Z"
+      "receivedAt": "2026-08-06T20:41:09.455Z"
     },
     {
       "id": "rec_0004",
       "authority": "eta_egypt",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-EG-valid",
+      "externalUuid": "run-1786048869434-EG-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.050Z"
+      "receivedAt": "2026-08-06T20:41:09.476Z"
     },
     {
       "id": "rec_0005",
       "authority": "eta_egypt",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-EG-unsigned",
+      "externalUuid": "run-1786048869434-EG-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.060Z"
+      "receivedAt": "2026-08-06T20:41:09.486Z"
     },
     {
       "id": "rec_0006",
       "authority": "eta_egypt",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-EG-invalid",
+      "externalUuid": "run-1786048869434-EG-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.071Z"
+      "receivedAt": "2026-08-06T20:41:09.496Z"
     },
     {
       "id": "rec_0007",
       "authority": "uae_fta",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-AE-valid",
+      "externalUuid": "run-1786048869434-AE-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.091Z"
+      "receivedAt": "2026-08-06T20:41:09.517Z"
     },
     {
       "id": "rec_0008",
       "authority": "uae_fta",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-AE-unsigned",
+      "externalUuid": "run-1786048869434-AE-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.101Z"
+      "receivedAt": "2026-08-06T20:41:09.527Z"
     },
     {
       "id": "rec_0009",
       "authority": "uae_fta",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-AE-invalid",
+      "externalUuid": "run-1786048869434-AE-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.112Z"
+      "receivedAt": "2026-08-06T20:41:09.537Z"
     },
     {
       "id": "rec_0010",
       "authority": "kuwait_decree_10_2026",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-KW-valid",
+      "externalUuid": "run-1786048869434-KW-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.132Z"
+      "receivedAt": "2026-08-06T20:41:09.557Z"
     },
     {
       "id": "rec_0011",
       "authority": "kuwait_decree_10_2026",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-KW-unsigned",
+      "externalUuid": "run-1786048869434-KW-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.142Z"
+      "receivedAt": "2026-08-06T20:41:09.568Z"
     },
     {
       "id": "rec_0012",
       "authority": "kuwait_decree_10_2026",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-KW-invalid",
+      "externalUuid": "run-1786048869434-KW-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.153Z"
+      "receivedAt": "2026-08-06T20:41:09.578Z"
     },
     {
       "id": "rec_0013",
       "authority": "bahrain_nbr",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-BH-valid",
+      "externalUuid": "run-1786048869434-BH-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.173Z"
+      "receivedAt": "2026-08-06T20:41:09.598Z"
     },
     {
       "id": "rec_0014",
       "authority": "bahrain_nbr",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-BH-unsigned",
+      "externalUuid": "run-1786048869434-BH-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.183Z"
+      "receivedAt": "2026-08-06T20:41:09.608Z"
     },
     {
       "id": "rec_0015",
       "authority": "bahrain_nbr",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-BH-invalid",
+      "externalUuid": "run-1786048869434-BH-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.193Z"
+      "receivedAt": "2026-08-06T20:41:09.619Z"
     },
     {
       "id": "rec_0016",
       "authority": "oman_tax",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-OM-valid",
+      "externalUuid": "run-1786048869434-OM-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.214Z"
+      "receivedAt": "2026-08-06T20:41:09.640Z"
     },
     {
       "id": "rec_0017",
       "authority": "oman_tax",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-OM-unsigned",
+      "externalUuid": "run-1786048869434-OM-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.224Z"
+      "receivedAt": "2026-08-06T20:41:09.650Z"
     },
     {
       "id": "rec_0018",
       "authority": "oman_tax",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-OM-invalid",
+      "externalUuid": "run-1786048869434-OM-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.234Z"
+      "receivedAt": "2026-08-06T20:41:09.661Z"
     },
     {
       "id": "rec_0019",
       "authority": "qatar_gta",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-QA-valid",
+      "externalUuid": "run-1786048869434-QA-valid",
       "status": "accepted",
       "signatureValid": true,
-      "receivedAt": "2026-08-06T20:24:12.254Z"
+      "receivedAt": "2026-08-06T20:41:09.681Z"
     },
     {
       "id": "rec_0020",
       "authority": "qatar_gta",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-QA-unsigned",
+      "externalUuid": "run-1786048869434-QA-unsigned",
       "status": "accepted",
       "signatureValid": null,
-      "receivedAt": "2026-08-06T20:24:12.265Z"
+      "receivedAt": "2026-08-06T20:41:09.691Z"
     },
     {
       "id": "rec_0021",
       "authority": "qatar_gta",
       "eventType": "cleared",
-      "externalUuid": "run-1786047852009-QA-invalid",
+      "externalUuid": "run-1786048869434-QA-invalid",
       "status": "accepted",
       "signatureValid": false,
-      "receivedAt": "2026-08-06T20:24:12.275Z"
+      "receivedAt": "2026-08-06T20:41:09.701Z"
     }
   ]
 }

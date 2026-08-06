@@ -223,6 +223,29 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     receiptId: receipt.id,
   });
 
+  // ── 6. Dispatch rejection notification (best-effort, non-blocking) ──
+  if (input.status === "rejected") {
+    // Don't await — fire and forget so the webhook returns 200 immediately.
+    // Errors are logged inside the dispatcher, not propagated to the caller.
+    void import("./notifications")
+      .then(({ dispatchRejectionNotification }) =>
+        dispatchRejectionNotification({
+          companySlug,
+          invoiceId: invoiceId ?? null,
+          externalUuid: input.externalUuid || null,
+          authority: input.authority,
+          rejectionReason: input.rejectionReason || null,
+          receiptId: receipt.id,
+        }),
+      )
+      .catch((err) => {
+        logger.warn("[e-invoicing:webhooks] rejection notification failed", {
+          receiptId: receipt.id,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      });
+  }
+
   return { id: receipt.id, receivedAt: receipt.receivedAt };
 }
 
