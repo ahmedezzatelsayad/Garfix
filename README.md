@@ -4,7 +4,9 @@
 
 > Enterprise-grade multi-tenant SaaS ERP/Invoicing platform with a 20-phase AI cost-optimization cascade — Arabic-first, MENA-focused, production-hardened.
 
-**الإصدار:** 12.1.0 · **المؤسس:** `ahmedezzatelsayad` · **الترخيص:** Proprietary — All rights reserved
+**الإصدار:** 12.2.0 · **المؤسس:** `ahmedezzatelsayad` · **المساهمون:** ahmedezzatelsayad · **الترخيص:** Proprietary — All rights reserved
+
+> 🔄 **تحديث 12.2.0 (أغسطس 2026):** تحسين جودة Git history + توحيد المساهمات + توثيق محسّن للفاتورة الإلكترونية
 
 > ⚠️ **تنبيه سرّي:** هذا المستودع ملكية خاصة (proprietary) ومحمي بحقوق الملكية الفكرية. لا يُسمح بنسخه أو توزيعه أو استخدامه خارج نطاق الفريق المعتمد. المستودع حالياً عام (public) مؤقتاً لأغراض التطوير والصيانة فقط، وسيُعاد إلى خاص (private) لاحقاً.
 
@@ -509,21 +511,116 @@ The `assignKeys` action:
 
 ---
 
-## E-Invoicing — مطابقة فوترة MENA
+## E-Invoicing — مطابقة فوترة MENA (نظام الفاتورة الإلكترونية)
 
-Six-country MENA e-invoicing compliance with validation, certificate management, and retention policies. Located in `src/lib/e-invoicing/` (11 source files + 7 test files).
+Six-country MENA e-invoicing compliance with validation, certificate management, and retention policies. Located in `src/lib/e-invoicing/` (11 source files + 7 test files). **~10,000+ سطر TypeScript للفاتورة الإلكترونية.**
 
-| الدولة | الملف | المعيار |
-|--------|-------|---------|
-| 🇸🇦 السعودية (ZATCA) | `zatca.ts` + `zatca-validation.ts` + `zatca-certs.ts` + `zatca-tlv.ts` | Phase 2 e-invoicing (Fatoorah) |
-| 🇦🇪 الإمارات (FTA) | `uae-fta.ts` + `uae-fta-validation.ts` | UAE VAT e-invoicing |
-| 🇪🇬 مصر (ETA) | `egypt-eta.ts` + `egypt-eta-validation.ts` | Egyptian Tax Authority |
-| 🇰🇼 الكويت | `kuwait.ts` + `kuwait-validation.ts` | Kuwait Decree 10/2026 |
-| 🇧🇭 البحرين (NBR) | `bahrain-nbr.ts` | Bahrain National Bureau for Revenue |
-| 🇴🇲 عُمان | `oman-tax.ts` | Oman Tax Authority |
-| **التوجيه** | `router.ts` | Unified routing per country |
-| **الأرشفة** | `retention.ts` | Retention policies per jurisdiction |
-| **إعادة المحاولة** | `retry.ts` | Exponential backoff for authority APIs |
+### 🌍 الدول المدعومة (6 دول)
+
+| الدولة | الملفات | الأسطر | المعيار | الحالة |
+|--------|---------|-------|---------|--------|
+| 🇸🇦 السعودية (ZATCA) | `zatca.ts` + `validation` + `certs` + `tlv` | 3,577 | Phase 2 + TLV Encoding + ECDSA | ✅ متكامل |
+| 🇦🇿 الإمارات (FTA) | `uae-fta.ts` + `validation` | 1,480 | UAE VAT e-invoicing | ✅ متكامل |
+| 🇪🇬 مصر (ETA) | `egypt-eta.ts` + `validation` | 1,181 | Egyptian Tax Authority + إيصال إلكتروني | ✅ متكامل |
+| 🇰🇼 الكويت | `kuwait.ts` + `validation` | 936 | Kuwait Decree 10/2026 | ✅ متكامل |
+| 🇧🇭 البحرين (NBR) | `bahrain-nbr.ts` | 793 | Bahrain National Bureau for Revenue | ✅ متكامل |
+| 🇴🇲 عُمان | `oman-tax.ts` | 767 | Oman Tax Authority | ✅ متكامل |
+| **المكونات المشتركة** | `router.ts` + `retention.ts` + `retry.ts` | 1,223 | Routing + أرشفة + Retry Logic | ✅ متكامل |
+
+### 🔧 الميزات لكل دولة
+
+#### 🇸🇪 ZATCA السعودية (الأكثر تفصيلاً):
+```
+✅ Standard Invoice (B2B Cleared) — فاتورة ضريبية
+✅ Simplified Invoice (B2C Reported) — فاتورة مبسطة
+✅ UBL 2.1 XML Generation
+✅ ECDSA Digital Signature + X.509 Certificate
+✅ UUID per invoice
+✅ PIH Chaining (PreviousInvoiceHash)
+✅ TLV Encoding (Tag-Length-Value)
+✅ Certificate Management (Sandbox/Production)
+✅ Arabic Mandatory + English Optional
+✅ SAR Currency + 15% VAT Enforcement
+✅ Validation Middleware (Auto-block invalid invoices)
+```
+
+#### 🇪🇬 مصر ETA:
+```
+✅ 3 أنواع: Standard (B2B), Simplified (B2C), Export
+✅ EGP Currency + 14% VAT Rate
+✅ Digital Receipt (إيصال إلكتروني) for B2C
+✅ 5-Year Record Retention
+✅ Arabic + English Dual Language
+```
+
+### 🏢 نظام Multi-Tenant (كل شركة إعداداتها المنفصلة)
+
+كل شركة تدخل بياناتها الخاصة:
+
+```typescript
+// Company Model - بيانات الفاتورة الإلكترونية
+model Company {
+  vatNumber         String?   // الرقم الضريبي (TRN)
+  country           String?   // كود الدولة: SA, EG, KW, AE, BH, OM
+  defaultTaxRate    String    // نسبة الضريبة: 15% KSA, 14% Egypt...
+  currency          String    // العملة: SAR, EGP, KWD, AED...
+  nameAr            String?   // الاسم بالعربي (إجباري لبعض الدول)
+  address           String?   // العنوان
+}
+```
+
+**شهادات ZATCA لكل شركة (منفصلة ومشفرة):**
+```typescript
+model ZatcaCertificate {
+  companySlug           String    // كل شركة شهادتها
+  certificateType       String    // sandbox | production
+  certificateDataEnc    Bytes     // الشهادة مشفرة (AES-256)
+  privateKeyDataEnc     Bytes     // المفتاح الخاص مشفر
+  expiryDate            DateTime  // تاريخ الانتهاء
+  status                String    // active, revoked, expired
+}
+```
+
+### 🔄 كيف يشتغل النظام لكل مستخدم:
+
+```
+1. المستخدم يسجل شركة جديدة
+   ↓
+2. يدخل البيانات:
+   ├── Country: "SA" (السعودية)
+   ├── VAT Number: "310012345600003"
+   ├── Default Tax Rate: "15%"
+   └── Currency: "SAR"
+   ↓
+3. Router يحدد Handler تلقائياً حسب company.country
+   ├── SA → zatca.ts
+   ├── EG → egypt-eta.ts
+   ├── KW → kuwait.ts
+   └── ...
+   ↓
+4. Validation Middleware يتأكد من:
+   ├── VAT Number موجود وصحيح؟ ✅
+   ├── العملة مطابقة للدولة؟ ✅
+   └── VAT Rate صحيح؟ ✅
+   ↓
+5. توليد الفاتورة (UBL/XML/JSON) جاهزة للإرسال
+   ↓
+6. (اختياري) التوقيع الرقمي والإرسال للجهة الضريبية
+   └── حفظ السجل في EInvoice log
+```
+
+### 📊 تتبع الفواتير المرسلة:
+
+```typescript
+model EInvoice {
+  authorityType        String    // sa_zatca, eg_eta, kw_pa, bh_nbr...
+  submissionStatus      String    // pending → accepted/rejected/cancelled
+  uuid                  String?   @unique
+  rawXml                String?   // الـ XML/JSON المرسل
+  invoiceId             Int?
+  companySlug           String    // عزل البيانات
+}
+```
 
 ---
 
