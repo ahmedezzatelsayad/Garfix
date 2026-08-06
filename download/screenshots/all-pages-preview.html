@@ -133,8 +133,8 @@
 
     .chat-window { position: fixed; bottom: 96px; left: 24px; width: 380px; max-width: calc(100vw - 48px); height: 500px; max-height: calc(100vh - 130px); background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(16px); border: 1px solid #1f2937; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.4); z-index: 100; }
 
-    /* Fix 5: Sparkline with context label + Fix 16: gridlines for precise reading */
-    .sparkline-container { display: flex; align-items: end; gap: 1px; height: 28px; position: relative; background-image: linear-gradient(to top, transparent 0%, transparent 25%, rgba(55,65,81,0.2) 25%, rgba(55,65,81,0.2) 25.5%, transparent 25.5%, transparent 50%, rgba(55,65,81,0.2) 50%, rgba(55,65,81,0.2) 50.5%, transparent 50.5%, transparent 75%, rgba(55,65,81,0.2) 75%, rgba(55,65,81,0.2) 75.5%, transparent 75.5%); border-bottom: 1px solid rgba(55,65,81,0.3); padding-bottom: 1px; }
+    /* Fix 5: Sparkline with context label + Fix 16: gridlines + Fix 17: lighter opacity */
+    .sparkline-container { display: flex; align-items: end; gap: 1px; height: 28px; position: relative; background-image: linear-gradient(to top, transparent 0%, transparent 25%, rgba(55,65,81,0.08) 25%, rgba(55,65,81,0.08) 25.3%, transparent 25.3%, transparent 50%, rgba(55,65,81,0.08) 50%, rgba(55,65,81,0.08) 50.3%, transparent 50.3%, transparent 75%, rgba(55,65,81,0.08) 75%, rgba(55,65,81,0.08) 75.3%, transparent 75.3%); border-bottom: 1px solid rgba(55,65,81,0.15); padding-bottom: 1px; }
     .sparkline-bar { width: 3px; background: #10b981; border-radius: 1px; opacity: 0.5; position: relative; z-index: 1; }
     .sparkline-bar.peak { opacity: 1; }
     .sparkline-label { font-size: 9px; color: #6b7280; margin-top: 2px; }
@@ -193,6 +193,76 @@
     .topbar-utils { display: flex; align-items: center; gap: 0.25rem; padding: 0.25rem; background: rgba(31, 41, 55, 0.4); border-radius: 0.625rem; border: 1px solid rgba(55, 65, 81, 0.4); }
     .topbar-utils > button { border-radius: 0.5rem; }
 
+    /* Fix 19: Chart bar hover tooltip */
+    .chart-bar { position: relative; }
+    .chart-bar::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #f3f4f6;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+      border: 1px solid #374151;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 10;
+    }
+    .chart-bar:hover::before { opacity: 1; }
+
+    /* Fix 20: Loading skeleton */
+    .skeleton { background: linear-gradient(90deg, rgba(31,41,55,0.5) 25%, rgba(55,65,81,0.7) 50%, rgba(31,41,55,0.5) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 0.5rem; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-text { height: 14px; margin-bottom: 6px; }
+    .skeleton-card { height: 80px; }
+
+    /* Fix 21: Number formatting — consistent tabular figures */
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; letter-spacing: -0.01em; }
+
+    /* Fix 22: Keyboard navigation — focus styles for accessibility */
+    .chart-bar:focus-visible, .donut:focus-visible, .nav-item:focus-visible,
+    .tab:focus-visible, button:focus-visible, .input-field:focus-visible {
+      outline: 2px solid #34d399;
+      outline-offset: 2px;
+    }
+    .chart-bar { tabindex: 0; }
+
+    /* Fix 23: Print optimization — clean PDF export */
+    @media print {
+      * { background: white !important; color: black !important; border-color: #ccc !important; box-shadow: none !important; text-shadow: none !important; }
+      .ai-bubble, .chat-window, .page-nav, .topbar-utils { display: none !important; }
+      .card { border: 1px solid #ccc !important; break-inside: avoid; }
+      .kpi-card { border: 1px solid #ccc !important; }
+      .chart-bar { background: #047857 !important; background-image: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 6px) !important; }
+      .chart-grid-line { border-color: #999 !important; }
+      .sparkline-container { background-image: linear-gradient(to top, transparent 0%, transparent 25%, #ddd 25%, #ddd 25.3%, transparent 25.3%, transparent 50%, #ddd 50%, #ddd 50.3%, transparent 50.3%, transparent 75%, #ddd 75%, #ddd 75.3%, transparent 75.3%) !important; border-bottom: 1px solid #999 !important; }
+      .badge { border: 1px solid currentColor !important; }
+      body { background: white !important; }
+      main { padding: 0 !important; }
+      aside { display: none !important; }
+    }
+
+    /* Fix 24: Screen reader only — accessible data table for donut chart */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    /* Fix 26: Skip navigation link for keyboard users */
+    .skip-link { position: absolute; top: -40px; right: 0; z-index: 9999; background: #047857; color: white; padding: 8px 16px; border-radius: 0 0 0 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: top 0.2s; }
+    .skip-link:focus { top: 0; }
+
+    /* Fix 27: Reduced motion — WCAG 2.3.3 AAA */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+      .ai-bubble-button::before { animation: none !important; }
+      .skeleton { animation: none !important; background: rgba(31,41,55,0.5) !important; }
+    }
+
     /* Tabs */
     .tab { padding: 0.5rem 0.875rem; border-radius: 0.5rem; color: #9ca3af; font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
     .tab.active { background: rgba(4, 120, 87, 0.15); color: #34d399; }
@@ -209,6 +279,9 @@
   </style>
 </head>
 <body class="bg-background text-foreground">
+
+<!-- Fix 26: Skip navigation link for keyboard users -->
+<a href="#main-content" class="skip-link">تخطي إلى المحتوى الرئيسي</a>
 
 <!-- Page Navigation -->
 <div class="page-nav" id="pageNav">
@@ -354,7 +427,7 @@
     <div class="nav-item">🔌 التكاملات</div>
   </aside>
 
-  <main class="flex-1 md:mr-64 p-4 md:p-6 pb-24">
+  <main class="flex-1 md:mr-64 p-4 md:p-6 pb-24" id="main-content">
 
 <!-- ═══════ PAGE 1: DASHBOARD (10/10 fixed) ═══════ -->
 <section class="page-section active" id="dashboard">
@@ -367,42 +440,43 @@
   </div>
 
   <!-- Fix 9: Mobile = smaller KPI cards (grid-cols-2 on mobile, not 1) -->
+  <!-- Fix 25: aria-live regions for dynamic content accessibility (WCAG 2.1 AAA) -->
   <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card">
+    <div class="kpi-card" aria-live="polite" aria-atomic="true">
       <div class="label-text mb-1">إجمالي الإيرادات</div>
-      <div class="text-xl md:text-2xl value-text">١٢٤٬٥٠٠ ر.س</div>
+      <div class="text-xl md:text-2xl value-text num">١٢٤٬٥٠٠ ر.س</div>
       <div class="flex items-center justify-between mt-2">
         <span class="text-xs font-semibold text-emerald-400">▲ 12.5%</span>
         <div class="sparkline-container"><div class="sparkline-bar" style="height:30%"></div><div class="sparkline-bar" style="height:45%"></div><div class="sparkline-bar" style="height:35%"></div><div class="sparkline-bar" style="height:60%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar peak" style="height:80%"></div><div class="sparkline-bar peak" style="height:90%"></div></div>
       </div>
       <div class="sparkline-label">آخر ٧ أيام</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" aria-live="polite" aria-atomic="true">
       <div class="label-text mb-1">الفواتير</div>
-      <div class="text-xl md:text-2xl value-text">٨٤٧</div>
+      <div class="text-xl md:text-2xl value-text num">٨٤٧</div>
       <div class="flex items-center justify-between mt-2">
         <span class="text-xs font-semibold text-emerald-400">▲ 8 الجديد</span>
         <div class="sparkline-container"><div class="sparkline-bar" style="height:40%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar" style="height:50%"></div><div class="sparkline-bar" style="height:65%"></div><div class="sparkline-bar peak" style="height:85%"></div><div class="sparkline-bar" style="height:70%"></div><div class="sparkline-bar peak" style="height:95%"></div></div>
       </div>
       <div class="sparkline-label">آخر ٧ أيام</div>
     </div>
-    <div class="kpi-card kpi-card-gold">
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true">
       <div class="label-text mb-1" style="color: #e0b88a;">⭐ توفير الذكاء الاصطناعي</div>
       <div class="text-xl md:text-2xl value-text" style="color: #e0b88a;">٩٥٫٤٪</div>
       <div class="text-xs mt-2" style="color: #e0b88a; opacity: 0.8;">$٢٧٣ موفّر هذا الشهر</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" aria-live="polite" aria-atomic="true">
       <div class="label-text mb-1">العملاء</div>
-      <div class="text-xl md:text-2xl value-text">٢٣٤</div>
+      <div class="text-xl md:text-2xl value-text num">٢٣٤</div>
       <div class="flex items-center justify-between mt-2">
         <span class="text-xs font-semibold text-emerald-400">▲ 5 جدد</span>
         <div class="sparkline-container"><div class="sparkline-bar" style="height:50%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar" style="height:60%"></div><div class="sparkline-bar" style="height:65%"></div><div class="sparkline-bar peak" style="height:75%"></div><div class="sparkline-bar" style="height:70%"></div><div class="sparkline-bar peak" style="height:80%"></div></div>
       </div>
       <div class="sparkline-label">آخر ٧ أيام</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" aria-live="polite" aria-atomic="true">
       <div class="label-text mb-1">المستحقات</div>
-      <div class="text-xl md:text-2xl value-text">٨٬٩٠٠ ر.س</div>
+      <div class="text-xl md:text-2xl value-text num">٨٬٩٠٠ ر.س</div>
       <div class="text-xs font-semibold mt-2 text-amber-400">٣ متأخرة</div>
     </div>
   </div>
@@ -420,6 +494,22 @@
           <span class="badge badge-success">▲ 12.5%</span>
         </div>
       </div>
+      <!-- Fix 28: sr-only data table for bar chart accessibility -->
+      <div class="sr-only" role="region" aria-label="الإيرادات الشهرية">
+        <table>
+          <caption>الإيرادات الشهرية — آخر ٧ شهور بالريال السعودي</caption>
+          <thead><tr><th>الشهر</th><th>الإيرادات (ر.س)</th></tr></thead>
+          <tbody>
+            <tr><td>فبراير</td><td>٤٥٬٠٠٠</td></tr>
+            <tr><td>مارس</td><td>٦٢٬٠٠٠</td></tr>
+            <tr><td>أبريل</td><td>٥٠٬٠٠٠</td></tr>
+            <tr><td>مايو</td><td>٧٨٬٠٠٠</td></tr>
+            <tr><td>يونيو</td><td>٧٢٬٠٠٠</td></tr>
+            <tr><td>يوليو</td><td>٩٥٬٠٠٠</td></tr>
+            <tr><td>أغسطس</td><td>١٢٤٬٥٠٠</td></tr>
+          </tbody>
+        </table>
+      </div>
       <div class="chart-container" style="padding-left: 40px; padding-right: 10px;">
         <div class="chart-grid">
           <div class="chart-grid-line"></div>
@@ -432,13 +522,13 @@
           <span>150K</span><span>120K</span><span>90K</span><span>60K</span><span>30K</span><span>0</span>
         </div>
         <div class="chart-bars" style="height: 180px;">
-          <div class="chart-bar" style="height: 40%"><span class="chart-bar-label">٤٥K</span></div>
-          <div class="chart-bar" style="height: 55%"><span class="chart-bar-label">٦٢K</span></div>
-          <div class="chart-bar" style="height: 45%"><span class="chart-bar-label">٥٠K</span></div>
-          <div class="chart-bar" style="height: 70%"><span class="chart-bar-label">٧٨K</span></div>
-          <div class="chart-bar" style="height: 65%"><span class="chart-bar-label">٧٢K</span></div>
-          <div class="chart-bar" style="height: 85%"><span class="chart-bar-label">٩٥K</span></div>
-          <div class="chart-bar" style="height: 95%; background: linear-gradient(180deg, #34d399 0%, #059669 100%);"><span class="chart-bar-label" style="color: #34d399;">١٢٤K</span></div>
+          <div class="chart-bar" style="height: 40%" data-tooltip="فبراير: ٤٥٬٠٠٠ ر.س"><span class="chart-bar-label">٤٥K</span></div>
+          <div class="chart-bar" style="height: 55%" data-tooltip="مارس: ٦٢٬٠٠٠ ر.س"><span class="chart-bar-label">٦٢K</span></div>
+          <div class="chart-bar" style="height: 45%" data-tooltip="أبريل: ٥٠٬٠٠٠ ر.س"><span class="chart-bar-label">٥٠K</span></div>
+          <div class="chart-bar" style="height: 70%" data-tooltip="مايو: ٧٨٬٠٠٠ ر.س"><span class="chart-bar-label">٧٨K</span></div>
+          <div class="chart-bar" style="height: 65%" data-tooltip="يونيو: ٧٢٬٠٠٠ ر.س"><span class="chart-bar-label">٧٢K</span></div>
+          <div class="chart-bar" style="height: 85%" data-tooltip="يوليو: ٩٥٬٠٠٠ ر.س"><span class="chart-bar-label">٩٥K</span></div>
+          <div class="chart-bar" style="height: 95%; background: linear-gradient(180deg, #34d399 0%, #059669 100%);" data-tooltip="أغسطس: ١٢٤٬٥٠٠ ر.س (الشهر الحالي)"><span class="chart-bar-label" style="color: #34d399;">١٢٤K</span></div>
         </div>
         <div class="chart-x-labels">
           <span>فبراير</span><span>مارس</span><span>أبريل</span><span>مايو</span><span>يونيو</span><span>يوليو</span><span>أغسطس</span>
@@ -451,16 +541,28 @@
       <h3 class="font-semibold mb-1">توزيع الفواتير</h3>
       <p class="text-xs text-tertiary mb-4">حسب الحالة</p>
       <!-- Fix 15: Inline labels on donut — saves horizontal space -->
+      <!-- Fix 24: Accessible data table for screen readers -->
+      <div class="sr-only" role="region" aria-label="توزيع الفواتير حسب الحالة">
+        <table>
+          <caption>توزيع الفواتير حسب الحالة — إجمالي ٨٤٧ فاتورة</caption>
+          <thead><tr><th>الحالة</th><th>العدد</th><th>النسبة</th></tr></thead>
+          <tbody>
+            <tr><td>مدفوعة</td><td>٦٤٢</td><td>٧٦٪</td></tr>
+            <tr><td>معلقة</td><td>١٤٠</td><td>١٦٪</td></tr>
+            <tr><td>ملغاة</td><td>٦٥</td><td>٨٪</td></tr>
+          </tbody>
+        </table>
+      </div>
       <div class="flex flex-col items-center gap-3">
-        <div class="donut" style="background: conic-gradient(#10b981 0% 76%, #fbbf24 76% 92%, #6b7280 92% 100%);">
+        <div class="donut" style="background: conic-gradient(#10b981 0% 76%, #fbbf24 76% 92%, #6b7280 92% 100%);" tabindex="0" role="img" aria-label="توزيع الفواتير: ٧٦٪ مدفوعة (٦٤٢)، ١٦٪ معلقة (١٤٠)، ٨٪ ملغاة (٦٥)">
           <div class="donut-center">
-            <div class="text-xl font-bold value-text">٨٤٧</div>
+            <div class="text-xl font-bold value-text num">٨٤٧</div>
             <div class="text-[10px] text-tertiary">إجمالي</div>
           </div>
-          <!-- Inline labels positioned on the donut segments -->
-          <div style="position: absolute; top: 50%; right: -5px; transform: translateY(-50%); background: rgba(17,24,39,0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #34d399; border: 1px solid rgba(52,211,153,0.3);">٧٦٪</div>
-          <div style="position: absolute; top: -2px; left: 30%; background: rgba(17,24,39,0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);">١٦٪</div>
-          <div style="position: absolute; bottom: 0; left: 20%; background: rgba(17,24,39,0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #d1d5db; border: 1px solid rgba(107,114,128,0.3);">٨٪</div>
+          <!-- Inline labels positioned on the donut segments — Fix 18: text-shadow for colorblind safety -->
+          <div style="position: absolute; top: 50%; right: -5px; transform: translateY(-50%); background: rgba(17,24,39,0.95); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #34d399; border: 1px solid rgba(52,211,153,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">٧٦٪</div>
+          <div style="position: absolute; top: -2px; left: 30%; background: rgba(17,24,39,0.95); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">١٦٪</div>
+          <div style="position: absolute; bottom: 0; left: 20%; background: rgba(17,24,39,0.95); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #d1d5db; border: 1px solid rgba(107,114,128,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">٨٪</div>
         </div>
         <div class="flex items-center gap-3 text-xs flex-wrap justify-center">
           <span class="flex items-center gap-1.5"><span class="legend-marker bg-emerald-500"></span><span class="text-secondary">مدفوعة ٦٤٢</span></span>
@@ -500,6 +602,21 @@
       <div class="p-4"><div class="flex items-center justify-between mb-2"><span class="font-semibold">#INV-0846</span><span class="badge badge-warning">معلقة</span></div><div class="text-sm text-secondary">مؤسسة النور</div><div class="flex items-center justify-between mt-2"><span class="text-xs text-tertiary">٢٠٢٦/٠٨/٠٥</span><span class="font-bold">٨٬٧٥٠ ر.س</span></div></div>
     </div>
   </div>
+
+  <!-- Fix 20: Loading skeleton state — shows while data is loading -->
+  <div class="card p-4 mt-4">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="skeleton skeleton-text" style="width: 120px; height: 16px;"></div>
+      <div class="skeleton skeleton-text" style="width: 40px; height: 14px;"></div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+    </div>
+    <p class="text-xs text-tertiary mt-2 text-center">⏳ جارٍ تحميل المزيد من البيانات...</p>
+  </div>
 </section>
 
 <!-- ═══════ PAGE 2: INVOICES ═══════ -->
@@ -509,10 +626,10 @@
     <div class="flex gap-2"><button class="btn-ghost border border-elevated">📥 استيراد</button><button class="btn-primary">+ فاتورة جديدة</button></div>
   </div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي</div><div class="text-xl value-text">٨٤٧</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">مدفوعة</div><div class="text-xl value-text text-emerald-400">٦٤٢</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">معلقة</div><div class="text-xl value-text text-amber-400">١٤٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">ملغاة</div><div class="text-xl value-text text-gray-400">٦٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي</div><div class="text-xl value-text num">٨٤٧</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">مدفوعة</div><div class="text-xl value-text text-emerald-400">٦٤٢</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">معلقة</div><div class="text-xl value-text text-amber-400">١٤٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">ملغاة</div><div class="text-xl value-text text-gray-400">٦٥</div></div>
   </div>
   <div class="card">
     <div class="p-4 border-b border-elevated flex flex-col md:flex-row gap-3">
@@ -553,7 +670,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     <div class="card p-5"><div class="label-text mb-1">العميل</div><div class="font-bold">شركة الأمل التجارية</div><div class="text-sm text-secondary mt-2 space-y-1"><div>📧 info@alamal.com</div><div>📞 +966 50 123 4567</div><div>📍 الرياض، السعودية</div><div>🆔 300012345600003</div></div></div>
     <div class="card p-5"><div class="label-text mb-1">تفاصيل الفاتورة</div><div class="space-y-2 mt-2 text-sm"><div class="flex justify-between"><span class="text-tertiary">رقم الفاتورة:</span><span class="font-semibold">#INV-2026-0847</span></div><div class="flex justify-between"><span class="text-tertiary">تاريخ الإصدار:</span><span>٢٠٢٦/٠٨/٠٦</span></div><div class="flex justify-between"><span class="text-tertiary">تاريخ الاستحقاق:</span><span>٢٠٢٦/٠٨/٢١</span></div><div class="flex justify-between"><span class="text-tertiary">طريقة الدفع:</span><span>تحويل بنكي</span></div><div class="flex justify-between"><span class="text-tertiary">الحالة:</span><span class="badge badge-success">مدفوعة</span></div></div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">الإجمالي المستحق</div><div class="text-3xl font-bold" style="color: #e0b88a;">٤٬٠٢٥ ر.س</div><div class="text-xs mt-2" style="color: #e0b88a; opacity: 0.8;">شامل ضريبة القيمة المضافة ١٥٪</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">الإجمالي المستحق</div><div class="text-3xl font-bold" style="color: #e0b88a;">٤٬٠٢٥ ر.س</div><div class="text-xs mt-2" style="color: #e0b88a; opacity: 0.8;">شامل ضريبة القيمة المضافة ١٥٪</div></div>
   </div>
   <div class="card mb-6">
     <div class="p-4 border-b border-elevated"><h3 class="font-semibold">بنود الفاتورة</h3></div>
@@ -629,10 +746,10 @@
 <section class="page-section" id="clients">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">العملاء</h1><p class="text-secondary mt-1 text-sm">إدارة قاعدة عملائك</p></div><button class="btn-primary">+ عميل جديد</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي العملاء</div><div class="text-xl value-text">٢٣٤</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">نشطون</div><div class="text-xl value-text text-emerald-400">١٨٧</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">جدد هذا الشهر</div><div class="text-xl value-text">١٢</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">متوسط القيمة</div><div class="text-xl value-text">٢٬٤٠٠ ر.س</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي العملاء</div><div class="text-xl value-text num">٢٣٤</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">نشطون</div><div class="text-xl value-text text-emerald-400">١٨٧</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">جدد هذا الشهر</div><div class="text-xl value-text">١٢</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">متوسط القيمة</div><div class="text-xl value-text">٢٬٤٠٠ ر.س</div></div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated"><input type="text" placeholder="🔍 بحث عن عميل..." class="input-field" /></div>
     <div class="hidden md:block overflow-x-auto"><table><thead><tr><th>الاسم</th><th>البريد</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>الحالة</th><th></th></tr></thead><tbody>
@@ -649,10 +766,10 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     <div class="card p-6 lg:col-span-1"><div class="flex flex-col items-center text-center"><div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 flex items-center justify-center text-3xl font-bold text-white mb-3">ش</div><h2 class="font-bold text-lg">شركة الأمل التجارية</h2><span class="badge badge-success mt-1">عميل نشط</span></div><div class="mt-4 space-y-2 text-sm"><div class="flex items-center gap-2 text-secondary">📧 info@alamal.com</div><div class="flex items-center gap-2 text-secondary">📞 +966 50 123 4567</div><div class="flex items-center gap-2 text-secondary">📍 الرياض، السعودية</div><div class="flex items-center gap-2 text-secondary">🆔 300012345600003</div></div></div>
     <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="kpi-card"><div class="label-text mb-1">إجمالي المشتريات</div><div class="text-xl value-text">٤٥٬٠٠٠</div><div class="text-xs text-emerald-400 mt-1">ر.س</div></div>
-      <div class="kpi-card"><div class="label-text mb-1">عدد الفواتير</div><div class="text-xl value-text">٢٣</div></div>
-      <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">متوسط الفاتورة</div><div class="text-xl value-text" style="color: #e0b88a;">١٬٩٥٦</div><div class="text-xs mt-1" style="color: #e0b88a; opacity: 0.8;">ر.س</div></div>
-      <div class="kpi-card"><div class="label-text mb-1">المستحقات</div><div class="text-xl value-text text-emerald-400">٠</div><div class="text-xs text-emerald-400 mt-1">✓ خالي</div></div>
+      <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي المشتريات</div><div class="text-xl value-text">٤٥٬٠٠٠</div><div class="text-xs text-emerald-400 mt-1">ر.س</div></div>
+      <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">عدد الفواتير</div><div class="text-xl value-text">٢٣</div></div>
+      <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">متوسط الفاتورة</div><div class="text-xl value-text" style="color: #e0b88a;">١٬٩٥٦</div><div class="text-xs mt-1" style="color: #e0b88a; opacity: 0.8;">ر.س</div></div>
+      <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">المستحقات</div><div class="text-xl value-text text-emerald-400">٠</div><div class="text-xs text-emerald-400 mt-1">✓ خالي</div></div>
     </div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated flex gap-2"><div class="tab active">🧾 الفواتير</div><div class="tab">💳 المدفوعات</div><div class="tab">📞 التواصل</div><div class="tab">📝 الملاحظات</div></div>
@@ -668,10 +785,10 @@
 <section class="page-section" id="inventory">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">المخزون</h1><p class="text-secondary mt-1 text-sm">إدارة المخزون والمستودعات</p></div><button class="btn-primary">+ صنف جديد</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي الأصناف</div><div class="text-xl value-text">١٬٢٤٥</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">قيمة المخزون</div><div class="text-xl value-text">٢٣٤٬٠٠٠ ر.س</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">منخفض المخزون</div><div class="text-xl value-text text-amber-400">٢٣</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">نفد</div><div class="text-xl value-text text-red-400">٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي الأصناف</div><div class="text-xl value-text">١٬٢٤٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">قيمة المخزون</div><div class="text-xl value-text num">٢٣٤٬٠٠٠ ر.س</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">منخفض المخزون</div><div class="text-xl value-text text-amber-400">٢٣</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">نفد</div><div class="text-xl value-text text-red-400">٥</div></div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">أصناف منخفضة المخزون</h3></div>
     <div class="hidden md:block overflow-x-auto"><table><thead><tr><th>الصنف</th><th>الرمز</th><th>المخزون</th><th>حد إعادة الطلب</th><th>الحالة</th></tr></thead><tbody>
@@ -686,10 +803,10 @@
 <section class="page-section" id="accounting">
   <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">المحاسبة</h1><p class="text-secondary mt-1 text-sm">الدفاتر المحاسبية والتقارير المالية</p></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">الإيرادات</div><div class="text-xl value-text text-emerald-400">١٢٤٬٥٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">المصروفات</div><div class="text-xl value-text text-red-400">٨٧٬٢٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي الربح</div><div class="text-xl value-text" style="color: #e0b88a;">٣٧٬٣٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">الضرائب</div><div class="text-xl value-text">١٨٬٦٧٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">الإيرادات</div><div class="text-xl value-text text-emerald-400">١٢٤٬٥٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">المصروفات</div><div class="text-xl value-text text-red-400">٨٧٬٢٠٠</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي الربح</div><div class="text-xl value-text" style="color: #e0b88a;">٣٧٬٣٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">الضرائب</div><div class="text-xl value-text">١٨٬٦٧٥</div></div>
   </div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
     <button class="card p-4 hover:border-primary text-center"><div class="text-2xl mb-1">📚</div><div class="text-sm font-medium">الدفتر العام</div></button>
@@ -721,10 +838,10 @@
   <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">المستحقات (AR/AP)</span></div>
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">💳 المستحقات (AR/AP)</h1><p class="text-secondary mt-1 text-sm">الذمم المدينة والدائنة + شيكات بمواعيد لاحقة</p></div><button class="btn-primary">+ قسط جديد</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">مستحق لنا</div><div class="text-xl value-text text-emerald-400">٤٢٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">مستحق علينا</div><div class="text-xl value-text text-red-400">٢٨٬٥٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">متأخر (>٣٠ يوم)</div><div class="text-xl value-text text-amber-400">٨٬٧٥٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي</div><div class="text-xl value-text" style="color: #e0b88a;">١٣٬٥٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">مستحق لنا</div><div class="text-xl value-text text-emerald-400">٤٢٬٠٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">مستحق علينا</div><div class="text-xl value-text text-red-400">٢٨٬٥٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">متأخر (>٣٠ يوم)</div><div class="text-xl value-text text-amber-400">٨٬٧٥٠</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي</div><div class="text-xl value-text" style="color: #e0b88a;">١٣٬٥٠٠</div></div>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">📊 تقنين العمر (Aging)</h3></div><div class="p-4 space-y-3">
@@ -762,10 +879,10 @@
   <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الأصول الثابتة</span></div>
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">🏢 الأصول الثابتة والإهلاك</h1><p class="text-secondary mt-1 text-sm">إدارة الأصول وحساب الإهلاك تلقائياً</p></div><button class="btn-primary">+ أصل جديد</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي التكلفة</div><div class="text-xl value-text">٤٥٠٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">مجمع الإهلاك</div><div class="text-xl value-text text-amber-400">١٢٣٬٠٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي القيمة</div><div class="text-xl value-text" style="color: #e0b88a;">٣٢٧٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">إهلاك الشهر</div><div class="text-xl value-text text-red-400">٤٬٥٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي التكلفة</div><div class="text-xl value-text">٤٥٠٬٠٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">مجمع الإهلاك</div><div class="text-xl value-text text-amber-400">١٢٣٬٠٠٠</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي القيمة</div><div class="text-xl value-text" style="color: #e0b88a;">٣٢٧٬٠٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إهلاك الشهر</div><div class="text-xl value-text text-red-400">٤٬٥٠٠</div></div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الأصول</h3></div>
     <div class="overflow-x-auto"><table><thead><tr><th>الأصل</th><th>تاريخ الشراء</th><th>التكلفة</th><th>العمر</th><th>مجمع الإهلاك</th><th>صافي القيمة</th></tr></thead><tbody>
@@ -781,10 +898,10 @@
   <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الرواتب (WPS)</span></div>
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">💵 الرواتب ونظام حماية الأجور (WPS)</h1><p class="text-secondary mt-1 text-sm">إدارة الرواتب وتوليد ملفات WPS</p></div><div class="flex gap-2"><button class="btn-ghost border border-elevated">📤 توليد ملف WPS</button><button class="btn-primary">+ راتب</button></div></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي الرواتب</div><div class="text-xl value-text">٢٣٤٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">عدد الموظفين</div><div class="text-xl value-text">٤٥</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ متوسط الراتب</div><div class="text-xl value-text" style="color: #e0b88a;">٥٬٢٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">حالة WPS</div><div class="text-xl value-text text-emerald-400">✓ مُرسل</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي الرواتب</div><div class="text-xl value-text num">٢٣٤٬٠٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">عدد الموظفين</div><div class="text-xl value-text">٤٥</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ متوسط الراتب</div><div class="text-xl value-text" style="color: #e0b88a;">٥٬٢٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">حالة WPS</div><div class="text-xl value-text text-emerald-400">✓ مُرسل</div></div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">رواتب أغسطس ٢٠٢٦</h3><span class="badge badge-success">تمت المعالجة</span></div>
     <div class="overflow-x-auto"><table><thead><tr><th>الموظف</th><th>المنصب</th><th>الأساسي</th><th>البدلات</th><th>الخصومات</th><th>الصافي</th><th>WPS</th></tr></thead><tbody>
@@ -800,10 +917,10 @@
   <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الضرائب</span></div>
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">📋 الامتثال الضريبي</h1><p class="text-secondary mt-1 text-sm">إقرارات VAT + تقارير ZATCA</p></div><button class="btn-primary">+ إقرار VAT</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">VAT مستحق</div><div class="text-xl value-text text-emerald-400">١٨٬٦٧٥</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">VAT مدفوع</div><div class="text-xl value-text text-amber-400">٤٬٢٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي مستحق</div><div class="text-xl value-text" style="color: #e0b88a;">١٤٬٤٧٥</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">الإقرار القادم</div><div class="text-xl value-text">٣٠ أغسطس</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">VAT مستحق</div><div class="text-xl value-text text-emerald-400">١٨٬٦٧٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">VAT مدفوع</div><div class="text-xl value-text text-amber-400">٤٬٢٠٠</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي مستحق</div><div class="text-xl value-text" style="color: #e0b88a;">١٤٬٤٧٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">الإقرار القادم</div><div class="text-xl value-text">٣٠ أغسطس</div></div>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="card p-5"><h3 class="font-semibold mb-3">📊 ملخص VAT — الربع الحالي</h3><div class="space-y-2 text-sm">
@@ -877,10 +994,10 @@
 <section class="page-section" id="ai-agents">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">🤖 وكلاء الذكاء الاصطناعي</h1><p class="text-secondary mt-1 text-sm">وكلاء AI أليون لتنفيذ المهام تلقائياً</p></div><button class="btn-gold">+ وكيل جديد</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">وكلاء نشطون</div><div class="text-xl value-text text-emerald-400">٨</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">مهام اليوم</div><div class="text-xl value-text">١٤٢</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ توفير AI</div><div class="text-xl value-text" style="color: #e0b88a;">٩٥٫٤٪</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">زمن الاستجابة</div><div class="text-xl value-text">٢٣ms</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">وكلاء نشطون</div><div class="text-xl value-text text-emerald-400">٨</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">مهام اليوم</div><div class="text-xl value-text">١٤٢</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ توفير AI</div><div class="text-xl value-text" style="color: #e0b88a;">٩٥٫٤٪</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">زمن الاستجابة</div><div class="text-xl value-text">٢٣ms</div></div>
   </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="card p-6"><div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">🧾</div><div class="flex-1"><h3 class="font-bold">وكيل الفواتير</h3><p class="text-xs text-tertiary">Invoice Brain Agent</p></div><span class="badge badge-success">نشط</span></div><div class="grid grid-cols-3 gap-2 text-center"><div><div class="text-lg font-bold text-emerald-400">٨٤٧</div><div class="text-[10px] text-tertiary">فواتير</div></div><div><div class="text-lg font-bold" style="color: #e0b88a;">٩٥٪</div><div class="text-[10px] text-tertiary">pattern</div></div><div><div class="text-lg font-bold">٠٫٠١ms</div><div class="text-[10px] text-tertiary">latency</div></div></div></div>
@@ -892,10 +1009,10 @@
 <section class="page-section" id="automation">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">⚙️ الأتمتة</h1><p class="text-secondary mt-1 text-sm">قواعد الأتمتة لتنفيذ المهام تلقائياً</p></div><button class="btn-primary">+ قاعدة جديدة</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">قواعد نشطة</div><div class="text-xl value-text text-emerald-400">١٢</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">تنفيذات اليوم</div><div class="text-xl value-text">٨٩</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">معدل النجاح</div><div class="text-xl value-text text-emerald-400">٩٨٪</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ وقت موفّر</div><div class="text-xl value-text" style="color: #e0b88a;">٤٥ ساعة</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">قواعد نشطة</div><div class="text-xl value-text text-emerald-400">١٢</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">تنفيذات اليوم</div><div class="text-xl value-text">٨٩</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">معدل النجاح</div><div class="text-xl value-text text-emerald-400">٩٨٪</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ وقت موفّر</div><div class="text-xl value-text" style="color: #e0b88a;">٤٥ ساعة</div></div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">القواعد النشطة</h3></div><div class="divide-y divide-elevated">
     <div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">📧</div><div><h4 class="font-semibold">إرسال إشعار فاتورة متأخرة</h4><p class="text-xs text-tertiary">عند: invoice.overdue → إرسال بريد + WhatsApp</p></div></div><div class="flex items-center gap-3"><span class="text-xs text-tertiary">٢٣ مرة</span><div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div></div></div>
@@ -907,10 +1024,10 @@
 <section class="page-section" id="reports">
   <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">📊 التقارير</h1><p class="text-secondary mt-1 text-sm">تقارير مالية وتحليلية شاملة</p></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إيرادات السنة</div><div class="text-xl value-text text-emerald-400">١٬٤٥٠٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">مصروفات السنة</div><div class="text-xl value-text text-red-400">٩٨٠٬٠٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي الربح</div><div class="text-xl value-text" style="color: #e0b88a;">٤٧٠٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">هامش الربح</div><div class="text-xl value-text">٣٢٫٤٪</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إيرادات السنة</div><div class="text-xl value-text text-emerald-400">١٬٤٥٠٬٠٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">مصروفات السنة</div><div class="text-xl value-text text-red-400">٩٨٠٬٠٠٠</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي الربح</div><div class="text-xl value-text" style="color: #e0b88a;">٤٧٠٬٠٠٠</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">هامش الربح</div><div class="text-xl value-text">٣٢٫٤٪</div></div>
   </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
     <div class="card p-5">
@@ -1011,10 +1128,10 @@
 <section class="page-section" id="founder-panel">
   <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">📡 مركز تحكم المؤسس</h1><p class="text-secondary mt-1 text-sm">نظرة شاملة على المنصة</p></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي الشركات</div><div class="text-xl value-text">١٥٦</div><div class="text-xs text-emerald-400 mt-1">▲ 8 الجدد</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ إيرادات المنصة</div><div class="text-xl value-text" style="color: #e0b88a;">$٤٬٨٢٠</div><div class="text-xs mt-1" style="color: #e0b88a; opacity: 0.8;">هذا الشهر</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">معدل النشاط</div><div class="text-xl value-text text-emerald-400">٨٧٪</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">تكلفة AI</div><div class="text-xl value-text text-red-400">$٢٣٤</div><div class="text-xs text-emerald-400 mt-1">▼ 95% توفير</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي الشركات</div><div class="text-xl value-text">١٥٦</div><div class="text-xs text-emerald-400 mt-1">▲ 8 الجدد</div></div>
+    <div class="kpi-card kpi-card-gold" aria-live="polite" aria-atomic="true"><div class="label-text mb-1" style="color: #e0b88a;">⭐ إيرادات المنصة</div><div class="text-xl value-text" style="color: #e0b88a;">$٤٬٨٢٠</div><div class="text-xs mt-1" style="color: #e0b88a; opacity: 0.8;">هذا الشهر</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">معدل النشاط</div><div class="text-xl value-text text-emerald-400">٨٧٪</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">تكلفة AI</div><div class="text-xl value-text text-red-400">$٢٣٤</div><div class="text-xs text-emerald-400 mt-1">▼ 95% توفير</div></div>
   </div>
   <div class="card p-6"><h3 class="font-semibold mb-4">🧠 لوحة الذكاء الاصطناعي</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold text-emerald-400 mb-1">٩٥٫٤٪</div><div class="text-xs text-tertiary">pattern hit rate</div></div>
@@ -1028,10 +1145,10 @@
 <section class="page-section" id="hr">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">👥 الموارد البشرية</h1><p class="text-secondary mt-1 text-sm">إدارة الموظفين والرواتب والحضور</p></div><button class="btn-primary">+ موظف جديد</button></div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="kpi-card"><div class="label-text mb-1">إجمالي الموظفين</div><div class="text-xl value-text">٤٥</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">حاضرون اليوم</div><div class="text-xl value-text text-emerald-400">٤٢</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">في إجازة</div><div class="text-xl value-text text-amber-400">٣</div></div>
-    <div class="kpi-card"><div class="label-text mb-1">رواتب الشهر</div><div class="text-xl value-text">٢٣٤٬٠٠٠ ر.س</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">إجمالي الموظفين</div><div class="text-xl value-text">٤٥</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">حاضرون اليوم</div><div class="text-xl value-text text-emerald-400">٤٢</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">في إجازة</div><div class="text-xl value-text text-amber-400">٣</div></div>
+    <div class="kpi-card" aria-live="polite" aria-atomic="true"><div class="label-text mb-1">رواتب الشهر</div><div class="text-xl value-text num">٢٣٤٬٠٠٠ ر.س</div></div>
   </div>
   <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الموظفين</h3></div>
     <div class="hidden md:block overflow-x-auto"><table><thead><tr><th>الاسم</th><th>المنصب</th><th>القسم</th><th>الراتب</th><th>الحالة</th></tr></thead><tbody>
