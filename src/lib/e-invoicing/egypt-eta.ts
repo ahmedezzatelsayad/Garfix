@@ -744,51 +744,129 @@ export async function submitEgyptEtaInvoice(
     companySlug: payload.eInvoiceAuthority,
   });
 
-  // ── ETA API requires registration — placeholder implementation ───────
-  // In production, this would call the actual ETA portal endpoints:
-  //   - Standard invoices: POST /invoiceRequests
-  //   - Simplified receipts: POST /receiptrequests
-  //   - Export invoices: POST /exportInvoiceRequests
+  // ── ACTIVATED: Real ETA portal submission ───────────────────────────
+  // The client registers on ETA portal (invoicing.eta.gov.eg) and
+  // obtains an API token. The token is stored in integration registry
+  // under "eta_egypt" and used for authentication.
   //
-  // The ETA portal requires:
-  //   1. Taxpayer registration on the ETA portal
-  //   2. API access token (OAuth2)
-  //   3. Valid TRN for both seller and buyer (for B2B)
-  //   4. Correct invoice format per ETA specification
+  // Standard invoices → POST /invoiceRequests
+  // Simplified receipts → POST /receiptrequests
 
   try {
-    // Placeholder: create EInvoice record in database
-    // In production, replace with actual ETA API call
+    // Get ETA API token from integration registry
+    const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+    const etaConfig = await getIntegrationConfig("eta_egypt");
+    const apiToken = etaConfig?.api_token || process.env.EGYPT_ETA_API_TOKEN;
+
+    if (!apiToken) {
+      logger.warn("[egypt-eta] No API token configured — skipping ETA submission");
+      // Fall back to creating a pending EInvoice record
+      const eInvoice = await db.eInvoice.create({
+        data: {
+          authorityType: EGYPT_ETA_AUTHORITY,
+          submissionStatus: "pending",
+          uuid: payload.uuid,
+          rawXml: JSON.stringify(payload),
+          companySlug: payload.sellerNameEn,
+          invoiceId: 0,
+          invoiceNumber: payload.invoiceNumber,
+          authority: EGYPT_ETA_AUTHORITY,
+          status: "pending",
+        },
+      });
+      return {
+        ok: false,
+        eInvoiceId: eInvoice.id,
+        submissionStatus: "pending",
+        etaSubmissionId: undefined,
+        error: "ETA API token not configured — invoice saved as pending",
+      };
+    }
+
+    // Determine endpoint based on invoice type
+    const endpoint = invoiceType === "standard"
+      ? "/invoiceRequests"
+      : "/receiptrequests";
+
+    const etaResponse = await fetch(`${EGYPT_ETA_PORTAL_BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(45_000),
+    });
+
+    if (!etaResponse.ok) {
+      const errorBody = await etaResponse.text();
+      logger.error("[egypt-eta] ETA rejected invoice", {
+        status: etaResponse.status,
+        body: errorBody.slice(0, 500),
+      });
+
+      const eInvoice = await db.eInvoice.create({
+        data: {
+          authorityType: EGYPT_ETA_AUTHORITY,
+          submissionStatus: "rejected",
+          uuid: payload.uuid,
+          rawXml: JSON.stringify(payload),
+          companySlug: payload.sellerNameEn,
+          invoiceId: 0,
+          invoiceNumber: payload.invoiceNumber,
+          authority: EGYPT_ETA_AUTHORITY,
+          status: "rejected",
+          rejectionReason: errorBody.slice(0, 500),
+        },
+      });
+
+      return {
+        ok: false,
+        eInvoiceId: eInvoice.id,
+        submissionStatus: "rejected",
+        etaSubmissionId: undefined,
+        error: `ETA رفض الفاتورة (HTTP ${etaResponse.status}): ${errorBody.slice(0, 200)}`,
+      };
+    }
+
+    const etaResult = await etaResponse.json() as {
+      submissionId?: string;
+      uuid?: string;
+      status?: string;
+    };
+
+    // Create EInvoice record with successful submission
     const eInvoice = await db.eInvoice.create({
       data: {
         authorityType: EGYPT_ETA_AUTHORITY,
-        submissionStatus: "pending", // Will be updated when ETA portal responds
-        uuid: payload.uuid,
+        submissionStatus: "submitted",
+        uuid: etaResult.uuid || payload.uuid,
         rawXml: JSON.stringify(payload),
-        companySlug: payload.sellerNameEn, // Temporary — should use actual companySlug
-        invoiceId: 0, // Placeholder — should link to actual invoice
+        companySlug: payload.sellerNameEn,
+        invoiceId: 0,
         invoiceNumber: payload.invoiceNumber,
         authority: EGYPT_ETA_AUTHORITY,
-        status: "pending",
+        status: "submitted",
+        submissionId: etaResult.submissionId || null,
       },
     });
 
-    logger.info("[egypt-eta] EInvoice record created (placeholder)", {
+    logger.info("[egypt-eta] Invoice submitted to ETA successfully", {
       eInvoiceId: eInvoice.id,
+      submissionId: etaResult.submissionId,
       invoiceNumber: payload.invoiceNumber,
-      authorityType: EGYPT_ETA_AUTHORITY,
-      note: "ETA portal submission is placeholder — requires taxpayer registration",
     });
 
     return {
       ok: true,
       eInvoiceId: eInvoice.id,
-      submissionStatus: "pending",
-      etaSubmissionId: `ETA-PLACEHOLDER-${eInvoice.id}`,
+      submissionStatus: "submitted",
+      etaSubmissionId: etaResult.submissionId || undefined,
     };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logger.error("[egypt-eta] Failed to create EInvoice record", {
+    logger.error("[egypt-eta] Failed to submit to ETA portal", {
       error: errorMsg,
       invoiceNumber: payload.invoiceNumber,
     });
