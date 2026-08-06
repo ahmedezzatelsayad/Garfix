@@ -3,22 +3,32 @@
  * EInvoicingSettings.tsx — إعدادات الفوترة الإلكترونية
  *
  * واجهة العميل لإعداد الفوترة الإلكترونية حسب دولته:
- * - السعودية: إدخال OTP + الرقم الضريبي → طلب CSID + CCD
- * - مصر: إدخال API token
- * - الإمارات: ربط Peppol
- * - الكويت/البحرين/عُمان: معلومات استعداد
+ * - السعودية (SA): إدخال OTP + الرقم الضريبي → طلب CSID + CCD
+ * - مصر (EG): إدخال ETA API Token (JWT) + اختبار الاتصال
+ * - الإمارات (AE): ربط Peppol Access Point (URL + Client ID/Secret + Participant ID)
+ * - الكويت (KW): ربط بوابة وزارة المالية (مرسوم 10/2026) + اختيار المرحلة
+ * - البحرين (BH): ربط هيئة الإيرادات (API Key + VAT)
+ * - عُمان (OM): ربط هيئة الضرائب (Client Credentials)
+ * - قطر (QA): ربط اختياري عبر Peppol (غير إلزامي)
+ *
+ * كل دولة (باستثناء السعودية التي تستخدم ZATCA flow خاص):
+ * - تخزّن بيانات الاعتماد عبر /api/platform-admin/integrations (مشفّرة)
+ * - تختبر الاتصال عبر /api/platform-admin/integrations/test
  * ═════════════════════════════════════════════════════════════
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
   ShieldCheck, Loader2, CheckCircle2, XCircle, FileText,
-  KeyRound, Building2, AlertCircle, RefreshCw,
+  KeyRound, Building2, AlertCircle, RefreshCw, Wifi, Globe2,
+  Link2, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ─── Types ─────────────────────────────────────────────────────
 
 interface ZatcaCertStatus {
   hasCsid: boolean;
@@ -28,26 +38,72 @@ interface ZatcaCertStatus {
   status: "not_started" | "csid_only" | "fully_configured" | "expired";
 }
 
+type IntegrationTypeKey =
+  | "einvoice_eg"
+  | "einvoice_ae"
+  | "einvoice_kw"
+  | "einvoice_bh"
+  | "einvoice_om"
+  | "einvoice_qa";
+
+interface IntegrationStatus {
+  type: IntegrationTypeKey;
+  hasCredentials: boolean;
+  credentialsLastUpdatedAt: string | null;
+}
+
+// ─── Main Component ────────────────────────────────────────────
+
 export function EInvoicingSettings() {
   const { activeCompany } = useBrand();
   const companySlug = activeCompany?.slug || "";
   const country = activeCompany?.country || "";
 
+  if (country === "SA") {
+    return <ZatcaSettings companySlug={companySlug} vatNumberDefault={activeCompany?.vatNumber || ""} nameAr={activeCompany?.nameAr} nameEn={activeCompany?.name} />;
+  }
+
+  const countryToIntegrationType: Record<string, IntegrationTypeKey> = {
+    EG: "einvoice_eg",
+    AE: "einvoice_ae",
+    KW: "einvoice_kw",
+    BH: "einvoice_bh",
+    OM: "einvoice_om",
+    QA: "einvoice_qa",
+  };
+
+  const integrationType = countryToIntegrationType[country];
+  if (!integrationType) {
+    return <ComingSoonPanel country={country} />;
+  }
+
+  return (
+    <CountryEInvoiceSettings
+      country={country}
+      integrationType={integrationType}
+      vatNumberDefault={activeCompany?.vatNumber || ""}
+    />
+  );
+}
+
+// ─── ZATCA (Saudi Arabia) ──────────────────────────────────────
+// (unchanged from previous commit — uses the dedicated /api/e-invoicing/zatca/* flow)
+
+function ZatcaSettings({
+  companySlug, vatNumberDefault, nameAr, nameEn,
+}: {
+  companySlug: string;
+  vatNumberDefault: string;
+  nameAr?: string | null;
+  nameEn?: string | null;
+}) {
   const [loading, setLoading] = useState(false);
   const [certStatus, setCertStatus] = useState<ZatcaCertStatus | null>(null);
-
-  // ZATCA onboarding form
-  const [vatNumber, setVatNumber] = useState(activeCompany?.vatNumber || "");
+  const [vatNumber, setVatNumber] = useState(vatNumberDefault);
   const [otp, setOtp] = useState("");
-  const [etaToken, setEtaToken] = useState("");
   const [onboardingStep, setOnboardingStep] = useState<"idle" | "requesting_csid" | "requesting_ccd" | "done">("idle");
 
-  useEffect(() => {
-    // Load existing cert status
-    loadCertStatus();
-  }, [companySlug]);
-
-  const loadCertStatus = async () => {
+  const loadCertStatus = useCallback(async () => {
     try {
       const res = await fetch(`/api/e-invoicing/zatca/status?companySlug=${companySlug}`, { credentials: "include" });
       if (res.ok) {
@@ -57,7 +113,11 @@ export function EInvoicingSettings() {
     } catch {
       // Status endpoint may not exist yet — that's OK
     }
-  };
+  }, [companySlug]);
+
+  useEffect(() => {
+    loadCertStatus();
+  }, [loadCertStatus]);
 
   const handleZatcaOnboard = async () => {
     if (!vatNumber || !otp) {
@@ -78,9 +138,9 @@ export function EInvoicingSettings() {
           companySlug,
           vatTrn: vatNumber,
           otp,
-          productionMode: false, // simulation first
-          nameAr: activeCompany?.nameAr,
-          nameEn: activeCompany?.name,
+          productionMode: false,
+          nameAr,
+          nameEn,
         }),
       });
 
@@ -90,7 +150,7 @@ export function EInvoicingSettings() {
         throw new Error(csidData.error || "فشل طلب CSID من ZATCA");
       }
 
-      toast.success("✅ تم الحصول على شهادة CSID بنجاح");
+      toast.success("تم الحصول على شهادة CSID بنجاح");
       setOnboardingStep("requesting_ccd");
 
       // Step 2: Request CCD
@@ -113,7 +173,7 @@ export function EInvoicingSettings() {
         throw new Error(ccdData.error || "فشل طلب CCD من ZATCA");
       }
 
-      toast.success("✅ تم الحصول على شهادة CCD — الفوترة الإلكترونية جاهزة!");
+      toast.success("تم الحصول على شهادة CCD — الفوترة الإلكترونية جاهزة!");
       setOnboardingStep("done");
       await loadCertStatus();
     } catch (err) {
@@ -124,188 +184,65 @@ export function EInvoicingSettings() {
     }
   };
 
-  const handleEtaSave = async () => {
-    if (!etaToken) {
-      toast.error("API token مطلوب");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/platform-admin/integrations", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          type: "eta_egypt",
-          credentials: { api_token: etaToken },
-        }),
-      });
-
-      if (res.ok) {
-        toast.success("✅ تم حفظ رمز ETA — الفوترة الإلكترونية جاهزة!");
-      } else {
-        throw new Error("فشل الحفظ");
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "فشل الحفظ");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ─── Render by country ─────────────────────────────────────
-
-  if (country === "SA") {
-    return (
-      <div className="space-y-6">
-        <ZatcaPanel
-          vatNumber={vatNumber}
-          setVatNumber={setVatNumber}
-          otp={otp}
-          setOtp={setOtp}
-          loading={loading}
-          onboardingStep={onboardingStep}
-          certStatus={certStatus}
-          onOnboard={handleZatcaOnboard}
-          onRefresh={loadCertStatus}
-        />
-      </div>
-    );
-  }
-
-  if (country === "EG") {
-    return (
-      <EtaPanel
-        etaToken={etaToken}
-        setEtaToken={setEtaToken}
-        loading={loading}
-        onSave={handleEtaSave}
-      />
-    );
-  }
-
-  // Other countries — informational
-  return <ComingSoonPanel country={country} />;
-}
-
-// ─── ZATCA Panel ──────────────────────────────────────────────
-
-function ZatcaPanel({
-  vatNumber, setVatNumber, otp, setOtp,
-  loading, onboardingStep, certStatus, onOnboard, onRefresh,
-}: {
-  vatNumber: string;
-  setVatNumber: (v: string) => void;
-  otp: string;
-  setOtp: (v: string) => void;
-  loading: boolean;
-  onboardingStep: string;
-  certStatus: ZatcaCertStatus | null;
-  onOnboard: () => void;
-  onRefresh: () => void;
-}) {
   const isConfigured = certStatus?.status === "fully_configured";
 
   return (
     <div className="space-y-4">
       {/* Status banner */}
-      <div className={cn(
-        "p-4 rounded-xl border flex items-center gap-3",
-        isConfigured
-          ? "bg-emerald-500/10 border-emerald-500/30"
-          : "bg-amber-500/10 border-amber-500/30"
-      )}>
-        {isConfigured ? (
-          <CheckCircle2 className="text-emerald-500 flex-shrink-0" size={24} />
-        ) : (
-          <AlertCircle className="text-amber-500 flex-shrink-0" size={24} />
-        )}
-        <div className="flex-1">
-          <p className="font-bold text-sm">
-            {isConfigured ? "الفوترة الإلكترونية مفعّلة (ZATCA Phase 2)" : "الفوترة الإلكترونية غير مفعّلة"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {isConfigured
-              ? `شهادة CCD نشطة حتى ${certStatus?.ccdExpiry || "غير محدد"}`
-              : "أدخل الرقم الضريبي و OTP من بوابة ZATCA لتفعيل الفوترة"}
-          </p>
-        </div>
-        <button onClick={onRefresh} className="p-2 rounded-lg hover:bg-muted transition-colors" title="تحديث">
-          <RefreshCw size={16} className="text-muted-foreground" />
-        </button>
-      </div>
+      <StatusBanner
+        isConfigured={isConfigured}
+        configuredText="الفوترة الإلكترونية مفعّلة (ZATCA Phase 2)"
+        configuredSubtext={isConfigured && certStatus?.ccdExpiry ? `شهادة CCD نشطة حتى ${certStatus.ccdExpiry}` : "الشهادات نشطة"}
+        notConfiguredText="الفوترة الإلكترونية غير مفعّلة"
+        notConfiguredSubtext="أدخل الرقم الضريبي و OTP من بوابة ZATCA لتفعيل الفوترة"
+        onRefresh={loadCertStatus}
+      />
 
       {/* Onboarding form */}
       {!isConfigured && (
         <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <ShieldCheck size={18} className="text-emerald-500" />
-            <h3 className="font-bold">إعداد ZATCA Phase 2</h3>
-          </div>
+          <PanelHeader icon={<ShieldCheck size={18} className="text-emerald-500" />} title="إعداد ZATCA Phase 2" />
 
-          {/* Step 1: Instructions */}
-          <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-bold text-foreground">📋 الخطوات:</p>
-            <p>1. سجّل الدخول في <a href="https://fatoora.zatca.gov.sa" target="_blank" rel="noopener" className="text-emerald-500 underline">بوابة فاتورة</a></p>
-            <p>2. من قسم "إنشاء شهادة الامتثال" احصل على OTP</p>
-            <p>3. أدخل OTP + الرقم الضريبي هنا واضغط "تفعيل"</p>
-          </div>
+          <InstructionsBlock
+            steps={[
+              <>
+                سجّل الدخول في{" "}
+                <a href="https://fatoora.zatca.gov.sa" target="_blank" rel="noopener" className="text-emerald-500 underline">
+                  بوابة فاتورة
+                </a>
+              </>,
+              <>من قسم "إنشاء شهادة الامتثال" احصل على OTP</>,
+              <>أدخل OTP + الرقم الضريبي هنا واضغط "تفعيل"</>,
+            ]}
+          />
 
-          {/* VAT number */}
-          <div>
-            <label className="text-sm font-medium block mb-1.5">الرقم الضريبي (VAT)</label>
-            <div className="relative">
-              <Building2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={vatNumber}
-                onChange={(e) => setVatNumber(e.target.value)}
-                placeholder="300000000000003"
-                className="w-full pr-10 pl-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                dir="ltr"
-              />
-            </div>
-          </div>
+          <TextField
+            label="الرقم الضريبي (VAT)"
+            icon={<Building2 size={16} />}
+            value={vatNumber}
+            onChange={setVatNumber}
+            placeholder="300000000000003"
+            dir="ltr"
+          />
 
-          {/* OTP */}
-          <div>
-            <label className="text-sm font-medium block mb-1.5">رمز OTP من بوابة ZATCA</label>
-            <div className="relative">
-              <KeyRound size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="123456"
-                className="w-full pr-10 pl-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-mono"
-                dir="ltr"
-              />
-            </div>
-          </div>
+          <TextField
+            label="رمز OTP من بوابة ZATCA"
+            icon={<KeyRound size={16} />}
+            value={otp}
+            onChange={setOtp}
+            placeholder="123456"
+            dir="ltr"
+            mono
+          />
 
-          {/* Submit */}
-          <button
-            onClick={onOnboard}
+          <SubmitButton
+            onClick={handleZatcaOnboard}
             disabled={loading || !vatNumber || !otp}
-            className={cn(
-              "w-full py-3 rounded-lg font-bold text-sm transition-all min-h-[44px] flex items-center justify-center gap-2",
-              "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white",
-              "hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            )}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                {onboardingStep === "requesting_csid" ? "جاري طلب CSID..." : "جاري طلب CCD..."}
-              </>
-            ) : (
-              <>
-                <ShieldCheck size={16} />
-                تفعيل الفوترة الإلكترونية
-              </>
-            )}
-          </button>
+            loading={loading}
+            loadingText={onboardingStep === "requesting_csid" ? "جاري طلب CSID..." : "جاري طلب CCD..."}
+            icon={<ShieldCheck size={16} />}
+            label="تفعيل الفوترة الإلكترونية"
+          />
         </div>
       )}
 
@@ -326,73 +263,637 @@ function ZatcaPanel({
   );
 }
 
-// ─── ETA Panel (Egypt) ────────────────────────────────────────
+// ─── Country E-Invoice Settings (EG / AE / KW / BH / OM / QA) ───
 
-function EtaPanel({
-  etaToken, setEtaToken, loading, onSave,
+function CountryEInvoiceSettings({
+  country, integrationType, vatNumberDefault,
 }: {
-  etaToken: string;
-  setEtaToken: (v: string) => void;
-  loading: boolean;
-  onSave: () => void;
+  country: string;
+  integrationType: IntegrationTypeKey;
+  vatNumberDefault: string;
 }) {
+  const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [status, setStatus] = useState<IntegrationStatus | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Form state — kept generic, keyed by field name
+  const [form, setForm] = useState<Record<string, string>>({});
+
+  // Each country's field definitions
+  const fields = getCountryFields(country);
+  const countryMeta = COUNTRY_META[country];
+
+  // Load existing status + prefill
+  const loadStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/platform-admin/integrations", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const found = (data.integrations as IntegrationStatus[]).find((i) => i.type === integrationType) || null;
+      setStatus(found);
+    } catch {
+      // ignore
+    }
+  }, [integrationType]);
+
+  useEffect(() => {
+    loadStatus();
+    // Prefill VAT number from active company
+    if (vatNumberDefault && fields.some((f) => f.key === "vat_number")) {
+      setForm((prev) => ({ ...prev, vat_number: vatNumberDefault }));
+    }
+  }, [loadStatus]);
+
+  const handleSave = async () => {
+    // Validate required fields
+    for (const f of fields) {
+      if (f.required && !form[f.key]?.trim()) {
+        toast.error(`الحقل مطلوب: ${f.label}`);
+        return;
+      }
+    }
+
+    setLoading(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/platform-admin/integrations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          type: integrationType,
+          credentials: form,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "فشل الحفظ");
+      }
+
+      toast.success("تم حفظ بيانات الاعتماد بنجاح");
+      await loadStatus();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "فشل الحفظ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/platform-admin/integrations/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: integrationType }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setTestResult({ ok: true, message: data.data?.details || "الاتصال ناجح" });
+        toast.success("الاتصال ناجح");
+      } else {
+        setTestResult({ ok: false, message: data.data?.error || data.error || "فشل الاتصال" });
+        toast.error(data.data?.error || "فشل الاتصال");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "فشل الاتصال";
+      setTestResult({ ok: false, message: msg });
+      toast.error(msg);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm("هل أنت متأكد من إلغاء ربط الفوترة الإلكترونية؟")) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/platform-admin/integrations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: integrationType, disconnect: true }),
+      });
+      if (!res.ok) throw new Error("فشل الإلغاء");
+      toast.success("تم إلغاء الربط");
+      setForm({});
+      setStatus(null);
+      setTestResult(null);
+      await loadStatus();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "فشل الإلغاء");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isConfigured = !!status?.hasCredentials;
+
   return (
     <div className="space-y-4">
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
-        <AlertCircle className="text-amber-500 flex-shrink-0" size={24} />
-        <div>
-          <p className="font-bold text-sm">الفوترة الإلكترونية المصرية (ETA)</p>
-          <p className="text-xs text-muted-foreground mt-0.5">أدخل رمز API من بوابة ETA لتفعيل الإرسال</p>
-        </div>
-      </div>
+      {/* Status banner */}
+      <StatusBanner
+        isConfigured={isConfigured}
+        configuredText={countryMeta.configuredText}
+        configuredSubtext={
+          status?.credentialsLastUpdatedAt
+            ? `آخر تحديث: ${new Date(status.credentialsLastUpdatedAt).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" })}`
+            : "البيانات محفوظة (مشفّرة)"
+        }
+        notConfiguredText={countryMeta.notConfiguredText}
+        notConfiguredSubtext={countryMeta.notConfiguredSubtext}
+        onRefresh={loadStatus}
+      />
 
+      {/* Country-specific header */}
       <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <ShieldCheck size={18} className="text-emerald-500" />
-          <h3 className="font-bold">إعداد ETA</h3>
+        <PanelHeader
+          icon={<Globe2 size={18} className="text-emerald-500" />}
+          title={countryMeta.title}
+          subtitle={countryMeta.subtitle}
+        />
+
+        {/* Regulatory context */}
+        {countryMeta.regulatoryNote && (
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
+            <MapPin size={12} className="inline ml-1 text-emerald-500" />
+            {countryMeta.regulatoryNote}
+          </div>
+        )}
+
+        {/* Instructions */}
+        <InstructionsBlock steps={countryMeta.steps} />
+
+        {/* Form fields */}
+        <div className="space-y-3">
+          {fields.map((f) => (
+            <FormField
+              key={f.key}
+              field={f}
+              value={form[f.key] || ""}
+              onChange={(v) => setForm((prev) => ({ ...prev, [f.key]: v }))}
+            />
+          ))}
         </div>
 
-        <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-          <p className="font-bold text-foreground">📋 الخطوات:</p>
-          <p>1. سجّل في <a href="https://invoicing.eta.gov.eg" target="_blank" rel="noopener" className="text-emerald-500 underline">بوابة ETA</a></p>
-          <p>2. من الإعدادات، احصل على API token</p>
-          <p>3. أدخله هنا واضغط "حفظ"</p>
-        </div>
+        {/* Test result */}
+        {testResult && (
+          <div
+            className={cn(
+              "rounded-lg p-3 text-sm flex items-start gap-2 border",
+              testResult.ok
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
+            )}
+          >
+            {testResult.ok ? (
+              <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" />
+            ) : (
+              <XCircle size={16} className="flex-shrink-0 mt-0.5" />
+            )}
+            <span className="leading-relaxed">{testResult.message}</span>
+          </div>
+        )}
 
-        <div>
-          <label className="text-sm font-medium block mb-1.5">ETA API Token</label>
-          <textarea
-            value={etaToken}
-            onChange={(e) => setEtaToken(e.target.value)}
-            placeholder="eyJhbGciOiJSUzI1NiIs..."
-            rows={3}
-            className="w-full px-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-mono"
-            dir="ltr"
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <SubmitButton
+            onClick={handleSave}
+            disabled={loading || testing}
+            loading={loading}
+            loadingText="جاري الحفظ..."
+            icon={<ShieldCheck size={16} />}
+            label="حفظ البيانات"
+            className="flex-1 min-w-[140px]"
           />
-        </div>
 
-        <button
-          onClick={onSave}
-          disabled={loading || !etaToken}
-          className="w-full py-3 rounded-lg font-bold text-sm bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px] flex items-center justify-center gap-2"
-        >
-          {loading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-          حفظ وتفعيل
-        </button>
+          <button
+            onClick={handleTest}
+            disabled={!isConfigured || testing || loading}
+            className={cn(
+              "flex-1 min-w-[140px] py-3 rounded-lg font-bold text-sm transition-all min-h-[44px] flex items-center justify-center gap-2",
+              "bg-background border border-border hover:bg-muted",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            {testing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
+            اختبار الاتصال
+          </button>
+
+          {isConfigured && (
+            <button
+              onClick={handleDisconnect}
+              disabled={loading || testing}
+              className="py-3 px-4 rounded-lg font-bold text-sm transition-all min-h-[44px] flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/30 text-red-600 hover:bg-red-500/20 disabled:opacity-50"
+              title="إلغاء الربط"
+            >
+              <Link2 size={16} className="rotate-45" />
+              إلغاء الربط
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Coming Soon Panel ────────────────────────────────────────
+// ─── Country metadata ─────────────────────────────────────────
+
+const COUNTRY_META: Record<string, {
+  title: string;
+  subtitle: string;
+  configuredText: string;
+  notConfiguredText: string;
+  notConfiguredSubtext: string;
+  regulatoryNote?: string;
+  steps: React.ReactNode[];
+}> = {
+  EG: {
+    title: "إعداد ETA — هيئة الضرائب المصرية",
+    subtitle: "ربط بوابة ETA لإرسال الفواتير الإلكترونية",
+    configuredText: "الفوترة الإلكترونية مفعّلة (ETA)",
+    notConfiguredText: "الفوترة الإلكترونية غير مفعّلة",
+    notConfiguredSubtext: "أدخل رمز API من بوابة ETA لتفعيل الإرسال",
+    regulatoryNote: "مصر: القانون 8/2022 يلزم جميع المكلّفين بإرسال الفواتير الإلكترونية عبر بوابة ETA. الفواتير غير المُرسلة لا تُعتبر صالحة ضريبياً.",
+    steps: [
+      <>
+        سجّل في{" "}
+        <a href="https://invoicing.eta.gov.eg" target="_blank" rel="noopener" className="text-emerald-500 underline">
+          بوابة ETA
+        </a>{" "}
+        وفعّل حساب المكلّف
+      </>,
+      <>من الإعدادات → API Tokens → احصل على API Token (JWT)</>,
+      <>الصق الرمز هنا، احفظ، ثم اختبر الاتصال</>,
+    ],
+  },
+  AE: {
+    title: "إعداد FTA — الإمارات (Peppol)",
+    subtitle: "ربط Access Point معتمد لشبكة Peppol",
+    configuredText: "الفوترة الإلكترونية مفعّلة (Peppol)",
+    notConfiguredText: "الفوترة الإلكترونية غير مفعّلة",
+    notConfiguredSubtext: "أدخل بيانات الاعتماد من Access Point المعتمد لديك",
+    regulatoryNote: "الإمارات: المرسوم الاتحادي 28/2024 يتبنّى معيار Peppol BIS 3.0. لا تتصل الهيئة مباشرةً — يجب التعاقد مع Access Point معتمد (مثل Kloud Portal، Comarch، Tradeshift).",
+    steps: [
+      <>تعاقد مع Access Point معتمد من FTA (Kloud، Comarch، Tradeshift...)</>,
+      <>من بوابة الـ AP، احصل على Client ID و Client Secret و Access Point URL</>,
+      <>سجّل معرّف المشارك Peppol (عادةً 0195:TRN)</>,
+      <>أدخل البيانات هنا، احفظ، ثم اختبر الاتصال</>,
+    ],
+  },
+  KW: {
+    title: "إعداد بوابة الكويت — مرسوم 10/2026",
+    subtitle: "ربط وزارة المالية الكويتية للفوترة الإلكترونية",
+    configuredText: "الفوترة الإلكترونية مفعّلة (الكويت)",
+    notConfiguredText: "الفوترة الإلكترونية غير مفعّلة",
+    notConfiguredSubtext: "أدخل بيانات الاعتماد من بوابة وزارة المالية",
+    regulatoryNote: "الكويت: مرسوم 10/2026 يطبّق على 3 مراحل — Phase 1 (تطوعي 2026-Q1)، Phase 2 (كبار المكلّفين 2026-Q3)، Phase 3 (جميع المكلّفين 2027-Q1). اختر المرحلة المناسبة لشركتك.",
+    steps: [
+      <>
+        سجّل في{" "}
+        <a href="https://e-invoice.mof.kw" target="_blank" rel="noopener" className="text-emerald-500 underline">
+          بوابة الفوترة الإلكترونية
+        </a>{" "}
+        بوزارة المالية
+      </>,
+      <>من صفحة API، احصل على Client ID و Client Secret</>,
+      <>اختر المرحلة المناسبة لشركتك (Phase 1/2/3)</>,
+      <>أدخل البيانات هنا، احفظ، ثم اختبر الاتصال</>,
+    ],
+  },
+  BH: {
+    title: "إعداد NBR — هيئة الإيرادات البحرينية",
+    subtitle: "ربط بوابة NBR لإرسال الفواتير الإلكترونية",
+    configuredText: "الفوترة الإلكترونية مفعّلة (البحرين)",
+    notConfiguredText: "الفوترة الإلكترونية غير مفعّلة",
+    notConfiguredSubtext: "أدخل رقم التسجيل الضريبي و API Key من بوابة NBR",
+    regulatoryNote: "البحرين: قرارات هيئة الإيرادات 25/2024 و 36/2025 تُلزم المكلّفين بإصدار فواتير إلكترونية متوافقة وتقديمها عبر API الرسمي. الضريبة الحالية 10%.",
+    steps: [
+      <>
+        سجّل في{" "}
+        <a href="https://www.nbr.gov.bh" target="_blank" rel="noopener" className="text-emerald-500 underline">
+          بوابة NBR
+        </a>
+      </>,
+      <>فعّل API Access واحصل على API Key</>,
+      <>أدخل VAT Number (BH + 13 رقم) و API Key هنا</>,
+      <>احفظ، ثم اختبر الاتصال</>,
+    ],
+  },
+  OM: {
+    title: "إعداد TA — هيئة الضرائب العمانية",
+    subtitle: "ربط بوابة TA للفوترة الإلكترونية",
+    configuredText: "الفوترة الإلكترونية مفعّلة (عُمان)",
+    notConfiguredText: "الفوترة الإلكترونية غير مفعّلة",
+    notConfiguredSubtext: "أدخل بيانات الاعتماد من بوابة هيئة الضرائب",
+    regulatoryNote: "عُمان: هيئة الضرائب أعلنت إطار الفوترة الإلكترونية في 2024، ويُطبّق على 3 مراحل حتى 2027. الضريبة 5%. API Clearance متاح للمكلّفين المسجّلين.",
+    steps: [
+      <>
+        سجّل في{" "}
+        <a href="https://www.taxoman.gov.om" target="_blank" rel="noopener" className="text-emerald-500 underline">
+          بوابة هيئة الضرائب
+        </a>
+      </>,
+      <>فعّل API Access واحصل على Client ID و Client Secret</>,
+      <>أدخل API Base URL وبيانات الاعتماد هنا</>,
+      <>احفظ، ثم اختبر الاتصال</>,
+    ],
+  },
+  QA: {
+    title: "إعداد GTA — قطر (اختياري)",
+    subtitle: "ربط Peppol Access Point (قطر لا تُلزم الفوترة الإلكترونية حالياً)",
+    configuredText: "ربط Peppol مفعّل (قطر)",
+    notConfiguredText: "ربط Peppol غير مفعّل",
+    notConfiguredSubtext: "قطر لا تطلب الفوترة الإلكترونية إلزامياً — هذا الربط اختياري",
+    regulatoryNote: "قطر: الهيئة العامة للضرائب نشرت إرشادات طوعية متوافقة مع Peppol BIS 3.0. لا يوجد حالياً API إلزامي. هذا الربط للشركات التي ترغب في الإرسال الطوعي.",
+    steps: [
+      <>تعاقد مع Access Point معتمد (Peppol)</>,
+      <>احصل على Client ID و Client Secret و Access Point URL</>,
+      <>سجّل معرّف المشارك Peppol</>,
+      <>أدخل البيانات هنا، احفظ، ثم اختبر الاتصال</>,
+    ],
+  },
+};
+
+// ─── Field definitions per country ────────────────────────────
+
+interface FieldDef {
+  key: string;
+  label: string;
+  type: "text" | "password";
+  placeholder?: string;
+  required?: boolean;
+  hint?: string;
+  select?: string[];
+}
+
+function getCountryFields(country: string): FieldDef[] {
+  switch (country) {
+    case "EG":
+      return [
+        { key: "api_token", label: "ETA API Token (JWT)", type: "password", placeholder: "eyJhbGciOiJSUzI1NiIs...", required: true, hint: "رمز JWT طويل من بوابة ETA → Settings → API Tokens" },
+        {
+          key: "environment",
+          label: "البيئة",
+          type: "text",
+          required: true,
+          select: ["preprod", "production"],
+          hint: "preprod للتجربة، production للإنتاج",
+        },
+      ];
+
+    case "AE":
+      return [
+        { key: "access_point_url", label: "Access Point URL", type: "text", placeholder: "https://ap.kloudportal.com/api/v1", required: true },
+        { key: "ap_client_id", label: "AP Client ID", type: "text", required: true },
+        { key: "ap_client_secret", label: "AP Client Secret", type: "password", required: true },
+        { key: "peppol_id", label: "Peppol Participant ID", type: "text", placeholder: "0195:300000000000003", required: true, hint: "عادةً 0195: متبوعاً بالرقم الضريبي" },
+      ];
+
+    case "KW":
+      return [
+        { key: "api_base_url", label: "API Base URL", type: "text", placeholder: "https://api.e-invoice.mof.kw", required: true },
+        { key: "client_id", label: "Client ID", type: "text", required: true },
+        { key: "client_secret", label: "Client Secret", type: "password", required: true },
+        {
+          key: "phase",
+          label: "المرحلة",
+          type: "text",
+          required: true,
+          select: ["phase_1", "phase_2", "phase_3"],
+          hint: "phase_1 (تطوعي) / phase_2 (كبار المكلّفين) / phase_3 (الجميع)",
+        },
+      ];
+
+    case "BH":
+      return [
+        { key: "api_base_url", label: "API Base URL", type: "text", placeholder: "https://api.nbr.gov.bh", required: true },
+        { key: "vat_number", label: "VAT Number (BH + 13 رقم)", type: "text", placeholder: "BH00000000000000", required: true },
+        { key: "api_key", label: "NBR API Key", type: "password", required: true },
+      ];
+
+    case "OM":
+      return [
+        { key: "api_base_url", label: "API Base URL", type: "text", placeholder: "https://api.taxoman.gov.om", required: true },
+        { key: "client_id", label: "Client ID", type: "text", required: true },
+        { key: "client_secret", label: "Client Secret", type: "password", required: true },
+        { key: "vat_number", label: "VAT Number (OM + 13 رقم)", type: "text", placeholder: "OM0000000000000", hint: "اختياري — يُستخدم للتحقق الإضافي" },
+      ];
+
+    case "QA":
+      return [
+        { key: "access_point_url", label: "Access Point URL", type: "text", placeholder: "https://ap.example.com/api/v1", required: true },
+        { key: "ap_client_id", label: "AP Client ID", type: "text", required: true },
+        { key: "ap_client_secret", label: "AP Client Secret", type: "password", required: true },
+        { key: "peppol_id", label: "Peppol Participant ID", type: "text", placeholder: "0195:QA300000000000003", required: true },
+      ];
+
+    default:
+      return [];
+  }
+}
+
+// ─── Reusable UI primitives ───────────────────────────────────
+
+function StatusBanner({
+  isConfigured, configuredText, configuredSubtext,
+  notConfiguredText, notConfiguredSubtext, onRefresh,
+}: {
+  isConfigured: boolean;
+  configuredText: string;
+  configuredSubtext: string;
+  notConfiguredText: string;
+  notConfiguredSubtext: string;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className={cn(
+      "p-4 rounded-xl border flex items-center gap-3",
+      isConfigured
+        ? "bg-emerald-500/10 border-emerald-500/30"
+        : "bg-amber-500/10 border-amber-500/30"
+    )}>
+      {isConfigured ? (
+        <CheckCircle2 className="text-emerald-500 flex-shrink-0" size={24} />
+      ) : (
+        <AlertCircle className="text-amber-500 flex-shrink-0" size={24} />
+      )}
+      <div className="flex-1">
+        <p className="font-bold text-sm">
+          {isConfigured ? configuredText : notConfiguredText}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {isConfigured ? configuredSubtext : notConfiguredSubtext}
+        </p>
+      </div>
+      <button onClick={onRefresh} className="p-2 rounded-lg hover:bg-muted transition-colors" title="تحديث">
+        <RefreshCw size={16} className="text-muted-foreground" />
+      </button>
+    </div>
+  );
+}
+
+function PanelHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-1">
+      {icon}
+      <div>
+        <h3 className="font-bold">{title}</h3>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function InstructionsBlock({ steps }: { steps: React.ReactNode[] }) {
+  return (
+    <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+      <p className="font-bold text-foreground mb-1">الخطوات:</p>
+      {steps.map((s, i) => (
+        <p key={i}>
+          <span className="text-emerald-500 font-bold ml-1">{i + 1}.</span>
+          {s}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function TextField({
+  label, icon, value, onChange, placeholder, dir, mono,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  dir?: "ltr" | "rtl";
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium block mb-1.5">{label}</label>
+      <div className="relative">
+        {icon && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            {icon}
+          </span>
+        )}
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          dir={dir}
+          className={cn(
+            "w-full py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all",
+            icon ? "pr-10 pl-3" : "px-3",
+            mono && "font-mono"
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FormField({
+  field, value, onChange,
+}: {
+  field: FieldDef;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium block mb-1.5">
+        {field.label}
+        {field.required && <span className="text-red-500 mr-1">*</span>}
+      </label>
+
+      {field.select ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+        >
+          <option value="">— اختر —</option>
+          {field.select.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={field.type === "password" ? "password" : "text"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          dir={field.type === "password" || (field.placeholder && /[a-z0-9]/i.test(field.placeholder)) ? "ltr" : "rtl"}
+          className={cn(
+            "w-full px-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all",
+            field.type === "password" && "font-mono"
+          )}
+        />
+      )}
+
+      {field.hint && (
+        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{field.hint}</p>
+      )}
+    </div>
+  );
+}
+
+function SubmitButton({
+  onClick, disabled, loading, loadingText, icon, label, className,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  loading: boolean;
+  loadingText: string;
+  icon: React.ReactNode;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "w-full py-3 rounded-lg font-bold text-sm transition-all min-h-[44px] flex items-center justify-center gap-2",
+        "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white",
+        "hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed",
+        className
+      )}
+    >
+      {loading ? (
+        <>
+          <Loader2 size={16} className="animate-spin" />
+          {loadingText}
+        </>
+      ) : (
+        <>
+          {icon}
+          {label}
+        </>
+      )}
+    </button>
+  );
+}
+
+// ─── Coming Soon Panel (truly unsupported countries) ───────────
 
 function ComingSoonPanel({ country }: { country: string }) {
   const countryNames: Record<string, string> = {
-    AE: "الإمارات (FTA — Peppol)",
-    KW: "الكويت (Decree 10/2026)",
-    BH: "البحرين (NBR)",
-    OM: "عُمان (Tax Authority)",
-    QA: "قطر",
+    JO: "الأردن",
+    LB: "لبنان",
+    IQ: "العراق",
+    YE: "اليمن",
+    SY: "سوريا",
+    PS: "فلسطين",
   };
 
   return (
@@ -401,19 +902,16 @@ function ComingSoonPanel({ country }: { country: string }) {
         <FileText size={28} className="text-muted-foreground" />
       </div>
       <h3 className="font-bold text-lg mb-1">{countryNames[country] || "الفوترة الإلكترونية"}</h3>
-      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-        {country === "AE" && "الفوترة الإلكترونية في الإمارات تتطلب ربط عبر شبكة Peppol. التحقق من صحة الفواتير جاهز، الإرسال يحتاج إعداد Access Point خارجي."}
-        {country === "KW" && "مرسوم 10/2026 في الكويت لسه ما اتفعلّش بالكامل. التحقق من صحة الفواتير جاهز ومتجدد مع التحديثات."}
-        {country === "BH" && "هيئة البحرين للإيرادات لسه ما نشرت API endpoints. التحقق من صحة الفواتير جاهز."}
-        {country === "OM" && "هيئة الضرائب العمانية لسه ما نشرت API endpoints. التحقق من صحة الفواتير جاهز."}
-        {country === "QA" && "قطر لا تطلب الفوترة الإلكترونية حالياً."}
-        {!country && "اختر دولة الشركة من الإعدادات العامة لعرض متطلبات الفوترة الإلكترونية."}
+      <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+        {country
+          ? "هذه الدولة لا تطلب الفوترة الإلكترونية إلزامياً حالياً. التوافق مع المعايير المحلية قيد التطوير — تواصل مع الدعم للحصول على تحديثات."
+          : "اختر دولة الشركة من الإعدادات العامة لعرض متطلبات الفوترة الإلكترونية."}
       </p>
     </div>
   );
 }
 
-// ─── Certificate Card ─────────────────────────────────────────
+// ─── Certificate Card (ZATCA only) ────────────────────────────
 
 function CertCard({ title, subtitle, expiry, active }: {
   title: string;

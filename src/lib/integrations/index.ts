@@ -17,6 +17,12 @@ import { sendgridProvider } from "./sendgrid";
 import { twilioProvider } from "./twilio";
 import { awsS3Provider } from "./aws_s3";
 import { stripeProvider } from "./stripe";
+import { einvoiceEgProvider } from "./einvoice_eg";
+import { einvoiceUaeProvider } from "./einvoice_ae";
+import { einvoiceKwProvider } from "./einvoice_kw";
+import { einvoiceBhProvider } from "./einvoice_bh";
+import { einvoiceOmProvider } from "./einvoice_om";
+import { einvoiceQaProvider } from "./einvoice_qa";
 import { logger } from "@/lib/logger";
 
 let registered = false;
@@ -36,7 +42,15 @@ export function ensureProvidersRegistered(): void {
   registerProvider("twilio", twilioProvider);
   registerProvider("aws_s3", awsS3Provider);
   registerProvider("stripe", stripeProvider);
-  
+
+  // ─── E-Invoicing Providers (per-country) ───────────────────────────────
+  registerProvider("einvoice_eg", einvoiceEgProvider);
+  registerProvider("einvoice_ae", einvoiceUaeProvider);
+  registerProvider("einvoice_kw", einvoiceKwProvider);
+  registerProvider("einvoice_bh", einvoiceBhProvider);
+  registerProvider("einvoice_om", einvoiceOmProvider);
+  registerProvider("einvoice_qa", einvoiceQaProvider);
+
   registered = true;
   logger.info("[integrations] all providers registered", {
     types: [
@@ -49,6 +63,13 @@ export function ensureProvidersRegistered(): void {
       "twilio",
       "aws_s3",
       "stripe",
+      // E-Invoicing
+      "einvoice_eg",
+      "einvoice_ae",
+      "einvoice_kw",
+      "einvoice_bh",
+      "einvoice_om",
+      "einvoice_qa",
     ],
   });
 }
