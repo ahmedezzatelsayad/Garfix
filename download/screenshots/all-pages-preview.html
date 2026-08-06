@@ -162,6 +162,12 @@
   <button onclick="showPage('client-profile')">👤 ملف العميل</button>
   <button onclick="showPage('inventory')">📦 المخزون</button>
   <button onclick="showPage('accounting')">💰 المحاسبة</button>
+  <button onclick="showPage('gl')">📚 الدفتر العام</button>
+  <button onclick="showPage('arap')">💳 المستحقات AR/AP</button>
+  <button onclick="showPage('banking')">🏦 البنوك</button>
+  <button onclick="showPage('assets')">🏢 الأصول الثابتة</button>
+  <button onclick="showPage('payroll')">💵 الرواتب WPS</button>
+  <button onclick="showPage('tax')">📋 الضرائب</button>
   <button onclick="showPage('billing')">💳 الاشتراك</button>
   <button onclick="showPage('roles')">🛡️ الأدوار</button>
   <button onclick="showPage('ai-agents')">🤖 وكلاء AI</button>
@@ -502,28 +508,86 @@
   </div>
 </section>
 
-<!-- ═══════ PAGE 4: BULK INPUT (الإدخال المجمع) ═══════ -->
+<!-- ═══════ PAGE 4: BULK INPUT (الإدخال المجمع — WhatsApp paste) ═══════ -->
 <section class="page-section" id="bulk-input">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
     <div>
       <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">✨ الإدخال المجمع بالـ AI <span class="badge badge-gold">AI</span></h1>
-      <p class="text-gray-400 mt-1 text-sm">ارفع صورة فاتورة أو ملف Excel والـ AI هيستخرج البنود تلقائياً</p>
+      <p class="text-gray-400 mt-1 text-sm">الصق طلبات الواتساب مباشرة — الـ AI بيفرّق بين الطلبات بالسطر الفارغ ويستخرج كل بياناتها</p>
     </div>
   </div>
 
+  <!-- Tabs: text (primary) / image / file -->
+  <div class="flex gap-2 mb-4">
+    <button class="tab active">📝 لصق نص (واتساب)</button>
+    <button class="tab">🖼️ رفع صورة</button>
+    <button class="tab">📄 رفع ملف</button>
+  </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <!-- Upload Zone -->
+    <!-- WhatsApp Paste Zone (PRIMARY) -->
     <div class="card p-6">
-      <h3 class="font-semibold mb-4">📤 رفع الفاتورة</h3>
-      <div class="border-2 border-dashed border-elevated rounded-xl p-8 text-center hover:border-primary transition-all cursor-pointer">
-        <div class="text-5xl mb-3">📄</div>
-        <div class="font-medium mb-1">اسحب الملف هنا أو اضغط للاختيار</div>
-        <div class="text-xs text-gray-400 mb-4">PNG, JPG, PDF, XLSX — حتى 10MB</div>
-        <button class="btn-primary text-sm">اختيار ملف</button>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold flex items-center gap-2">💬 الصق طلبات الواتساب</h3>
+        <button class="btn-ghost text-xs">جرّب مثالاً</button>
       </div>
-      <div class="mt-4 grid grid-cols-2 gap-2">
-        <div class="card p-3 text-center"><div class="text-2xl mb-1">🧠</div><div class="text-xs font-medium">Pattern Match</div><div class="text-[10px] text-emerald-400 mt-1">٩٥٫٤٪ hit rate</div></div>
-        <div class="card p-3 text-center"><div class="text-2xl mb-1">🔍</div><div class="text-xs font-medium">OCR + AI</div><div class="text-[10px] text-gold mt-1">fallback</div></div>
+      <p class="text-xs text-gray-400 mb-3">📋 الصق الطلبات هنا — افصل بين كل طلب بـ <strong class="text-emerald-400">سطر فارغ</strong>. الـ AI هيكتشف الطلبات تلقائياً.</p>
+      <textarea class="input-field font-mono text-sm" rows="12" dir="rtl" placeholder="📍 العنوان: الكويت - حولي - شارع ابن خلدون
+📞 الهاتف: 50001234
+👤 العميل: أحمد محمد
+
+🛠️ الطلب:
+٢ ماتور ١٦ دينار
+٣ فيلتر ٤.٥ دينار
+١ زيت ٢ دينار
+
+💰 الإجمالي: ٢٦.٥ دينار
+🚚 التوصيل: ٢ دينار
+
+---
+
+📍 العنوان: السالمية - قطعة ٣
+📞 55667788
+👤 سارة عبدالله
+
+🛠️ الطلب:
+واحد كمبروسر ٤٥ دينار
+٢ تيل فرامل ١٠ دينار
+
+🚚 التوصيل: مجاني">📍 العنوان: الكويت - حولي - شارع ابن خلدون
+📞 الهاتف: 50001234
+👤 العميل: أحمد محمد
+
+🛠️ الطلب:
+٢ ماتور ١٦ دينار
+٣ فيلتر ٤.٥ دينار
+١ زيت ٢ دينار
+
+💰 الإجمالي: ٢٦.٥ دينار
+🚚 التوصيل: ٢ دينار
+
+---
+
+📍 العنوان: السالمية - قطعة ٣
+📞 55667788
+👤 سارة عبدالله
+
+🛠️ الطلب:
+واحد كمبروسر ٤٥ دينار
+٢ تيل فرامل ١٠ دينار
+
+🚚 التوصيل: مجاني</textarea>
+      <div class="flex items-center justify-between mt-3">
+        <label class="flex items-center gap-2 text-xs cursor-pointer">
+          <input type="checkbox" checked class="w-4 h-4 rounded" />
+          إضافة المنتجات الجديدة تلقائياً للكتالوج
+        </label>
+        <button class="btn-primary text-sm">🧠 تحليل بالذكاء الاصطناعي</button>
+      </div>
+      <!-- Brain mode toggle -->
+      <div class="mt-3 p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="text-lg">🧠</span><div><div class="text-sm font-medium">وضع التعلّم الذكي</div><div class="text-[10px] text-gray-400">الـ AI بيتعلّم من كل تحليل ويحسّن دقته</div></div></div>
+        <div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div>
       </div>
     </div>
 
@@ -531,70 +595,51 @@
     <div class="card p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold">🧠 نتيجة الاستخراج</h3>
-        <span class="badge badge-success">٩٨٪ دقة</span>
+        <span class="badge badge-success">٢ طلب • ٩٨٪ دقة</span>
       </div>
-      <div class="space-y-3 mb-4">
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="text-xs text-gray-400 mb-1 block">رقم الفاتورة</label><input type="text" value="INV-2026-0847" class="input-field text-sm" /></div>
-          <div><label class="text-xs text-gray-400 mb-1 block">التاريخ</label><input type="text" value="٢٠٢٦/٠٨/٠٦" class="input-field text-sm" /></div>
-          <div><label class="text-xs text-gray-400 mb-1 block">المورد</label><input type="text" value="شركة الأمل التجارية" class="input-field text-sm" /></div>
-          <div><label class="text-xs text-gray-400 mb-1 block">الإجمالي</label><input type="text" value="٤٬٠٢٥ ر.س" class="input-field text-sm font-bold text-gold" /></div>
+
+      <!-- Order 1 -->
+      <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2"><span class="badge badge-success text-[10px]">طلب ١</span><span class="font-medium text-sm">أحمد محمد</span></div>
+          <span class="badge badge-gold text-[10px]">٢٦.٥ د.ك</span>
+        </div>
+        <div class="text-xs text-gray-400 mb-2">📍 الكويت - حولي • 📞 50001234</div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٨٪</span><span class="flex-1">٢ ماتور</span><span class="text-gray-400">١٦ د.ك</span></div>
+          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٥٪</span><span class="flex-1">٣ فيلتر</span><span class="text-gray-400">٤.٥ د.ك</span></div>
+          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٩٪</span><span class="flex-1">١ زيت</span><span class="text-gray-400">٢ د.ك</span></div>
         </div>
       </div>
 
-      <div class="border-t border-elevated pt-4">
-        <div class="text-sm font-medium mb-2">البنود المستخرجة (٣)</div>
-        <div class="space-y-2">
-          <div class="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5">
-            <span class="badge badge-success text-[10px]">٩٨٪</span>
-            <div class="flex-1 text-sm">لاب توب Dell Latitude 5440</div>
-            <div class="text-xs text-gray-400">×٢</div>
-            <div class="text-sm font-medium">٢٬٤٠٠ ر.س</div>
-          </div>
-          <div class="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5">
-            <span class="badge badge-success text-[10px]">٩٥٪</span>
-            <div class="flex-1 text-sm">ماوس لاسلكي Logitech</div>
-            <div class="text-xs text-gray-400">×٥</div>
-            <div class="text-sm font-medium">٦٠٠ ر.س</div>
-          </div>
-          <div class="flex items-center gap-2 p-2 rounded-lg bg-amber-500/5">
-            <span class="badge badge-warning text-[10px]">٧٢٪</span>
-            <div class="flex-1 text-sm">خدمة تركيب وإعداد</div>
-            <div class="text-xs text-gray-400">×١</div>
-            <div class="text-sm font-medium">٥٠٠ ر.س</div>
-          </div>
+      <!-- Order 2 -->
+      <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2"><span class="badge badge-success text-[10px]">طلب ٢</span><span class="font-medium text-sm">سارة عبدالله</span></div>
+          <span class="badge badge-gold text-[10px]">٥٥ د.ك</span>
+        </div>
+        <div class="text-xs text-gray-400 mb-2">📍 السالمية - قطعة ٣ • 📞 55667788</div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٧٪</span><span class="flex-1">١ كمبروسر</span><span class="text-gray-400">٤٥ د.ك</span></div>
+          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٦٪</span><span class="flex-1">٢ تيل فرامل</span><span class="text-gray-400">١٠ د.ك</span></div>
         </div>
       </div>
 
       <div class="flex gap-2 mt-4">
         <button class="btn-ghost flex-1 text-sm">تعديل</button>
-        <button class="btn-primary flex-1 text-sm">✓ تأكيد وحفظ</button>
+        <button class="btn-primary flex-1 text-sm">✓ تأكيد وإنشاء فواتير (٢)</button>
       </div>
     </div>
   </div>
 
-  <!-- Batch Queue -->
-  <div class="card">
-    <div class="p-4 border-b border-elevated flex items-center justify-between">
-      <h3 class="font-semibold">📋 قائمة الانتظار</h3>
-      <span class="badge badge-info">٥ قيد المعالجة</span>
-    </div>
-    <div class="divide-y divide-elevated">
-      <div class="p-4 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">✓</div>
-        <div class="flex-1"><div class="font-medium text-sm">invoice-supplier-a.pdf</div><div class="text-xs text-gray-400">تمت المعالجة • ٣ بنود • ٩٨٪ دقة</div></div>
-        <span class="badge badge-success">مكتمل</span>
-      </div>
-      <div class="p-4 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center animate-pulse">⏳</div>
-        <div class="flex-1"><div class="font-medium text-sm">invoice-supplier-b.pdf</div><div class="text-xs text-gray-400">جاري المعالجة... • pattern match</div></div>
-        <span class="badge badge-warning">معالجة</span>
-      </div>
-      <div class="p-4 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">📥</div>
-        <div class="flex-1"><div class="font-medium text-sm">invoices-batch.xlsx</div><div class="text-xs text-gray-400">في الانتظار • ٢٥ فاتورة</div></div>
-        <span class="badge badge-info">انتظار</span>
-      </div>
+  <!-- How it works -->
+  <div class="card p-5">
+    <h3 class="font-semibold mb-3">📋 كيف يعمل؟</h3>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="text-center p-3"><div class="text-3xl mb-2">💬</div><div class="text-sm font-medium">١. انسخ من الواتساب</div><div class="text-[10px] text-gray-400 mt-1">انسخ الطلبات كما هي</div></div>
+      <div class="text-center p-3"><div class="text-3xl mb-2">📋</div><div class="text-sm font-medium">٢. الصق في المربع</div><div class="text-[10px] text-gray-400 mt-1">افصل بين الطلبات بسطر فارغ</div></div>
+      <div class="text-center p-3"><div class="text-3xl mb-2">🧠</div><div class="text-sm font-medium">٣. تحليل AI</div><div class="text-[10px] text-gray-400 mt-1">يستخرج العميل + البنود + الأسعار</div></div>
+      <div class="text-center p-3"><div class="text-3xl mb-2">✓</div><div class="text-sm font-medium">٤. تأكيد وفواتير</div><div class="text-[10px] text-gray-400 mt-1">إنشاء فواتير تلقائياً</div></div>
     </div>
   </div>
 </section>
@@ -722,6 +767,198 @@
     <button class="card p-4 hover:border-primary text-center"><div class="text-2xl mb-1">💵</div><div class="text-sm font-medium">الرواتب (WPS)</div></button>
     <button class="card p-4 hover:border-primary text-center"><div class="text-2xl mb-1">📋</div><div class="text-sm font-medium">الضرائب</div></button>
     <button class="card p-4 hover:border-primary text-center"><div class="text-2xl mb-1">🔄</div><div class="text-sm font-medium">القيود الدورية</div></button>
+  </div>
+</section>
+
+<!-- ═══════ PAGE 8a: GENERAL LEDGER (accounting inner page) ═══════ -->
+<section class="page-section" id="gl">
+  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الدفتر العام</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div><h1 class="text-2xl font-bold">📚 الدفتر العام</h1><p class="text-gray-400 mt-1 text-sm">سجل القيود المحاسبية اليومية</p></div>
+    <div class="flex gap-2"><button class="btn-ghost border border-elevated">📥 تصدير</button><button class="btn-primary">+ قيد جديد</button></div>
+  </div>
+  <div class="card mb-4">
+    <div class="p-4 border-b border-elevated flex flex-col md:flex-row gap-3">
+      <input type="text" placeholder="🔍 بحث..." class="input-field flex-1" />
+      <select class="input-field md:w-40"><option>كل الحسابات</option><option>الأصول</option><option>الخصوم</option><option>الإيرادات</option></select>
+      <input type="date" class="input-field md:w-40" value="2026-08-06" />
+    </div>
+    <div class="overflow-x-auto">
+      <table>
+        <thead><tr><th>رقم القيد</th><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+        <tbody>
+          <tr><td class="font-medium">#JE-001</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td>بيع بضاعة — فاتورة #INV-0847</td><td class="font-medium text-emerald-400">٣٬٥٠٠</td><td class="text-gray-400">—</td><td class="font-medium">٣٬٥٠٠</td></tr>
+          <tr><td class="font-medium">#JE-002</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td><td>سداد فاتورة — مؤسسة النور</td><td class="text-gray-400">—</td><td class="font-medium text-amber-400">٨٬٧٥٠</td><td class="font-medium">−٥٬٢٥٠</td></tr>
+          <tr><td class="font-medium">#JE-003</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td><td>رواتب الموظفين — أغسطس</td><td class="font-medium text-red-400">٤٥٬٠٠٠</td><td class="text-gray-400">—</td><td class="font-medium">−٥٠٬٢٥٠</td></tr>
+          <tr><td class="font-medium">#JE-004</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٣</td><td>إيجار المكتب — أغسطس</td><td class="font-medium text-red-400">٨٬٠٠٠</td><td class="text-gray-400">—</td><td class="font-medium">−٥٨٬٢٥٠</td></tr>
+        </tbody>
+        <tfoot><tr class="bg-elevated/30"><td colspan="3" class="font-bold">الإجمالي</td><td class="font-bold text-emerald-400">٥٦٬٥٠٠</td><td class="font-bold text-amber-400">٨٬٧٥٠</td><td class="font-bold">−٥٨٬٢٥٠</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PAGE 8b: AR/AP (accounting inner page) ═══════ -->
+<section class="page-section" id="arap">
+  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">المستحقات (AR/AP)</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div><h1 class="text-2xl font-bold">💳 المستحقات (AR/AP)</h1><p class="text-gray-400 mt-1 text-sm">الذمم المدينة والدائنة + شيكات بمواعيد لاحقة</p></div>
+    <button class="btn-primary">+ قسط جديد</button>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي المستحق لنا</div><div class="text-xl font-bold text-emerald-400">٤٢٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي المستحق علينا</div><div class="text-xl font-bold text-red-400">٢٨٬٥٠٠</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">متأخر (>٣٠ يوم)</div><div class="text-xl font-bold text-amber-400">٨٬٧٥٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي</div><div class="text-xl font-bold text-gold">١٣٬٥٠٠</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card">
+      <div class="p-4 border-b border-elevated"><h3 class="font-semibold">📊 تقنين العمر (Aging)</h3></div>
+      <div class="p-4 space-y-3">
+        <div><div class="flex justify-between text-sm mb-1"><span>٠-٣٠ يوم</span><span class="text-emerald-400">٢٤٬٠٠٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-emerald-500 rounded-full" style="width:57%"></div></div></div>
+        <div><div class="flex justify-between text-sm mb-1"><span>٣١-٦٠ يوم</span><span class="text-amber-400">٩٬٢٥٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-amber-500 rounded-full" style="width:22%"></div></div></div>
+        <div><div class="flex justify-between text-sm mb-1"><span>٦١-٩٠ يوم</span><span class="text-red-400">٥٬٥٠٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-red-500 rounded-full" style="width:13%"></div></div></div>
+        <div><div class="flex justify-between text-sm mb-1"><span>>٩٠ يوم</span><span class="text-red-600">٣٬٢٥٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-red-600 rounded-full" style="width:8%"></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="p-4 border-b border-elevated"><h3 class="font-semibold">📝 شيكات بمواعيد لاحقة (PDC)</h3></div>
+      <div class="divide-y divide-elevated">
+        <div class="p-3 flex items-center justify-between"><div><div class="font-medium text-sm">شيك #001234</div><div class="text-xs text-gray-400">بنك الرياض • ٢٠٢٦/٠٩/٠١</div></div><span class="badge badge-warning">معلّق</span></div>
+        <div class="p-3 flex items-center justify-between"><div><div class="font-medium text-sm">شيك #001235</div><div class="text-xs text-gray-400">بنك الأهلي • ٢٠٢٦/٠٩/١٥</div></div><span class="badge badge-info">مجدول</span></div>
+        <div class="p-3 flex items-center justify-between"><div><div class="font-medium text-sm">شيك #001236</div><div class="text-xs text-gray-400">بنك الراجحي • ٢٠٢٦/١٠/٠١</div></div><span class="badge badge-info">مجدول</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PAGE 8c: BANKING (accounting inner page) ═══════ -->
+<section class="page-section" id="banking">
+  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">البنوك</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div><h1 class="text-2xl font-bold">🏦 البنوك والتسوية</h1><p class="text-gray-400 mt-1 text-sm">إدارة الحسابات البنكية ومطابقتها</p></div>
+    <button class="btn-primary">+ حساب بنكي</button>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الرياض</div><div class="text-xs text-gray-400">SA03 8000...7519</div></div></div><span class="badge badge-success">نشط</span></div>
+      <div class="text-2xl font-bold text-emerald-400 mb-1">٢٣٤٬٥٠٠</div><div class="text-xs text-gray-400">ر.س • الرصيد الحالي</div>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الأهلي</div><div class="text-xs text-gray-400">SA44 1000...3382</div></div></div><span class="badge badge-success">نشط</span></div>
+      <div class="text-2xl font-bold text-emerald-400 mb-1">٨٧٬٢٠٠</div><div class="text-xs text-gray-400">ر.س • الرصيد الحالي</div>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الراجحي</div><div class="text-xs text-gray-400">SA00 8000...9112</div></div></div><span class="badge badge-warning">تسوية معلّقة</span></div>
+      <div class="text-2xl font-bold text-amber-400 mb-1">٤٥٬٠٠٠</div><div class="text-xs text-gray-400">ر.س • بانتظار التسوية</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">آخر المعاملات البنكية</h3><button class="btn-ghost text-xs">🔄 تسوية</button></div>
+    <div class="overflow-x-auto">
+      <table>
+        <thead><tr><th>التاريخ</th><th>الوصف</th><th>المرجع</th><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead>
+        <tbody>
+          <tr><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td>تحويل وارد — شركة الأمل</td><td class="text-gray-400">TRN-001234</td><td>بنك الرياض</td><td class="font-medium text-emerald-400">٤٬٠٢٥</td><td class="text-gray-400">—</td></tr>
+          <tr><td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td><td>سداد رواتب أغسطس</td><td class="text-gray-400">PAY-AUG</td><td>بنك الأهلي</td><td class="text-gray-400">—</td><td class="font-medium text-red-400">٤٥٬٠٠٠</td></tr>
+          <tr><td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td><td>إيجار المكتب</td><td class="text-gray-400">RENT-AUG</td><td>بنك الراجحي</td><td class="text-gray-400">—</td><td class="font-medium text-red-400">٨٬٠٠٠</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PAGE 8d: FIXED ASSETS (accounting inner page) ═══════ -->
+<section class="page-section" id="assets">
+  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الأصول الثابتة</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div><h1 class="text-2xl font-bold">🏢 الأصول الثابتة والإهلاك</h1><p class="text-gray-400 mt-1 text-sm">إدارة الأصول وحساب الإهلاك تلقائياً</p></div>
+    <button class="btn-primary">+ أصل جديد</button>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي التكلفة</div><div class="text-xl font-bold">٤٥٠٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">مجمع الإهلاك</div><div class="text-xl font-bold text-amber-400">١٢٣٬٠٠٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي القيمة الدفترية</div><div class="text-xl font-bold text-gold">٣٢٧٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إهلاك الشهر</div><div class="text-xl font-bold text-red-400">٤٬٥٠٠</div></div>
+  </div>
+  <div class="card">
+    <div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الأصول</h3></div>
+    <div class="overflow-x-auto">
+      <table>
+        <thead><tr><th>الأصل</th><th>تاريخ الشراء</th><th>التكلفة</th><th>العمر</th><th>مجمع الإهلاك</th><th>صافي القيمة</th></tr></thead>
+        <tbody>
+          <tr><td class="font-medium">🚗 سيارة تسليم (Toyota Hilux)</td><td class="text-gray-400">٢٠٢٤/٠١/١٥</td><td>٨٥٬٠٠٠</td><td>٥ سنوات</td><td class="text-amber-400">٢٨٬٠٠٠</td><td class="font-medium text-emerald-400">٥٧٬٠٠٠</td></tr>
+          <tr><td class="font-medium">💻 أجهزة كمبيوتر (١٠)</td><td class="text-gray-400">٢٠٢٤/٠٣/٠١</td><td>٤٥٬٠٠٠</td><td>٣ سنوات</td><td class="text-amber-400">٢٢٬٠٠٠</td><td class="font-medium text-emerald-400">٢٣٬٠٠٠</td></tr>
+          <tr><td class="font-medium">🏭 ماكات تصنيع</td><td class="text-gray-400">٢٠٢٣/٠٦/٠١</td><td>٢٤٠٬٠٠٠</td><td>١٠ سنوات</td><td class="text-amber-400">٦٠٬٠٠٠</td><td class="font-medium text-emerald-400">١٨٠٬٠٠٠</td></tr>
+          <tr><td class="font-medium">🪑 أثاث مكتبي</td><td class="text-gray-400">٢٠٢٤/٠٩/٠١</td><td>٨٠٬٠٠٠</td><td>٥ سنوات</td><td class="text-amber-400">١٣٬٠٠٠</td><td class="font-medium text-emerald-400">٦٧٬٠٠٠</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PAGE 8e: PAYROLL WPS (accounting inner page) ═══════ -->
+<section class="page-section" id="payroll">
+  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الرواتب (WPS)</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div><h1 class="text-2xl font-bold">💵 الرواتب ونظام حماية الأجور (WPS)</h1><p class="text-gray-400 mt-1 text-sm">إدارة الرواتب وتوليد ملفات WPS</p></div>
+    <div class="flex gap-2"><button class="btn-ghost border border-elevated">📤 توليد ملف WPS</button><button class="btn-primary">+ راتب</button></div>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي الرواتب</div><div class="text-xl font-bold">٢٣٤٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">عدد الموظفين</div><div class="text-xl font-bold">٤٥</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ متوسط الراتب</div><div class="text-xl font-bold text-gold">٥٬٢٠٠</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">حالة WPS</div><div class="text-xl font-bold text-emerald-400">✓ مُرسل</div></div>
+  </div>
+  <div class="card">
+    <div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">رواتب أغسطس ٢٠٢٦</h3><span class="badge badge-success">تمت المعالجة</span></div>
+    <div class="overflow-x-auto">
+      <table>
+        <thead><tr><th>الموظف</th><th>المنصب</th><th>الأساسي</th><th>البدلات</th><th>الخصومات</th><th>الصافي</th><th>حالة WPS</th></tr></thead>
+        <tbody>
+          <tr><td class="font-medium">أحمد محمد</td><td class="text-gray-400">محاسب أول</td><td>٧٬٠٠٠</td><td>١٬٢٠٠</td><td class="text-red-400">٢٠٠</td><td class="font-bold text-emerald-400">٨٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
+          <tr><td class="font-medium">فاطمة علي</td><td class="text-gray-400">مديرة مبيعات</td><td>١٠٬٠٠٠</td><td>٢٬٥٠٠</td><td class="text-red-400">٥٠٠</td><td class="font-bold text-emerald-400">١٢٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
+          <tr><td class="font-medium">خالد عبدالله</td><td class="text-gray-400">مطور</td><td>١٢٬٠٠٠</td><td>٣٬٥٠٠</td><td class="text-red-400">٥٠٠</td><td class="font-bold text-emerald-400">١٥٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
+          <tr><td class="font-medium">سارة أحمد</td><td class="text-gray-400">محاسبة</td><td>٥٬٥٠٠</td><td>١٬٢٠٠</td><td class="text-red-400">٢٠٠</td><td class="font-bold text-emerald-400">٦٬٥٠٠</td><td><span class="badge badge-warning">معلّق</span></td></tr>
+        </tbody>
+        <tfoot><tr class="bg-elevated/30"><td colspan="4" class="font-bold">الإجمالي</td><td class="font-bold text-red-400">١٬٤٠٠</td><td class="font-bold text-emerald-400">٤١٬٥٠٠</td><td></td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PAGE 8f: TAX COMPLIANCE (accounting inner page) ═══════ -->
+<section class="page-section" id="tax">
+  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الضرائب</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div><h1 class="text-2xl font-bold">📋 الامتثال الضريبي</h1><p class="text-gray-400 mt-1 text-sm">إقرارات VAT + تقارير ZATCA</p></div>
+    <button class="btn-primary">+ إقرار VAT</button>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">VAT مستحق (خرج)</div><div class="text-xl font-bold text-emerald-400">١٨٬٦٧٥</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">VAT مدفوع (دخل)</div><div class="text-xl font-bold text-amber-400">٤٬٢٠٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي مستحق</div><div class="text-xl font-bold text-gold">١٤٬٤٧٥</div></div>
+    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">الإقرار القادم</div><div class="text-xl font-bold">٣٠ أغسطس</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div class="card p-5">
+      <h3 class="font-semibold mb-3">📊 ملخص VAT — الربع الحالي</h3>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between p-2 rounded-lg bg-emerald-500/5"><span>مبيعات خاضعة (١٥٪)</span><span class="font-medium text-emerald-400">١٢٤٬٥٠٠</span></div>
+        <div class="flex justify-between p-2 rounded-lg bg-emerald-500/5"><span>VAT على المبيعات</span><span class="font-medium">١٨٬٦٧٥</span></div>
+        <div class="flex justify-between p-2 rounded-lg bg-amber-500/5"><span>مشتريات خاضعة (١٥٪)</span><span class="font-medium text-amber-400">٢٨٬٠٠٠</span></div>
+        <div class="flex justify-between p-2 rounded-lg bg-amber-500/5"><span>VAT على المشتريات</span><span class="font-medium">٤٬٢٠٠</span></div>
+        <div class="flex justify-between p-3 rounded-lg bg-gold/10 border border-gold/20 mt-2"><span class="font-bold">صافي VAT مستحق</span><span class="font-bold text-gold">١٤٬٤٧٥</span></div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-semibold mb-3">🧾 حالة الإقرارات</h3>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5"><div><div class="font-medium text-sm">VAT Q2 ٢٠٢٦</div><div class="text-xs text-gray-400">أُرسل في ٢٠٢٦/٠٧/١٥</div></div><span class="badge badge-success">مُرسل</span></div>
+        <div class="flex items-center justify-between p-2 rounded-lg bg-amber-500/5"><div><div class="font-medium text-sm">VAT Q3 ٢٠٢٦</div><div class="text-xs text-gray-400">الموعد: ٣٠ أكتوبر</div></div><span class="badge badge-warning">قيد الإعداد</span></div>
+        <div class="flex items-center justify-between p-2 rounded-lg bg-blue-500/5"><div><div class="font-medium text-sm">ZATCA Phase 2</div><div class="text-xs text-gray-400">مفعّل • آخر إرسال: اليوم</div></div><span class="badge badge-info">✓ مفعّل</span></div>
+      </div>
+    </div>
   </div>
 </section>
 
