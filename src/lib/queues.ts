@@ -48,6 +48,7 @@ export const QUEUE_NAMES = {
   AI: "ai-jobs",
   EMAIL: "email-jobs",
   WHATSAPP: "whatsapp-jobs",
+  SMS: "sms-jobs",
   BACKUP: "backup-jobs",
   SCHEDULER: "scheduler-jobs",
   // P1.1: Transactional Outbox relay target. Outbox events are appended
@@ -62,6 +63,7 @@ export const QUEUE_TTL = {
   [QUEUE_NAMES.AI]: 60_000,
   [QUEUE_NAMES.EMAIL]: 30_000,
   [QUEUE_NAMES.WHATSAPP]: 30_000,
+  [QUEUE_NAMES.SMS]: 30_000,
   [QUEUE_NAMES.BACKUP]: 600_000,
   [QUEUE_NAMES.SCHEDULER]: 5_000,
   [QUEUE_NAMES.EVENTS]: 30_000,

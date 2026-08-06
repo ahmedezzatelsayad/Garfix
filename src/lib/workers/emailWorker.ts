@@ -28,7 +28,6 @@
 import { logger } from "../logger";
 import { registerWorker, QUEUE_NAMES } from "../queues";
 import { sendEmail, type SendEmailInput } from "../email";
-
 /** Canonical job type strings — exported for use by callers. */
 export const EMAIL_JOB_TYPES = {
   SEND_EMAIL: "send-email",
@@ -68,6 +67,36 @@ async function handleSendEmail(data: Record<string, unknown>): Promise<void> {
   if (!input.to || !input.subject || !input.body) {
     throw new Error(`emailWorker.send-email: missing required fields (to/subject/body) — ${JSON.stringify(data).slice(0, 200)}`);
   }
+
+  // ── WIRE-UP: Try SendGrid first (if configured), fall back to SMTP ──
+  try {
+    const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+    const sgConfig = await getIntegrationConfig("sendgrid");
+    if (sgConfig?.api_key) {
+      // SendGrid is configured — use it instead of SMTP
+      const { sendgridProvider } = await import("@/lib/integrations/sendgrid");
+      const sgResult = await (sendgridProvider as unknown as {
+        sendEmail: (params: {
+          to: string;
+          subject: string;
+          body: { text: string; html?: string };
+        }) => Promise<{ ok: boolean; error?: string; messageId?: string }>;
+      }).sendEmail({
+        to: input.to,
+        subject: input.subject,
+        body: { text: input.body, html: input.html },
+      });
+      if (sgResult.ok) {
+        logger.info("[email-worker] email sent via SendGrid", { to: input.to, messageId: sgResult.messageId });
+        return;
+      }
+      logger.warn("[email-worker] SendGrid failed, falling back to SMTP", { error: sgResult.error });
+    }
+  } catch (sgErr) {
+    logger.debug("[email-worker] SendGrid not available, using SMTP", { err: sgErr instanceof Error ? sgErr.message : String(sgErr) });
+  }
+
+  // Fall back to SMTP (existing behavior)
   const result = await sendEmail({
     to: input.to,
     subject: input.subject,

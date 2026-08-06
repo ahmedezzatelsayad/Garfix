@@ -31,7 +31,7 @@ const InitiateSchema = z.object({
   planKey: z.string().min(1),
   billingPeriod: z.enum(["monthly", "yearly"]).optional().default("monthly"),
   currencyCode: z.string().length(3).optional(), // removed default — now determined by country
-  provider: z.enum(["myfatoorah", "paymob"]).optional(), // auto-determined by country
+  provider: z.enum(["myfatoorah", "paymob", "stripe"]).optional(), // auto-determined by country
 });
 
 async function callMyFatoorah(
@@ -103,6 +103,90 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const amount = billingPeriod === "yearly"
     ? (pricing.priceMonthly * 12 * 0.8) // 20% yearly discount
     : pricing.priceMonthly;
+
+  // ── WIRE-UP: Stripe payment path (for DEFAULT/USD countries) ──
+  if (effectiveProvider === "stripe") {
+    try {
+      const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+      const stripeConfig = await getIntegrationConfig("stripe");
+      if (!stripeConfig?.secret_key) {
+        return apiError("بوابة الدفع Stripe غير مُهيّأة. تواصل مع المؤسس.", 503);
+      }
+
+      // Use Stripe provider's createPaymentIntent
+      const { stripeProvider } = await import("@/lib/integrations/stripe");
+      const stripeAmount = Math.round(amount * 100); // Stripe uses smallest currency unit
+
+      const stripeResult = await (stripeProvider as unknown as {
+        createPaymentIntent: (params: {
+          amount: number;
+          currency?: string;
+          description?: string;
+          metadata?: Record<string, string>;
+        }) => Promise<{ ok: boolean; clientSecret?: string; intentId?: string; error?: string }>;
+      }).createPaymentIntent({
+        amount: stripeAmount,
+        currency: effectiveCurrency.toLowerCase(),
+        description: `GARFIX ${planKey} — ${billingPeriod === "yearly" ? "سنوي" : "شهري"}`,
+        metadata: {
+          companySlug,
+          userEmail: user.email,
+          plan: planKey,
+          billingPeriod,
+        },
+      });
+
+      if (!stripeResult.ok || !stripeResult.clientSecret) {
+        logger.error("[payments:initiate] Stripe PaymentIntent failed", { error: stripeResult.error });
+        return apiError(`فشل بدء الدفع عبر Stripe: ${stripeResult.error}`, 502);
+      }
+
+      // Store transaction record
+      await db.paymentTransaction.create({
+        data: {
+          companySlug,
+          plan: planKey,
+          method: "stripe_card",
+          provider: "stripe",
+          amount: String(amount),
+          currency: effectiveCurrency,
+          status: "pending",
+          providerPaymentId: stripeResult.intentId || "",
+          checkoutUrl: "", // Stripe uses client_secret, not redirect URL
+          createdBy: user.uid,
+          metadata: JSON.stringify({
+            billingPeriod,
+            clientSecret: stripeResult.clientSecret,
+            initiatedAt: new Date().toISOString(),
+            country,
+            pricingCurrency: pricing.currency,
+          }),
+        },
+      });
+
+      logger.info("[payments:initiate] Stripe payment initiated", {
+        user: user.uid,
+        plan: planKey,
+        amount,
+        intentId: stripeResult.intentId,
+        country,
+        currency: effectiveCurrency,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        paymentUrl: "", // Stripe uses clientSecret for frontend Elements
+        clientSecret: stripeResult.clientSecret,
+        intentId: stripeResult.intentId,
+        amount,
+        currency: effectiveCurrency,
+        provider: "stripe",
+      });
+    } catch (stripeErr) {
+      logger.error("[payments:initiate] Stripe error", { error: stripeErr instanceof Error ? stripeErr.message : String(stripeErr) });
+      return apiError("فشل الاتصال بـ Stripe", 502);
+    }
+  }
 
   // 2. Route to the appropriate payment provider
   if (effectiveProvider === "paymob") {

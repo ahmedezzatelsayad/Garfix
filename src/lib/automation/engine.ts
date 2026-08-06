@@ -227,24 +227,89 @@ async function executeAction(action: ActionShape, event: TriggerEvent): Promise<
       break;
     }
     case "send_email": {
-      // CODE-004 FIX: Real email sending via nodemailer (if configured) or log
+      // WIRE-UP: Real email sending via SendGrid (if configured) or SMTP
       try {
-        const emailTo = action.params?.email || action.params?.to;
-        const subject = action.params?.subject || "إشعار من GarfiX";
-        const body = action.params?.body || action.params?.message || "إشعار تلقائي";
+        const emailTo = String(action.params?.email || action.params?.to || "");
+        const subject = String(action.params?.subject || "إشعار من GarfiX");
+        const body = String(action.params?.body || action.params?.message || "إشعار تلقائي");
         if (!emailTo) {
           logger.warn("[automation] send_email skipped — no email address");
           return;
         }
-        // In production: use nodemailer with SMTP_HOST/SMTP_USER/SMTP_PASSWORD
-        // For now: log the email (production deployment needs SMTP config)
-        logger.info("[automation] send_email (would send)", { to: emailTo, subject, company: event.companySlug });
-        // TODO: uncomment when SMTP is configured:
-        // const nodemailer = await import("nodemailer");
-        // const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: 587, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } });
-        // await transporter.sendMail({ from: process.env.SMTP_FROM, to: emailTo, subject, text: body });
+
+        // Try SendGrid first (if configured)
+        try {
+          const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+          const sgConfig = await getIntegrationConfig("sendgrid");
+          if (sgConfig?.api_key) {
+            const { sendgridProvider } = await import("@/lib/integrations/sendgrid");
+            const sgResult = await (sendgridProvider as unknown as {
+              sendEmail: (params: {
+                to: string;
+                subject: string;
+                body: { text: string; html?: string };
+              }) => Promise<{ ok: boolean; error?: string }>;
+            }).sendEmail({
+              to: emailTo,
+              subject,
+              body: { text: body },
+            });
+            if (sgResult.ok) {
+              logger.info("[automation] send_email sent via SendGrid", { to: emailTo, subject, company: event.companySlug });
+              break;
+            }
+            logger.warn("[automation] SendGrid failed, trying SMTP", { error: sgResult.error });
+          }
+        } catch {
+          // SendGrid not configured — fall through to SMTP
+        }
+
+        // Fall back to SMTP (via email.ts)
+        try {
+          const { sendEmail } = await import("@/lib/email");
+          const result = await sendEmail({ to: emailTo, subject, body });
+          if (result.ok) {
+            logger.info("[automation] send_email sent via SMTP", { to: emailTo, subject, company: event.companySlug });
+          } else {
+            logger.warn("[automation] send_email SMTP failed, logging only", { to: emailTo, reason: result.reason });
+          }
+        } catch {
+          logger.info("[automation] send_email (no SMTP configured, logged only)", { to: emailTo, subject, company: event.companySlug });
+        }
       } catch (err) {
         logger.error("[automation] send_email failed", { err: err instanceof Error ? err.message : String(err) });
+        throw err;
+      }
+      break;
+    }
+    case "send_sms": {
+      // WIRE-UP: Send SMS via Twilio integration
+      try {
+        const phone = String(action.params?.phone || action.params?.to || "");
+        const message = String(action.params?.message || "إشعار من GarfiX");
+        if (!phone) {
+          logger.warn("[automation] send_sms skipped — no phone number");
+          return;
+        }
+
+        const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+        const twilioConfig = await getIntegrationConfig("twilio");
+        if (!twilioConfig?.account_sid || !twilioConfig?.auth_token) {
+          logger.info("[automation] send_sms skipped — Twilio not configured", { company: event.companySlug });
+          return;
+        }
+
+        const { twilioProvider } = await import("@/lib/integrations/twilio");
+        const result = await (twilioProvider as unknown as {
+          sendSms: (to: string, body: string) => Promise<{ ok: boolean; error?: string; sid?: string }>;
+        }).sendSms(phone, message);
+
+        if (!result.ok) {
+          throw new Error(`Twilio SMS failed: ${result.error}`);
+        }
+        logger.info("[automation] send_sms success", { to: phone, sid: result.sid, company: event.companySlug });
+      } catch (err) {
+        logger.error("[automation] send_sms failed", { err: err instanceof Error ? err.message : String(err), company: event.companySlug });
         throw err;
       }
       break;

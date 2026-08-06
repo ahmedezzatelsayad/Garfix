@@ -164,6 +164,18 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
       logger.error(`[bootstrap] ✗ ${msg}`);
     }
 
+    // 1f. SMS Worker (Twilio SMS messages)
+    try {
+      const { registerSmsWorker } = await import("@/lib/workers/smsWorker");
+      registerSmsWorker();
+      workersRegistered.push("sms");
+      logger.info("[bootstrap] ✓ SMS worker registered");
+    } catch (err) {
+      const msg = `Failed to register SMS worker: ${err instanceof Error ? err.message : String(err)}`;
+      errors.push(msg);
+      logger.error(`[bootstrap] ✗ ${msg}`);
+    }
+
     // ── Step 2: Recover Pending Jobs ──────────────────────────────────────
     // Re-enqueue jobs that were in-progress when the server stopped.
 
