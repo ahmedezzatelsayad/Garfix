@@ -51,6 +51,8 @@ const CreateSchema = z.object({
   invoiceTypeAr: z.string().optional(), // فاتورة ضريبية / فاتورة مبسطة
   invoiceTypeEn: z.string().optional(), // standard / simplified
   mociNumber: z.string().optional(),
+  // ── Branch/Warehouse support ──
+  warehouseId: z.string().optional().nullable(),
 });
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -68,8 +70,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const companySlug = sp.get("companySlug") || undefined;
   const status = sp.get("status") || undefined;
   const search = sp.get("search") || undefined;
+  const warehouseId = sp.get("warehouseId") || undefined; // ── Branch filter ──
   const limit = Math.min(parseInt(sp.get("limit") || "100"), 500);
-  const cursor = sp.get("cursor") || undefined; // RI-016 FIX: cursor-based pagination (id as int)
+  const cursor = sp.get("cursor") || undefined;
 
   if (companySlug && !assertCompanyAccess(user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -79,6 +82,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
   if (status) where.status = status;
+  if (warehouseId) where.warehouseId = warehouseId; // ── Branch filter ──
   if (search) {
     where.OR = [
       { invoiceNumber: { contains: search } },
@@ -230,6 +234,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       notesAr: (enrichedData.notesAr as string) || null,
       currencyDecimalPlaces: (enrichedData.currencyDecimalPlaces as number) ?? 3,
       eInvoiceAuthority: (enrichedData.eInvoiceAuthority as string) || null,
+      // ── Branch/Warehouse support ──
+      warehouseId: data.warehouseId || null,
     },
   });
 

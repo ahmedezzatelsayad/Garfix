@@ -43,12 +43,15 @@ model AppUser {
   permissions   String   @default("{}") // JSON object of permission → 0/1
   emailVerified Boolean  @default(false)
   tokenVersion  Int      @default(0)
+  // ── Branch/Warehouse support: user's default branch ──
+  defaultWarehouseId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   mFASecrets MFASecret[]
   sessions   SessionRegistry[]
-  
+  defaultWarehouse Warehouse? @relation("UserDefaultWarehouse", fields: [defaultWarehouseId], references: [id])
+
   // API Key Pool - User can have one assigned key
   assignedApiKey ApiKeyPool? @relation("KeyAssignedToUser")
 
@@ -320,6 +323,9 @@ model Warehouse {
   updatedAt      DateTime        @updatedAt
   inventoryItems InventoryItem[]
   stockMovements StockMovement[]
+  /// ── Branch/Warehouse support: invoices + users linked to this branch ──
+  invoices       Invoice[]
+  defaultUsers   AppUser[]       @relation("UserDefaultWarehouse")
   company        Company?        @relation(fields: [companyId], references: [id])
 
   @@index([companySlug])
@@ -1197,12 +1203,15 @@ model Invoice {
   lineItemsAr           String?
   notesAr               String?
   currencyDecimalPlaces Int?
+  // ── Branch/Warehouse support: invoice issued from a specific branch ──
+  warehouseId           String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   company               Company?             @relation(fields: [companyId], references: [id])
   client                Client?              @relation(fields: [clientId], references: [id])
   eInvoice              EInvoice?
   paymentTransactions   PaymentTransaction[]
+  warehouse             Warehouse?           @relation(fields: [warehouseId], references: [id])
 
   @@unique([companySlug, invoiceNumber])
   @@index([companyId])
@@ -1210,6 +1219,7 @@ model Invoice {
   // and orders by createdAt DESC. Add composite + date indexes.
   @@index([companySlug, deletedAt])
   @@index([status, createdAt])
+  @@index([warehouseId])
   // P5-M1: composite (companySlug, createdAt) backs the tenant+time-range list
   // ordering used by GET /api/invoices. Without it Postgres picked the
   // single-column companySlug index and sorted in memory.
@@ -1343,10 +1353,12 @@ model StockMovement {
   cost        Decimal  @default(0)
   date        DateTime @default(now())
   companySlug String   @default("default")
+  // warehouseId is defined below in P2-Reconciliation section
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([companySlug])
+  @@index([warehouseId])
   @@map("stock_movements")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
