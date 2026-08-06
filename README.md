@@ -83,6 +83,9 @@
 | **Valkey-Distributed Rate Limiting** | Atomic Lua script (ZADD+ZCARD+ZREMRANGEBYSCORE) عبر كل instances — مش in-memory Map محدود بـ instance واحد |
 | **AES-256 AI Key Encryption** | كل مفاتيح AI في `CompanyAIConfig` مشفّرة at rest عبر `cryptoVault.ts` + graceful migration للـ legacy plaintext |
 | **Direct DeepSeek Path** | توجيه مباشر لـ `api.deepseek.com` بدون وسيط OpenRouter — توفير في الرسوم + RPM أعلى |
+| **Billing & Subscriptions** | 3 باقات (Starter/Professional/Unlimited) + أسعار حسب البلد (8 عملات) + Myfatoorah/Paymob |
+| **Enterprise RBAC UI** | إدارة الأدوار والصلاحيات: عرض/إنشاء/تعديل/حذف أدوار مخصصة + كتالوج صلاحيات كامل |
+| **Cairo Font** | خط عربي احترافي موحد عبر كل التطبيق (7 أوزان: 300-900) مع دعم Latin |
 | **الأمان** | SSRF protection · CSRF double-submit · AES-256 crypto vault · MFA/OTP · password policy · tamper-evidence audit chain |
 
 </div>
@@ -670,16 +673,60 @@ processPendingDeliveries() ──► HMAC-SHA256 sign payload
 | **Theme** | ThemeProvider, ThemeToggle (Icon/Switch/Segmented) | `src/components/garfix-ds/theme/` |
 | **Integration** | EnhancedDashboard | `src/components/garfix-ds/integration/` |
 
-### Responsive Design — Verified via Playwright
+### Responsive Design — Verified via Playwright (36 screenshots)
 
-تم التحقق من استجابة التصميم (responsive design) فعليًا عبر **Playwright** على 3 viewports مختلفة. لقطات الشاشة محفوظة في `download/screenshots/`:
+تم التحقق من استجابة التصميم (responsive design) فعليًا عبر **Playwright** على **12 صفحة × 3 viewports = 36 لقطة شاشة** بدقة retina. كل الصفحات بتستخدم خط **Cairo** موحد.
 
-| Viewport | الحجم | الـ Screenshot | الحالة |
-|----------|-------|----------------|--------|
-| **Desktop** | 1920×1080 | [`01-dashboard-desktop.png`](download/screenshots/01-dashboard-desktop.png) | ✅ Sidebar ثابت + KPI grid 5 أعمدة + table view |
-| **Tablet** | 768×1024 (iPad) | [`02-dashboard-tablet.png`](download/screenshots/02-dashboard-tablet.png) | ✅ Sidebar ثابت + KPI grid 2 أعمدة + table view |
-| **Mobile** | 390×844 (iPhone 14) | [`03-dashboard-mobile.png`](download/screenshots/03-dashboard-mobile.png) | ✅ Off-canvas drawer + KPI stack + **card view** (table→card) |
-| **Mobile Full** | 390×844 full page | [`04-dashboard-mobile-full.png`](download/screenshots/04-dashboard-mobile-full.png) | ✅ كامل الصفحة مع جميع الأقسام |
+#### Desktop (1920×1080) — Sidebar ثابت + KPI grids متعددة الأعمدة
+
+| الصفحة | الـ Screenshot |
+|--------|----------------|
+| لوحة التحكم | [`01-dashboard-desktop.png`](download/screenshots/01-dashboard-desktop.png) |
+| الفواتير | [`02-invoices-desktop.png`](download/screenshots/02-invoices-desktop.png) |
+| العملاء | [`03-clients-desktop.png`](download/screenshots/03-clients-desktop.png) |
+| المخزون | [`04-inventory-desktop.png`](download/screenshots/04-inventory-desktop.png) |
+| المحاسبة | [`05-accounting-desktop.png`](download/screenshots/05-accounting-desktop.png) |
+| الاشتراك والفوترة | [`06-billing-desktop.png`](download/screenshots/06-billing-desktop.png) |
+| الأدوار والصلاحيات | [`07-roles-desktop.png`](download/screenshots/07-roles-desktop.png) |
+| وكلاء AI | [`08-ai-agents-desktop.png`](download/screenshots/08-ai-agents-desktop.png) |
+| الأتمتة | [`09-automation-desktop.png`](download/screenshots/09-automation-desktop.png) |
+| التقارير | [`10-reports-desktop.png`](download/screenshots/10-reports-desktop.png) |
+| لوحة المؤسس | [`11-founder-panel-desktop.png`](download/screenshots/11-founder-panel-desktop.png) |
+| الموارد البشرية | [`12-hr-desktop.png`](download/screenshots/12-hr-desktop.png) |
+
+#### Tablet (768×1024 — iPad Portrait) — Sidebar ثابت + grids متوسطة
+
+| الصفحة | الـ Screenshot |
+|--------|----------------|
+| لوحة التحكم | [`01-dashboard-tablet.png`](download/screenshots/01-dashboard-tablet.png) |
+| الفواتير | [`02-invoices-tablet.png`](download/screenshots/02-invoices-tablet.png) |
+| العملاء | [`03-clients-tablet.png`](download/screenshots/03-clients-tablet.png) |
+| المخزون | [`04-inventory-tablet.png`](download/screenshots/04-inventory-tablet.png) |
+| المحاسبة | [`05-accounting-tablet.png`](download/screenshots/05-accounting-tablet.png) |
+| الاشتراك والفوترة | [`06-billing-tablet.png`](download/screenshots/06-billing-tablet.png) |
+| الأدوار والصلاحيات | [`07-roles-tablet.png`](download/screenshots/07-roles-tablet.png) |
+| وكلاء AI | [`08-ai-agents-tablet.png`](download/screenshots/08-ai-agents-tablet.png) |
+| الأتمتة | [`09-automation-tablet.png`](download/screenshots/09-automation-tablet.png) |
+| التقارير | [`10-reports-tablet.png`](download/screenshots/10-reports-tablet.png) |
+| لوحة المؤسس | [`11-founder-panel-tablet.png`](download/screenshots/11-founder-panel-tablet.png) |
+| الموارد البشرية | [`12-hr-tablet.png`](download/screenshots/12-hr-tablet.png) |
+
+#### Mobile (390×844 — iPhone 14) — Off-canvas drawer + table→card pattern
+
+| الصفحة | الـ Screenshot |
+|--------|----------------|
+| لوحة التحكم | [`01-dashboard-mobile.png`](download/screenshots/01-dashboard-mobile.png) |
+| الفواتير | [`02-invoices-mobile.png`](download/screenshots/02-invoices-mobile.png) |
+| العملاء | [`03-clients-mobile.png`](download/screenshots/03-clients-mobile.png) |
+| المخزون | [`04-inventory-mobile.png`](download/screenshots/04-inventory-mobile.png) |
+| المحاسبة | [`05-accounting-mobile.png`](download/screenshots/05-accounting-mobile.png) |
+| الاشتراك والفوترة | [`06-billing-mobile.png`](download/screenshots/06-billing-mobile.png) |
+| الأدوار والصلاحيات | [`07-roles-mobile.png`](download/screenshots/07-roles-mobile.png) |
+| وكلاء AI | [`08-ai-agents-mobile.png`](download/screenshots/08-ai-agents-mobile.png) |
+| الأتمتة | [`09-automation-mobile.png`](download/screenshots/09-automation-mobile.png) |
+| التقارير | [`10-reports-mobile.png`](download/screenshots/10-reports-mobile.png) |
+| لوحة المؤسس | [`11-founder-panel-mobile.png`](download/screenshots/11-founder-panel-mobile.png) |
+| الموارد البشرية | [`12-hr-mobile.png`](download/screenshots/12-hr-mobile.png) |
 
 <div dir="rtl">
 
@@ -689,9 +736,34 @@ processPendingDeliveries() ──► HMAC-SHA256 sign payload
 - ✅ **Table → Card pattern** متطبّب في كل الـ list views (`hidden md:block` table + `md:hidden` cards)
 - ✅ **RTL كامل**: الـ sidebar بيفتح من اليمين، النص عربي، التواريخ هجرية
 - ✅ **Dark-first design**: الوضع الليلي هو الافتراضي، مع دعم الوضع النهاري
+- ✅ **خط Cairo موحد** عبر كل الصفحات (Arabic + Latin, 300-900 weights)
 - ✅ **0 TypeScript errors** في ملفات الـ UI
 
 </div>
+
+### Font — Cairo
+
+تم تغيير خط التطبيق بالكامل إلى **Cairo** — خط عربي احترافي من Google Fonts يدعم:
+
+- **Subset**: Arabic + Latin
+- **Weights**: 300 (Light) → 400 (Regular) → 500 (Medium) → 600 (SemiBold) → 700 (Bold) → 800 (ExtraBold) → 900 (Black)
+- **Display strategy**: `swap` — بيظهر النص فوراً بخط fallback، وبعدين Cairo بيتحمل
+
+**التطبيق**:
+- `src/app/layout.tsx` — استبدال `Geist + Geist_Mono` بـ `Cairo` من `next/font/google`
+- `src/app/globals.css` — universal selector `*` بيضمن إن كل العناصر تستخدم Cairo
+
+```tsx
+// src/app/layout.tsx
+import { Cairo } from "next/font/google";
+
+const cairo = Cairo({
+  variable: "--font-cairo",
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
+```
 
 ### Usage Example
 
@@ -717,11 +789,12 @@ function Dashboard() {
 
 | File | Role |
 |------|------|
-| `src/app/globals.css` | Tailwind v4 `@theme inline` tokens + brand identity + motion system |
+| `src/app/globals.css` | Tailwind v4 `@theme inline` tokens + brand identity + motion system + Cairo font |
+| `src/app/layout.tsx` | Cairo font loader (next/font/google) |
 | `src/components/garfix-ds/index.ts` | Public API — export all components |
 | `src/components/garfix-ds/theme/GarfixThemeProvider.tsx` | Dark/light mode context + persistence |
-| `download/screenshots/design-system-preview.html` | Standalone HTML preview of the DS v4.0 |
-| `scripts/screenshot-capture.ts` | Playwright script to regenerate screenshots |
+| `download/screenshots/all-pages-preview.html` | Standalone HTML preview of all 12 pages (Cairo font) |
+| `scripts/screenshot-capture.ts` | Playwright script — captures 36 screenshots (12 pages × 3 viewports) |
 
 ---
 
