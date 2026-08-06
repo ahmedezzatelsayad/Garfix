@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import {
   ShieldCheck, Loader2, CheckCircle2, XCircle, FileText,
   KeyRound, Building2, AlertCircle, RefreshCw, Wifi, Globe2,
-  Link2, MapPin,
+  Link2, MapPin, Copy, Webhook,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -243,6 +243,8 @@ function ZatcaSettings({
             icon={<ShieldCheck size={16} />}
             label="تفعيل الفوترة الإلكترونية"
           />
+
+          <WebhookUrlHelper country="SA" />
         </div>
       )}
 
@@ -257,6 +259,7 @@ function ZatcaSettings({
             <CertCard title="CSID" subtitle="شهادة الامتثال" expiry={certStatus.csidExpiry} active={certStatus.hasCsid} />
             <CertCard title="CCD" subtitle="شهادة التوقيع" expiry={certStatus.ccdExpiry} active={certStatus.hasCcd} />
           </div>
+          <WebhookUrlHelper country="SA" />
         </div>
       )}
     </div>
@@ -440,6 +443,9 @@ function CountryEInvoiceSettings({
             />
           ))}
         </div>
+
+        {/* Webhook URL helper */}
+        <WebhookUrlHelper country={country} />
 
         {/* Test result */}
         {testResult && (
@@ -881,6 +887,95 @@ function SubmitButton({
         </>
       )}
     </button>
+  );
+}
+
+// ─── Webhook URL Helper (per-country) ──────────────────────────
+
+const WEBHOOK_CONFIG: Record<string, { path: string; header: string; encoding: "hex" | "base64"; secretSource: string }> = {
+  SA: { path: "/api/e-invoicing/webhooks/zatca", header: "X-ZATCA-Signature", encoding: "base64", secretSource: "CSID secret (من شهادة ZATCA)" },
+  EG: { path: "/api/e-invoicing/webhooks/eta", header: "X-Signature", encoding: "hex", secretSource: "ETA API Token (نفس الـ JWT)" },
+  AE: { path: "/api/e-invoicing/webhooks/uae", header: "X-AP-Signature", encoding: "hex", secretSource: "AP Client Secret" },
+  KW: { path: "/api/e-invoicing/webhooks/kw", header: "X-MoF-Signature", encoding: "hex", secretSource: "Client Secret (من بوابة MoF)" },
+  BH: { path: "/api/e-invoicing/webhooks/bh", header: "X-NBR-Signature", encoding: "hex", secretSource: "NBR API Key" },
+  OM: { path: "/api/e-invoicing/webhooks/om", header: "X-TA-Signature", encoding: "hex", secretSource: "Client Secret (من بوابة TA)" },
+  QA: { path: "/api/e-invoicing/webhooks/qa", header: "X-AP-Signature", encoding: "hex", secretSource: "AP Client Secret" },
+};
+
+function WebhookUrlHelper({ country }: { country: string }) {
+  const cfg = WEBHOOK_CONFIG[country];
+  const [origin, setOrigin] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  if (!cfg) return null;
+
+  const fullUrl = origin ? `${origin}${cfg.path}` : cfg.path;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      toast.success("تم نسخ رابط الـ webhook");
+    } catch {
+      toast.error("فشل النسخ — انسخ يدوياً");
+    }
+  };
+
+  return (
+    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Webhook size={14} className="text-blue-500 flex-shrink-0" />
+        <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+          رابط استقبال الـ Webhook (للتسجيل في بوابة الهيئة)
+        </p>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        بعد حفظ بيانات الاعتماد، سجّل هذا الرابط في بوابة الهيئة الضريبية ليتم إرسال إشعارات حالة الفاتورة (قبول / رفض / إلغاء) تلقائياً إلى GarfiX.
+      </p>
+
+      {/* URL + copy button */}
+      <div className="flex items-stretch gap-2">
+        <code
+          className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-[11px] font-mono break-all"
+          dir="ltr"
+        >
+          {fullUrl}
+        </code>
+        <button
+          onClick={handleCopy}
+          className="px-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center"
+          title="نسخ"
+        >
+          <Copy size={14} />
+        </button>
+      </div>
+
+      {/* Signature info */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+        <div className="bg-muted/30 rounded-md p-2">
+          <p className="text-muted-foreground mb-0.5">Header التوقيع</p>
+          <p className="font-mono text-foreground" dir="ltr">{cfg.header}</p>
+        </div>
+        <div className="bg-muted/30 rounded-md p-2">
+          <p className="text-muted-foreground mb-0.5">خوارزمية التوقيع</p>
+          <p className="font-mono text-foreground" dir="ltr">HMAC-SHA256 ({cfg.encoding})</p>
+        </div>
+        <div className="bg-muted/30 rounded-md p-2">
+          <p className="text-muted-foreground mb-0.5">المفتاح السري</p>
+          <p className="text-foreground">{cfg.secretSource}</p>
+        </div>
+      </div>
+
+      <div className="bg-amber-500/5 border border-amber-500/15 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+        <AlertCircle size={11} className="inline ml-1" />
+        تأكد أن الـ URL متاح من خارج الشبكة (public internet). في بيئة الإنتاج، استخدم HTTPS فقط.
+      </div>
+    </div>
   );
 }
 

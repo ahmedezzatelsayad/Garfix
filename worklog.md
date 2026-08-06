@@ -2253,3 +2253,44 @@ Stage Summary:
   - BH: https://your-domain.com/api/e-invoicing/webhooks/bh
   - OM: https://your-domain.com/api/e-invoicing/webhooks/om
   - QA: https://your-domain.com/api/e-invoicing/webhooks/qa
+
+---
+Task ID: e-invoicing-timeline-and-webhook-helper
+Agent: Super Z (main)
+Task: بناء per-company timeline page + webhook URL registration helper في صفحة الإعدادات + تحديث README بكل الإنجازات
+
+Work Log:
+- Built /api/founder-panel/e-invoicing/[slug] (GET, founder-only):
+  - Returns company info, integration status, aggregate stats (total/accepted/rejected/pending/last7d), cursor-paginated receipts (50/page, expandable raw payload), top-20 invoice groups (with invoice numbers + totals + status), pagination metadata
+  - Joins invoices to resolve invoice numbers for the grouping summary
+- Added useEInvoicingCompanyTimeline React Query hook + EInvoicingCompanyTimelineData / EInvoicingCompanyTimelineReceipt / EInvoicingCompanyInvoiceGroup types to founder-panel.ts
+- Built /founder-panel/e-invoicing/[slug] timeline page:
+  - Header with company flag/name/status badge + back arrow to dashboard
+  - 5 mini stat cards (total/accepted/rejected/pending/last7d)
+  - Tabs: "السجل الزمني" (timeline of receipts as expandable cards with raw JSON payload) + "الفواتير" (top-20 invoices grouped by event count)
+  - Each receipt card expands to show: rejection reason, full UUID, authority, status, and raw payload as pretty-printed JSON
+  - Signature valid badge (green "موقّع" or red "توقيع غير صالح")
+  - Help footer with the per-country webhook URL
+- Made dashboard company rows clickable: Link to /founder-panel/e-invoicing/[slug], with chevron-left indicator that turns emerald on hover
+- Added WebhookUrlHelper component to EInvoicingSettings.tsx:
+  - WEBHOOK_CONFIG constant maps each country code to {path, header, encoding, secretSource}
+  - Shows the full webhook URL (origin + path) with copy-to-clipboard button
+  - Shows signature header name, HMAC algorithm (hex or base64), secret source
+  - Amber warning about HTTPS / public internet requirement
+  - Injected into ZatcaSettings (after onboarding form + after certificate info when configured) AND into CountryEInvoiceSettings (after form fields, before test result)
+- Updated README.md:
+  - Bumped version 12.1.0 → 13.0.0
+  - Updated intro line "6 دول" → "7 دول + لوحة مؤسس موحّدة + webhooks واردة"
+  - Updated Key Features "الفوترة الإلكترونية" row to mention 7 countries + dashboard + 7 webhook receivers
+  - Completely rewrote the E-Invoicing section: 3-layer architecture table, per-country coverage table (with validation file + UI + webhook receiver + standard for each), founder-panel dashboard subsection, inbound webhook receivers subsection (7-step processing pipeline), client UI subsection, data model subsection
+  - Added E-Invoicing Endpoints table to API Documentation section listing all 13 new endpoints
+- Verification: tsc 0 errors, lint 0/0, build green (194 routes), zero test regressions (291 unique failing tests before = 291 unique after — diff was empty)
+- Pushed to main.
+
+Stage Summary:
+- New files: 2 (per-company API route, per-company page)
+- Modified files: 4 (founder-panel.ts hook, dashboard page with clickable rows, EInvoicingSettings.tsx with WebhookUrlHelper, README.md)
+- New user flows:
+  1. Founder clicks on any company row in /founder-panel/e-invoicing → opens a dedicated timeline page showing every e-invoice event for that company, expandable to reveal raw webhook payloads
+  2. Any user opening /settings → e-invoicing now sees a "Webhook URL Helper" inline card with the ready-to-copy webhook URL for their country, the signature header name, the HMAC algorithm, and the secret source — they can paste this directly into their tax authority portal
+- README now documents the full e-invoicing module end-to-end (3 layers, 7 countries, 13 endpoints, dashboard, webhook receivers, data model)

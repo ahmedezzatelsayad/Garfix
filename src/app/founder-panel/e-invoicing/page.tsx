@@ -5,6 +5,7 @@ import {
   Activity,
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
   Clock,
   FileText,
   Globe2,
@@ -265,11 +266,17 @@ export default function EInvoicingDashboardPage() {
               <p className="text-xs text-muted-foreground text-center py-12">لا توجد شركات مطابقة</p>
             )}
             {filteredCompanies.map((c) => (
-              <div key={c.id} className="px-5 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
+              <Link
+                key={c.id}
+                href={`/founder-panel/e-invoicing/${c.slug}`}
+                className="px-5 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors group"
+              >
                 <span className="text-xl flex-shrink-0">{c.emoji || flagEmoji(c.country)}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">{c.nameAr || c.name}</p>
+                    <p className="text-sm font-medium text-foreground truncate group-hover:text-emerald-400 transition-colors">
+                      {c.nameAr || c.name}
+                    </p>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground">{c.plan}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
@@ -278,7 +285,8 @@ export default function EInvoicingDashboardPage() {
                   </p>
                 </div>
                 <StatusBadge configured={c.isConfigured} />
-              </div>
+                <ChevronLeft size={14} className="text-muted-foreground/40 group-hover:text-emerald-400 transition-colors flex-shrink-0" />
+              </Link>
             ))}
           </div>
         </div>

@@ -201,3 +201,51 @@ export function useEInvoicingDashboard() {
     staleTime: 30_000,
   });
 }
+
+// ─── useEInvoicingCompanyTimeline ─────────────────────────────────────────
+
+export interface EInvoicingCompanyTimelineReceipt {
+  id: string;
+  invoiceId: number | null;
+  authority: string;
+  eventType: string;
+  externalUuid: string | null;
+  status: string;
+  rawPayload: string;
+  signatureValid: boolean | null;
+  rejectionReason: string | null;
+  receivedAt: string;
+}
+
+export interface EInvoicingCompanyInvoiceGroup {
+  invoiceId: number | null;
+  invoiceNumber: string | null;
+  invoiceStatus: string | null;
+  invoiceTotal: number | null;
+  issueDate: string | null;
+  eventCount: number;
+}
+
+export interface EInvoicingCompanyTimelineData {
+  ok: boolean;
+  company: EInvoicingCompanyStatus;
+  stats: {
+    total: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+    last7d: number;
+  };
+  receipts: EInvoicingCompanyTimelineReceipt[];
+  pagination: { hasMore: boolean; nextCursor: string | null; limit: number };
+  invoiceGroups: EInvoicingCompanyInvoiceGroup[];
+}
+
+export function useEInvoicingCompanyTimeline(slug: string | null) {
+  return useQuery<EInvoicingCompanyTimelineData, ApiError>({
+    queryKey: [...queryKeys.founderPanel.eInvoicing(), "company", slug],
+    queryFn: () => apiGet<EInvoicingCompanyTimelineData>(`/api/founder-panel/e-invoicing/${slug}`),
+    enabled: !!slug,
+    staleTime: 15_000,
+  });
+}
