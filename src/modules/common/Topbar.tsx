@@ -8,12 +8,15 @@
  * so the Topbar reads correctly in BOTH light and dark modes.
  *
  * Enhanced with GarfiX AI status indicator for "AI Everywhere" presence.
+ * Enhanced with global warehouse/branch selector.
  */
-import { Menu, Search } from "lucide-react";
+import { Menu, Search, Building2, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
 import type { CompanyInfo } from "@/context/BrandContext";
 import { cn } from "@/lib/utils";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { AIStatusBar } from "@/components/garfix";
+import { useWarehouses } from "@/hooks/queries";
 
 interface TopbarProps {
   user: { displayName: string; email: string };
@@ -27,6 +30,33 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
   const openCommandPalette = () => {
     window.dispatchEvent(new CustomEvent("garfix:open-command-palette"));
   };
+
+  // ── Global warehouse/branch selector ──
+  const companySlug = activeCompany?.slug || "";
+  const warehousesQuery = useWarehouses(companySlug);
+  const warehouses: Array<{ id: string; name: string; code: string }> =
+    ((warehousesQuery.data as unknown as Array<{ id: string; name: string; code: string }>) || []);
+
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
+  const [showWarehouseMenu, setShowWarehouseMenu] = useState(false);
+
+  // Load saved warehouse from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("garfix:selected-warehouse");
+      if (saved) setSelectedWarehouse(saved);
+    } catch { /* ignore */ }
+  }, []);
+
+  // Dispatch warehouse change event so other components can react
+  useEffect(() => {
+    try {
+      localStorage.setItem("garfix:selected-warehouse", selectedWarehouse);
+    } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent("garfix:warehouse-changed", { detail: { warehouseId: selectedWarehouse } }));
+  }, [selectedWarehouse]);
+
+  const selectedWarehouseName = warehouses.find((w) => w.id === selectedWarehouse)?.name || "كل الفروع";
 
   return (
     <header
@@ -71,6 +101,49 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
             )}
           >
             {activeCompany.plan}
+          </div>
+        )}
+
+        {/* ── Global Warehouse/Branch Selector ── */}
+        {warehouses.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowWarehouseMenu(!showWarehouseMenu)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg
+                         bg-muted/60 border border-border text-xs font-medium
+                         text-muted-foreground hover:bg-primary/10 hover:border-primary/20 hover:text-primary
+                         transition-colors cursor-pointer min-h-[36px]"
+              aria-label="اختيار الفرع"
+            >
+              <Building2 size={14} />
+              <span className="hidden sm:inline truncate max-w-[100px]">{selectedWarehouseName}</span>
+              <ChevronDown size={12} className={cn("transition-transform", showWarehouseMenu && "rotate-180")} />
+            </button>
+            {showWarehouseMenu && (
+              <div className="absolute top-full right-0 mt-1 w-52 bg-popover border border-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
+                <button
+                  onClick={() => { setSelectedWarehouse(""); setShowWarehouseMenu(false); }}
+                  className={cn(
+                    "w-full text-right px-3 py-2 text-xs hover:bg-muted transition-colors",
+                    !selectedWarehouse && "bg-primary/10 text-primary font-bold"
+                  )}
+                >
+                  🏢 كل الفروع
+                </button>
+                {warehouses.map((w) => (
+                  <button
+                    key={w.id}
+                    onClick={() => { setSelectedWarehouse(w.id); setShowWarehouseMenu(false); }}
+                    className={cn(
+                      "w-full text-right px-3 py-2 text-xs hover:bg-muted transition-colors",
+                      selectedWarehouse === w.id && "bg-primary/10 text-primary font-bold"
+                    )}
+                  >
+                    🏬 {w.name} ({w.code})
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

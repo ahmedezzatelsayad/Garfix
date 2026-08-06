@@ -7,7 +7,7 @@ import type { CreateInvoicePayload } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Plus, Search, FileText, Trash2, Edit2, Printer, X, ArrowRight, Download, DollarSign,
-  CheckCircle2, Clock, AlertTriangle, BarChart3, ListChecks, ChevronLeft,
+  CheckCircle2, Clock, AlertTriangle, BarChart3, ListChecks, ChevronLeft, LayoutGrid,
 } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -67,7 +67,7 @@ export function InvoicesView() {
   const allInvoices = ((invoicesQuery.data as any)?.invoices ?? []) as Invoice[];
   const loading = invoicesQuery.isLoading;
 
-  // Local UI state (was provided by stub)
+  // Local UI state
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -80,9 +80,32 @@ export function InvoicesView() {
   const [showReviewQueue, setShowReviewQueue] = useState(false);
   const pageSize = 20;
 
+  // ── Branch/warehouse filter (from global Topbar selector) ──
+  const [warehouseFilter, setWarehouseFilter] = useState<string>("");
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setWarehouseFilter(detail?.warehouseId || "");
+    };
+    window.addEventListener("garfix:warehouse-changed", handler as EventListener);
+    // Also check localStorage on mount
+    try {
+      const saved = localStorage.getItem("garfix:selected-warehouse");
+      if (saved) setWarehouseFilter(saved);
+    } catch { /* ignore */ }
+    return () => window.removeEventListener("garfix:warehouse-changed", handler as EventListener);
+  }, []);
+
+  // ── Display mode toggle: table / cards ──
+  const [displayMode, setDisplayMode] = useState<"table" | "cards">("table");
+
   // Derived data (was computed by stub)
   const filteredInvoices = useMemo(() => {
     let list = allInvoices;
+    // ── Branch/warehouse filter ──
+    if (warehouseFilter) {
+      list = list.filter((inv: any) => inv.warehouseId === warehouseFilter);
+    }
     if (search) {
       const s = search.toLowerCase();
       list = list.filter((inv: Invoice) => inv.invoiceNumber.toLowerCase().includes(s) || inv.clientName.toLowerCase().includes(s));
@@ -91,7 +114,7 @@ export function InvoicesView() {
       list = list.filter((inv: Invoice) => inv.status === statusFilter);
     }
     return list;
-  }, [allInvoices, search, statusFilter]);
+  }, [allInvoices, search, statusFilter, warehouseFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
@@ -460,9 +483,46 @@ export function InvoicesView() {
             </button>
           ))}
         </div>
+
+        {/* ── Display mode toggle: table / cards ── */}
+        <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1">
+          <button
+            onClick={() => setDisplayMode("table")}
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+              displayMode === "table" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+            )}
+            title="عرض جدول"
+            aria-label="عرض جدول"
+          >
+            <BarChart3 size={14} className="rotate-90" />
+          </button>
+          <button
+            onClick={() => setDisplayMode("cards")}
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+              displayMode === "cards" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+            )}
+            title="عرض بطاقات"
+            aria-label="عرض بطاقات"
+          >
+            <LayoutGrid size={14} />
+          </button>
+        </div>
       </div>
 
-      {/* Bulk Actions Bar — DS v4.0 */}
+      {/* ── Active warehouse filter indicator ── */}
+      {warehouseFilter && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+          <span className="text-xs font-bold text-primary">🏬 فلتر الفرع نشط</span>
+          <button
+            onClick={() => { setWarehouseFilter(""); localStorage.removeItem("garfix:selected-warehouse"); }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ✕ إلغاء الفلتر
+          </button>
+        </div>
+      )}
       <GarfixBulkActions
         selectedCount={selectedIds.size}
         totalCount={filteredInvoices.length}
