@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Bot, User, Send, X, Maximize2, Minimize2, ShieldAlert,
   Loader2, CheckCircle2, XCircle, ListOrdered, Wallet, BarChart3, Plus,
+  DollarSign, AlertTriangle,
 } from "lucide-react";
 import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 
@@ -90,6 +91,33 @@ const QUICK_ACTIONS: QuickAction[] = [
     intent: "list_invoices",
     color: "#3b82f6",
     params: (companySlug) => ({ companySlug, limit: 5 }),
+  },
+  {
+    id: "daily-profit",
+    label: "أرباح اليوم",
+    icon: <DollarSign size={13} />,
+    userMessage: "اعمل تقرير أرباح اليوم",
+    intent: "daily_profit_report",
+    color: "#10b981",
+    params: (companySlug) => ({ companySlug, date: new Date().toISOString().slice(0, 10) }),
+  },
+  {
+    id: "overdue-list",
+    label: "المتأخرات",
+    icon: <AlertTriangle size={13} />,
+    userMessage: "اعرض الفواتير المتأخرة",
+    intent: "list_overdue",
+    color: "#ef4444",
+    params: (companySlug) => ({ companySlug }),
+  },
+  {
+    id: "undo-last",
+    label: "تراجع",
+    icon: <ListOrdered size={13} />,
+    userMessage: "تراجع عن آخر إجراء",
+    intent: "undo_last_action",
+    color: "#6b7280",
+    params: (companySlug) => ({ companySlug }),
   },
 ];
 

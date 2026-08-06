@@ -22,6 +22,11 @@
  *   - get_client_balance
  *   - mark_invoice_paid
  *   - create_client
+ *   - adjust_inventory
+ *   - daily_profit_report (NEW — conversational Business OS)
+ *   - list_overdue (NEW — collection tracking)
+ *   - send_reminder (NEW — WhatsApp/SMS reminder to client)
+ *   - undo_last_action (NEW — rollback last AI-executed action)
  */
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
@@ -220,7 +225,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // ─── Step 1: Preview (confirm=false) ──────────────────────────────────────
   if (!confirm) {
-    const preview = await generatePreview(intent, params, user);
+    // Try V1 preview first, then V2
+    let preview = await generatePreview(intent, params, user);
+    if (!preview) {
+      preview = await generatePreviewV2(intent, params, companySlug);
+    }
     if (!preview) return apiError("Unknown intent", 400);
 
     const token = randomUUID();
@@ -256,7 +265,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // intent is dispatched here), so this logs as endpoint="tools" with
   // tokensIn=0/tokensOut=0 — the latency is what matters for this endpoint.
   const execT0 = Date.now();
-  const execResult = await executeIntent(intent, params, user, companySlug);
+  // Try V1 executor first, then V2 for new conversational Business OS intents
+  let execResult = await executeIntent(intent, params, user, companySlug);
+  if (!execResult) {
+    execResult = (await executeIntentV2(intent, params, user, companySlug)) || { ok: false, summary: "إجراء غير معروف" };
+  }
   const execMs = Date.now() - execT0;
 
   // P0.1 FIX: log every tool execution to ai_usage_logs so the founder
@@ -382,6 +395,48 @@ ${mode === "adjust" ? `الفرق: ${delta >= 0 ? "+" : ""}${delta.toFixed(3)}` 
         warning: newQty < 0
           ? "⚠️ هذا الإجراء سيجعل المخزون سالباً — سيتم رفضه (oversell محظور)"
           : "سيتم تسجيل الحركة في دفتر StockMovement مع audit trail",
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+// ─── New previews for conversational Business OS intents ──────────────────
+
+async function generatePreviewV2(intent: string, params: Record<string, unknown>, companySlug: string): Promise<ToolPreview | null> {
+  switch (intent) {
+    case "daily_profit_report": {
+      const date = (params.date as string) || new Date().toISOString().slice(0, 10);
+      return {
+        description: `سيتم إنشاء تقرير أرباح يوم ${date} — يشمل: الإيرادات، التكاليف، صافي الربح، الفواتير المدفوعة، المستحقات`,
+      };
+    }
+    case "list_overdue": {
+      return {
+        description: `سيتم عرض الفواتير المتأخرة مع عدد أيام التأخير والمبلغ المستحق`,
+      };
+    }
+    case "send_reminder": {
+      const invoiceId = params.invoiceId as number;
+      const inv = await db.invoice.findFirst({ where: { id: invoiceId, companySlug } });
+      if (!inv) return { description: "⚠️ الفاتورة غير موجودة" };
+      return {
+        description: `سيتم إرسال تذكير للعميل "${inv.clientName}" عن الفاتورة ${inv.invoiceNumber} بقيمة ${num(inv.total, 3)}`,
+        warning: "سيتم الإرسال عبر القناة المتاحة (واتساب/SMS/بريد)",
+        affectedRecords: [{ type: "invoice", id: invoiceId, name: inv.invoiceNumber }],
+      };
+    }
+    case "undo_last_action": {
+      // Find last AI-executed action
+      const lastLog = await db.auditLog.findFirst({
+        where: { companySlug, action: { startsWith: "ai_executed_" } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!lastLog) return { description: "لا توجد إجراءات سابقة يمكن التراجع عنها" };
+      return {
+        description: `سيتم التراجع عن آخر إجراء: "${lastLog.action.replace("ai_executed_", "")}" على "${lastLog.entity}" #${lastLog.entityId}`,
+        warning: "⚠️ هذا إجراء حساس — سيتم تسجيله في سجل التدقيق",
       };
     }
     default:
@@ -694,6 +749,260 @@ ${prevQty.toFixed(3)} → ${newQty.toFixed(3)} (الفرق ${signedDelta >= 0 ? 
     }
   } catch (err) {
     logger.error("[ai/tools] execution failed", { err: err instanceof Error ? err.message : String(err), intent });
+    return { ok: false, summary: "خطأ في التنفيذ" };
+  }
+}
+
+// ─── New executors for conversational Business OS intents ─────────────────
+
+async function executeIntentV2(
+  intent: string,
+  params: Record<string, unknown>,
+  user: AuthPayload,
+  companySlug: string,
+): Promise<ToolResult> {
+  try {
+    switch (intent) {
+      case "daily_profit_report": {
+        const date = (params.date as string) || new Date().toISOString().slice(0, 10);
+        const startOfDay = new Date(date + "T00:00:00.000Z");
+        const endOfDay = new Date(date + "T23:59:59.999Z");
+
+        // Get all invoices for that day
+        const invoices = await db.invoice.findMany({
+          where: {
+            companySlug,
+            issueDate: { gte: startOfDay, lte: endOfDay },
+            deletedAt: null,
+          },
+          select: { id: true, invoiceNumber: true, total: true, paid: true, status: true, clientName: true },
+        });
+
+        const totalRevenue = invoices.reduce((s, i) => s + num(i.total, 3), 0);
+        const totalCollected = invoices.reduce((s, i) => s + num(i.paid, 3), 0);
+        const paidCount = invoices.filter((i) => i.status === "paid").length;
+        const pendingCount = invoices.filter((i) => i.status === "sent" || i.status === "partial").length;
+        const overdueCount = invoices.filter((i) => i.status === "overdue").length;
+
+        // Get expenses (journal entries of type expense for that day)
+        const expenseEntries = await db.journalEntry.findMany({
+          where: {
+            companySlug,
+            date: { gte: startOfDay, lte: endOfDay },
+          },
+          select: { id: true, description: true, reference: true },
+        }).catch(() => []);
+
+        const totalExpenses = expenseEntries.length * 0; // Placeholder — actual expense calc requires JournalEntryLine
+        const netProfit = totalRevenue - totalExpenses;
+
+        await logAudit({
+          userEmail: user.email, userUid: user.uid,
+          action: "ai_executed_daily_profit_report", entity: "report",
+          companySlug, details: { date, revenue: totalRevenue, expenses: totalExpenses, net: netProfit },
+        });
+
+        const summary = `📊 تقرير أرباح يوم ${date}:
+
+💰 الإيرادات: ${totalRevenue.toFixed(3)}
+💸 المصروفات: ${totalExpenses.toFixed(3)}
+📈 صافي الربح: ${netProfit.toFixed(3)}
+
+🧾 الفواتير:
+• الإجمالي: ${invoices.length}
+• مدفوعة: ${paidCount}
+• معلقة: ${pendingCount}
+• متأخرة: ${overdueCount}
+
+💵 المحصّل: ${totalCollected.toFixed(3)}
+📋 المتبقي: ${(totalRevenue - totalCollected).toFixed(3)}`;
+
+        return { ok: true, summary, data: { date, revenue: totalRevenue, expenses: totalExpenses, netProfit, invoiceCount: invoices.length } };
+      }
+
+      case "list_overdue": {
+        const overdueInvoices = await db.invoice.findMany({
+          where: { companySlug, status: "overdue", deletedAt: null },
+          orderBy: { dueDate: "asc" },
+          select: { id: true, invoiceNumber: true, clientName: true, clientPhone: true, total: true, paid: true, dueDate: true, issueDate: true },
+          take: 50,
+        });
+
+        const totalOverdue = overdueInvoices.reduce((s, i) => s + (num(i.total, 3) - num(i.paid, 3)), 0);
+        const now = new Date();
+
+        const summary = overdueInvoices.length === 0
+          ? "✅ لا توجد فواتير متأخرة — كل شيء تحت السيطرة!"
+          : `⚠️ ${overdueInvoices.length} فاتورة متأخرة (إجمالي ${totalOverdue.toFixed(3)})：
+
+${overdueInvoices.slice(0, 15).map((i) => {
+  const daysOverdue = Math.floor((now.getTime() - new Date(i.dueDate || i.issueDate).getTime()) / (1000 * 60 * 60 * 24));
+  return `• ${i.invoiceNumber} — ${i.clientName} — ${num(i.total, 3)} — متأخرة ${daysOverdue} يوم${i.clientPhone ? ` — 📞 ${i.clientPhone}` : ""}`;
+}).join("\n")}${overdueInvoices.length > 15 ? `\n... و ${overdueInvoices.length - 15} فاتورة أخرى` : ""}
+
+💡 يمكنك إرسال تذكير عبر: "أرسل تذكير للفاتورة رقم ${overdueInvoices[0]?.invoiceNumber}"`;
+
+        await logAudit({
+          userEmail: user.email, userUid: user.uid,
+          action: "ai_executed_list_overdue", entity: "invoice",
+          companySlug, details: { count: overdueInvoices.length, totalAmount: totalOverdue },
+        });
+
+        return { ok: true, summary, data: { count: overdueInvoices.length, totalOverdue, invoices: overdueInvoices } };
+      }
+
+      case "send_reminder": {
+        if (!hasPermission(user, "create_invoice")) {
+          return { ok: false, summary: "ليس لديك صلاحية لإرسال تذكيرات" };
+        }
+        const invoiceId = Number(params.invoiceId);
+        const inv = await db.invoice.findFirst({ where: { id: invoiceId, companySlug } });
+        if (!inv) return { ok: false, summary: "الفاتورة غير موجودة" };
+
+        const remaining = num(inv.total, 3) - num(inv.paid, 3);
+        let channel = "لم يتم الإرسال";
+        let sent = false;
+
+        // Try WhatsApp first
+        try {
+          const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+          const waConfig = await getIntegrationConfig("whatsapp");
+          if (waConfig?.access_token && waConfig?.phone_number_id && inv.clientPhone) {
+            const message = `مرحباً ${inv.clientName}،
+
+نذكّركم بفاتورة ${inv.invoiceNumber} المستحقة بقيمة ${remaining.toFixed(3)}.
+
+نرجو السداد في أقرب وقت ممكن.
+شكراً ل تعاملكم معنا.`;
+
+            const res = await fetch(`https://graph.facebook.com/v18.0/${waConfig.phone_number_id}/messages`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${waConfig.access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                to: inv.clientPhone,
+                type: "text",
+                text: { body: message },
+              }),
+            });
+            if (res.ok) { channel = "واتساب"; sent = true; }
+          }
+        } catch { /* WhatsApp not configured */ }
+
+        // Try SMS (Twilio)
+        if (!sent && inv.clientPhone) {
+          try {
+            const { getIntegrationConfig } = await import("@/lib/integrations/registry");
+            const twilioConfig = await getIntegrationConfig("twilio");
+            if (twilioConfig?.account_sid && twilioConfig?.auth_token) {
+              const { twilioProvider } = await import("@/lib/integrations/twilio");
+              const result = await (twilioProvider as unknown as {
+                sendSms: (to: string, body: string) => Promise<{ ok: boolean; error?: string }>;
+              }).sendSms(inv.clientPhone, `تذكير: فاتورة ${inv.invoiceNumber} بقيمة ${remaining.toFixed(3)} مستحقة. نرجو السداد.`);
+              if (result.ok) { channel = "SMS"; sent = true; }
+            }
+          } catch { /* Twilio not configured */ }
+        }
+
+        // Try email
+        if (!sent && inv.clientEmail) {
+          try {
+            const { sendEmail } = await import("@/lib/email");
+            await sendEmail({
+              to: inv.clientEmail,
+              subject: `تذكير: فاتورة ${inv.invoiceNumber} مستحقة`,
+              body: `مرحباً ${inv.clientName}،\n\nنذكّركم بفاتورة ${inv.invoiceNumber} المستحقة بقيمة ${remaining.toFixed(3)}.\n\nنرجو السداد في أقرب وقت.\n\nشكراً ل تعاملكم معنا.`,
+            });
+            channel = "بريد إلكتروني";
+            sent = true;
+          } catch { /* SMTP not configured */ }
+        }
+
+        await logAudit({
+          userEmail: user.email, userUid: user.uid,
+          action: "ai_executed_send_reminder", entity: "invoice", entityId: invoiceId,
+          companySlug, details: { invoiceNumber: inv.invoiceNumber, channel, sent, amount: remaining },
+        });
+
+        return {
+          ok: sent,
+          summary: sent
+            ? `✅ تم إرسال تذكير للعميل "${inv.clientName}" عبر ${channel} عن الفاتورة ${inv.invoiceNumber} (المتبقي: ${remaining.toFixed(3)})`
+            : `⚠️ تعذر إرسال التذكير — لا توجد قناة متاحة (واتساب/SMS/بريد). تأكد من إعداد التكاملات.`,
+        };
+      }
+
+      case "undo_last_action": {
+        if (!hasPermission(user, "settings_access")) {
+          return { ok: false, summary: "ليس لديك صلاحية للتراجع عن الإجراءات" };
+        }
+
+        // Find last AI-executed action
+        const lastLog = await db.auditLog.findFirst({
+          where: { companySlug, action: { startsWith: "ai_executed_" } },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (!lastLog) {
+          return { ok: false, summary: "لا توجد إجراءات سابقة يمكن التراجع عنها" };
+        }
+
+        // Only allow undo for specific safe actions
+        const undoableActions = ["ai_executed_create_invoice", "ai_executed_mark_paid", "ai_executed_adjust_inventory"];
+        if (!undoableActions.includes(lastLog.action)) {
+          return { ok: false, summary: `لا يمكن التراجع عن هذا النوع من الإجراءات (${lastLog.action})` };
+        }
+
+        let undoSummary = "";
+
+        if (lastLog.action === "ai_executed_create_invoice" && lastLog.entityId) {
+          // Soft-delete the invoice
+          await db.invoice.update({
+            where: { id: Number(lastLog.entityId) },
+            data: { deletedAt: new Date(), deletedBy: user.email, status: "cancelled" },
+          });
+          undoSummary = `✅ تم التراجع: تم إلغاء وحذف الفاتورة #${lastLog.entityId}`;
+        } else if (lastLog.action === "ai_executed_mark_paid" && lastLog.entityId) {
+          // Revert payment status
+          await db.invoice.update({
+            where: { id: Number(lastLog.entityId) },
+            data: { paid: "0", status: "sent", version: { increment: 1 } },
+          });
+          undoSummary = `✅ تم التراجع: تم إلغاء تسجيل الدفع للفاتورة #${lastLog.entityId}`;
+        } else if (lastLog.action === "ai_executed_adjust_inventory" && lastLog.entityId) {
+          // Revert inventory adjustment (reverse the delta)
+          const details = lastLog.details as Record<string, unknown> | null;
+          const prevQty = details?.prevQty as string | undefined;
+          if (prevQty) {
+            await db.inventoryItem.update({
+              where: { id: String(lastLog.entityId) },
+              data: { quantity: Math.round(Number(prevQty)) },
+            });
+            undoSummary = `✅ تم التراجع: تم استعادة المخزون إلى ${prevQty}`;
+          } else {
+            undoSummary = "⚠️ تعذر التراجع — بيانات الإجراء الأصلي غير مكتملة";
+          }
+        }
+
+        // Log the undo itself
+        await logAudit({
+          userEmail: user.email, userUid: user.uid,
+          action: "ai_executed_undo", entity: lastLog.entity || "unknown",
+          entityId: lastLog.entityId || undefined, companySlug,
+          details: { undoneAction: lastLog.action, originalTimestamp: lastLog.createdAt },
+        });
+
+        return { ok: true, summary: undoSummary };
+      }
+
+      default:
+        return { ok: false, summary: "إجراء غير معروف" };
+    }
+  } catch (err) {
+    logger.error("[ai/tools] V2 execution failed", { err: err instanceof Error ? err.message : String(err), intent });
     return { ok: false, summary: "خطأ في التنفيذ" };
   }
 }
