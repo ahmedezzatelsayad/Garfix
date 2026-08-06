@@ -96,7 +96,10 @@
     /* Fix 3: Sidebar — grouped with section headers */
     .sidebar { background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%); border-left: 1px solid #1f2937; }
     .nav-group-header { font-size: 0.6875rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.875rem 1rem 0.375rem; }
-    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 1rem; border-radius: 0.5rem; color: #d1d5db; transition: all 0.15s; cursor: pointer; font-size: 0.8125rem; font-weight: 500; }
+    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.5rem; color: #d1d5db; transition: all 0.15s; cursor: pointer; font-size: 0.8125rem; font-weight: 500; min-height: 44px; }
+    /* Fix 14: Ensure nav icons have adequate touch target spacing on tablet */
+    .nav-item span:first-child, .nav-item > *:first-child { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; }
+    @media (max-width: 1024px) { .nav-item { padding: 0.875rem 1rem; min-height: 48px; } }
     .nav-item:hover { background: rgba(31, 41, 55, 0.5); color: #f3f4f6; }
     .nav-item.active { background: linear-gradient(90deg, rgba(4, 120, 87, 0.2) 0%, rgba(4, 120, 87, 0.05) 100%); color: #34d399; box-shadow: inset 3px 0 0 #047857; font-weight: 600; }
 
@@ -130,9 +133,9 @@
 
     .chat-window { position: fixed; bottom: 96px; left: 24px; width: 380px; max-width: calc(100vw - 48px); height: 500px; max-height: calc(100vh - 130px); background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(16px); border: 1px solid #1f2937; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.4); z-index: 100; }
 
-    /* Fix 5: Sparkline with context label */
-    .sparkline-container { display: flex; align-items: end; gap: 1px; height: 28px; }
-    .sparkline-bar { width: 3px; background: #10b981; border-radius: 1px; opacity: 0.5; }
+    /* Fix 5: Sparkline with context label + Fix 16: gridlines for precise reading */
+    .sparkline-container { display: flex; align-items: end; gap: 1px; height: 28px; position: relative; background-image: linear-gradient(to top, transparent 0%, transparent 25%, rgba(55,65,81,0.2) 25%, rgba(55,65,81,0.2) 25.5%, transparent 25.5%, transparent 50%, rgba(55,65,81,0.2) 50%, rgba(55,65,81,0.2) 50.5%, transparent 50.5%, transparent 75%, rgba(55,65,81,0.2) 75%, rgba(55,65,81,0.2) 75.5%, transparent 75.5%); border-bottom: 1px solid rgba(55,65,81,0.3); padding-bottom: 1px; }
+    .sparkline-bar { width: 3px; background: #10b981; border-radius: 1px; opacity: 0.5; position: relative; z-index: 1; }
     .sparkline-bar.peak { opacity: 1; }
     .sparkline-label { font-size: 9px; color: #6b7280; margin-top: 2px; }
 
@@ -447,18 +450,24 @@
     <div class="card p-5">
       <h3 class="font-semibold mb-1">توزيع الفواتير</h3>
       <p class="text-xs text-tertiary mb-4">حسب الحالة</p>
-      <div class="flex items-center gap-4">
+      <!-- Fix 15: Inline labels on donut — saves horizontal space -->
+      <div class="flex flex-col items-center gap-3">
         <div class="donut" style="background: conic-gradient(#10b981 0% 76%, #fbbf24 76% 92%, #6b7280 92% 100%);">
           <div class="donut-center">
             <div class="text-xl font-bold value-text">٨٤٧</div>
             <div class="text-[10px] text-tertiary">إجمالي</div>
           </div>
+          <!-- Inline labels positioned on the donut segments -->
+          <div style="position: absolute; top: 50%; right: -5px; transform: translateY(-50%); background: rgba(17,24,39,0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #34d399; border: 1px solid rgba(52,211,153,0.3);">٧٦٪</div>
+          <div style="position: absolute; top: -2px; left: 30%; background: rgba(17,24,39,0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);">١٦٪</div>
+          <div style="position: absolute; bottom: 0; left: 20%; background: rgba(17,24,39,0.9); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #d1d5db; border: 1px solid rgba(107,114,128,0.3);">٨٪</div>
         </div>
-        <div class="flex-1 space-y-2.5">
-          <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><span class="legend-marker bg-emerald-500"></span><span class="text-secondary">مدفوعة</span></span><span class="font-bold value-text text-sm">٦٤٢</span></div>
-          <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><span class="legend-marker legend-marker-striped bg-amber-400"></span><span class="text-secondary">معلقة</span></span><span class="font-bold value-text text-sm">١٤٠</span></div>
-          <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><span class="legend-marker legend-marker-dotted bg-gray-500"></span><span class="text-secondary">ملغاة</span></span><span class="font-bold value-text text-sm">٦٥</span></div>
+        <div class="flex items-center gap-3 text-xs flex-wrap justify-center">
+          <span class="flex items-center gap-1.5"><span class="legend-marker bg-emerald-500"></span><span class="text-secondary">مدفوعة ٦٤٢</span></span>
+          <span class="flex items-center gap-1.5"><span class="legend-marker legend-marker-striped bg-amber-400"></span><span class="text-secondary">معلقة ١٤٠</span></span>
+          <span class="flex items-center gap-1.5"><span class="legend-marker legend-marker-dotted bg-gray-500"></span><span class="text-secondary">ملغاة ٦٥</span></span>
         </div>
+      </div>
       </div>
     </div>
   </div>
