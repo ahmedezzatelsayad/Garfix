@@ -673,60 +673,78 @@ processPendingDeliveries() ──► HMAC-SHA256 sign payload
 | **Theme** | ThemeProvider, ThemeToggle (Icon/Switch/Segmented) | `src/components/garfix-ds/theme/` |
 | **Integration** | EnhancedDashboard | `src/components/garfix-ds/integration/` |
 
-### Responsive Design — Verified via Playwright (36 screenshots)
+### Responsive Design — Verified via Playwright (54 screenshots)
 
-تم التحقق من استجابة التصميم (responsive design) فعليًا عبر **Playwright** على **12 صفحة × 3 viewports = 36 لقطة شاشة** بدقة retina. كل الصفحات بتستخدم خط **Cairo** موحد.
+تم التحقق من استجابة التصميم (responsive design) فعليًا عبر **Playwright** على **18 صفحة × 3 viewports = 54 لقطة شاشة** بدقة retina. كل الصفحات بتستخدم خط **Cairo** + design system v4.1 (glassmorphism + gradients + micro-interactions).
 
 #### Desktop (1920×1080) — Sidebar ثابت + KPI grids متعددة الأعمدة
 
-| الصفحة | الـ Screenshot |
-|--------|----------------|
-| لوحة التحكم | [`01-dashboard-desktop.png`](download/screenshots/01-dashboard-desktop.png) |
-| الفواتير | [`02-invoices-desktop.png`](download/screenshots/02-invoices-desktop.png) |
-| العملاء | [`03-clients-desktop.png`](download/screenshots/03-clients-desktop.png) |
-| المخزون | [`04-inventory-desktop.png`](download/screenshots/04-inventory-desktop.png) |
-| المحاسبة | [`05-accounting-desktop.png`](download/screenshots/05-accounting-desktop.png) |
-| الاشتراك والفوترة | [`06-billing-desktop.png`](download/screenshots/06-billing-desktop.png) |
-| الأدوار والصلاحيات | [`07-roles-desktop.png`](download/screenshots/07-roles-desktop.png) |
-| وكلاء AI | [`08-ai-agents-desktop.png`](download/screenshots/08-ai-agents-desktop.png) |
-| الأتمتة | [`09-automation-desktop.png`](download/screenshots/09-automation-desktop.png) |
-| التقارير | [`10-reports-desktop.png`](download/screenshots/10-reports-desktop.png) |
-| لوحة المؤسس | [`11-founder-panel-desktop.png`](download/screenshots/11-founder-panel-desktop.png) |
-| الموارد البشرية | [`12-hr-desktop.png`](download/screenshots/12-hr-desktop.png) |
+| # | الصفحة | الـ Screenshot |
+|---|--------|----------------|
+| 1 | لوحة التحكم | [`01-dashboard-desktop.png`](download/screenshots/01-dashboard-desktop.png) |
+| 2 | الفواتير | [`02-invoices-desktop.png`](download/screenshots/02-invoices-desktop.png) |
+| 3 | تفاصيل الفاتورة (صفحة داخلية) | [`03-invoice-detail-desktop.png`](download/screenshots/03-invoice-detail-desktop.png) |
+| 4 | الإدخال المجمع بالـ AI | [`04-bulk-input-desktop.png`](download/screenshots/04-bulk-input-desktop.png) |
+| 5 | العملاء | [`05-clients-desktop.png`](download/screenshots/05-clients-desktop.png) |
+| 6 | ملف العميل (صفحة داخلية) | [`06-client-profile-desktop.png`](download/screenshots/06-client-profile-desktop.png) |
+| 7 | المخزون | [`07-inventory-desktop.png`](download/screenshots/07-inventory-desktop.png) |
+| 8 | المحاسبة | [`08-accounting-desktop.png`](download/screenshots/08-accounting-desktop.png) |
+| 9 | الاشتراك والفوترة | [`09-billing-desktop.png`](download/screenshots/09-billing-desktop.png) |
+| 10 | الأدوار والصلاحيات | [`10-roles-desktop.png`](download/screenshots/10-roles-desktop.png) |
+| 11 | وكلاء AI | [`11-ai-agents-desktop.png`](download/screenshots/11-ai-agents-desktop.png) |
+| 12 | الأتمتة | [`12-automation-desktop.png`](download/screenshots/12-automation-desktop.png) |
+| 13 | التقارير | [`13-reports-desktop.png`](download/screenshots/13-reports-desktop.png) |
+| 14 | قوالب الفواتير | [`14-templates-desktop.png`](download/screenshots/14-templates-desktop.png) |
+| 15 | معاينة الطباعة | [`15-print-preview-desktop.png`](download/screenshots/15-print-preview-desktop.png) |
+| 16 | لوحة المؤسس | [`16-founder-panel-desktop.png`](download/screenshots/16-founder-panel-desktop.png) |
+| 17 | الموارد البشرية | [`17-hr-desktop.png`](download/screenshots/17-hr-desktop.png) |
+| 18 | الإعدادات | [`18-settings-desktop.png`](download/screenshots/18-settings-desktop.png) |
 
 #### Tablet (768×1024 — iPad Portrait) — Sidebar ثابت + grids متوسطة
 
-| الصفحة | الـ Screenshot |
-|--------|----------------|
-| لوحة التحكم | [`01-dashboard-tablet.png`](download/screenshots/01-dashboard-tablet.png) |
-| الفواتير | [`02-invoices-tablet.png`](download/screenshots/02-invoices-tablet.png) |
-| العملاء | [`03-clients-tablet.png`](download/screenshots/03-clients-tablet.png) |
-| المخزون | [`04-inventory-tablet.png`](download/screenshots/04-inventory-tablet.png) |
-| المحاسبة | [`05-accounting-tablet.png`](download/screenshots/05-accounting-tablet.png) |
-| الاشتراك والفوترة | [`06-billing-tablet.png`](download/screenshots/06-billing-tablet.png) |
-| الأدوار والصلاحيات | [`07-roles-tablet.png`](download/screenshots/07-roles-tablet.png) |
-| وكلاء AI | [`08-ai-agents-tablet.png`](download/screenshots/08-ai-agents-tablet.png) |
-| الأتمتة | [`09-automation-tablet.png`](download/screenshots/09-automation-tablet.png) |
-| التقارير | [`10-reports-tablet.png`](download/screenshots/10-reports-tablet.png) |
-| لوحة المؤسس | [`11-founder-panel-tablet.png`](download/screenshots/11-founder-panel-tablet.png) |
-| الموارد البشرية | [`12-hr-tablet.png`](download/screenshots/12-hr-tablet.png) |
+| # | الصفحة | الـ Screenshot |
+|---|--------|----------------|
+| 1 | لوحة التحكم | [`01-dashboard-tablet.png`](download/screenshots/01-dashboard-tablet.png) |
+| 2 | الفواتير | [`02-invoices-tablet.png`](download/screenshots/02-invoices-tablet.png) |
+| 3 | تفاصيل الفاتورة | [`03-invoice-detail-tablet.png`](download/screenshots/03-invoice-detail-tablet.png) |
+| 4 | الإدخال المجمع | [`04-bulk-input-tablet.png`](download/screenshots/04-bulk-input-tablet.png) |
+| 5 | العملاء | [`05-clients-tablet.png`](download/screenshots/05-clients-tablet.png) |
+| 6 | ملف العميل | [`06-client-profile-tablet.png`](download/screenshots/06-client-profile-tablet.png) |
+| 7 | المخزون | [`07-inventory-tablet.png`](download/screenshots/07-inventory-tablet.png) |
+| 8 | المحاسبة | [`08-accounting-tablet.png`](download/screenshots/08-accounting-tablet.png) |
+| 9 | الاشتراك والفوترة | [`09-billing-tablet.png`](download/screenshots/09-billing-tablet.png) |
+| 10 | الأدوار والصلاحيات | [`10-roles-tablet.png`](download/screenshots/10-roles-tablet.png) |
+| 11 | وكلاء AI | [`11-ai-agents-tablet.png`](download/screenshots/11-ai-agents-tablet.png) |
+| 12 | الأتمتة | [`12-automation-tablet.png`](download/screenshots/12-automation-tablet.png) |
+| 13 | التقارير | [`13-reports-tablet.png`](download/screenshots/13-reports-tablet.png) |
+| 14 | قوالب الفواتير | [`14-templates-tablet.png`](download/screenshots/14-templates-tablet.png) |
+| 15 | معاينة الطباعة | [`15-print-preview-tablet.png`](download/screenshots/15-print-preview-tablet.png) |
+| 16 | لوحة المؤسس | [`16-founder-panel-tablet.png`](download/screenshots/16-founder-panel-tablet.png) |
+| 17 | الموارد البشرية | [`17-hr-tablet.png`](download/screenshots/17-hr-tablet.png) |
+| 18 | الإعدادات | [`18-settings-tablet.png`](download/screenshots/18-settings-tablet.png) |
 
-#### Mobile (390×844 — iPhone 14) — Off-canvas drawer + table→card pattern
+#### Mobile (390×844 — iPhone 14) — Off-canvas drawer + table→card + AI bubble
 
-| الصفحة | الـ Screenshot |
-|--------|----------------|
-| لوحة التحكم | [`01-dashboard-mobile.png`](download/screenshots/01-dashboard-mobile.png) |
-| الفواتير | [`02-invoices-mobile.png`](download/screenshots/02-invoices-mobile.png) |
-| العملاء | [`03-clients-mobile.png`](download/screenshots/03-clients-mobile.png) |
-| المخزون | [`04-inventory-mobile.png`](download/screenshots/04-inventory-mobile.png) |
-| المحاسبة | [`05-accounting-mobile.png`](download/screenshots/05-accounting-mobile.png) |
-| الاشتراك والفوترة | [`06-billing-mobile.png`](download/screenshots/06-billing-mobile.png) |
-| الأدوار والصلاحيات | [`07-roles-mobile.png`](download/screenshots/07-roles-mobile.png) |
-| وكلاء AI | [`08-ai-agents-mobile.png`](download/screenshots/08-ai-agents-mobile.png) |
-| الأتمتة | [`09-automation-mobile.png`](download/screenshots/09-automation-mobile.png) |
-| التقارير | [`10-reports-mobile.png`](download/screenshots/10-reports-mobile.png) |
-| لوحة المؤسس | [`11-founder-panel-mobile.png`](download/screenshots/11-founder-panel-mobile.png) |
-| الموارد البشرية | [`12-hr-mobile.png`](download/screenshots/12-hr-mobile.png) |
+| # | الصفحة | الـ Screenshot |
+|---|--------|----------------|
+| 1 | لوحة التحكم | [`01-dashboard-mobile.png`](download/screenshots/01-dashboard-mobile.png) |
+| 2 | الفواتير | [`02-invoices-mobile.png`](download/screenshots/02-invoices-mobile.png) |
+| 3 | تفاصيل الفاتورة | [`03-invoice-detail-mobile.png`](download/screenshots/03-invoice-detail-mobile.png) |
+| 4 | الإدخال المجمع | [`04-bulk-input-mobile.png`](download/screenshots/04-bulk-input-mobile.png) |
+| 5 | العملاء | [`05-clients-mobile.png`](download/screenshots/05-clients-mobile.png) |
+| 6 | ملف العميل | [`06-client-profile-mobile.png`](download/screenshots/06-client-profile-mobile.png) |
+| 7 | المخزون | [`07-inventory-mobile.png`](download/screenshots/07-inventory-mobile.png) |
+| 8 | المحاسبة | [`08-accounting-mobile.png`](download/screenshots/08-accounting-mobile.png) |
+| 9 | الاشتراك والفوترة | [`09-billing-mobile.png`](download/screenshots/09-billing-mobile.png) |
+| 10 | الأدوار والصلاحيات | [`10-roles-mobile.png`](download/screenshots/10-roles-mobile.png) |
+| 11 | وكلاء AI | [`11-ai-agents-mobile.png`](download/screenshots/11-ai-agents-mobile.png) |
+| 12 | الأتمتة | [`12-automation-mobile.png`](download/screenshots/12-automation-mobile.png) |
+| 13 | التقارير | [`13-reports-mobile.png`](download/screenshots/13-reports-mobile.png) |
+| 14 | قوالب الفواتير | [`14-templates-mobile.png`](download/screenshots/14-templates-mobile.png) |
+| 15 | معاينة الطباعة | [`15-print-preview-mobile.png`](download/screenshots/15-print-preview-mobile.png) |
+| 16 | لوحة المؤسس | [`16-founder-panel-mobile.png`](download/screenshots/16-founder-panel-mobile.png) |
+| 17 | الموارد البشرية | [`17-hr-mobile.png`](download/screenshots/17-hr-mobile.png) |
+| 18 | الإعدادات | [`18-settings-mobile.png`](download/screenshots/18-settings-mobile.png) |
 
 <div dir="rtl">
 
@@ -737,6 +755,10 @@ processPendingDeliveries() ──► HMAC-SHA256 sign payload
 - ✅ **RTL كامل**: الـ sidebar بيفتح من اليمين، النص عربي، التواريخ هجرية
 - ✅ **Dark-first design**: الوضع الليلي هو الافتراضي، مع دعم الوضع النهاري
 - ✅ **خط Cairo موحد** عبر كل الصفحات (Arabic + Latin, 300-900 weights)
+- ✅ **AI Copilot Bubble** ظاهر على كل الصفحات (floating button + chat window)
+- ✅ **Glassmorphism + gradients** في الـ cards والـ KPIs (design system v4.1)
+- ✅ **Sparkline charts** في الـ KPI cards للاتجاهات السريعة
+- ✅ **Micro-interactions**: hover lift, active-press, focus ring, pulse glow
 - ✅ **0 TypeScript errors** في ملفات الـ UI
 
 </div>
@@ -793,8 +815,8 @@ function Dashboard() {
 | `src/app/layout.tsx` | Cairo font loader (next/font/google) |
 | `src/components/garfix-ds/index.ts` | Public API — export all components |
 | `src/components/garfix-ds/theme/GarfixThemeProvider.tsx` | Dark/light mode context + persistence |
-| `download/screenshots/all-pages-preview.html` | Standalone HTML preview of all 12 pages (Cairo font) |
-| `scripts/screenshot-capture.ts` | Playwright script — captures 36 screenshots (12 pages × 3 viewports) |
+| `download/screenshots/all-pages-preview.html` | Standalone HTML preview of all 18 pages (Cairo font + AI bubble + glassmorphism) |
+| `scripts/screenshot-capture.ts` | Playwright script — captures 54 screenshots (18 pages × 3 viewports), resume mode |
 
 ---
 
