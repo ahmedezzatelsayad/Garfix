@@ -140,3 +140,64 @@ export function useAIFabric() {
     staleTime: 30_000,
   });
 }
+
+// ─── useEInvoicingDashboard ────────────────────────────────────────────────
+
+/**
+ * Fetch founder-panel e-invoicing dashboard data.
+ *
+ * Returns aggregate stats (companies configured/pending by country),
+ * per-company status list, and recent inbound webhook receipts.
+ */
+export interface EInvoicingCompanyStatus {
+  id: string;
+  slug: string;
+  name: string;
+  nameAr: string | null;
+  country: string;
+  countryName: string;
+  authority: string;
+  integrationType: string | null;
+  isConfigured: boolean;
+  lastUpdatedAt: string | null;
+  vatNumber: string | null;
+  emoji: string | null;
+  plan: string;
+  subscriptionStatus: string;
+}
+
+export interface EInvoicingReceipt {
+  id: string;
+  companySlug: string;
+  invoiceId: number | null;
+  authority: string;
+  eventType: string;
+  externalUuid: string | null;
+  status: string;
+  rejectionReason: string | null;
+  signatureValid: boolean | null;
+  receivedAt: string;
+}
+
+export interface EInvoicingDashboardData {
+  ok: boolean;
+  stats: {
+    totalCompanies: number;
+    configured: number;
+    pending: number;
+    unsupported: number;
+    receiptsLast7d: number;
+  };
+  byCountry: Record<string, { total: number; configured: number; pending: number }>;
+  perCompany: EInvoicingCompanyStatus[];
+  recentReceipts: EInvoicingReceipt[];
+  availableIntegrations: { type: string; name: string }[];
+}
+
+export function useEInvoicingDashboard() {
+  return useQuery<EInvoicingDashboardData, ApiError>({
+    queryKey: queryKeys.founderPanel.eInvoicing(),
+    queryFn: () => apiGet<EInvoicingDashboardData>("/api/founder-panel/e-invoicing"),
+    staleTime: 30_000,
+  });
+}
