@@ -12,6 +12,8 @@ import { requirePermission } from "@/lib/middleware";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { DEFAULT_PLANS } from "@/lib/plans";
+import { getCountryConfig } from "@/lib/gulfConfig";
+import { getAccountTemplate } from "@/lib/accountTemplates";
 import { logger } from "@/lib/logger";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
@@ -225,6 +227,79 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     logger.info("[companies] Ready for: Chat, Invoice, Parse, Memory keys");
   } catch (aiConfigError) {
     logger.error("[companies] Failed to auto-create AI config slot", { err: aiConfigError instanceof Error ? aiConfigError.message : String(aiConfigError) });
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // 🏗️ SELF-ONBOARDING: Auto-seed defaults for new company
+  // 1. Country-specific tax config (VAT rate, currency, decimal places)
+  // 2. Default chart of accounts (cash, bank, sales, purchases, etc.)
+  // 3. Default invoice template
+  // ────────────────────────────────────────────────────────────────────────
+
+  // 1. Apply country-specific tax config
+  const countryConfig = data.country ? getCountryConfig(data.country) : null;
+  if (countryConfig) {
+    try {
+      await db.company.update({
+        where: { id: company.id },
+        data: {
+          defaultTaxRate: countryConfig.defaultTaxRate,
+          currency: countryConfig.currency,
+          currencyDecimalPlaces: countryConfig.currencyDecimalPlaces,
+        },
+      });
+      logger.info("[companies] country config applied", { companyId: company.id, country: data.country, vatRate: countryConfig.vatRate });
+    } catch (configErr) {
+      logger.warn("[companies] failed to apply country config", { err: configErr instanceof Error ? configErr.message : String(configErr) });
+    }
+  }
+
+  // 2. Auto-seed default chart of accounts (trading template — most general)
+  try {
+    const template = getAccountTemplate("trading");
+    const existingAccounts = await db.account.count({ where: { companySlug: slug } });
+    if (existingAccounts === 0) {
+      await db.account.createMany({
+        data: template.map((a) => ({
+          companyId: company.id,
+          companySlug: slug,
+          code: a.code,
+          name: a.nameAr ?? a.nameEn,
+          nameAr: a.nameAr,
+          nameEn: a.nameEn,
+          type: a.type,
+          balance: a.balance || "0",
+        })),
+      });
+      logger.info("[companies] default chart of accounts seeded", { companyId: company.id, accountsCount: template.length });
+    }
+  } catch (accountsErr) {
+    logger.warn("[companies] failed to seed default accounts", { err: accountsErr instanceof Error ? accountsErr.message : String(accountsErr) });
+  }
+
+  // 3. Auto-create default invoice template
+  try {
+    const existingTemplate = await db.invoiceTemplate.count({ where: { companySlug: slug } });
+    if (existingTemplate === 0) {
+      await db.invoiceTemplate.create({
+        data: {
+          companySlug: slug,
+          name: "القالب الافتراضي",
+          layoutType: "modern",
+          primaryColor: "#047857",
+          fontFamily: "Cairo",
+          logoPosition: "right",
+          showTaxNumber: true,
+          showQrCode: countryConfig?.eInvoiceAuthority === "zatca" || false,
+          showBankDetails: false,
+          paperSize: "A4",
+          isDefault: true,
+        },
+      });
+      logger.info("[companies] default invoice template created", { companyId: company.id, companySlug: slug });
+    }
+  } catch (templateErr) {
+    logger.warn("[companies] failed to create default invoice template", { err: templateErr instanceof Error ? templateErr.message : String(templateErr) });
   }
 
   // Auto-assign the new company to the creator AND promote them to admin if

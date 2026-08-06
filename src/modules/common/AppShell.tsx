@@ -39,6 +39,7 @@ import {
 // existing component. We keep OnboardingScreen around as a fallback if
 // SetupWizard itself errors out (defensive ErrorBoundary inside the wizard).
 import { SetupWizard } from "@/modules/onboarding/SetupWizard";
+import { OnboardingTour } from "@/modules/common/OnboardingTour";
 
 // ════════════════════════════════════════════════════════════════════
 // LAZY-LOADED VIEWS — Code Splitting Optimization
@@ -414,6 +415,7 @@ export default function AppShell() {
         </div>
 
         <AICopilotBubble />
+        <OnboardingTour />
       </div>
     </CommandPaletteProvider>
   );
