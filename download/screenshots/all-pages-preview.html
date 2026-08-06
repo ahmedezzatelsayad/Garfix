@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GarfiX EOS — All Pages Preview (Cairo Font + DS v4.1)</title>
+  <title>GarfiX EOS — All Pages Preview (Cairo + DS v5.0 — 10/10)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,36 +11,35 @@
   <script>
     tailwind.config = {
       darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            primary: { DEFAULT: '#047857', foreground: '#ffffff', light: '#059669', dark: '#065f46' },
-            gold: { DEFAULT: '#d4a574', foreground: '#0b1220', light: '#e0b88a', muted: 'rgba(212, 165, 116, 0.15)' },
-            background: { DEFAULT: '#0b1220' },
-            surface: { DEFAULT: '#111827' },
-            elevated: { DEFAULT: '#1f2937' },
-          },
-          fontFamily: { sans: ['Cairo', 'sans-serif'] },
-          animation: {
-            'fade-in': 'fadeIn 0.3s ease-out',
-            'slide-up': 'slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            'shimmer': 'shimmer 2s linear infinite',
-          },
-          keyframes: {
-            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-            slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
-            shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
-          },
-        }
-      }
+      theme: { extend: {
+        colors: {
+          primary: { DEFAULT: '#047857', foreground: '#ffffff', light: '#059669', dark: '#065f46' },
+          gold: { DEFAULT: '#d4a574', foreground: '#0b1220', light: '#e0b88a' },
+          background: { DEFAULT: '#0b1220' },
+          surface: { DEFAULT: '#111827' },
+          elevated: { DEFAULT: '#1f2937' },
+        },
+        fontFamily: { sans: ['Cairo', 'sans-serif'] },
+      }}
     }
   </script>
   <style>
     * { font-family: 'Cairo', sans-serif !important; }
     body { background: #0b1220; color: #e5e7eb; }
 
-    /* ── DESIGN IMPROVEMENTS (v4.1) ── */
-    /* 1. Glassmorphism cards */
+    /* ── DESIGN v5.0 — 10/10 fixes ── */
+
+    /* Fix 2: Contrast — WCAG AA compliant text colors */
+    .text-secondary { color: #d1d5db !important; } /* was #9ca3af — now AA on #0b1220 */
+    .text-tertiary { color: #9ca3af !important; }
+    .text-muted { color: #6b7280 !important; }
+
+    /* Fix 8: Typography — better weight contrast */
+    .label-text { font-weight: 400; color: #9ca3af; font-size: 0.8125rem; }
+    .value-text { font-weight: 800; color: #f3f4f6; }
+    .meta-text { font-weight: 500; color: #d1d5db; font-size: 0.75rem; }
+
+    /* Cards with glassmorphism */
     .card {
       background: rgba(17, 24, 39, 0.7);
       backdrop-filter: blur(12px);
@@ -50,12 +49,12 @@
     }
     .card:hover { border-color: rgba(4, 120, 87, 0.3); transform: translateY(-1px); }
 
-    /* 2. Gradient KPI cards with shimmer */
+    /* KPI cards with top accent + better contrast */
     .kpi-card {
       background: linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(31, 41, 55, 0.7) 100%);
       border: 1px solid rgba(55, 65, 81, 0.5);
       border-radius: 1rem;
-      padding: 1.5rem;
+      padding: 1.25rem;
       position: relative;
       overflow: hidden;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -66,85 +65,107 @@
       top: 0; left: 0; right: 0;
       height: 3px;
       background: linear-gradient(90deg, #047857, #059669, #047857);
-      opacity: 0.8;
     }
     .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(4, 120, 87, 0.15); }
-
     .kpi-card-gold {
       background: linear-gradient(135deg, rgba(212, 165, 116, 0.12) 0%, rgba(212, 165, 116, 0.04) 100%);
       border: 1px solid rgba(212, 165, 116, 0.3);
     }
     .kpi-card-gold::before { background: linear-gradient(90deg, #d4a574, #e0b88a, #d4a574); }
 
-    /* 3. Enhanced badges with subtle glow */
-    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em; }
-    .badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.15); }
-    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.15); }
-    .badge-gold { background: rgba(212, 165, 116, 0.15); color: #d4a574; box-shadow: 0 0 8px rgba(212, 165, 116, 0.15); }
-    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.15); }
-    .badge-info { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    /* Fix 1: Badges with better contrast — AA compliant */
+    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; } /* brighter green for AA */
+    .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; } /* brighter amber */
+    .badge-gold { background: rgba(212, 165, 116, 0.2); color: #e0b88a; }
+    .badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .badge-info { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .badge-neutral { background: rgba(107, 114, 128, 0.2); color: #d1d5db; } /* Fix: "finished/expired" = neutral, not brown */
 
-    /* 4. Button system with active-press */
-    .btn-primary { background: linear-gradient(135deg, #047857 0%, #059669 100%); color: white; padding: 0.625rem 1.25rem; border-radius: 0.625rem; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(4, 120, 87, 0.25); }
+    /* Buttons */
+    .btn-primary { background: linear-gradient(135deg, #047857 0%, #059669 100%); color: white; padding: 0.625rem 1.25rem; border-radius: 0.625rem; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.15s; box-shadow: 0 2px 8px rgba(4, 120, 87, 0.25); }
     .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4, 120, 87, 0.35); }
     .btn-primary:active { transform: translateY(0); }
+    .btn-gold { background: linear-gradient(135deg, #d4a574 0%, #e0b88a 100%); color: #0b1220; padding: 0.625rem 1.25rem; border-radius: 0.625rem; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-ghost { background: rgba(31, 41, 55, 0.4); color: #d1d5db; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: all 0.15s; }
+    .btn-ghost:hover { background: rgba(55, 65, 81, 0.6); color: #f3f4f6; }
+    /* Fix 4: All plan CTAs are consistent — no more "ghost" on side cards */
+    .btn-outline { background: transparent; color: #34d399; padding: 0.625rem 1.25rem; border-radius: 0.625rem; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1.5px solid rgba(4, 120, 87, 0.5); transition: all 0.15s; }
+    .btn-outline:hover { background: rgba(4, 120, 87, 0.1); border-color: #047857; }
 
-    .btn-gold { background: linear-gradient(135deg, #d4a574 0%, #e0b88a 100%); color: #0b1220; padding: 0.625rem 1.25rem; border-radius: 0.625rem; font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 8px rgba(212, 165, 116, 0.25); }
-
-    .btn-ghost { background: rgba(31, 41, 55, 0.4); color: #9ca3af; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: all 0.15s; }
-    .btn-ghost:hover { background: rgba(55, 65, 81, 0.6); color: #e5e7eb; }
-
-    .btn-danger { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; }
-
-    /* 5. Sidebar with active glow */
+    /* Fix 3: Sidebar — grouped with section headers */
     .sidebar { background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%); border-left: 1px solid #1f2937; }
-    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.5rem; color: #9ca3af; transition: all 0.15s; cursor: pointer; }
-    .nav-item:hover { background: rgba(31, 41, 55, 0.5); color: #e5e7eb; }
-    .nav-item.active { background: linear-gradient(90deg, rgba(4, 120, 87, 0.2) 0%, rgba(4, 120, 87, 0.05) 100%); color: #10b981; box-shadow: inset 3px 0 0 #047857; }
+    .nav-group-header { font-size: 0.6875rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.875rem 1rem 0.375rem; }
+    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 1rem; border-radius: 0.5rem; color: #d1d5db; transition: all 0.15s; cursor: pointer; font-size: 0.8125rem; font-weight: 500; }
+    .nav-item:hover { background: rgba(31, 41, 55, 0.5); color: #f3f4f6; }
+    .nav-item.active { background: linear-gradient(90deg, rgba(4, 120, 87, 0.2) 0%, rgba(4, 120, 87, 0.05) 100%); color: #34d399; box-shadow: inset 3px 0 0 #047857; font-weight: 600; }
 
-    /* 6. Touch targets (iOS HIG 44px) */
     .touch-target { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 
-    /* 7. Tables */
+    /* Fix 7: Tables — hover + clickable rows */
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: right; padding: 0.875rem 1rem; font-size: 0.75rem; font-weight: 600; color: #9ca3af; border-bottom: 1px solid #1f2937; text-transform: uppercase; letter-spacing: 0.05em; }
-    td { padding: 1rem; border-bottom: 1px solid #1f2937; }
-    tbody tr { transition: background 0.15s; }
-    tbody tr:hover { background: rgba(31, 41, 55, 0.3); }
+    th { text-align: right; padding: 0.875rem 1rem; font-size: 0.6875rem; font-weight: 700; color: #9ca3af; border-bottom: 1px solid #1f2937; text-transform: uppercase; letter-spacing: 0.06em; }
+    td { padding: 0.875rem 1rem; border-bottom: 1px solid #1f2937; }
+    tbody tr { transition: background 0.15s; cursor: pointer; }
+    tbody tr:hover { background: rgba(4, 120, 87, 0.08); }
 
-    /* 8. Inputs */
-    .input-field { width: 100%; padding: 0.625rem 0.875rem; background: rgba(11, 18, 32, 0.6); border: 1px solid #1f2937; border-radius: 0.5rem; color: #e5e7eb; transition: all 0.15s; }
+    .input-field { width: 100%; padding: 0.625rem 0.875rem; background: rgba(11, 18, 32, 0.6); border: 1px solid #1f2937; border-radius: 0.5rem; color: #f3f4f6; transition: all 0.15s; font-size: 0.875rem; }
     .input-field:focus { outline: none; border-color: #047857; box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.15); }
+    .input-field::placeholder { color: #6b7280; }
 
-    /* 9. Page navigation */
     .page-section { display: none; }
     .page-section.active { display: block; animation: fadeIn 0.3s ease-out; }
     .page-nav { position: fixed; top: 10px; left: 10px; z-index: 999; background: rgba(31, 41, 55, 0.95); backdrop-filter: blur(12px); padding: 8px; border-radius: 12px; border: 1px solid #374151; max-height: 90vh; overflow-y: auto; }
-    .page-nav button { display: block; width: 100%; text-align: right; padding: 6px 12px; border-radius: 6px; color: #9ca3af; font-size: 12px; transition: all 0.15s; }
+    .page-nav button { display: block; width: 100%; text-align: right; padding: 5px 10px; border-radius: 6px; color: #d1d5db; font-size: 11px; transition: all 0.15s; }
     .page-nav button:hover { background: rgba(55, 65, 81, 0.8); color: white; }
     .page-nav button.active { background: linear-gradient(90deg, #047857, #059669); color: white; }
 
-    /* 10. AI Copilot Bubble */
+    /* Fix 6: AI Bubble — pulse + tooltip label */
     .ai-bubble { position: fixed; bottom: 24px; left: 24px; z-index: 100; }
-    .ai-bubble-button { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #047857 0%, #059669 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(4, 120, 87, 0.4); cursor: pointer; transition: all 0.2s; animation: pulse-glow 2s ease-in-out infinite; }
-    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 8px 24px rgba(4, 120, 87, 0.4); } 50% { box-shadow: 0 8px 32px rgba(4, 120, 87, 0.6); } }
+    .ai-bubble-button { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #047857 0%, #059669 100%); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(4, 120, 87, 0.4); cursor: pointer; transition: all 0.2s; position: relative; }
+    .ai-bubble-button::after { content: 'مساعد ذكي'; position: absolute; left: 65px; background: #1f2937; color: #f3f4f6; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; opacity: 0; transform: translateX(-8px); transition: all 0.2s; pointer-events: none; border: 1px solid #374151; }
+    .ai-bubble-button:hover::after { opacity: 1; transform: translateX(0); }
+    .ai-bubble-button::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: rgba(4, 120, 87, 0.3); animation: pulse-ring 2s ease-out infinite; }
+    @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.4); opacity: 0; } }
 
-    /* 11. Chat window */
     .chat-window { position: fixed; bottom: 96px; left: 24px; width: 380px; max-width: calc(100vw - 48px); height: 500px; max-height: calc(100vh - 130px); background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(16px); border: 1px solid #1f2937; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.4); z-index: 100; }
 
-    /* 12. Sparkline */
-    .sparkline { display: inline-flex; gap: 1px; align-items: flex-end; height: 24px; }
-    .sparkline-bar { width: 3px; background: #10b981; border-radius: 1px; opacity: 0.6; }
+    /* Fix 5: Sparkline with context label */
+    .sparkline-container { display: flex; align-items: end; gap: 1px; height: 28px; }
+    .sparkline-bar { width: 3px; background: #10b981; border-radius: 1px; opacity: 0.5; }
     .sparkline-bar.peak { opacity: 1; }
+    .sparkline-label { font-size: 9px; color: #6b7280; margin-top: 2px; }
 
-    /* 13. Tabs */
-    .tab { padding: 0.625rem 1rem; border-radius: 0.5rem; color: #9ca3af; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-    .tab.active { background: rgba(4, 120, 87, 0.15); color: #10b981; }
-    .tab:hover:not(.active) { background: rgba(31, 41, 55, 0.5); color: #e5e7eb; }
+    /* Fix 1: Chart with Y-axis + data labels + gridlines */
+    .chart-container { position: relative; height: 200px; }
+    .chart-grid { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+    .chart-grid-line { border-top: 1px dashed rgba(55, 65, 81, 0.4); height: 0; }
+    .chart-y-labels { position: absolute; right: -40px; top: 0; bottom: 20px; display: flex; flex-direction: column; justify-content: space-between; font-size: 10px; color: #6b7280; }
+    .chart-bars { position: absolute; bottom: 20px; left: 0; right: 0; display: flex; align-items: end; gap: 4px; padding: 0 4px; }
+    .chart-bar { flex: 1; background: linear-gradient(180deg, #059669 0%, #047857 100%); border-radius: 4px 4px 0 0; position: relative; transition: all 0.2s; cursor: pointer; min-height: 4px; }
+    .chart-bar:hover { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
+    .chart-bar-label { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 600; color: #d1d5db; white-space: nowrap; }
+    .chart-x-labels { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around; font-size: 9px; color: #6b7280; }
 
-    /* 14. Status indicator */
+    /* Fix 5: Donut chart for distribution */
+    .donut { width: 120px; height: 120px; border-radius: 50%; position: relative; }
+    .donut-center { position: absolute; inset: 15px; background: #111827; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+    /* Fix 9: Empty state */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: #6b7280; }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+
+    /* Tabs */
+    .tab { padding: 0.5rem 0.875rem; border-radius: 0.5rem; color: #9ca3af; font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .tab.active { background: rgba(4, 120, 87, 0.15); color: #34d399; }
+    .tab:hover:not(.active) { background: rgba(31, 41, 55, 0.5); color: #d1d5db; }
+
+    /* Status dot */
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; }
-    .status-dot.online { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+    .status-dot.online { background: #34d399; box-shadow: 0 0 6px rgba(52, 211, 153, 0.6); }
+
+    /* Fix 4: Trust signals */
+    .trust-badge { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.875rem; background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(55, 65, 81, 0.5); border-radius: 0.5rem; font-size: 0.75rem; color: #d1d5db; }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -180,12 +201,12 @@
   <button onclick="showPage('settings')">⚙️ الإعدادات</button>
 </div>
 
-<!-- AI Copilot Bubble (visible on all pages) -->
+<!-- AI Copilot Bubble -->
 <div class="ai-bubble" id="aiBubble">
   <button class="ai-bubble-button" onclick="toggleChat()">🤖</button>
 </div>
 
-<!-- AI Chat Window (hidden by default) -->
+<!-- AI Chat Window -->
 <div class="chat-window" id="chatWindow" style="display:none;">
   <div class="flex items-center justify-between p-4 border-b border-elevated">
     <div class="flex items-center gap-2">
@@ -211,10 +232,10 @@
       <div class="bg-elevated rounded-2xl rounded-tr-sm p-3 text-sm max-w-[80%]">
         <div class="mb-2">تم إنشاء فاتورة مبدئية:</div>
         <div class="bg-background rounded-lg p-2 text-xs space-y-1">
-          <div class="flex justify-between"><span class="text-gray-400">العميل:</span><span>شركة الأمل التجارية</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">المبلغ:</span><span class="font-bold">٣٬٥٠٠ ر.س</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">ضريبة القيمة المضافة:</span><span>٥٢٥ ر.س</span></div>
-          <div class="flex justify-between border-t border-elevated pt-1 mt-1"><span class="text-gray-400">الإجمالي:</span><span class="font-bold text-gold">٤٬٠٢٥ ر.س</span></div>
+          <div class="flex justify-between"><span class="text-tertiary">العميل:</span><span>شركة الأمل التجارية</span></div>
+          <div class="flex justify-between"><span class="text-tertiary">المبلغ:</span><span class="font-bold">٣٬٥٠٠ ر.س</span></div>
+          <div class="flex justify-between"><span class="text-tertiary">ضريبة القيمة المضافة:</span><span>٥٢٥ ر.س</span></div>
+          <div class="flex justify-between border-t border-elevated pt-1 mt-1"><span class="text-tertiary">الإجمالي:</span><span class="font-bold text-gold">٤٬٠٢٥ ر.س</span></div>
         </div>
         <div class="flex gap-2 mt-2">
           <button class="btn-primary text-xs px-3 py-1">✓ تأكيد</button>
@@ -236,9 +257,7 @@
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════════════ -->
-<!-- SHARED SIDEBAR + TOPBAR -->
-<!-- ════════════════════════════════════════════════════════════ -->
+<!-- ═══════ SHARED TOPBAR ═══════ -->
 <header class="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-elevated">
   <div class="flex items-center justify-between p-4 pr-32">
     <div class="flex items-center gap-3">
@@ -247,14 +266,14 @@
         <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg">G</div>
         <div>
           <div class="font-bold text-base leading-none">GarfiX EOS</div>
-          <div class="text-[10px] text-gray-500 leading-none mt-0.5">v12.1</div>
+          <div class="text-[10px] text-muted leading-none mt-0.5">v12.1</div>
         </div>
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <div class="hidden md:flex items-center gap-2 bg-elevated/50 rounded-lg px-3 py-1.5 text-sm text-gray-400">
-        <span>🔍</span><input type="text" placeholder="بحث..." class="bg-transparent outline-none w-40" />
-        <kbd class="text-[10px] bg-background px-1.5 py-0.5 rounded">Ctrl+K</kbd>
+      <div class="hidden md:flex items-center gap-2 bg-elevated/50 rounded-lg px-3 py-1.5 text-sm">
+        <span class="text-tertiary">🔍</span><input type="text" placeholder="بحث..." class="bg-transparent outline-none w-40 text-secondary" />
+        <kbd class="text-[10px] bg-background px-1.5 py-0.5 rounded text-tertiary">Ctrl+K</kbd>
       </div>
       <button class="touch-target btn-ghost relative">🔔<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span></button>
       <button class="touch-target btn-ghost">🌙</button>
@@ -264,111 +283,149 @@
 </header>
 
 <div class="flex">
-  <!-- Sidebar -->
+  <!-- Fix 3: Grouped Sidebar with section headers -->
   <aside class="sidebar hidden md:block w-64 min-h-[calc(100vh-65px)] p-3 fixed right-0 top-16 z-30 overflow-y-auto">
-    <nav class="space-y-1">
-      <div class="nav-item active">📊 لوحة التحكم</div>
-      <div class="nav-item">🧾 الفواتير</div>
-      <div class="nav-item">✨ إدخال مجمع بالـ AI <span class="ml-auto text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">AI</span></div>
-      <div class="nav-item">👥 العملاء</div>
-      <div class="nav-item">📦 المخزون</div>
-      <div class="nav-item">💰 المحاسبة</div>
-      <div class="nav-item">🤖 وكلاء الذكاء</div>
-      <div class="nav-item">⚙️ الأتمتة</div>
-      <div class="nav-item">📊 التقارير</div>
-      <div class="nav-item">👥 فريقي</div>
-      <div class="nav-item">🛡️ الأدوار والصلاحيات</div>
-      <div class="nav-item">⚙️ الإعدادات</div>
-      <div class="nav-item">💳 الاشتراك والفوترة</div>
-    </nav>
-    <div class="border-t border-elevated mt-3 pt-3">
-      <div class="text-[10px] font-bold text-gray-500 tracking-widest px-3 py-1.5">لوحة المؤسس</div>
-      <div class="nav-item">📡 مركز التحكم</div>
-      <div class="nav-item">💵 التشغيل المالي</div>
-      <div class="nav-item">🧠 لوحة الذكاء</div>
-      <div class="nav-item">⚙️ نسيج الذكاء</div>
-      <div class="nav-item">🔑 مجموعة المفاتيح</div>
-      <div class="nav-item">🔌 التكاملات</div>
-    </div>
+    <div class="nav-group-header">الرئيسية</div>
+    <div class="nav-item active">📊 لوحة التحكم</div>
+    <div class="nav-item">🧾 الفواتير</div>
+    <div class="nav-item">✨ إدخال مجمع بالـ AI <span class="ml-auto text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">AI</span></div>
+
+    <div class="nav-group-header">المالية</div>
+    <div class="nav-item">👥 العملاء</div>
+    <div class="nav-item">📦 المخزون</div>
+    <div class="nav-item">💰 المحاسبة</div>
+    <div class="nav-item">📊 التقارير</div>
+
+    <div class="nav-group-header">الإدارة</div>
+    <div class="nav-item">🤖 وكلاء الذكاء</div>
+    <div class="nav-item">⚙️ الأتمتة</div>
+    <div class="nav-item">👥 فريقي</div>
+    <div class="nav-item">🛡️ الأدوار والصلاحيات</div>
+    <div class="nav-item">⚙️ الإعدادات</div>
+    <div class="nav-item">💳 الاشتراك والفوترة</div>
+
+    <div class="nav-group-header">لوحة المؤسس</div>
+    <div class="nav-item">📡 مركز التحكم</div>
+    <div class="nav-item">💵 التشغيل المالي</div>
+    <div class="nav-item">🧠 لوحة الذكاء</div>
+    <div class="nav-item">⚙️ نسيج الذكاء</div>
+    <div class="nav-item">🔑 مجموعة المفاتيح</div>
+    <div class="nav-item">🔌 التكاملات</div>
   </aside>
 
-  <!-- Main content -->
   <main class="flex-1 md:mr-64 p-4 md:p-6 pb-24">
 
-<!-- ═══════ PAGE 1: DASHBOARD ═══════ -->
+<!-- ═══════ PAGE 1: DASHBOARD (10/10 fixed) ═══════ -->
 <section class="page-section active" id="dashboard">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
     <div>
       <h1 class="text-2xl md:text-3xl font-bold">لوحة التحكم</h1>
-      <p class="text-gray-400 mt-1 text-sm">مرحباً، أحمد — إليك نظرة عامة على أداء شركتك اليوم</p>
+      <p class="text-secondary mt-1 text-sm">مرحباً، أحمد — إليك نظرة عامة على أداء شركتك اليوم</p>
     </div>
     <button class="btn-primary">+ فاتورة جديدة</button>
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+  <!-- Fix 9: Mobile = smaller KPI cards (grid-cols-2 on mobile, not 1) -->
+  <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 mb-6">
     <div class="kpi-card">
-      <div class="text-sm text-gray-400 mb-2">إجمالي الإيرادات</div>
-      <div class="text-2xl font-bold">١٢٤٬٥٠٠ ر.س</div>
+      <div class="label-text mb-1">إجمالي الإيرادات</div>
+      <div class="text-xl md:text-2xl value-text">١٢٤٬٥٠٠ ر.س</div>
       <div class="flex items-center justify-between mt-2">
-        <span class="text-xs text-emerald-400">▲ 12.5%</span>
-        <div class="sparkline"><div class="sparkline-bar" style="height:30%"></div><div class="sparkline-bar" style="height:45%"></div><div class="sparkline-bar" style="height:35%"></div><div class="sparkline-bar" style="height:60%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar peak" style="height:80%"></div><div class="sparkline-bar peak" style="height:90%"></div></div>
+        <span class="text-xs font-semibold text-emerald-400">▲ 12.5%</span>
+        <div class="sparkline-container"><div class="sparkline-bar" style="height:30%"></div><div class="sparkline-bar" style="height:45%"></div><div class="sparkline-bar" style="height:35%"></div><div class="sparkline-bar" style="height:60%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar peak" style="height:80%"></div><div class="sparkline-bar peak" style="height:90%"></div></div>
       </div>
+      <div class="sparkline-label">آخر ٧ أيام</div>
     </div>
     <div class="kpi-card">
-      <div class="text-sm text-gray-400 mb-2">الفواتير</div>
-      <div class="text-2xl font-bold">٨٤٧</div>
+      <div class="label-text mb-1">الفواتير</div>
+      <div class="text-xl md:text-2xl value-text">٨٤٧</div>
       <div class="flex items-center justify-between mt-2">
-        <span class="text-xs text-emerald-400">▲ 8 الجديد</span>
-        <div class="sparkline"><div class="sparkline-bar" style="height:40%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar" style="height:50%"></div><div class="sparkline-bar" style="height:65%"></div><div class="sparkline-bar peak" style="height:85%"></div><div class="sparkline-bar" style="height:70%"></div><div class="sparkline-bar peak" style="height:95%"></div></div>
+        <span class="text-xs font-semibold text-emerald-400">▲ 8 الجديد</span>
+        <div class="sparkline-container"><div class="sparkline-bar" style="height:40%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar" style="height:50%"></div><div class="sparkline-bar" style="height:65%"></div><div class="sparkline-bar peak" style="height:85%"></div><div class="sparkline-bar" style="height:70%"></div><div class="sparkline-bar peak" style="height:95%"></div></div>
       </div>
+      <div class="sparkline-label">آخر ٧ أيام</div>
     </div>
     <div class="kpi-card kpi-card-gold">
-      <div class="text-sm text-gold mb-2">⭐ توفير الذكاء الاصطناعي</div>
-      <div class="text-2xl font-bold text-gold">٩٥٫٤٪</div>
-      <div class="text-xs text-gold/70 mt-2">$٢٧٣ موفّر هذا الشهر</div>
+      <div class="label-text mb-1" style="color: #e0b88a;">⭐ توفير الذكاء الاصطناعي</div>
+      <div class="text-xl md:text-2xl value-text" style="color: #e0b88a;">٩٥٫٤٪</div>
+      <div class="text-xs mt-2" style="color: #e0b88a; opacity: 0.8;">$٢٧٣ موفّر هذا الشهر</div>
     </div>
     <div class="kpi-card">
-      <div class="text-sm text-gray-400 mb-2">العملاء</div>
-      <div class="text-2xl font-bold">٢٣٤</div>
+      <div class="label-text mb-1">العملاء</div>
+      <div class="text-xl md:text-2xl value-text">٢٣٤</div>
       <div class="flex items-center justify-between mt-2">
-        <span class="text-xs text-emerald-400">▲ 5 جدد</span>
-        <div class="sparkline"><div class="sparkline-bar" style="height:50%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar" style="height:60%"></div><div class="sparkline-bar" style="height:65%"></div><div class="sparkline-bar peak" style="height:75%"></div><div class="sparkline-bar" style="height:70%"></div><div class="sparkline-bar peak" style="height:80%"></div></div>
+        <span class="text-xs font-semibold text-emerald-400">▲ 5 جدد</span>
+        <div class="sparkline-container"><div class="sparkline-bar" style="height:50%"></div><div class="sparkline-bar" style="height:55%"></div><div class="sparkline-bar" style="height:60%"></div><div class="sparkline-bar" style="height:65%"></div><div class="sparkline-bar peak" style="height:75%"></div><div class="sparkline-bar" style="height:70%"></div><div class="sparkline-bar peak" style="height:80%"></div></div>
       </div>
+      <div class="sparkline-label">آخر ٧ أيام</div>
     </div>
     <div class="kpi-card">
-      <div class="text-sm text-gray-400 mb-2">المستحقات</div>
-      <div class="text-2xl font-bold">٨٬٩٠٠ ر.س</div>
-      <div class="text-xs text-amber-400 mt-2">٣ متأخرة</div>
+      <div class="label-text mb-1">المستحقات</div>
+      <div class="text-xl md:text-2xl value-text">٨٬٩٠٠ ر.س</div>
+      <div class="text-xs font-semibold mt-2 text-amber-400">٣ متأخرة</div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <div class="card p-6">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <!-- Fix 1: Chart with Y-axis labels, data labels, gridlines, legend -->
+    <div class="card p-5 lg:col-span-2">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold">الإيرادات الشهرية</h3>
-        <span class="badge badge-success">+12.5%</span>
+        <div>
+          <h3 class="font-semibold">الإيرادات الشهرية</h3>
+          <p class="text-xs text-tertiary mt-0.5">آخر ٧ شهور • بالريال السعودي</p>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500"></span><span class="text-secondary">الإيرادات</span></span>
+          <span class="badge badge-success">▲ 12.5%</span>
+        </div>
       </div>
-      <div class="h-48 flex items-end gap-2">
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500/40 rounded-t" style="height: 40%"></div>
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500/40 rounded-t" style="height: 55%"></div>
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500/40 rounded-t" style="height: 45%"></div>
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500/40 rounded-t" style="height: 70%"></div>
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500/40 rounded-t" style="height: 65%"></div>
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500/40 rounded-t" style="height: 85%"></div>
-        <div class="flex-1 bg-gradient-to-t from-emerald-700 to-emerald-500 rounded-t" style="height: 95%"></div>
+      <div class="chart-container" style="padding-left: 40px; padding-right: 10px;">
+        <div class="chart-grid">
+          <div class="chart-grid-line"></div>
+          <div class="chart-grid-line"></div>
+          <div class="chart-grid-line"></div>
+          <div class="chart-grid-line"></div>
+          <div class="chart-grid-line"></div>
+        </div>
+        <div class="chart-y-labels">
+          <span>150K</span><span>120K</span><span>90K</span><span>60K</span><span>30K</span><span>0</span>
+        </div>
+        <div class="chart-bars" style="height: 180px;">
+          <div class="chart-bar" style="height: 40%"><span class="chart-bar-label">٤٥K</span></div>
+          <div class="chart-bar" style="height: 55%"><span class="chart-bar-label">٦٢K</span></div>
+          <div class="chart-bar" style="height: 45%"><span class="chart-bar-label">٥٠K</span></div>
+          <div class="chart-bar" style="height: 70%"><span class="chart-bar-label">٧٨K</span></div>
+          <div class="chart-bar" style="height: 65%"><span class="chart-bar-label">٧٢K</span></div>
+          <div class="chart-bar" style="height: 85%"><span class="chart-bar-label">٩٥K</span></div>
+          <div class="chart-bar" style="height: 95%; background: linear-gradient(180deg, #34d399 0%, #059669 100%);"><span class="chart-bar-label" style="color: #34d399;">١٢٤K</span></div>
+        </div>
+        <div class="chart-x-labels">
+          <span>فبراير</span><span>مارس</span><span>أبريل</span><span>مايو</span><span>يونيو</span><span>يوليو</span><span>أغسطس</span>
+        </div>
       </div>
-      <div class="flex justify-between mt-2 text-[10px] text-gray-500"><span>يناير</span><span>فبراير</span><span>مارس</span><span>أبريل</span><span>مايو</span><span>يونيو</span><span>يوليو</span></div>
     </div>
-    <div class="card p-6">
-      <h3 class="font-semibold mb-4">توزيع الفواتير</h3>
-      <div class="space-y-3">
-        <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5"><span class="text-sm flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>مدفوعة</span><span class="badge badge-success">٦٤٢</span></div>
-        <div class="flex items-center justify-between p-2 rounded-lg bg-amber-500/5"><span class="text-sm flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span>معلقة</span><span class="badge badge-warning">١٤٠</span></div>
-        <div class="flex items-center justify-between p-2 rounded-lg bg-gold/5"><span class="text-sm flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-gold"></span>متأخرة</span><span class="badge badge-gold">٦٥</span></div>
+
+    <!-- Fix 5: Donut chart for distribution (not just numbers) -->
+    <div class="card p-5">
+      <h3 class="font-semibold mb-1">توزيع الفواتير</h3>
+      <p class="text-xs text-tertiary mb-4">حسب الحالة</p>
+      <div class="flex items-center gap-4">
+        <div class="donut" style="background: conic-gradient(#10b981 0% 76%, #fbbf24 76% 92%, #6b7280 92% 100%);">
+          <div class="donut-center">
+            <div class="text-xl font-bold value-text">٨٤٧</div>
+            <div class="text-[10px] text-tertiary">إجمالي</div>
+          </div>
+        </div>
+        <div class="flex-1 space-y-2.5">
+          <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-emerald-500"></span><span class="text-secondary">مدفوعة</span></span><span class="font-bold value-text text-sm">٦٤٢</span></div>
+          <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-amber-400"></span><span class="text-secondary">معلقة</span></span><span class="font-bold value-text text-sm">١٤٠</span></div>
+          <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-full bg-gray-500"></span><span class="text-secondary">ملغاة</span></span><span class="font-bold value-text text-sm">٦٥</span></div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Fix 7: Table with hover + clickable rows -->
   <div class="card">
     <div class="p-4 border-b border-elevated flex items-center justify-between">
       <h3 class="font-semibold">أحدث الفواتير</h3>
@@ -376,17 +433,17 @@
     </div>
     <div class="hidden md:block overflow-x-auto">
       <table>
-        <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+        <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th></th></tr></thead>
         <tbody>
-          <tr><td class="font-medium">#INV-2026-0847</td><td>شركة الأمل التجارية</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td class="font-medium">٣٬٥٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td><button class="btn-ghost text-xs">👁️</button></td></tr>
-          <tr><td class="font-medium">#INV-2026-0846</td><td>مؤسسة النور</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td><td class="font-medium">٨٬٧٥٠ ر.س</td><td><span class="badge badge-warning">معلقة</span></td><td><button class="btn-ghost text-xs">👁️</button></td></tr>
-          <tr><td class="font-medium">#INV-2026-0845</td><td>شركة المستقبل</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td><td class="font-medium">١٢٬٠٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td><button class="btn-ghost text-xs">👁️</button></td></tr>
+          <tr><td class="font-semibold">#INV-2026-0847</td><td class="text-secondary">شركة الأمل التجارية</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٦</td><td class="font-bold">٣٬٥٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td class="text-tertiary">←</td></tr>
+          <tr><td class="font-semibold">#INV-2026-0846</td><td class="text-secondary">مؤسسة النور</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٥</td><td class="font-bold">٨٬٧٥٠ ر.س</td><td><span class="badge badge-warning">معلقة</span></td><td class="text-tertiary">←</td></tr>
+          <tr><td class="font-semibold">#INV-2026-0845</td><td class="text-secondary">شركة المستقبل</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٤</td><td class="font-bold">١٢٬٠٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td class="text-tertiary">←</td></tr>
         </tbody>
       </table>
     </div>
     <div class="md:hidden divide-y divide-elevated">
-      <div class="p-4"><div class="flex items-center justify-between mb-2"><span class="font-medium">#INV-0847</span><span class="badge badge-success">مدفوعة</span></div><div class="text-sm text-gray-400">شركة الأمل التجارية</div><div class="flex items-center justify-between mt-2"><span class="text-xs text-gray-500">٢٠٢٦/٠٨/٠٦</span><span class="font-medium">٣٬٥٠٠ ر.س</span></div></div>
-      <div class="p-4"><div class="flex items-center justify-between mb-2"><span class="font-medium">#INV-0846</span><span class="badge badge-warning">معلقة</span></div><div class="text-sm text-gray-400">مؤسسة النور</div><div class="flex items-center justify-between mt-2"><span class="text-xs text-gray-500">٢٠٢٦/٠٨/٠٥</span><span class="font-medium">٨٬٧٥٠ ر.س</span></div></div>
+      <div class="p-4"><div class="flex items-center justify-between mb-2"><span class="font-semibold">#INV-0847</span><span class="badge badge-success">مدفوعة</span></div><div class="text-sm text-secondary">شركة الأمل التجارية</div><div class="flex items-center justify-between mt-2"><span class="text-xs text-tertiary">٢٠٢٦/٠٨/٠٦</span><span class="font-bold">٣٬٥٠٠ ر.س</span></div></div>
+      <div class="p-4"><div class="flex items-center justify-between mb-2"><span class="font-semibold">#INV-0846</span><span class="badge badge-warning">معلقة</span></div><div class="text-sm text-secondary">مؤسسة النور</div><div class="flex items-center justify-between mt-2"><span class="text-xs text-tertiary">٢٠٢٦/٠٨/٠٥</span><span class="font-bold">٨٬٧٥٠ ر.س</span></div></div>
     </div>
   </div>
 </section>
@@ -394,167 +451,73 @@
 <!-- ═══════ PAGE 2: INVOICES ═══════ -->
 <section class="page-section" id="invoices">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">الفواتير</h1><p class="text-gray-400 mt-1 text-sm">إدارة الفواتير المبيعات والمشتريات</p></div>
-    <div class="flex gap-2">
-      <button class="btn-ghost border border-elevated">📥 استيراد</button>
-      <button class="btn-primary">+ فاتورة جديدة</button>
-    </div>
+    <div><h1 class="text-2xl md:text-3xl font-bold">الفواتير</h1><p class="text-secondary mt-1 text-sm">إدارة الفواتير المبيعات والمشتريات</p></div>
+    <div class="flex gap-2"><button class="btn-ghost border border-elevated">📥 استيراد</button><button class="btn-primary">+ فاتورة جديدة</button></div>
   </div>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي</div><div class="text-xl font-bold">٨٤٧</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">مدفوعة</div><div class="text-xl font-bold text-emerald-400">٦٤٢</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">معلقة</div><div class="text-xl font-bold text-amber-400">١٤٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">متأخرة</div><div class="text-xl font-bold text-red-400">٦٥</div></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي</div><div class="text-xl value-text">٨٤٧</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">مدفوعة</div><div class="text-xl value-text text-emerald-400">٦٤٢</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">معلقة</div><div class="text-xl value-text text-amber-400">١٤٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">ملغاة</div><div class="text-xl value-text text-gray-400">٦٥</div></div>
   </div>
-
   <div class="card">
     <div class="p-4 border-b border-elevated flex flex-col md:flex-row gap-3">
       <input type="text" placeholder="🔍 بحث برقم الفاتورة أو العميل..." class="input-field flex-1" />
-      <select class="input-field md:w-40"><option>كل الحالات</option><option>مدفوعة</option><option>معلقة</option><option>متأخرة</option></select>
+      <select class="input-field md:w-40"><option>كل الحالات</option><option>مدفوعة</option><option>معلقة</option><option>ملغاة</option></select>
     </div>
     <div class="hidden md:block overflow-x-auto">
       <table>
-        <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+        <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th><th></th></tr></thead>
         <tbody>
-          <tr><td class="font-medium">#INV-2026-0847</td><td>شركة الأمل التجارية</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td class="font-medium">٣٬٥٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td><button class="btn-ghost text-xs">👁️</button> <button class="btn-ghost text-xs">📄</button></td></tr>
-          <tr><td class="font-medium">#INV-2026-0846</td><td>مؤسسة النور</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td><td class="font-medium">٨٬٧٥٠ ر.س</td><td><span class="badge badge-warning">معلقة</span></td><td><button class="btn-ghost text-xs">👁️</button> <button class="btn-ghost text-xs">📄</button></td></tr>
-          <tr><td class="font-medium">#INV-2026-0845</td><td>شركة المستقبل</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td><td class="font-medium">١٢٬٠٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td><button class="btn-ghost text-xs">👁️</button> <button class="btn-ghost text-xs">📄</button></td></tr>
-          <tr><td class="font-medium">#INV-2026-0844</td><td>متجر الرياض</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٣</td><td class="font-medium">٢٬٣٠٠ ر.س</td><td><span class="badge badge-danger">متأخرة</span></td><td><button class="btn-ghost text-xs">👁️</button> <button class="btn-ghost text-xs">📄</button></td></tr>
+          <tr><td class="font-semibold">#INV-2026-0847</td><td class="text-secondary">شركة الأمل التجارية</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٦</td><td class="font-bold">٣٬٥٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td class="text-tertiary">←</td></tr>
+          <tr><td class="font-semibold">#INV-2026-0846</td><td class="text-secondary">مؤسسة النور</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٥</td><td class="font-bold">٨٬٧٥٠ ر.س</td><td><span class="badge badge-warning">معلقة</span></td><td class="text-tertiary">←</td></tr>
+          <tr><td class="font-semibold">#INV-2026-0845</td><td class="text-secondary">شركة المستقبل</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٤</td><td class="font-bold">١٢٬٠٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td><td class="text-tertiary">←</td></tr>
+          <tr><td class="font-semibold">#INV-2026-0844</td><td class="text-secondary">متجر الرياض</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٣</td><td class="font-bold">٢٬٣٠٠ ر.س</td><td><span class="badge badge-danger">متأخرة</span></td><td class="text-tertiary">←</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 3: INVOICE DETAIL (inner page) ═══════ -->
+<!-- ═══════ PAGE 3: INVOICE DETAIL ═══════ -->
 <section class="page-section" id="invoice-detail">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400">
-    <span>الفواتير</span><span>←</span><span class="text-foreground font-medium">#INV-2026-0847</span>
-  </div>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>الفواتير</span><span>←</span><span class="text-foreground font-medium">#INV-2026-0847</span></div>
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div>
-      <h1 class="text-2xl font-bold">فاتورة #INV-2026-0847</h1>
-      <p class="text-gray-400 mt-1 text-sm">أُنشئت في ٢٠٢٦/٠٨/٠٦ • شركة الأمل التجارية</p>
-    </div>
-    <div class="flex gap-2">
-      <button class="btn-ghost border border-elevated">🖨️ طباعة</button>
-      <button class="btn-ghost border border-elevated">📧 إرسال</button>
-      <button class="btn-primary">💾 تحميل PDF</button>
-    </div>
+    <div><h1 class="text-2xl font-bold">فاتورة #INV-2026-0847</h1><p class="text-secondary mt-1 text-sm">أُنشئت في ٢٠٢٦/٠٨/٠٦ • شركة الأمل التجارية</p></div>
+    <div class="flex gap-2"><button class="btn-ghost border border-elevated">🖨️ طباعة</button><button class="btn-ghost border border-elevated">📧 إرسال</button><button class="btn-primary">💾 تحميل PDF</button></div>
   </div>
-
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-    <div class="card p-5">
-      <div class="text-sm text-gray-400 mb-1">العميل</div>
-      <div class="font-bold">شركة الأمل التجارية</div>
-      <div class="text-sm text-gray-400 mt-2 space-y-1">
-        <div>📧 info@alamal.com</div>
-        <div>📞 +966 50 123 4567</div>
-        <div>📍 الرياض، السعودية</div>
-        <div>🆔 300012345600003</div>
-      </div>
-    </div>
-    <div class="card p-5">
-      <div class="text-sm text-gray-400 mb-1">تفاصيل الفاتورة</div>
-      <div class="space-y-2 mt-2 text-sm">
-        <div class="flex justify-between"><span class="text-gray-400">رقم الفاتورة:</span><span class="font-medium">#INV-2026-0847</span></div>
-        <div class="flex justify-between"><span class="text-gray-400">تاريخ الإصدار:</span><span>٢٠٢٦/٠٨/٠٦</span></div>
-        <div class="flex justify-between"><span class="text-gray-400">تاريخ الاستحقاق:</span><span>٢٠٢٦/٠٨/٢١</span></div>
-        <div class="flex justify-between"><span class="text-gray-400">طريقة الدفع:</span><span>تحويل بنكي</span></div>
-        <div class="flex justify-between"><span class="text-gray-400">الحالة:</span><span class="badge badge-success">مدفوعة</span></div>
-      </div>
-    </div>
-    <div class="kpi-card kpi-card-gold">
-      <div class="text-sm text-gold mb-1">الإجمالي المستحق</div>
-      <div class="text-3xl font-bold text-gold">٤٬٠٢٥ ر.س</div>
-      <div class="text-xs text-gold/70 mt-2">شامل ضريبة القيمة المضافة ١٥٪</div>
-    </div>
+    <div class="card p-5"><div class="label-text mb-1">العميل</div><div class="font-bold">شركة الأمل التجارية</div><div class="text-sm text-secondary mt-2 space-y-1"><div>📧 info@alamal.com</div><div>📞 +966 50 123 4567</div><div>📍 الرياض، السعودية</div><div>🆔 300012345600003</div></div></div>
+    <div class="card p-5"><div class="label-text mb-1">تفاصيل الفاتورة</div><div class="space-y-2 mt-2 text-sm"><div class="flex justify-between"><span class="text-tertiary">رقم الفاتورة:</span><span class="font-semibold">#INV-2026-0847</span></div><div class="flex justify-between"><span class="text-tertiary">تاريخ الإصدار:</span><span>٢٠٢٦/٠٨/٠٦</span></div><div class="flex justify-between"><span class="text-tertiary">تاريخ الاستحقاق:</span><span>٢٠٢٦/٠٨/٢١</span></div><div class="flex justify-between"><span class="text-tertiary">طريقة الدفع:</span><span>تحويل بنكي</span></div><div class="flex justify-between"><span class="text-tertiary">الحالة:</span><span class="badge badge-success">مدفوعة</span></div></div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">الإجمالي المستحق</div><div class="text-3xl font-bold" style="color: #e0b88a;">٤٬٠٢٥ ر.س</div><div class="text-xs mt-2" style="color: #e0b88a; opacity: 0.8;">شامل ضريبة القيمة المضافة ١٥٪</div></div>
   </div>
-
   <div class="card mb-6">
     <div class="p-4 border-b border-elevated"><h3 class="font-semibold">بنود الفاتورة</h3></div>
     <div class="overflow-x-auto">
       <table>
         <thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الخصم</th><th>الإجمالي</th></tr></thead>
         <tbody>
-          <tr><td class="font-medium">لاب توب Dell Latitude 5440</td><td>٢</td><td class="text-gray-400">١٬٢٠٠ ر.س</td><td class="text-gray-400">—</td><td class="font-medium">٢٬٤٠٠ ر.س</td></tr>
-          <tr><td class="font-medium">ماوس لاسلكي Logitech</td><td>٥</td><td class="text-gray-400">١٢٠ ر.س</td><td class="text-gray-400">—</td><td class="font-medium">٦٠٠ ر.س</td></tr>
-          <tr><td class="font-medium">خدمة تركيب وإعداد</td><td>١</td><td class="text-gray-400">٥٠٠ ر.س</td><td class="text-gray-400">—</td><td class="font-medium">٥٠٠ ر.س</td></tr>
+          <tr><td class="font-semibold">لاب توب Dell Latitude 5440</td><td class="text-secondary">٢</td><td class="text-tertiary">١٬٢٠٠ ر.س</td><td class="text-tertiary">—</td><td class="font-bold">٢٬٤٠٠ ر.س</td></tr>
+          <tr><td class="font-semibold">ماوس لاسلكي Logitech</td><td class="text-secondary">٥</td><td class="text-tertiary">١٢٠ ر.س</td><td class="text-tertiary">—</td><td class="font-bold">٦٠٠ ر.س</td></tr>
+          <tr><td class="font-semibold">خدمة تركيب وإعداد</td><td class="text-secondary">١</td><td class="text-tertiary">٥٠٠ ر.س</td><td class="text-tertiary">—</td><td class="font-bold">٥٠٠ ر.س</td></tr>
         </tbody>
-        <tfoot>
-          <tr><td colspan="3"></td><td class="text-gray-400 text-sm">المجموع الفرعي</td><td class="font-medium">٣٬٥٠٠ ر.س</td></tr>
-          <tr><td colspan="3"></td><td class="text-gray-400 text-sm">ضريبة القيمة المضافة (١٥٪)</td><td class="font-medium">٥٢٥ ر.س</td></tr>
-          <tr><td colspan="3"></td><td class="text-gold text-sm font-bold">الإجمالي</td><td class="font-bold text-gold text-lg">٤٬٠٢٥ ر.س</td></tr>
-        </tfoot>
+        <tfoot><tr style="background: rgba(31,41,55,0.3)"><td colspan="3"></td><td class="text-tertiary text-sm">المجموع الفرعي</td><td class="font-bold">٣٬٥٠٠ ر.س</td></tr><tr style="background: rgba(31,41,55,0.3)"><td colspan="3"></td><td class="text-tertiary text-sm">ضريبة القيمة المضافة (١٥٪)</td><td class="font-bold">٥٢٥ ر.س</td></tr><tr style="background: rgba(212,165,116,0.08)"><td colspan="3"></td><td class="font-bold text-sm" style="color: #e0b88a;">الإجمالي</td><td class="font-bold text-lg" style="color: #e0b88a;">٤٬٠٢٥ ر.س</td></tr></tfoot>
       </table>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="card p-5">
-      <h3 class="font-semibold mb-3">📋 ملاحظات</h3>
-      <p class="text-sm text-gray-400">شكراً لتعاملكم معنا. يرجى السداد خلال ١٥ يوماً من تاريخ الفاتورة. للاستفسار: accounting@garfix.app</p>
-    </div>
-    <div class="card p-5">
-      <h3 class="font-semibold mb-3">💳 سجل المدفوعات</h3>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5">
-          <div><div class="text-sm font-medium">تحويل بنكي</div><div class="text-xs text-gray-400">٢٠٢٦/٠٨/٠٦ • مرجع: TRN-001234</div></div>
-          <span class="badge badge-success">٤٬٠٢٥ ر.س</span>
-        </div>
-      </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 4: BULK INPUT (الإدخال المجمع — WhatsApp paste) ═══════ -->
+<!-- ═══════ PAGE 4: BULK INPUT ═══════ -->
 <section class="page-section" id="bulk-input">
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div>
-      <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">✨ الإدخال المجمع بالـ AI <span class="badge badge-gold">AI</span></h1>
-      <p class="text-gray-400 mt-1 text-sm">الصق طلبات الواتساب مباشرة — الـ AI بيفرّق بين الطلبات بالسطر الفارغ ويستخرج كل بياناتها</p>
-    </div>
+    <div><h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">✨ الإدخال المجمع بالـ AI <span class="badge badge-gold">AI</span></h1><p class="text-secondary mt-1 text-sm">الصق طلبات الواتساب مباشرة — الـ AI بيفرّق بين الطلبات بالسطر الفارغ ويستخرج كل بياناتها</p></div>
   </div>
-
-  <!-- Tabs: text (primary) / image / file -->
-  <div class="flex gap-2 mb-4">
-    <button class="tab active">📝 لصق نص (واتساب)</button>
-    <button class="tab">🖼️ رفع صورة</button>
-    <button class="tab">📄 رفع ملف</button>
-  </div>
-
+  <div class="flex gap-2 mb-4"><button class="tab active">📝 لصق نص (واتساب)</button><button class="tab">🖼️ رفع صورة</button><button class="tab">📄 رفع ملف</button></div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <!-- WhatsApp Paste Zone (PRIMARY) -->
     <div class="card p-6">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold flex items-center gap-2">💬 الصق طلبات الواتساب</h3>
-        <button class="btn-ghost text-xs">جرّب مثالاً</button>
-      </div>
-      <p class="text-xs text-gray-400 mb-3">📋 الصق الطلبات هنا — افصل بين كل طلب بـ <strong class="text-emerald-400">سطر فارغ</strong>. الـ AI هيكتشف الطلبات تلقائياً.</p>
-      <textarea class="input-field font-mono text-sm" rows="12" dir="rtl" placeholder="📍 العنوان: الكويت - حولي - شارع ابن خلدون
-📞 الهاتف: 50001234
-👤 العميل: أحمد محمد
-
-🛠️ الطلب:
-٢ ماتور ١٦ دينار
-٣ فيلتر ٤.٥ دينار
-١ زيت ٢ دينار
-
-💰 الإجمالي: ٢٦.٥ دينار
-🚚 التوصيل: ٢ دينار
-
----
-
-📍 العنوان: السالمية - قطعة ٣
-📞 55667788
-👤 سارة عبدالله
-
-🛠️ الطلب:
-واحد كمبروسر ٤٥ دينار
-٢ تيل فرامل ١٠ دينار
-
-🚚 التوصيل: مجاني">📍 العنوان: الكويت - حولي - شارع ابن خلدون
+      <div class="flex items-center justify-between mb-3"><h3 class="font-semibold flex items-center gap-2">💬 الصق طلبات الواتساب</h3><button class="btn-ghost text-xs">جرّب مثالاً</button></div>
+      <p class="text-xs text-secondary mb-3">📋 الصق الطلبات هنا — افصل بين كل طلب بـ <strong class="text-emerald-400">سطر فارغ</strong>. الـ AI هيكتشف الطلبات تلقائياً.</p>
+      <textarea class="input-field font-mono text-sm" rows="12" dir="rtl">📍 العنوان: الكويت - حولي - شارع ابن خلدون
 📞 الهاتف: 50001234
 👤 العميل: أحمد محمد
 
@@ -577,186 +540,92 @@
 ٢ تيل فرامل ١٠ دينار
 
 🚚 التوصيل: مجاني</textarea>
-      <div class="flex items-center justify-between mt-3">
-        <label class="flex items-center gap-2 text-xs cursor-pointer">
-          <input type="checkbox" checked class="w-4 h-4 rounded" />
-          إضافة المنتجات الجديدة تلقائياً للكتالوج
-        </label>
-        <button class="btn-primary text-sm">🧠 تحليل بالذكاء الاصطناعي</button>
-      </div>
-      <!-- Brain mode toggle -->
-      <div class="mt-3 p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-between">
-        <div class="flex items-center gap-2"><span class="text-lg">🧠</span><div><div class="text-sm font-medium">وضع التعلّم الذكي</div><div class="text-[10px] text-gray-400">الـ AI بيتعلّم من كل تحليل ويحسّن دقته</div></div></div>
-        <div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div>
-      </div>
+      <div class="flex items-center justify-between mt-3"><label class="flex items-center gap-2 text-xs cursor-pointer text-secondary"><input type="checkbox" checked class="w-4 h-4 rounded" />إضافة المنتجات الجديدة تلقائياً للكتالوج</label><button class="btn-primary text-sm">🧠 تحليل بالذكاء الاصطناعي</button></div>
+      <div class="mt-3 p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-lg">🧠</span><div><div class="text-sm font-medium">وضع التعلّم الذكي</div><div class="text-[10px] text-tertiary">الـ AI بيتعلّم من كل تحليل ويحسّن دقته</div></div></div><div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div></div>
     </div>
-
-    <!-- AI Extraction Results -->
     <div class="card p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold">🧠 نتيجة الاستخراج</h3>
-        <span class="badge badge-success">٢ طلب • ٩٨٪ دقة</span>
-      </div>
-
-      <!-- Order 1 -->
+      <div class="flex items-center justify-between mb-4"><h3 class="font-semibold">🧠 نتيجة الاستخراج</h3><span class="badge badge-success">٢ طلب • ٩٨٪ دقة</span></div>
       <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 mb-3">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2"><span class="badge badge-success text-[10px]">طلب ١</span><span class="font-medium text-sm">أحمد محمد</span></div>
-          <span class="badge badge-gold text-[10px]">٢٦.٥ د.ك</span>
-        </div>
-        <div class="text-xs text-gray-400 mb-2">📍 الكويت - حولي • 📞 50001234</div>
-        <div class="space-y-1">
-          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٨٪</span><span class="flex-1">٢ ماتور</span><span class="text-gray-400">١٦ د.ك</span></div>
-          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٥٪</span><span class="flex-1">٣ فيلتر</span><span class="text-gray-400">٤.٥ د.ك</span></div>
-          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٩٪</span><span class="flex-1">١ زيت</span><span class="text-gray-400">٢ د.ك</span></div>
-        </div>
+        <div class="flex items-center justify-between mb-2"><div class="flex items-center gap-2"><span class="badge badge-success text-[10px]">طلب ١</span><span class="font-semibold text-sm">أحمد محمد</span></div><span class="badge badge-gold text-[10px]">٢٦.٥ د.ك</span></div>
+        <div class="text-xs text-secondary mb-2">📍 الكويت - حولي • 📞 50001234</div>
+        <div class="space-y-1"><div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٨٪</span><span class="flex-1">٢ ماتور</span><span class="text-tertiary">١٦ د.ك</span></div><div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٥٪</span><span class="flex-1">٣ فيلتر</span><span class="text-tertiary">٤.٥ د.ك</span></div><div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٩٪</span><span class="flex-1">١ زيت</span><span class="text-tertiary">٢ د.ك</span></div></div>
       </div>
-
-      <!-- Order 2 -->
       <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 mb-3">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2"><span class="badge badge-success text-[10px]">طلب ٢</span><span class="font-medium text-sm">سارة عبدالله</span></div>
-          <span class="badge badge-gold text-[10px]">٥٥ د.ك</span>
-        </div>
-        <div class="text-xs text-gray-400 mb-2">📍 السالمية - قطعة ٣ • 📞 55667788</div>
-        <div class="space-y-1">
-          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٧٪</span><span class="flex-1">١ كمبروسر</span><span class="text-gray-400">٤٥ د.ك</span></div>
-          <div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٦٪</span><span class="flex-1">٢ تيل فرامل</span><span class="text-gray-400">١٠ د.ك</span></div>
-        </div>
+        <div class="flex items-center justify-between mb-2"><div class="flex items-center gap-2"><span class="badge badge-success text-[10px]">طلب ٢</span><span class="font-semibold text-sm">سارة عبدالله</span></div><span class="badge badge-gold text-[10px]">٥٥ د.ك</span></div>
+        <div class="text-xs text-secondary mb-2">📍 السالمية - قطعة ٣ • 📞 55667788</div>
+        <div class="space-y-1"><div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٧٪</span><span class="flex-1">١ كمبروسر</span><span class="text-tertiary">٤٥ د.ك</span></div><div class="flex items-center gap-2 text-xs"><span class="badge badge-success text-[9px]">٩٦٪</span><span class="flex-1">٢ تيل فرامل</span><span class="text-tertiary">١٠ د.ك</span></div></div>
       </div>
-
-      <div class="flex gap-2 mt-4">
-        <button class="btn-ghost flex-1 text-sm">تعديل</button>
-        <button class="btn-primary flex-1 text-sm">✓ تأكيد وإنشاء فواتير (٢)</button>
-      </div>
+      <div class="flex gap-2 mt-4"><button class="btn-ghost flex-1 text-sm">تعديل</button><button class="btn-primary flex-1 text-sm">✓ تأكيد وإنشاء فواتير (٢)</button></div>
     </div>
   </div>
-
-  <!-- How it works -->
-  <div class="card p-5">
-    <h3 class="font-semibold mb-3">📋 كيف يعمل؟</h3>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-      <div class="text-center p-3"><div class="text-3xl mb-2">💬</div><div class="text-sm font-medium">١. انسخ من الواتساب</div><div class="text-[10px] text-gray-400 mt-1">انسخ الطلبات كما هي</div></div>
-      <div class="text-center p-3"><div class="text-3xl mb-2">📋</div><div class="text-sm font-medium">٢. الصق في المربع</div><div class="text-[10px] text-gray-400 mt-1">افصل بين الطلبات بسطر فارغ</div></div>
-      <div class="text-center p-3"><div class="text-3xl mb-2">🧠</div><div class="text-sm font-medium">٣. تحليل AI</div><div class="text-[10px] text-gray-400 mt-1">يستخرج العميل + البنود + الأسعار</div></div>
-      <div class="text-center p-3"><div class="text-3xl mb-2">✓</div><div class="text-sm font-medium">٤. تأكيد وفواتير</div><div class="text-[10px] text-gray-400 mt-1">إنشاء فواتير تلقائياً</div></div>
-    </div>
-  </div>
+  <div class="card p-5"><h3 class="font-semibold mb-3">📋 كيف يعمل؟</h3><div class="grid grid-cols-1 md:grid-cols-4 gap-3"><div class="text-center p-3"><div class="text-3xl mb-2">💬</div><div class="text-sm font-medium">١. انسخ من الواتساب</div><div class="text-[10px] text-tertiary mt-1">انسخ الطلبات كما هي</div></div><div class="text-center p-3"><div class="text-3xl mb-2">📋</div><div class="text-sm font-medium">٢. الصق في المربع</div><div class="text-[10px] text-tertiary mt-1">افصل بين الطلبات بسطر فارغ</div></div><div class="text-center p-3"><div class="text-3xl mb-2">🧠</div><div class="text-sm font-medium">٣. تحليل AI</div><div class="text-[10px] text-tertiary mt-1">يستخرج العميل + البنود + الأسعار</div></div><div class="text-center p-3"><div class="text-3xl mb-2">✓</div><div class="text-sm font-medium">٤. تأكيد وفواتير</div><div class="text-[10px] text-tertiary mt-1">إنشاء فواتير تلقائياً</div></div></div></div>
 </section>
 
 <!-- ═══════ PAGE 5: CLIENTS ═══════ -->
 <section class="page-section" id="clients">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">العملاء</h1><p class="text-gray-400 mt-1 text-sm">إدارة قاعدة عملائك</p></div>
-    <button class="btn-primary">+ عميل جديد</button>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">العملاء</h1><p class="text-secondary mt-1 text-sm">إدارة قاعدة عملائك</p></div><button class="btn-primary">+ عميل جديد</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي العملاء</div><div class="text-xl value-text">٢٣٤</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">نشطون</div><div class="text-xl value-text text-emerald-400">١٨٧</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">جدد هذا الشهر</div><div class="text-xl value-text">١٢</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">متوسط القيمة</div><div class="text-xl value-text">٢٬٤٠٠ ر.س</div></div>
   </div>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي العملاء</div><div class="text-xl font-bold">٢٣٤</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">نشطون</div><div class="text-xl font-bold text-emerald-400">١٨٧</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">جدد هذا الشهر</div><div class="text-xl font-bold">١٢</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">متوسط القيمة</div><div class="text-xl font-bold">٢٬٤٠٠ ر.س</div></div>
-  </div>
-
-  <div class="card">
-    <div class="p-4 border-b border-elevated"><input type="text" placeholder="🔍 بحث عن عميل..." class="input-field" /></div>
-    <div class="hidden md:block overflow-x-auto">
-      <table>
-        <thead><tr><th>الاسم</th><th>البريد</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>الحالة</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">شركة الأمل التجارية</td><td>info@alamal.com</td><td class="text-gray-400">+966 50 123 4567</td><td class="font-medium">٤٥٬٠٠٠ ر.س</td><td><span class="badge badge-success">نشط</span></td></tr>
-          <tr><td class="font-medium">مؤسسة النور</td><td>contact@alnoor.sa</td><td class="text-gray-400">+966 55 234 5678</td><td class="font-medium">٢٨٬٥٠٠ ر.س</td><td><span class="badge badge-success">نشط</span></td></tr>
-          <tr><td class="font-medium">شركة المستقبل</td><td>hello@future.com</td><td class="text-gray-400">+966 56 345 6789</td><td class="font-medium">٦٧٬٠٠٠ ر.س</td><td><span class="badge badge-warning">معلق</span></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated"><input type="text" placeholder="🔍 بحث عن عميل..." class="input-field" /></div>
+    <div class="hidden md:block overflow-x-auto"><table><thead><tr><th>الاسم</th><th>البريد</th><th>الهاتف</th><th>إجمالي المشتريات</th><th>الحالة</th><th></th></tr></thead><tbody>
+      <tr><td class="font-semibold">شركة الأمل التجارية</td><td class="text-secondary">info@alamal.com</td><td class="text-tertiary">+966 50 123 4567</td><td class="font-bold">٤٥٬٠٠٠ ر.س</td><td><span class="badge badge-success">نشط</span></td><td class="text-tertiary">←</td></tr>
+      <tr><td class="font-semibold">مؤسسة النور</td><td class="text-secondary">contact@alnoor.sa</td><td class="text-tertiary">+966 55 234 5678</td><td class="font-bold">٢٨٬٥٠٠ ر.س</td><td><span class="badge badge-success">نشط</span></td><td class="text-tertiary">←</td></tr>
+      <tr><td class="font-semibold">شركة المستقبل</td><td class="text-secondary">hello@future.com</td><td class="text-tertiary">+966 56 345 6789</td><td class="font-bold">٦٧٬٠٠٠ ر.س</td><td><span class="badge badge-neutral">معلق</span></td><td class="text-tertiary">←</td></tr>
+    </tbody></table></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 6: CLIENT PROFILE (inner page) ═══════ -->
+<!-- ═══════ PAGE 6: CLIENT PROFILE ═══════ -->
 <section class="page-section" id="client-profile">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400">
-    <span>العملاء</span><span>←</span><span class="text-foreground font-medium">شركة الأمل التجارية</span>
-  </div>
-
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>العملاء</span><span>←</span><span class="text-foreground font-medium">شركة الأمل التجارية</span></div>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-    <div class="card p-6 lg:col-span-1">
-      <div class="flex flex-col items-center text-center">
-        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 flex items-center justify-center text-3xl font-bold text-white mb-3">ش</div>
-        <h2 class="font-bold text-lg">شركة الأمل التجارية</h2>
-        <span class="badge badge-success mt-1">عميل نشط</span>
-      </div>
-      <div class="mt-4 space-y-2 text-sm">
-        <div class="flex items-center gap-2 text-gray-400">📧 info@alamal.com</div>
-        <div class="flex items-center gap-2 text-gray-400">📞 +966 50 123 4567</div>
-        <div class="flex items-center gap-2 text-gray-400">📍 الرياض، السعودية</div>
-        <div class="flex items-center gap-2 text-gray-400">🆔 300012345600003</div>
-      </div>
-    </div>
-
+    <div class="card p-6 lg:col-span-1"><div class="flex flex-col items-center text-center"><div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 flex items-center justify-center text-3xl font-bold text-white mb-3">ش</div><h2 class="font-bold text-lg">شركة الأمل التجارية</h2><span class="badge badge-success mt-1">عميل نشط</span></div><div class="mt-4 space-y-2 text-sm"><div class="flex items-center gap-2 text-secondary">📧 info@alamal.com</div><div class="flex items-center gap-2 text-secondary">📞 +966 50 123 4567</div><div class="flex items-center gap-2 text-secondary">📍 الرياض، السعودية</div><div class="flex items-center gap-2 text-secondary">🆔 300012345600003</div></div></div>
     <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي المشتريات</div><div class="text-xl font-bold">٤٥٬٠٠٠</div><div class="text-xs text-emerald-400 mt-1">ر.س</div></div>
-      <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">عدد الفواتير</div><div class="text-xl font-bold">٢٣</div></div>
-      <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">متوسط الفاتورة</div><div class="text-xl font-bold text-gold">١٬٩٥٦</div><div class="text-xs text-gold/70 mt-1">ر.س</div></div>
-      <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">المستحقات</div><div class="text-xl font-bold text-amber-400">٠</div><div class="text-xs text-emerald-400 mt-1">✓ خالي</div></div>
+      <div class="kpi-card"><div class="label-text mb-1">إجمالي المشتريات</div><div class="text-xl value-text">٤٥٬٠٠٠</div><div class="text-xs text-emerald-400 mt-1">ر.س</div></div>
+      <div class="kpi-card"><div class="label-text mb-1">عدد الفواتير</div><div class="text-xl value-text">٢٣</div></div>
+      <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">متوسط الفاتورة</div><div class="text-xl value-text" style="color: #e0b88a;">١٬٩٥٦</div><div class="text-xs mt-1" style="color: #e0b88a; opacity: 0.8;">ر.س</div></div>
+      <div class="kpi-card"><div class="label-text mb-1">المستحقات</div><div class="text-xl value-text text-emerald-400">٠</div><div class="text-xs text-emerald-400 mt-1">✓ خالي</div></div>
     </div>
   </div>
-
-  <div class="card">
-    <div class="p-4 border-b border-elevated flex gap-2">
-      <div class="tab active">🧾 الفواتير</div>
-      <div class="tab">💳 المدفوعات</div>
-      <div class="tab">📞 التواصل</div>
-      <div class="tab">📝 الملاحظات</div>
-    </div>
-    <div class="overflow-x-auto">
-      <table>
-        <thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">#INV-2026-0847</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td class="font-medium">٣٬٥٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td></tr>
-          <tr><td class="font-medium">#INV-2026-0823</td><td class="text-gray-400">٢٠٢٦/٠٧/١٥</td><td class="font-medium">٢٬٨٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td></tr>
-          <tr><td class="font-medium">#INV-2026-0801</td><td class="text-gray-400">٢٠٢٦/٠٧/٠١</td><td class="font-medium">٤٬٢٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated flex gap-2"><div class="tab active">🧾 الفواتير</div><div class="tab">💳 المدفوعات</div><div class="tab">📞 التواصل</div><div class="tab">📝 الملاحظات</div></div>
+    <div class="overflow-x-auto"><table><thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr></thead><tbody>
+      <tr><td class="font-semibold">#INV-2026-0847</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٦</td><td class="font-bold">٣٬٥٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td></tr>
+      <tr><td class="font-semibold">#INV-2026-0823</td><td class="text-tertiary">٢٠٢٦/٠٧/١٥</td><td class="font-bold">٢٬٨٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td></tr>
+      <tr><td class="font-semibold">#INV-2026-0801</td><td class="text-tertiary">٢٠٢٦/٠٧/٠١</td><td class="font-bold">٤٬٢٠٠ ر.س</td><td><span class="badge badge-success">مدفوعة</span></td></tr>
+    </tbody></table></div>
   </div>
 </section>
 
 <!-- ═══════ PAGE 7: INVENTORY ═══════ -->
 <section class="page-section" id="inventory">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">المخزون</h1><p class="text-gray-400 mt-1 text-sm">إدارة المخزون والمستودعات</p></div>
-    <button class="btn-primary">+ صنف جديد</button>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">المخزون</h1><p class="text-secondary mt-1 text-sm">إدارة المخزون والمستودعات</p></div><button class="btn-primary">+ صنف جديد</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي الأصناف</div><div class="text-xl value-text">١٬٢٤٥</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">قيمة المخزون</div><div class="text-xl value-text">٢٣٤٬٠٠٠ ر.س</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">منخفض المخزون</div><div class="text-xl value-text text-amber-400">٢٣</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">نفد</div><div class="text-xl value-text text-red-400">٥</div></div>
   </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي الأصناف</div><div class="text-xl font-bold">١٬٢٤٥</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">قيمة المخزون</div><div class="text-xl font-bold">٢٣٤٬٠٠٠ ر.س</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">منخفض المخزون</div><div class="text-xl font-bold text-amber-400">٢٣</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">نفد</div><div class="text-xl font-bold text-red-400">٥</div></div>
-  </div>
-  <div class="card">
-    <div class="p-4 border-b border-elevated"><h3 class="font-semibold">أصناف منخفضة المخزون</h3></div>
-    <div class="hidden md:block overflow-x-auto">
-      <table>
-        <thead><tr><th>الصنف</th><th>الرمز</th><th>المخزون</th><th>حد إعادة الطلب</th><th>الحالة</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">لاب توب Dell</td><td class="text-gray-400">DELL-001</td><td>٥</td><td>١٠</td><td><span class="badge badge-warning">منخفض</span></td></tr>
-          <tr><td class="font-medium">ماوس لاسلكي</td><td class="text-gray-400">MS-002</td><td>٠</td><td>١٥</td><td><span class="badge badge-danger">نفد</span></td></tr>
-          <tr><td class="font-medium">كيبورد ميكانيكي</td><td class="text-gray-400">KB-003</td><td>٣</td><td>٨</td><td><span class="badge badge-warning">منخفض</span></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">أصناف منخفضة المخزون</h3></div>
+    <div class="hidden md:block overflow-x-auto"><table><thead><tr><th>الصنف</th><th>الرمز</th><th>المخزون</th><th>حد إعادة الطلب</th><th>الحالة</th></tr></thead><tbody>
+      <tr><td class="font-semibold">لاب توب Dell</td><td class="text-tertiary">DELL-001</td><td>٥</td><td>١٠</td><td><span class="badge badge-warning">منخفض</span></td></tr>
+      <tr><td class="font-semibold">ماوس لاسلكي</td><td class="text-tertiary">MS-002</td><td>٠</td><td>١٥</td><td><span class="badge badge-danger">نفد</span></td></tr>
+      <tr><td class="font-semibold">كيبورد ميكانيكي</td><td class="text-tertiary">KB-003</td><td>٣</td><td>٨</td><td><span class="badge badge-warning">منخفض</span></td></tr>
+    </tbody></table></div>
   </div>
 </section>
 
 <!-- ═══════ PAGE 8: ACCOUNTING ═══════ -->
 <section class="page-section" id="accounting">
-  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">المحاسبة</h1><p class="text-gray-400 mt-1 text-sm">الدفاتر المحاسبية والتقارير المالية</p></div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">الإيرادات</div><div class="text-xl font-bold text-emerald-400">١٢٤٬٥٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">المصروفات</div><div class="text-xl font-bold text-red-400">٨٧٬٢٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي الربح</div><div class="text-xl font-bold text-gold">٣٧٬٣٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">الضرائب</div><div class="text-xl font-bold">١٨٬٦٧٥</div></div>
+  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">المحاسبة</h1><p class="text-secondary mt-1 text-sm">الدفاتر المحاسبية والتقارير المالية</p></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">الإيرادات</div><div class="text-xl value-text text-emerald-400">١٢٤٬٥٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">المصروفات</div><div class="text-xl value-text text-red-400">٨٧٬٢٠٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي الربح</div><div class="text-xl value-text" style="color: #e0b88a;">٣٧٬٣٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">الضرائب</div><div class="text-xl value-text">١٨٬٦٧٥</div></div>
   </div>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
     <button class="card p-4 hover:border-primary text-center"><div class="text-2xl mb-1">📚</div><div class="text-sm font-medium">الدفتر العام</div></button>
@@ -770,582 +639,359 @@
   </div>
 </section>
 
-<!-- ═══════ PAGE 8a: GENERAL LEDGER (accounting inner page) ═══════ -->
+<!-- ═══════ PAGE 9: GL ═══════ -->
 <section class="page-section" id="gl">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الدفتر العام</span></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold">📚 الدفتر العام</h1><p class="text-gray-400 mt-1 text-sm">سجل القيود المحاسبية اليومية</p></div>
-    <div class="flex gap-2"><button class="btn-ghost border border-elevated">📥 تصدير</button><button class="btn-primary">+ قيد جديد</button></div>
-  </div>
-  <div class="card mb-4">
-    <div class="p-4 border-b border-elevated flex flex-col md:flex-row gap-3">
-      <input type="text" placeholder="🔍 بحث..." class="input-field flex-1" />
-      <select class="input-field md:w-40"><option>كل الحسابات</option><option>الأصول</option><option>الخصوم</option><option>الإيرادات</option></select>
-      <input type="date" class="input-field md:w-40" value="2026-08-06" />
-    </div>
-    <div class="overflow-x-auto">
-      <table>
-        <thead><tr><th>رقم القيد</th><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">#JE-001</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td>بيع بضاعة — فاتورة #INV-0847</td><td class="font-medium text-emerald-400">٣٬٥٠٠</td><td class="text-gray-400">—</td><td class="font-medium">٣٬٥٠٠</td></tr>
-          <tr><td class="font-medium">#JE-002</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td><td>سداد فاتورة — مؤسسة النور</td><td class="text-gray-400">—</td><td class="font-medium text-amber-400">٨٬٧٥٠</td><td class="font-medium">−٥٬٢٥٠</td></tr>
-          <tr><td class="font-medium">#JE-003</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td><td>رواتب الموظفين — أغسطس</td><td class="font-medium text-red-400">٤٥٬٠٠٠</td><td class="text-gray-400">—</td><td class="font-medium">−٥٠٬٢٥٠</td></tr>
-          <tr><td class="font-medium">#JE-004</td><td class="text-gray-400">٢٠٢٦/٠٨/٠٣</td><td>إيجار المكتب — أغسطس</td><td class="font-medium text-red-400">٨٬٠٠٠</td><td class="text-gray-400">—</td><td class="font-medium">−٥٨٬٢٥٠</td></tr>
-        </tbody>
-        <tfoot><tr class="bg-elevated/30"><td colspan="3" class="font-bold">الإجمالي</td><td class="font-bold text-emerald-400">٥٦٬٥٠٠</td><td class="font-bold text-amber-400">٨٬٧٥٠</td><td class="font-bold">−٥٨٬٢٥٠</td></tr></tfoot>
-      </table>
-    </div>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الدفتر العام</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">📚 الدفتر العام</h1><p class="text-secondary mt-1 text-sm">سجل القيود المحاسبية اليومية</p></div><div class="flex gap-2"><button class="btn-ghost border border-elevated">📥 تصدير</button><button class="btn-primary">+ قيد جديد</button></div></div>
+  <div class="card mb-4"><div class="p-4 border-b border-elevated flex flex-col md:flex-row gap-3"><input type="text" placeholder="🔍 بحث..." class="input-field flex-1" /><select class="input-field md:w-40"><option>كل الحسابات</option><option>الأصول</option><option>الخصوم</option><option>الإيرادات</option></select><input type="date" class="input-field md:w-40" value="2026-08-06" /></div>
+    <div class="overflow-x-auto"><table><thead><tr><th>رقم القيد</th><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody>
+      <tr><td class="font-semibold">#JE-001</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٦</td><td class="text-secondary">بيع بضاعة — فاتورة #INV-0847</td><td class="font-bold text-emerald-400">٣٬٥٠٠</td><td class="text-tertiary">—</td><td class="font-bold">٣٬٥٠٠</td></tr>
+      <tr><td class="font-semibold">#JE-002</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٥</td><td class="text-secondary">سداد فاتورة — مؤسسة النور</td><td class="text-tertiary">—</td><td class="font-bold text-amber-400">٨٬٧٥٠</td><td class="font-bold">−٥٬٢٥٠</td></tr>
+      <tr><td class="font-semibold">#JE-003</td><td class="text-tertiary">٢٠٢٦/٠٨/٠٤</td><td class="text-secondary">رواتب الموظفين — أغسطس</td><td class="font-bold text-red-400">٤٥٬٠٠٠</td><td class="text-tertiary">—</td><td class="font-bold">−٥٠٬٢٥٠</td></tr>
+    </tbody><tfoot><tr style="background: rgba(31,41,55,0.3)"><td colspan="3" class="font-bold">الإجمالي</td><td class="font-bold text-emerald-400">٥٦٬٥٠٠</td><td class="font-bold text-amber-400">٨٬٧٥٠</td><td class="font-bold">−٥٨٬٢٥٠</td></tr></tfoot></table></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 8b: AR/AP (accounting inner page) ═══════ -->
+<!-- ═══════ PAGE 10: AR/AP ═══════ -->
 <section class="page-section" id="arap">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">المستحقات (AR/AP)</span></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold">💳 المستحقات (AR/AP)</h1><p class="text-gray-400 mt-1 text-sm">الذمم المدينة والدائنة + شيكات بمواعيد لاحقة</p></div>
-    <button class="btn-primary">+ قسط جديد</button>
-  </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي المستحق لنا</div><div class="text-xl font-bold text-emerald-400">٤٢٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي المستحق علينا</div><div class="text-xl font-bold text-red-400">٢٨٬٥٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">متأخر (>٣٠ يوم)</div><div class="text-xl font-bold text-amber-400">٨٬٧٥٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي</div><div class="text-xl font-bold text-gold">١٣٬٥٠٠</div></div>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">المستحقات (AR/AP)</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">💳 المستحقات (AR/AP)</h1><p class="text-secondary mt-1 text-sm">الذمم المدينة والدائنة + شيكات بمواعيد لاحقة</p></div><button class="btn-primary">+ قسط جديد</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">مستحق لنا</div><div class="text-xl value-text text-emerald-400">٤٢٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">مستحق علينا</div><div class="text-xl value-text text-red-400">٢٨٬٥٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">متأخر (>٣٠ يوم)</div><div class="text-xl value-text text-amber-400">٨٬٧٥٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي</div><div class="text-xl value-text" style="color: #e0b88a;">١٣٬٥٠٠</div></div>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card">
-      <div class="p-4 border-b border-elevated"><h3 class="font-semibold">📊 تقنين العمر (Aging)</h3></div>
-      <div class="p-4 space-y-3">
-        <div><div class="flex justify-between text-sm mb-1"><span>٠-٣٠ يوم</span><span class="text-emerald-400">٢٤٬٠٠٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-emerald-500 rounded-full" style="width:57%"></div></div></div>
-        <div><div class="flex justify-between text-sm mb-1"><span>٣١-٦٠ يوم</span><span class="text-amber-400">٩٬٢٥٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-amber-500 rounded-full" style="width:22%"></div></div></div>
-        <div><div class="flex justify-between text-sm mb-1"><span>٦١-٩٠ يوم</span><span class="text-red-400">٥٬٥٠٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-red-500 rounded-full" style="width:13%"></div></div></div>
-        <div><div class="flex justify-between text-sm mb-1"><span>>٩٠ يوم</span><span class="text-red-600">٣٬٢٥٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-red-600 rounded-full" style="width:8%"></div></div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="p-4 border-b border-elevated"><h3 class="font-semibold">📝 شيكات بمواعيد لاحقة (PDC)</h3></div>
-      <div class="divide-y divide-elevated">
-        <div class="p-3 flex items-center justify-between"><div><div class="font-medium text-sm">شيك #001234</div><div class="text-xs text-gray-400">بنك الرياض • ٢٠٢٦/٠٩/٠١</div></div><span class="badge badge-warning">معلّق</span></div>
-        <div class="p-3 flex items-center justify-between"><div><div class="font-medium text-sm">شيك #001235</div><div class="text-xs text-gray-400">بنك الأهلي • ٢٠٢٦/٠٩/١٥</div></div><span class="badge badge-info">مجدول</span></div>
-        <div class="p-3 flex items-center justify-between"><div><div class="font-medium text-sm">شيك #001236</div><div class="text-xs text-gray-400">بنك الراجحي • ٢٠٢٦/١٠/٠١</div></div><span class="badge badge-info">مجدول</span></div>
-      </div>
-    </div>
+    <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">📊 تقنين العمر (Aging)</h3></div><div class="p-4 space-y-3">
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">٠-٣٠ يوم</span><span class="font-bold text-emerald-400">٢٤٬٠٠٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-emerald-500 rounded-full" style="width:57%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">٣١-٦٠ يوم</span><span class="font-bold text-amber-400">٩٬٢٥٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-amber-400 rounded-full" style="width:22%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">٦١-٩٠ يوم</span><span class="font-bold text-red-400">٥٬٥٠٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-red-400 rounded-full" style="width:13%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">>٩٠ يوم</span><span class="font-bold text-red-600">٣٬٢٥٠</span></div><div class="h-2 bg-elevated rounded-full"><div class="h-full bg-red-600 rounded-full" style="width:8%"></div></div></div>
+    </div></div>
+    <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">📝 شيكات بمواعيد لاحقة (PDC)</h3></div><div class="divide-y divide-elevated">
+      <div class="p-3 flex items-center justify-between"><div><div class="font-semibold text-sm">شيك #001234</div><div class="text-xs text-tertiary">بنك الرياض • ٢٠٢٦/٠٩/٠١</div></div><span class="badge badge-warning">معلّق</span></div>
+      <div class="p-3 flex items-center justify-between"><div><div class="font-semibold text-sm">شيك #001235</div><div class="text-xs text-tertiary">بنك الأهلي • ٢٠٢٦/٠٩/١٥</div></div><span class="badge badge-info">مجدول</span></div>
+    </div></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 8c: BANKING (accounting inner page) ═══════ -->
+<!-- ═══════ PAGE 11: BANKING ═══════ -->
 <section class="page-section" id="banking">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">البنوك</span></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold">🏦 البنوك والتسوية</h1><p class="text-gray-400 mt-1 text-sm">إدارة الحسابات البنكية ومطابقتها</p></div>
-    <button class="btn-primary">+ حساب بنكي</button>
-  </div>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">البنوك</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">🏦 البنوك والتسوية</h1><p class="text-secondary mt-1 text-sm">إدارة الحسابات البنكية ومطابقتها</p></div><button class="btn-primary">+ حساب بنكي</button></div>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <div class="card p-5">
-      <div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الرياض</div><div class="text-xs text-gray-400">SA03 8000...7519</div></div></div><span class="badge badge-success">نشط</span></div>
-      <div class="text-2xl font-bold text-emerald-400 mb-1">٢٣٤٬٥٠٠</div><div class="text-xs text-gray-400">ر.س • الرصيد الحالي</div>
-    </div>
-    <div class="card p-5">
-      <div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الأهلي</div><div class="text-xs text-gray-400">SA44 1000...3382</div></div></div><span class="badge badge-success">نشط</span></div>
-      <div class="text-2xl font-bold text-emerald-400 mb-1">٨٧٬٢٠٠</div><div class="text-xs text-gray-400">ر.س • الرصيد الحالي</div>
-    </div>
-    <div class="card p-5">
-      <div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الراجحي</div><div class="text-xs text-gray-400">SA00 8000...9112</div></div></div><span class="badge badge-warning">تسوية معلّقة</span></div>
-      <div class="text-2xl font-bold text-amber-400 mb-1">٤٥٬٠٠٠</div><div class="text-xs text-gray-400">ر.س • بانتظار التسوية</div>
-    </div>
+    <div class="card p-5"><div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الرياض</div><div class="text-xs text-tertiary">SA03 8000...7519</div></div></div><span class="badge badge-success">نشط</span></div><div class="text-2xl font-bold text-emerald-400 mb-1">٢٣٤٬٥٠٠</div><div class="text-xs text-tertiary">ر.س • الرصيد الحالي</div></div>
+    <div class="card p-5"><div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الأهلي</div><div class="text-xs text-tertiary">SA44 1000...3382</div></div></div><span class="badge badge-success">نشط</span></div><div class="text-2xl font-bold text-emerald-400 mb-1">٨٧٬٢٠٠</div><div class="text-xs text-tertiary">ر.س • الرصيد الحالي</div></div>
+    <div class="card p-5"><div class="flex items-center justify-between mb-3"><div class="flex items-center gap-2"><div class="w-10 h-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">🏦</div><div><div class="font-bold text-sm">بنك الراجحي</div><div class="text-xs text-tertiary">SA00 8000...9112</div></div></div><span class="badge badge-warning">تسوية معلّقة</span></div><div class="text-2xl font-bold text-amber-400 mb-1">٤٥٬٠٠٠</div><div class="text-xs text-tertiary">ر.س • بانتظار التسوية</div></div>
   </div>
-  <div class="card">
-    <div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">آخر المعاملات البنكية</h3><button class="btn-ghost text-xs">🔄 تسوية</button></div>
-    <div class="overflow-x-auto">
-      <table>
-        <thead><tr><th>التاريخ</th><th>الوصف</th><th>المرجع</th><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead>
-        <tbody>
-          <tr><td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td><td>تحويل وارد — شركة الأمل</td><td class="text-gray-400">TRN-001234</td><td>بنك الرياض</td><td class="font-medium text-emerald-400">٤٬٠٢٥</td><td class="text-gray-400">—</td></tr>
-          <tr><td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td><td>سداد رواتب أغسطس</td><td class="text-gray-400">PAY-AUG</td><td>بنك الأهلي</td><td class="text-gray-400">—</td><td class="font-medium text-red-400">٤٥٬٠٠٠</td></tr>
-          <tr><td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td><td>إيجار المكتب</td><td class="text-gray-400">RENT-AUG</td><td>بنك الراجحي</td><td class="text-gray-400">—</td><td class="font-medium text-red-400">٨٬٠٠٠</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">آخر المعاملات البنكية</h3><button class="btn-ghost text-xs">🔄 تسوية</button></div>
+    <div class="overflow-x-auto"><table><thead><tr><th>التاريخ</th><th>الوصف</th><th>المرجع</th><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead><tbody>
+      <tr><td class="text-tertiary">٢٠٢٦/٠٨/٠٦</td><td class="text-secondary">تحويل وارد — شركة الأمل</td><td class="text-tertiary">TRN-001234</td><td class="text-secondary">بنك الرياض</td><td class="font-bold text-emerald-400">٤٬٠٢٥</td><td class="text-tertiary">—</td></tr>
+      <tr><td class="text-tertiary">٢٠٢٦/٠٨/٠٥</td><td class="text-secondary">سداد رواتب أغسطس</td><td class="text-tertiary">PAY-AUG</td><td class="text-secondary">بنك الأهلي</td><td class="text-tertiary">—</td><td class="font-bold text-red-400">٤٥٬٠٠٠</td></tr>
+    </tbody></table></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 8d: FIXED ASSETS (accounting inner page) ═══════ -->
+<!-- ═══════ PAGE 12: ASSETS ═══════ -->
 <section class="page-section" id="assets">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الأصول الثابتة</span></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold">🏢 الأصول الثابتة والإهلاك</h1><p class="text-gray-400 mt-1 text-sm">إدارة الأصول وحساب الإهلاك تلقائياً</p></div>
-    <button class="btn-primary">+ أصل جديد</button>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الأصول الثابتة</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">🏢 الأصول الثابتة والإهلاك</h1><p class="text-secondary mt-1 text-sm">إدارة الأصول وحساب الإهلاك تلقائياً</p></div><button class="btn-primary">+ أصل جديد</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي التكلفة</div><div class="text-xl value-text">٤٥٠٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">مجمع الإهلاك</div><div class="text-xl value-text text-amber-400">١٢٣٬٠٠٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي القيمة</div><div class="text-xl value-text" style="color: #e0b88a;">٣٢٧٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">إهلاك الشهر</div><div class="text-xl value-text text-red-400">٤٬٥٠٠</div></div>
   </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي التكلفة</div><div class="text-xl font-bold">٤٥٠٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">مجمع الإهلاك</div><div class="text-xl font-bold text-amber-400">١٢٣٬٠٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي القيمة الدفترية</div><div class="text-xl font-bold text-gold">٣٢٧٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إهلاك الشهر</div><div class="text-xl font-bold text-red-400">٤٬٥٠٠</div></div>
-  </div>
-  <div class="card">
-    <div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الأصول</h3></div>
-    <div class="overflow-x-auto">
-      <table>
-        <thead><tr><th>الأصل</th><th>تاريخ الشراء</th><th>التكلفة</th><th>العمر</th><th>مجمع الإهلاك</th><th>صافي القيمة</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">🚗 سيارة تسليم (Toyota Hilux)</td><td class="text-gray-400">٢٠٢٤/٠١/١٥</td><td>٨٥٬٠٠٠</td><td>٥ سنوات</td><td class="text-amber-400">٢٨٬٠٠٠</td><td class="font-medium text-emerald-400">٥٧٬٠٠٠</td></tr>
-          <tr><td class="font-medium">💻 أجهزة كمبيوتر (١٠)</td><td class="text-gray-400">٢٠٢٤/٠٣/٠١</td><td>٤٥٬٠٠٠</td><td>٣ سنوات</td><td class="text-amber-400">٢٢٬٠٠٠</td><td class="font-medium text-emerald-400">٢٣٬٠٠٠</td></tr>
-          <tr><td class="font-medium">🏭 ماكات تصنيع</td><td class="text-gray-400">٢٠٢٣/٠٦/٠١</td><td>٢٤٠٬٠٠٠</td><td>١٠ سنوات</td><td class="text-amber-400">٦٠٬٠٠٠</td><td class="font-medium text-emerald-400">١٨٠٬٠٠٠</td></tr>
-          <tr><td class="font-medium">🪑 أثاث مكتبي</td><td class="text-gray-400">٢٠٢٤/٠٩/٠١</td><td>٨٠٬٠٠٠</td><td>٥ سنوات</td><td class="text-amber-400">١٣٬٠٠٠</td><td class="font-medium text-emerald-400">٦٧٬٠٠٠</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الأصول</h3></div>
+    <div class="overflow-x-auto"><table><thead><tr><th>الأصل</th><th>تاريخ الشراء</th><th>التكلفة</th><th>العمر</th><th>مجمع الإهلاك</th><th>صافي القيمة</th></tr></thead><tbody>
+      <tr><td class="font-semibold">🚗 سيارة تسليم (Toyota Hilux)</td><td class="text-tertiary">٢٠٢٤/٠١/١٥</td><td>٨٥٬٠٠٠</td><td class="text-secondary">٥ سنوات</td><td class="text-amber-400">٢٨٬٠٠٠</td><td class="font-bold text-emerald-400">٥٧٬٠٠٠</td></tr>
+      <tr><td class="font-semibold">💻 أجهزة كمبيوتر (١٠)</td><td class="text-tertiary">٢٠٢٤/٠٣/٠١</td><td>٤٥٬٠٠٠</td><td class="text-secondary">٣ سنوات</td><td class="text-amber-400">٢٢٬٠٠٠</td><td class="font-bold text-emerald-400">٢٣٬٠٠٠</td></tr>
+      <tr><td class="font-semibold">🏭 ماكات تصنيع</td><td class="text-tertiary">٢٠٢٣/٠٦/٠١</td><td>٢٤٠٬٠٠٠</td><td class="text-secondary">١٠ سنوات</td><td class="text-amber-400">٦٠٬٠٠٠</td><td class="font-bold text-emerald-400">١٨٠٬٠٠٠</td></tr>
+    </tbody></table></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 8e: PAYROLL WPS (accounting inner page) ═══════ -->
+<!-- ═══════ PAGE 13: PAYROLL ═══════ -->
 <section class="page-section" id="payroll">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الرواتب (WPS)</span></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold">💵 الرواتب ونظام حماية الأجور (WPS)</h1><p class="text-gray-400 mt-1 text-sm">إدارة الرواتب وتوليد ملفات WPS</p></div>
-    <div class="flex gap-2"><button class="btn-ghost border border-elevated">📤 توليد ملف WPS</button><button class="btn-primary">+ راتب</button></div>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الرواتب (WPS)</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">💵 الرواتب ونظام حماية الأجور (WPS)</h1><p class="text-secondary mt-1 text-sm">إدارة الرواتب وتوليد ملفات WPS</p></div><div class="flex gap-2"><button class="btn-ghost border border-elevated">📤 توليد ملف WPS</button><button class="btn-primary">+ راتب</button></div></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي الرواتب</div><div class="text-xl value-text">٢٣٤٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">عدد الموظفين</div><div class="text-xl value-text">٤٥</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ متوسط الراتب</div><div class="text-xl value-text" style="color: #e0b88a;">٥٬٢٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">حالة WPS</div><div class="text-xl value-text text-emerald-400">✓ مُرسل</div></div>
   </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي الرواتب</div><div class="text-xl font-bold">٢٣٤٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">عدد الموظفين</div><div class="text-xl font-bold">٤٥</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ متوسط الراتب</div><div class="text-xl font-bold text-gold">٥٬٢٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">حالة WPS</div><div class="text-xl font-bold text-emerald-400">✓ مُرسل</div></div>
-  </div>
-  <div class="card">
-    <div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">رواتب أغسطس ٢٠٢٦</h3><span class="badge badge-success">تمت المعالجة</span></div>
-    <div class="overflow-x-auto">
-      <table>
-        <thead><tr><th>الموظف</th><th>المنصب</th><th>الأساسي</th><th>البدلات</th><th>الخصومات</th><th>الصافي</th><th>حالة WPS</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">أحمد محمد</td><td class="text-gray-400">محاسب أول</td><td>٧٬٠٠٠</td><td>١٬٢٠٠</td><td class="text-red-400">٢٠٠</td><td class="font-bold text-emerald-400">٨٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
-          <tr><td class="font-medium">فاطمة علي</td><td class="text-gray-400">مديرة مبيعات</td><td>١٠٬٠٠٠</td><td>٢٬٥٠٠</td><td class="text-red-400">٥٠٠</td><td class="font-bold text-emerald-400">١٢٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
-          <tr><td class="font-medium">خالد عبدالله</td><td class="text-gray-400">مطور</td><td>١٢٬٠٠٠</td><td>٣٬٥٠٠</td><td class="text-red-400">٥٠٠</td><td class="font-bold text-emerald-400">١٥٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
-          <tr><td class="font-medium">سارة أحمد</td><td class="text-gray-400">محاسبة</td><td>٥٬٥٠٠</td><td>١٬٢٠٠</td><td class="text-red-400">٢٠٠</td><td class="font-bold text-emerald-400">٦٬٥٠٠</td><td><span class="badge badge-warning">معلّق</span></td></tr>
-        </tbody>
-        <tfoot><tr class="bg-elevated/30"><td colspan="4" class="font-bold">الإجمالي</td><td class="font-bold text-red-400">١٬٤٠٠</td><td class="font-bold text-emerald-400">٤١٬٥٠٠</td><td></td></tr></tfoot>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated flex items-center justify-between"><h3 class="font-semibold">رواتب أغسطس ٢٠٢٦</h3><span class="badge badge-success">تمت المعالجة</span></div>
+    <div class="overflow-x-auto"><table><thead><tr><th>الموظف</th><th>المنصب</th><th>الأساسي</th><th>البدلات</th><th>الخصومات</th><th>الصافي</th><th>WPS</th></tr></thead><tbody>
+      <tr><td class="font-semibold">أحمد محمد</td><td class="text-secondary">محاسب أول</td><td>٧٬٠٠٠</td><td>١٬٢٠٠</td><td class="text-red-400">٢٠٠</td><td class="font-bold text-emerald-400">٨٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
+      <tr><td class="font-semibold">فاطمة علي</td><td class="text-secondary">مديرة مبيعات</td><td>١٠٬٠٠٠</td><td>٢٬٥٠٠</td><td class="text-red-400">٥٠٠</td><td class="font-bold text-emerald-400">١٢٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
+      <tr><td class="font-semibold">خالد عبدالله</td><td class="text-secondary">مطور</td><td>١٢٬٠٠٠</td><td>٣٬٥٠٠</td><td class="text-red-400">٥٠٠</td><td class="font-bold text-emerald-400">١٥٬٠٠٠</td><td><span class="badge badge-success">✓</span></td></tr>
+    </tbody><tfoot><tr style="background: rgba(31,41,55,0.3)"><td colspan="4" class="font-bold">الإجمالي</td><td class="font-bold text-red-400">١٬٤٠٠</td><td class="font-bold text-emerald-400">٤١٬٥٠٠</td><td></td></tr></tfoot></table></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 8f: TAX COMPLIANCE (accounting inner page) ═══════ -->
+<!-- ═══════ PAGE 14: TAX ═══════ -->
 <section class="page-section" id="tax">
-  <div class="flex items-center gap-2 mb-6 text-sm text-gray-400"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الضرائب</span></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold">📋 الامتثال الضريبي</h1><p class="text-gray-400 mt-1 text-sm">إقرارات VAT + تقارير ZATCA</p></div>
-    <button class="btn-primary">+ إقرار VAT</button>
+  <div class="flex items-center gap-2 mb-6 text-sm text-tertiary"><span>المحاسبة</span><span>←</span><span class="text-foreground font-medium">الضرائب</span></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold">📋 الامتثال الضريبي</h1><p class="text-secondary mt-1 text-sm">إقرارات VAT + تقارير ZATCA</p></div><button class="btn-primary">+ إقرار VAT</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">VAT مستحق</div><div class="text-xl value-text text-emerald-400">١٨٬٦٧٥</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">VAT مدفوع</div><div class="text-xl value-text text-amber-400">٤٬٢٠٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي مستحق</div><div class="text-xl value-text" style="color: #e0b88a;">١٤٬٤٧٥</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">الإقرار القادم</div><div class="text-xl value-text">٣٠ أغسطس</div></div>
   </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">VAT مستحق (خرج)</div><div class="text-xl font-bold text-emerald-400">١٨٬٦٧٥</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">VAT مدفوع (دخل)</div><div class="text-xl font-bold text-amber-400">٤٬٢٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي مستحق</div><div class="text-xl font-bold text-gold">١٤٬٤٧٥</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">الإقرار القادم</div><div class="text-xl font-bold">٣٠ أغسطس</div></div>
-  </div>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-    <div class="card p-5">
-      <h3 class="font-semibold mb-3">📊 ملخص VAT — الربع الحالي</h3>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between p-2 rounded-lg bg-emerald-500/5"><span>مبيعات خاضعة (١٥٪)</span><span class="font-medium text-emerald-400">١٢٤٬٥٠٠</span></div>
-        <div class="flex justify-between p-2 rounded-lg bg-emerald-500/5"><span>VAT على المبيعات</span><span class="font-medium">١٨٬٦٧٥</span></div>
-        <div class="flex justify-between p-2 rounded-lg bg-amber-500/5"><span>مشتريات خاضعة (١٥٪)</span><span class="font-medium text-amber-400">٢٨٬٠٠٠</span></div>
-        <div class="flex justify-between p-2 rounded-lg bg-amber-500/5"><span>VAT على المشتريات</span><span class="font-medium">٤٬٢٠٠</span></div>
-        <div class="flex justify-between p-3 rounded-lg bg-gold/10 border border-gold/20 mt-2"><span class="font-bold">صافي VAT مستحق</span><span class="font-bold text-gold">١٤٬٤٧٥</span></div>
-      </div>
-    </div>
-    <div class="card p-5">
-      <h3 class="font-semibold mb-3">🧾 حالة الإقرارات</h3>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5"><div><div class="font-medium text-sm">VAT Q2 ٢٠٢٦</div><div class="text-xs text-gray-400">أُرسل في ٢٠٢٦/٠٧/١٥</div></div><span class="badge badge-success">مُرسل</span></div>
-        <div class="flex items-center justify-between p-2 rounded-lg bg-amber-500/5"><div><div class="font-medium text-sm">VAT Q3 ٢٠٢٦</div><div class="text-xs text-gray-400">الموعد: ٣٠ أكتوبر</div></div><span class="badge badge-warning">قيد الإعداد</span></div>
-        <div class="flex items-center justify-between p-2 rounded-lg bg-blue-500/5"><div><div class="font-medium text-sm">ZATCA Phase 2</div><div class="text-xs text-gray-400">مفعّل • آخر إرسال: اليوم</div></div><span class="badge badge-info">✓ مفعّل</span></div>
-      </div>
-    </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card p-5"><h3 class="font-semibold mb-3">📊 ملخص VAT — الربع الحالي</h3><div class="space-y-2 text-sm">
+      <div class="flex justify-between p-2 rounded-lg bg-emerald-500/5"><span class="text-secondary">مبيعات خاضعة (١٥٪)</span><span class="font-bold text-emerald-400">١٢٤٬٥٠٠</span></div>
+      <div class="flex justify-between p-2 rounded-lg bg-emerald-500/5"><span class="text-secondary">VAT على المبيعات</span><span class="font-bold">١٨٬٦٧٥</span></div>
+      <div class="flex justify-between p-2 rounded-lg bg-amber-500/5"><span class="text-secondary">مشتريات خاضعة (١٥٪)</span><span class="font-bold text-amber-400">٢٨٬٠٠٠</span></div>
+      <div class="flex justify-between p-2 rounded-lg bg-amber-500/5"><span class="text-secondary">VAT على المشتريات</span><span class="font-bold">٤٬٢٠٠</span></div>
+      <div class="flex justify-between p-3 rounded-lg" style="background: rgba(212,165,116,0.1); border: 1px solid rgba(212,165,116,0.2);"><span class="font-bold">صافي VAT مستحق</span><span class="font-bold" style="color: #e0b88a;">١٤٬٤٧٥</span></div>
+    </div></div>
+    <div class="card p-5"><h3 class="font-semibold mb-3">🧾 حالة الإقرارات</h3><div class="space-y-2">
+      <div class="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5"><div><div class="font-semibold text-sm">VAT Q2 ٢٠٢٦</div><div class="text-xs text-tertiary">أُرسل في ٢٠٢٦/٠٧/١٥</div></div><span class="badge badge-success">مُرسل</span></div>
+      <div class="flex items-center justify-between p-2 rounded-lg bg-amber-500/5"><div><div class="font-semibold text-sm">VAT Q3 ٢٠٢٦</div><div class="text-xs text-tertiary">الموعد: ٣٠ أكتوبر</div></div><span class="badge badge-warning">قيد الإعداد</span></div>
+      <div class="flex items-center justify-between p-2 rounded-lg bg-blue-500/5"><div><div class="font-semibold text-sm">ZATCA Phase 2</div><div class="text-xs text-tertiary">مفعّل • آخر إرسال: اليوم</div></div><span class="badge badge-info">✓ مفعّل</span></div>
+    </div></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 9: BILLING ═══════ -->
+<!-- ═══════ PAGE 15: BILLING (10/10 fixed) ═══════ -->
 <section class="page-section" id="billing">
   <div class="mb-8 text-center">
     <h1 class="text-3xl font-bold mb-2">باقات الاشتراك</h1>
-    <p class="text-gray-400">اختر الباقة المناسبة لشركتك — السعودية (SAR)</p>
+    <p class="text-secondary">اختر الباقة المناسبة لشركتك — السعودية (SAR)</p>
   </div>
   <div class="flex justify-center mb-8">
     <div class="inline-flex rounded-lg border border-elevated p-1 bg-card">
-      <button class="px-4 py-2 rounded-md text-sm font-medium bg-primary text-white">شهري</button>
-      <button class="px-4 py-2 rounded-md text-sm font-medium text-gray-400">سنوي <span class="text-emerald-400 text-xs">وفّر ٢٠٪</span></button>
+      <button class="px-4 py-2 rounded-md text-sm font-semibold bg-primary text-white">شهري</button>
+      <button class="px-4 py-2 rounded-md text-sm font-medium text-secondary">سنوي <span class="text-emerald-400 text-xs">وفّر ٢٠٪</span></button>
     </div>
   </div>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <!-- Fix 4: Consistent CTAs (btn-outline for side cards, btn-primary for middle) -->
     <div class="card p-6 flex flex-col">
-      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">⚡</div><div><h3 class="font-bold text-lg">المبتدئ</h3><p class="text-xs text-gray-400">Starter</p></div></div>
-      <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">٣٧.٥٠</span><span class="text-sm text-gray-400">SAR</span><span class="text-sm text-gray-400">/ شهر</span></div></div>
-      <ul class="flex-1 space-y-3 mb-6"><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>حتى 100 فاتورة شهرياً</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>استخراج AI للفواتير</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>إدارة عملاء ومخزون</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>دعم فني بالبريد</span></li></ul>
-      <button class="w-full py-3 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 min-h-[44px]">اشترك الآن</button>
+      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-tertiary">⚡</div><div><h3 class="font-bold text-lg">المبتدئ</h3><p class="text-xs text-tertiary">Starter</p></div></div>
+      <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">٣٧.٥٠</span><span class="text-sm text-secondary">SAR</span><span class="text-sm text-tertiary">/ شهر</span></div></div>
+      <ul class="flex-1 space-y-3 mb-6"><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">حتى 100 فاتورة شهرياً</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">استخراج AI للفواتير</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">إدارة عملاء ومخزون</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">دعم فني بالبريد</span></li></ul>
+      <button class="btn-outline w-full">اشترك الآن</button>
     </div>
-    <div class="card p-6 flex flex-col" style="border: 2px solid #047857; box-shadow: 0 0 24px rgba(4, 120, 87, 0.2);">
-      <div class="absolute" style="position: relative; margin-top: -32px; align-self: center;"><span class="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">الأكثر شيوعاً</span></div>
-      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center">👑</div><div><h3 class="font-bold text-lg">الاحترافي</h3><p class="text-xs text-gray-400">Professional</p></div></div>
-      <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">٧٥.٠٠</span><span class="text-sm text-gray-400">SAR</span><span class="text-sm text-gray-400">/ شهر</span></div></div>
-      <ul class="flex-1 space-y-3 mb-6"><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>حتى 500 فاتورة شهرياً</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>كل ميزات المبتدئ</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>محاسبة كاملة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>وكلاء AI متقدمون</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>تقارير مخصصة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>دعم ذو أولوية</span></li></ul>
-      <button class="w-full py-3 rounded-lg font-medium bg-primary text-white hover:bg-primary/90 min-h-[44px]">اشترك الآن</button>
+    <div class="card p-6 flex flex-col" style="border: 2px solid #047857; box-shadow: 0 0 24px rgba(4, 120, 87, 0.2); position: relative;">
+      <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%);"><span class="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">الأكثر شيوعاً</span></div>
+      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center">👑</div><div><h3 class="font-bold text-lg">الاحترافي</h3><p class="text-xs text-tertiary">Professional</p></div></div>
+      <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">٧٥.٠٠</span><span class="text-sm text-secondary">SAR</span><span class="text-sm text-tertiary">/ شهر</span></div></div>
+      <ul class="flex-1 space-y-3 mb-6"><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">حتى 500 فاتورة شهرياً</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">كل ميزات المبتدئ</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">محاسبة كاملة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">وكلاء AI متقدمون</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">تقارير مخصصة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">دعم ذو أولوية</span></li></ul>
+      <button class="btn-primary w-full">اشترك الآن</button>
     </div>
     <div class="card p-6 flex flex-col">
-      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">∞</div><div><h3 class="font-bold text-lg">غير المحدود</h3><p class="text-xs text-gray-400">Unlimited</p></div></div>
-      <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">١١٢.٥٠</span><span class="text-sm text-gray-400">SAR</span><span class="text-sm text-gray-400">/ شهر</span></div></div>
-      <ul class="flex-1 space-y-3 mb-6"><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>فواتير غير محدودة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>كل ميزات الاحترافي</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>متعدد الشركات</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>API كامل + Webhooks</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>تكاملات مخصصة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-500">✓</span><span>مدير حساب مخصص</span></li></ul>
-      <button class="w-full py-3 rounded-lg font-medium bg-muted text-foreground hover:bg-muted/80 min-h-[44px]">اشترك الآن</button>
+      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-tertiary">∞</div><div><h3 class="font-bold text-lg">غير المحدود</h3><p class="text-xs text-tertiary">Unlimited</p></div></div>
+      <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">١١٢.٥٠</span><span class="text-sm text-secondary">SAR</span><span class="text-sm text-tertiary">/ شهر</span></div></div>
+      <ul class="flex-1 space-y-3 mb-6"><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">فواتير غير محدودة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">كل ميزات الاحترافي</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">متعدد الشركات</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">API كامل + Webhooks</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">تكاملات مخصصة</span></li><li class="flex items-start gap-2 text-sm"><span class="text-emerald-400">✓</span><span class="text-secondary">مدير حساب مخصص</span></li></ul>
+      <button class="btn-outline w-full">اشترك الآن</button>
     </div>
+  </div>
+  <!-- Fix 4: Trust signals -->
+  <div class="flex flex-wrap justify-center gap-3 mt-8 max-w-3xl mx-auto">
+    <div class="trust-badge">✓ ضمان استرجاع ٣٠ يوم</div>
+    <div class="trust-badge">🔒 دفع آمن (Myfatoorah)</div>
+    <div class="trust-badge">📱 إلغاء في أي وقت</div>
+    <div class="trust-badge">🛡️ تشفير AES-256</div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 10: ROLES ═══════ -->
+<!-- ═══════ PAGE 16: ROLES ═══════ -->
 <section class="page-section" id="roles">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl font-bold flex items-center gap-2">🛡️ الأدوار والصلاحيات</h1><p class="text-gray-400 text-sm mt-1">إدارة أدوار المستخدمين والصلاحيات في النظام</p></div>
-    <button class="btn-primary">+ دور جديد</button>
-  </div>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl font-bold flex items-center gap-2">🛡️ الأدوار والصلاحيات</h1><p class="text-secondary text-sm mt-1">إدارة أدوار المستخدمين والصلاحيات في النظام</p></div><button class="btn-primary">+ دور جديد</button></div>
   <div class="grid gap-4">
-    <div class="card p-4">
-      <div class="flex items-start gap-4">
-        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">👑</div>
-        <div class="flex-1">
-          <div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold">المؤسس</h3><span class="text-xs text-gray-400">(OWNER)</span><span class="badge badge-info">مدمج</span></div>
-          <p class="text-sm text-gray-400 mt-1">صلاحيات كاملة غير قابلة للتعديل</p>
-          <div class="flex flex-wrap gap-1.5 mt-3"><span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400">invoice:write: 4</span><span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400">client:admin: 4</span><span class="text-[10px] text-gray-400 px-2 py-0.5">+39 أخرى</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="card p-4">
-      <div class="flex items-start gap-4">
-        <div class="w-12 h-12 rounded-xl bg-gold/10 text-gold flex items-center justify-center flex-shrink-0">🎯</div>
-        <div class="flex-1">
-          <div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold">محاسب مخصص</h3><span class="text-xs text-gray-400">(CUSTOM_ACCOUNTANT)</span><span class="badge badge-gold">مخصص</span></div>
-          <p class="text-sm text-gray-400 mt-1">دور مخصص للمحاسبين مع صلاحيات اعتماد إضافية</p>
-          <div class="flex flex-wrap gap-1.5 mt-3"><span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-400">journal:approve: 3</span><span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400">report:write: 2</span></div>
-        </div>
-      </div>
-    </div>
+    <div class="card p-4"><div class="flex items-start gap-4"><div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">👑</div><div class="flex-1"><div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold">المؤسس</h3><span class="text-xs text-tertiary">(OWNER)</span><span class="badge badge-info">مدمج</span></div><p class="text-sm text-secondary mt-1">صلاحيات كاملة غير قابلة للتعديل</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="badge badge-success text-[10px]">invoice:write</span><span class="badge badge-success text-[10px]">client:admin</span><span class="text-[10px] text-tertiary px-2 py-0.5">+39 أخرى</span></div></div></div></div>
+    <div class="card p-4"><div class="flex items-start gap-4"><div class="w-12 h-12 rounded-xl bg-gold/10 text-gold flex items-center justify-center flex-shrink-0">🎯</div><div class="flex-1"><div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold">محاسب مخصص</h3><span class="text-xs text-tertiary">(CUSTOM_ACCOUNTANT)</span><span class="badge badge-gold">مخصص</span></div><p class="text-sm text-secondary mt-1">دور مخصص للمحاسبين مع صلاحيات اعتماد إضافية</p><div class="flex flex-wrap gap-1.5 mt-3"><span class="badge badge-info text-[10px]">journal:approve</span><span class="badge badge-warning text-[10px]">report:write</span></div></div></div></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 11: AI AGENTS ═══════ -->
+<!-- ═══════ PAGE 17: AI AGENTS ═══════ -->
 <section class="page-section" id="ai-agents">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">🤖 وكلاء الذكاء الاصطناعي</h1><p class="text-gray-400 mt-1 text-sm">وكلاء AI أليون لتنفيذ المهام تلقائياً</p></div>
-    <button class="btn-gold">+ وكيل جديد</button>
-  </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">وكلاء نشطون</div><div class="text-xl font-bold text-emerald-400">٨</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">مهام اليوم</div><div class="text-xl font-bold">١٤٢</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ توفير AI</div><div class="text-xl font-bold text-gold">٩٥٫٤٪</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">زمن الاستجابة</div><div class="text-xl font-bold">٢٣ms</div></div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">🤖 وكلاء الذكاء الاصطناعي</h1><p class="text-secondary mt-1 text-sm">وكلاء AI أليون لتنفيذ المهام تلقائياً</p></div><button class="btn-gold">+ وكيل جديد</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">وكلاء نشطون</div><div class="text-xl value-text text-emerald-400">٨</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">مهام اليوم</div><div class="text-xl value-text">١٤٢</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ توفير AI</div><div class="text-xl value-text" style="color: #e0b88a;">٩٥٫٤٪</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">زمن الاستجابة</div><div class="text-xl value-text">٢٣ms</div></div>
   </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="card p-6">
-      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">🧾</div><div class="flex-1"><h3 class="font-bold">وكيل الفواتير</h3><p class="text-xs text-gray-400">Invoice Brain Agent</p></div><span class="badge badge-success">نشط</span></div>
-      <div class="grid grid-cols-3 gap-2 text-center"><div><div class="text-lg font-bold text-emerald-400">٨٤٧</div><div class="text-[10px] text-gray-400">فواتير</div></div><div><div class="text-lg font-bold text-gold">٩٥٪</div><div class="text-[10px] text-gray-400">pattern</div></div><div><div class="text-lg font-bold">٠٫٠١ms</div><div class="text-[10px] text-gray-400">latency</div></div></div>
-    </div>
-    <div class="card p-6">
-      <div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">💬</div><div class="flex-1"><h3 class="font-bold">وكيل المحادثة</h3><p class="text-xs text-gray-400">Chat Agent</p></div><span class="badge badge-success">نشط</span></div>
-      <div class="grid grid-cols-3 gap-2 text-center"><div><div class="text-lg font-bold text-blue-400">٢٣٤</div><div class="text-[10px] text-gray-400">محادثات</div></div><div><div class="text-lg font-bold">٤٫٢</div><div class="text-[10px] text-gray-400">تقييم</div></div><div><div class="text-lg font-bold">١٢ms</div><div class="text-[10px] text-gray-400">latency</div></div></div>
-    </div>
+    <div class="card p-6"><div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">🧾</div><div class="flex-1"><h3 class="font-bold">وكيل الفواتير</h3><p class="text-xs text-tertiary">Invoice Brain Agent</p></div><span class="badge badge-success">نشط</span></div><div class="grid grid-cols-3 gap-2 text-center"><div><div class="text-lg font-bold text-emerald-400">٨٤٧</div><div class="text-[10px] text-tertiary">فواتير</div></div><div><div class="text-lg font-bold" style="color: #e0b88a;">٩٥٪</div><div class="text-[10px] text-tertiary">pattern</div></div><div><div class="text-lg font-bold">٠٫٠١ms</div><div class="text-[10px] text-tertiary">latency</div></div></div></div>
+    <div class="card p-6"><div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">💬</div><div class="flex-1"><h3 class="font-bold">وكيل المحادثة</h3><p class="text-xs text-tertiary">Chat Agent</p></div><span class="badge badge-success">نشط</span></div><div class="grid grid-cols-3 gap-2 text-center"><div><div class="text-lg font-bold text-blue-400">٢٣٤</div><div class="text-[10px] text-tertiary">محادثات</div></div><div><div class="text-lg font-bold">٤٫٢</div><div class="text-[10px] text-tertiary">تقييم</div></div><div><div class="text-lg font-bold">١٢ms</div><div class="text-[10px] text-tertiary">latency</div></div></div></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 12: AUTOMATION ═══════ -->
+<!-- ═══════ PAGE 18: AUTOMATION ═══════ -->
 <section class="page-section" id="automation">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">⚙️ الأتمتة</h1><p class="text-gray-400 mt-1 text-sm">قواعد الأتمتة لتنفيذ المهام تلقائياً</p></div>
-    <button class="btn-primary">+ قاعدة جديدة</button>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">⚙️ الأتمتة</h1><p class="text-secondary mt-1 text-sm">قواعد الأتمتة لتنفيذ المهام تلقائياً</p></div><button class="btn-primary">+ قاعدة جديدة</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">قواعد نشطة</div><div class="text-xl value-text text-emerald-400">١٢</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">تنفيذات اليوم</div><div class="text-xl value-text">٨٩</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">معدل النجاح</div><div class="text-xl value-text text-emerald-400">٩٨٪</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ وقت موفّر</div><div class="text-xl value-text" style="color: #e0b88a;">٤٥ ساعة</div></div>
   </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">قواعد نشطة</div><div class="text-xl font-bold text-emerald-400">١٢</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">تنفيذات اليوم</div><div class="text-xl font-bold">٨٩</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">معدل النجاح</div><div class="text-xl font-bold text-emerald-400">٩٨٪</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ وقت موفّر</div><div class="text-xl font-bold text-gold">٤٥ ساعة</div></div>
-  </div>
-  <div class="card">
-    <div class="p-4 border-b border-elevated"><h3 class="font-semibold">القواعد النشطة</h3></div>
-    <div class="divide-y divide-elevated">
-      <div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">📧</div><div><h4 class="font-medium">إرسال إشعار فاتورة متأخرة</h4><p class="text-xs text-gray-400">عند: invoice.overdue → إرسال بريد + WhatsApp</p></div></div><div class="flex items-center gap-3"><span class="text-xs text-gray-400">٢٣ مرة</span><div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div></div></div>
-      <div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">🔄</div><div><h4 class="font-medium">توليد قيد محاسبي تلقائي</h4><p class="text-xs text-gray-400">عند: invoice.paid → إنشاء JE + تحديث المخزون</p></div></div><div class="flex items-center gap-3"><span class="text-xs text-gray-400">٤٥ مرة</span><div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div></div></div>
-    </div>
-  </div>
+  <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">القواعد النشطة</h3></div><div class="divide-y divide-elevated">
+    <div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">📧</div><div><h4 class="font-semibold">إرسال إشعار فاتورة متأخرة</h4><p class="text-xs text-tertiary">عند: invoice.overdue → إرسال بريد + WhatsApp</p></div></div><div class="flex items-center gap-3"><span class="text-xs text-tertiary">٢٣ مرة</span><div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div></div></div>
+    <div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">🔄</div><div><h4 class="font-semibold">توليد قيد محاسبي تلقائي</h4><p class="text-xs text-tertiary">عند: invoice.paid → إنشاء JE + تحديث المخزون</p></div></div><div class="flex items-center gap-3"><span class="text-xs text-tertiary">٤٥ مرة</span><div class="w-12 h-6 bg-emerald-500 rounded-full relative"><div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div></div></div></div>
+  </div></div>
 </section>
 
-<!-- ═══════ PAGE 13: REPORTS ═══════ -->
+<!-- ═══════ PAGE 19: REPORTS ═══════ -->
 <section class="page-section" id="reports">
-  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">📊 التقارير</h1><p class="text-gray-400 mt-1 text-sm">تقارير مالية وتحليلية شاملة</p></div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إيرادات السنة</div><div class="text-xl font-bold text-emerald-400">١٬٤٥٠٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">مصروفات السنة</div><div class="text-xl font-bold text-red-400">٩٨٠٬٠٠٠</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ صافي الربح</div><div class="text-xl font-bold text-gold">٤٧٠٬٠٠٠</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">هامش الربح</div><div class="text-xl font-bold">٣٢٫٤٪</div></div>
+  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">📊 التقارير</h1><p class="text-secondary mt-1 text-sm">تقارير مالية وتحليلية شاملة</p></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إيرادات السنة</div><div class="text-xl value-text text-emerald-400">١٬٤٥٠٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">مصروفات السنة</div><div class="text-xl value-text text-red-400">٩٨٠٬٠٠٠</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ صافي الربح</div><div class="text-xl value-text" style="color: #e0b88a;">٤٧٠٬٠٠٠</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">هامش الربح</div><div class="text-xl value-text">٣٢٫٤٪</div></div>
   </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-    <div class="card p-6">
-      <h3 class="font-semibold mb-4">الإيرادات vs المصروفات</h3>
-      <div class="h-48 flex items-end gap-2">
-        <div class="flex-1 flex flex-col gap-1"><div class="bg-emerald-500/40 rounded-t" style="height: 60px"></div><div class="bg-red-500/40" style="height: 40px"></div></div>
-        <div class="flex-1 flex flex-col gap-1"><div class="bg-emerald-500/40 rounded-t" style="height: 70px"></div><div class="bg-red-500/40" style="height: 45px"></div></div>
-        <div class="flex-1 flex flex-col gap-1"><div class="bg-emerald-500/40 rounded-t" style="height: 55px"></div><div class="bg-red-500/40" style="height: 38px"></div></div>
-        <div class="flex-1 flex flex-col gap-1"><div class="bg-emerald-500/40 rounded-t" style="height: 80px"></div><div class="bg-red-500/40" style="height: 50px"></div></div>
-        <div class="flex-1 flex flex-col gap-1"><div class="bg-emerald-500/40 rounded-t" style="height: 90px"></div><div class="bg-red-500/40" style="height: 55px"></div></div>
-        <div class="flex-1 flex flex-col gap-1"><div class="bg-emerald-500/40 rounded-t" style="height: 95px"></div><div class="bg-red-500/40" style="height: 60px"></div></div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4"><div><h3 class="font-semibold">الإيرادات vs المصروفات</h3><p class="text-xs text-tertiary mt-0.5">آخر ٦ شهور</p></div>
+        <div class="flex items-center gap-3 text-xs"><span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500"></span><span class="text-secondary">إيرادات</span></span><span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-red-500"></span><span class="text-secondary">مصروفات</span></span></div>
+      </div>
+      <div class="chart-container" style="padding-left: 40px; padding-right: 10px;">
+        <div class="chart-grid"><div class="chart-grid-line"></div><div class="chart-grid-line"></div><div class="chart-grid-line"></div><div class="chart-grid-line"></div><div class="chart-grid-line"></div></div>
+        <div class="chart-y-labels"><span>200K</span><span>150K</span><span>100K</span><span>50K</span><span>0</span></div>
+        <div class="chart-bars" style="height: 180px; gap: 8px;">
+          <div class="flex-1 flex flex-col gap-0.5"><div class="chart-bar" style="height: 60px; flex: none;"></div><div style="height: 40px; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 4px 4px 0 0;"></div></div>
+          <div class="flex-1 flex flex-col gap-0.5"><div class="chart-bar" style="height: 70px; flex: none;"></div><div style="height: 45px; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 4px 4px 0 0;"></div></div>
+          <div class="flex-1 flex flex-col gap-0.5"><div class="chart-bar" style="height: 55px; flex: none;"></div><div style="height: 38px; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 4px 4px 0 0;"></div></div>
+          <div class="flex-1 flex flex-col gap-0.5"><div class="chart-bar" style="height: 80px; flex: none;"></div><div style="height: 50px; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 4px 4px 0 0;"></div></div>
+          <div class="flex-1 flex flex-col gap-0.5"><div class="chart-bar" style="height: 90px; flex: none;"></div><div style="height: 55px; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 4px 4px 0 0;"></div></div>
+          <div class="flex-1 flex flex-col gap-0.5"><div class="chart-bar" style="height: 95px; flex: none;"></div><div style="height: 60px; background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); border-radius: 4px 4px 0 0;"></div></div>
+        </div>
+        <div class="chart-x-labels"><span>مارس</span><span>أبريل</span><span>مايو</span><span>يونيو</span><span>يوليو</span><span>أغسطس</span></div>
       </div>
     </div>
-    <div class="card p-6">
-      <h3 class="font-semibold mb-4">توزيع المصروفات</h3>
-      <div class="space-y-3">
-        <div><div class="flex justify-between text-sm mb-1"><span>الرواتب</span><span>٤٥٪</span></div><div class="h-2 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width: 45%"></div></div></div>
-        <div><div class="flex justify-between text-sm mb-1"><span>الإيجار</span><span>١٥٪</span></div><div class="h-2 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width: 15%"></div></div></div>
-        <div><div class="flex justify-between text-sm mb-1"><span>المخزون</span><span>٢٥٪</span></div><div class="h-2 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-amber-500" style="width: 25%"></div></div></div>
-      </div>
-    </div>
+    <div class="card p-5"><h3 class="font-semibold mb-4">توزيع المصروفات</h3><div class="space-y-3">
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">الرواتب</span><span class="font-bold">٤٥٪</span></div><div class="h-2.5 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width: 45%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">الإيجار</span><span class="font-bold">١٥٪</span></div><div class="h-2.5 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width: 15%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">المخزون</span><span class="font-bold">٢٥٪</span></div><div class="h-2.5 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-amber-400 rounded-full" style="width: 25%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">تسويق</span><span class="font-bold">١٠٪</span></div><div class="h-2.5 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-purple-500 rounded-full" style="width: 10%"></div></div></div>
+      <div><div class="flex justify-between text-sm mb-1"><span class="text-secondary">أخرى</span><span class="font-bold">٥٪</span></div><div class="h-2.5 bg-elevated rounded-full overflow-hidden"><div class="h-full bg-gray-500 rounded-full" style="width: 5%"></div></div></div>
+    </div></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 14: INVOICE TEMPLATES (قوالب الفواتير) ═══════ -->
+<!-- ═══════ PAGE 20: TEMPLATES ═══════ -->
 <section class="page-section" id="templates">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">📋 قوالب الفواتير</h1><p class="text-gray-400 mt-1 text-sm">تخصيص شكل ومحتوى الفواتير المطبوعة والمرسلة</p></div>
-    <button class="btn-primary">+ قالب جديد</button>
-  </div>
-
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">📋 قوالب الفواتير</h1><p class="text-secondary mt-1 text-sm">تخصيص شكل ومحتوى الفواتير المطبوعة والمرسلة</p></div><button class="btn-primary">+ قالب جديد</button></div>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
     <div class="card p-5 hover:border-primary cursor-pointer">
       <div class="aspect-[3/4] bg-background rounded-lg border border-elevated mb-3 p-4 flex flex-col">
-        <div class="flex justify-between items-start mb-4"><div class="w-12 h-12 rounded-lg bg-primary flex items-center justify-center text-white font-bold">G</div><div class="text-left"><div class="text-[10px] text-gray-400">فاتورة</div><div class="text-xs font-bold">#INV-001</div></div></div>
+        <div class="flex justify-between items-start mb-4"><div class="w-12 h-12 rounded-lg bg-primary flex items-center justify-center text-white font-bold">G</div><div class="text-left"><div class="text-[10px] text-tertiary">فاتورة</div><div class="text-xs font-bold">#INV-001</div></div></div>
         <div class="space-y-1 mb-3"><div class="h-1.5 bg-elevated rounded w-3/4"></div><div class="h-1.5 bg-elevated rounded w-1/2"></div></div>
         <div class="space-y-1 flex-1"><div class="h-1 bg-elevated/50 rounded"></div><div class="h-1 bg-elevated/50 rounded"></div><div class="h-1 bg-elevated/50 rounded w-2/3"></div></div>
-        <div class="border-t border-elevated pt-2 mt-2"><div class="flex justify-between text-[10px]"><span>الإجمالي</span><span class="font-bold text-gold">٤٬٠٢٥ ر.س</span></div></div>
+        <div class="border-t border-elevated pt-2 mt-2"><div class="flex justify-between text-[10px]"><span class="text-tertiary">الإجمالي</span><span class="font-bold text-gold">٤٬٠٢٥ ر.س</span></div></div>
       </div>
-      <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm">القالب الافتراضي</h3><p class="text-xs text-gray-400">Modern • A4</p></div><span class="badge badge-success">افتراضي</span></div>
+      <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm">القالب الافتراضي</h3><p class="text-xs text-tertiary">Modern • A4</p></div><span class="badge badge-success">افتراضي</span></div>
     </div>
-
     <div class="card p-5 hover:border-primary cursor-pointer">
       <div class="aspect-[3/4] bg-background rounded-lg border border-elevated mb-3 p-4 flex flex-col">
         <div class="text-center mb-4"><div class="w-10 h-10 rounded-full bg-gold mx-auto flex items-center justify-center text-gold-foreground font-bold">G</div><div class="text-xs font-bold mt-1">GarfiX EOS</div></div>
         <div class="text-center space-y-1 mb-3"><div class="h-1.5 bg-elevated rounded w-1/2 mx-auto"></div><div class="h-1.5 bg-elevated rounded w-1/3 mx-auto"></div></div>
         <div class="space-y-1 flex-1"><div class="h-1 bg-elevated/50 rounded"></div><div class="h-1 bg-elevated/50 rounded"></div></div>
-        <div class="border-t border-elevated pt-2 text-center"><div class="text-[10px] text-gray-400">الإجمالي</div><div class="font-bold text-gold">٤٬٠٢٥ ر.س</div></div>
+        <div class="border-t border-elevated pt-2 text-center"><div class="text-[10px] text-tertiary">الإجمالي</div><div class="font-bold text-gold">٤٬٠٢٥ ر.س</div></div>
       </div>
-      <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm">قالب كلاسيكي</h3><p class="text-xs text-gray-400">Classic • A4</p></div></div>
+      <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm">قالب كلاسيكي</h3><p class="text-xs text-tertiary">Classic • A4</p></div></div>
     </div>
-
     <div class="card p-5 hover:border-primary cursor-pointer">
-      <div class="aspect-[3/4] bg-background rounded-lg border border-elevated mb-3 p-4 flex flex-col">
+      <div class="aspect-[3/4] bg-background rounded-lg border border-elevated mb-3 p-4 flex flex-col overflow-hidden">
         <div class="bg-gradient-to-br from-emerald-600 to-emerald-500 -m-4 p-4 mb-3 text-white"><div class="flex justify-between"><div><div class="text-[10px] opacity-80">فاتورة ضريبية</div><div class="text-sm font-bold">#INV-001</div></div><div class="w-8 h-8 rounded bg-white/20 flex items-center justify-center">G</div></div></div>
         <div class="space-y-1 flex-1"><div class="h-1 bg-elevated/50 rounded"></div><div class="h-1 bg-elevated/50 rounded"></div><div class="h-1 bg-elevated/50 rounded w-2/3"></div></div>
-        <div class="bg-emerald-500/10 -m-4 p-3 mt-2 border-t border-emerald-500/20"><div class="flex justify-between text-[10px]"><span>الإجمالي</span><span class="font-bold text-emerald-400">٤٬٠٢٥ ر.س</span></div></div>
+        <div class="bg-emerald-500/10 -m-4 p-3 mt-2 border-t border-emerald-500/20"><div class="flex justify-between text-[10px]"><span class="text-tertiary">الإجمالي</span><span class="font-bold text-emerald-400">٤٬٠٢٥ ر.س</span></div></div>
       </div>
-      <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm">قالب فاخر</h3><p class="text-xs text-gray-400">Premium • A4</p></div><span class="badge badge-gold">⭐ AI</span></div>
+      <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm">قالب فاخر</h3><p class="text-xs text-tertiary">Premium • A4</p></div><span class="badge badge-gold">⭐ AI</span></div>
     </div>
   </div>
-
-  <!-- Template Settings -->
   <div class="card p-6">
     <h3 class="font-semibold mb-4">⚙️ إعدادات القالب الافتراضي</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label class="text-sm font-medium block mb-2">🎨 اللون الأساسي</label>
-        <div class="flex gap-2">
-          <button class="w-10 h-10 rounded-lg bg-emerald-600 ring-2 ring-emerald-400 ring-offset-2 ring-offset-background"></button>
-          <button class="w-10 h-10 rounded-lg bg-blue-600"></button>
-          <button class="w-10 h-10 rounded-lg bg-purple-600"></button>
-          <button class="w-10 h-10 rounded-lg bg-gold"></button>
-          <button class="w-10 h-10 rounded-lg bg-red-600"></button>
-        </div>
-      </div>
-      <div>
-        <label class="text-sm font-medium block mb-2">📐 حجم الورق</label>
-        <select class="input-field"><option>A4 (210×297mm)</option><option>A5 (148×210mm)</option><option>Letter (8.5×11in)</option></select>
-      </div>
-      <div>
-        <label class="text-sm font-medium block mb-2">🔤 نوع الخط</label>
-        <select class="input-field"><option>Cairo</option><option>Tajawal</option><option>Almarai</option></select>
-      </div>
-      <div>
-        <label class="text-sm font-medium block mb-2">📍 موضع الشعار</label>
-        <select class="input-field"><option>أعلى اليمين</option><option>أعلى اليسار</option><option>أعلى المنتصف</option></select>
-      </div>
+      <div><label class="label-text block mb-2">🎨 اللون الأساسي</label><div class="flex gap-2"><button class="w-10 h-10 rounded-lg bg-emerald-600 ring-2 ring-emerald-400 ring-offset-2 ring-offset-background"></button><button class="w-10 h-10 rounded-lg bg-blue-600"></button><button class="w-10 h-10 rounded-lg bg-purple-600"></button><button class="w-10 h-10 rounded-lg bg-gold"></button><button class="w-10 h-10 rounded-lg bg-red-600"></button></div></div>
+      <div><label class="label-text block mb-2">📐 حجم الورق</label><select class="input-field"><option>A4 (210×297mm)</option><option>A5 (148×210mm)</option></select></div>
+      <div><label class="label-text block mb-2">🔤 نوع الخط</label><select class="input-field"><option>Cairo</option><option>Tajawal</option></select></div>
+      <div><label class="label-text block mb-2">📍 موضع الشعار</label><select class="input-field"><option>أعلى اليمين</option><option>أعلى اليسار</option></select></div>
     </div>
     <div class="mt-4 space-y-2">
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked class="w-4 h-4 rounded"> إظهار رمز QR (ZATCA)</label>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked class="w-4 h-4 rounded"> إظهار رقم التعريف الضريبي</label>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="w-4 h-4 rounded"> إظهار توقيع الشركة</label>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" checked class="w-4 h-4 rounded"> إظهار شروط الدفع</label>
+      <label class="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" checked class="w-4 h-4 rounded"> إظهار رمز QR (ZATCA)</label>
+      <label class="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" checked class="w-4 h-4 rounded"> إظهار رقم التعريف الضريبي</label>
+      <label class="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" checked class="w-4 h-4 rounded"> إظهار شروط الدفع</label>
     </div>
     <div class="flex gap-2 mt-4"><button class="btn-primary">💾 حفظ الإعدادات</button><button class="btn-ghost border border-elevated">👁️ معاينة</button></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 15: PRINT PREVIEW (معاينة الطباعة) ═══════ -->
+<!-- ═══════ PAGE 21: PRINT PREVIEW ═══════ -->
 <section class="page-section" id="print-preview">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">🖨️ معاينة الطباعة</h1><p class="text-gray-400 mt-1 text-sm">معاينة الفاتورة قبل الطباعة أو الإرسال</p></div>
-    <div class="flex gap-2">
-      <button class="btn-ghost border border-elevated">⚙️ إعدادات</button>
-      <button class="btn-ghost border border-elevated">📧 إرسال</button>
-      <button class="btn-primary">🖨️ طباعة</button>
-    </div>
-  </div>
-
-  <!-- A4 Preview -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">🖨️ معاينة الطباعة</h1><p class="text-secondary mt-1 text-sm">معاينة الفاتورة قبل الطباعة أو الإرسال</p></div><div class="flex gap-2"><button class="btn-ghost border border-elevated">⚙️ إعدادات</button><button class="btn-ghost border border-elevated">📧 إرسال</button><button class="btn-primary">🖨️ طباعة</button></div></div>
   <div class="max-w-[800px] mx-auto bg-white text-black rounded-lg shadow-2xl p-12" style="min-height: 1100px;">
-    <!-- Header -->
     <div class="flex justify-between items-start mb-8 pb-6 border-b-2 border-emerald-600">
-      <div class="flex items-center gap-3">
-        <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 flex items-center justify-center text-white text-2xl font-bold">G</div>
-        <div>
-          <div class="text-2xl font-bold text-emerald-700">GarfiX EOS</div>
-          <div class="text-xs text-gray-500">شركة برمجيات • الرياض، السعودية</div>
-          <div class="text-xs text-gray-500">الرقم الضريبي: 300012345600003</div>
-        </div>
-      </div>
-      <div class="text-left">
-        <div class="text-3xl font-bold text-emerald-700">فاتورة ضريبية</div>
-        <div class="text-sm text-gray-600 mt-1">TAX INVOICE</div>
-        <div class="mt-2 text-sm">
-          <div><span class="text-gray-500">رقم الفاتورة:</span> <span class="font-bold">#INV-2026-0847</span></div>
-          <div><span class="text-gray-500">التاريخ:</span> ٢٠٢٦/٠٨/٠٦</div>
-          <div><span class="text-gray-500">الاستحقاق:</span> ٢٠٢٦/٠٨/٢١</div>
-        </div>
-      </div>
+      <div class="flex items-center gap-3"><div class="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 flex items-center justify-center text-white text-2xl font-bold">G</div><div><div class="text-2xl font-bold text-emerald-700">GarfiX EOS</div><div class="text-xs text-gray-500">شركة برمجيات • الرياض، السعودية</div><div class="text-xs text-gray-500">الرقم الضريبي: 300012345600003</div></div></div>
+      <div class="text-left"><div class="text-3xl font-bold text-emerald-700">فاتورة ضريبية</div><div class="text-sm text-gray-600 mt-1">TAX INVOICE</div><div class="mt-2 text-sm"><div><span class="text-gray-500">رقم الفاتورة:</span> <span class="font-bold">#INV-2026-0847</span></div><div><span class="text-gray-500">التاريخ:</span> ٢٠٢٦/٠٨/٠٦</div></div></div>
     </div>
-
-    <!-- Bill To -->
-    <div class="grid grid-cols-2 gap-8 mb-8">
-      <div>
-        <div class="text-xs text-gray-500 mb-1">فاتورة إلى:</div>
-        <div class="font-bold text-lg">شركة الأمل التجارية</div>
-        <div class="text-sm text-gray-600">الرياض، حي العليا</div>
-        <div class="text-sm text-gray-600">الرقم الضريبي: 300098765400001</div>
-      </div>
-      <div class="text-left">
-        <div class="text-xs text-gray-500 mb-1">طريقة الدفع:</div>
-        <div class="font-bold">تحويل بنكي</div>
-        <div class="text-sm text-gray-600">بنك الرياض • IBAN: SA03 8000 0000 6080 1016 7519</div>
-      </div>
-    </div>
-
-    <!-- Items Table -->
-    <table class="w-full mb-6">
-      <thead>
-        <tr class="bg-emerald-600 text-white">
-          <th class="text-right p-3 text-sm">#</th>
-          <th class="text-right p-3 text-sm">الوصف</th>
-          <th class="text-center p-3 text-sm">الكمية</th>
-          <th class="text-left p-3 text-sm">سعر الوحدة</th>
-          <th class="text-left p-3 text-sm">الإجمالي</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="border-b border-gray-200"><td class="p-3 text-sm">١</td><td class="p-3 text-sm font-medium">لاب توب Dell Latitude 5440</td><td class="p-3 text-sm text-center">٢</td><td class="p-3 text-sm text-left">١٬٢٠٠ ر.س</td><td class="p-3 text-sm text-left font-medium">٢٬٤٠٠ ر.س</td></tr>
-        <tr class="border-b border-gray-200"><td class="p-3 text-sm">٢</td><td class="p-3 text-sm font-medium">ماوس لاسلكي Logitech</td><td class="p-3 text-sm text-center">٥</td><td class="p-3 text-sm text-left">١٢٠ ر.س</td><td class="p-3 text-sm text-left font-medium">٦٠٠ ر.س</td></tr>
-        <tr class="border-b border-gray-200"><td class="p-3 text-sm">٣</td><td class="p-3 text-sm font-medium">خدمة تركيب وإعداد</td><td class="p-3 text-sm text-center">١</td><td class="p-3 text-sm text-left">٥٠٠ ر.س</td><td class="p-3 text-sm text-left font-medium">٥٠٠ ر.س</td></tr>
-      </tbody>
-    </table>
-
-    <!-- Totals -->
-    <div class="flex justify-end mb-8">
-      <div class="w-64 space-y-2">
-        <div class="flex justify-between text-sm"><span class="text-gray-600">المجموع الفرعي:</span><span class="font-medium">٣٬٥٠٠ ر.س</span></div>
-        <div class="flex justify-between text-sm"><span class="text-gray-600">ضريبة القيمة المضافة (١٥٪):</span><span class="font-medium">٥٢٥ ر.س</span></div>
-        <div class="flex justify-between text-lg font-bold text-emerald-700 border-t-2 border-emerald-600 pt-2"><span>الإجمالي:</span><span>٤٬٠٢٥ ر.س</span></div>
-      </div>
-    </div>
-
-    <!-- QR Code (ZATCA) -->
-    <div class="flex justify-between items-end mt-12 pt-6 border-t border-gray-200">
-      <div class="text-xs text-gray-500">
-        <div class="font-bold mb-1">شروط الدفع:</div>
-        <div>يرجى السداد خلال ١٥ يوماً من تاريخ الفاتورة</div>
-        <div class="mt-2">شكراً لتعاملكم معنا 🌹</div>
-      </div>
-      <div class="text-center">
-        <div class="w-24 h-24 bg-black rounded-lg flex items-center justify-center text-white text-[10px] p-2">▣▣▣▣<br/>▣▣▣▣<br/>QR Code<br/>(ZATCA)</div>
-        <div class="text-[10px] text-gray-500 mt-1">رمز الفاتورة الإلكترونية</div>
-      </div>
-    </div>
+    <div class="grid grid-cols-2 gap-8 mb-8"><div><div class="text-xs text-gray-500 mb-1">فاتورة إلى:</div><div class="font-bold text-lg">شركة الأمل التجارية</div><div class="text-sm text-gray-600">الرياض، حي العليا</div></div><div class="text-left"><div class="text-xs text-gray-500 mb-1">طريقة الدفع:</div><div class="font-bold">تحويل بنكي</div></div></div>
+    <table class="w-full mb-6"><thead><tr class="bg-emerald-600 text-white"><th class="text-right p-3 text-sm">#</th><th class="text-right p-3 text-sm">الوصف</th><th class="text-center p-3 text-sm">الكمية</th><th class="text-left p-3 text-sm">سعر الوحدة</th><th class="text-left p-3 text-sm">الإجمالي</th></tr></thead><tbody>
+      <tr class="border-b border-gray-200"><td class="p-3 text-sm">١</td><td class="p-3 text-sm font-medium">لاب توب Dell Latitude 5440</td><td class="p-3 text-sm text-center">٢</td><td class="p-3 text-sm text-left">١٬٢٠٠ ر.س</td><td class="p-3 text-sm text-left font-medium">٢٬٤٠٠ ر.س</td></tr>
+      <tr class="border-b border-gray-200"><td class="p-3 text-sm">٢</td><td class="p-3 text-sm font-medium">ماوس لاسلكي Logitech</td><td class="p-3 text-sm text-center">٥</td><td class="p-3 text-sm text-left">١٢٠ ر.س</td><td class="p-3 text-sm text-left font-medium">٦٠٠ ر.س</td></tr>
+    </tbody></table>
+    <div class="flex justify-end mb-8"><div class="w-64 space-y-2"><div class="flex justify-between text-sm"><span class="text-gray-600">المجموع الفرعي:</span><span class="font-medium">٣٬٥٠٠ ر.س</span></div><div class="flex justify-between text-sm"><span class="text-gray-600">ضريبة القيمة المضافة (١٥٪):</span><span class="font-medium">٥٢٥ ر.س</span></div><div class="flex justify-between text-lg font-bold text-emerald-700 border-t-2 border-emerald-600 pt-2"><span>الإجمالي:</span><span>٤٬٠٢٥ ر.س</span></div></div></div>
+    <div class="flex justify-between items-end mt-12 pt-6 border-t border-gray-200"><div class="text-xs text-gray-500"><div class="font-bold mb-1">شروط الدفع:</div><div>يرجى السداد خلال ١٥ يوماً</div></div><div class="text-center"><div class="w-24 h-24 bg-black rounded-lg flex items-center justify-center text-white text-[10px] p-2">QR Code (ZATCA)</div><div class="text-[10px] text-gray-500 mt-1">رمز الفاتورة الإلكترونية</div></div></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 16: FOUNDER PANEL ═══════ -->
+<!-- ═══════ PAGE 22: FOUNDER PANEL ═══════ -->
 <section class="page-section" id="founder-panel">
-  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">📡 مركز تحكم المؤسس</h1><p class="text-gray-400 mt-1 text-sm">نظرة شاملة على المنصة</p></div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي الشركات</div><div class="text-xl font-bold">١٥٦</div><div class="text-xs text-emerald-400 mt-1">▲ 8 الجدد</div></div>
-    <div class="kpi-card kpi-card-gold"><div class="text-sm text-gold mb-2">⭐ إيرادات المنصة</div><div class="text-xl font-bold text-gold">$٤٬٨٢٠</div><div class="text-xs text-gold/70 mt-1">هذا الشهر</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">معدل النشاط</div><div class="text-xl font-bold text-emerald-400">٨٧٪</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">تكلفة AI</div><div class="text-xl font-bold text-red-400">$٢٣٤</div><div class="text-xs text-emerald-400 mt-1">▼ 95% توفير</div></div>
+  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">📡 مركز تحكم المؤسس</h1><p class="text-secondary mt-1 text-sm">نظرة شاملة على المنصة</p></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي الشركات</div><div class="text-xl value-text">١٥٦</div><div class="text-xs text-emerald-400 mt-1">▲ 8 الجدد</div></div>
+    <div class="kpi-card kpi-card-gold"><div class="label-text mb-1" style="color: #e0b88a;">⭐ إيرادات المنصة</div><div class="text-xl value-text" style="color: #e0b88a;">$٤٬٨٢٠</div><div class="text-xs mt-1" style="color: #e0b88a; opacity: 0.8;">هذا الشهر</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">معدل النشاط</div><div class="text-xl value-text text-emerald-400">٨٧٪</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">تكلفة AI</div><div class="text-xl value-text text-red-400">$٢٣٤</div><div class="text-xs text-emerald-400 mt-1">▼ 95% توفير</div></div>
   </div>
-  <div class="card p-6">
-    <h3 class="font-semibold mb-4">🧠 لوحة الذكاء الاصطناعي</h3>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold text-emerald-400 mb-1">٩٥٫٤٪</div><div class="text-xs text-gray-400">pattern hit rate</div></div>
-      <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold text-gold mb-1">$٢٣٤</div><div class="text-xs text-gray-400">تكلفة AI الشهر</div></div>
-      <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold mb-1">٢٣ms</div><div class="text-xs text-gray-400">avg latency</div></div>
-      <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold text-blue-400 mb-1">٤٫٥K</div><div class="text-xs text-gray-400">requests/day</div></div>
-    </div>
-  </div>
+  <div class="card p-6"><h3 class="font-semibold mb-4">🧠 لوحة الذكاء الاصطناعي</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold text-emerald-400 mb-1">٩٥٫٤٪</div><div class="text-xs text-tertiary">pattern hit rate</div></div>
+    <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold" style="color: #e0b88a;">$٢٣٤</div><div class="text-xs text-tertiary">تكلفة AI الشهر</div></div>
+    <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold">٢٣ms</div><div class="text-xs text-tertiary">avg latency</div></div>
+    <div class="text-center p-4 bg-elevated/50 rounded-lg"><div class="text-2xl font-bold text-blue-400">٤٫٥K</div><div class="text-xs text-tertiary">requests/day</div></div>
+  </div></div>
 </section>
 
-<!-- ═══════ PAGE 17: HR ═══════ -->
+<!-- ═══════ PAGE 23: HR ═══════ -->
 <section class="page-section" id="hr">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-    <div><h1 class="text-2xl md:text-3xl font-bold">👥 الموارد البشرية</h1><p class="text-gray-400 mt-1 text-sm">إدارة الموظفين والرواتب والحضور</p></div>
-    <button class="btn-primary">+ موظف جديد</button>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h1 class="text-2xl md:text-3xl font-bold">👥 الموارد البشرية</h1><p class="text-secondary mt-1 text-sm">إدارة الموظفين والرواتب والحضور</p></div><button class="btn-primary">+ موظف جديد</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div class="kpi-card"><div class="label-text mb-1">إجمالي الموظفين</div><div class="text-xl value-text">٤٥</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">حاضرون اليوم</div><div class="text-xl value-text text-emerald-400">٤٢</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">في إجازة</div><div class="text-xl value-text text-amber-400">٣</div></div>
+    <div class="kpi-card"><div class="label-text mb-1">رواتب الشهر</div><div class="text-xl value-text">٢٣٤٬٠٠٠ ر.س</div></div>
   </div>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">إجمالي الموظفين</div><div class="text-xl font-bold">٤٥</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">حاضرون اليوم</div><div class="text-xl font-bold text-emerald-400">٤٢</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">في إجازة</div><div class="text-xl font-bold text-amber-400">٣</div></div>
-    <div class="kpi-card"><div class="text-sm text-gray-400 mb-2">رواتب الشهر</div><div class="text-xl font-bold">٢٣٤٬٠٠٠ ر.س</div></div>
-  </div>
-  <div class="card">
-    <div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الموظفين</h3></div>
-    <div class="hidden md:block overflow-x-auto">
-      <table>
-        <thead><tr><th>الاسم</th><th>المنصب</th><th>القسم</th><th>الراتب</th><th>الحالة</th></tr></thead>
-        <tbody>
-          <tr><td class="font-medium">أحمد محمد</td><td>محاسب أول</td><td class="text-gray-400">المالية</td><td class="font-medium">٨٬٠٠٠ ر.س</td><td><span class="badge badge-success">حاضر</span></td></tr>
-          <tr><td class="font-medium">فاطمة علي</td><td>مديرة مبيعات</td><td class="text-gray-400">المبيعات</td><td class="font-medium">١٢٬٠٠٠ ر.س</td><td><span class="badge badge-success">حاضرة</span></td></tr>
-          <tr><td class="font-medium">خالد عبدالله</td><td>مطور</td><td class="text-gray-400">تقنية المعلومات</td><td class="font-medium">١٥٬٠٠٠ ر.س</td><td><span class="badge badge-warning">إجازة</span></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card"><div class="p-4 border-b border-elevated"><h3 class="font-semibold">قائمة الموظفين</h3></div>
+    <div class="hidden md:block overflow-x-auto"><table><thead><tr><th>الاسم</th><th>المنصب</th><th>القسم</th><th>الراتب</th><th>الحالة</th></tr></thead><tbody>
+      <tr><td class="font-semibold">أحمد محمد</td><td class="text-secondary">محاسب أول</td><td class="text-tertiary">المالية</td><td class="font-bold">٨٬٠٠٠ ر.س</td><td><span class="badge badge-success">حاضر</span></td></tr>
+      <tr><td class="font-semibold">فاطمة علي</td><td class="text-secondary">مديرة مبيعات</td><td class="text-tertiary">المبيعات</td><td class="font-bold">١٢٬٠٠٠ ر.س</td><td><span class="badge badge-success">حاضرة</span></td></tr>
+      <tr><td class="font-semibold">خالد عبدالله</td><td class="text-secondary">مطور</td><td class="text-tertiary">تقنية المعلومات</td><td class="font-bold">١٥٬٠٠٠ ر.س</td><td><span class="badge badge-warning">إجازة</span></td></tr>
+    </tbody></table></div>
   </div>
 </section>
 
-<!-- ═══════ PAGE 18: SETTINGS ═══════ -->
+<!-- ═══════ PAGE 24: SETTINGS ═══════ -->
 <section class="page-section" id="settings">
-  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">⚙️ الإعدادات</h1><p class="text-gray-400 mt-1 text-sm">إدارة إعدادات الشركة والحساب</p></div>
+  <div class="mb-6"><h1 class="text-2xl md:text-3xl font-bold">⚙️ الإعدادات</h1><p class="text-secondary mt-1 text-sm">إدارة إعدادات الشركة والحساب</p></div>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="card p-4 lg:col-span-1">
-      <div class="space-y-1">
-        <div class="tab active">🏢 معلومات الشركة</div>
-        <div class="tab">🎨 الهوية البصرية</div>
-        <div class="tab">📋 قوالب الفواتير</div>
-        <div class="tab">🔌 التكاملات</div>
-        <div class="tab">🔐 الأمان</div>
-        <div class="tab">📧 الإشعارات</div>
-        <div class="tab">🌐 اللغة والمنطقة</div>
-        <div class="tab">💾 النسخ الاحتياطي</div>
-      </div>
-    </div>
-    <div class="card p-6 lg:col-span-2">
-      <h3 class="font-semibold mb-4">🏢 معلومات الشركة</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label class="text-sm font-medium block mb-1">اسم الشركة</label><input type="text" value="GarfiX EOS" class="input-field" /></div>
-        <div><label class="text-sm font-medium block mb-1">الرقم الضريبي</label><input type="text" value="300012345600003" class="input-field" /></div>
-        <div><label class="text-sm font-medium block mb-1">البريد الإلكتروني</label><input type="email" value="info@garfix.app" class="input-field" /></div>
-        <div><label class="text-sm font-medium block mb-1">الهاتف</label><input type="tel" value="+966 11 234 5678" class="input-field" /></div>
-        <div><label class="text-sm font-medium block mb-1">البلد</label><select class="input-field"><option>السعودية</option><option>الإمارات</option><option>مصر</option></select></div>
-        <div><label class="text-sm font-medium block mb-1">العملة</label><select class="input-field"><option>ريال سعودي (SAR)</option><option>درهم إماراتي (AED)</option><option>جنيه مصري (EGP)</option></select></div>
-        <div class="md:col-span-2"><label class="text-sm font-medium block mb-1">العنوان</label><textarea class="input-field" rows="2">الرياض، حي العليا، طريق الملك فهد</textarea></div>
-      </div>
-      <div class="flex justify-end gap-2 mt-6"><button class="btn-ghost border border-elevated">إلغاء</button><button class="btn-primary">💾 حفظ التغييرات</button></div>
-    </div>
+    <div class="card p-4 lg:col-span-1"><div class="space-y-1"><div class="tab active">🏢 معلومات الشركة</div><div class="tab">🎨 الهوية البصرية</div><div class="tab">📋 قوالب الفواتير</div><div class="tab">🔌 التكاملات</div><div class="tab">🔐 الأمان</div><div class="tab">📧 الإشعارات</div><div class="tab">🌐 اللغة والمنطقة</div><div class="tab">💾 النسخ الاحتياطي</div></div></div>
+    <div class="card p-6 lg:col-span-2"><h3 class="font-semibold mb-4">🏢 معلومات الشركة</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><label class="label-text block mb-1">اسم الشركة</label><input type="text" value="GarfiX EOS" class="input-field" /></div>
+      <div><label class="label-text block mb-1">الرقم الضريبي</label><input type="text" value="300012345600003" class="input-field" /></div>
+      <div><label class="label-text block mb-1">البريد الإلكتروني</label><input type="email" value="info@garfix.app" class="input-field" /></div>
+      <div><label class="label-text block mb-1">الهاتف</label><input type="tel" value="+966 11 234 5678" class="input-field" /></div>
+      <div><label class="label-text block mb-1">البلد</label><select class="input-field"><option>السعودية</option><option>الإمارات</option><option>مصر</option></select></div>
+      <div><label class="label-text block mb-1">العملة</label><select class="input-field"><option>ريال سعودي (SAR)</option><option>درهم إماراتي (AED)</option></select></div>
+      <div class="md:col-span-2"><label class="label-text block mb-1">العنوان</label><textarea class="input-field" rows="2">الرياض، حي العليا، طريق الملك فهد</textarea></div>
+    </div><div class="flex justify-end gap-2 mt-6"><button class="btn-ghost border border-elevated">إلغاء</button><button class="btn-primary">💾 حفظ التغييرات</button></div></div>
   </div>
 </section>
 
