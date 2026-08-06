@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GarfiX EOS — Design System v4.0 Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            // GarfiX DS v4.0 Brand Identity
+            primary: { DEFAULT: '#047857', foreground: '#ffffff' },
+            gold: { DEFAULT: '#d4a574', foreground: '#0b1220', muted: 'rgba(212, 165, 116, 0.15)' },
+            background: { DEFAULT: '#0b1220' },
+            surface: { DEFAULT: '#111827' },
+            elevated: { DEFAULT: '#1f2937' },
+          },
+          fontFamily: {
+            sans: ['Noto Sans SC', 'system-ui', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { background: #0b1220; color: #e5e7eb; font-family: 'Noto Sans SC', system-ui, sans-serif; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; }
+    .card-elevated { background: #1f2937; border: 1px solid #374151; border-radius: 0.75rem; }
+    .btn-primary { background: #047857; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+    .btn-primary:hover { background: #065f46; }
+    .btn-gold { background: #d4a574; color: #0b1220; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; }
+    .btn-ghost { background: transparent; color: #9ca3af; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+    .btn-ghost:hover { background: #1f2937; color: #e5e7eb; }
+    .kpi-card { background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border: 1px solid #374151; border-radius: 0.75rem; padding: 1.5rem; }
+    .kpi-card-gold { background: linear-gradient(135deg, rgba(212, 165, 116, 0.1) 0%, rgba(212, 165, 116, 0.05) 100%); border: 1px solid rgba(212, 165, 116, 0.3); }
+    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .badge-gold { background: rgba(212, 165, 116, 0.15); color: #d4a574; }
+    .sidebar { background: #0f172a; border-left: 1px solid #1f2937; }
+    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.5rem; color: #9ca3af; transition: all 120ms; }
+    .nav-item:hover { background: #1f2937; color: #e5e7eb; }
+    .nav-item.active { background: rgba(4, 120, 87, 0.15); color: #10b981; }
+    .touch-target { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: right; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 500; color: #9ca3af; border-bottom: 1px solid #1f2937; }
+    td { padding: 1rem; border-bottom: 1px solid #1f2937; }
+  </style>
+</head>
+<body>
+  <!-- Topbar -->
+  <header class="sticky top-0 z-40 bg-surface border-b border-elevated">
+    <div class="flex items-center justify-between p-4">
+      <div class="flex items-center gap-3">
+        <button class="touch-target md:hidden btn-ghost">☰</button>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold">G</div>
+          <span class="font-semibold text-lg hidden sm:inline">GarfiX EOS</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="touch-target btn-ghost text-sm">🔔</button>
+        <button class="touch-target btn-ghost text-sm">🌙</button>
+        <div class="w-8 h-8 rounded-full bg-elevated flex items-center center text-sm">أ</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex">
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar hidden md:block w-64 min-h-[calc(100vh-64px)] p-4">
+      <nav class="space-y-1">
+        <a class="nav-item active">📊 لوحة التحكم</a>
+        <a class="nav-item">🧾 الفواتير</a>
+        <a class="nav-item">👥 العملاء</a>
+        <a class="nav-item">📦 المخزون</a>
+        <a class="nav-item">💰 المحاسبة</a>
+        <a class="nav-item">🤖 وكلاء الذكاء</a>
+        <a class="nav-item">⚙️ الإعدادات</a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-4 md:p-6">
+      <!-- Page Header -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold">لوحة التحكم</h1>
+          <p class="text-gray-400 mt-1 text-sm">مرحباً، أحمد — إليك نظرة عامة على أداء شركتك اليوم</p>
+        </div>
+        <button class="btn-primary touch-target">+ فاتورة جديدة</button>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+        <div class="kpi-card">
+          <div class="text-sm text-gray-400 mb-2">إجمالي الإيرادات</div>
+          <div class="text-2xl font-bold">١٢٤٬٥٠٠ ر.س</div>
+          <div class="text-xs text-emerald-400 mt-2">▲ 12.5% هذا الشهر</div>
+        </div>
+        <div class="kpi-card">
+          <div class="text-sm text-gray-400 mb-2">الفواتير</div>
+          <div class="text-2xl font-bold">٨٤٧</div>
+          <div class="text-xs text-emerald-400 mt-2">▲ 8 الجديد</div>
+        </div>
+        <div class="kpi-card kpi-card-gold">
+          <div class="text-sm text-gold mb-2">⭐ توفير الذكاء الاصطناعي</div>
+          <div class="text-2xl font-bold text-gold">٩٥٫٤٪</div>
+          <div class="text-xs text-gold/70 mt-2">$٢٧٣ موفّر هذا الشهر</div>
+        </div>
+        <div class="kpi-card">
+          <div class="text-sm text-gray-400 mb-2">العملاء</div>
+          <div class="text-2xl font-bold">٢٣٤</div>
+          <div class="text-xs text-emerald-400 mt-2">▲ 5 جدد</div>
+        </div>
+        <div class="kpi-card">
+          <div class="text-sm text-gray-400 mb-2">المستحقات</div>
+          <div class="text-2xl font-bold">٨٬٩٠٠ ر.س</div>
+          <div class="text-xs text-amber-400 mt-2">٣ متأخرة</div>
+        </div>
+      </div>
+
+      <!-- Charts + Recent -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div class="card p-6">
+          <h3 class="font-semibold mb-4">الإيرادات الشهرية</h3>
+          <div class="h-48 flex items-end gap-2">
+            <div class="flex-1 bg-primary/20 rounded-t" style="height: 40%"></div>
+            <div class="flex-1 bg-primary/30 rounded-t" style="height: 55%"></div>
+            <div class="flex-1 bg-primary/40 rounded-t" style="height: 45%"></div>
+            <div class="flex-1 bg-primary/50 rounded-t" style="height: 70%"></div>
+            <div class="flex-1 bg-primary/60 rounded-t" style="height: 65%"></div>
+            <div class="flex-1 bg-primary/70 rounded-t" style="height: 85%"></div>
+            <div class="flex-1 bg-primary rounded-t" style="height: 95%"></div>
+          </div>
+        </div>
+        <div class="card p-6">
+          <h3 class="font-semibold mb-4">توزيع الفواتير</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-400">مدفوعة</span>
+              <span class="badge badge-success">٦٤٢</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-400">معلقة</span>
+              <span class="badge badge-warning">١٤٠</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-400">متأخرة</span>
+              <span class="badge badge-gold">٦٥</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Invoices Table (desktop) / Cards (mobile) -->
+      <div class="card">
+        <div class="p-4 border-b border-elevated">
+          <h3 class="font-semibold">أحدث الفواتير</h3>
+        </div>
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>رقم الفاتورة</th>
+                <th>العميل</th>
+                <th>التاريخ</th>
+                <th>المبلغ</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-medium">#INV-2026-0847</td>
+                <td>شركة الأمل التجارية</td>
+                <td class="text-gray-400">٢٠٢٦/٠٨/٠٦</td>
+                <td class="font-medium">٣٬٥٠٠ ر.س</td>
+                <td><span class="badge badge-success">مدفوعة</span></td>
+              </tr>
+              <tr>
+                <td class="font-medium">#INV-2026-0846</td>
+                <td>مؤسسة النور</td>
+                <td class="text-gray-400">٢٠٢٦/٠٨/٠٥</td>
+                <td class="font-medium">٨٬٧٥٠ ر.س</td>
+                <td><span class="badge badge-warning">معلقة</span></td>
+              </tr>
+              <tr>
+                <td class="font-medium">#INV-2026-0845</td>
+                <td>شركة المستقبل</td>
+                <td class="text-gray-400">٢٠٢٦/٠٨/٠٤</td>
+                <td class="font-medium">١٢٬٠٠٠ ر.س</td>
+                <td><span class="badge badge-success">مدفوعة</span></td>
+              </tr>
+              <tr>
+                <td class="font-medium">#INV-2026-0844</td>
+                <td>متجر الرياض</td>
+                <td class="text-gray-400">٢٠٢٦/٠٨/٠٣</td>
+                <td class="font-medium">٢٬٣٠٠ ر.س</td>
+                <td><span class="badge badge-gold">متأخرة</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Mobile cards -->
+        <div class="md:hidden divide-y divide-elevated">
+          <div class="p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium">#INV-0847</span>
+              <span class="badge badge-success">مدفوعة</span>
+            </div>
+            <div class="text-sm text-gray-400">شركة الأمل التجارية</div>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs text-gray-500">٢٠٢٦/٠٨/٠٦</span>
+              <span class="font-medium">٣٬٥٠٠ ر.س</span>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium">#INV-0846</span>
+              <span class="badge badge-warning">معلقة</span>
+            </div>
+            <div class="text-sm text-gray-400">مؤسسة النور</div>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs text-gray-500">٢٠٢٦/٠٨/٠٥</span>
+              <span class="font-medium">٨٬٧٥٠ ر.س</span>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-medium">#INV-0845</span>
+              <span class="badge badge-success">مدفوعة</span>
+            </div>
+            <div class="text-sm text-gray-400">شركة المستقبل</div>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs text-gray-500">٢٠٢٦/٠٨/٠٤</span>
+              <span class="font-medium">١٢٬٠٠٠ ر.س</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design System Components Showcase -->
+      <div class="mt-8">
+        <h2 class="text-xl font-bold mb-4">مكونات نظام التصميم v4.0</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Buttons -->
+          <div class="card p-6">
+            <h4 class="text-sm text-gray-400 mb-3">الأزرار</h4>
+            <div class="flex flex-wrap gap-2">
+              <button class="btn-primary">أساسي</button>
+              <button class="btn-gold">⭐ ذهبي</button>
+              <button class="btn-ghost">شفاف</button>
+            </div>
+          </div>
+          <!-- Badges -->
+          <div class="card p-6">
+            <h4 class="text-sm text-gray-400 mb-3">الشارات</h4>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge badge-success">نجاح</span>
+              <span class="badge badge-warning">تحذير</span>
+              <span class="badge badge-gold">⭐ مميز</span>
+            </div>
+          </div>
+          <!-- Touch Targets -->
+          <div class="card p-6">
+            <h4 class="text-sm text-gray-400 mb-3">أهداف اللمس (44px)</h4>
+            <div class="flex gap-2">
+              <button class="touch-target btn-ghost border border-elevated">+</button>
+              <button class="touch-target btn-ghost border border-elevated">−</button>
+              <button class="touch-target btn-ghost border border-elevated">⚙</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
