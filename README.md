@@ -4,7 +4,9 @@
 
 > Enterprise-grade multi-tenant SaaS ERP/Invoicing platform with a 20-phase AI cost-optimization cascade — Arabic-first, MENA-focused, production-hardened.
 
-**الإصدار:** 12.1.0 · **المؤلف:** `ahmedezzatelsayad` · **الترخيص:** MIT
+**الإصدار:** 12.1.0 · **المؤسس:** `ahmedezzatelsayad` · **الترخيص:** Proprietary — All rights reserved
+
+> ⚠️ **تنبيه سرّي:** هذا المستودع ملكية خاصة (proprietary) ومحمي بحقوق الملكية الفكرية. لا يُسمح بنسخه أو توزيعه أو استخدامه خارج نطاق الفريق المعتمد. المستودع حالياً عام (public) مؤقتاً لأغراض التطوير والصيانة فقط، وسيُعاد إلى خاص (private) لاحقاً.
 
 نظام تشغيل مؤسسي متكامل (Enterprise Operating System) لإدارة الشركات متعددة المستأجرين، يجمع بين قوة ERP المالي، الفوترة الإلكترونية المتوافقة مع دول الشرق الأوسط، وطبقة ذكاء اصطناعي مُحسَّنة التكلفة عبر شلال من 20 مرحلة (Cache → Pattern → Rule → Memory → Budget → AI). مصمم من الأساس للواجهة العربية مع دعم RTL كامل، ويغطي متطلبات الفوترة الإلكترونية في 6 دول من منطقة MENA.
 
@@ -117,7 +119,7 @@
 
 - **Bun** ≥ 1.3.14 — [installation guide](https://bun.sh/docs/installation)
 - **PostgreSQL** ≥ 17 (or use the provided `docker-compose.yml`)
-- **Valkey** ≥ 8.1 (or use the provided `docker-compose.yml`)
+- **Valkey** ≥ 8.1 — مفتوح المصدر (BSD-3)، fork من Redis. متثبّت ومتكامل في الكود. شغّله بدون password في الـ dev: `valkey-server` وبس. (أو استخدم الـ `docker-compose.yml` اللي جاي)
 
 ### Installation / التثبيت
 
@@ -694,14 +696,23 @@ All required variables are documented in `.env.example`. The `bun run verify:env
 | `DATABASE_DIRECT_URL` | Direct PostgreSQL connection (for Prisma migrations) |
 | `JWT_SECRET` | Access token signing secret (≥32 chars, high-entropy) |
 | `JWT_REFRESH_SECRET` | Refresh token secret (must differ from `JWT_SECRET`) |
-| `PAYMENTS_ENC_KEY` | AES-256 encryption key for payments/secrets |
+| `PAYMENTS_ENC_KEY` | AES-256 encryption key for payments/secrets + AI API keys at rest (≥32 chars) |
 | `VAULT_ENCRYPTION_KEY` | Encryption for sensitive `PlatformSettings` |
 | `FOUNDER_EMAIL` | Founder account email |
-| `VALKEY_URL` | Valkey/Redis URL (BullMQ + rate limit + token blacklist) |
-| `DB_PASS` | PostgreSQL password (used by docker-compose) |
-| `VALKEY_PASSWORD` | Valkey password (used by docker-compose) |
+| `VALKEY_URL` | Valkey connection string — **بسيط بدون user/password**: `valkey://localhost:6379` |
 
-### Optional
+<div dir="rtl">
+
+**عن Valkey:**
+- Valkey هو fork مفتوح المصدر (BSD-3) من Redis — بديل قانوني آمن بعد ما Redis غيّر ترخيصه.
+- متثبّت ومتكامل في الكود فعلاً (BullMQ + distributed rate limiting + AI key pool round-robin + token blacklist + session registry).
+- الـ URL بسيط جداً ومش بيحتاج user أو password: `valkey://host:port` (أو `redis://host:port` لو شغال بـ Redis موجود).
+- في الـ dev/local: شغّل Valkey بدون auth — `valkey://localhost:6379` كافي تماماً.
+- في الإنتاج: الـ `docker-compose.yml` بيضيف `requirepass` كتقوية أمنية اختيارية (شوف قسم Docker Compose secrets تحت).
+
+</div>
+
+### Optional — Application behavior
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -717,6 +728,25 @@ All required variables are documented in `.env.example`. The `bun run verify:env
 | `APP_URL` | — | Public app URL (for email links, CORS) |
 | `TRUSTED_PROXIES` | — | Comma-separated trusted proxy CIDRs |
 
+### Optional — Docker Compose production hardening
+
+<div dir="rtl">
+
+هذه المتغيرات مطلوبة **فقط لو بتستخدم `docker-compose.yml` اللي جاي مع المشروع**. الـ app نفسه مش بيقراها مباشرة — الـ compose file بيستخدمها لتقوية أمن الـ services (Valkey `requirepass` + PostgreSQL password). لو شغّلت Valkey/PostgreSQL بنفسك أو بدون docker-compose، مش هتحتاجهم.
+
+</div>
+
+| Variable | Purpose | Used by |
+|----------|---------|---------|
+| `DB_PASS` | PostgreSQL password | `docker-compose.yml` — بيتحط داخل `DATABASE_URL` بتاع الـ app |
+| `VALKEY_PASSWORD` | Valkey `requirepass` (اختياري — Valkey بيشغل بدون password) | `docker-compose.yml` — بيتحط داخل `VALKEY_URL` بتاع الـ app |
+
+<div dir="rtl">
+
+**ملاحظة عن VALKEY_PASSWORD:** الـ `docker-compose.yml` بيفعّل `requirepass` على Valkey افتراضياً للإنتاج. لو عايز تشغّل Valkey بدون password (مثلاً في شبكة داخلية موثوقة)، عدّل `docker-compose.yml` وشيل سطر `--requirepass`، وخلي `VALKEY_URL=valkey://valkey:6379` (بدون الـ `:password@`).
+
+</div>
+
 ### AI Providers (optional — at least one recommended)
 
 | Variable | Notes |
@@ -727,7 +757,7 @@ All required variables are documented in `.env.example`. The `bun run verify:env
 | `OPENROUTER_API_KEY` | OpenRouter (multi-model access) |
 | `OPENAI_API_KEY` | OpenAI |
 | `ANTHROPIC_API_KEY` | Anthropic Claude |
-| `DEEPSEEK_API_KEY` | DeepSeek |
+| `DEEPSEEK_API_KEY` | DeepSeek (direct path to `api.deepseek.com` — no OpenRouter intermediary) |
 
 ### Integrations (optional)
 
@@ -844,29 +874,20 @@ nightly schedule ─► performance-nightly.yml (Lighthouse + budget enforcement
 
 ## License — الترخيص
 
-MIT — © `ahmedezzatelsayad` · [github.com/ahmedezzatelsayad/Garfix](https://github.com/ahmedezzatelsayad/Garfix)
-
----
-
 <div dir="rtl">
 
-## المساهمة
+**Proprietary — All rights reserved.** © 2026 GarfiX EOS · المؤسس: `ahmedezzatelsayad`
 
-هذا المشروع مفتوح للمساهمات. يُرجى اتباع الخطوات التالية:
+هذا المشروع ملكية خاصة (proprietary) ومحمي بحقوق الملكية الفكرية. لا يُسمح بأي من التالي دون إذن كتابي صريح من المؤسس:
 
-1. Fork المستودع
-2. إنشاء فرع للميزة الجديدة: `git checkout -b feature/amazing-feature`
-3. تنفيذ التغييرات مع الالتزام بمعايير الكود (تشغيل `bun run lint`)
-4. إضافة اختبارات للميزات الجديدة
-5. التأكد من نجاح جميع الاختبارات: `bun test`
-6. فتح Pull Request مع وصف واضح للتغييرات
+- ❌ نسخ أو توزيع الكود (كلياً أو جزئياً)
+- ❌ إنشاء منتجات مشتقة
+- ❌ الاستخدام التجاري
+- ❌ إعادة الترخيص أو النشر
 
-### معايير الكود
+الوصول إلى هذا المستودع مقتصر على الفريق المعتمد فقط. المستودع حالياً عام (public) مؤقتاً لأغراض التطوير والصيانة، وسيُعاد إلى خاص (private) لاحقاً.
 
-- TypeScript صارم — لا يُسمح بـ `any` بدون مبرر قوي
-- ESLint — 0 errors, 0 warnings
-- الاختبارات مطلوبة لكل PR جديد
-- الالتزام بنمط الـ commit: `<type>(<scope>): <description>` (مثل: `feat(ai-fabric): add provider scoring`)
+للاستفسار عن الترخيص أو الشراكات، تواصل مع المؤسس عبر [github.com/ahmedezzatelsayad](https://github.com/ahmedezzatelsayad).
 
 </div>
 
@@ -874,6 +895,6 @@ MIT — © `ahmedezzatelsayad` · [github.com/ahmedezzatelsayad/Garfix](https://
 
 <div align="center">
 
-**GarfiX EOS** — Built with care for the MENA region · Arabic-first · Production-ready
+**GarfiX EOS** — Proprietary · Built with care for the MENA region · Arabic-first · Production-ready
 
 </div>
