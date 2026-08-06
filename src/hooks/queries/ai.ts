@@ -260,8 +260,17 @@ export function useSmartParse() {
  */
 export function useAIChat() {
   return useMutation<Record<string, unknown>, ApiError, AIChatPayload>({
-    mutationFn: (payload) =>
-      apiPost<AIChatPayload, Record<string, unknown>>("/api/ai/chat", payload),
+    mutationFn: async (payload) => {
+      // Use the per-client AI proxy when companySlug is available.
+      // This routes through the per-feature router with encrypted keys,
+      // Valkey-distributed rate limiting, and pool fallback.
+      if (payload.companySlug) {
+        const proxyUrl = `/api/ai/proxy/${payload.companySlug}?feature=chat`;
+        return apiPost<AIChatPayload, Record<string, unknown>>(proxyUrl, payload);
+      }
+      // Fallback to the legacy endpoint (should not happen in normal flow)
+      return apiPost<AIChatPayload, Record<string, unknown>>("/api/ai/chat", payload);
+    },
   });
 }
 

@@ -239,18 +239,41 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
             إدارة وتشغيل القيود المحاسبية المتكررة تلقائياً
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
-            "bg-emerald-600 hover:bg-emerald-700 text-white",
-            "transition-colors duration-200",
-            "shadow-brand hover:shadow-brand-md"
-          )}
-        >
-          <Plus className="w-5 h-5" />
-          قيد جديد
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              try {
+                const result = await apiPost<Record<string, unknown>, { processed?: number }>("/api/accounting/recurring/process-due", {});
+                toast.success(`تمت معالجة ${result?.processed || 0} قيد مستحق`);
+                window.location.reload();
+              } catch (err) {
+                toast.error(err instanceof ApiError ? err.message : "فشل المعالجة");
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
+              "bg-blue-600 hover:bg-blue-700 text-white",
+              "transition-colors duration-200",
+              "min-h-[44px]"
+            )}
+          >
+            <Play className="w-5 h-5" />
+            معالجة المستحقات
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className={cn(
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
+              "bg-emerald-600 hover:bg-emerald-700 text-white",
+              "transition-colors duration-200",
+              "shadow-brand hover:shadow-brand-md",
+              "min-h-[44px]"
+            )}
+          >
+            <Plus className="w-5 h-5" />
+            قيد جديد
+          </button>
+        </div>
       </div>
 
       {/* Filters & Search */}

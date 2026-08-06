@@ -142,6 +142,16 @@ const AuditView = lazy(() => import(
   "@/modules/admin/EnhancedAuditView"
 ).then((m) => ({ default: m.EnhancedAuditView })));
 
+const BillingView = lazy(() => import(
+  /* webpackChunkName: "billing" */
+  "@/modules/billing/BillingView"
+).then((m) => ({ default: m.BillingView })));
+
+const RolesView = lazy(() => import(
+  /* webpackChunkName: "roles" */
+  "@/modules/roles/RolesView"
+).then((m) => ({ default: m.RolesView })));
+
 // ════════════════════════════════════════════════════════════════════
 // PRELOADING MAP — For hover-based preloading in Sidebar
 // ════════════════════════════════════════════════════════════════════
@@ -164,6 +174,8 @@ export const preloadViewMap: Record<ViewKey, () => Promise<void>> = {
   inventory: () => import(/* webpackChunkName: "inventory" */ "@/modules/inventory/InventoryView").then(() => {}),
   automation: () => import(/* webpackChunkName: "automation" */ "@/modules/automation/AutomationView").then(() => {}),
   "ai-agents": () => import(/* webpackChunkName: "ai-agents" */ "@/modules/ai-agents/AIAgentsView").then(() => {}),
+  billing: () => import(/* webpackChunkName: "billing" */ "@/modules/billing/BillingView").then(() => {}),
+  roles: () => import(/* webpackChunkName: "roles" */ "@/modules/roles/RolesView").then(() => {}),
 };
 
 /** Preload a view's chunk (call on hover/focus for instant navigation) */
@@ -197,9 +209,11 @@ export type ViewKey =
   | "account"
   | "inventory"
   | "automation"
-  | "ai-agents";
+  | "ai-agents"
+  | "billing"
+  | "roles";
 
-const VALID_VIEWS: ViewKey[] = ["dash", "invoices", "clients", "catalog", "purchases", "hr", "accounting", "settings", "saas", "platform-admin", "audit", "bulk-input", "reports", "team", "account", "inventory", "automation", "ai-agents"];
+const VALID_VIEWS: ViewKey[] = ["dash", "invoices", "clients", "catalog", "purchases", "hr", "accounting", "settings", "saas", "platform-admin", "audit", "bulk-input", "reports", "team", "account", "inventory", "automation", "ai-agents", "billing", "roles"];
 
 function parseHash(): ViewKey {
   if (typeof window === "undefined") return "dash";
@@ -386,6 +400,8 @@ export default function AppShell() {
                   {view === "automation" && ((perms.settings_access || isAdmin || isFounder) ? <AutomationView /> : <NoAccessView label="الأتمتة" />)}
                   {view === "ai-agents" && <AIAgentsView />}
                   {view === "team" && ((perms.settings_access || isAdmin || isFounder) ? <TeamView /> : <NoAccessView label="الفريق" />)}
+                  {view === "billing" && <BillingView />}
+                  {view === "roles" && ((isAdmin || isFounder) ? <RolesView /> : <NoAccessView label="الأدوار والصلاحيات" />)}
                 </Suspense>
               </>
             )}

@@ -11,6 +11,7 @@ import {
   LayoutDashboard, FileText, Users, Package, ShoppingCart, UserCog,
   Calculator, Settings, Building2, Shield, History, LogOut, Menu, X,
   Sun, Moon, ChevronDown, Plus, Sparkles, BarChart3, User, Boxes, Zap, Bot,
+  Activity, DollarSign, Cpu, KeyRound, Plug, Rocket,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -53,7 +54,9 @@ const NAV_ITEMS: Array<{
   { key: "automation", label: "الأتمتة", icon: Zap, perm: "settings_access" },
   { key: "ai-agents", label: "وكلاء AI", icon: Bot, isAiFeature: true },
   { key: "team", label: "فريقي", icon: Users, perm: "settings_access" },
+  { key: "roles", label: "الأدوار والصلاحيات", icon: Shield, adminOnly: true },
   { key: "settings", label: "الإعدادات", icon: Settings, perm: "settings_access" },
+  { key: "billing", label: "الاشتراك والفوترة", icon: DollarSign },
   { key: "account", label: "حسابي", icon: User },
   { key: "saas", label: "إدارة المنصة", icon: Building2, adminOnly: true },
   { key: "platform-admin", label: "إدارة المؤسس", icon: Shield, founderOnly: true },
@@ -278,6 +281,71 @@ export function Sidebar({
             );
           })}
         </nav>
+
+        {/* Founder Panel Links — only visible to founders */}
+        {isFounder && (
+          <div className="border-t border-sidebar-border py-2.5 px-2">
+            <div className="text-[10px] font-bold text-muted-foreground tracking-widest px-3 py-1.5">
+              لوحة المؤسس
+            </div>
+            <a
+              href="/founder-panel/mission-control"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <Activity size={16} />
+              <span className="flex-1">مركز التحكم</span>
+            </a>
+            <a
+              href="/founder-panel/finops"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <DollarSign size={16} />
+              <span className="flex-1">التشغيل المالي</span>
+            </a>
+            <a
+              href="/founder-panel/ai-dashboard"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <BarChart3 size={16} />
+              <span className="flex-1">لوحة الذكاء</span>
+            </a>
+            <a
+              href="/founder-panel/ai-fabric"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <Cpu size={16} />
+              <span className="flex-1">نسيج الذكاء</span>
+            </a>
+            <a
+              href="/founder-panel/companies-ai-management"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <Bot size={16} />
+              <span className="flex-1">إدارة AI الشركات</span>
+            </a>
+            <a
+              href="/founder-panel/ai-settings"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <Settings size={16} />
+              <span className="flex-1">إعدادات الذكاء</span>
+            </a>
+            <a
+              href="/founder-panel/api-key-pool"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <KeyRound size={16} />
+              <span className="flex-1">مجموعة المفاتيح</span>
+            </a>
+            <a
+              href="/founder-panel/integrations"
+              className="w-full flex items-center gap-3 py-2 px-3 rounded-lg text-[13px] text-sidebar-foreground font-medium hover:bg-sidebar-accent transition-all duration-120 mb-0.5"
+            >
+              <Plug size={16} />
+              <span className="flex-1">التكاملات</span>
+            </a>
+          </div>
+        )}
 
         {/* User footer */}
         <div className="p-3 border-t border-sidebar-border">

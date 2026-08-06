@@ -16,6 +16,7 @@ import {
   X,
   Shield,
   Zap,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FounderGuard } from "@/components/garfix/FounderGuard";
@@ -96,6 +97,14 @@ const navigationItems: NavItem[] = [
     href: "/founder-panel/api-key-pool",
     icon: <Key className="h-5 w-5" />,
     badge: "مهم",
+    group: "management",
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    labelAr: "التكاملات",
+    href: "/founder-panel/integrations",
+    icon: <Plug className="h-5 w-5" />,
     group: "management",
   },
 ];

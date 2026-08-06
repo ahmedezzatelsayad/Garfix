@@ -29,6 +29,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── Cairo Font (default for all UI) ─────────────────────────────────── */
+:root {
+  --font-cairo: 'Cairo', sans-serif;
+}
+* {
+  font-family: 'Cairo', sans-serif !important;
+}
+/* Keep monospace for code blocks */
+pre, code, kbd, samp, .font-mono, .garfix-mono {
+  font-family: 'Cairo', monospace !important;
+}
+
 /* ── Theme tokens (shadcn/ui) ──────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
