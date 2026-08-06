@@ -1,0 +1,20 @@
+{
+  "country": "BH",
+  "authority": "bahrain_nbr",
+  "webhookUrl": "/api/e-invoicing/webhooks/bh",
+  "signatureHeader": "X-NBR-Signature",
+  "signatureEncoding": "hex",
+  "signatureValue": "a5aff14311874e2e538c8d83fa40cd6879e6302db78870188d11aa6dab41da8b",
+  "secretUsed": "test-bh-nbr-key-DO-NOT-USE-IN-PRODUCTION-abcdef0123456789",
+  "payload": {
+    "companySlug": "test-einvoice-company",
+    "invoiceId": null,
+    "status": "ACCEPTED",
+    "rejectionReason": null,
+    "invoiceUuid": "run-1786046559632-BH-sample",
+    "submissionId": "run-1786046559632-BH-sample",
+    "vatNumber": "BH00000000000000"
+  },
+  "rawBody": "{\n  \"companySlug\": \"test-einvoice-company\",\n  \"invoiceId\": null,\n  \"status\": \"ACCEPTED\",\n  \"rejectionReason\": null,\n  \"invoiceUuid\": \"run-1786046559632-BH-sample\",\n  \"submissionId\": \"run-1786046559632-BH-sample\",\n  \"vatNumber\": \"BH00000000000000\"\n}",
+  "curlCommand": "curl -X POST 'https://your-domain.com/api/e-invoicing/webhooks/bh' \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-NBR-Signature: a5aff14311874e2e538c8d83fa40cd6879e6302db78870188d11aa6dab41da8b' \\\n  -d '{ \"companySlug\": \"test-einvoice-company\", \"invoiceId\": null, \"status\": \"ACCEPTED\", \"rejectionReason\": null, \"invoiceUuid\": \"run-1786046559632-BH-sample\", \"submissionId\": \"run-1786046559632-BH-sample\", \"vatNumber\": \"BH00000000000000\"}'"
+}

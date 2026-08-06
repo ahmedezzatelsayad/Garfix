@@ -1,0 +1,19 @@
+{
+  "country": "SA",
+  "authority": "zatca",
+  "webhookUrl": "/api/e-invoicing/webhooks/zatca",
+  "signatureHeader": "X-ZATCA-Signature",
+  "signatureEncoding": "base64",
+  "signatureValue": "OB3Sui4KEr5H2+rt0GXCUa5ykKvtFw+IBCCu0Qx29eM=",
+  "secretUsed": "test-zatca-csid-secret-DO-NOT-USE-IN-PRODUCTION",
+  "payload": {
+    "companySlug": "test-einvoice-company",
+    "invoiceId": null,
+    "status": "CLEARED",
+    "rejectionReason": null,
+    "invoiceUuid": "run-1786046559632-SA-sample",
+    "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA"
+  },
+  "rawBody": "{\n  \"companySlug\": \"test-einvoice-company\",\n  \"invoiceId\": null,\n  \"status\": \"CLEARED\",\n  \"rejectionReason\": null,\n  \"invoiceUuid\": \"run-1786046559632-SA-sample\",\n  \"qrCode\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA\"\n}",
+  "curlCommand": "curl -X POST 'https://your-domain.com/api/e-invoicing/webhooks/zatca' \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-ZATCA-Signature: OB3Sui4KEr5H2+rt0GXCUa5ykKvtFw+IBCCu0Qx29eM=' \\\n  -d '{ \"companySlug\": \"test-einvoice-company\", \"invoiceId\": null, \"status\": \"CLEARED\", \"rejectionReason\": null, \"invoiceUuid\": \"run-1786046559632-SA-sample\", \"qrCode\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA\"}'"
+}
