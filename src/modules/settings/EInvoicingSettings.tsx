@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import {
   ShieldCheck, Loader2, CheckCircle2, XCircle, FileText,
   KeyRound, Building2, AlertCircle, RefreshCw, Wifi, Globe2,
-  Link2, MapPin, Copy, Webhook,
+  Link2, MapPin, Copy, Webhook, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -905,6 +905,12 @@ const WEBHOOK_CONFIG: Record<string, { path: string; header: string; encoding: "
 function WebhookUrlHelper({ country }: { country: string }) {
   const cfg = WEBHOOK_CONFIG[country];
   const [origin, setOrigin] = useState<string>("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    message: string;
+    details?: { receiptId?: string; latencyMs?: number; status?: number };
+  } | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -925,6 +931,47 @@ function WebhookUrlHelper({ country }: { country: string }) {
     }
   };
 
+  const handleTestSend = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/e-invoicing/test-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ country }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        const receipt = data.receipt;
+        const msg = receipt
+          ? `تم الإرسال بنجاح — الإيصال ${receipt.id.slice(0, 8)}… مسجّل (sigValid: ${receipt.signatureValid === null ? "null" : receipt.signatureValid ? "true" : "false"})`
+          : `تم الإرسال بنجاح (HTTP ${data.status}) لكن لم يُسجّل إيصال بعد`;
+        setTestResult({
+          ok: true,
+          message: msg,
+          details: {
+            receiptId: receipt?.id,
+            latencyMs: data.latencyMs,
+            status: data.status,
+          },
+        });
+        toast.success("تم إرسال الـ webhook التجريبي بنجاح");
+      } else {
+        const errMsg = data.error || `HTTP ${data.status}`;
+        setTestResult({ ok: false, message: errMsg });
+        toast.error(errMsg);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "فشل الاتصال";
+      setTestResult({ ok: false, message: msg });
+      toast.error(msg);
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -938,7 +985,7 @@ function WebhookUrlHelper({ country }: { country: string }) {
         بعد حفظ بيانات الاعتماد، سجّل هذا الرابط في بوابة الهيئة الضريبية ليتم إرسال إشعارات حالة الفاتورة (قبول / رفض / إلغاء) تلقائياً إلى GarfiX.
       </p>
 
-      {/* URL + copy button */}
+      {/* URL + copy + test buttons */}
       <div className="flex items-stretch gap-2">
         <code
           className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-[11px] font-mono break-all"
@@ -949,11 +996,46 @@ function WebhookUrlHelper({ country }: { country: string }) {
         <button
           onClick={handleCopy}
           className="px-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center"
-          title="نسخ"
+          title="نسخ الرابط"
         >
           <Copy size={14} />
         </button>
+        <button
+          onClick={handleTestSend}
+          disabled={testing}
+          className="px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          title="إرسال payload تجريبي موقّع إلى هذا الـ webhook"
+        >
+          {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+        </button>
       </div>
+
+      {/* Test result */}
+      {testResult && (
+        <div
+          className={cn(
+            "rounded-md p-2.5 text-[11px] flex items-start gap-2 border leading-relaxed",
+            testResult.ok
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+              : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
+          )}
+        >
+          {testResult.ok ? (
+            <CheckCircle2 size={13} className="flex-shrink-0 mt-0.5" />
+          ) : (
+            <XCircle size={13} className="flex-shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p>{testResult.message}</p>
+            {testResult.details && (
+              <p className="text-[10px] opacity-70 mt-0.5">
+                HTTP {testResult.details.status} · {testResult.details.latencyMs}ms
+                {testResult.details.receiptId && ` · receipt: ${testResult.details.receiptId.slice(0, 12)}…`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Signature info */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
@@ -973,7 +1055,7 @@ function WebhookUrlHelper({ country }: { country: string }) {
 
       <div className="bg-amber-500/5 border border-amber-500/15 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
         <AlertCircle size={11} className="inline ml-1" />
-        تأكد أن الـ URL متاح من خارج الشبكة (public internet). في بيئة الإنتاج، استخدم HTTPS فقط.
+        تأكد أن الـ URL متاح من خارج الشبكة (public internet). في بيئة الإنتاج، استخدم HTTPS فقط. زر الإرسال 🟢 بيستخدم payload تجريبي موقّع للتأكد من الـ pipeline.
       </div>
     </div>
   );

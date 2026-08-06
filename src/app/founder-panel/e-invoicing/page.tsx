@@ -1,6 +1,6 @@
 "use client";
 
-import { useEInvoicingDashboard, type EInvoicingReceipt } from "@/hooks/queries/founder-panel";
+import { useEInvoicingDashboard, useEInvoicingStats, type EInvoicingReceipt } from "@/hooks/queries/founder-panel";
 import {
   Activity,
   AlertCircle,
@@ -341,6 +341,9 @@ export default function EInvoicingDashboardPage() {
         </div>
       </div>
 
+      {/* Webhook stats */}
+      <WebhookStatsCard />
+
       {/* Footer help */}
       <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5 text-sm">
         <p className="font-bold text-emerald-400 mb-2 flex items-center gap-2">
@@ -361,6 +364,169 @@ export default function EInvoicingDashboardPage() {
           {" "}← الفوترة الإلكترونية، وأدخل بيانات الاعتماد من بوابة الهيئة المعنية. يتم تخزين كل البيانات مشفّرة (AES-256-GCM).
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Webhook Stats Card ────────────────────────────────────────────────────
+
+function WebhookStatsCard() {
+  const { data, isLoading } = useEInvoicingStats();
+
+  if (isLoading || !data) {
+    // Render skeleton placeholder when loading or no data yet
+    return (
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Activity size={16} className="text-emerald-400" />
+          <h2 className="text-sm font-bold text-white">إحصائيات الـ Webhooks (آخر 24 ساعة)</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 animate-pulse">
+              <div className="h-3 bg-white/[0.06] rounded w-2/3 mb-2" />
+              <div className="h-6 bg-white/[0.06] rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const s = data.last24h;
+  const maxHourCount = Math.max(1, ...data.byHour.map((h) => h.count));
+
+  return (
+    <div className="space-y-4">
+      {/* 24h aggregates */}
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Activity size={16} className="text-emerald-400" />
+            <h2 className="text-sm font-bold text-white">إحصائيات الـ Webhooks (آخر 24 ساعة)</h2>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span>كل الوقت: <span className="text-foreground font-medium">{data.allTime.totalReceipts}</span> إيصال</span>
+            <span>·</span>
+            <span><span className="text-foreground font-medium">{data.allTime.companiesWithReceipts}</span> شركة</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          <MiniStatCard label="إجمالي" value={s.total} accent="muted" />
+          <MiniStatCard label="مقبولة" value={s.accepted} accent="emerald" sub={`${s.acceptedRate}%`} />
+          <MiniStatCard label="مرفوضة" value={s.rejected} accent="red" />
+          <MiniStatCard label="معلّقة" value={s.pending} accent="amber" />
+          <MiniStatCard label="توقيع غير صالح" value={s.invalidSignatures} accent="red" />
+        </div>
+
+        {/* Hourly chart */}
+        <div>
+          <p className="text-[11px] text-muted-foreground mb-2">الإيصالات بالساعة (آخر 24 ساعة)</p>
+          <div className="flex items-end gap-1 h-24">
+            {data.byHour.map((h, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative">
+                <div className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/40 to-emerald-500/80 transition-all group-hover:from-emerald-400 group-hover:to-emerald-300"
+                     style={{ height: `${(h.count / maxHourCount) * 100}%`, minHeight: h.count > 0 ? "4px" : "0" }} />
+                {/* Tooltip */}
+                <div className="absolute bottom-full mb-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  {h.hour}: {h.count} ({h.accepted}✓ {h.rejected}✗)
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-[9px] text-muted-foreground/60 mt-1">
+            <span>{data.byHour[0]?.hour}</span>
+            <span>الآن</span>
+          </div>
+        </div>
+      </div>
+
+      {/* By country + Top companies */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* By country */}
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+          <h3 className="text-xs font-bold text-white mb-3 flex items-center gap-2">
+            <Globe2 size={13} className="text-emerald-400" />
+            حسب الدولة (24 ساعة)
+          </h3>
+          {data.byCountry.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground text-center py-6">لا توجد إيصالات في آخر 24 ساعة</p>
+          ) : (
+            <div className="space-y-2">
+              {data.byCountry.map((c) => {
+                const total = c.count || 1;
+                const acceptedPct = (c.accepted / total) * 100;
+                const rejectedPct = (c.rejected / total) * 100;
+                return (
+                  <div key={c.authority} className="flex items-center gap-2">
+                    <span className="text-xs text-foreground w-24 flex-shrink-0 truncate">{c.label}</span>
+                    <div className="flex-1 h-5 bg-white/[0.04] rounded overflow-hidden flex">
+                      <div className="bg-emerald-500/60" style={{ width: `${acceptedPct}%` }} title={`مقبولة: ${c.accepted}`} />
+                      <div className="bg-red-500/60" style={{ width: `${rejectedPct}%` }} title={`مرفوضة: ${c.rejected}`} />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground w-12 text-left flex-shrink-0">{c.count}</span>
+                  </div>
+                );
+              })}
+              <div className="flex gap-3 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-white/[0.04]">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-emerald-500/60" />مقبولة
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-red-500/60" />مرفوضة
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Top companies */}
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+          <h3 className="text-xs font-bold text-white mb-3 flex items-center gap-2">
+            <FileText size={13} className="text-emerald-400" />
+            أعلى 5 شركات (آخر 7 أيام)
+          </h3>
+          {data.topCompanies.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground text-center py-6">لا توجد شركات بإيصالات بعد</p>
+          ) : (
+            <div className="space-y-2">
+              {data.topCompanies.map((c, i) => (
+                <div key={c.companySlug} className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground w-4 flex-shrink-0">{i + 1}.</span>
+                  <span className="text-base flex-shrink-0">{c.emoji}</span>
+                  <span className="text-xs text-foreground flex-1 min-w-0 truncate">{c.companyName}</span>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+                    {c.receiptCount} إيصال
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniStatCard({ label, value, accent, sub }: {
+  label: string;
+  value: number;
+  accent: "emerald" | "amber" | "red" | "blue" | "muted";
+  sub?: string;
+}) {
+  const colorMap = {
+    emerald: "text-emerald-400",
+    amber: "text-amber-400",
+    red: "text-red-400",
+    blue: "text-blue-400",
+    muted: "text-foreground",
+  };
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+      <p className="text-[10px] text-muted-foreground mb-1 truncate">{label}</p>
+      <p className={cn("text-xl font-bold", colorMap[accent])}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }

@@ -249,3 +249,45 @@ export function useEInvoicingCompanyTimeline(slug: string | null) {
     staleTime: 15_000,
   });
 }
+
+// ─── useEInvoicingStats ────────────────────────────────────────────────────
+
+export interface EInvoicingStatsData {
+  ok: boolean;
+  last24h: {
+    total: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+    invalidSignatures: number;
+    acceptedRate: number;
+  };
+  byCountry: Array<{
+    authority: string;
+    label: string;
+    count: number;
+    accepted: number;
+    rejected: number;
+  }>;
+  byHour: Array<{ hour: string; count: number; accepted: number; rejected: number }>;
+  topCompanies: Array<{
+    companySlug: string;
+    companyName: string;
+    emoji: string;
+    country: string;
+    receiptCount: number;
+  }>;
+  allTime: {
+    totalReceipts: number;
+    companiesWithReceipts: number;
+  };
+  generatedAt: string;
+}
+
+export function useEInvoicingStats() {
+  return useQuery<EInvoicingStatsData, ApiError>({
+    queryKey: [...queryKeys.founderPanel.eInvoicing(), "stats"],
+    queryFn: () => apiGet<EInvoicingStatsData>("/api/founder-panel/e-invoicing/stats"),
+    staleTime: 60_000, // 1 minute — stats don't need real-time
+  });
+}

@@ -2326,3 +2326,63 @@ Stage Summary:
 - Test coverage: 28 cases / 28 passed / 0 failed
 - Verified: HMAC-SHA256 verification (hex + base64), idempotency on externalUuid+authority+eventType, signatureValid tracking (true/false/null), all 7 country webhook handlers process their country-specific payload shapes correctly
 - Sample payloads + curl commands available for each country — ready for the user to copy-paste into Postman / curl / their tax authority's webhook tester
+
+---
+Task ID: e-invoicing-adr-test-button-stats
+Agent: Super Z (main)
+Task: ADR-007 (webhook architecture) + "Send Test Webhook" button + webhook stats card في لوحة المؤسس
+
+Work Log:
+- Wrote ADR-007 (docs/adr/ADR-007-einvoicing-webhook-receivers.md):
+  - Context: 7 authorities, each with different status vocabulary, signature scheme (header name + encoding), payload shape, secret source
+  - Decision: 7 public webhook receiver endpoints, all following the same 7-step processing pipeline (readRawBody → safeJsonParse → verifyHmacSig → map status → recordReceipt (idempotent on externalUuid+authority+eventType) → update EInvoice → write AuditLog)
+  - Per-country routing table (path, header, encoding, secret source)
+  - Data model: EInvoiceReceipt schema
+  - Idempotency strategy: dedup on (externalUuid, authority, eventType) — safe for authority retries
+  - Signature verification strategy: 3 cases (valid→accept+update, invalid→accept+don't update, absent→accept+update with leniency)
+  - Why public endpoints (tax authorities can't authenticate against GarfiX)
+  - Why 7 endpoints instead of 1 (clear URLs, independent rate-limiting, isolated code paths, easier monitoring)
+  - Reuse of IntegrationProvider infrastructure (encrypted credential store)
+  - Consequences (positive + negative + security considerations)
+  - 3 alternatives considered (polling, single endpoint, message queue decoupling) — all rejected with rationale
+  - Implementation references + verification status
+- Built /api/e-invoicing/test-webhook (POST, founder-only):
+  - Body: { country: "SA"|"EG"|"AE"|"KW"|"BH"|"OM"|"QA" }
+  - Looks up the test secret from the integration config (einvoice_eg/ae/kw/bh/om/qa/sa)
+  - Resolves companySlug (explicit or first company in DB matching the country)
+  - Builds a realistic per-country payload with country-specific fields
+  - Signs it with HMAC-SHA256 using the same encoding the receiver expects
+  - Sends HTTP POST to the local webhook receiver (origin + path)
+  - Returns the receiver's response + the receipt id (queried from DB after)
+  - Rate-limited at LIMITS.API_WRITE
+- Added "Send Test Webhook" button to WebhookUrlHelper in EInvoicingSettings.tsx:
+  - Green Send icon button next to the copy button
+  - On click: POST to /api/e-invoicing/test-webhook with the country code
+  - Shows inline test result (green for success with receipt id + sigValid status + latency, red for failure with error message)
+  - Disabled while testing, with spinner
+- Built /api/founder-panel/e-invoicing/stats (GET, founder-only):
+  - last24h aggregates: total, accepted, rejected, pending, invalidSignatures, acceptedRate
+  - byCountry (last 24h): authority + label + count + accepted + rejected (using separate groupBy queries + Map merge)
+  - byHour (last 24h): 24 hourly buckets with count/accepted/rejected (computed in JS from a single findMany)
+  - topCompanies (last 7d): top 5 by receipt count with company names resolved
+  - allTime totals: totalReceipts + companiesWithReceipts
+- Added useEInvoicingStats hook + EInvoicingStatsData type to founder-panel.ts
+- Built WebhookStatsCard component in dashboard page:
+  - 24h aggregates: 5 mini stat cards (total/accepted/rejected/pending/invalid signatures) with accepted rate as sublabel
+  - Hourly bar chart: 24 vertical bars showing receipt count per hour, with hover tooltip showing hour:count (accepted✓ rejected✗), gradient from emerald-500/40 to emerald-500/80
+  - By country (last 24h): horizontal stacked bar per country showing accepted (green) vs rejected (red) proportions
+  - Top 5 companies (last 7d): ranked list with emoji + name + receipt count badge
+  - Loading state: skeleton placeholder with pulse animation
+  - All-time totals shown in header (total receipts + companies with receipts)
+- Re-ran sandbox test runner: 28/28 still passing
+- Updated test results in download/
+- Verification gate: tsc 0 errors, lint 0/0, build green (197 routes including new test-webhook + stats endpoints), 0 test regressions
+- Pushed to main.
+
+Stage Summary:
+- New files: 3 (ADR-007, test-webhook route, stats route)
+- Modified files: 3 (founder-panel.ts hook, dashboard page with stats card, EInvoicingSettings.tsx with Send Test Webhook button)
+- New capabilities:
+  1. Architecture documented in ADR-007 (3 alternatives considered, decision rationale, consequences, security considerations)
+  2. Admin can click "Send Test Webhook" green button in any country's WebhookUrlHelper → triggers a real signed test payload through the full pipeline → shows receipt id + signature valid status + latency inline
+  3. Founder dashboard now shows live webhook throughput: 24h aggregates + hourly chart + by-country breakdown + top 5 companies (auto-refreshing every 60s)
