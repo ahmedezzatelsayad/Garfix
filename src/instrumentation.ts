@@ -87,35 +87,43 @@ export async function register(): Promise<void> {
     // as short as possible — every millisecond here delays the first user
     // request after a cold start.
 
-    // 1a. Database Initialization — required for Prisma queries.
-    logger.info("[instrumentation] Initializing database connection...");
-    const { initDb } = await import("@/lib/db");
-    await initDb();
+    // PREVIEW MODE: skip DB init + startup checks when explicitly requested.
+    // This lets the server start without a real DATABASE_URL (useful for
+    // previewing UI changes or running in environments without Postgres).
+    const skipDb = process.env.GARFIX_PREVIEW_MODE === "1";
+    if (skipDb) {
+      logger.warn("[instrumentation] GARFIX_PREVIEW_MODE=1 — skipping DB init + startup checks");
+    } else {
+      // 1a. Database Initialization — required for Prisma queries.
+      logger.info("[instrumentation] Initializing database connection...");
+      const { initDb } = await import("@/lib/db");
+      await initDb();
 
-    // 1b. Environment Validation — fails fast if secrets are missing.
-    // Skip in CI/test (NODE_ENV=production is forced during `next start`
-    // even in CI, so we guard explicitly).
-    logger.info("[instrumentation] Running environment checks...");
-    const { runStartupChecks } = await import("@/lib/startupCheck");
-    const startupResult = runStartupChecks();
+      // 1b. Environment Validation — fails fast if secrets are missing.
+      // Skip in CI/test (NODE_ENV=production is forced during `next start`
+      // even in CI, so we guard explicitly).
+      logger.info("[instrumentation] Running environment checks...");
+      const { runStartupChecks } = await import("@/lib/startupCheck");
+      const startupResult = runStartupChecks();
 
-    if (!startupResult.ok && startupResult.fatal.length > 0) {
-      const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
-      if (isRealProd) {
-        logger.error("[instrumentation] FATAL: Environment check failed", {
-          errors: startupResult.fatal,
+      if (!startupResult.ok && startupResult.fatal.length > 0) {
+        const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
+        if (isRealProd) {
+          logger.error("[instrumentation] FATAL: Environment check failed", {
+            errors: startupResult.fatal,
+          });
+          throw new Error(`FATAL: ${startupResult.fatal.join("; ")}`);
+        }
+        logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
+          warnings: startupResult.fatal,
         });
-        throw new Error(`FATAL: ${startupResult.fatal.join("; ")}`);
       }
-      logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
-        warnings: startupResult.fatal,
-      });
-    }
 
-    if (startupResult.warnings.length > 0) {
-      logger.warn("[instrumentation] Environment warnings", {
-        warnings: startupResult.warnings,
-      });
+      if (startupResult.warnings.length > 0) {
+        logger.warn("[instrumentation] Environment warnings", {
+          warnings: startupResult.warnings,
+        });
+      }
     }
 
     const tier1Duration = Date.now() - startTime;
@@ -127,7 +135,12 @@ export async function register(): Promise<void> {
     // the others. They run on the same warm function instance; if the
     // instance is frozen before they complete, they're lost (acceptable
     // — all are best-effort with retry semantics).
-    deferBackgroundTasks(startTime);
+    const skipBackgroundTasks = skipDb || process.env.GARFIX_SKIP_BACKGROUND_TASKS === "1";
+    if (!skipBackgroundTasks) {
+      deferBackgroundTasks(startTime);
+    } else {
+      logger.info("[instrumentation] Skipping background tasks (preview mode)");
+    }
   } catch (err) {
     const duration = Date.now() - startTime;
     logger.error("[instrumentation] ✗ Server startup failed", {

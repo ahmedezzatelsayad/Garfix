@@ -161,6 +161,11 @@ let relayRunning = false;
  */
 export function startOutboxRelay(): void {
   if (relayTimer) return;
+  // Allow disabling the relay in preview/dev environments without a real DB
+  if (process.env.DISABLE_OUTBOX_RELAY === "1") {
+    logger.info("[outbox] relay disabled via DISABLE_OUTBOX_RELAY=1");
+    return;
+  }
   logger.info("[outbox] relay worker starting", {
     intervalMs: getRelayIntervalMs(),
     batchSize: getBatchSize(),
