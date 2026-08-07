@@ -167,10 +167,8 @@ export async function startPgBoss(): Promise<boolean> {
       logger.warn("[queue-pgboss] pg-boss warning", { warning: warning.message });
     });
 
-    await boss.start();
-    bossStarted = true;
-
-    // Create queues with proper config
+    // Create queues BEFORE starting to avoid "queue does not exist" errors
+    // when pg-boss tries to process existing jobs on startup.
     for (const [key, name] of Object.entries(QUEUE_NAMES) as [string, QueueName][]) {
       const config = getQueueConfig(name);
       try {
@@ -195,6 +193,9 @@ export async function startPgBoss(): Promise<boolean> {
         });
       }
     }
+
+    await boss.start();
+    bossStarted = true;
 
     logger.info("[queue-pgboss] pg-boss started successfully", {
       queues: Object.values(QUEUE_NAMES),
