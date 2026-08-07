@@ -16,11 +16,12 @@ if (!commitSha) {
 const buildTime = new Date().toISOString();
 
 const nextConfig: NextConfig = {
-  // DEPLOYMENT FIX: enable standalone output for Docker self-hosting.
-  // This produces a self-contained .next/standalone directory that includes
-  // only the needed node_modules — much smaller Docker image + no missing
-  // CSS/JS chunks. Vercel ignores this setting (it has its own build flow).
-  output: "standalone",
+  // DEPLOYMENT FIX: only enable standalone for Docker (not Vercel).
+  // Vercel has its own build flow and 'standalone' breaks the Turbopack
+  // client runtime on Vercel — the page gets stuck on "Loading…"
+  // because TURBOPACK global doesn't initialize properly.
+  // Docker detection: Vercel sets VERCEL=1; Docker doesn't.
+  ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
   reactStrictMode: false,
   // Expose build metadata to both server and client runtime.
   env: {
