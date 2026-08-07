@@ -47,59 +47,35 @@ RUN bun run db:generate
 RUN bun run build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────
-# Use Node.js for runtime — `next start` requires Node.js.
-# Standard Next.js output (no standalone) — works the same way as
-# chat.z.ai publish flow, simplifying ops.
+# DEPLOYMENT FIX: use standalone output for smaller image + no missing chunks.
+# next.config.ts now has `output: "standalone"` which produces .next/standalone
+# with a self-contained server.js + only the needed node_modules.
 #
 # MED-006 (Cycle 2 NOTE): base images are pinned by TAG, not by digest.
-#   Pinning by digest would prevent supply-chain attacks via upstream image
-#   tampering, but it also prevents automatic security patching of the base
-#   OS. For now we keep tag-pinning (auto-receives patch bumps within the
-#   major) and rely on Trivy image scanning in CI (to be added in a future
-#   cycle) to catch vulnerabilities in the base image. To migrate to digest
-#   pinning, compute the digest with:
-#     docker pull node:22-alpine && \
-#     docker inspect --format='{{index .RepoDigests 0}}' node:22-alpine
-#   and replace `FROM node:22-alpine` with `FROM node:22-alpine@sha256:<digest>`.
 FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install bun runtime (small footprint) so we can use `bun run start`
-RUN npm install -g bun
-
-# HIGH-006 FIX (Cycle 2): remove `curl` from the production image.
-RUN apk add --no-cache shadow
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Create storage directory for backups
 RUN mkdir -p /app/storage/backups && chown nextjs:nodejs /app/storage
 
-# Copy standard Next.js build output (no standalone)
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/bun.lock ./bun.lock
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
-# Tailwind v4 — config is in globals.css via @theme inline, no tailwind.config.ts
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --from=builder /app/components.json ./components.json
-COPY --from=builder /app/eslint.config.mjs ./eslint.config.mjs
-
-# Copy node_modules (production deps only) — install with --production
-COPY --from=builder /app/node_modules ./node_modules
-
+# Copy standalone server output (includes server.js + minimal node_modules)
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Copy static assets (CSS, JS, images, fonts) — REQUIRED for rendering
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy public assets
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Copy Prisma schema and migrations for runtime
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Note: .env files are intentionally NOT copied into the image. Secrets must
 # be provided at runtime via environment variables (docker run -e, docker-compose
-# environment:, or Vercel project env vars). Baking .env into the image makes
-# secrets extractable via `docker history`.
+# environment:, or Vercel project env vars).
 
 USER nextjs
 
@@ -114,4 +90,6 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["bun", "run", "start"]
+# Use Node.js directly to run the standalone server (not bun — standalone
+# produces a Node.js server.js, not a bun-compatible one)
+CMD ["node", "server.js"]

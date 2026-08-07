@@ -16,10 +16,11 @@ if (!commitSha) {
 const buildTime = new Date().toISOString();
 
 const nextConfig: NextConfig = {
-  // NOTE: "standalone" output removed for platform compatibility.
-  // chat.z.ai publish flow expects standard `next build` + `next start`,
-  // which auto-loads `.env` and respects the PORT env var.
-  // Docker self-hosting still works via `next start` (no standalone server needed).
+  // DEPLOYMENT FIX: enable standalone output for Docker self-hosting.
+  // This produces a self-contained .next/standalone directory that includes
+  // only the needed node_modules — much smaller Docker image + no missing
+  // CSS/JS chunks. Vercel ignores this setting (it has its own build flow).
+  output: "standalone",
   reactStrictMode: false,
   // Expose build metadata to both server and client runtime.
   env: {
