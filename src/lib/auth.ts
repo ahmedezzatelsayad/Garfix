@@ -405,13 +405,22 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
 
   // Issue a fresh access token payload
   const companies = parseJsonArr(user.companies);
-  const permissions = parseJsonObj(user.permissions);
+  const rawPermissions = parseJsonObj(user.permissions);
+  // M3 FIX (CRITICAL): apply computeEffectivePermissions in the refresh flow,
+  // exactly like issueSession does at login time. Previously this used raw
+  // user.permissions (typically {} for most users), which meant every silent
+  // refresh (after 30 min access TTL) produced a JWT with permissions={}
+  // — causing hasPermission() to return false for ALL role-baseline perms.
+  // Net effect: users could log in, work for 30 min, then suddenly get 403
+  // on every mutating endpoint until they manually logged out + back in.
+  const founder = isFounderEmail(user.email);
+  const effectivePerms = computeEffectivePermissions(user.role, rawPermissions, founder);
   const payload: AuthPayload = {
     uid: user.uid,
     email: user.email,
     role: user.role,
     companies,
-    permissions,
+    permissions: effectivePerms,
     tv: user.tokenVersion,
   };
   return { ok: true, user: payload };
