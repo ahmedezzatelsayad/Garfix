@@ -32,9 +32,8 @@ const COUNTRY_CONFIG: Record<string, { label: string; endpoint: string } | null>
   KW: { label: "Kuwait MoF",       endpoint: "/api/e-invoicing/submit" },
   BH: { label: "Bahrain NBR",      endpoint: "/api/e-invoicing/submit" },
   OM: { label: "Oman TA",          endpoint: "/api/e-invoicing/submit" },
-  // AE/QA: Peppol AP submission not yet implemented
-  AE: null,
-  QA: null,
+  AE: { label: "Peppol (UAE)",     endpoint: "/api/e-invoicing/peppol/submit" },
+  QA: { label: "Peppol (Qatar)",   endpoint: "/api/e-invoicing/peppol/submit" },
 };
 
 // ─── Types ─────────────────────────────────────────────────────────────────

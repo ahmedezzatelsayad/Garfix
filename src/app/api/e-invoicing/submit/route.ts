@@ -230,15 +230,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
       case "AE":
       case "QA": {
-        // Peppol AP submission — needs Access Point credentials + UBL XML signing.
-        // TODO: implement UaeFta UBL generation + Peppol AP submission.
-        // For now, return a clear message that Peppol submission is coming.
-        submissionResult = {
+        // Peppol AP submission is handled by /api/e-invoicing/peppol/submit
+        // (separate route because it needs AP credentials + UBL XML signing,
+        // which is a different pipeline from the JSON-payload countries).
+        return NextResponse.json({
           ok: false,
-          submissionStatus: "pending",
-          error: "إرسال Peppol (الإمارات/قطر) قيد التطوير — استخدم Access Point خارجي مؤقتاً",
-        };
-        break;
+          redirect: "/api/e-invoicing/peppol/submit",
+          message: "استخدم /api/e-invoicing/peppol/submit لإرسال فواتير Peppol (الإمارات/قطر)",
+        }, { status: 308 });
       }
 
       default:

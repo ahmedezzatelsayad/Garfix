@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "timestamp": "2026-08-07T06:16:04.404Z",
+    "testType": "zatca-submit-integration",
+    "totalCases": 10,
+    "passed": 10,
+    "failed": 0,
+    "byCategory": {
+      "validation": {
+        "passed": 3,
+        "failed": 0
+      },
+      "xml-generation": {
+        "passed": 2,
+        "failed": 0
+      },
+      "signing": {
+        "passed": 1,
+        "failed": 0
+      },
+      "persistence": {
+        "passed": 1,
+        "failed": 0
+      },
+      "audit": {
+        "passed": 1,
+        "failed": 0
+      },
+      "e2e": {
+        "passed": 2,
+        "failed": 0
+      }
+    }
+  },
+  "results": [
+    {
+      "name": "validateZatcaInvoice accepts valid Saudi invoice",
+      "category": "validation",
+      "passed": true,
+      "durationMs": 0
+    },
+    {
+      "name": "validateZatcaInvoice rejects invoice without VAT",
+      "category": "validation",
+      "passed": true,
+      "durationMs": 0
+    },
+    {
+      "name": "determineZatcaInvoiceType returns 'standard' for B2B invoice",
+      "category": "validation",
+      "passed": true,
+      "durationMs": 0,
+      "details": {
+        "xmlLength": 7288,
+        "uuid": "b70d7ea2-6b9f-47a3-9e2d-2e6e761159a0",
+        "invoiceHash": "e9ebbd527a099154…",
+        "hasInvoiceRoot": true,
+        "hasUblNamespace": true
+      }
+    },
+    {
+      "name": "generateZatcaUblXml produces well-formed UBL 2.1 XML",
+      "category": "xml-generation",
+      "passed": true,
+      "durationMs": 15
+    },
+    {
+      "name": "autoPopulateZatcaFields generates UUID if missing",
+      "category": "xml-generation",
+      "passed": true,
+      "durationMs": 1,
+      "details": {
+        "signedXmlLength": 7557,
+        "originalXmlLength": 7288,
+        "signatureLength": 96,
+        "invoiceHash": "8216aba8d0cdf103…"
+      }
+    },
+    {
+      "name": "signZatcaInvoice produces non-empty signature",
+      "category": "signing",
+      "passed": true,
+      "durationMs": 5,
+      "details": {
+        "eInvoiceId": "einvo_0001",
+        "invoiceId": 1001,
+        "submissionStatus": "cleared",
+        "uuid": "fedb358c-bcbf-4797-9bda-a970ba6336b2",
+        "hasClearedAt": true
+      }
+    },
+    {
+      "name": "EInvoice row persisted with correct fields",
+      "category": "persistence",
+      "passed": true,
+      "durationMs": 1,
+      "details": {
+        "auditId": 1,
+        "action": "zatca_invoice_submitted",
+        "targetId": "1001"
+      }
+    },
+    {
+      "name": "Audit log written with action='zatca_invoice_submitted'",
+      "category": "audit",
+      "passed": true,
+      "durationMs": 0,
+      "details": {
+        "validationPassed": true,
+        "xmlLength": 7288,
+        "signatureLength": 96,
+        "eInvoiceId": "einvo_0002",
+        "auditLogId": 2
+      }
+    },
+    {
+      "name": "E2E: validate → generate → sign → persist → audit (full pipeline)",
+      "category": "e2e",
+      "passed": true,
+      "durationMs": 1,
+      "details": {
+        "errorCount": 1,
+        "firstErrorField": "vatTrn"
+      }
+    },
+    {
+      "name": "E2E: invalid invoice returns validation errors (not crash)",
+      "category": "e2e",
+      "passed": true,
+      "durationMs": 0
+    }
+  ],
+  "persistedEInvoices": 2,
+  "auditLogEntries": 2
+}
