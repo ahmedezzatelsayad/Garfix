@@ -1,34 +1,12 @@
 /**
  * / — GarfiX home route.
- *
- * VERCEL FIX: simplified to a server component that renders static HTML.
- * No "use client", no dynamic imports, no framer-motion, no useAuth().
- * The client-side auth check + redirect happens in a tiny inline script.
- *
- * This guarantees the page renders on Vercel without any hydration issues.
- * Authenticated users get redirected to /app via client-side JS.
- * Unauthenticated users see the marketing content in the static HTML.
+ * Static server-rendered landing page. No client-side redirects.
  */
 import Link from "next/link";
 
 export default function Home() {
   return (
     <div className="min-h-dvh bg-[#0b1220] text-white" dir="rtl">
-      {/* Simple inline script: redirect to /login if not authenticated */}
-      <script dangerouslySetInnerHTML={{ __html: `
-        (function() {
-          try {
-            var cookies = document.cookie;
-            var hasAccess = cookies.includes('inv_token');
-            var hasRefresh = cookies.includes('inv_refresh');
-            if (hasAccess || hasRefresh) {
-              // User might be authenticated — redirect to app
-              window.location.href = '/login';
-            }
-          } catch(e) {}
-        })();
-      `}} />
-
       {/* Header */}
       <header className="px-6 py-5 max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -53,7 +31,7 @@ export default function Home() {
           <span>🚀</span>
           <span>نظام تشغيل مؤسسي متكامل بالذكاء الاصطناعي</span>
         </div>
-        <h1 className="text-4xl md:text-6xl font-black mb-6 bg-gradient-to-l from-white via-emerald-100 to-emerald-400 bg-clip-text text-transparent">
+        <h1 className="text-4xl md:text-6xl font-black mb-6 text-white">
           GarfiX EOS
         </h1>
         <p className="text-lg md:text-xl text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
