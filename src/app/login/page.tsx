@@ -71,21 +71,14 @@ export default function LoginPage() {
     }
   }
 
-  // While AuthContext is still resolving the session, show a neutral loader
-  // so we don't flash the login form to already-authed users.
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-sm">Loading…</p>
-        </div>
-      </div>
-    );
-  }
+  // VERCEL FIX: always render the login form — don't gate on `loading`.
+  // Previously, `if (loading) return <spinner>` caused the form to never
+  // appear because `loading` starts as true on the server and client,
+  // and if fetchMe() hangs, the form never shows. The useEffect above
+  // handles redirect for already-authenticated users.
 
   // If we're authed, the redirect is already in-flight; render nothing.
-  if (user) return null;
+  if (!loading && user) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
