@@ -86,7 +86,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* VERCEL FIX: removed themeInitScript — it was causing hydration
+            race conditions on Vercel. next-themes handles theme init on
+            the client side via the ThemeProvider in Providers.tsx. */}
       </head>
       <body
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}
