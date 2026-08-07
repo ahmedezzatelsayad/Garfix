@@ -9,7 +9,7 @@ import { withErrorHandler } from "@/lib/api";
 import { parseJsonField } from "@/lib/api";
 
 // Built-in module definitions (always available)
-export const BUILTIN_MODULES = [
+const BUILTIN_MODULES = [
   { name: "الفواتير", identifier: "invoices", version: "1.0.0", description: "إنشاء وإدارة الفواتير", isActive: true, builtIn: true },
   { name: "العملاء", identifier: "clients", version: "1.0.0", description: "قاعدة بيانات العملاء", isActive: true, builtIn: true },
   { name: "المشتريات", identifier: "purchases", version: "1.0.0", description: "إدارة فواتير الموردين", isActive: true, builtIn: true },

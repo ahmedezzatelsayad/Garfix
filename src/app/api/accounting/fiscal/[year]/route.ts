@@ -116,7 +116,7 @@ async function generateTrialBalanceSnapshot(
 
 // ─── POST: Close fiscal year ─────────────────────────────────────────────────
 
-export async function POST_close(req: NextRequest, ctx: RouteContext) {
+async function POST_close(req: NextRequest, ctx: RouteContext) {
   const { year: yearStr } = await ctx.params;
   const year = parseInt(yearStr, 10);
   
@@ -239,7 +239,7 @@ export async function POST_close(req: NextRequest, ctx: RouteContext) {
 
 // ─── POST: Reopen fiscal year ────────────────────────────────────────────────
 
-export async function POST_reopen(req: NextRequest, ctx: RouteContext) {
+async function POST_reopen(req: NextRequest, ctx: RouteContext) {
   const { year: yearStr } = await ctx.params;
   const year = parseInt(yearStr, 10);
   

@@ -14,7 +14,7 @@ import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Available event types ────────────────────────────────────────────────────
 
-export const WEBHOOK_EVENT_TYPES: Array<{ id: string; label: string; labelAr: string; group: string; description: string }> = [
+const WEBHOOK_EVENT_TYPES: Array<{ id: string; label: string; labelAr: string; group: string; description: string }> = [
   // Invoice events
   { id: "invoice.created", label: "Invoice Created", labelAr: "فاتورة جديدة", group: "financial", description: "Triggered when a new invoice is created" },
   { id: "invoice.updated", label: "Invoice Updated", labelAr: "تحديث فاتورة", group: "financial", description: "Triggered when an invoice is edited" },

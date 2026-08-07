@@ -121,4 +121,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
 });
 
 // Re-export helpers for convenience
-export { setIntegrationConfig, disconnectIntegration };
+// Re-exported for internal use (not a route handler)
+// FIX: Next.js 16 webpack build rejects non-standard exports from route files.
+// These are already exported from src/lib/integrations/registry.ts —
+// import from there directly instead of from this route file.
+
