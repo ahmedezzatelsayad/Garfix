@@ -82,6 +82,7 @@ export function EInvoicingSettings() {
       country={country}
       integrationType={integrationType}
       vatNumberDefault={activeCompany?.vatNumber || ""}
+      companySlug={companySlug}
     />
   );
 }
@@ -269,11 +270,12 @@ function ZatcaSettings({
 // ─── Country E-Invoice Settings (EG / AE / KW / BH / OM / QA) ───
 
 function CountryEInvoiceSettings({
-  country, integrationType, vatNumberDefault,
+  country, integrationType, vatNumberDefault, companySlug,
 }: {
   country: string;
   integrationType: IntegrationTypeKey;
   vatNumberDefault: string;
+  companySlug: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -445,7 +447,7 @@ function CountryEInvoiceSettings({
         </div>
 
         {/* Webhook URL helper */}
-        <WebhookUrlHelper country={country} />
+        <WebhookUrlHelper country={country} companySlug={companySlug} />
 
         {/* Test result */}
         {testResult && (
@@ -902,7 +904,7 @@ const WEBHOOK_CONFIG: Record<string, { path: string; header: string; encoding: "
   QA: { path: "/api/e-invoicing/webhooks/qa", header: "X-AP-Signature", encoding: "hex", secretSource: "AP Client Secret" },
 };
 
-function WebhookUrlHelper({ country }: { country: string }) {
+function WebhookUrlHelper({ country, companySlug }: { country: string; companySlug?: string }) {
   const cfg = WEBHOOK_CONFIG[country];
   const [origin, setOrigin] = useState<string>("");
   const [testing, setTesting] = useState(false);
@@ -939,14 +941,14 @@ function WebhookUrlHelper({ country }: { country: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ country }),
+        body: JSON.stringify({ country, companySlug }), // FIX #21 (MEDIUM): include companySlug so test receipt is recorded under the correct company
       });
       const data = await res.json();
 
       if (data.ok) {
         const receipt = data.receipt;
         const msg = receipt
-          ? `تم الإرسال بنجاح — الإيصال ${receipt.id.slice(0, 8)}… مسجّل (sigValid: ${receipt.signatureValid === null ? "null" : receipt.signatureValid ? "true" : "false"})`
+          ? `تم الإرسال بنجاح — الإيصال ${receipt.id.slice(0, 8)}… مسجّل (sigValid: ${receipt.signatureValid ? "true" : "false"})`
           : `تم الإرسال بنجاح (HTTP ${data.status}) لكن لم يُسجّل إيصال بعد`;
         setTestResult({
           ok: true,

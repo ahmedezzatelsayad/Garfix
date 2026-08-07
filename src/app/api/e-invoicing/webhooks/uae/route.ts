@@ -14,9 +14,10 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { readRawBody, recordReceipt, safeJsonParse, verifyHmacSignature } from "@/lib/e-invoicing/webhooks";
+import { readRawBody, recordReceipt, safeJsonParse, verifyHmacSignature, WebhookBodyTooLargeError } from "@/lib/e-invoicing/webhooks";
 import { getIntegrationConfig } from "@/lib/integrations/registry";
 import { logger } from "@/lib/logger";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 interface UaeWebhookPayload {
   peppolMessageId?: string;
@@ -30,7 +31,18 @@ interface UaeWebhookPayload {
 }
 
 export async function POST(req: NextRequest) {
-  const raw = await readRawBody(req);
+  // Rate limit: 200 webhooks per minute per IP (authorities retry, so be generous)
+  const rl = await rateLimitResponse(req, "post:einvoice-webhook-uae", { windowMs: 60_000, maxAttempts: 200 });
+  if (rl) return rl;
+  let raw: string;
+  try {
+    raw = await readRawBody(req);
+  } catch (err) {
+    if (err instanceof WebhookBodyTooLargeError) {
+      return NextResponse.json({ error: "Body too large" }, { status: 413 });
+    }
+    throw err;
+  }
   const signature = req.headers.get("x-ap-signature");
   const payload = safeJsonParse<UaeWebhookPayload>(raw);
 
@@ -50,6 +62,21 @@ export async function POST(req: NextRequest) {
         err: err instanceof Error ? err.message : String(err),
       });
       signatureValid = false;
+    }
+  }
+
+  // ─── Reject unsigned or invalid-signature webhooks (security) ───────
+  // FIX #1+#16 (CRITICAL): In production, reject webhooks with missing or
+  // invalid signatures. In development, allow unsigned for sandbox testing.
+  const isDev = process.env.NODE_ENV === "development" || process.env.GARFIX_PREVIEW_MODE === "1";
+  if (!isDev) {
+    if (signature === null) {
+      logger.warn("[webhooks] rejected unsigned webhook (production mode)", { endpoint: req.url });
+      return NextResponse.json({ error: "Signature required" }, { status: 401 });
+    }
+    if (signatureValid === false) {
+      logger.warn("[webhooks] rejected invalid-signature webhook", { endpoint: req.url });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
   }
 

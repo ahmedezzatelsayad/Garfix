@@ -44,8 +44,12 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: { param
 
   const { slug } = await params;
   const url = new URL(req.url);
-  const cursor = url.searchParams.get("cursor");
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
+  const cursorRaw = url.searchParams.get("cursor");
+  // FIX #15 (HIGH): validate cursor is a valid date, reject invalid values
+  const cursor = cursorRaw && !Number.isNaN(Date.parse(cursorRaw)) ? cursorRaw : null;
+  // FIX #15 (HIGH): guard against NaN from parseInt("abc") → Prisma crash
+  const limitRaw = parseInt(url.searchParams.get("limit") || "50", 10);
+  const limit = Math.min(Number.isNaN(limitRaw) ? 50 : limitRaw, 100);
 
   try {
     // ── 1. Fetch company ──────────────────────────────────────────────────
@@ -198,7 +202,8 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: { param
           invoiceId: g.invoiceId,
           invoiceNumber: inv?.invoiceNumber || null,
           invoiceStatus: inv?.status || null,
-          invoiceTotal: inv ? Number(inv.total) : null,
+          // FIX #33 (LOW): use toString() to avoid Decimal precision loss for very large amounts
+          invoiceTotal: inv ? inv.total.toString() : null,
           issueDate: inv?.issueDate.toISOString() || null,
           eventCount: g._count,
         };

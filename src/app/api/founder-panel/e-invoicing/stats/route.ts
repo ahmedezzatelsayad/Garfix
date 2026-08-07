@@ -104,15 +104,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     }
 
     // ── 4. Top 5 companies by receipt count (last 7d) ─────────────────────
+    // FIX #20 (MEDIUM): filter out _unknown slug before resolving names
     const topCompaniesRaw = await db.eInvoiceReceipt.groupBy({
       by: ["companySlug"],
-      where: { receivedAt: { gte: last7d } },
+      where: { receivedAt: { gte: last7d }, companySlug: { not: "_unknown" } },
       _count: true,
       orderBy: { _count: { companySlug: "desc" } },
       take: 5,
     });
     // Resolve company names
-    const slugs = topCompaniesRaw.map((r) => r.companySlug).filter((s) => s && s !== "_unknown");
+    const slugs = topCompaniesRaw.map((r) => r.companySlug);
     const companies = slugs.length > 0
       ? await db.company.findMany({
           where: { slug: { in: slugs } },

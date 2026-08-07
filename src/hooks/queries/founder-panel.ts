@@ -244,7 +244,7 @@ export interface EInvoicingCompanyTimelineData {
 export function useEInvoicingCompanyTimeline(slug: string | null) {
   return useQuery<EInvoicingCompanyTimelineData, ApiError>({
     queryKey: [...queryKeys.founderPanel.eInvoicing(), "company", slug],
-    queryFn: () => apiGet<EInvoicingCompanyTimelineData>(`/api/founder-panel/e-invoicing/${slug}`),
+    queryFn: () => apiGet<EInvoicingCompanyTimelineData>(`/api/founder-panel/e-invoicing/${encodeURIComponent(slug || "")}`), // FIX #27 (MEDIUM): encode slug
     enabled: !!slug,
     staleTime: 15_000,
   });

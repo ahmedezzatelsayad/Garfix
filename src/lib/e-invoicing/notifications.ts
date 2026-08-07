@@ -36,6 +36,7 @@ export interface NotificationResult {
   email: { sent: boolean; messageId?: string; error?: string; skipped?: boolean };
   whatsapp: { sent: boolean; error?: string; skipped?: boolean };
   throttled: boolean;
+  skipped?: boolean; // FIX #23 (MEDIUM): distinguish "skipped" from "throttled"
 }
 
 // ─── Throttling ───────────────────────────────────────────────────────────
@@ -47,18 +48,34 @@ const THROTTLE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
  * within the throttle window. Uses the in-app Notification table as the source
  * of truth — if a row with type='e_invoice_rejected' and body containing the
  * externalUuid exists in the last hour, we skip.
+ *
+ * FIX #13 (HIGH): also throttle by invoiceId when available — some authorities
+ * send different UUIDs for the same invoice on re-submission, so UUID-only
+ * throttle would let duplicates through.
  */
-async function isThrottled(companySlug: string, externalUuid: string | null): Promise<boolean> {
-  if (!externalUuid) return false;
+async function isThrottled(
+  companySlug: string,
+  externalUuid: string | null,
+  invoiceId?: number | null,
+): Promise<boolean> {
+  if (!externalUuid && !invoiceId) return false;
   try {
     const oneHourAgo = new Date(Date.now() - THROTTLE_WINDOW_MS);
     // Look for any rejection notification in the last hour that mentions this UUID
+    // or the invoiceId
+    const conditions: Record<string, unknown>[] = [];
+    if (externalUuid) {
+      conditions.push({ body: { contains: externalUuid } });
+    }
+    if (invoiceId) {
+      conditions.push({ body: { contains: `#${invoiceId}` } });
+    }
     const recent = await db.notification.findFirst({
       where: {
         companySlug,
         type: "e_invoice_rejected",
         createdAt: { gte: oneHourAgo },
-        body: { contains: externalUuid },
+        OR: conditions,
       },
       select: { id: true },
     });
@@ -66,7 +83,7 @@ async function isThrottled(companySlug: string, externalUuid: string | null): Pr
   } catch (err) {
     // If the query fails (e.g. table schema drift), don't block the notification
     logger.warn("[e-invoicing:notifications] throttle check failed", {
-      companySlug, externalUuid,
+      companySlug, externalUuid, invoiceId,
       err: err instanceof Error ? err.message : String(err),
     });
     return false;
@@ -95,7 +112,11 @@ async function findCompanyAdmins(companySlug: string): Promise<Array<{ uid: stri
     const admins = candidates
       .filter((u) => {
         try {
-          const slugs = JSON.parse(u.companies || "[]") as string[];
+          // FIX #30 (LOW): validate parsed data is actually string[]
+          const parsed = JSON.parse(u.companies || "[]");
+          const slugs = Array.isArray(parsed)
+            ? parsed.filter((s): s is string => typeof s === "string")
+            : [];
           return slugs.includes(companySlug);
         } catch {
           return false;
@@ -295,16 +316,18 @@ export async function dispatchRejectionNotification(
     logger.info("[e-invoicing:notifications] skipping — unknown company", {
       receiptId: input.receiptId,
     });
-    result.throttled = true; // not really throttled, but skip
+    // FIX #23 (MEDIUM): use skipped flag, not throttled, so caller can distinguish
+    result.skipped = true;
     return result;
   }
 
   // ── Throttle check ──────────────────────────────────────────────────
-  const throttled = await isThrottled(input.companySlug, input.externalUuid);
+  const throttled = await isThrottled(input.companySlug, input.externalUuid, input.invoiceId);
   if (throttled) {
     logger.info("[e-invoicing:notifications] throttled — already sent recently", {
       companySlug: input.companySlug,
       externalUuid: input.externalUuid,
+      invoiceId: input.invoiceId,
     });
     result.throttled = true;
     return result;

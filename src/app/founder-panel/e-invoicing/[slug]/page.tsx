@@ -27,16 +27,30 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-// Country flag emoji
+// Country flag emoji (ISO-2 → flag)
 function flagEmoji(country: string): string {
   if (!country || country.length !== 2) return "🌍";
+  const upper = country.toUpperCase(); // FIX #29 (LOW): handle lowercase country codes
   const A = 0x1f1e6;
   const a = "A".charCodeAt(0);
   return String.fromCodePoint(
-    A + (country.charCodeAt(0) - a),
-    A + (country.charCodeAt(1) - a),
+    A + (upper.charCodeAt(0) - a),
+    A + (upper.charCodeAt(1) - a),
   );
 }
+
+// FIX #9 (HIGH): Map country code to the correct webhook path segment.
+// The webhook routes are /zatca, /eta, /uae, /kw, /bh, /om, /qa — not
+// the lowercased country code.
+const WEBHOOK_PATHS: Record<string, string> = {
+  SA: "zatca",
+  EG: "eta",
+  AE: "uae",
+  KW: "kw",
+  BH: "bh",
+  OM: "om",
+  QA: "qa",
+};
 
 // ─── Status meta ──────────────────────────────────────────────────────────
 
@@ -347,9 +361,17 @@ export default function EInvoicingCompanyTimelinePage() {
             data.receipts.map((r) => <ReceiptCard key={r.id} receipt={r} />)
           )}
           {data.pagination.hasMore && (
-            <p className="text-center text-[11px] text-muted-foreground py-3">
-              توجد إيصالات أقدم — استخدم cursor pagination لعرضها
-            </p>
+            <div className="text-center py-3">
+              <a
+                href={`/api/founder-panel/e-invoicing/${encodeURIComponent(company.slug)}?cursor=${encodeURIComponent(data.pagination.nextCursor || "")}&limit=50`}
+                target="_blank"
+                rel="noopener"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/[0.06] border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.1] transition-colors"
+              >
+                <ChevronDown size={13} />
+                تحميل المزيد (next cursor: {data.pagination.nextCursor?.slice(11, 19) || "…"})
+              </a>
+            </div>
           )}
         </div>
       ) : (
@@ -381,7 +403,7 @@ export default function EInvoicingCompanyTimelinePage() {
           webhook URL لهذه الدولة
         </p>
         <p className="font-mono text-emerald-300/80 text-[11px]" dir="ltr">
-          /api/e-invoicing/webhooks/{company.country?.toLowerCase() || "zatca"}
+          /api/e-invoicing/webhooks/{WEBHOOK_PATHS[company.country] || "zatca"}
         </p>
         <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
           هذا الـ endpoint يُستقبل منه إشعارات الهيئة. سجّله في بوابة الهيئة المعنية ليتم إرسال الإيصالات تلقائياً.

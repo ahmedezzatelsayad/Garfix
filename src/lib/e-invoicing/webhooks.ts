@@ -6,15 +6,27 @@
  *
  *   - verifyHmacSignature: HMAC-SHA256 verification (used by ETA, Peppol APs)
  *   - recordReceipt: persist a row in EInvoiceReceipt + audit log + update EInvoice
- *   - resolveCompanyFromInvoice: look up companySlug from invoiceId
+ *   - readRawBody: raw body reader with size limit (DoS protection)
  *
  * All webhook endpoints are PUBLIC (no auth — they're called by external
  * government servers). They MUST verify a signature header where the
  * authority supports one.
+ *
+ * SECURITY: EInvoice status is only updated when signatureValid === true.
+ * Unsigned or invalid-signature webhooks are recorded for audit but do NOT
+ * mutate invoice status.
  */
 import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { createHmac, timingSafeEqual } from "crypto";
+
+// ─── Constants ─────────────────────────────────────────────────────────────
+
+/** Maximum webhook body size (256 KB). Larger bodies are rejected with 413. */
+export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
+
+/** Maximum rawPayload stored in the DB (64 KB). Larger payloads are truncated. */
+const MAX_RAW_PAYLOAD_STORE_BYTES = 64 * 1024;
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -84,6 +96,11 @@ export function verifyHmacSignature(
  *
  * Idempotent: if the same externalUuid + authority + eventType arrives
  * twice, the second call returns the first row's id (no duplicate).
+ *
+ * SECURITY: EInvoice status is only updated when `signatureValid === true`.
+ * When `signatureValid` is `false` or `null` (unsigned), the receipt is
+ * still recorded for audit but the EInvoice row is NOT mutated — this
+ * prevents forged webhooks from marking invoices as "cleared" or "rejected".
  */
 export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord> {
   // ── 1. Idempotency check ─────────────────────────────────────────────
@@ -106,16 +123,34 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     }
   }
 
-  // ── 2. Resolve companySlug from invoiceId if not provided ───────────
+  // ── 2. Resolve companySlug + invoiceNumber from invoiceId ───────────
   let companySlug = input.companySlug;
   let invoiceId = input.invoiceId ?? null;
+  let invoiceNumber: string | null = null;
 
-  if (!companySlug && invoiceId) {
-    const invoice = await db.invoice.findUnique({
-      where: { id: invoiceId },
-      select: { companySlug: true },
+  if (invoiceId) {
+    // FIX #3 (CRITICAL): scope by companySlug when provided, to prevent cross-tenant lookups
+    const invoice = await db.invoice.findFirst({
+      where: companySlug
+        ? { id: invoiceId, companySlug }
+        : { id: invoiceId },
+      select: { companySlug: true, invoiceNumber: true },
     });
-    if (invoice) companySlug = invoice.companySlug;
+    if (invoice) {
+      // FIX #3 (CRITICAL): if input provided a companySlug, verify it matches
+      if (companySlug && invoice.companySlug !== companySlug) {
+        logger.error("[e-invoicing:webhooks] cross-tenant invoice access blocked", {
+          inputCompanySlug: companySlug,
+          invoiceCompanySlug: invoice.companySlug,
+          invoiceId,
+        });
+        companySlug = "_unknown";
+        invoiceId = null; // prevent EInvoice update for wrong tenant
+      } else {
+        companySlug = invoice.companySlug;
+        invoiceNumber = invoice.invoiceNumber;
+      }
+    }
   }
   if (!companySlug) {
     logger.warn("[e-invoicing:webhooks] cannot resolve companySlug for receipt", {
@@ -125,7 +160,13 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     companySlug = "_unknown";
   }
 
-  // ── 3. Persist the receipt row ──────────────────────────────────────
+  // ── 3. Truncate rawPayload if too large (DoS protection) ────────────
+  const truncatedPayload =
+    input.rawPayload.length > MAX_RAW_PAYLOAD_STORE_BYTES
+      ? input.rawPayload.slice(0, MAX_RAW_PAYLOAD_STORE_BYTES) + "\n…[truncated]"
+      : input.rawPayload;
+
+  // ── 4. Persist the receipt row ──────────────────────────────────────
   const receipt = await db.eInvoiceReceipt.create({
     data: {
       companySlug,
@@ -134,19 +175,23 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
       eventType: input.eventType,
       externalUuid: input.externalUuid || null,
       status: input.status,
-      rawPayload: input.rawPayload,
+      rawPayload: truncatedPayload,
       signatureValid: input.signatureValid ?? null,
       rejectionReason: input.rejectionReason || null,
     },
   });
 
-  // ── 4. Update the corresponding EInvoice row if applicable ──────────
-  if (invoiceId) {
+  // ── 5. Update EInvoice ONLY if signature is valid ───────────────────
+  // FIX #2 (CRITICAL): gate EInvoice mutation on signatureValid === true.
+  // Forged or unsigned webhooks are recorded for audit but do NOT change
+  // invoice status.
+  if (invoiceId && input.signatureValid === true) {
     try {
+      // FIX #24 (MEDIUM): cancelled → "cancelled" not "rejected"
       const submissionStatus =
         input.status === "accepted" ? "cleared" :
         input.status === "rejected" ? "rejected" :
-        input.status === "cancelled" ? "rejected" :
+        input.status === "cancelled" ? "cancelled" :
         "submitted";
 
       const existingEInvoice = await db.eInvoice.findUnique({ where: { invoiceId } });
@@ -161,6 +206,7 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
           },
         });
       } else {
+        // FIX #36 (LOW): use real invoice number instead of #id placeholder
         // Auto-create an EInvoice stub if it doesn't exist
         await db.eInvoice.create({
           data: {
@@ -171,13 +217,12 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
             clearedAt: input.status === "accepted" ? new Date() : null,
             rejectionReason: input.rejectionReason || null,
             companySlug,
-            // Required by schema (P2-Reconciliation cols)
-            invoiceNumber: `#${invoiceId}`,
+            invoiceNumber: invoiceNumber || `#${invoiceId}`,
             authority: input.authority,
             status: submissionStatus,
           },
         }).catch((err) => {
-          // Don't fail the webhook if the stub creation fails
+          // FIX #25 (MEDIUM): log the error instead of silently swallowing
           logger.warn("[e-invoicing:webhooks] EInvoice stub create failed", {
             invoiceId, err: err instanceof Error ? err.message : String(err),
           });
@@ -188,9 +233,16 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
         invoiceId, err: err instanceof Error ? err.message : String(err),
       });
     }
+  } else if (invoiceId && input.signatureValid !== true) {
+    // Log that we're skipping the EInvoice update due to invalid/missing signature
+    logger.warn("[e-invoicing:webhooks] skipping EInvoice update — signature not valid", {
+      invoiceId,
+      authority: input.authority,
+      signatureValid: input.signatureValid,
+    });
   }
 
-  // ── 5. Audit log ────────────────────────────────────────────────────
+  // ── 6. Audit log ────────────────────────────────────────────────────
   try {
     await db.auditLog.create({
       data: {
@@ -203,13 +255,13 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
           eventType: input.eventType,
           status: input.status,
           signatureValid: input.signatureValid ?? null,
+          einvoiceUpdated: input.signatureValid === true,
           rejectionReason: input.rejectionReason || null,
           receiptId: receipt.id,
         }),
       },
     });
   } catch (err) {
-    // Don't fail the webhook on audit log failure
     logger.warn("[e-invoicing:webhooks] audit log write failed", {
       err: err instanceof Error ? err.message : String(err),
     });
@@ -221,12 +273,13 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     status: input.status,
     invoiceId,
     receiptId: receipt.id,
+    signatureValid: input.signatureValid,
+    einvoiceUpdated: input.signatureValid === true,
   });
 
-  // ── 6. Dispatch rejection notification (best-effort, non-blocking) ──
-  if (input.status === "rejected") {
+  // ── 7. Dispatch rejection notification (best-effort, non-blocking) ──
+  if (input.status === "rejected" && input.signatureValid === true) {
     // Don't await — fire and forget so the webhook returns 200 immediately.
-    // Errors are logged inside the dispatcher, not propagated to the caller.
     void import("./notifications")
       .then(({ dispatchRejectionNotification }) =>
         dispatchRejectionNotification({
@@ -252,12 +305,31 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Read raw request body as text (needed for HMAC verification — must be the
- * exact bytes received, not a re-serialized JSON).
+ * Read raw request body as text with a size limit (DoS protection).
+ *
+ * FIX #14 (HIGH): rejects bodies larger than MAX_WEBHOOK_BODY_BYTES (256 KB)
+ * with a 413 response. This prevents attackers from buffering multi-GB
+ * payloads into memory.
  */
 export async function readRawBody(req: Request): Promise<string> {
+  const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+  if (Number.isFinite(contentLength) && contentLength > MAX_WEBHOOK_BODY_BYTES) {
+    throw new WebhookBodyTooLargeError(contentLength);
+  }
   const buf = Buffer.from(await req.arrayBuffer());
+  if (buf.length > MAX_WEBHOOK_BODY_BYTES) {
+    throw new WebhookBodyTooLargeError(buf.length);
+  }
   return buf.toString("utf8");
+}
+
+/** Error thrown when webhook body exceeds the size limit. */
+export class WebhookBodyTooLargeError extends Error {
+  statusCode = 413;
+  constructor(public actualSize: number) {
+    super(`Webhook body too large: ${actualSize} bytes (max ${MAX_WEBHOOK_BODY_BYTES})`);
+    this.name = "WebhookBodyTooLargeError";
+  }
 }
 
 /**

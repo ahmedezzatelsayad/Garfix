@@ -23,11 +23,12 @@ import { useState } from "react";
 // Country flag emoji (ISO-2 → flag)
 function flagEmoji(country: string): string {
   if (!country || country.length !== 2) return "🌍";
+  const upper = country.toUpperCase(); // FIX #29 (LOW): handle lowercase country codes
   const A = 0x1f1e6;
   const a = "A".charCodeAt(0);
   return String.fromCodePoint(
-    A + (country.charCodeAt(0) - a),
-    A + (country.charCodeAt(1) - a),
+    A + (upper.charCodeAt(0) - a),
+    A + (upper.charCodeAt(1) - a),
   );
 }
 

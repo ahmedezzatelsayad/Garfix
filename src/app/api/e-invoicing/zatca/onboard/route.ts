@@ -41,7 +41,8 @@ import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const Schema = z.object({
   companySlug: z.string().min(1),
-  vatTrn: z.string().min(10),
+  // FIX #28 (MEDIUM): Saudi VAT numbers are exactly 15 digits
+  vatTrn: z.string().regex(/^\d{15}$/, "VAT must be exactly 15 digits"),
   otp: z.string().min(4).optional(),
   productionMode: z.boolean().optional().default(false),
   nameAr: z.string().optional(),
