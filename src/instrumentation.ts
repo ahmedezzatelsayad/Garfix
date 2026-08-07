@@ -99,9 +99,16 @@ export async function register(): Promise<void> {
       const { initDb } = await import("@/lib/db");
       await initDb();
 
-      // 1b. Environment Validation — fails fast if secrets are missing.
-      // Skip in CI/test (NODE_ENV=production is forced during `next start`
-      // even in CI, so we guard explicitly).
+      // 1b. Environment Validation — logs warnings but does NOT throw.
+      // Previously, a missing/weak env var caused `throw new Error("FATAL...")`
+      // which crashed the instrumentation hook → every page returned 500 →
+      // blank screen with no error message visible to the user.
+      //
+      // Now: log the errors prominently, set a global flag, but continue
+      // starting the server. Individual API routes will fail with specific
+      // error messages (e.g. "JWT_SECRET not set") which are far more
+      // debuggable than a blank screen. Static pages (landing, login) will
+      // still render.
       logger.info("[instrumentation] Running environment checks...");
       const { runStartupChecks } = await import("@/lib/startupCheck");
       const startupResult = runStartupChecks();
@@ -109,14 +116,22 @@ export async function register(): Promise<void> {
       if (!startupResult.ok && startupResult.fatal.length > 0) {
         const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
         if (isRealProd) {
-          logger.error("[instrumentation] FATAL: Environment check failed", {
+          // DEPLOYMENT FIX: don't throw — log loudly and continue. The
+          // server will still start; API routes that need the missing
+          // secrets will return specific 500 errors. This is better UX
+          // than a blank screen with no indication of what's wrong.
+          logger.error("[instrumentation] ⚠️ ENVIRONMENT CHECK FAILED — server starting in DEGRADED mode", {
             errors: startupResult.fatal,
+            impact: "API routes requiring these vars will return 500. Static pages will render. Fix the env vars and redeploy.",
           });
-          throw new Error(`FATAL: ${startupResult.fatal.join("; ")}`);
+          // Set a global flag so route handlers can check if the server
+          // is in a degraded state and return a helpful error.
+          (globalThis as Record<string, unknown>).__GARFIX_STARTUP_ERRORS = startupResult.fatal;
+        } else {
+          logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
+            warnings: startupResult.fatal,
+          });
         }
-        logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
-          warnings: startupResult.fatal,
-        });
       }
 
       if (startupResult.warnings.length > 0) {
@@ -143,11 +158,23 @@ export async function register(): Promise<void> {
     }
   } catch (err) {
     const duration = Date.now() - startTime;
-    logger.error("[instrumentation] ✗ Server startup failed", {
+    // DEPLOYMENT FIX: don't re-throw. Previously, any error in register()
+    // (DB init, startup check, etc.) was re-thrown → Next.js caught it →
+    // instrumentation hook "failed to load" → every request returned 500
+    // → blank screen with no visible error.
+    //
+    // Now: log the error and continue. The server will start in a degraded
+    // state. API routes will return specific errors. Static pages will
+    // render. The user sees SOMETHING instead of a blank screen.
+    logger.error("[instrumentation] ⚠️ Server startup error — continuing in degraded mode", {
       error: err instanceof Error ? err.message : String(err),
       duration: `${duration}ms`,
+      impact: "Some features may not work. Check server logs for details.",
     });
-    throw err;
+    // Set the global flag so route handlers can detect degraded state
+    (globalThis as Record<string, unknown>).__GARFIX_STARTUP_ERRORS = [
+      `Startup error: ${err instanceof Error ? err.message : String(err)}`,
+    ];
   }
 }
 
