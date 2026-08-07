@@ -1,22 +1,22 @@
 /**
  * LoginForm — Client component for the login page.
- * Simplified for Vercel: no useAuth() dependency, direct fetch.
+ * VERCEL FIX: completely self-contained, no external context dependencies.
+ * Uses plain HTML + inline styles to guarantee rendering even if React
+ * provider chain fails to hydrate.
  */
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { Loader2, ShieldCheck, BarChart3, AlertTriangle } from "lucide-react";
 
 export function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setError(null);
