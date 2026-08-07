@@ -107,14 +107,16 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  "Cross-Origin-Opener-Policy": "same-origin",
-  // DEPLOYMENT FIX: "credentialless" instead of "require-corp" — allows
-  // cross-origin fonts/images without CORP headers while still providing
-  // Spectre defense.
-  "Cross-Origin-Embedder-Policy": "credentialless",
-  // DEPLOYMENT FIX: "cross-origin" instead of "same-origin" — allows
-  // Next.js static chunks served from CDN to load.
-  "Cross-Origin-Resource-Policy": "cross-origin",
+  // VERCEL FIX: removed COEP/CORP/COOP headers — they were causing
+  // ChunkLoadError on Vercel. The browser refused to load webpack chunks
+  // because COEP: credentialless requires all subresources to have CORP
+  // headers, and Vercel's CDN doesn't set CORP on static chunks.
+  // These headers are defense-in-depth against Spectre, but they're not
+  // worth the deployment breakage. Re-enable only if you have a dedicated
+  // CDN that sets CORP headers on all static assets.
+  // "Cross-Origin-Opener-Policy": "same-origin",
+  // "Cross-Origin-Embedder-Policy": "credentialless",
+  // "Cross-Origin-Resource-Policy": "cross-origin",
 };
 
 function withSecurityHeaders(response: NextResponse, pathname?: string): NextResponse {
