@@ -92,14 +92,17 @@ export default function LoginPage() {
                 main.innerHTML = '<div class="flex flex-col items-center gap-6">' +
                   '<div class="text-center">' +
                   '<h2 class="text-2xl font-bold text-white mb-2">أهلاً ' + (user.displayName || user.email) + '!</h2>' +
-                  '<p class="text-white/60 mb-6">أنت مسجل الدخول بالفعل</p>' +
+                  '<p class="text-white/60 mb-6">أنت مسجل الدخول بالفول</p>' +
                   '</div>' +
-                  '<div class="flex flex-col gap-3 w-full max-w-xs">' +
-                  '<a href="/invoices" class="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm text-center transition-all">الفواتير</a>' +
-                  '<a href="/clients" class="w-full py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white font-bold text-sm text-center transition-all">العملاء</a>' +
-                  '<a href="/dashboard" class="w-full py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white font-bold text-sm text-center transition-all">لوحة التحكم</a>' +
-                  '<a href="/settings" class="w-full py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white font-bold text-sm text-center transition-all">الإعدادات</a>' +
-                  '<button onclick="logout()" class="w-full py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm transition-all">تسجيل الخروج</button>' +
+                  '<div class="grid grid-cols-2 gap-3 w-full max-w-md">' +
+                  '<a href="/api/invoices" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">🧾</div><div class="text-xs font-bold">الفواتير</div></a>' +
+                  '<a href="/api/clients" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">👥</div><div class="text-xs font-bold">العملاء</div></a>' +
+                  '<a href="/api/dashboard/stats" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📊</div><div class="text-xs font-bold">لوحة التحكم</div></a>' +
+                  '<a href="/api/settings" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">⚙️</div><div class="text-xs font-bold">الإعدادات</div></a>' +
+                  '<a href="/api/accounting/accounts" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📚</div><div class="text-xs font-bold">المحاسبة</div></a>' +
+                  '<a href="/api/inventory" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📦</div><div class="text-xs font-bold">المخزون</div></a>' +
+                  '<a href="/founder-panel/mission-control" class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-center hover:border-emerald-500/40 transition-all"><div class="text-2xl mb-1">🎯</div><div class="text-xs font-bold">لوحة المؤسس</div></a>' +
+                  '<button onclick="logout()" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-center hover:border-red-500/40 transition-all"><div class="text-2xl mb-1">🚪</div><div class="text-xs font-bold">خروج</div></button>' +
                   '</div></div>';
               }
             }
