@@ -4,13 +4,11 @@
 
 > Enterprise-grade multi-tenant SaaS ERP/Invoicing platform with a 20-phase AI cost-optimization cascade — Arabic-first, MENA-focused, production-hardened.
 
-**الإصدار:** 12.2.0 · **المؤسس:** `ahmedezzatelsayad` · **المساهمون:** ahmedezzatelsayad · **الترخيص:** Proprietary — All rights reserved
-
-> 🔄 **تحديث 12.2.0 (أغسطس 2026):** تحسين جودة Git history + توحيد المساهمات + توثيق محسّن للفاتورة الإلكترونية
+**الإصدار:** 13.0.0 · **المؤسس:** `ahmedezzatelsayad` · **الترخيص:** Proprietary — All rights reserved
 
 > ⚠️ **تنبيه سرّي:** هذا المستودع ملكية خاصة (proprietary) ومحمي بحقوق الملكية الفكرية. لا يُسمح بنسخه أو توزيعه أو استخدامه خارج نطاق الفريق المعتمد. المستودع حالياً عام (public) مؤقتاً لأغراض التطوير والصيانة فقط، وسيُعاد إلى خاص (private) لاحقاً.
 
-نظام تشغيل مؤسسي متكامل (Enterprise Operating System) لإدارة الشركات متعددة المستأجرين، يجمع بين قوة ERP المالي، الفوترة الإلكترونية المتوافقة مع دول الشرق الأوسط، وطبقة ذكاء اصطناعي مُحسَّنة التكلفة عبر شلال من 20 مرحلة (Cache → Pattern → Rule → Memory → Budget → AI). مصمم من الأساس للواجهة العربية مع دعم RTL كامل، ويغطي متطلبات الفوترة الإلكترونية في 6 دول من منطقة MENA.
+نظام تشغيل مؤسسي متكامل (Enterprise Operating System) لإدارة الشركات متعددة المستأجرين، يجمع بين قوة ERP المالي، الفوترة الإلكترونية المتوافقة مع دول الشرق الأوسط، وطبقة ذكاء اصطناعي مُحسَّنة التكلفة عبر شلال من 20 مرحلة (Cache → Pattern → Rule → Memory → Budget → AI). مصمم من الأساس للواجهة العربية مع دعم RTL كامل، ويغطي متطلبات الفوترة الإلكترونية في 7 دول من منطقة MENA مع لوحة مؤسس موحّدة و webhooks واردة لكل هيئة.
 
 </div>
 
@@ -75,7 +73,7 @@
 | **Enterprise RBAC** | PermissionScope (own/team/company/platform) × PermissionLevel (none→admin) + قيود زمنية + audit trail كامل |
 | **Webhook System** | Tenant-scoped outgoing webhooks مع HMAC-SHA256 signing + exponential backoff retry + SSRF protection |
 | **طابور ثلاثي الطبقات** | BullMQ (Valkey) ← pg-boss (PostgreSQL) ← In-process (dev) — المهام تنجو من الأعطال في كل الطبقات |
-| **الفوترة الإلكترونية** | 6 دول: ZATCA (السعودية) · UAE FTA (الإمارات) · Egypt ETA (مصر) · Kuwait (الكويت) · Bahrain NBR (البحرين) · Oman (عُمان) |
+| **الفوترة الإلكترونية** | 7 دول: ZATCA (السعودية) · UAE FTA Peppol (الإمارات) · Egypt ETA (مصر) · Kuwait Decree 10/2026 (الكويت) · Bahrain NBR (البحرين) · Oman TA (عُمان) · Qatar GTA (قطر) — مع لوحة مؤسس موحّدة + 7 webhook receivers |
 | **محاسبة كاملة** | 18 وحدة محاسبية: دفاتر يومية، AR/AP، بنوك، أصول ثابتة، رواتب/WPS، تمويل تجاري، ميزانيات، امتثال ضريبي، مراكز تكلفة |
 | **Arabic-first** | واجهة عربية RTL كاملة + تحويل المبالغ إلى نص عربي + تقويم هجري + MENA country configs |
 | **OpenAPI/Swagger** | 229+ endpoint موثقة في `src/lib/openapi/openapi.yaml` مع interactive viewer على `/api-docs` |
@@ -513,114 +511,66 @@ The `assignKeys` action:
 
 ## E-Invoicing — مطابقة فوترة MENA (نظام الفاتورة الإلكترونية)
 
-Six-country MENA e-invoicing compliance with validation, certificate management, and retention policies. Located in `src/lib/e-invoicing/` (11 source files + 7 test files). **~10,000+ سطر TypeScript للفاتورة الإلكترونية.**
+Seven-country MENA e-invoicing compliance suite — validation, certificate management, retention policies, **client-side ISV credentials management**, **founder-panel unified dashboard**, and **inbound webhook receivers** for all 7 authorities.
 
-### 🌍 الدول المدعومة (6 دول)
+### Architecture (3 layers)
 
-| الدولة | الملفات | الأسطر | المعيار | الحالة |
-|--------|---------|-------|---------|--------|
-| 🇸🇦 السعودية (ZATCA) | `zatca.ts` + `validation` + `certs` + `tlv` | 3,577 | Phase 2 + TLV Encoding + ECDSA | ✅ متكامل |
-| 🇦🇿 الإمارات (FTA) | `uae-fta.ts` + `validation` | 1,480 | UAE VAT e-invoicing | ✅ متكامل |
-| 🇪🇬 مصر (ETA) | `egypt-eta.ts` + `validation` | 1,181 | Egyptian Tax Authority + إيصال إلكتروني | ✅ متكامل |
-| 🇰🇼 الكويت | `kuwait.ts` + `validation` | 936 | Kuwait Decree 10/2026 | ✅ متكامل |
-| 🇧🇭 البحرين (NBR) | `bahrain-nbr.ts` | 793 | Bahrain National Bureau for Revenue | ✅ متكامل |
-| 🇴🇲 عُمان | `oman-tax.ts` | 767 | Oman Tax Authority | ✅ متكامل |
-| **المكونات المشتركة** | `router.ts` + `retention.ts` + `retry.ts` | 1,223 | Routing + أرشفة + Retry Logic | ✅ متكامل |
+| الطبقة | الملفات | الوظيفة |
+|--------|---------|---------|
+| **1. Validation & generation** | `src/lib/e-invoicing/` (11 source files + 7 test files) | XML/QR generation, schema validation, per-country rules |
+| **2. Client UI & credentials** | `src/modules/settings/EInvoicingSettings.tsx` + `src/lib/integrations/einvoice_*.ts` (6 providers) | Per-country settings UI, encrypted credential storage, real `testConnection()` calls, webhook URL helper |
+| **3. Dashboard & webhooks** | `src/app/founder-panel/e-invoicing/` + `src/app/api/e-invoicing/webhooks/` + `src/lib/e-invoicing/webhooks.ts` | Founder dashboard, per-company timeline, 7 public webhook receivers |
 
-### 🔧 الميزات لكل دولة
+### Per-Country Coverage
 
-#### 🇸🇪 ZATCA السعودية (الأكثر تفصيلاً):
-```
-✅ Standard Invoice (B2B Cleared) — فاتورة ضريبية
-✅ Simplified Invoice (B2C Reported) — فاتورة مبسطة
-✅ UBL 2.1 XML Generation
-✅ ECDSA Digital Signature + X.509 Certificate
-✅ UUID per invoice
-✅ PIH Chaining (PreviousInvoiceHash)
-✅ TLV Encoding (Tag-Length-Value)
-✅ Certificate Management (Sandbox/Production)
-✅ Arabic Mandatory + English Optional
-✅ SAR Currency + 15% VAT Enforcement
-✅ Validation Middleware (Auto-block invalid invoices)
-```
+| الدولة | الملف (validation) | الإعداد (UI) | Webhook Receiver | المعيار |
+|--------|-------|---------|---------|---------|
+| 🇸🇦 السعودية (ZATCA) | `zatca.ts` + `zatca-validation.ts` + `zatca-certs.ts` + `zatca-tlv.ts` | OTP → CSID → CCD flow (`/api/e-invoicing/zatca/*`) | `/api/e-invoicing/webhooks/zatca` (X-ZATCA-Signature base64) | Phase 2 e-invoicing (Fatoorah) |
+| 🇦🇪 الإمارات (FTA) | `uae-fta.ts` + `uae-fta-validation.ts` | Peppol AP credentials + test | `/api/e-invoicing/webhooks/uae` (X-AP-Signature hex) | UAE Federal Decree 28/2024 (Peppol BIS 3.0) |
+| 🇪🇬 مصر (ETA) | `egypt-eta.ts` + `egypt-eta-validation.ts` | JWT API Token + test | `/api/e-invoicing/webhooks/eta` (X-Signature hex) | Egyptian Tax Authority |
+| 🇰🇼 الكويت | `kuwait.ts` + `kuwait-validation.ts` | OAuth2 Client Credentials + Phase 1/2/3 selector | `/api/e-invoicing/webhooks/kw` (X-MoF-Signature hex) | Kuwait Decree 10/2026 |
+| 🇧🇭 البحرين (NBR) | `bahrain-nbr.ts` | API Key + VAT Number | `/api/e-invoicing/webhooks/bh` (X-NBR-Signature hex) | Bahrain National Bureau for Revenue |
+| 🇴🇲 عُمان | `oman-tax.ts` | OAuth2 Client Credentials | `/api/e-invoicing/webhooks/om` (X-TA-Signature hex) | Oman Tax Authority |
+| 🇶🇦 قطر | — (voluntary Peppol) | Peppol AP credentials (optional) | `/api/e-invoicing/webhooks/qa` (X-AP-Signature hex) | Qatar GTA voluntary Peppol |
+| **التوجيه** | `router.ts` | — | — | Unified routing per country |
+| **الأرشفة** | `retention.ts` | — | — | Retention policies per jurisdiction |
+| **إعادة المحاولة** | `retry.ts` | — | — | Exponential backoff for authority APIs |
+| **Webhook helper** | — | `WebhookUrlHelper` in `EInvoicingSettings.tsx` | `src/lib/e-invoicing/webhooks.ts` | HMAC verification + idempotent receipt persistence + EInvoice status update + audit log |
 
-#### 🇪🇬 مصر ETA:
-```
-✅ 3 أنواع: Standard (B2B), Simplified (B2C), Export
-✅ EGP Currency + 14% VAT Rate
-✅ Digital Receipt (إيصال إلكتروني) for B2C
-✅ 5-Year Record Retention
-✅ Arabic + English Dual Language
-```
+### Founder-Panel Unified Dashboard (`/founder-panel/e-invoicing`)
 
-### 🏢 نظام Multi-Tenant (كل شركة إعداداتها المنفصلة)
+A single page where the founder sees e-invoicing status across ALL companies in one view:
 
-كل شركة تدخل بياناتها الخاصة:
+- **4 stat cards**: configured / pending / receipts last 7 days / unsupported countries
+- **Country breakdown sidebar**: progress bars per country (flag + configured/total + percentage)
+- **Per-company table** (filterable: all / configured / pending): name, plan, country, VAT, lastUpdatedAt, status badge — clicking a row opens the per-company timeline
+- **Recent receipts feed**: last 20 inbound webhook receipts across all tenants (authority, eventType, status, signature valid flag, rejection reason, timestamp)
+- **Per-company timeline** (`/founder-panel/e-invoicing/[slug]`): full chronological feed of all e-invoice events for one company, expandable raw payload (JSON pretty-printed), per-invoice grouping tab, stats (total/accepted/rejected/pending/last 7d)
 
-```typescript
-// Company Model - بيانات الفاتورة الإلكترونية
-model Company {
-  vatNumber         String?   // الرقم الضريبي (TRN)
-  country           String?   // كود الدولة: SA, EG, KW, AE, BH, OM
-  defaultTaxRate    String    // نسبة الضريبة: 15% KSA, 14% Egypt...
-  currency          String    // العملة: SAR, EGP, KWD, AED...
-  nameAr            String?   // الاسم بالعربي (إجباري لبعض الدول)
-  address           String?   // العنوان
-}
-```
+### Inbound Webhook Receivers (7 endpoints, all public)
 
-**شهادات ZATCA لكل شركة (منفصلة ومشفرة):**
-```typescript
-model ZatcaCertificate {
-  companySlug           String    // كل شركة شهادتها
-  certificateType       String    // sandbox | production
-  certificateDataEnc    Bytes     // الشهادة مشفرة (AES-256)
-  privateKeyDataEnc     Bytes     // المفتاح الخاص مشفر
-  expiryDate            DateTime  // تاريخ الانتهاء
-  status                String    // active, revoked, expired
-}
-```
+Each receiver:
+1. Reads the **raw body** for HMAC verification (timing-safe equality, hex or base64)
+2. Looks up the secret from the encrypted `platform_settings` row for the matching integration
+3. **Idempotent** dedup on `externalUuid + authority + eventType` (safe to retry)
+4. Persists a row in `EInvoiceReceipt` (full raw payload, signature valid flag, rejection reason)
+5. **Updates the corresponding `EInvoice` row** (`submissionStatus`, `clearedAt`, `rejectionReason`, `uuid`) — auto-creates a stub if missing
+6. Writes an `AuditLog` entry for compliance traceability
+7. Returns `{ ok: true, received: true }` (or 400/500 on failure)
 
-### 🔄 كيف يشتغل النظام لكل مستخدم:
+### Client UI (`/settings` → "الفوترة الإلكترونية")
 
-```
-1. المستخدم يسجل شركة جديدة
-   ↓
-2. يدخل البيانات:
-   ├── Country: "SA" (السعودية)
-   ├── VAT Number: "310012345600003"
-   ├── Default Tax Rate: "15%"
-   └── Currency: "SAR"
-   ↓
-3. Router يحدد Handler تلقائياً حسب company.country
-   ├── SA → zatca.ts
-   ├── EG → egypt-eta.ts
-   ├── KW → kuwait.ts
-   └── ...
-   ↓
-4. Validation Middleware يتأكد من:
-   ├── VAT Number موجود وصحيح؟ ✅
-   ├── العملة مطابقة للدولة؟ ✅
-   └── VAT Rate صحيح؟ ✅
-   ↓
-5. توليد الفاتورة (UBL/XML/JSON) جاهزة للإرسال
-   ↓
-6. (اختياري) التوقيع الرقمي والإرسال للجهة الضريبية
-   └── حفظ السجل في EInvoice log
-```
+- **ZATCA (SA)**: OTP-based onboarding — Step 1 requests CSID, Step 2 requests CCD; status banner shows certificate expiry
+- **All other countries**: form-driven credentials input, "حفظ البيانات" + "اختبار الاتصال" + "إلغاء الربط" buttons
+- **WebhookUrlHelper** appears inline in every country's panel — shows the full webhook URL with copy-to-clipboard button, the signature header name, the HMAC algorithm (hex/base64), and the secret source
+- All credentials encrypted at rest (AES-256-GCM via `cryptoVault`)
 
-### 📊 تتبع الفواتير المرسلة:
+### Data Model
 
-```typescript
-model EInvoice {
-  authorityType        String    // sa_zatca, eg_eta, kw_pa, bh_nbr...
-  submissionStatus      String    // pending → accepted/rejected/cancelled
-  uuid                  String?   @unique
-  rawXml                String?   // الـ XML/JSON المرسل
-  invoiceId             Int?
-  companySlug           String    // عزل البيانات
-}
-```
+- `EInvoice` — per-invoice submission record (XML, QR, status, UUID, clearance status)
+- `EInvoiceReceipt` (new) — per-webhook inbound receipt (rawPayload, signatureValid, externalUuid, eventType, rejectionReason, receivedAt) with composite indexes on `(companySlug, authority)`, `(companySlug, receivedAt)`, and `externalUuid` for idempotency
+- `ZatcaCertificate` — CSID + CCD encrypted PEMs per company
+- `AuditLog` — append-only trail of every webhook received (action: `e_invoice_webhook_received`)
 
 ---
 
@@ -1230,8 +1180,26 @@ nightly schedule ─► performance-nightly.yml (Lighthouse + budget enforcement
 
 - **Spec file**: `src/lib/openapi/openapi.yaml` (regeneratable via `bun run openapi:generate`)
 - **Interactive viewer**: visit `/api-docs` in the running app
-- **Coverage**: 229+ endpoints across 18+ tags (Auth, Invoices, Clients, Catalog, Inventory, Accounting, HR, AI, Dashboard, Settings, Automation, Webhooks, SaaS, Reports, Health, Companies, Permissions, Founder Validation)
+- **Coverage**: 240+ endpoints across 20+ tags (Auth, Invoices, Clients, Catalog, Inventory, Accounting, HR, AI, Dashboard, Settings, Automation, Webhooks, SaaS, Reports, Health, Companies, Permissions, Founder Validation, **E-Invoicing**, **Founder-Panel E-Invoicing**)
 - **Features**: JWT Bearer auth via HttpOnly cookies, multi-tenant scoping (`companySlug` query param or `X-Company-Slug` header), Arabic field names with RTL support, RBAC permission tags per endpoint, error response schemas
+
+#### E-Invoicing Endpoints (v13.0.0)
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/e-invoicing/zatca/onboard` | POST | Founder | ZATCA CSID + CCD onboarding (OTP → certificate) |
+| `/api/e-invoicing/zatca/status` | GET | User | ZATCA certificate status per company |
+| `/api/e-invoicing/webhooks/zatca` | POST | **Public** | ZATCA inbound (X-ZATCA-Signature base64 HMAC) |
+| `/api/e-invoicing/webhooks/eta` | POST | **Public** | Egypt ETA inbound (X-Signature hex HMAC) |
+| `/api/e-invoicing/webhooks/uae` | POST | **Public** | UAE Peppol AP inbound (X-AP-Signature hex HMAC) |
+| `/api/e-invoicing/webhooks/kw` | POST | **Public** | Kuwait MoF inbound (X-MoF-Signature hex HMAC) |
+| `/api/e-invoicing/webhooks/bh` | POST | **Public** | Bahrain NBR inbound (X-NBR-Signature hex HMAC) |
+| `/api/e-invoicing/webhooks/om` | POST | **Public** | Oman TA inbound (X-TA-Signature hex HMAC) |
+| `/api/e-invoicing/webhooks/qa` | POST | **Public** | Qatar Peppol AP inbound (X-AP-Signature hex HMAC) |
+| `/api/founder-panel/e-invoicing` | GET | Founder | Unified dashboard: aggregate stats + per-company list + recent receipts |
+| `/api/founder-panel/e-invoicing/[slug]` | GET | Founder | Per-company timeline: receipts + invoice grouping + stats |
+| `/api/platform-admin/integrations` | GET/PATCH | Founder | List/save/disconnect e-invoicing credentials (encrypted) |
+| `/api/platform-admin/integrations/test` | POST | Founder | Test e-invoicing connection (real outbound HTTP to authority) |
 
 ---
 

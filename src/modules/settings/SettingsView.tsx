@@ -7,16 +7,18 @@ import { useBrand, type CompanyInfo } from "@/context/BrandContext";
 import { CompanySettingsForm } from "./CompanySettingsForm";
 import { TemplateSettingsForm } from "./TemplateSettingsForm";
 import { TemplateListManager } from "./TemplateListManager";
-import { 
-  Building2, 
-  Settings as SettingsIcon, 
-  FileText, 
-  CreditCard, 
-  Bell, 
+import { EInvoicingSettings } from "./EInvoicingSettings";
+import {
+  Building2,
+  Settings as SettingsIcon,
+  FileText,
+  CreditCard,
+  Bell,
   Plug,
   Clock,
   LayoutGrid,
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +29,13 @@ interface SettingsViewProps {
 
 // ─── Tab Configuration ──────────────────────────────────────────────────
 
-type SettingsTab = "general" | "templates" | "billing" | "notifications" | "integrations";
+type SettingsTab = "general" | "templates" | "billing" | "notifications" | "integrations" | "einvoicing";
 
 const SETTINGS_TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "عام", icon: SettingsIcon },
   { id: "templates", label: "القوالب", icon: FileText },
   { id: "billing", label: "الفواتير", icon: CreditCard },
+  { id: "einvoicing", label: "الفوترة الإلكترونية", icon: ShieldCheck },
   { id: "notifications", label: "الإشعارات", icon: Bell },
   { id: "integrations", label: "التكاملات", icon: Plug },
 ];
@@ -208,6 +211,14 @@ export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
             </SectionCard>
             <SectionCard title="إدارة القوالب الفردية" icon={<LayoutGrid size={18} />}>
               <TemplateListManager companySlug={activeCompany.slug} />
+            </SectionCard>
+          </div>
+        )}
+
+        {activeTab === "einvoicing" && (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <SectionCard title="الفوترة الإلكترونية" icon={<ShieldCheck size={18} />}>
+              <EInvoicingSettings />
             </SectionCard>
           </div>
         )}

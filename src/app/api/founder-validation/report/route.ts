@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { generateFounderReport } from "@/lib/founder-validation";
-import { getCache } from "../seed/route";
+import { getCache } from "@/lib/founder-validation/cache";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";

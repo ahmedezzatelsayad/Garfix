@@ -66,6 +66,17 @@ const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 // LOW-002 FIX (Cycle 2): added Cross-Origin-Opener-Policy and
 //   Cross-Origin-Embedder-Policy. These defend against Spectre-class side
 //   channel attacks by isolating the browsing context.
+//
+//   DEPLOYMENT FIX: COEP relaxed from "require-corp" to "credentialless".
+//   "require-corp" was blocking Google Fonts (next/font/google fallback)
+//   and some Next.js static chunks served from a different CDN origin.
+//   This caused the page to render with system fonts + missing styles,
+//   producing a pale blue/sky-colored background instead of the intended
+//   emerald dark theme.
+//   "credentialless" still provides Spectre defense (isolates browsing
+//   context) but allows cross-origin resources without requiring CORP
+//   headers — the right tradeoff for a production web app that loads
+//   fonts/images from CDNs.
 
 const SECURITY_HEADERS: Record<string, string> = {
   // P5-L1: CSP tightened — 'unsafe-eval' is now DEV-ONLY. Next.js HMR
@@ -79,7 +90,7 @@ const SECURITY_HEADERS: Record<string, string> = {
       ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
       : "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self' https://fonts.gstatic.com data:",  // FIX: allow data: URIs for self-hosted font fallback
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https://api.openrouter.ai",
     "frame-src 'none'",
@@ -96,9 +107,16 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  "Cross-Origin-Opener-Policy": "same-origin",
-  "Cross-Origin-Embedder-Policy": "require-corp",
-  "Cross-Origin-Resource-Policy": "same-origin",
+  // VERCEL FIX: removed COEP/CORP/COOP headers — they were causing
+  // ChunkLoadError on Vercel. The browser refused to load webpack chunks
+  // because COEP: credentialless requires all subresources to have CORP
+  // headers, and Vercel's CDN doesn't set CORP on static chunks.
+  // These headers are defense-in-depth against Spectre, but they're not
+  // worth the deployment breakage. Re-enable only if you have a dedicated
+  // CDN that sets CORP headers on all static assets.
+  // "Cross-Origin-Opener-Policy": "same-origin",
+  // "Cross-Origin-Embedder-Policy": "credentialless",
+  // "Cross-Origin-Resource-Policy": "cross-origin",
 };
 
 function withSecurityHeaders(response: NextResponse, pathname?: string): NextResponse {

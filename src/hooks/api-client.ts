@@ -122,6 +122,15 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 let isRedirectingToLogin = false;
 function handle401(): void {
   if (isRedirectingToLogin) return;
+  // VERCEL FIX: don't redirect on public pages — /, /login, /signup
+  // The handle401 fires when /api/auth/me returns 401, which is NORMAL
+  // for unauthenticated users visiting the landing page. Redirecting
+  // them to /login creates a loop and breaks the landing page.
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname;
+    const publicPaths = ["/", "/login", "/signup", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
+    if (publicPaths.includes(path)) return;
+  }
   isRedirectingToLogin = true;
   // Defer the redirect so any pending toast.error() calls can render first.
   setTimeout(() => {

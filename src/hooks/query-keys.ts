@@ -361,6 +361,8 @@ export const queryKeys = {
       [...queryKeys.founderPanel.all, "finops"] as const,
     aiFabric: () =>
       [...queryKeys.founderPanel.all, "ai-fabric"] as const,
+    eInvoicing: () =>
+      [...queryKeys.founderPanel.all, "e-invoicing"] as const,
   },
 
   // ── Sprint 2: Webhooks ──────────────────────────────────────────────────

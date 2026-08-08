@@ -63,6 +63,9 @@ export interface ZatcaCsidRequest {
   vatTrn: string; // Seller VAT registration number
   otp: string; // One-time password from ZATCA portal
   productionMode: boolean; // true = production, false = simulation
+  nameAr?: string; // Seller Arabic name
+  nameEn?: string; // Seller English name
+  address?: string; // Seller address
 }
 
 export interface ZatcaCcdRequest {
@@ -70,6 +73,8 @@ export interface ZatcaCcdRequest {
   csidSerialNumber: string; // CSID certificate serial number
   vatTrn: string;
   productionMode: boolean;
+  complianceInvoice?: string; // Signed compliance invoice XML
+  certificateType?: string; // "clearance" or "reporting"
 }
 
 export interface ZatcaCertificateRenewalResult {
@@ -297,50 +302,91 @@ export async function requestZatcaCsid(
   });
 
   try {
-    // ── Placeholder: CSID request ────────────────────────────────────────
-    // In production, this makes a real HTTP POST to ZATCA:
-    //   POST {baseUrl}/compliance
-    //   Headers: OTP: {otp}, Content-Type: application/json
-    //   Body: { seller: { vatTrn, nameAr, nameEn, address }, ... }
+    // ── ACTIVATED: Real ZATCA CSID request ─────────────────────────────
+    // The client obtains an OTP from ZATCA portal (fatoora.zatca.gov.sa)
+    // and enters it in Garfix. We send it to ZATCA API to get the CSID.
     //
     // ZATCA returns:
-    //   { binarySecurityToken: base64(cert), secret: base64(privateKey), ... }
-    //
-    // For simulation, we generate placeholder certificates.
+    //   { binarySecurityToken: base64(cert), secret: base64(privateKey),
+    //     requestId, ... }
 
-    // Generate placeholder ECDSA P-256 key pair
-    const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", {
-      namedCurve: "P-256",
-      publicKeyEncoding: {
-        type: "spki",
-        format: "pem",
+    const baseUrl = request.productionMode
+      ? ZATCA_PORTAL_BASE_URL.replace("/simulation/", "/")
+      : ZATCA_PORTAL_BASE_URL;
+
+    const csidResponse = await fetch(`${baseUrl}${CSID_REQUEST_ENDPOINT}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "OTP": request.otp,
+        "Accept": "application/json",
       },
-      privateKeyEncoding: {
-        type: "pkcs8",
-        format: "pem",
-      },
+      body: JSON.stringify({
+        softwareName: "GarfiX EOS",
+        softwareVersion: "12.1.0",
+        softwareLicense: "Proprietary",
+        seller: {
+          vatTrn: request.vatTrn,
+          nameAr: request.nameAr || "",
+          nameEn: request.nameEn || "",
+          address: request.address || "",
+        },
+      }),
+      signal: AbortSignal.timeout(30_000),
     });
 
-    // Generate serial number
-    const serialNumber = crypto.randomBytes(16).toString("hex");
+    if (!csidResponse.ok) {
+      const errorBody = await csidResponse.text();
+      logger.error("[zatca-certs] CSID request rejected by ZATCA", {
+        status: csidResponse.status,
+        body: errorBody.slice(0, 500),
+      });
+      return {
+        success: false,
+        error: `ZATCA رفض طلب CSID (HTTP ${csidResponse.status}): ${errorBody.slice(0, 200)}`,
+        step: "csid",
+      };
+    }
 
-    // Set expiry date (CSID is typically valid for 1 year)
-    const expiryDate = new Date();
-    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    const csidData = await csidResponse.json() as {
+      binarySecurityToken?: string;
+      secret?: string;
+      requestId?: string;
+    };
 
-    // Store CSID certificate
+    if (!csidData.binarySecurityToken || !csidData.secret) {
+      return {
+        success: false,
+        error: "ZATCA لم يُرجع الشهادة أو المفتاح الخاص",
+        step: "csid",
+      };
+    }
+
+    // Decode the certificate + private key from base64
+    const certPem = Buffer.from(csidData.binarySecurityToken, "base64").toString("utf-8");
+    const privateKeyPem = Buffer.from(csidData.secret, "base64").toString("utf-8");
+
+    // Extract serial number from certificate
+    const cert = new crypto.X509Certificate(certPem);
+    const serialNumber = cert.serialNumber || crypto.randomBytes(16).toString("hex");
+    const expiryDate = cert.validTo ? new Date(cert.validTo) : (() => {
+      const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d;
+    })();
+
+    // Store CSID certificate (encrypted at rest)
     const csid = await storeZatcaCertificate(
       request.companySlug,
       "csid",
-      publicKey,
-      privateKey,
+      certPem,
+      privateKeyPem,
       serialNumber,
       expiryDate,
     );
 
-    logger.info("[zatca-certs] CSID obtained and stored", {
+    logger.info("[zatca-certs] CSID obtained from ZATCA and stored", {
       companySlug: request.companySlug,
       serialNumber,
+      requestId: csidData.requestId,
       step: "csid",
     });
 
@@ -394,14 +440,9 @@ export async function requestZatcaCcd(
   });
 
   try {
-    // ── Placeholder: CCD request ──────────────────────────────────────────
-    // In production, this makes a real HTTP POST to ZATCA:
-    //   POST {baseUrl}/compliance/invoices
-    //   Headers: Authorization: Bearer {csid-token}, Content-Type: application/json
-    //   Body: { signedInvoice: base64(signedXml), invoiceHash: hex, ... }
-    //
-    // ZATCA returns:
-    //   { binarySecurityToken: base64(ccd-cert), secret: base64(ccd-privateKey), ... }
+    // ── ACTIVATED: Real ZATCA CCD request ───────────────────────────────
+    // Step 2: Use CSID to sign a compliance invoice, submit to ZATCA,
+    // and receive the CCD (production signing certificate).
 
     // Retrieve CSID certificate for authentication
     const csid = await retrieveZatcaCertificate(request.companySlug, "csid");
@@ -416,32 +457,78 @@ export async function requestZatcaCcd(
       };
     }
 
-    // Generate placeholder CCD ECDSA P-256 key pair
-    const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", {
-      namedCurve: "P-256",
-      publicKeyEncoding: {
-        type: "spki",
-        format: "pem",
+    const baseUrl = request.productionMode
+      ? ZATCA_PORTAL_BASE_URL.replace("/simulation/", "/")
+      : ZATCA_PORTAL_BASE_URL;
+
+    // Sign the compliance invoice with CSID private key (ECDSA-SHA256)
+    const complianceInvoice = request.complianceInvoice || "<compliance-invoice-placeholder/>";
+    const signResult = crypto.sign("sha256", Buffer.from(complianceInvoice, "utf-8"), csid.privateKeyData!);
+    const signedInvoiceB64 = signResult.toString("base64");
+    const invoiceHash = crypto.createHash("sha256").update(complianceInvoice).digest("hex");
+
+    // Submit compliance invoice to ZATCA to get CCD
+    const ccdResponse = await fetch(`${baseUrl}${CCD_REQUEST_ENDPOINT}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Basic ${Buffer.from(
+          `${csid.serialNumber}:${csid.privateKeyData}`,
+        ).toString("base64")}`,
       },
-      privateKeyEncoding: {
-        type: "pkcs8",
-        format: "pem",
-      },
+      body: JSON.stringify({
+        invoice: signedInvoiceB64,
+        invoiceHash,
+        certificateType: request.certificateType || "clearance",
+      }),
+      signal: AbortSignal.timeout(30_000),
     });
 
-    // Generate serial number
-    const serialNumber = crypto.randomBytes(16).toString("hex");
+    if (!ccdResponse.ok) {
+      const errorBody = await ccdResponse.text();
+      logger.error("[zatca-certs] CCD request rejected by ZATCA", {
+        status: ccdResponse.status,
+        body: errorBody.slice(0, 500),
+      });
+      return {
+        success: false,
+        error: `ZATCA رفض طلب CCD (HTTP ${ccdResponse.status}): ${errorBody.slice(0, 200)}`,
+        step: "ccd",
+      };
+    }
 
-    // CCD expiry date (typically valid for 1 year)
-    const expiryDate = new Date();
-    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    const ccdData = await ccdResponse.json() as {
+      binarySecurityToken?: string;
+      secret?: string;
+      requestId?: string;
+    };
 
-    // Store CCD certificate
+    if (!ccdData.binarySecurityToken || !ccdData.secret) {
+      return {
+        success: false,
+        error: "ZATCA لم يُرجع شهادة CCD أو المفتاح الخاص",
+        step: "ccd",
+      };
+    }
+
+    // Decode CCD certificate + private key
+    const certPem = Buffer.from(ccdData.binarySecurityToken, "base64").toString("utf-8");
+    const privateKeyPem = Buffer.from(ccdData.secret, "base64").toString("utf-8");
+
+    // Extract serial + expiry from certificate
+    const cert = new crypto.X509Certificate(certPem);
+    const serialNumber = cert.serialNumber || crypto.randomBytes(16).toString("hex");
+    const expiryDate = cert.validTo ? new Date(cert.validTo) : (() => {
+      const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d;
+    })();
+
+    // Store CCD certificate (encrypted at rest)
     const ccd = await storeZatcaCertificate(
       request.companySlug,
       "ccd",
-      publicKey,
-      privateKey,
+      certPem,
+      privateKeyPem,
       serialNumber,
       expiryDate,
     );

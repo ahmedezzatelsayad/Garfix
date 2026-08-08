@@ -74,6 +74,13 @@ export const INTEGRATION_TYPES = {
   TWILIO: "twilio",
   AWS_S3: "aws_s3",
   STRIPE: "stripe",
+  // ─── E-Invoicing (per-country) ─────────────────────────────────────────
+  EINVOICE_EG: "einvoice_eg",
+  EINVOICE_AE: "einvoice_ae",
+  EINVOICE_KW: "einvoice_kw",
+  EINVOICE_BH: "einvoice_bh",
+  EINVOICE_OM: "einvoice_om",
+  EINVOICE_QA: "einvoice_qa",
 } as const;
 
 export type IntegrationType = (typeof INTEGRATION_TYPES)[keyof typeof INTEGRATION_TYPES];
@@ -173,6 +180,73 @@ export const INTEGRATION_INFO: Array<{
       { key: "secret_key", label: "Secret Key", type: "password", placeholder: "sk_live_..." },
       { key: "publishable_key", label: "Publishable Key", type: "text", placeholder: "pk_live_..." },
       { key: "webhook_secret", label: "Webhook Secret", type: "password" },
+    ],
+  },
+  // ─── E-Invoicing (per-country) ───────────────────────────────────────────
+  {
+    type: INTEGRATION_TYPES.EINVOICE_EG,
+    name: "مصر ETA — الفوترة الإلكترونية",
+    description:
+      "ربط بوابة هيئة الضرائب المصرية لإرسال الفواتير الإلكترونية (JWT API Token).",
+    requiredFields: [
+      { key: "api_token", label: "ETA API Token (JWT)", type: "password" },
+    ],
+  },
+  {
+    type: INTEGRATION_TYPES.EINVOICE_AE,
+    name: "الإمارات FTA — Peppol e-Invoicing",
+    description:
+      "ربط Access Point معتمد لشبكة Peppol لإرسال الفواتير الإلكترونية الإماراتية.",
+    requiredFields: [
+      { key: "access_point_url", label: "Access Point URL", type: "text", placeholder: "https://ap.example.com/api/v1" },
+      { key: "ap_client_id", label: "AP Client ID", type: "text" },
+      { key: "ap_client_secret", label: "AP Client Secret", type: "password" },
+      { key: "peppol_id", label: "Peppol Participant ID", type: "text", placeholder: "0195:300000000000003" },
+    ],
+  },
+  {
+    type: INTEGRATION_TYPES.EINVOICE_KW,
+    name: "الكويت — مرسوم 10/2026",
+    description:
+      "ربط بوابة وزارة المالية الكويتية للفوترة الإلكترونية (Client Credentials OAuth2).",
+    requiredFields: [
+      { key: "api_base_url", label: "API Base URL", type: "text", placeholder: "https://api.e-invoice.mof.kw" },
+      { key: "client_id", label: "Client ID", type: "text" },
+      { key: "client_secret", label: "Client Secret", type: "password" },
+    ],
+  },
+  {
+    type: INTEGRATION_TYPES.EINVOICE_BH,
+    name: "البحرين NBR — الفوترة الإلكترونية",
+    description:
+      "ربط بوابة هيئة الإيرادات البحرينية لإرسال الفواتير الإلكترونية (API Key).",
+    requiredFields: [
+      { key: "api_base_url", label: "API Base URL", type: "text", placeholder: "https://api.nbr.gov.bh" },
+      { key: "vat_number", label: "VAT Number (BH+13 digits)", type: "text", placeholder: "BH00000000000000" },
+      { key: "api_key", label: "NBR API Key", type: "password" },
+    ],
+  },
+  {
+    type: INTEGRATION_TYPES.EINVOICE_OM,
+    name: "عُمان TA — الفوترة الإلكترونية",
+    description:
+      "ربط بوابة هيئة الضرائب العمانية لإرسال الفواتير الإلكترونية (Client Credentials OAuth2).",
+    requiredFields: [
+      { key: "api_base_url", label: "API Base URL", type: "text", placeholder: "https://api.taxoman.gov.om" },
+      { key: "client_id", label: "Client ID", type: "text" },
+      { key: "client_secret", label: "Client Secret", type: "password" },
+    ],
+  },
+  {
+    type: INTEGRATION_TYPES.EINVOICE_QA,
+    name: "قطر GTA — Peppol (اختياري)",
+    description:
+      "قطر لا تطلب الفوترة الإلكترونية إلزامياً — هذا الربط اختياري عبر شبكة Peppol.",
+    requiredFields: [
+      { key: "access_point_url", label: "Access Point URL", type: "text", placeholder: "https://ap.example.com/api/v1" },
+      { key: "ap_client_id", label: "AP Client ID", type: "text" },
+      { key: "ap_client_secret", label: "AP Client Secret", type: "password" },
+      { key: "peppol_id", label: "Peppol Participant ID", type: "text", placeholder: "0195:QA300000000000003" },
     ],
   },
 ];

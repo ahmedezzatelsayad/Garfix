@@ -17,6 +17,7 @@ import {
   Shield,
   Zap,
   Plug,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FounderGuard } from "@/components/garfix/FounderGuard";
@@ -105,6 +106,15 @@ const navigationItems: NavItem[] = [
     labelAr: "التكاملات",
     href: "/founder-panel/integrations",
     icon: <Plug className="h-5 w-5" />,
+    group: "management",
+  },
+  {
+    id: "e-invoicing",
+    label: "E-Invoicing",
+    labelAr: "الفوترة الإلكترونية",
+    href: "/founder-panel/e-invoicing",
+    icon: <ShieldCheck className="h-5 w-5" />,
+    badge: "جديد",
     group: "management",
   },
 ];

@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
-import { Providers } from "@/components/Providers";
+import dynamic from "next/dynamic";
+
+// VERCEL FIX: load Providers dynamically with ssr:false to prevent
+// hydration issues. ThemeProvider/AuthProvider/QueryClientProvider
+// mutate the DOM on mount which causes hydration mismatches on Vercel.
+const Providers = dynamic(() => import("@/components/Providers").then(m => ({ default: m.Providers })), {
+  ssr: false,
+  loading: () => null,
+});
 
 const cairo = Cairo({
   variable: "--font-cairo",
@@ -86,15 +93,19 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* VERCEL FIX: removed themeInitScript — it was causing hydration
+            race conditions on Vercel. next-themes handles theme init on
+            the client side via the ThemeProvider in Providers.tsx. */}
       </head>
       <body
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}
         style={{ fontFamily: "'Cairo', sans-serif" }}
       >
+        {/* VERCEL FIX: Providers loaded as dynamic import with ssr:false
+            to prevent hydration issues. The login/landing pages render
+            their own self-contained forms that don't need these providers. */}
         <Providers>
           {children}
-          <Toaster />
         </Providers>
       </body>
     </html>

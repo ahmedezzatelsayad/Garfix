@@ -53,6 +53,31 @@
 
 import { logger } from "@/lib/logger";
 
+/**
+ * VERCEL FIX: nodeRequire — dynamic require that's invisible to Turbopack.
+ *
+ * Turbopack statically analyzes `import()` calls even inside runtime guards
+ * (NEXT_RUNTIME !== "nodejs"). This causes Node-only modules (process.on,
+ * node:fs, node:child_process, pg-boss, etc.) to be traced into the Edge
+ * Runtime bundle, producing 21 build warnings and potentially failing
+ * Vercel deployment.
+ *
+ * We use `Function("return require")()` to construct the require call
+ * dynamically — this is invisible to Turbopack's static analysis but
+ * doesn't trigger the Edge Runtime's eval() restriction.
+ *
+ * Only call this inside NEXT_RUNTIME === "nodejs" guard.
+ */
+function nodeRequire<T = unknown>(modulePath: string): T {
+  // Construct require dynamically without using eval() directly.
+  // Function() constructor is not blocked by Edge Runtime's CSP.
+  const req = new Function("return typeof require !== 'undefined' ? require : null")() as NodeRequire | null;
+  if (!req) {
+    throw new Error("require is not available (not in Node.js runtime)");
+  }
+  return req(modulePath) as T;
+}
+
 // Pin instrumentation to Node.js runtime only. Without this, Next.js 16
 // also compiles an Edge Runtime variant of instrumentation.ts, which fails
 // because register() uses process.on(), process.exit(), and dynamically
@@ -87,35 +112,58 @@ export async function register(): Promise<void> {
     // as short as possible — every millisecond here delays the first user
     // request after a cold start.
 
-    // 1a. Database Initialization — required for Prisma queries.
-    logger.info("[instrumentation] Initializing database connection...");
-    const { initDb } = await import("@/lib/db");
-    await initDb();
+    // PREVIEW MODE: skip DB init + startup checks when explicitly requested.
+    // This lets the server start without a real DATABASE_URL (useful for
+    // previewing UI changes or running in environments without Postgres).
+    const skipDb = process.env.GARFIX_PREVIEW_MODE === "1";
+    if (skipDb) {
+      logger.warn("[instrumentation] GARFIX_PREVIEW_MODE=1 — skipping DB init + startup checks");
+    } else {
+      // 1a. Database Initialization — required for Prisma queries.
+      logger.info("[instrumentation] Initializing database connection...");
+      const db = nodeRequire<typeof import("@/lib/db")>("@/lib/db");
+      await db.initDb();
 
-    // 1b. Environment Validation — fails fast if secrets are missing.
-    // Skip in CI/test (NODE_ENV=production is forced during `next start`
-    // even in CI, so we guard explicitly).
-    logger.info("[instrumentation] Running environment checks...");
-    const { runStartupChecks } = await import("@/lib/startupCheck");
-    const startupResult = runStartupChecks();
+      // 1b. Environment Validation — logs warnings but does NOT throw.
+      // Previously, a missing/weak env var caused `throw new Error("FATAL...")`
+      // which crashed the instrumentation hook → every page returned 500 →
+      // blank screen with no error message visible to the user.
+      //
+      // Now: log the errors prominently, set a global flag, but continue
+      // starting the server. Individual API routes will fail with specific
+      // error messages (e.g. "JWT_SECRET not set") which are far more
+      // debuggable than a blank screen. Static pages (landing, login) will
+      // still render.
+      logger.info("[instrumentation] Running environment checks...");
+      const startup = nodeRequire<typeof import("@/lib/startupCheck")>("@/lib/startupCheck");
+      const startupResult = startup.runStartupChecks();
 
-    if (!startupResult.ok && startupResult.fatal.length > 0) {
-      const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
-      if (isRealProd) {
-        logger.error("[instrumentation] FATAL: Environment check failed", {
-          errors: startupResult.fatal,
-        });
-        throw new Error(`FATAL: ${startupResult.fatal.join("; ")}`);
+      if (!startupResult.ok && startupResult.fatal.length > 0) {
+        const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
+        if (isRealProd) {
+          // DEPLOYMENT FIX: don't throw — log loudly and continue. The
+          // server will still start; API routes that need the missing
+          // secrets will return specific 500 errors. This is better UX
+          // than a blank screen with no indication of what's wrong.
+          logger.error("[instrumentation] ⚠️ ENVIRONMENT CHECK FAILED — server starting in DEGRADED mode", {
+            errors: startupResult.fatal,
+            impact: "API routes requiring these vars will return 500. Static pages will render. Fix the env vars and redeploy.",
+          });
+          // Set a global flag so route handlers can check if the server
+          // is in a degraded state and return a helpful error.
+          (globalThis as Record<string, unknown>).__GARFIX_STARTUP_ERRORS = startupResult.fatal;
+        } else {
+          logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
+            warnings: startupResult.fatal,
+          });
+        }
       }
-      logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
-        warnings: startupResult.fatal,
-      });
-    }
 
-    if (startupResult.warnings.length > 0) {
-      logger.warn("[instrumentation] Environment warnings", {
-        warnings: startupResult.warnings,
-      });
+      if (startupResult.warnings.length > 0) {
+        logger.warn("[instrumentation] Environment warnings", {
+          warnings: startupResult.warnings,
+        });
+      }
     }
 
     const tier1Duration = Date.now() - startTime;
@@ -127,14 +175,31 @@ export async function register(): Promise<void> {
     // the others. They run on the same warm function instance; if the
     // instance is frozen before they complete, they're lost (acceptable
     // — all are best-effort with retry semantics).
-    deferBackgroundTasks(startTime);
+    const skipBackgroundTasks = skipDb || process.env.GARFIX_SKIP_BACKGROUND_TASKS === "1";
+    if (!skipBackgroundTasks) {
+      deferBackgroundTasks(startTime);
+    } else {
+      logger.info("[instrumentation] Skipping background tasks (preview mode)");
+    }
   } catch (err) {
     const duration = Date.now() - startTime;
-    logger.error("[instrumentation] ✗ Server startup failed", {
+    // DEPLOYMENT FIX: don't re-throw. Previously, any error in register()
+    // (DB init, startup check, etc.) was re-thrown → Next.js caught it →
+    // instrumentation hook "failed to load" → every request returned 500
+    // → blank screen with no visible error.
+    //
+    // Now: log the error and continue. The server will start in a degraded
+    // state. API routes will return specific errors. Static pages will
+    // render. The user sees SOMETHING instead of a blank screen.
+    logger.error("[instrumentation] ⚠️ Server startup error — continuing in degraded mode", {
       error: err instanceof Error ? err.message : String(err),
       duration: `${duration}ms`,
+      impact: "Some features may not work. Check server logs for details.",
     });
-    throw err;
+    // Set the global flag so route handlers can detect degraded state
+    (globalThis as Record<string, unknown>).__GARFIX_STARTUP_ERRORS = [
+      `Startup error: ${err instanceof Error ? err.message : String(err)}`,
+    ];
   }
 }
 
@@ -159,11 +224,18 @@ function deferBackgroundTasks(startTime: number): void {
   // We use Promise.resolve().then(...) rather than setImmediate(...) so
   // this works identically in Node.js and any future runtime that
   // might not expose setImmediate.
+  //
+  // VERCEL FIX: all dynamic imports use nodeRequire() instead of `await import`
+  // to prevent Turbopack from tracing Node-only modules (backup.ts, queues.ts,
+  // process-handlers.ts, etc.) into the Edge Runtime bundle. Turbopack
+  // statically analyzes `import()` calls even inside runtime guards, which
+  // produces build warnings and can fail Vercel deployment.
+  // nodeRequire() uses eval("require") which is invisible to the bundler.
   Promise.resolve().then(async () => {
     // ── 2a. Bootstrap Queue Workers ─────────────────────────────────────
     try {
-      const { bootstrapRuntime } = await import("@/runtime/bootstrap");
-      const bootstrapResult = await bootstrapRuntime();
+      const bootstrap = nodeRequire("@/runtime/bootstrap") as typeof import("@/runtime/bootstrap");
+      const bootstrapResult = await bootstrap.bootstrapRuntime();
       if (!bootstrapResult.success) {
         logger.error("[instrumentation] Runtime bootstrap completed with errors", {
           errors: bootstrapResult.errors,
@@ -183,8 +255,8 @@ function deferBackgroundTasks(startTime: number): void {
 
     // ── 2b. Outbox Relay (P1.1) ─────────────────────────────────────────
     try {
-      const { startOutboxRelay } = await import("@/lib/outbox");
-      startOutboxRelay();
+      const outbox = nodeRequire("@/lib/outbox") as typeof import("@/lib/outbox");
+      outbox.startOutboxRelay();
       logger.info("[instrumentation] ✓ Outbox relay started");
     } catch (err) {
       logger.warn("[instrumentation] Outbox relay failed to start (non-fatal)", {
@@ -194,8 +266,8 @@ function deferBackgroundTasks(startTime: number): void {
 
     // ── 2c. OpenTelemetry SDK (P1.2) ───────────────────────────────────
     try {
-      const { startTelemetry } = await import("@/lib/telemetry-sdk");
-      await startTelemetry();
+      const telemetry = nodeRequire("@/lib/telemetry-sdk") as typeof import("@/lib/telemetry-sdk");
+      await telemetry.startTelemetry();
       logger.info("[instrumentation] ✓ OpenTelemetry SDK initialized");
     } catch (err) {
       logger.warn("[instrumentation] OpenTelemetry init failed (non-fatal)", {
@@ -205,8 +277,8 @@ function deferBackgroundTasks(startTime: number): void {
 
     // ── 2d. AI Provider Scoring State (P1.4) ───────────────────────────
     try {
-      const { loadProviderStateFromValkey } = await import("@/lib/ai-fabric/provider-scoring");
-      await loadProviderStateFromValkey();
+      const scoring = nodeRequire("@/lib/ai-fabric/provider-scoring") as typeof import("@/lib/ai-fabric/provider-scoring");
+      await scoring.loadProviderStateFromValkey();
       logger.info("[instrumentation] ✓ AI provider scoring state loaded");
     } catch (err) {
       logger.warn("[instrumentation] AI provider scoring load failed (non-fatal)", {
@@ -216,8 +288,8 @@ function deferBackgroundTasks(startTime: number): void {
 
     // ── 2e. Maintenance Crons (P2.2 + P2.3) ────────────────────────────
     try {
-      const { startMaintenanceCrons } = await import("@/lib/maintenance-cron");
-      startMaintenanceCrons();
+      const cron = nodeRequire("@/lib/maintenance-cron") as typeof import("@/lib/maintenance-cron");
+      cron.startMaintenanceCrons();
       logger.info("[instrumentation] ✓ Maintenance crons started (session sweep hourly, outbox purge daily)");
     } catch (err) {
       logger.warn("[instrumentation] Maintenance crons failed to start (non-fatal)", {
@@ -227,29 +299,29 @@ function deferBackgroundTasks(startTime: number): void {
 
     // ── 2f. Observability (Sprint 3) ───────────────────────────────────
     try {
-      const { initTelemetry, shutdownTelemetry } = await import("@/lib/telemetry/tracing");
-      const { initPubSub } = await import("@/lib/pubSub");
-      await initTelemetry();
-      await initPubSub();
+      const tracing = nodeRequire("@/lib/telemetry/tracing") as typeof import("@/lib/telemetry/tracing");
+      const pubsub = nodeRequire("@/lib/pubSub") as typeof import("@/lib/pubSub");
+      await tracing.initTelemetry();
+      await pubsub.initPubSub();
       logger.info("[instrumentation] ✓ Observability services initialized");
 
       // ── 2g. Process-Level Error Handlers + Graceful Shutdown ─────────
       // Register handlers so SIGTERM/SIGINT trigger graceful shutdown.
       // These use process.on() — Node-only — but we already gated on
       // NEXT_RUNTIME === "nodejs" at the top of register().
-      const { setupProcessHandlers } = await import("@/lib/process-handlers");
-      setupProcessHandlers(logger, async () => {
+      const processHandlers = nodeRequire("@/lib/process-handlers") as typeof import("@/lib/process-handlers");
+      processHandlers.setupProcessHandlers(logger, async () => {
         try {
-          shutdownTelemetry();
-          const { shutdownAllBreakers } = await import("@/lib/circuit-breaker/circuit-breaker");
-          shutdownAllBreakers();
+          tracing.shutdownTelemetry();
+          const breaker = nodeRequire("@/lib/circuit-breaker/circuit-breaker") as typeof import("@/lib/circuit-breaker/circuit-breaker");
+          breaker.shutdownAllBreakers();
           try {
-            const { stopOutboxRelay } = await import("@/lib/outbox");
-            stopOutboxRelay();
+            const outbox = nodeRequire("@/lib/outbox") as typeof import("@/lib/outbox");
+            outbox.stopOutboxRelay();
           } catch { /* best-effort */ }
           try {
-            const { stopMaintenanceCrons } = await import("@/lib/maintenance-cron");
-            stopMaintenanceCrons();
+            const cron = nodeRequire("@/lib/maintenance-cron") as typeof import("@/lib/maintenance-cron");
+            cron.stopMaintenanceCrons();
           } catch { /* best-effort */ }
           logger.info("[instrumentation] Graceful shutdown complete");
         } catch (err) {

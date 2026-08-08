@@ -2,10 +2,17 @@
  * passwordPolicy.ts — Password strength validation and session management.
  *
  * Enforces minimum password requirements and manages session concurrency.
+ *
+ * M3 NOTE: session functions (registerSession/isSessionValid/etc.) live here
+ * for historical reasons. They should ideally be in a separate
+ * sessionRegistry.ts, but moving them would touch many import sites across
+ * the codebase (auth.ts, middleware.ts, API routes). Deferred to a future
+ * refactor sprint.
  */
 
 import { dbTyped as db } from "@/lib/db";
 import { logger } from "./logger";
+import { getValkeyClient } from "./valkey";
 
 export interface PasswordValidationResult {
   valid: boolean;
@@ -112,25 +119,84 @@ async function enforceSessionLimit(userUid: string): Promise<string[]> {
   return evicted;
 }
 
-/** Check if a session (JTI) is still valid (exists and not expired). */
+/** Check if a session (JTI) is still valid (exists and not expired).
+ *
+ * M3 FIX: Valkey cache layer (10s TTL) to avoid a DB query on every
+ * authenticated request. resolveAuth() calls this on EVERY API request
+ * when SESSION_REGISTRY_ENFORCED is true (the default). Without caching,
+ * that's 1 extra DB round-trip per request — at 1000 req/s that's 1000
+ * extra DB queries/s just for session validation.
+ *
+ * Cache semantics:
+ *   - "1" → session valid (cached for 10s)
+ *   - "0" → session invalid (cached for 10s)
+ *   - Cache miss → fall through to DB, cache the result
+ *   - Valkey unavailable → fall through to DB directly (fail-open)
+ */
 export async function isSessionValid(jti: string): Promise<boolean> {
+  // Check Valkey cache first
+  const client = await getValkeyClient();
+  if (client) {
+    try {
+      const cached = await client.get(`session:valid:${jti}`);
+      if (cached === "1") return true;
+      if (cached === "0") return false;
+    } catch {
+      // Valkey error — fall through to DB
+    }
+  }
+
+  // DB fallback
   const session = await db.sessionRegistry.findUnique({ where: { jti } });
-  if (!session) return false;
+  if (!session) {
+    // Cache negative result for 10s to avoid repeated DB misses
+    if (client) {
+      try { await client.set(`session:valid:${jti}`, "0", "EX", 10); } catch { /* best-effort */ }
+    }
+    return false;
+  }
   if (session.expiresAt < new Date()) {
     await db.sessionRegistry.delete({ where: { jti } }).catch(() => {});
+    if (client) {
+      try { await client.set(`session:valid:${jti}`, "0", "EX", 10); } catch { /* best-effort */ }
+    }
     return false;
+  }
+  // Cache positive result for 10s — balances freshness vs DB load.
+  // A revoked session will take at most 10s to be detected (acceptable
+  // given the access token TTL is 30 min).
+  if (client) {
+    try { await client.set(`session:valid:${jti}`, "1", "EX", 10); } catch { /* best-effort */ }
   }
   return true;
 }
 
-/** Revoke a specific session. */
+/** Revoke a specific session. Also invalidates the Valkey cache so the
+ * revocation takes effect on the next request (not after 10s cache TTL). */
 export async function revokeSession(jti: string): Promise<void> {
   await db.sessionRegistry.delete({ where: { jti } }).catch(() => {});
+  // Invalidate cache immediately
+  const client = await getValkeyClient();
+  if (client) {
+    try { await client.del(`session:valid:${jti}`); } catch { /* best-effort */ }
+  }
 }
 
-/** Revoke all sessions for a user. */
+/** Revoke all sessions for a user. Also invalidates Valkey caches. */
 export async function revokeAllSessions(userUid: string): Promise<void> {
+  // Get all JTIs before deleting (to invalidate caches)
+  const sessions = await db.sessionRegistry.findMany({
+    where: { userUid },
+    select: { jti: true },
+  }).catch(() => []);
   await db.sessionRegistry.deleteMany({ where: { userUid } }).catch(() => {});
+  // Invalidate caches for all revoked sessions
+  const client = await getValkeyClient();
+  if (client && sessions.length > 0) {
+    try {
+      await Promise.all(sessions.map((s) => client.del(`session:valid:${s.jti}`)));
+    } catch { /* best-effort */ }
+  }
 }
 
 /** Get active session count for a user. */

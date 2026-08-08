@@ -73,4 +73,4 @@ export async function GET(req: NextRequest) {
 }
 
 // Wrap with error handler for consistency
-export const GET_handler = withErrorHandler(GET);
+const GET_handler = withErrorHandler(GET);

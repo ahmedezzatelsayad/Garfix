@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 /**
  * zatca.ts — Saudi ZATCA Phase 2 e-invoicing compliance module.
  *
@@ -155,10 +156,11 @@ export interface ZatcaSubmissionResult {
   ok: boolean;
   eInvoiceId?: string;
   submissionStatus: "pending" | "submitted" | "cleared" | "reported" | "rejected";
-  zatcaClearedNumber?: string; // ZATCA clearance number for standard invoices
-  zatcaReportingNumber?: string; // ZATCA reporting number for simplified invoices
+  zatcaClearedNumber?: string;
+  zatcaReportingNumber?: string;
   error?: string;
   rejectionReason?: string;
+  invoiceHash?: string;
 }
 
 export interface ZatcaUblXmlResult {
@@ -960,35 +962,92 @@ export async function submitZatcaInvoice(
   });
 
   try {
-    // ── Determine submission endpoint ────────────────────────────────────
+    // ── ACTIVATED: Real ZATCA invoice submission ────────────────────────
+    // Signs the UBL XML with the client's CCD certificate (ECDSA-SHA256)
+    // and submits to ZATCA Clearance/Reporting API.
+
     const endpoint = invoiceType === "standard"
       ? ZATCA_CLEARED_SIMULATION_ENDPOINT
       : ZATCA_REPORTED_SIMULATION_ENDPOINT;
 
-    // ── Placeholder: ZATCA API submission ─────────────────────────────────
-    // In production, this makes a real HTTP POST to the ZATCA portal.
-    // The request includes:
-    //   - Signed XML in base64-encoded format
-    //   - CSID/CCD certificate for authentication
-    //   - Invoice hash for verification
-    //
-    // ZATCA API request format:
-    //   POST {endpoint}
-    //   Headers: Authorization: Bearer {CSID-token}, Content-Type: application/json
-    //   Body: { invoice: base64(signedXml), invoiceHash: hex, certificate: base64(cert) }
-    //
-    // For now, we simulate the submission and create an EInvoice record.
-    // When the ZATCA production API is configured, this will make real HTTP calls.
+    // Determine production vs simulation URL
+    const isProduction = process.env.ZATCA_PRODUCTION_MODE === "true";
+    const baseUrl = isProduction
+      ? ZATCA_PORTAL_BASE_URL.replace("/simulation/", "/")
+      : ZATCA_PORTAL_BASE_URL;
 
-    // Find the invoice by company slug (looking for most recent draft)
-    // In production, the invoice number would be passed explicitly
+    // Sign the UBL XML with ECDSA-SHA256 using the CCD private key
+    const signResult = crypto.sign("sha256", Buffer.from(signedXml, "utf-8"), {
+      key: certificate, // CCD private key PEM
+      dsaEncoding: "der",
+    });
+    const signedInvoiceB64 = signResult.toString("base64");
     const invoiceHash = computeInvoiceHash(signedXml);
 
-    // Simulate ZATCA response
-    const isSimulation = true; // Placeholder flag — will be false in production
-    const submissionStatus = isSimulation
-      ? (invoiceType === "standard" ? "cleared" : "reported")
-      : "pending";
+    // Submit to ZATCA API
+    const zatcaResponse = await fetch(`${baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Basic ${Buffer.from(certificate).toString("base64")}`,
+      },
+      body: JSON.stringify({
+        invoice: signedInvoiceB64,
+        invoiceHash,
+        invoiceType: invoiceType === "standard" ? 388 : 388, // ZATCA invoice type code
+        certificate: Buffer.from(certificate).toString("base64"),
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+
+    if (!zatcaResponse.ok) {
+      const errorBody = await zatcaResponse.text();
+      logger.error("[zatca] ZATCA rejected invoice submission", {
+        status: zatcaResponse.status,
+        body: errorBody.slice(0, 500),
+        companySlug,
+      });
+
+      // Create EInvoice record with rejected status
+      const existingInvoice = await db.invoice.findFirst({
+        where: { companySlug, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+      if (existingInvoice) {
+        await db.eInvoice.create({
+          data: {
+            companySlug,
+            invoiceId: existingInvoice.id, invoiceNumber: existingInvoice.invoiceNumber,
+            authority: "zatca", authorityType: "zatca",
+            submissionStatus: "rejected", status: "rejected",
+            qrCodeBase64: null,
+            signedXml: signedXml.slice(0, 5000),
+            rejectionReason: errorBody.slice(0, 500),
+            submittedAt: new Date(),
+          },
+        }).catch(() => {});
+      }
+
+      return {
+        ok: false,
+        submissionStatus: "rejected",
+        error: `ZATCA رفض الفاتورة (HTTP ${zatcaResponse.status}): ${errorBody.slice(0, 200)}`,
+        invoiceHash,
+      };
+    }
+
+    const zatcaResult = await zatcaResponse.json() as {
+      clearanceUuid?: string;
+      reportingUUID?: string;
+      qrCode?: string;
+      submissionId?: string;
+    };
+
+    const submissionStatus = invoiceType === "standard" ? "cleared" : "reported";
+    const clearanceUuid = zatcaResult.clearanceUuid || zatcaResult.reportingUUID || "";
+    const qrCodeData = zatcaResult.qrCode || null;
+    const submissionId = zatcaResult.submissionId || null;
 
     // Create EInvoice record
     const existingInvoice = await db.invoice.findFirst({
@@ -1085,7 +1144,7 @@ export async function submitZatcaInvoice(
     // No invoice found — return pending status
     return {
       ok: true,
-      submissionStatus: "pending",
+      submissionStatus: "pending"
     };
   } catch (err) {
     logger.error("[zatca] submission failed", {

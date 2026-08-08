@@ -97,7 +97,7 @@ async function calculatePoolStats() {
 /**
  * Assign an available key to a user
  */
-export async function assignKeyToUser(userId: string, companyId?: string) {
+async function assignKeyToUser(userId: string, companyId?: string) {
   try {
     // Find first available key
     const availableKey = await db.apiKeyPool.findFirst({
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
  * This endpoint can be called during user registration
  * to automatically assign an API key to the new user.
  */
-export async function ASSIGN_KEY_API(request: NextRequest) {
+async function ASSIGN_KEY_API(request: NextRequest) {
   return withErrorHandler(async () => {
     // Can be called with session token or internal token
     const body = await request.json().catch(() => ({}));

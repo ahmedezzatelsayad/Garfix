@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { useInvoices as useInvoicesQuery, useDeleteInvoice, useRecordPayment, useUpdateInvoiceStatus, useCreateInvoice, useUpdateInvoice } from "@/hooks/queries";
 import type { CreateInvoicePayload } from "@/hooks/queries";
+import { EInvoiceSubmitButton } from "@/modules/invoices/EInvoiceSubmitButton";
 import { toast } from "sonner";
 import {
   Plus, Search, FileText, Trash2, Edit2, Printer, X, ArrowRight, Download, DollarSign,
@@ -1327,7 +1328,12 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
           </div>
         )}
 
-        <div className="no-print flex gap-2.5 justify-end mt-8 pt-5 border-t border-[#e5e7eb]">
+        <div className="no-print flex flex-wrap gap-2.5 justify-end mt-8 pt-5 border-t border-[#e5e7eb]">
+          <EInvoiceSubmitButton
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.invoiceNumber}
+            variant="default"
+          />
           {onRecordPayment && (
             <button onClick={onRecordPayment} className="py-2.5 px-5 rounded-sm bg-[#10b981] text-white border-none text-[13px] font-bold cursor-pointer inline-flex items-center gap-1.5">
               <DollarSign size={14} /> تسجيل دفعة

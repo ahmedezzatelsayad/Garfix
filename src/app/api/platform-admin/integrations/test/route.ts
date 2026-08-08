@@ -69,9 +69,43 @@ async function testIntegrationConnection(
     case "meta_ads":
       return await testMetaAds();
 
+    // ── E-Invoicing (per-country) ──
+    case "einvoice_eg":
+    case "einvoice_ae":
+    case "einvoice_kw":
+    case "einvoice_bh":
+    case "einvoice_om":
+    case "einvoice_qa":
+      return await testEinvoice(type);
+
     default:
       // Generic test: check if provider exists and has credentials
       return await testGeneric(type);
+  }
+}
+
+// ── E-Invoicing Test (delegates to provider's real testConnection) ───────
+
+async function testEinvoice(type: string) {
+  try {
+    const provider = getProvider(type);
+    if (!provider) {
+      return { success: false, error: `Provider ${type} not registered` };
+    }
+    const start = Date.now();
+    const result = await provider.testConnection();
+    const latencyMs = Date.now() - start;
+    return {
+      success: result.ok,
+      latencyMs,
+      details: result.details,
+      error: result.error,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : `فشل اختبار ${type}`,
+    };
   }
 }
 

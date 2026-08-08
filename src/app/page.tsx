@@ -1,107 +1,84 @@
 /**
  * / — GarfiX home route.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * ARCHITECTURE FIX (Vercel infinite-loading RCA):
- *
- * Previously this page rendered <PageLoader /> while `useAuth()` was
- * resolving the session, and only swapped to <EnhancedLandingPage /> or
- * <AppShell /> AFTER the auth fetch resolved. On Vercel, if /api/auth/me
- * hung (cold start, Redis timeout, etc.) the loader would spin forever.
- *
- * Now:
- *   - <EnhancedLandingPage /> is imported directly (NOT dynamic + ssr:false)
- *     so it renders on the server and reaches the user on the FIRST byte.
- *     This is critical for SEO — search engines see real marketing content
- *     instead of a loader skeleton.
- *   - While `loading === true`, we STILL render <EnhancedLandingPage />.
- *     A first-time visitor (no cookies) sees the marketing page instantly;
- *     an authenticated user briefly sees the landing page before being
- *     swapped to <AppShell /> when their session resolves. This is the
- *     correct UX tradeoff — never block the UI on auth.
- *   - <AppShell /> stays as a dynamic import (with ssr:false) because it
- *     pulls in 18 accounting module views + framer-motion + recharts +
- *     TanStack Query and would bloat the initial HTML for anonymous
- *     visitors. Authenticated users have already paid the network cost
- *     of the auth round-trip; the additional chunk fetch is invisible.
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * Behavior:
- *   - Unauthenticated users  → render the public marketing landing page
- *                              (EnhancedLandingPage) with Sign In / Get
- *                              Started buttons that route to /login and
- *                              /signup respectively.
- *   - Authenticated users    → render <AppShell />, which is the canonical
- *                              authenticated shell hosting the Sidebar +
- *                              Topbar + ALL 18 accounting module views.
+ * Static server-rendered landing page. No client-side redirects.
  */
-"use client";
-
-import { useCallback, useMemo } from "react";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { Loader2 } from "lucide-react";
-// P0 RCA FIX: direct import (SSR-enabled) so the landing page reaches the
-// client on the first response byte. Previously this was a dynamic import
-// with ssr:false, which meant the initial HTML was just <PageLoader /> —
-// bad for SEO and bad for Vercel cold starts (no useful content until JS
-// hydrates AND fetchMe resolves).
-import { EnhancedLandingPage } from "@/modules/landing/EnhancedLandingPage";
-
-// AppShell stays dynamic + ssr:false — it pulls in 18 accounting module
-// views and is only relevant for authenticated users. Code-splitting keeps
-// the initial JS payload small for anonymous visitors.
-const AppShell = dynamic(() => import("@/modules/common/AppShell"), {
-  ssr: false,
-  loading: () => <PageLoader />,
-});
-
-function PageLoader() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">Loading…</p>
-    </div>
-  );
-}
+import Link from "next/link";
 
 export default function Home() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  return (
+    <div className="min-h-dvh bg-[#0b1220] text-white" dir="rtl">
+      {/* Header */}
+      <header className="px-6 py-5 max-w-6xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg">
+            <span className="text-white font-black text-lg">G</span>
+          </div>
+          <span className="font-bold text-lg">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
+        </div>
+        <nav className="flex items-center gap-3">
+          <Link href="/login" className="text-white/85 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5">
+            تسجيل الدخول
+          </Link>
+          <Link href="/signup" className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-bold px-5 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all">
+            ابدأ مجاناً
+          </Link>
+        </nav>
+      </header>
 
-  const handleLogin = useCallback(() => {
-    router.push("/login");
-  }, [router]);
+      {/* Hero */}
+      <section className="max-w-4xl mx-auto px-6 py-16 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mb-6">
+          <span>🚀</span>
+          <span>نظام تشغيل مؤسسي متكامل بالذكاء الاصطناعي</span>
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black mb-6 text-white">
+          GarfiX EOS
+        </h1>
+        <p className="text-lg md:text-xl text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
+          منصة ERP/فوترة إلكترونية متعددة المستأجرين مع طبقة ذكاء اصطناعي مُحسَّنة التكلفة.
+          محاسبة كاملة، موارد بشرية، فوترة إلكترونية متوافقة مع 7 دول، ولوحة مؤسس موحّدة.
+        </p>
+        <div className="flex items-center justify-center gap-4 flex-wrap">
+          <Link href="/signup" className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-base font-bold px-8 py-4 rounded-xl shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2">
+            ابدأ تجربتك المجانية
+          </Link>
+          <Link href="/login" className="text-white/85 border border-white/20 text-base font-bold px-8 py-4 rounded-xl hover:bg-white/5 transition-all">
+            تسجيل الدخول
+          </Link>
+        </div>
+      </section>
 
-  const handleRegister = useCallback(() => {
-    router.push("/signup");
-  }, [router]);
+      {/* Features grid */}
+      <section className="max-w-5xl mx-auto px-6 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { icon: "🧾", title: "الفوترة الإلكترونية", desc: "7 دول: السعودية، الإمارات، مصر، الكويت، البحرين، عُمان، قطر" },
+            { icon: "📊", title: "محاسبة كاملة", desc: "18 وحدة محاسبية: دفاتر يومية، AR/AP، بنوك، أصول ثابتة، رواتب/WPS" },
+            { icon: "🤖", title: "ذكاء اصطناعي", desc: "شلال 20 مرحلة لتقليل تكلفة LLM — Cache → Pattern → Rule → AI" },
+            { icon: "🏢", title: "متعدد الشركات", desc: "أدر عدد غير محدود من الشركات مع عزل كامل للبيانات" },
+            { icon: "📱", title: "Arabic-first", desc: "واجهة عربية RTL كاملة + تقويم هجري + تحويل المبالغ لنص عربي" },
+            { icon: "🛡️", title: "أمان مؤسسي", desc: "RBAC كامل + AES-256 encryption + MFA + audit trail" },
+          ].map((f, i) => (
+            <div key={i} className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-emerald-500/20 transition-colors">
+              <div className="text-3xl mb-3">{f.icon}</div>
+              <h3 className="font-bold text-white mb-2">{f.title}</h3>
+              <p className="text-sm text-white/60 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-  // Memoize the props passed to the landing page so it doesn't re-render
-  // unnecessarily when auth state changes.
-  const landingProps = useMemo(
-    () => ({ onLogin: handleLogin, onRegister: handleRegister }),
-    [handleLogin, handleRegister],
+      {/* Footer */}
+      <footer className="max-w-6xl mx-auto px-6 py-8 border-t border-white/[0.06] mt-12">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <p className="text-sm text-white/40">© 2026 GarfiX EOS · جميع الحقوق محفوظة</p>
+          <div className="flex items-center gap-4 text-sm text-white/40">
+            <Link href="/help" className="hover:text-white/70 transition-colors">المساعدة</Link>
+            <Link href="/status" className="hover:text-white/70 transition-colors">حالة النظام</Link>
+            <Link href="/privacy" className="hover:text-white/70 transition-colors">الخصوصية</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
-
-  // ── 1. Authenticated → full accounting module shell ────────────────────
-  // Auth takes priority: once we KNOW the user is signed in, swap to
-  // AppShell immediately. We check `user` first so a signed-in user never
-  // sees the landing page flash.
-  if (!loading && user) {
-    return <AppShell />;
-  }
-
-  // ── 2. Loading OR unauthenticated → public marketing landing page ──────
-  // Key insight: we no longer block on auth. While `loading === true`,
-  // we render the landing page. This means:
-  //   - Anonymous visitors see the marketing page INSTANTLY (no loader).
-  //   - Authenticated visitors see the landing page for the brief moment
-  //     until /api/auth/me resolves, then swap to AppShell.
-  //   - If /api/auth/me hangs (Vercel cold start, Redis outage, etc.),
-  //     the user STILL sees a usable page — the landing page — instead
-  //     of an infinite spinner. Combined with the 5s timeout on
-  //     fetchMe(), this guarantees the UI is never stuck.
-  return <EnhancedLandingPage {...landingProps} />;
 }

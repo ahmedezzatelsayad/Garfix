@@ -1,0 +1,19 @@
+{
+  "country": "OM",
+  "authority": "oman_tax",
+  "webhookUrl": "/api/e-invoicing/webhooks/om",
+  "signatureHeader": "X-TA-Signature",
+  "signatureEncoding": "hex",
+  "signatureValue": "e6f46dad0a08f8efc4bfc9cb1d5ba9cba2a3536e8e90843d8b37840ddd318d1f",
+  "secretUsed": "test-om-ta-secret-DO-NOT-USE-IN-PRODUCTION",
+  "payload": {
+    "companySlug": "test-einvoice-company",
+    "invoiceId": null,
+    "status": "CLEARED",
+    "rejectionReason": null,
+    "invoiceUuid": "run-1786046559632-OM-sample",
+    "clearanceId": "run-1786046559632-OM-sample-cl"
+  },
+  "rawBody": "{\n  \"companySlug\": \"test-einvoice-company\",\n  \"invoiceId\": null,\n  \"status\": \"CLEARED\",\n  \"rejectionReason\": null,\n  \"invoiceUuid\": \"run-1786046559632-OM-sample\",\n  \"clearanceId\": \"run-1786046559632-OM-sample-cl\"\n}",
+  "curlCommand": "curl -X POST 'https://your-domain.com/api/e-invoicing/webhooks/om' \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-TA-Signature: e6f46dad0a08f8efc4bfc9cb1d5ba9cba2a3536e8e90843d8b37840ddd318d1f' \\\n  -d '{ \"companySlug\": \"test-einvoice-company\", \"invoiceId\": null, \"status\": \"CLEARED\", \"rejectionReason\": null, \"invoiceUuid\": \"run-1786046559632-OM-sample\", \"clearanceId\": \"run-1786046559632-OM-sample-cl\"}'"
+}

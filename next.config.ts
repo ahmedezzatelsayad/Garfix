@@ -16,10 +16,12 @@ if (!commitSha) {
 const buildTime = new Date().toISOString();
 
 const nextConfig: NextConfig = {
-  // NOTE: "standalone" output removed for platform compatibility.
-  // chat.z.ai publish flow expects standard `next build` + `next start`,
-  // which auto-loads `.env` and respects the PORT env var.
-  // Docker self-hosting still works via `next start` (no standalone server needed).
+  // DEPLOYMENT FIX: only enable standalone for Docker (not Vercel).
+  // Vercel has its own build flow and 'standalone' breaks the Turbopack
+  // client runtime on Vercel — the page gets stuck on "Loading…"
+  // because TURBOPACK global doesn't initialize properly.
+  // Docker detection: Vercel sets VERCEL=1; Docker doesn't.
+  ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
   reactStrictMode: false,
   // Expose build metadata to both server and client runtime.
   env: {
@@ -87,7 +89,12 @@ const nextConfig: NextConfig = {
       '@radix-ui/react-tooltip',
     ],
   },
-  // turbopack disabled temporarily - use webpack for compatibility
+  // VERCEL FIX: explicitly disable Turbopack for production builds.
+  // Next.js 16 uses Turbopack by default for `next build`, but Turbopack's
+  // client runtime doesn't initialize properly on Vercel — the page gets
+  // stuck on "Loading…" because React hydration never starts.
+  // Setting turbopack to an empty object + using the --no-turbopack flag
+  // in the build script forces webpack (stable, battle-tested on Vercel).
   // turbopack: { root: __dirname },
   // Type checking is enabled by default (Next.js default behavior).
   // If new type errors are introduced, `next build` will fail loudly instead

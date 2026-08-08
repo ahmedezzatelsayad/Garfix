@@ -92,18 +92,8 @@ export default function SignupPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-sm">Loading…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (user) return null;
+  // VERCEL FIX: removed loading guard — always render the form
+  if (!loading && user) return null;
 
   // Success screen — shown after the API returns 200 — DS v4.0 Celebration
   if (success) {

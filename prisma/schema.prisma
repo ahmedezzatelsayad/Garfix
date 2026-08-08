@@ -1210,6 +1210,7 @@ model Invoice {
   company               Company?             @relation(fields: [companyId], references: [id])
   client                Client?              @relation(fields: [clientId], references: [id])
   eInvoice              EInvoice?
+  eInvoiceReceipts      EInvoiceReceipt[]
   paymentTransactions   PaymentTransaction[]
   warehouse             Warehouse?           @relation(fields: [warehouseId], references: [id])
 
@@ -1543,6 +1544,32 @@ model EInvoice {
   xmlContent                   String?
   clearanceStatus              String?
   deletedAt                    DateTime?
+}
+
+// ─── E-Invoice Clearance Receipt (inbound webhook payloads from tax authorities) ───
+// Each row = one inbound webhook call from a tax authority portal telling us
+// about a clearance / rejection / status change for an e-invoice.
+
+model EInvoiceReceipt {
+  id              String   @id @default(cuid())
+  companySlug     String
+  invoiceId       Int?     // nullable: some webhooks arrive before invoice row exists
+  authority       String   // zatca, eta_egypt, uae_fta, kuwait_decree_10_2026, bahrain_nbr, oman_tax, qatar_gta
+  eventType       String   // clearance_requested, cleared, rejected, cancelled, delivery_report
+  externalUuid    String?  // UUID issued by the authority (e.g. ZATCA invoice UUID, ETA document UUID)
+  status          String   // accepted, rejected, pending, cancelled
+  rawPayload      String   // full JSON body as received (for audit / debugging)
+  signatureValid  Boolean? // whether HMAC/X-Hub-Signature verified (null if no signature header)
+  rejectionReason String?
+  receivedAt      DateTime @default(now())
+
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([companySlug])
+  @@index([companySlug, authority])
+  @@index([companySlug, receivedAt])
+  @@index([externalUuid])
+  @@map("e_invoice_receipts")
 }
 
 // ─── ZATCA Certificate (matches db.zatcaCertificate) ───
