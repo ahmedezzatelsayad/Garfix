@@ -128,7 +128,7 @@ function handle401(): void {
   // them to /login creates a loop and breaks the landing page.
   if (typeof window !== "undefined") {
     const path = window.location.pathname;
-    const publicPaths = ["/", "/login", "/signup", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
+    const publicPaths = ["/", "/login", "/signup", "/dashboard", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
     if (publicPaths.includes(path)) return;
   }
   isRedirectingToLogin = true;

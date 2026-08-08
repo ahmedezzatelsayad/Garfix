@@ -15,7 +15,7 @@ export default function Home() {
             .then(r => r.ok ? r.json() : null)
             .then(user => {
               if (user && user.uid) {
-                window.location.href = '/login';
+                window.location.href = "/dashboard";
               }
             })
             .catch(() => {});

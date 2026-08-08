@@ -95,12 +95,12 @@ export default function LoginPage() {
                   '<p class="text-white/60 mb-6">أنت مسجل الدخول بالفول</p>' +
                   '</div>' +
                   '<div class="grid grid-cols-2 gap-3 w-full max-w-md">' +
-                  '<a href="/api/invoices" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">🧾</div><div class="text-xs font-bold">الفواتير</div></a>' +
-                  '<a href="/api/clients" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">👥</div><div class="text-xs font-bold">العملاء</div></a>' +
-                  '<a href="/api/dashboard/stats" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📊</div><div class="text-xs font-bold">لوحة التحكم</div></a>' +
-                  '<a href="/api/settings" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">⚙️</div><div class="text-xs font-bold">الإعدادات</div></a>' +
-                  '<a href="/api/accounting/accounts" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📚</div><div class="text-xs font-bold">المحاسبة</div></a>' +
-                  '<a href="/api/inventory" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📦</div><div class="text-xs font-bold">المخزون</div></a>' +
+                  '<a href="/invoices" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">🧾</div><div class="text-xs font-bold">الفواتير</div></a>' +
+                  '<a href="/clients" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">👥</div><div class="text-xs font-bold">العملاء</div></a>' +
+                  '<a href="/dashboard" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📊</div><div class="text-xs font-bold">لوحة التحكم</div></a>' +
+                  '<a href="/settings" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">⚙️</div><div class="text-xs font-bold">الإعدادات</div></a>' +
+                  '<a href="/dashboard" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📚</div><div class="text-xs font-bold">المحاسبة</div></a>' +
+                  '<a href="/dashboard" class="p-4 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-center hover:border-emerald-500/30 transition-all"><div class="text-2xl mb-1">📦</div><div class="text-xs font-bold">المخزون</div></a>' +
                   '<a href="/founder-panel/mission-control" class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-center hover:border-emerald-500/40 transition-all"><div class="text-2xl mb-1">🎯</div><div class="text-xs font-bold">لوحة المؤسس</div></a>' +
                   '<button onclick="logout()" class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-center hover:border-red-500/40 transition-all"><div class="text-2xl mb-1">🚪</div><div class="text-xs font-bold">خروج</div></button>' +
                   '</div></div>';
@@ -136,7 +136,7 @@ export default function LoginPage() {
             var data = await res.json();
             if (res.ok && data.ok) {
               // Reload page — the auth check at top will show dashboard links
-              window.location.reload();
+              window.location.href = "/dashboard";
             } else {
               errDiv.textContent = data.error || 'فشل تسجيل الدخول';
               errDiv.className = 'block p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm';
