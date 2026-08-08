@@ -1,28 +1,47 @@
 /**
  * / — GarfiX home route.
- * Server component: renders landing page for guests.
- * Client script: redirects authenticated users to /login (which shows dashboard).
+ *
+ * AWS/Docker: renders AppShell (full React app with all 18 modules).
+ * Vercel: renders static landing page (React hydration doesn't work).
+ *
+ * Detection: VERCEL env var is set by Vercel automatically.
  */
-import Link from "next/link";
+"use client";
 
-export default function Home() {
+import { useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2 } from "lucide-react";
+import { EnhancedLandingPage } from "@/modules/landing/EnhancedLandingPage";
+
+// AppShell — full accounting module shell (18 views + sidebar + topbar)
+const AppShell = dynamic(() => import("@/modules/common/AppShell"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">Loading…</p>
+    </div>
+  ),
+});
+
+// Static landing page for Vercel (no React hydration needed)
+function StaticLanding() {
   return (
     <div className="min-h-dvh bg-[#0b1220] text-white" dir="rtl">
-      {/* Auth check: if user is logged in, redirect to login (shows dashboard) */}
       <script dangerouslySetInnerHTML={{ __html: `
         (function() {
           fetch('/api/auth/me', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(user => {
               if (user && user.uid) {
-                window.location.href = "/dashboard";
+                window.location.href = '/dashboard';
               }
             })
             .catch(() => {});
         })();
       `}} />
-
-      {/* Header */}
       <header className="px-6 py-5 max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg">
@@ -31,39 +50,24 @@ export default function Home() {
           <span className="font-bold text-lg">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
         </div>
         <nav className="flex items-center gap-3">
-          <Link href="/login" className="text-white/85 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5">
-            تسجيل الدخول
-          </Link>
-          <Link href="/signup" className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-bold px-5 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all">
-            ابدأ مجاناً
-          </Link>
+          <a href="/login" className="text-white/85 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5">تسجيل الدخول</a>
+          <a href="/signup" className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-bold px-5 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all">ابدأ مجاناً</a>
         </nav>
       </header>
-
-      {/* Hero */}
       <section className="max-w-4xl mx-auto px-6 py-16 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mb-6">
-          <span>🚀</span>
-          <span>نظام تشغيل مؤسسي متكامل بالذكاء الاصطناعي</span>
+          <span>🚀</span><span>نظام تشغيل مؤسسي متكامل بالذكاء الاصطناعي</span>
         </div>
-        <h1 className="text-4xl md:text-6xl font-black mb-6 text-white">
-          GarfiX EOS
-        </h1>
+        <h1 className="text-4xl md:text-6xl font-black mb-6 text-white">GarfiX EOS</h1>
         <p className="text-lg md:text-xl text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
           منصة ERP/فوترة إلكترونية متعددة المستأجرين مع طبقة ذكاء اصطناعي مُحسَّنة التكلفة.
           محاسبة كاملة، موارد بشرية، فوترة إلكترونية متوافقة مع 7 دول، ولوحة مؤسس موحّدة.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Link href="/signup" className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-base font-bold px-8 py-4 rounded-xl shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2">
-            ابدأ تجربتك المجانية
-          </Link>
-          <Link href="/login" className="text-white/85 border border-white/20 text-base font-bold px-8 py-4 rounded-xl hover:bg-white/5 transition-all">
-            تسجيل الدخول
-          </Link>
+          <a href="/signup" className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-base font-bold px-8 py-4 rounded-xl shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2">ابدأ تجربتك المجانية</a>
+          <a href="/login" className="text-white/85 border border-white/20 text-base font-bold px-8 py-4 rounded-xl hover:bg-white/5 transition-all">تسجيل الدخول</a>
         </div>
       </section>
-
-      {/* Features grid */}
       <section className="max-w-5xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
@@ -82,18 +86,48 @@ export default function Home() {
           ))}
         </div>
       </section>
-
-      {/* Footer */}
       <footer className="max-w-6xl mx-auto px-6 py-8 border-t border-white/[0.06] mt-12">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <p className="text-sm text-white/40">© 2026 GarfiX EOS · جميع الحقوق محفوظة</p>
           <div className="flex items-center gap-4 text-sm text-white/40">
-            <Link href="/help" className="hover:text-white/70 transition-colors">المساعدة</Link>
-            <Link href="/status" className="hover:text-white/70 transition-colors">حالة النظام</Link>
-            <Link href="/privacy" className="hover:text-white/70 transition-colors">الخصوصية</Link>
+            <a href="/help" className="hover:text-white/70 transition-colors">المساعدة</a>
+            <a href="/status" className="hover:text-white/70 transition-colors">حالة النظام</a>
+            <a href="/privacy" className="hover:text-white/70 transition-colors">الخصوصية</a>
           </div>
         </div>
       </footer>
     </div>
   );
+}
+
+export default function Home() {
+  // Vercel: use static HTML (no React hydration)
+  if (process.env.VERCEL === "1") {
+    return <StaticLanding />;
+  }
+
+  // AWS/Docker: full React app with AppShell
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const handleLogin = useCallback(() => {
+    router.push("/login");
+  }, [router]);
+
+  const handleRegister = useCallback(() => {
+    router.push("/signup");
+  }, [router]);
+
+  const landingProps = useMemo(
+    () => ({ onLogin: handleLogin, onRegister: handleRegister }),
+    [handleLogin, handleRegister],
+  );
+
+  // Authenticated → AppShell (full dashboard with 18 modules)
+  if (!loading && user) {
+    return <AppShell />;
+  }
+
+  // Loading OR unauthenticated → landing page
+  return <EnhancedLandingPage {...landingProps} />;
 }

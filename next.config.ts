@@ -16,11 +16,8 @@ if (!commitSha) {
 const buildTime = new Date().toISOString();
 
 const nextConfig: NextConfig = {
-  // DEPLOYMENT FIX: only enable standalone for Docker (not Vercel).
-  // Vercel has its own build flow and 'standalone' breaks the Turbopack
-  // client runtime on Vercel — the page gets stuck on "Loading…"
-  // because TURBOPACK global doesn't initialize properly.
-  // Docker detection: Vercel sets VERCEL=1; Docker doesn't.
+  // Enable standalone output for Docker/AWS deployments.
+  // Vercel has its own build flow (detected via VERCEL env var).
   ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
   reactStrictMode: false,
   // Expose build metadata to both server and client runtime.

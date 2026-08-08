@@ -109,10 +109,14 @@ export async function register(): Promise<void> {
   // fails with "require is not available" and background tasks (BullMQ,
   // pg-boss, cron, process handlers) don't belong in serverless functions.
   // API routes work fine without any of this.
+  // On AWS/Docker, all startup runs normally (AppShell works, hydration works).
   if (process.env.VERCEL === "1") {
     logger.info("[instrumentation] Skipping custom startup on Vercel serverless");
     return;
   }
+
+  // AWS/Docker: run full startup (DB init, background tasks, etc.)
+  logger.info("[instrumentation] Running full startup (AWS/Docker mode)");
 
   try {
     // ── TIER 1: BLOCKING STARTUP ─────────────────────────────────────────

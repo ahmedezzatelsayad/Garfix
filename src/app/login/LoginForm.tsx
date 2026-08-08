@@ -1,44 +1,52 @@
 /**
- * LoginForm — Client component for the login page.
- * VERCEL FIX: completely self-contained, no external context dependencies.
- * Uses plain HTML + inline styles to guarantee rendering even if React
- * provider chain fails to hydrate.
+ * LoginForm — Full React login form for AWS/Docker.
+ * Uses AuthContext + useRouter for proper SPA navigation.
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, ShieldCheck, BarChart3, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
+} from "@/components/ui/card";
+import { AlertTriangle, BarChart3, Loader2, ShieldCheck } from "lucide-react";
 
 export function LoginForm() {
+  const router = useRouter();
+  const { user, loading, login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/");
+    }
+  }, [loading, user, router]);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "فشل تسجيل الدخول");
-      }
-      // Success — redirect to home (AppShell will load)
-      window.location.href = "/";
+      await login(email.trim(), password);
+      router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
       setSubmitting(false);
     }
   }
+
+  // If we're authed, the redirect is already in-flight
+  if (!loading && user) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
@@ -52,27 +60,31 @@ export function LoginForm() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="bg-white/[0.03] border border-emerald-500/20 rounded-2xl p-8 shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg mx-auto mb-4">
+        <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
+          <CardHeader className="space-y-3 text-center pb-2">
+            <div className="mx-auto relative">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-md">
                 <ShieldCheck className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-1">مرحباً بعودتك! 👋</h2>
-              <p className="text-sm text-white/50">سجّل دخولك للوصول إلى لوحة التحكم</p>
             </div>
+            <CardTitle className="text-2xl font-bold text-foreground">مرحباً بعودتك! 👋</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              سجّل دخولك للوصول إلى لوحة التحكم
+            </CardDescription>
+          </CardHeader>
 
+          <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
                   <AlertTriangle size={16} />
                   <span>{error}</span>
                 </div>
               )}
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-white/80 block">Email</label>
-                <input
+                <Label htmlFor="email">Email</Label>
+                <Input
                   id="email"
                   type="email"
                   value={email}
@@ -80,13 +92,13 @@ export function LoginForm() {
                   placeholder="admin@garfix.com"
                   required
                   dir="ltr"
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  className="bg-background"
                 />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-white/80 block">Password</label>
-                <input
+                <Label htmlFor="password">Password</Label>
+                <Input
                   id="password"
                   type="password"
                   value={password}
@@ -94,41 +106,37 @@ export function LoginForm() {
                   placeholder="••••••••"
                   required
                   dir="ltr"
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  className="bg-background"
                 />
               </div>
 
-              <button
+              <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold min-h-[44px]"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin ml-2" />
                     جارٍ التسجيل...
                   </>
                 ) : (
                   <>تسجيل الدخول →</>
                 )}
-              </button>
+              </Button>
             </form>
+          </CardContent>
 
-            <p className="text-sm text-white/40 text-center mt-6">
+          <CardFooter className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground text-center">
               أو مستخدم جديد؟{" "}
-              <Link href="/signup" className="text-emerald-400 hover:text-emerald-300 font-medium">
+              <Link href="/signup" className="text-emerald-500 hover:text-emerald-400 font-medium">
                 إنشاء حساب مجاني ←
               </Link>
             </p>
-          </div>
-        </div>
+          </CardFooter>
+        </Card>
       </main>
-
-      <footer className="px-6 py-4 border-t border-white/[0.06]">
-        <p className="text-center text-xs text-white/30">
-          GarfiX EOS v4.0 — AI-Native Business Platform
-        </p>
-      </footer>
     </div>
   );
 }
