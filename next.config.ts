@@ -53,7 +53,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       'lucide-react',
       'recharts',
-      '@prisma/client',
+      // VERCEL FIX: removed @prisma/client — it's a server-only package
+      // and optimizePackageImports conflicts with Prisma engine bundling.
       'date-fns',
       'framer-motion',
       // REMOVED (unused): 'react-syntax-highlighter' — not imported anywhere in src/
@@ -96,9 +97,13 @@ const nextConfig: NextConfig = {
   // Setting turbopack to an empty object + using the --no-turbopack flag
   // in the build script forces webpack (stable, battle-tested on Vercel).
   // turbopack: { root: __dirname },
+  // VERCEL FIX: include Prisma engine binary in serverless function output.
+  // Without this, Vercel strips node_modules/.prisma/ from the deployment
+  // causing "Prisma Client could not locate the Query Engine" at runtime.
+  outputFileTracingIncludes: {
+    "/": ["./node_modules/.prisma/client/**/*", "./node_modules/@prisma/client/**/*"],
+  },
   // Type checking is enabled by default (Next.js default behavior).
-  // If new type errors are introduced, `next build` will fail loudly instead
-  // of silently shipping broken types to production.
 };
 
 export default nextConfig;

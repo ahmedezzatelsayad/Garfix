@@ -99,10 +99,18 @@ export async function register(): Promise<void> {
   logger.info("[instrumentation] Server starting up...");
 
   // ── Edge Runtime short-circuit ─────────────────────────────────────────
-  // When Turbopack compiles the Edge variant of instrumentation.ts, NEXT_RUNTIME
-  // is "edge". Skip everything in that case.
   if (process.env.NEXT_RUNTIME !== "nodejs") {
     logger.info("[instrumentation] Skipping server bootstrap (non-nodejs runtime)");
+    return;
+  }
+
+  // ── Vercel Serverless short-circuit ────────────────────────────────────
+  // VERCEL FIX: skip all custom startup on Vercel — the nodeRequire() helper
+  // fails with "require is not available" and background tasks (BullMQ,
+  // pg-boss, cron, process handlers) don't belong in serverless functions.
+  // API routes work fine without any of this.
+  if (process.env.VERCEL === "1") {
+    logger.info("[instrumentation] Skipping custom startup on Vercel serverless");
     return;
   }
 

@@ -2009,21 +2009,20 @@ pre, code, kbd, samp, .font-mono, .garfix-mono {
   transition-duration: var(--theme-transition-duration, 200ms) !important;
 }
 
-/* Prevent flash of wrong theme on page load */
-html:not([data-theme]) {
-  visibility: hidden;
-}
-
-html[data-theme] {
+/* VERCEL FIX: removed visibility:hidden on html:not([data-theme])
+   next-themes uses attribute="class" not data-theme, so this rule
+   was hiding the entire page permanently. */
+html.light,
+html.dark {
   visibility: visible;
 }
 
 /* Smooth theme switching for specific elements */
-[data-theme="dark"] {
+html.dark {
   color-scheme: dark;
 }
 
-[data-theme="light"] {
+html.light {
   color-scheme: light;
 }
 
