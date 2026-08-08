@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "bunx prisma generate && next build --webpack",
+  "buildCommand": "next build --webpack",
   "installCommand": "bun install",
   "framework": "nextjs",
   "regions": ["iad1"],

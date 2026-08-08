@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "prisma generate && next build",
+    "build": "next build --webpack",
+    "postinstall": "prisma generate",
     "start": "next start -p ${PORT:-3000}",
     "lint": "eslint .",
     "test": "bun test --isolate",

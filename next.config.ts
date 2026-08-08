@@ -38,8 +38,6 @@ const nextConfig: NextConfig = {
     "@opentelemetry/exporter-metrics-otlp-http",
     "@opentelemetry/exporter-trace-otlp-http",
     "@opentelemetry/sdk-metrics",
-    "@prisma/client",
-    "@prisma/engines",
     "pg-boss",
     "ioredis",
     "jsonwebtoken",
