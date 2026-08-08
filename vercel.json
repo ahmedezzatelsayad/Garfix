@@ -5,12 +5,22 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "PRISMA_ENGINES_MIRROR_API_URL": "https://binaries.prisma.sh"
   },
   "functions": {
-    "src/app/api/**/*.ts": { "maxDuration": 60 },
-    "src/app/api/ai/**/*.ts": { "maxDuration": 120 },
-    "src/app/api/platform-admin/**/*.ts": { "maxDuration": 60 }
+    "src/app/api/**/*.ts": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/.prisma/client/**"
+    },
+    "src/app/api/ai/**/*.ts": {
+      "maxDuration": 120,
+      "includeFiles": "node_modules/.prisma/client/**"
+    },
+    "src/app/api/platform-admin/**/*.ts": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/.prisma/client/**"
+    }
   },
   "headers": [
     {
