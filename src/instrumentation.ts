@@ -83,7 +83,7 @@ function nodeRequire<T = unknown>(modulePath: string): T {
 // because register() uses process.on(), process.exit(), and dynamically
 // imports Node-only modules (node:fs, node:crypto, node:child_process).
 export const config = {
-  runtime: "nodejs" as const,
+  runtime: "nodejs",
 };
 
 /**
