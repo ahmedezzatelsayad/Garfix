@@ -81,6 +81,37 @@ export default function LoginPage() {
 
       {/* Pure JS — no React needed */}
       <script dangerouslySetInnerHTML={{ __html: `
+        // Check if already logged in (from landing redirect or returning user)
+        fetch('/api/auth/me', { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(user => {
+            if (user && user.uid) {
+              // Already logged in — show dashboard link
+              var main = document.querySelector('main');
+              if (main) {
+                main.innerHTML = '<div class="flex flex-col items-center gap-6">' +
+                  '<div class="text-center">' +
+                  '<h2 class="text-2xl font-bold text-white mb-2">أهلاً ' + (user.displayName || user.email) + '!</h2>' +
+                  '<p class="text-white/60 mb-6">أنت مسجل الدخول بالفعل</p>' +
+                  '</div>' +
+                  '<div class="flex flex-col gap-3 w-full max-w-xs">' +
+                  '<a href="/invoices" class="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm text-center transition-all">الفواتير</a>' +
+                  '<a href="/clients" class="w-full py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white font-bold text-sm text-center transition-all">العملاء</a>' +
+                  '<a href="/dashboard" class="w-full py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white font-bold text-sm text-center transition-all">لوحة التحكم</a>' +
+                  '<a href="/settings" class="w-full py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white font-bold text-sm text-center transition-all">الإعدادات</a>' +
+                  '<button onclick="logout()" class="w-full py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm transition-all">تسجيل الخروج</button>' +
+                  '</div></div>';
+              }
+            }
+          })
+          .catch(() => {});
+
+        function logout() {
+          fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+            .then(() => { window.location.href = '/'; })
+            .catch(() => { window.location.href = '/'; });
+        }
+
         document.getElementById('login-form').addEventListener('submit', async function(e) {
           e.preventDefault();
           var btn = document.getElementById('login-btn');
@@ -101,7 +132,8 @@ export default function LoginPage() {
             });
             var data = await res.json();
             if (res.ok && data.ok) {
-              window.location.href = '/';
+              // Reload page — the auth check at top will show dashboard links
+              window.location.reload();
             } else {
               errDiv.textContent = data.error || 'فشل تسجيل الدخول';
               errDiv.className = 'block p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm';

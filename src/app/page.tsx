@@ -1,12 +1,27 @@
 /**
  * / — GarfiX home route.
- * Static server-rendered landing page. No client-side redirects.
+ * Static server-rendered landing page with auth check redirect.
  */
 import Link from "next/link";
 
 export default function Home() {
   return (
     <div className="min-h-dvh bg-[#0b1220] text-white" dir="rtl">
+      {/* Auth check: if user is logged in, redirect to app */}
+      <script dangerouslySetInnerHTML={{ __html: `
+        (function() {
+          fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(user => {
+              if (user && user.uid) {
+                // Redirect to login page which will detect auth and load AppShell
+                window.location.href = '/login?fromLanding=1';
+              }
+            })
+            .catch(() => {});
+        })();
+      `}} />
+
       {/* Header */}
       <header className="px-6 py-5 max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
