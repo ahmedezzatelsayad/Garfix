@@ -39,14 +39,18 @@ function createQueryClient() {
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
 
+  // VERCEL FIX: disable SSR for ThemeProvider to prevent hydration mismatch.
+  // next-themes mutates <html> className on mount which causes React to
+  // discard the entire client render. With enableSystem=false + defaultTheme="light",
+  // the server renders light theme, and the client picks up the stored theme
+  // after hydration without mismatch.
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="garfix:theme">
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="garfix:theme" disableTransitionOnChange>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <BrandProvider>
             {children}
           </BrandProvider>
-          {/* DevTools only in development — excluded from production builds */}
           {process.env.NODE_ENV === "development" && (
             <ReactQueryDevtools initialIsOpen={false} />
           )}

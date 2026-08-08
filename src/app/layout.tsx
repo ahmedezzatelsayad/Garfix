@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import "./globals.css";
-import dynamic from "next/dynamic";
-
-// VERCEL FIX: load Providers dynamically with ssr:false to prevent
-// hydration issues. ThemeProvider/AuthProvider/QueryClientProvider
-// mutate the DOM on mount which causes hydration mismatches on Vercel.
-const Providers = dynamic(() => import("@/components/Providers").then(m => ({ default: m.Providers })), {
-  ssr: false,
-  loading: () => null,
-});
+import { Providers } from "@/components/Providers";
 
 const cairo = Cairo({
   variable: "--font-cairo",
