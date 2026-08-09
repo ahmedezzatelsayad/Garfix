@@ -50,8 +50,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Phase 4 P2 fix: filter by entityId when provided (was ignored — returned
+  // all memory notes for the company regardless of which entity was queried).
+  const whereClause: Record<string, unknown> = { companySlug, category: entityType };
+  if (entityId) {
+    whereClause.entityId = String(entityId);
+  }
   const notes = await db.aIMemoryNote.findMany({
-    where: { companySlug, category: entityType },
+    where: whereClause,
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -61,7 +67,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       id: n.id,
       companySlug: n.companySlug,
       entityType: n.category,
-      entityId: null,
+      entityId: (n as any).entityId || null,
       note: n.content,
       createdBy: null,
       createdAt: n.createdAt,

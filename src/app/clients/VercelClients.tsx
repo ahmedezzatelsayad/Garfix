@@ -31,7 +31,7 @@ export default function VercelClients() {
         (async function() {
           try {
             var res = await fetch('/api/auth/me', { credentials: 'include' });
-            if (!res.ok) { window.location.href = '/login'; return; }
+            if (!res.ok) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); return; }
             document.getElementById('loading').className = 'hidden';
             document.getElementById('content').className = 'block';
             var cliRes = await fetch('/api/clients?limit=50', { credentials: 'include' });
@@ -56,11 +56,11 @@ export default function VercelClients() {
                 document.getElementById('clients-grid').innerHTML = html;
               }
             }
-          } catch(err) { window.location.href = '/login'; }
+          } catch(err) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); }
         })();
         document.getElementById('logout-btn').addEventListener('click', async function() {
           await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(()=>{});
-          window.location.href = '/login';
+          window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname);
         });
       `}} />
     </div>

@@ -153,9 +153,22 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   if (VALKEY_CONFIGURED) {
     const l2Value = await valkeyGet<T>(key);
     if (l2Value !== null) {
-      // Promote to L1
-      // We don't know the original TTL here, so set a reasonable default
-      const l1Entry2: CacheEntry<T> = { value: l2Value, expiresAt: Date.now() + 300_000 };
+      // Phase 6 P2 fix: promote to L1 with the SAME TTL as the L2 entry,
+      // not a fixed 300s. We check the remaining TTL via Valkey's TTL command.
+      // If the L2 entry has 30s left, L1 should also expire in 30s (not 300s).
+      let l1TtlMs = 300_000; // fallback: 5 min (was the old fixed value)
+      try {
+        const valkey = await getValkeyClient();
+        if (valkey) {
+          const ttlSeconds = await valkey.ttl(key);
+          if (ttlSeconds > 0) {
+            l1TtlMs = ttlSeconds * 1000; // use the actual remaining TTL
+          }
+        }
+      } catch {
+        // Valkey TTL check failed — use the 5min fallback (safe degradation)
+      }
+      const l1Entry2: CacheEntry<T> = { value: l2Value, expiresAt: Date.now() + l1TtlMs };
       store.set(key, l1Entry2);
       return l2Value;
     }

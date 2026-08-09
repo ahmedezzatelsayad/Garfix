@@ -119,7 +119,7 @@ function buildCspHeaders(nonce: string): Record<string, string> {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://api.openrouter.ai",
+      "connect-src 'self' https://api.openrouter.ai https://generativelanguage.googleapis.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",

@@ -10,6 +10,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { GarfixAccessibilityProvider } from "@/components/garfix-ds/accessibility/GarfixAccessibilityProvider"; // Phase 2 P2
 import { useState } from "react";
 import { AuthProvider } from "@/context/AuthContext";
 import { BrandProvider } from "@/context/BrandContext";
@@ -65,7 +66,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <BrandProvider>
-            {children}
+            {/* Phase 2 P2 fix: wire GarfixAccessibilityProvider for WCAG 2.1 AA
+                compliance (skip links, focus trap, screen reader announcements).
+                Was implemented but never imported by Providers. */}
+            <GarfixAccessibilityProvider showSkipLinks>
+              {children}
+            </GarfixAccessibilityProvider>
           </BrandProvider>
           {process.env.NODE_ENV === "development" && (
             <ReactQueryDevtools initialIsOpen={false} />

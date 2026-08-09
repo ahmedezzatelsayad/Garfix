@@ -44,7 +44,7 @@ export default function VercelSettings() {
         (async function() {
           try {
             var res = await fetch('/api/auth/me', { credentials: 'include' });
-            if (!res.ok) { window.location.href = '/login'; return; }
+            if (!res.ok) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); return; }
             var user = await res.json();
             document.getElementById('loading').className = 'hidden';
             document.getElementById('content').className = 'space-y-6';
@@ -61,11 +61,11 @@ export default function VercelSettings() {
               '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]"><span class="text-sm">ZATCA (السعودية)</span><span class="text-xs text-amber-400">يحتاج إعداد</span></div>' +
               '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]"><span class="text-sm">ETA (مصر)</span><span class="text-xs text-amber-400">يحتاج إعداد</span></div>' +
               '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]"><span class="text-sm">Peppol (الإمارات)</span><span class="text-xs text-amber-400">يحتاج إعداد</span></div>';
-          } catch(err) { window.location.href = '/login'; }
+          } catch(err) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); }
         })();
         document.getElementById('logout-btn').addEventListener('click', async function() {
           await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(()=>{});
-          window.location.href = '/login';
+          window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname);
         });
       `}} />
     </div>

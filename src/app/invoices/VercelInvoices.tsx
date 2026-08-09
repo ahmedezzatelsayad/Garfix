@@ -40,7 +40,7 @@ export default function VercelInvoices() {
         (async function() {
           try {
             var res = await fetch('/api/auth/me', { credentials: 'include' });
-            if (!res.ok) { window.location.href = '/login'; return; }
+            if (!res.ok) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); return; }
 
             document.getElementById('loading').className = 'hidden';
             document.getElementById('content').className = 'block';
@@ -72,11 +72,11 @@ export default function VercelInvoices() {
                 document.getElementById('invoices-table').innerHTML = html;
               }
             }
-          } catch(err) { window.location.href = '/login'; }
+          } catch(err) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); }
         })();
         document.getElementById('logout-btn').addEventListener('click', async function() {
           await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(()=>{});
-          window.location.href = '/login';
+          window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname);
         });
         document.getElementById('new-invoice-btn').addEventListener('click', function() {
           alert('إنشاء فاتورة جديدة — يتطلب AppShell (متاح على AWS/Docker)');

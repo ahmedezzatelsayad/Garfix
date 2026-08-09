@@ -81,7 +81,7 @@ export default function VercelDashboard() {
         (async function() {
           try {
             var res = await fetch('/api/auth/me', { credentials: 'include' });
-            if (!res.ok) { window.location.href = '/login'; return; }
+            if (!res.ok) { window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname); return; }
             var user = await res.json();
 
             document.getElementById('welcome').textContent = 'أهلاً ' + (user.displayName || user.email) + '!';
@@ -130,13 +130,13 @@ export default function VercelDashboard() {
               document.getElementById('invoices-list').innerHTML = '<p class="text-sm text-white/40">تعذر تحميل الفواتير</p>';
             }
           } catch(err) {
-            window.location.href = '/login';
+            window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname);
           }
         })();
 
         document.getElementById('logout-btn').addEventListener('click', async function() {
           await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(()=>{});
-          window.location.href = '/login';
+          window.location.href = '/login?returnTo=' + encodeURIComponent(window.location.pathname);
         });
       `}} />
     </div>
