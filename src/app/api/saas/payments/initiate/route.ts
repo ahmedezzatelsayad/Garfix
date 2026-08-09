@@ -17,6 +17,7 @@
  *           This route only reads the stored, validated config.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseJsonBody } from "@/lib/api";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, apiError } from "@/lib/api";
 import { dbTyped as db } from "@/lib/db";
@@ -71,7 +72,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
   const user = authResult.user;
 
-  const body = await req.json().catch(() => ({}));
+  const body = await parseJsonBody(req) ?? {};
   const parsed = InitiateSchema.safeParse(body);
   if (!parsed.success) {
     return apiError(parsed.error.issues[0]?.message || "مدخلات غير صالحة", 400);

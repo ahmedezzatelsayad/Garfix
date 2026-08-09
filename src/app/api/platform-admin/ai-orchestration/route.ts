@@ -10,6 +10,7 @@
  * Founder-only.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseJsonBody } from "@/lib/api";
 import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
@@ -114,7 +115,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
 
-  const body = await req.json().catch(() => ({}));
+  const body = await parseJsonBody(req) ?? {};
   const { provider, model, isEnabled } = body as {
     provider?: string;
     model?: string;

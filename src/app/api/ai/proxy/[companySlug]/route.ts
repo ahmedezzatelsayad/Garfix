@@ -119,19 +119,11 @@ export async function POST(
     }
 
     // 3. RBAC: verify the user has access to this company
-    // NOTE: `companyMember` table — see founder-panel/ai-config/route.ts for cast rationale
-    const membership = await (db as unknown as {
-      companyMember: {
-        findFirst: (args: {
-          where: { userId?: string; companyId?: string };
-        }) => Promise<{ role: string } | null>;
-      };
-    }).companyMember.findFirst({
-      where: { userId: auth.user.uid, companyId: company.id },
-    });
-
-    if (!membership) {
-      // Audit the access attempt
+    // Phase 3 P1 fix: replaced broken `db.companyMember.findFirst()` cast
+    // (CompanyMember model doesn't exist → every call returned 500) with
+    // assertCompanyAccess() which checks the user's companies array.
+    const { assertCompanyAccess } = await import("@/lib/auth");
+    if (!assertCompanyAccess(auth.user, companySlug)) {
       await logAudit({
         userEmail: auth.user.email,
         userUid: auth.user.uid,
@@ -304,18 +296,11 @@ export async function GET(
 
     if (!company) return apiError(`Company '${companySlug}' not found`, 404);
 
-    // Verify membership
-    const membership = await (db as unknown as {
-      companyMember: {
-        findFirst: (args: {
-          where: { userId?: string; companyId?: string };
-        }) => Promise<{ role: string } | null>;
-      };
-    }).companyMember.findFirst({
-      where: { userId: auth.user.uid, companyId: company.id },
-    });
-
-    if (!membership) return apiError('You do not have access to this company', 403);
+    // Phase 3 P1 fix: replaced broken CompanyMember cast with assertCompanyAccess
+    const { assertCompanyAccess } = await import("@/lib/auth");
+    if (!assertCompanyAccess(auth.user, companySlug)) {
+      return apiError('You do not have access to this company', 403);
+    }
 
     // Return per-feature status + current rate-limit usage
     const features = ['chat', 'invoice', 'parse', 'memory'] as const;

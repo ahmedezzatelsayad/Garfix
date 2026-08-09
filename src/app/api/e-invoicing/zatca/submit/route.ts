@@ -20,6 +20,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { dbTyped as db } from "@/lib/db";
 import { requireAuth } from "@/lib/middleware";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -59,7 +60,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Verify access
   const userCompanies = user.companies || [];
-  const isFounder = user.role === "founder";
+  const isFounder = isFounderEmail(user.email);
   if (!isFounder && !userCompanies.includes(companySlug)) {
     return apiError("ليس لديك صلاحية على هذه الشركة", 403);
   }

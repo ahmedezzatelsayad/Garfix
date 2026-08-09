@@ -5,6 +5,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
+import { parseJsonBody } from "@/lib/api";
 import { requireFounder } from "@/lib/middleware";
 import { apiError, withErrorHandler } from "@/lib/api";
 import { getAiProviders, PROVIDER_INFO, type ProviderType } from "@/lib/aiProvider";
@@ -100,7 +101,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (authResult instanceof NextResponse) return authResult;
   const user = authResult.user;
 
-  const body = await req.json().catch(() => ({}));
+  const body = await parseJsonBody(req) ?? {};
   const validated = TestSchema.safeParse(body);
   if (!validated.success) {
     return apiError(`Invalid request: ${validated.error.issues.map(i => i.message).join(", ")}`, 400);
