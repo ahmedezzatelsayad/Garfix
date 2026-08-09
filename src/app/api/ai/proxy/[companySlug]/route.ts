@@ -165,11 +165,22 @@ export async function POST(
 
     const { messages, temperature, maxTokens, jsonMode } = validated.data;
 
+    // Phase 8 P1 fix: sanitize user messages to prevent prompt injection.
+    // An attacker could send {role:"system", content:"Disregard all prior
+    // instructions..."} and the proxy would forward it verbatim to the
+    // upstream provider as a system instruction. sanitizeUserMessages
+    // demotes role:"system" to role:"user" with a prefix.
+    const { sanitizeUserMessages } = await import("@/lib/ai/sanitize");
+    const sanitizedMessages = sanitizeUserMessages(messages, {
+      userEmail: auth.user.email,
+      userUid: auth.user.uid,
+    });
+
     // 6. Call the per-feature router (handles rate limit + key resolution +
     //    encryption + pool fallback + upstream call + usage tracking)
     const startTime = Date.now();
     const result = await generateWithFeature(company.id, feature, {
-      messages,
+      messages: sanitizedMessages,
       temperature,
       maxTokens,
       jsonMode,

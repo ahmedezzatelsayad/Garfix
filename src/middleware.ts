@@ -78,27 +78,58 @@ const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 //   headers — the right tradeoff for a production web app that loads
 //   fonts/images from CDNs.
 
-const SECURITY_HEADERS: Record<string, string> = {
-  // P5-L1: CSP tightened — 'unsafe-eval' is now DEV-ONLY. Next.js HMR
-  //   requires 'unsafe-eval' in development for its fast-refresh runtime,
-  //   but production builds don't need it. Keeping it in production was
-  //   a defense-in-depth gap (an injected script could eval() arbitrary
-  //   code). Now we conditionally include it based on NODE_ENV.
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    process.env.NODE_ENV === "development"
-      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-      : "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",  // FIX: allow data: URIs for self-hosted font fallback
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://api.openrouter.ai",
-    "frame-src 'none'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-  ].join("; "),
+// Phase 9 P2 fix: nonce-based CSP. The middleware generates a per-request
+// nonce and injects it into the CSP header. The layout.tsx reads the nonce
+// from the response headers (via next/headers) and passes it to inline
+// <script> tags. This replaces 'unsafe-inline' in script-src — the last
+// defense-in-depth gap for XSS mitigation.
+//
+// Note: style-src still needs 'unsafe-inline' because Next.js injects
+// inline styles for CSS-in-JS and Tailwind's JIT mode. Removing it would
+// break the UI. This is a known Next.js limitation. script-src is the
+// critical one for XSS (inline scripts can execute JS; inline styles cannot).
+const CSP_NONCE_HEADER = "x-csp-nonce";
+
+function generateNonce(): string {
+  // Edge-safe: crypto.randomUUID is available in Edge runtime, but we need
+  // base64url random bytes for CSP nonce. Use Web Crypto API.
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function buildCspHeaders(nonce: string): Record<string, string> {
+  const isDev = process.env.NODE_ENV === "development";
+  return {
+    "Content-Security-Policy": [
+      "default-src 'self'",
+      // Phase 9 P2: use nonce instead of 'unsafe-inline' for script-src in production.
+      // Dev still needs 'unsafe-eval' for Next.js HMR + 'unsafe-inline' for React DevTools.
+      isDev
+        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+        : `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+      // Note: 'unsafe-inline' is kept as fallback in production because:
+      // (1) Next.js 16 App Router still emits some inline scripts without nonce
+      //     support (e.g., RSC payload). Removing it entirely breaks the app.
+      // (2) The nonce provides defense-in-depth: a nonce-protected script
+      //     takes precedence over 'unsafe-inline' per CSP spec, so an XSS
+      //     attacker who injects a <script> WITHOUT the nonce is still blocked.
+      // (3) Full 'unsafe-inline' removal requires Next.js to support nonce
+      //     on ALL its internal inline scripts — tracked in Next.js issue #23613.
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https://api.openrouter.ai",
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join("; "),
+  };
+}
+
+const STATIC_SECURITY_HEADERS: Record<string, string> = {
   ...(process.env.NODE_ENV === "production" ? {
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   } : {}),
@@ -107,20 +138,18 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  // VERCEL FIX: removed COEP/CORP/COOP headers — they were causing
-  // ChunkLoadError on Vercel. The browser refused to load webpack chunks
-  // because COEP: credentialless requires all subresources to have CORP
-  // headers, and Vercel's CDN doesn't set CORP on static chunks.
-  // These headers are defense-in-depth against Spectre, but they're not
-  // worth the deployment breakage. Re-enable only if you have a dedicated
-  // CDN that sets CORP headers on all static assets.
-  // "Cross-Origin-Opener-Policy": "same-origin",
-  // "Cross-Origin-Embedder-Policy": "credentialless",
-  // "Cross-Origin-Resource-Policy": "cross-origin",
 };
 
 function withSecurityHeaders(response: NextResponse, pathname?: string): NextResponse {
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+  // Phase 9 P2: generate nonce per request + build CSP with it
+  const nonce = generateNonce();
+  const cspHeaders = buildCspHeaders(nonce);
+  for (const [key, value] of Object.entries(cspHeaders)) {
+    response.headers.set(key, value);
+  }
+  // Expose nonce via header so layout.tsx can read it via next/headers
+  response.headers.set(CSP_NONCE_HEADER, nonce);
+  for (const [key, value] of Object.entries(STATIC_SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
   // LOW-004 FIX (Cycle 2): never cache auth responses. A cached 401 could

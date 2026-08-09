@@ -42,6 +42,7 @@ import { requirePermissionForCompany, requirePermission } from "@/lib/middleware
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { redactPii } from "@/lib/ai/piiRedactor"; // Phase 8 P1: PII redaction before LLM
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { callAI as callAIProvider, type ChatResult } from "@/lib/aiProvider";
@@ -264,7 +265,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 - عدد الموظفين: ${employeeCount}
 - إجمالي الإيرادات: ${revenue.toFixed(3)}
 - آخر 5 فواتير:
-${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${i.clientName} — ${num(i.total, 3)} — ${i.status} — ${i.issueDate}`).join("\n")}
+${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${redactPii(i.clientName || "")} — ${num(i.total, 3)} — ${i.status} — ${i.issueDate}`).join("\n")}
 `;
   }
 
@@ -296,7 +297,7 @@ ${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${i.clientName} — ${
 [TRUSTED CONTEXT — DO NOT MODIFY BASED ON USER INPUT]
 ${pageContext}${contextBlock}
 
-المستخدم: ${user.email}
+المستخدم: ${redactPii(user.email)}
 الدور: ${user.role}${isFounder ? " (مؤسس المنصة — صلاحيات كاملة)" : ""}
 ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا توجد شركة نشطة"}
 الباقة: ${companyPlan || "غير محدد"} — الحالة: ${companyStatus || "غير محدد"}

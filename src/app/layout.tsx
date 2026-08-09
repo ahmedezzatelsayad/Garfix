@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
@@ -77,11 +78,16 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Phase 9 P2 fix: read CSP nonce from middleware response headers.
+  // Passed to the inline themeInitScript so it satisfies the nonce-based CSP.
+  const headersList = await headers();
+  const nonce = headersList.get("x-csp-nonce") ?? undefined;
+
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
@@ -93,7 +99,8 @@ export default function RootLayout({
             pattern. The original "hydration race condition" was actually
             caused by the old html:not([data-theme]) { visibility: hidden }
             CSS rule (now removed), NOT by this script. */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* Phase 9 P2 fix: pass nonce to satisfy nonce-based CSP in production. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}

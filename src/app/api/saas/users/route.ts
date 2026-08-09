@@ -38,11 +38,25 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (isFounderEmail(user.email)) {
     users = await db.appUser.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
   } else {
-    // Admin: list users that share at least one company
-    users = await db.appUser.findMany({
-      where: { companies: { contains: user.companies[0] || "____" } },
+    // Phase 4 P1 fix: fetch ALL users, then JS-filter by exact slug match.
+    // The old Prisma `contains` filter did substring matching on the JSON
+    // string column — 'acme' matched 'acme-corp', 'global-acme', etc.
+    // The new approach fetches up to 500 candidates (founder + admin users
+    // are typically < 500) and filters in JS by parsing the companies JSON
+    // and checking exact intersection with the admin's companies list.
+    const adminCompanies = user.companies || [];
+    const candidates = await db.appUser.findMany({
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: 500,
+      select: { uid: true, email: true, displayName: true, role: true, companies: true, createdAt: true },
+    });
+    users = candidates.filter((c) => {
+      try {
+        const cCompanies: string[] = JSON.parse(c.companies || "[]");
+        return cCompanies.some((slug) => adminCompanies.includes(slug));
+      } catch {
+        return false;
+      }
     });
   }
 
