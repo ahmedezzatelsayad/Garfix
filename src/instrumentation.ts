@@ -341,6 +341,14 @@ function deferBackgroundTasks(startTime: number): void {
             const cron = nodeRequire("@/lib/maintenance-cron") as typeof import("@/lib/maintenance-cron");
             cron.stopMaintenanceCrons();
           } catch { /* best-effort */ }
+          // Phase 7 P1 fix: stop BullMQ workers + close Valkey on shutdown.
+          // Without this, in-flight jobs are killed without being marked
+          // complete → next boot's recoverPendingJobs re-runs them →
+          // duplicate emails/WhatsApp/backup files.
+          try {
+            const queues = nodeRequire("@/lib/queues") as typeof import("@/lib/queues");
+            await queues.stopQueue();
+          } catch { /* best-effort */ }
           logger.info("[instrumentation] Graceful shutdown complete");
         } catch (err) {
           logger.error("[instrumentation] Error during shutdown", {

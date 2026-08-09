@@ -24,11 +24,10 @@ on:
         required: false
         default: true
         type: boolean
-      skip_ci:
-        description: "تخطي CI (للطوارئ فقط)"
-        required: false
-        default: false
-        type: boolean
+      # Phase 13 P1 fix: removed skip_ci input. It was an emergency backdoor
+      # that let anyone with write access ship to prod bypassing ALL tests.
+      # Emergency deploys now require a second workflow_dispatch approval
+      # via the environment: production required_reviewers gate.
 
 concurrency:
   group: founder-deploy-${{ github.ref }}
@@ -97,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [founder-health]
-    if: ${{ inputs.run_tests == true && inputs.skip_ci != true }}
+    if: ${{ inputs.run_tests == true }}
     
     services:
       postgres:

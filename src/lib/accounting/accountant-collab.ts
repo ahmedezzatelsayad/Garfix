@@ -220,21 +220,34 @@ async function generateGeneralLedgerData(
     orderBy: { code: "asc" },
   });
 
+  // Phase 6 P1 fix: batch-fetch ALL journal entry lines for ALL accounts in
+  // ONE query (was N+1 — 50-200 accounts × 1 findMany each). Now we fetch
+  // all lines where accountId is in the account list, then group in JS.
+  const accountIds = accounts.map((a) => a.id);
+  const allLines = await db.journalEntryLine.findMany({
+    where: {
+      accountId: { in: accountIds },
+      journalEntry: {
+        companySlug,
+        status: { in: ["posted", "reversed"] },
+        date: { gte: new Date(periodFrom), lte: new Date(periodTo) },
+      },
+    },
+    include: { journalEntry: { select: { date: true, description: true, reference: true, status: true } } },
+    orderBy: { journalEntry: { date: "asc" } },
+  });
+
+  // Group lines by accountId for per-account processing
+  const linesByAccount = new Map<string, typeof allLines>();
+  for (const line of allLines) {
+    const arr = linesByAccount.get(line.accountId) || [];
+    arr.push(line);
+    linesByAccount.set(line.accountId, arr);
+  }
+
   const ledgerEntries: Record<string, unknown>[] = [];
   for (const acc of accounts) {
-    const lines = await db.journalEntryLine.findMany({
-      where: {
-        accountId: acc.id,
-        journalEntry: {
-          companySlug,
-          status: { in: ["posted", "reversed"] },
-          date: { gte: new Date(periodFrom), lte: new Date(periodTo) },
-        },
-      },
-      include: { journalEntry: { select: { date: true, description: true, reference: true, status: true } } },
-      orderBy: { journalEntry: { date: "asc" } },
-    });
-
+    const lines = linesByAccount.get(acc.id) || [];
     let runningBalance = 0;
     const isDebitNormal = acc.type === "asset" || acc.type === "expense";
 

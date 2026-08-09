@@ -261,13 +261,16 @@ jobs:
         uses: trufflesecurity/trufflehog@v3.88.0
         with:
           extra_args: --only-verified
-        continue-on-error: true  # Don't block on scan failures — review SARIF instead
+        # Phase 13 P1 fix: removed continue-on-error. Verified secrets MUST
+        # fail the pipeline. False positives are handled via TruffleHog's
+        # --only-verified flag (only reports verified, exploitable secrets).
 
       - name: Gitleaks Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true  # Don't block on scan failures — review results instead
+        # Phase 13 P1 fix: removed continue-on-error. Committed secrets must
+        # fail the pipeline. Use .gitleaksignore for known false positives.
 
       - name: Upload secret scan results
         if: always()

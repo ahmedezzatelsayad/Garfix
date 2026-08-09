@@ -133,15 +133,20 @@ const bullQueues = new Map<QueueName, BullMQQueue>();
 const bullWorkers = new Map<QueueName, BullMQWorker>();
 let bullInitialized = false;
 
+// Phase 7 P1 fix: removeOnComplete/removeOnFail moved INSIDE defaultJobOptions.
+// BullMQ requires these on the job options at add-time, NOT on the Queue ctor.
+// Setting them on the Queue ctor's top level has no effect — completed/failed
+// jobs accumulate in Valkey indefinitely. defaultJobOptions is the correct
+// location (BullMQ v5+ applies them to every queue.add() call automatically).
 const BULLMQ_DEFAULTS = {
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 5000 },
   defaultJobOptions: {
     attempts: 3,
     backoff: {
       type: "exponential" as const,
       delay: 1000,
     },
+    removeOnComplete: { count: 1000 },  // keep last 1000 completed jobs
+    removeOnFail: { count: 5000 },      // keep last 5000 failed jobs
   },
 };
 
@@ -211,10 +216,22 @@ async function createBullWorker(
     connection: connection.duplicate(),
     concurrency: name === QUEUE_NAMES.AI ? 2 : 5,
     autorun: true,
+    // Phase 7 P1 fix: stalled job recovery config
+    stalledInterval: 30_000,  // check every 30s for stalled jobs
+    maxStalledCount: 1,       // move to failed after 1 stall (was infinite)
+    lockDuration: ttl + 5000, // lock for TTL + 5s buffer
   });
 
   worker.on("completed", (job) => {
     logger.debug("[queues] BullMQ job completed", { queue: name, jobId: job.id });
+  });
+
+  // Phase 7 P1 fix: stalled job recovery. Without these settings, a crashed
+  // worker leaves jobs in BullMQ's "active" set indefinitely — no redelivery.
+  // stalledInterval: how often BullMQ checks for stalled jobs (30s default)
+  // maxStalledCount: how many times a job can stall before being moved to failed
+  worker.on("stalled", (jobId) => {
+    logger.warn("[queues] BullMQ job stalled", { queue: name, jobId });
   });
 
   worker.on("failed", (job, err) => {

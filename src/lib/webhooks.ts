@@ -107,12 +107,15 @@ export async function processPendingDeliveries(): Promise<{
   succeeded: number;
   failed: number;
 }> {
+  // Phase 6 P1 fix: batch-fetch endpoints via include (was N+1 — 50 deliveries
+  // × 1 findUnique each = 51 queries per cron tick). Now 1 query with include.
   const pending = await db.webhookDelivery.findMany({
     where: {
       status: "pending",
       nextRetryAt: { lte: new Date() },
     },
     take: 50,
+    include: { endpoint: true },
   });
 
   let succeeded = 0;
@@ -120,9 +123,7 @@ export async function processPendingDeliveries(): Promise<{
 
   for (const delivery of pending) {
     try {
-      const endpoint = await db.webhookEndpoint.findUnique({
-        where: { id: delivery.endpointId },
-      });
+      const endpoint = delivery.endpoint;
       if (!endpoint) {
         await db.webhookDelivery.update({
           where: { id: delivery.id },

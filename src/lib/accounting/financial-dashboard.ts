@@ -498,18 +498,22 @@ export async function getBudgetVsActual(
       };
     });
 
-    // Update budget actual amounts
-    for (const b of budgets) {
-      const actual = actualMap.get(String(b.accountId)) || num(b.actualAmount, 3);
-      const variance = actual - num(b.plannedAmount, 3);
-      await db.budget.update({
-        where: { id: b.id },
-        data: {
-          actualAmount: actual.toFixed(3),
-          variance: variance.toFixed(3),
-        },
-      });
-    }
+    // Phase 6 P1 fix: batch-update budgets via $transaction (was N+1 —
+    // 200 sequential UPDATEs for 200 budget lines). Now a single transaction
+    // with parallel updates — Prisma batches them into one round-trip.
+    await db.$transaction(
+      budgets.map((b) => {
+        const actual = actualMap.get(String(b.accountId)) || num(b.actualAmount, 3);
+        const variance = actual - num(b.plannedAmount, 3);
+        return db.budget.update({
+          where: { id: b.id },
+          data: {
+            actualAmount: actual.toFixed(3),
+            variance: variance.toFixed(3),
+          },
+        });
+      })
+    );
 
     return { ok: true, result: { accounts } };
   } catch (err) {

@@ -362,13 +362,15 @@ jobs:
           fi
           echo "✅ Database schema synced successfully"
 
-      - name: Run unit tests (core modules)
+      - name: Run unit tests (all test files)
         run: |
-          echo "Running core unit tests..."
+          echo "Running ALL unit tests in src/lib/__tests__/..."
           PASS=true
-          bun test src/lib/__tests__/secretsManager.test.ts 2>&1 | tee test-results.txt || PASS=false
-          bun test src/lib/__tests__/rateLimit-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
-          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
+          # Phase 13 P1 fix: run ALL test files in src/lib/__tests__, not just 3.
+          # Previously only secretsManager + rateLimit-advanced + cryptoVault-advanced
+          # ran in CI — 99% of tests never executed. Now we glob the entire directory.
+          # Tests that use vitest imports were migrated to bun:test in Sprint 8.
+          bun test src/lib/__tests__/ 2>&1 | tee test-results.txt || PASS=false
           echo ""
           if [ "$PASS" = "false" ]; then
             echo "❌ Some unit tests failed — review test-results.txt"

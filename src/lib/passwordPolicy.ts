@@ -97,8 +97,12 @@ export async function registerSession(params: {
 
 /** Enforce max concurrent sessions — evict oldest sessions beyond limit. */
 async function enforceSessionLimit(userUid: string): Promise<string[]> {
+  // Phase 9 P2 fix: filter by expiresAt > now so expired-but-not-yet-swept
+  // sessions don't count against MAX_SESSIONS_PER_USER. Previously a user
+  // logging in 6× rapidly on 6 devices would evict the oldest session even
+  // if 4 of the 5 existing were already expired (hourly sweep hadn't run yet).
   const sessions = await db.sessionRegistry.findMany({
-    where: { userUid },
+    where: { userUid, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "asc" },
   });
 

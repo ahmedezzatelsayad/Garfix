@@ -258,7 +258,7 @@ curl -s http://localhost:3000/api/health | jq
 | **الفوترة الإلكترونية** | 7 دول: ZATCA (السعودية) · UAE FTA Peppol (الإمارات) · Egypt ETA (مصر) · Kuwait Decree 10/2026 (الكويت) · Bahrain NBR (البحرين) · Oman TA (عُمان) · Qatar GTA (قطر) — مع لوحة مؤسس موحّدة + 7 webhook receivers |
 | **محاسبة كاملة** | 18 وحدة محاسبية: دفاتر يومية، AR/AP، بنوك، أصول ثابتة، رواتب/WPS، تمويل تجاري، ميزانيات، امتثال ضريبي، مراكز تكلفة |
 | **Arabic-first** | واجهة عربية RTL كاملة + تحويل المبالغ إلى نص عربي + تقويم هجري + MENA country configs |
-| **OpenAPI/Swagger** | 229+ endpoint موثقة في `src/lib/openapi/openapi.yaml` مع interactive viewer على `/api-docs` |
+| **OpenAPI/Swagger** | 248 API routes (229+ documented) موثقة في `src/lib/openapi/openapi.yaml` مع interactive viewer على `/api-docs` |
 | **PWA Support** | Service worker + manifest + offline capability + أيقونات maskable |
 | **Founder Key Distribution** | المؤسس يرفع مفتاح DeepSeek واحد → يتوزع على N شركة عبر `ApiKeyPool` + Valkey round-robin + per-company proxy URL |
 | **Per-Client Proxy** | كل شركة ليه endpoint خاص: `POST /api/ai/proxy/{companySlug}?feature=chat` — المفتاح الحقيقي مش بيتعرض للعميل أبداً |
@@ -376,7 +376,7 @@ Garfix/
 ├── prisma/                          # Schema (102 models) + 17 migrations + seed.ts
 │   └── schema.prisma                # 2,826-line PostgreSQL schema
 ├── e2e/                             # 12 Playwright E2E specs
-├── scripts/                         # 82 scripts: seed, bench, CLI tools, reports
+├── scripts/                         # 87 scripts: seed, bench, CLI tools, reports
 ├── docs/                            # 22 docs + 14 ADRs + security audit
 │   ├── ARCHITECTURE-v12.1.md
 │   ├── ROADMAP.md
@@ -389,7 +389,7 @@ Garfix/
 │   │   ├── api/                     # 229 route handlers across 30+ domains
 │   │   ├── (dashboard)/             # Authenticated app pages
 │   │   └── (public)/                # Landing, login, register
-│   ├── modules/                     # 21 UI domain modules
+│   ├── modules/                     # 24 UI domain modules
 │   │   ├── accounting/              # 16 view components (GL, AR/AP, Banking, ...)
 │   │   ├── admin/                   # Platform admin panel (15 tabs)
 │   │   ├── ai-agents/               # AI agents UI
@@ -1304,7 +1304,7 @@ docker compose exec app bun run seed  # optional: demo data
 
 ### CI/CD Pipeline
 
-7 GitHub Actions workflows orchestrate the full delivery:
+7 GitHub Actions workflows (8 total with cd.yml.DEPRECATED) orchestrate the full delivery:
 
 ```
 PR opened  ─►  pr-checks.yml (lint + typecheck + build)
