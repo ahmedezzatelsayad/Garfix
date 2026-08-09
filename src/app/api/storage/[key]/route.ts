@@ -44,11 +44,34 @@ export const GET = withErrorHandler<[NextRequest, RouteParams]>(
     if (!authResult.ok || !authResult.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const user = authResult.user;
     const { key } = await params;
     // Sanitize — only allow alphanumeric + dash + dot (UUIDs + extension)
     if (!/^[a-f0-9-]+\.[a-z0-9]+$/i.test(key)) {
       return NextResponse.json({ error: "Invalid file key" }, { status: 400 });
     }
+
+    // #27 P1 FIX: check StorageObject table for tenant scoping.
+    // If the key exists in storage_objects, verify the user has access to
+    // the file's companySlug. If not in the table (legacy file), fall back
+    // to serving (keys are 128-bit UUIDs — unguessable).
+    try {
+      const { dbTyped: db } = await import("@/lib/db");
+      const storageObj = await db.storageObject.findUnique({
+        where: { key },
+        select: { companySlug: true },
+      }).catch(() => null);
+      if (storageObj) {
+        const { assertCompanyAccess } = await import("@/lib/auth");
+        if (!assertCompanyAccess(user, storageObj.companySlug)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+      }
+    } catch {
+      // StorageObject table not available — fall back to serving
+      // (keys are 128-bit UUIDs — unguessable without a leak)
+    }
+
     const buffer = await readAsBuffer(key);
     if (!buffer) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });

@@ -407,7 +407,11 @@ export const aiRateLimiter = new AIRateLimiter();
  * Handles conversational AI requests
  */
 async function handleChatJob(data: Record<string, unknown>): Promise<void> {
-  const { companySlug, userId, messages, conversationId } = data as any;
+  const d = data as Record<string, unknown>;
+  const companySlug = String(d.companySlug || "");
+  const userId = String(d.userId || "");
+  const messages = (d.messages as any[]) || [];
+  const conversationId = String(d.conversationId || "");
   
   aiMetrics.recordJobStart('ai-chat');
   const startTime = Date.now();
@@ -452,7 +456,11 @@ async function handleChatJob(data: Record<string, unknown>): Promise<void> {
  * Smart invoice extraction with pattern learning
  */
 async function handleInvoiceExtractJob(data: Record<string, unknown>): Promise<void> {
-  const { companySlug, rawText, invoiceId, source } = data as any;
+  const d = data as Record<string, unknown>;
+  const companySlug = String(d.companySlug || "");
+  const rawText = String(d.rawText || "");
+  const invoiceId = d.invoiceId as number | undefined;
+  const source = String(d.source || "manual");
 
   aiMetrics.recordJobStart('ai-invoice-extract');
   const startTime = Date.now();
@@ -507,7 +515,11 @@ async function handleInvoiceExtractJob(data: Record<string, unknown>): Promise<v
  * Document parsing (PDF, images, WhatsApp)
  */
 async function handleSmartParseJob(data: Record<string, unknown>): Promise<void> {
-  const { companySlug, content, contentType, options } = data as any;
+  const d = data as Record<string, unknown>;
+  const companySlug = String(d.companySlug || "");
+  const content = String(d.content || "");
+  const contentType = String(d.contentType || "text");
+  const options = d.options as Record<string, unknown> | undefined;
 
   aiMetrics.recordJobStart('ai-smart-parse');
   const startTime = Date.now();
@@ -558,7 +570,11 @@ async function handleSmartParseJob(data: Record<string, unknown>): Promise<void>
  * Specialist Agent Handler (Accounting/Sales/Inventory)
  */
 async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<void> {
-  const { agentType, companySlug, message, context } = data as any;
+  const d = data as Record<string, unknown>;
+  const agentType = String(d.agentType || "accounting");
+  const companySlug = String(d.companySlug || "");
+  const message = String(d.message || "");
+  const context = (d.context as any[]) || [];
   const workerType = `ai-agent-${agentType}` as AIWorkerType;
 
   aiMetrics.recordJobStart(workerType);

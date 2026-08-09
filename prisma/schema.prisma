@@ -2931,3 +2931,21 @@ model CompanyMembership {
   @@index([userUid])
   @@map("company_memberships")
 }
+
+// #27 P1 FIX: StorageObject — maps storage keys to companySlug for tenant isolation.
+// Previously /api/storage/[key] had no tenant scoping — any authenticated user
+// could fetch any file by knowing the UUID. This model enables assertCompanyAccess
+// on file access. The migration creates the table; backfill is done by scanning
+// existing files and inferring companySlug from the upload context (manual step).
+model StorageObject {
+  id          String   @id @default(cuid())
+  key         String   @unique  // the UUID-style filename (e.g., "a1b2c3d4.png")
+  companySlug String
+  uploadedBy  String?  // userUid of the uploader
+  fileSize    Int      @default(0)
+  mimeType    String   @default("application/octet-stream")
+  createdAt   DateTime @default(now())
+
+  @@index([companySlug])
+  @@map("storage_objects")
+}
