@@ -49,7 +49,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       transactionType: "transfer",
     },
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 200,
     include: {
       bankAccount: { select: { id: true, bankName: true, accountName: true, currency: true } },
     },

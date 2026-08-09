@@ -28,7 +28,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     where: { companySlug },
     include: { purchaseInvoice: true, lines: true },
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 200,
   });
 
   return NextResponse.json({

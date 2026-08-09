@@ -1,3 +1,4 @@
+# ⚠️ DEV ONLY — DO NOT USE IN PRODUCTION
 # Caddyfile.dev — Development-only configuration
 # DO NOT deploy this to production — the XTransformPort feature is a dev tool only.
 

@@ -31,7 +31,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       ],
     },
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 200,
   });
 
   return NextResponse.json({

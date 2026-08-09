@@ -106,8 +106,8 @@ export default async function RootLayout({
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}
         style={{ fontFamily: "'Cairo', sans-serif" }}
       >
-        {/* VERCEL FIX: Providers loaded as dynamic import with ssr:false
-            to prevent hydration issues. The login/landing pages render
+        {/* Providers is a client component ("use client" directive). SSRs normally
+            and hydrates on the client. (Phase 17 P3: was incorrectly documented as dynamic/ssr:false.)
             their own self-contained forms that don't need these providers. */}
         <Providers>
           {children}

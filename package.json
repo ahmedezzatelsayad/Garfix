@@ -3,8 +3,8 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "next build --webpack",
+    "dev": "next dev -p 3000",
+    "build": "next build --webpack --tsconfig tsconfig.prod.json",
     "postinstall": "prisma generate",
     "start": "next start -p ${PORT:-3000}",
     "lint": "eslint .",

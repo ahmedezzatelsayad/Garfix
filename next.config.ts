@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
   // Vercel has its own build flow (detected via VERCEL env var).
   ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
   reactStrictMode: true,
+  images: { remotePatterns: [] }, // Phase 6 P3: explicit empty — no remote image optimization
   // Expose build metadata to both server and client runtime.
   env: {
     COMMIT_SHA: commitSha,

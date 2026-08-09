@@ -38,7 +38,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // companySlug filter (added P3)
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
-  const records = await db.hRPerformance.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+  const records = await db.hRPerformance.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 });
   return NextResponse.json({ performance: records });
 });
 

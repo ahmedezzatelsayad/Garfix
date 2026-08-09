@@ -44,7 +44,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const quotations = await db.quotation.findMany({
     where,
     orderBy: { date: "desc" },
-    take: 500,
+    take: 200,
     // Quotation.client relation restored (P3)
     include: {
       client: { select: { id: true, name: true, email: true } },

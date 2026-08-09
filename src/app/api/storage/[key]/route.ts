@@ -32,6 +32,13 @@ export const GET = withErrorHandler<[NextRequest, RouteParams]>(
   // send the auth cookie on `<img src="/api/storage/...">` requests, so this
   // does not break legitimate image rendering inside the app. Public/landing
   // assets should use a separate public-bucket path (TODO: signed URLs).
+  //
+  // Phase 4 P2: tenant scoping is NOT enforced here because storage keys
+  // are not mapped to companies in the current schema. A user in tenant A
+  // who obtains a file key (via leaked URL, log, screenshot) can fetch
+  // tenant B's file. Mitigation: keys are 128-bit UUIDs (unguessable).
+  // TODO: add a StorageObject table mapping key → companySlug for proper
+  // tenant isolation.
   async (req, { params }) => {
     const authResult = await resolveAuth(req);
     if (!authResult.ok || !authResult.user) {

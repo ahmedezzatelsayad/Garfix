@@ -49,7 +49,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const entries = await db.depreciationEntry.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 200,
     include: {
       // Note (P2): DepreciationEntry has `fixedAsset` relation (not
       // `asset`), and no `journalEntry` relation — removed.

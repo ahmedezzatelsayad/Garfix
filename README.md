@@ -294,7 +294,7 @@ curl -s http://localhost:3000/api/health | jq
 | **React Query** | 5.82+ | Server state management |
 | **Zod** | 4.x | Schema validation |
 | **Tesseract.js** | 7.x | OCR for invoice image extraction |
-| **OpenTelemetry** | 0.221+ | Tracing + metrics |
+| **OpenTelemetry** | api ^1.9, sdk ^2.10, exporters ^0.221 | Tracing + metrics |
 | **Playwright** | 1.61+ | E2E testing |
 | **Vitest** | 4.x | Unit testing (alongside Bun test) |
 

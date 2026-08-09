@@ -2119,6 +2119,7 @@ model AIFabricCacheEntry {
   updatedAt   DateTime @updatedAt
 
   @@index([companySlug])
+  @@index([expiresAt])
   @@map("ai_fabric_cache_entries")
 }
 

@@ -32,7 +32,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const filings = await db.taxFiling.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 200,
   });
 
   return NextResponse.json({

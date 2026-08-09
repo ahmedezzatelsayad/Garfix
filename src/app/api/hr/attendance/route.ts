@@ -35,7 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
   if (employeeId) where.employeeId = employeeId;
-  const records = await db.hRAttendance.findMany({ where, orderBy: { date: "desc" }, take: 500 });
+  const records = await db.hRAttendance.findMany({ where, orderBy: { date: "desc" }, take: 200 });
   return NextResponse.json({ attendance: records });
 });
 

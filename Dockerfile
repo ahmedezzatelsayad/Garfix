@@ -43,7 +43,6 @@ ENV FOUNDER_EMAIL=${FOUNDER_EMAIL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN bun run db:generate
 RUN bun run build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────
@@ -87,7 +86,7 @@ ENV HOSTNAME="0.0.0.0"
 # HIGH-006 FIX (Cycle 2): replace curl-based HEALTHCHECK with a Node-based
 #   one. Node 22 has a built-in global `fetch` so no extra dependencies are
 #   needed.
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # Use Node.js directly to run the standalone server (not bun — standalone

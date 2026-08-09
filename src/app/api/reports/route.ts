@@ -49,7 +49,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if ("error" in access) return access.error;
 
   // Phase 6 P1 fix: reduced take from 5000 → 1000 + added cursor pagination.
-  // The old `take: 5000` loaded up to 5000 invoices + 5000 purchases into
+  // The old `take: 2000` loaded up to 5000 invoices + 5000 purchases into
   // memory simultaneously (~10MB per request). Now we cap at 1000 per page
   // and return a nextCursor for the client to fetch the next batch.
   // The client passes ?cursor=<id> to get the next page.

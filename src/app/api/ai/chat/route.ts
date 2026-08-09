@@ -463,8 +463,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const user = result.user;
   const sp = req.nextUrl.searchParams;
   const conversationId = sp.get("conversationId") || undefined;
+  const companySlugParam = sp.get("companySlug") || undefined;
+  // Phase 4 P2 fix: filter chatHistory by companySlug when provided (was
+  // returning chats from ALL companies the user belongs to — cross-tenant
+  // information disclosure at the user level).
   const where: Record<string, unknown> = { userUid: user.uid };
   if (conversationId) where.conversationId = conversationId;
+  if (companySlugParam) where.companySlug = companySlugParam;
   const messages = await db.chatHistory.findMany({
     where, orderBy: { createdAt: "asc" }, take: 100,
   });

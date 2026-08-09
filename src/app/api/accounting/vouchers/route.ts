@@ -44,7 +44,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const vouchers = await db.paymentVoucher.findMany({
     where,
     orderBy: { date: "desc" },
-    take: 500,
+    take: 200,
     include: {
       client: { select: { id: true, name: true } },
       supplier: { select: { id: true, name: true } },

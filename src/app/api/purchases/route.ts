@@ -49,7 +49,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
   else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
-  const purchases = await db.purchaseInvoice.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+  const purchases = await db.purchaseInvoice.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 });
   return NextResponse.json({
     purchases: purchases.map((p) => ({
       ...p,

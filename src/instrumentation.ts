@@ -84,7 +84,7 @@ function nodeRequire<T = unknown>(modulePath: string): T {
 // imports Node-only modules (node:fs, node:crypto, node:child_process).
 export const config = {
   runtime: "nodejs",
-};
+} as const;
 
 /**
  * register — Called by Next.js on server startup.

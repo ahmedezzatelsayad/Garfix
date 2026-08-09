@@ -216,5 +216,5 @@ export function middleware(req: NextRequest): NextResponse {
 // Excludes Next.js internal asset paths so static files aren't slowed down.
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-};
+  matcher: ["/((?!_next/static|_next/image|_next/data|favicon.ico|robots.txt|manifest.json|icons|sw.js).*)"],
+} as const;

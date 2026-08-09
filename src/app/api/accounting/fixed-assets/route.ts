@@ -63,7 +63,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const assets = await db.fixedAsset.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 200,
     include: {
       glAccount: true,
       depreciationAccount: true,

@@ -55,7 +55,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     include: {
       product: true,
     },
-    take: 500,
+    take: 200,
   });
 
   const mapped = items.map((it) => {

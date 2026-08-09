@@ -57,7 +57,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // P0-3: Filter out soft-deleted entries
   where.deletedAt = null;
   const entries = await db.journalEntry.findMany({
-    where, orderBy: { date: "desc" }, take: 500,
+    where, orderBy: { date: "desc" }, take: 200,
     include: { lines: true },
   });
   return NextResponse.json({

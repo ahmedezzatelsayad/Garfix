@@ -44,7 +44,7 @@
 ### E2E Playwright
 - **Dependency**: @playwright/test v1.61.1 (added to package.json)
 - **New Spec Files**: accounting.spec.ts, e-invoicing.spec.ts, company-management.spec.ts
-- **Total Specs**: 9 (was 6)
+- **Total Specs: 12 (updated Phase 16 P3 — was stale at 9)
 - **Coverage Flows**: Auth, Health, Invoices, Clients, Dashboard, Settings, Accounting, E-invoicing, Company Management
 
 ### Build Fix

@@ -13,8 +13,9 @@ export * from "./clients";
 export * from "./invoices";
 export * from "./settings";
 export * from "./hr";
-// accounting.ts exports are imported directly to avoid naming conflicts:
-//   useCommissions (also in hr.ts), useInitiatePayment (also in platform-admin.ts)
+// Phase 2 P2 fix: re-export ALL accounting hooks. The colliding exports
+// (useCommissions, useInitiatePayment) were already renamed in accounting.ts
+// to useAccountingCommissions / usePostCommission — no collision exists.
 export * from "./accounting";
 export * from "./inventory";
 export * from "./automation";

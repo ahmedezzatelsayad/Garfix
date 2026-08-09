@@ -43,7 +43,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const purchaseOrders = await db.purchaseOrder.findMany({
     where,
     orderBy: { date: "desc" },
-    take: 500,
+    take: 200,
   });
 
   return apiOk({

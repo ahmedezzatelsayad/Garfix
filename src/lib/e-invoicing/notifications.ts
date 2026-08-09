@@ -61,22 +61,20 @@ async function isThrottled(
   if (!externalUuid && !invoiceId) return false;
   try {
     const oneHourAgo = new Date(Date.now() - THROTTLE_WINDOW_MS);
-    // Look for any rejection notification in the last hour that mentions this UUID
-    // or the invoiceId
-    const conditions: Record<string, unknown>[] = [];
-    if (externalUuid) {
-      conditions.push({ body: { contains: externalUuid } });
-    }
-    if (invoiceId) {
-      conditions.push({ body: { contains: `#${invoiceId}` } });
-    }
+    // Phase 7 P2 fix: use AND (not OR) when both externalUuid and invoiceId
+    // are present. OR was over-throttling: a new invoice reusing the same
+    // externalUuid (authority re-issuance) was suppressed even though it's
+    // a different invoice. With AND, only the exact (uuid, invoiceId) combo
+    // is throttled.
+    const where: Record<string, unknown> = {
+      companySlug,
+      type: "e_invoice_rejected",
+      createdAt: { gte: oneHourAgo },
+    };
+    if (externalUuid) where.body = { contains: externalUuid };
+    if (invoiceId) where.body = { contains: `#${invoiceId}` };
     const recent = await db.notification.findFirst({
-      where: {
-        companySlug,
-        type: "e_invoice_rejected",
-        createdAt: { gte: oneHourAgo },
-        OR: conditions,
-      },
+      where,
       select: { id: true },
     });
     return !!recent;
