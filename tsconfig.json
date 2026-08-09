@@ -18,7 +18,7 @@
     // follow-up sprint where the 409 sites can be annotated individually.
     // The audit's other Critical fixes (SSRF, JWT, auth, schema drift,
     // rate-limit, code-split, Account.id validators) ARE applied.
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

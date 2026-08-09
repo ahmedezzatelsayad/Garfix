@@ -16,10 +16,10 @@ concurrency:
 
 env:
   NODE_ENV: test
-  # NOTE: DATABASE_URL / DATABASE_DIRECT_URL are NOT set here — the committed
-  # `.env` file provides the real Neon PostgreSQL connection string, which
-  # `next start` loads automatically. Setting dummy localhost values here
-  # would override .env and break the smoke test.
+  # Phase 12 P1 fix: use a services: postgres container instead of a committed
+  # .env file. The old approach shipped prod DATABASE_URL to every PR fork.
+  DATABASE_URL: "postgresql://garfix:garfix@localhost:5432/garfix_test?schema=public"
+  DATABASE_DIRECT_URL: "postgresql://garfix:garfix@localhost:5432/garfix_test"
   JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
   FOUNDER_EMAIL: "founder@test.com"

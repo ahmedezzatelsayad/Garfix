@@ -83,7 +83,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       emoji: c.emoji,
       color: c.color,
       phone: c.phone,
-      email: c.email,
+      email: (c as any).email || null,
       address: c.address,
       vatNumber: c.vatNumber,
       currency: c.currency,

@@ -591,7 +591,7 @@ export function PlatformAdminPanel() {
                       <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">ملاحظة</th>
                     </tr></thead>
                     <tbody>
-                      {stockMovements.slice(0, 300).map((m) => (
+                      {stockMovements.slice(0, 300).map((m: any) => (
                         <tr className="border-b border-b-[var(--border)]" key={m.id}>
                           <td className="px-3 py-2.5 text-[13px]">{new Date(m.createdAt).toLocaleString("ar-EG")}</td>
                           <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">{m.companySlug}</td>

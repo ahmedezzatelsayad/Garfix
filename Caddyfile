@@ -1,17 +1,7 @@
-:81 {
-	# Production Caddyfile — reverse proxy to Next.js only.
-	# NOTE: The `?XTransformPort=` open-proxy passthrough that used to live here
-	# was removed (P0-01 from Engineering Audit). It allowed any external
-	# attacker to relay traffic to arbitrary localhost ports (Postgres, Valkey,
-	# admin services) by appending `?XTransformPort=5432` to any request.
-	# The dev-only equivalent is preserved in Caddyfile.dev.
-
-	handle {
-		reverse_proxy localhost:3000 {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
-		}
-	}
+# Phase 10 P3 fix: Caddyfile was listening on :81 with no domain, no TLS.
+# Production uses Nginx (see deploy/nginx/garfix.conf). This Caddyfile is
+# for LOCAL DEVELOPMENT ONLY — do not use in production.
+# To use: replace localhost with your dev domain.
+localhost {
+  reverse_proxy localhost:3000
 }

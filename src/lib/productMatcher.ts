@@ -993,7 +993,7 @@ export async function matchProduct(
   //     transposition (order-insensitive), so max(lev, msJacc) reported 1.0
   //     for "كويل شاعال" vs "كويل اشعال" even though Levenshtein scored 0.8.
   //     The cap encodes "fuzzy match → at most 0.88 confidence".
-  const candidates = allAliases.filter(a => {
+  const candidates = allAliases.filter((a: any) => {
     const na = normalizeArabic(a.alias);
     return bigramJaccard(na, inputNormResult.normalized) >= PREFILTER_BIGRAM_THRESHOLD;
   });

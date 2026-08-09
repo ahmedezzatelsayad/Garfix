@@ -48,7 +48,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     const candidates = await db.appUser.findMany({
       orderBy: { createdAt: "desc" },
       take: 200,
-      select: { uid: true, email: true, displayName: true, role: true, companies: true, createdAt: true },
+      select: { uid: true, email: true, displayName: true, role: true, companies: true, createdAt: true, permissions: true, emailVerified: true },
     });
     users = candidates.filter((c) => {
       try {

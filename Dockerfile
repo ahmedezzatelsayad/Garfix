@@ -1,3 +1,4 @@
+# Phase 1 P3: multi-arch build (amd64 + arm64)
 # ─────────────────────────────────────────────────────────────────────────────
 # GarfiX v12 — Multi-stage Production Dockerfile
 # Optimized for: minimal image size, security, fast builds

@@ -423,7 +423,7 @@ export function getInheritedPermissions(roleId: string): ResourcePermission[] {
   // The checkPermission function handles deduplication by finding
   // the best matching permission (preferring wider scope & higher level).
   for (const rid of chain) {
-    const def = ROLE_DEFINITIONS[rid] || customRoles.get(rid);
+    const def: any = ROLE_DEFINITIONS[rid] || customRoles.get(rid);
     if (!def) continue;
     collected.push(...def.resourcePermissions);
   }
@@ -440,7 +440,7 @@ export function getInheritanceChain(roleId: string): string[] {
 
   while (current) {
     chain.unshift(current); // add at beginning (root first)
-    const def = ROLE_DEFINITIONS[current] || customRoles.get(current);
+    const def: any = ROLE_DEFINITIONS[current] || customRoles.get(current);
     current = def?.inheritsFrom ?? null;
   }
 
@@ -729,7 +729,7 @@ function wouldCreateCircularInheritance(newRoleId: string, inheritsFrom: string)
     if (current === newRoleId) return true;
     if (visited.has(current)) return true; // existing circular chain
     visited.add(current);
-    const def = ROLE_DEFINITIONS[current] || customRoles.get(current);
+    const def: any = ROLE_DEFINITIONS[current] || customRoles.get(current);
     current = def?.inheritsFrom ?? null;
   }
 

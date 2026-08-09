@@ -118,23 +118,23 @@ export function HRView() {
   // Today's attendance count
   const today = new Date().toISOString().slice(0, 10);
   const attendanceToday = useMemo(() => {
-    return attendance.filter(a => a.date === today && a.status === 'present').length;
+    return attendance.filter((a: any) => a.date === today && a.status === 'present').length;
   }, [attendance, today]);
 
   // Total salaries calculation
   const totalSalaries = useMemo(() => {
-    return employees.reduce((sum, emp) => sum + emp.baseSalary, 0).toLocaleString("ar-EG");
+    return employees.reduce((sum: any, emp: any) => sum + emp.baseSalary, 0).toLocaleString("ar-EG");
   }, [employees]);
 
   // Pending leaves count
   const pendingLeaves = useMemo(() => {
-    return leaves.filter(l => l.status === 'pending').length;
+    return leaves.filter((l: any) => l.status === 'pending').length;
   }, [leaves]);
 
   // Average performance score
   const avgPerformance = useMemo(() => {
     if (performances.length === 0) return 0;
-    const total = performances.reduce((sum, p) => sum + (p.overallScore || p.kpiScore || 0), 0);
+    const total = performances.reduce((sum: any, p: any) => sum + (p.overallScore || p.kpiScore || 0), 0);
     return Math.round(total / performances.length);
   }, [performances]);
 

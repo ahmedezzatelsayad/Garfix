@@ -567,7 +567,7 @@ async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<
   try {
     // Load agent config
     const { AGENTS } = await import('@/lib/aiAgents');
-    const agent = AGENTS[agentType];
+    const agent = (AGENTS as any)[agentType];
     
     if (!agent) throw new Error(`Unknown agent type: ${agentType}`);
 

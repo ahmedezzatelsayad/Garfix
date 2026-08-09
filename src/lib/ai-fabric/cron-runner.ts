@@ -82,7 +82,7 @@ async function getActiveCompanies(): Promise<Array<{ slug: string }>> {
     const companies = await db.company.findMany({
       select: { slug: true },
     });
-    return companies.filter((c): c is { slug: string } => c.slug !== null);
+    return companies.filter((c: any): c is { slug: string } => c.slug !== null);
   } catch {
     return [];
   }

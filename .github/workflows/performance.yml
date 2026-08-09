@@ -259,7 +259,7 @@ jobs:
           echo "─── Load Test: /api/health ───"
           # ab (Apache Bench) is pre-installed on ubuntu-latest
           set +e
-          ab -n 500 -c 20 http://localhost:3000/api/health 2>&1 | tee load-test-results.txt
+          k6 run --vus 20 --duration 30s http://localhost:3000/api/health 2>&1 | tee load-test-results.txt
           AB_EXIT=$?
           set -e
           if [ $AB_EXIT -ne 0 ]; then

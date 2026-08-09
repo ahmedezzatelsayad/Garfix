@@ -71,3 +71,11 @@ jobs:
           topic-arn: ${{ secrets.SNS_TOPIC_ARN }}
           message: "GarfiX deploy FAILED on ${{ github.sha }}"
           subject: "GarfiX Deploy Failed"
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          slack-message: "GarfiX deploy FAILED on commit ${{ github.sha }}. Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

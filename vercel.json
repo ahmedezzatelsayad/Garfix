@@ -1,45 +1,22 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "bunx prisma generate && next build --webpack",
   "installCommand": "bun install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": {
-    "NODE_ENV": "production",
-    "PRISMA_ENGINES_MIRROR_API_URL": "https://binaries.prisma.sh"
-  },
   "functions": {
-    "src/app/api/**/*.ts": {
-      "maxDuration": 60,
-      "includeFiles": "node_modules/.prisma/client/**"
-    },
-    "src/app/api/ai/**/*.ts": {
-      "maxDuration": 120,
-      "includeFiles": "node_modules/.prisma/client/**"
-    },
-    "src/app/api/platform-admin/**/*.ts": {
-      "maxDuration": 60,
-      "includeFiles": "node_modules/.prisma/client/**"
+    "src/app/api/**/route.ts": {
+      "maxDuration": 60
     }
   },
-  "headers": [
+  "includeFiles": "node_modules/.prisma/client/**",
+  "crons": [
     {
-      "source": "/_next/static/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
+      "path": "/api/internal/cron/session-sweep",
+      "schedule": "0 * * * *"
     },
     {
-      "source": "/api/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-store, must-revalidate" }]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-      ]
+      "path": "/api/internal/cron/outbox-purge",
+      "schedule": "30 * * * *"
     }
   ]
 }

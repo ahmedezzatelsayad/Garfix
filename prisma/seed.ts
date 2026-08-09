@@ -202,7 +202,7 @@ async function seed() {
       currency: 'USD',
       balance: new Prisma.Decimal(50000),
       accountType: 'checking',
-      glAccountId: accounts.find(a => a.code === '1000')?.id,
+      glAccountId: accounts.find((a: any) => a.code === '1000')?.id,
       companySlug: company.slug,
     },
   })
@@ -283,15 +283,15 @@ async function seed() {
     {
       description: 'Record sales to Alpha Corp',
       lines: [
-        { accountId: accounts.find(a => a.code === '1000')!.id, debit: 12000, credit: 0 },
-        { accountId: accounts.find(a => a.code === '4000')!.id, debit: 0, credit: 12000 },
+        { accountId: accounts.find((a: any) => a.code === '1000')!.id, debit: 12000, credit: 0 },
+        { accountId: accounts.find((a: any) => a.code === '4000')!.id, debit: 0, credit: 12000 },
       ],
     },
     {
       description: 'Record purchase from Delta Supplies',
       lines: [
-        { accountId: accounts.find(a => a.code === '5000')!.id, debit: 8500, credit: 0 },
-        { accountId: accounts.find(a => a.code === '1000')!.id, debit: 0, credit: 8500 },
+        { accountId: accounts.find((a: any) => a.code === '5000')!.id, debit: 8500, credit: 0 },
+        { accountId: accounts.find((a: any) => a.code === '1000')!.id, debit: 0, credit: 8500 },
       ],
     },
   ]
@@ -318,10 +318,10 @@ async function seed() {
 
   // Create opening balances
   const balanceData = [
-    { accountId: accounts.find(a => a.code === '1000')!.id, amount: 50000 },
-    { accountId: accounts.find(a => a.code === '1100')!.id, amount: 30000 },
-    { accountId: accounts.find(a => a.code === '2000')!.id, amount: -20000 },
-    { accountId: accounts.find(a => a.code === '3000')!.id, amount: -60000 },
+    { accountId: accounts.find((a: any) => a.code === '1000')!.id, amount: 50000 },
+    { accountId: accounts.find((a: any) => a.code === '1100')!.id, amount: 30000 },
+    { accountId: accounts.find((a: any) => a.code === '2000')!.id, amount: -20000 },
+    { accountId: accounts.find((a: any) => a.code === '3000')!.id, amount: -60000 },
   ]
 
   for (const b of balanceData) {

@@ -179,7 +179,7 @@ async function testGeminiConnection(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: testPrompts[feature] || testPrompts.chat }]
+          parts: [{ text: (testPrompts as any)[feature] || testPrompts.chat }]
         }],
         generationConfig: {
           maxOutputTokens: 50,
