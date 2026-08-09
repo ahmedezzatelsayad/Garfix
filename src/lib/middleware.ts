@@ -190,14 +190,20 @@ export async function requireFounder(req: NextRequest): Promise<{ user: AuthPayl
   if (!isFounderEmail(authResult.user.email)) {
     return NextResponse.json({ error: "هذه العملية متاحة للمؤسس فقط" }, { status: 403 });
   }
-  // SEC-005 FIX: Founder must have verified email
-  const { db } = await import("./db");
-  const dbUser = await db.appUser.findUnique({
-    where: { uid: authResult.user.uid },
-    select: { emailVerified: true },
-  });
-  if (!dbUser?.emailVerified) {
-    return NextResponse.json({ error: "حساب المؤسس يجب أن يكون موثّق البريد الإلكتروني" }, { status: 403 });
+  // Phase 9 P3 fix: use emailVerified from JWT payload (already decoded by
+  // requireAuth) instead of an extra DB round-trip. The JWT includes
+  // emailVerified in the AuthPayload — no need to query the DB again.
+  // Fallback to DB check only if the JWT doesn't have the field (old tokens).
+  if (!authResult.user.emailVerified) {
+    // Only do the DB check if the JWT field is missing/false
+    const { db } = await import("./db");
+    const dbUser = await db.appUser.findUnique({
+      where: { uid: authResult.user.uid },
+      select: { emailVerified: true },
+    });
+    if (!dbUser?.emailVerified) {
+      return NextResponse.json({ error: "حساب المؤسس يجب أن يكون موثّق البريد الإلكتروني" }, { status: 403 });
+    }
   }
   return authResult;
 }

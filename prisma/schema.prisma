@@ -56,6 +56,9 @@ model AppUser {
   // API Key Pool - User can have one assigned key
   assignedApiKey ApiKeyPool? @relation("KeyAssignedToUser")
 
+  // Phase 4 P3: CompanyMembership relation (replaces JSON companies column)
+  memberships CompanyMembership[]
+
   @@map("app_users")
 }
 
@@ -135,6 +138,9 @@ model Company {
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   nameEn                       String?
   currencyDecimalPlaces        Int
+
+  // Phase 4 P3: CompanyMembership relation (replaces JSON companies column)
+  memberships CompanyMembership[]
 }
 
 // ─── Account (Chart of Accounts — matches db.account) ───
@@ -2900,4 +2906,27 @@ model PromptTemplate {
   @@index([name, active])
   @@index([active])
   @@map("prompt_templates")
+}
+
+// Phase 4 P3: CompanyMembership join table (replaces AppUser.companies JSON string).
+// Currently AppUser.companies is a JSON-encoded string column — every membership
+// query is a substring/contains filter, and mutations rewrite the whole array.
+// This model is the proper relational approach. Migration TBD (needs data backfill
+// from the JSON column). The JSON column stays for backward compatibility until
+// all code is migrated to use CompanyMembership.
+model CompanyMembership {
+  id          String   @id @default(cuid())
+  userUid     String
+  companySlug String
+  role        String   @default("employee") // admin, employee, accountant
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        AppUser  @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  company     Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+
+  @@unique([userUid, companySlug])
+  @@index([companySlug])
+  @@index([userUid])
+  @@map("company_memberships")
 }

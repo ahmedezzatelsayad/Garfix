@@ -103,6 +103,7 @@ export interface AuthPayload {
   permissions: Record<string, number>;
   tv: number;
   jti?: string;
+  emailVerified?: boolean;  // Phase 9 P3: cached in JWT to avoid DB round-trip
 }
 
 export interface SessionUser {

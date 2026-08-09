@@ -232,7 +232,9 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     action: "settle_inter_company",
     entity: "inter_company_transaction",
     entityId: transactionId,
-    companySlug: data.companySlug,
+    // Phase 4 P2 fix: use existing.companySlugFrom (not data.companySlug
+    // from the request body — was silently ignored, dead code in the schema).
+    companySlug: existing.companySlugFrom,
     details: {
       from: existing.companySlugFrom,
       to: existing.companySlugTo,

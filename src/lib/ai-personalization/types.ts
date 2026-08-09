@@ -1,5 +1,7 @@
 /**
  * ai-personalization.types.ts — GarfiX DS v4.0 AI Personalization Types
+*
+ * Phase 8 P3: SCAFFOLD ONLY — types + empty hooks, no AI integration.
  *
  * ════════════════════════════════════════════════════════════════════════
  * Complete Type Definitions for AI-Powered Personalization System

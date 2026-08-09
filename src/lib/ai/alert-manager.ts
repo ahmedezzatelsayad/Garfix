@@ -1,5 +1,8 @@
 /**
  * GarfiX EOS - Enterprise AI Alerting System
+*
+ * Phase 8 P3: DEAD CODE — 1000 LOC, zero callers. AlertManager is fully
+ * implemented but never wired into the AI call path. Kept for future wiring.
  * 
  * Comprehensive alerting and notification system for AI infrastructure monitoring.
  * Supports multiple channels, severity levels, aggregation, and escalation.

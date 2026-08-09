@@ -1,5 +1,9 @@
 /**
  * ═════════════════════════════════════════════════════════════
+*
+ * Phase 8 P3: DEAD CODE — imported only by ai/index.ts re-export and aiWorkers.ts
+ * (which is itself dead — see Sprint 7 P0 fix). 798 LOC of unused GarfiX persona,
+ * memory system, event emitter. Kept for future wiring. Do NOT add new callers.
  * GarfiX AI - The Brain (العقل الذكي)
  * 
  * This is the CORE of GarfiX AI - an independent intelligent agent
